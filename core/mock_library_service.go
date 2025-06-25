@@ -28,14 +28,14 @@ func NewMockLibraryService() *MockLibraryService {
 	}
 }
 
-func (m *MockLibraryService) GetAll(ctx context.Context) (model.Libraries, error) {
+func (m *MockLibraryService) getAll(ctx context.Context) (model.Libraries, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	return m.Libraries, nil
 }
 
-func (m *MockLibraryService) Get(ctx context.Context, id int) (*model.Library, error) {
+func (m *MockLibraryService) get(ctx context.Context, id int) (*model.Library, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -47,7 +47,7 @@ func (m *MockLibraryService) Get(ctx context.Context, id int) (*model.Library, e
 	return nil, model.ErrNotFound
 }
 
-func (m *MockLibraryService) Create(ctx context.Context, library *model.Library) error {
+func (m *MockLibraryService) create(ctx context.Context, library *model.Library) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -63,7 +63,7 @@ func (m *MockLibraryService) Create(ctx context.Context, library *model.Library)
 	return nil
 }
 
-func (m *MockLibraryService) Update(ctx context.Context, library *model.Library) error {
+func (m *MockLibraryService) update(ctx context.Context, id int, library *model.Library) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -76,7 +76,8 @@ func (m *MockLibraryService) Update(ctx context.Context, library *model.Library)
 
 	// Find and update in mock data
 	for i, lib := range m.Libraries {
-		if lib.ID == library.ID {
+		if lib.ID == id {
+			library.ID = id
 			m.Libraries[i] = *library
 			return nil
 		}
@@ -84,7 +85,7 @@ func (m *MockLibraryService) Update(ctx context.Context, library *model.Library)
 	return model.ErrNotFound
 }
 
-func (m *MockLibraryService) Delete(ctx context.Context, id int) error {
+func (m *MockLibraryService) delete(ctx context.Context, id int) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -158,7 +159,7 @@ type mockLibraryRepository struct {
 }
 
 func (r *mockLibraryRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	libs, err := r.service.GetAll(r.ctx)
+	libs, err := r.service.getAll(r.ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -170,7 +171,7 @@ func (r *mockLibraryRepository) Read(id string) (interface{}, error) {
 	if err != nil {
 		return nil, rest.ErrNotFound
 	}
-	lib, err := r.service.Get(r.ctx, idInt)
+	lib, err := r.service.get(r.ctx, idInt)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, rest.ErrNotFound
 	}
@@ -178,7 +179,7 @@ func (r *mockLibraryRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *mockLibraryRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.service.GetAll(r.ctx)
+	return r.service.getAll(r.ctx)
 }
 
 func (r *mockLibraryRepository) EntityName() string {
@@ -191,7 +192,7 @@ func (r *mockLibraryRepository) NewInstance() interface{} {
 
 func (r *mockLibraryRepository) Save(entity interface{}) (string, error) {
 	lib := entity.(*model.Library)
-	err := r.service.Create(r.ctx, lib)
+	err := r.service.create(r.ctx, lib)
 	if errors.Is(err, model.ErrValidation) {
 		return "", &rest.ValidationError{Errors: map[string]string{"validation": err.Error()}}
 	}
@@ -202,13 +203,12 @@ func (r *mockLibraryRepository) Save(entity interface{}) (string, error) {
 }
 
 func (r *mockLibraryRepository) Update(id string, entity interface{}, cols ...string) error {
-	lib := entity.(*model.Library)
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		return &rest.ValidationError{Errors: map[string]string{"id": "invalid library ID format"}}
 	}
-	lib.ID = idInt
-	err = r.service.Update(r.ctx, lib)
+	lib := entity.(*model.Library)
+	err = r.service.update(r.ctx, idInt, lib)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
@@ -223,7 +223,7 @@ func (r *mockLibraryRepository) Delete(id string) error {
 	if err != nil {
 		return &rest.ValidationError{Errors: map[string]string{"id": "invalid library ID format"}}
 	}
-	err = r.service.Delete(r.ctx, idInt)
+	err = r.service.delete(r.ctx, idInt)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
