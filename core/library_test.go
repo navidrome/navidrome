@@ -701,5 +701,35 @@ var _ = Describe("Library Service", func() {
 				return len(scanner.ScanCalls)
 			}, "100ms", "10ms").Should(Equal(0))
 		})
+
+		It("triggers scan when deleting a library", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Library to Delete", Path: tempDir},
+			})
+
+			// Delete the library
+			err := repo.Delete("1")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Wait briefly for the goroutine to complete
+			Eventually(func() int {
+				return len(scanner.ScanCalls)
+			}, "1s", "10ms").Should(Equal(1))
+
+			// Verify scan was called with correct parameters
+			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+		})
+
+		It("does not trigger scan when library deletion fails", func() {
+			// Try to delete a non-existent library
+			err := repo.Delete("999")
+			Expect(err).To(HaveOccurred())
+
+			// Ensure no scan was triggered since deletion failed
+			Consistently(func() int {
+				return len(scanner.ScanCalls)
+			}, "100ms", "10ms").Should(Equal(0))
+		})
 	})
 })
