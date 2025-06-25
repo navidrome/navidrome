@@ -17,6 +17,7 @@ const (
 	Transcoding    = contextKey("transcoding")
 	ClientUniqueId = contextKey("clientUniqueId")
 	ReverseProxyIp = contextKey("reverseProxyIp")
+	InternalAuth   = contextKey("internalAuth") // Used for internal API calls, e.g., from the plugins
 )
 
 var allKeys = []contextKey{
@@ -62,6 +63,10 @@ func WithReverseProxyIp(ctx context.Context, reverseProxyIp string) context.Cont
 	return context.WithValue(ctx, ReverseProxyIp, reverseProxyIp)
 }
 
+func WithInternalAuth(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, InternalAuth, username)
+}
+
 func UserFrom(ctx context.Context) (model.User, bool) {
 	v, ok := ctx.Value(User).(model.User)
 	return v, ok
@@ -100,6 +105,15 @@ func ClientUniqueIdFrom(ctx context.Context) (string, bool) {
 func ReverseProxyIpFrom(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(ReverseProxyIp).(string)
 	return v, ok
+}
+
+func InternalAuthFrom(ctx context.Context) (string, bool) {
+	if v := ctx.Value(InternalAuth); v != nil {
+		if username, ok := v.(string); ok {
+			return username, true
+		}
+	}
+	return "", false
 }
 
 func AddValues(ctx, requestCtx context.Context) context.Context {

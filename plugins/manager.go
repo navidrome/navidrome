@@ -7,18 +7,22 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/cache/cache.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/artwork/artwork.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/subsonicapi/subsonicapi.proto
 
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -79,28 +83,33 @@ func (p *plugin) waitForCompilation() error {
 	return p.compilationErr
 }
 
+type SubsonicRouter http.Handler
+
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins          map[string]*plugin      // Map of plugin folder name to plugin info
-	mu               sync.RWMutex            // Protects plugins map
-	schedulerService *schedulerService       // Service for handling scheduled tasks
-	websocketService *websocketService       // Service for handling WebSocket connections
-	lifecycle        *pluginLifecycleManager // Manages plugin lifecycle and initialization
-	adapters         map[string]WasmPlugin   // Map of plugin folder name + capability to adapter
+	plugins          map[string]*plugin             // Map of plugin folder name to plugin info
+	mu               sync.RWMutex                   // Protects plugins map
+	subsonicRouter   atomic.Pointer[SubsonicRouter] // Subsonic API router
+	schedulerService *schedulerService              // Service for handling scheduled tasks
+	websocketService *websocketService              // Service for handling WebSocket connections
+	lifecycle        *pluginLifecycleManager        // Manages plugin lifecycle and initialization
+	adapters         map[string]WasmPlugin          // Map of plugin folder name + capability to adapter
+	ds               model.DataStore                // DataStore for accessing persistent data
 }
 
 // GetManager returns the singleton instance of Manager
-func GetManager() *Manager {
+func GetManager(ds model.DataStore) *Manager {
 	return singleton.GetInstance(func() *Manager {
-		return createManager()
+		return createManager(ds)
 	})
 }
 
 // createManager creates a new Manager instance. Used in tests
-func createManager() *Manager {
+func createManager(ds model.DataStore) *Manager {
 	m := &Manager{
 		plugins:   make(map[string]*plugin),
 		lifecycle: newPluginLifecycleManager(),
+		ds:        ds,
 	}
 
 	// Create the host services
@@ -108,6 +117,11 @@ func createManager() *Manager {
 	m.websocketService = newWebsocketService(m)
 
 	return m
+}
+
+// SetSubsonicRouter sets the SubsonicRouter after Manager initialization
+func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
+	m.subsonicRouter.Store(&router)
 }
 
 // registerPlugin adds a plugin to the registry with the given parameters

@@ -109,6 +109,9 @@ type PluginManifestPermissions struct {
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *PluginManifestPermissionsScheduler `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
 
+	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
+	Subsonicapi *PluginManifestPermissionsSubsonicapi `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
+
 	// Websocket corresponds to the JSON schema field "websocket".
 	Websocket *PluginManifestPermissionsWebsocket `json:"websocket,omitempty" yaml:"websocket,omitempty" mapstructure:"websocket,omitempty"`
 
@@ -302,6 +305,42 @@ func (j *PluginManifestPermissionsScheduler) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
 	}
 	*j = PluginManifestPermissionsScheduler(plain)
+	return nil
+}
+
+// SubsonicAPI service permissions
+type PluginManifestPermissionsSubsonicapi struct {
+	// If false, reject calls where the u is an admin
+	AllowAdmins bool `json:"allowAdmins,omitempty" yaml:"allowAdmins,omitempty" mapstructure:"allowAdmins,omitempty"`
+
+	// List of usernames the plugin can pass as u. Any user if empty
+	AllowedUsernames []string `json:"allowedUsernames,omitempty" yaml:"allowedUsernames,omitempty" mapstructure:"allowedUsernames,omitempty"`
+
+	// Explanation of why this permission is needed
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PluginManifestPermissionsSubsonicapi) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in PluginManifestPermissionsSubsonicapi: required")
+	}
+	type Plain PluginManifestPermissionsSubsonicapi
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if v, ok := raw["allowAdmins"]; !ok || v == nil {
+		plain.AllowAdmins = false
+	}
+	if len(plain.Reason) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
+	}
+	*j = PluginManifestPermissionsSubsonicapi(plain)
 	return nil
 }
 

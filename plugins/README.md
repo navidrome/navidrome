@@ -48,6 +48,7 @@ These services are defined in `plugins/host/` and implemented in corresponding h
 - WebSocket service (in `plugins/host_websocket.go`) for WebSocket communication
 - Cache service (in `plugins/host_cache.go`) for TTL-based plugin caching
 - Artwork service (in `plugins/host_artwork.go`) for generating public artwork URLs
+- SubsonicAPI service (in `plugins/host_subsonicapi.go`) for accessing Navidrome's Subsonic API
 
 ### Available Host Services
 
@@ -292,6 +293,76 @@ _, err = websocket.Close(ctx, &websocket.CloseRequest{
 })
 ```
 
+#### SubsonicAPIService
+
+```protobuf
+service SubsonicAPIService {
+    rpc Call(CallRequest) returns (CallResponse);
+}
+```
+
+The SubsonicAPIService provides plugins with access to Navidrome's Subsonic API endpoints. This allows plugins to query and interact with Navidrome's music library data using the same API that external Subsonic clients use.
+
+Key features:
+
+- **Library Access**: Query artists, albums, tracks, playlists, and other music library data
+- **Search Functionality**: Search across the music library using various criteria
+- **Metadata Retrieval**: Get detailed information about music items including ratings, play counts, etc.
+- **Authentication Handled**: The service automatically handles authentication using internal auth context
+- **JSON Responses**: All responses are returned as JSON strings for easy parsing
+
+**Important Security Notes:**
+
+- Plugins must specify a username via the `u` parameter in the URL - this determines which user's library view and permissions apply
+- The service uses internal authentication, so plugins don't need to provide passwords or API keys
+- All Subsonic API security and access controls apply based on the specified user
+
+Example usage:
+
+```go
+// Get ping response to test connectivity
+resp, err := subsonicAPI.Call(ctx, &subsonicapi.CallRequest{
+    Url: "/rest/ping?u=admin",
+})
+if err != nil {
+    return err
+}
+// resp.Json contains the JSON response
+
+// Search for artists
+resp, err = subsonicAPI.Call(ctx, &subsonicapi.CallRequest{
+    Url: "/rest/search3?u=admin&query=Beatles&artistCount=10",
+})
+
+// Get album details
+resp, err = subsonicAPI.Call(ctx, &subsonicapi.CallRequest{
+    Url: "/rest/getAlbum?u=admin&id=123",
+})
+
+// Check for errors
+if resp.Error != "" {
+    // Handle error - could be missing parameters, invalid user, etc.
+    log.Printf("SubsonicAPI error: %s", resp.Error)
+}
+```
+
+**Common URL Patterns:**
+
+- `/rest/ping?u=USERNAME` - Test API connectivity
+- `/rest/search3?u=USERNAME&query=TERM` - Search library
+- `/rest/getArtists?u=USERNAME` - Get all artists
+- `/rest/getAlbum?u=USERNAME&id=ID` - Get album details
+- `/rest/getPlaylists?u=USERNAME` - Get user playlists
+
+**Required Parameters:**
+
+- `u` (username): Required for all requests - determines user context and permissions
+- `f=json`: Recommended to get JSON responses (easier to parse than XML)
+
+The service accepts standard Subsonic API endpoints and parameters. Refer to the [Subsonic API documentation](http://www.subsonic.org/pages/api.jsp) for complete endpoint details, but note that authentication parameters (`p`, `t`, `s`, `c`, `v`) are handled automatically.
+
+See the [subsonicapi.proto](host/subsonicapi/subsonicapi.proto) file for the full API definition.
+
 ## Plugin Permission System
 
 Navidrome implements a permission-based security system that controls which host services plugins can access. This system enforces security at load-time by only making authorized services available to plugins in their WebAssembly runtime environment.
@@ -329,6 +400,11 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
     },
     "cache": {
       "reason": "To cache API responses and reduce rate limiting"
+    },
+    "subsonicapi": {
+      "reason": "To query music library for artist and album information",
+      "allowedUsernames": ["metadata-user"],
+      "allowAdmins": false
     }
   }
 }
@@ -340,6 +416,7 @@ Each permission is represented as a key in the permissions object. The value mus
 
 - **`http`**: Requires `allowedUrls` object mapping URL patterns to allowed HTTP methods, and optional `allowLocalNetwork` boolean
 - **`websocket`**: Requires `allowedUrls` array of WebSocket URL patterns, and optional `allowLocalNetwork` boolean
+- **`subsonicapi`**: Requires `reason` field, with optional `allowedUsernames` array and `allowAdmins` boolean for fine-grained access control
 - **`config`**, **`cache`**, **`scheduler`**, **`artwork`**: Only require the `reason` field
 
 **Security Benefits of Required Reasons:**
@@ -355,14 +432,15 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 
 The following permission keys correspond to host services:
 
-| Permission  | Host Service     | Description                                        | Required Fields         |
-| ----------- | ---------------- | -------------------------------------------------- | ----------------------- |
-| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls` |
-| `websocket` | WebSocketService | Connect to and communicate via WebSockets          | `reason`, `allowedUrls` |
-| `cache`     | CacheService     | Store and retrieve cached data with TTL            | `reason`                |
-| `config`    | ConfigService    | Access Navidrome configuration values              | `reason`                |
-| `scheduler` | SchedulerService | Schedule one-time and recurring tasks              | `reason`                |
-| `artwork`   | ArtworkService   | Generate public URLs for artwork images            | `reason`                |
+| Permission    | Host Service       | Description                                        | Required Fields                                       |
+|---------------|--------------------|----------------------------------------------------|-------------------------------------------------------|
+| `http`        | HttpService        | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls`                               |
+| `websocket`   | WebSocketService   | Connect to and communicate via WebSockets          | `reason`, `allowedUrls`                               |
+| `cache`       | CacheService       | Store and retrieve cached data with TTL            | `reason`                                              |
+| `config`      | ConfigService      | Access Navidrome configuration values              | `reason`                                              |
+| `scheduler`   | SchedulerService   | Schedule one-time and recurring tasks              | `reason`                                              |
+| `artwork`     | ArtworkService     | Generate public URLs for artwork images            | `reason`                                              |
+| `subsonicapi` | SubsonicAPIService | Access Navidrome's Subsonic API endpoints          | `reason`, optional: `allowedUsernames`, `allowAdmins` |
 
 #### HTTP Permission Structure
 
@@ -415,6 +493,80 @@ WebSocket permissions require explicit URL whitelisting:
 - `reason` (required): Explanation of why WebSocket access is needed
 - `allowedUrls` (required): Array of WebSocket URL patterns (must start with `ws://` or `wss://`)
 - `allowLocalNetwork` (optional, default false): Whether to allow connections to localhost/private IPs
+
+#### SubsonicAPI Permission Structure
+
+SubsonicAPI permissions control which users plugins can access Navidrome's Subsonic API as, providing fine-grained security controls:
+
+```json
+{
+  "subsonicapi": {
+    "reason": "To query music library data for recommendation engine",
+    "allowedUsernames": ["plugin-user", "readonly-user"],
+    "allowAdmins": false
+  }
+}
+```
+
+**Fields:**
+
+- `reason` (required): Explanation of why SubsonicAPI access is needed
+- `allowedUsernames` (optional): Array of specific usernames the plugin is allowed to use. If empty or omitted, any username can be used
+- `allowAdmins` (optional, default false): Whether the plugin can make API calls using admin user accounts
+
+**Security Model:**
+
+The SubsonicAPI service enforces strict user-based access controls:
+
+- **Username Validation**: The plugin must provide a valid `u` (username) parameter in all API calls
+- **User Context**: All API responses are filtered based on the specified user's permissions and library access
+- **Admin Protection**: By default, plugins cannot use admin accounts for API calls to prevent privilege escalation
+- **Username Restrictions**: When `allowedUsernames` is specified, only those users can be used
+
+**Common Permission Patterns:**
+
+```jsonc
+// Allow any non-admin user (most permissive)
+{
+  "subsonicapi": {
+    "reason": "To search music library for metadata enhancement",
+    "allowAdmins": false
+  }
+}
+
+// Allow only specific users (most secure)
+{
+  "subsonicapi": {
+    "reason": "To access playlists for synchronization with external service",
+    "allowedUsernames": ["sync-user"],
+    "allowAdmins": false
+  }
+}
+
+// Allow admin users (use with caution)
+{
+  "subsonicapi": {
+    "reason": "To perform administrative tasks like library statistics",
+    "allowAdmins": true
+  }
+}
+
+// Restrict to specific users but allow admins
+{
+  "subsonicapi": {
+    "reason": "To backup playlists for authorized users only",
+    "allowedUsernames": ["backup-admin", "user1", "user2"],
+    "allowAdmins": true
+  }
+}
+```
+
+**Important Notes:**
+
+- Username matching is case-insensitive
+- If `allowedUsernames` is empty or omitted, any username can be used (subject to `allowAdmins` setting)
+- Admin restriction (`allowAdmins: false`) is checked after username validation
+- Invalid or non-existent usernames will result in API call errors
 
 ### Permission Validation
 
@@ -581,7 +733,7 @@ func (p *Plugin) GetArtistInfo(ctx context.Context, req *api.ArtistInfoRequest) 
 2. **Verify required fields**: Check that HTTP and WebSocket permissions include `allowedUrls` and other required fields
 3. **Review logs**: Check for plugin loading errors, manifest validation errors, and WASM runtime errors
 4. **Test incrementally**: Add permissions one at a time to identify which services your plugin needs
-5. **Verify service names**: Ensure permission keys match exactly: `http`, `cache`, `config`, `scheduler`, `websocket`, `artwork`
+5. **Verify service names**: Ensure permission keys match exactly: `http`, `cache`, `config`, `scheduler`, `websocket`, `artwork`, `subsonicapi`
 6. **Validate manifest**: Use a JSON schema validator to check your manifest against the schema
 
 ### Future Considerations
@@ -640,6 +792,7 @@ The protobuf definitions are located in:
 - `plugins/host/websocket/websocket.proto`: WebSocket service interface
 - `plugins/host/cache/cache.proto`: Cache service interface
 - `plugins/host/artwork/artwork.proto`: Artwork service interface
+- `plugins/host/subsonicapi/subsonicapi.proto`: SubsonicAPI service interface
 
 ### 4. Integration Architecture
 

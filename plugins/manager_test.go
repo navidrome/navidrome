@@ -27,7 +27,7 @@ var _ = Describe("Plugin Manager", func() {
 		conf.Server.Plugins.Folder = testDataDir
 
 		ctx = GinkgoT().Context()
-		mgr = createManager()
+		mgr = createManager(nil)
 		mgr.ScanPlugins()
 	})
 
@@ -85,7 +85,7 @@ var _ = Describe("Plugin Manager", func() {
 			})
 
 			conf.Server.Plugins.Folder = tempPluginsDir
-			m = createManager()
+			m = createManager(nil)
 		})
 
 		// Helper to create a complete valid plugin for manager testing
