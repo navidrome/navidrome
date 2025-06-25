@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -253,7 +254,7 @@ var _ = Describe("Library API", func() {
 				}
 
 				for _, endpoint := range endpoints {
-					parts := Split(endpoint, " ")
+					parts := strings.Split(endpoint, " ")
 					method, path := parts[0], parts[1]
 
 					req := createAuthenticatedRequest(method, path, nil, userToken)
@@ -420,18 +421,4 @@ func createUnauthenticatedRequest(method, path string, body *bytes.Buffer) *http
 	req := httptest.NewRequest(method, path, body)
 	req.Header.Set("Content-Type", "application/json")
 	return req
-}
-
-// Helper function to split strings
-func Split(s, sep string) []string {
-	var result []string
-	start := 0
-	for i, r := range s {
-		if string(r) == sep {
-			result = append(result, s[start:i])
-			start = i + 1
-		}
-	}
-	result = append(result, s[start:])
-	return result
 }
