@@ -28,6 +28,7 @@ var _ = Describe("Library Service", func() {
 	var ctx context.Context
 	var tempDir string
 	var scanner *mockScanner
+	var watcherManager *mockWatcherManager
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -40,7 +41,11 @@ var _ = Describe("Library Service", func() {
 
 		// Create a mock scanner that tracks calls
 		scanner = &mockScanner{}
-		service = core.NewLibrary(ds, scanner)
+		// Create a mock watcher manager
+		watcherManager = &mockWatcherManager{
+			libraryStates: make(map[int]model.Library),
+		}
+		service = core.NewLibrary(ds, scanner, watcherManager)
 		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
@@ -714,6 +719,102 @@ var _ = Describe("Library Service", func() {
 				return scanner.len()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
+
+		Context("Watcher Integration", func() {
+			It("starts watcher when creating a new library", func() {
+				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+
+				_, err := repo.Save(library)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify watcher was started
+				Eventually(func() int {
+					return watcherManager.lenStarted()
+				}, "1s", "10ms").Should(Equal(1))
+
+				Expect(watcherManager.StartedWatchers[0].ID).To(Equal(1))
+				Expect(watcherManager.StartedWatchers[0].Name).To(Equal("New Library"))
+				Expect(watcherManager.StartedWatchers[0].Path).To(Equal(tempDir))
+			})
+
+			It("restarts watcher when library path is updated", func() {
+				// First create a library
+				libraryRepo.SetData(model.Libraries{
+					{ID: 1, Name: "Original Library", Path: tempDir},
+				})
+
+				// Simulate that this library already has a watcher
+				watcherManager.simulateExistingLibrary(model.Library{ID: 1, Name: "Original Library", Path: tempDir})
+
+				// Create a new temp directory for the update
+				newTempDir, err := os.MkdirTemp("", "navidrome-library-update-")
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() { os.RemoveAll(newTempDir) })
+
+				// Update library with new path
+				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
+				err = repo.Update("1", library)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify watcher was restarted
+				Eventually(func() int {
+					return watcherManager.lenRestarted()
+				}, "1s", "10ms").Should(Equal(1))
+
+				Expect(watcherManager.RestartedWatchers[0].ID).To(Equal(1))
+				Expect(watcherManager.RestartedWatchers[0].Path).To(Equal(newTempDir))
+			})
+
+			It("does not restart watcher when only library name is updated", func() {
+				// First create a library
+				libraryRepo.SetData(model.Libraries{
+					{ID: 1, Name: "Original Library", Path: tempDir},
+				})
+
+				// Update library with same path but different name
+				library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
+				err := repo.Update("1", library)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify watcher was NOT restarted (since path didn't change)
+				Consistently(func() int {
+					return watcherManager.lenRestarted()
+				}, "100ms", "10ms").Should(Equal(0))
+			})
+
+			It("stops watcher when library is deleted", func() {
+				// Set up a library
+				libraryRepo.SetData(model.Libraries{
+					{ID: 1, Name: "Test Library", Path: tempDir},
+				})
+
+				err := repo.Delete("1")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify watcher was stopped
+				Eventually(func() int {
+					return watcherManager.lenStopped()
+				}, "1s", "10ms").Should(Equal(1))
+
+				Expect(watcherManager.StoppedWatchers[0]).To(Equal(1))
+			})
+
+			It("does not stop watcher when library deletion fails", func() {
+				// Set up a library
+				libraryRepo.SetData(model.Libraries{
+					{ID: 1, Name: "Test Library", Path: tempDir},
+				})
+
+				// Mock deletion to fail by trying to delete non-existent library
+				err := repo.Delete("999")
+				Expect(err).To(HaveOccurred())
+
+				// Verify watcher was NOT stopped since deletion failed
+				Consistently(func() int {
+					return watcherManager.lenStopped()
+				}, "100ms", "10ms").Should(Equal(0))
+			})
+		})
 	})
 })
 
@@ -740,4 +841,71 @@ func (m *mockScanner) len() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.ScanCalls)
+}
+
+// mockWatcherManager provides a simple mock implementation of core.Watcher for testing
+type mockWatcherManager struct {
+	StartedWatchers   []model.Library
+	StoppedWatchers   []int
+	RestartedWatchers []model.Library
+	libraryStates     map[int]model.Library // Track which libraries we know about
+	mu                sync.RWMutex
+}
+
+func (m *mockWatcherManager) Watch(ctx context.Context, lib *model.Library) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if we already know about this library ID
+	if _, exists := m.libraryStates[lib.ID]; exists {
+		// This is a restart - the library already existed
+		// Update our tracking and record the restart
+		for i, startedLib := range m.StartedWatchers {
+			if startedLib.ID == lib.ID {
+				m.StartedWatchers[i] = *lib
+				break
+			}
+		}
+		m.RestartedWatchers = append(m.RestartedWatchers, *lib)
+		m.libraryStates[lib.ID] = *lib
+		return nil
+	}
+
+	// This is a new library - first time we're seeing it
+	m.StartedWatchers = append(m.StartedWatchers, *lib)
+	m.libraryStates[lib.ID] = *lib
+	return nil
+}
+
+func (m *mockWatcherManager) StopWatching(ctx context.Context, libraryID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.StoppedWatchers = append(m.StoppedWatchers, libraryID)
+	return nil
+}
+
+func (m *mockWatcherManager) lenStarted() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.StartedWatchers)
+}
+
+func (m *mockWatcherManager) lenStopped() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.StoppedWatchers)
+}
+
+func (m *mockWatcherManager) lenRestarted() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.RestartedWatchers)
+}
+
+// simulateExistingLibrary simulates the scenario where a library already exists
+// and has a watcher running (used by tests to set up the initial state)
+func (m *mockWatcherManager) simulateExistingLibrary(lib model.Library) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.libraryStates[lib.ID] = lib
 }
