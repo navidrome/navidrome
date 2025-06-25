@@ -24,6 +24,11 @@ type Library struct {
 	TotalDuration      float64   `json:"totalDuration" db:"total_duration"`
 }
 
+const (
+	DefaultLibraryID   = 1
+	DefaultLibraryName = "Music Library"
+)
+
 type Libraries []Library
 
 type LibraryRepository interface {
