@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	log "github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils"
