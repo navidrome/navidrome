@@ -259,8 +259,14 @@ func displayTypedPermissions(permissions schema.PluginManifestPermissions, inden
 	}
 
 	if permissions.Subsonicapi != nil {
+		allowedUsers := "All Users"
+		if len(permissions.Subsonicapi.AllowedUsernames) > 0 {
+			allowedUsers = strings.Join(permissions.Subsonicapi.AllowedUsernames, ", ")
+		}
 		fmt.Printf("%ssubsonicapi:\n", indent)
 		fmt.Printf("%s  Reason: %s\n", indent, permissions.Subsonicapi.Reason)
+		fmt.Printf("%s  Allow Admins: %t\n", indent, permissions.Subsonicapi.AllowAdmins)
+		fmt.Printf("%s  Allowed Usernames: [%s]\n", indent, allowedUsers)
 		fmt.Println()
 	}
 }
