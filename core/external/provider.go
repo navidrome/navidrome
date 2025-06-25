@@ -35,7 +35,7 @@ const (
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
-	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -260,7 +260,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -268,14 +268,14 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 
 	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+		log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 		return nil, ctx.Err()
 	}
 
 	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
 	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+			log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 			return ctx.Err()
 		}
 
