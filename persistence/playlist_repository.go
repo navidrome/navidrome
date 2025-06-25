@@ -389,6 +389,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			"f.*",
 			"playlist_tracks.*",
 			"library.path as library_path",
+			"library.name as library_name",
 		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
