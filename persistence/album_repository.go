@@ -216,7 +216,8 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("album.*")
+	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
+		LeftJoin("library on album.library_id = library.id")
 	sql = r.withAnnotation(sql, "album.id")
 	return r.applyLibraryFilter(sql)
 }
@@ -292,7 +293,6 @@ func (r *albumRepository) TouchByMissingFolder() (int64, error) {
 // It does not need to load participants, as they are not used by the scanner.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	query := r.selectAlbum().
-		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
 			ConcatExpr("album.imported_at > library.last_scan_at"),
