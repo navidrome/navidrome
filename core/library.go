@@ -143,16 +143,7 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 
 	// Trigger scan after successful library creation
 	if r.scanner != nil {
-		go func() {
-			log.Info(r.ctx, "Triggering scan for new library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
-			start := time.Now()
-			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
-			if err != nil {
-				log.Error(r.ctx, "Error scanning new library", "libraryID", lib.ID, "name", lib.Name, err)
-			} else {
-				log.Info(r.ctx, "Scan completed for new library", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
-			}
-		}()
+		go r.triggerScan(lib, "new")
 	}
 
 	return strconv.Itoa(lib.ID), nil
@@ -185,16 +176,7 @@ func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ..
 
 	// Trigger scan if path was updated
 	if pathChanged && r.scanner != nil {
-		go func() {
-			log.Info(r.ctx, "Triggering scan for updated library", "libraryID", lib.ID, "name", lib.Name, "oldPath", originalLib.Path, "newPath", lib.Path)
-			start := time.Now()
-			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for path change
-			if err != nil {
-				log.Error(r.ctx, "Error scanning updated library", "libraryID", lib.ID, "name", lib.Name, err)
-			} else {
-				log.Info(r.ctx, "Scan completed for updated library", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
-			}
-		}()
+		go r.triggerScan(lib, "updated")
 	}
 
 	return nil
@@ -221,16 +203,7 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 
 	// Trigger scan after successful library deletion to clean up orphaned data
 	if r.scanner != nil {
-		go func() {
-			log.Info(r.ctx, "Triggering scan after library deletion", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
-			start := time.Now()
-			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan to clean up orphaned data
-			if err != nil {
-				log.Error(r.ctx, "Error scanning after library deletion", "libraryID", lib.ID, "name", lib.Name, err)
-			} else {
-				log.Info(r.ctx, "Scan completed after library deletion", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
-			}
-		}()
+		go r.triggerScan(lib, "deleted")
 	}
 
 	return nil
@@ -354,4 +327,15 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	}
 
 	return nil
+}
+
+func (r *libraryRepositoryWrapper) triggerScan(lib *model.Library, action string) {
+	log.Info(r.ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+	start := time.Now()
+	warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
+	if err != nil {
+		log.Error(r.ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
+	} else {
+		log.Info(r.ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+	}
 }
