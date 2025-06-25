@@ -271,6 +271,13 @@
         "path": "Path",
         "remotePath": "Remote Path",
         "lastScanAt": "Last Scan",
+        "songCount": "Songs",
+        "albumCount": "Albums",
+        "artistCount": "Artists",
+        "scanCount": "Scan Count",
+        "missingFileCount": "Missing Files",
+        "size": "Size",
+        "duration": "Duration",
         "totalSongs": "Songs",
         "totalAlbums": "Albums",
         "totalArtists": "Artists",
@@ -281,6 +288,11 @@
         "totalDuration": "Duration",
         "createdAt": "Created",
         "updatedAt": "Updated"
+      },
+      "sections": {
+        "basic": "Basic Information",
+        "statistics": "Statistics",
+        "scan": "Scan Information"
       },
       "actions": {
         "scan": "Scan Library",
