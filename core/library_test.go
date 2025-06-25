@@ -18,6 +18,24 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// mockScanner provides a simple mock implementation of core.Scanner for testing
+type mockScanner struct {
+	ScanCalls []ScanCall
+}
+
+type ScanCall struct {
+	FullScan bool
+	Context  context.Context
+}
+
+func (m *mockScanner) ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error) {
+	m.ScanCalls = append(m.ScanCalls, ScanCall{
+		FullScan: fullScan,
+		Context:  ctx,
+	})
+	return []string{}, nil
+}
+
 // These tests require the local storage adapter and the taglib extractor to be registered.
 var _ = Describe("Library Service", func() {
 	var service core.Library
@@ -26,6 +44,7 @@ var _ = Describe("Library Service", func() {
 	var userRepo *tests.MockedUserRepo
 	var ctx context.Context
 	var tempDir string
+	var scanner *mockScanner
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -36,7 +55,9 @@ var _ = Describe("Library Service", func() {
 		ds.MockedLibrary = libraryRepo
 		ds.MockedUser = userRepo
 
-		service = core.NewLibrary(ds)
+		// Create a mock scanner that tracks calls
+		scanner = &mockScanner{}
+		service = core.NewLibrary(ds, scanner)
 		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
@@ -583,6 +604,102 @@ var _ = Describe("Library Service", func() {
 					Expect(err.Error()).To(ContainSubstring("user not found in context"))
 				})
 			})
+		})
+	})
+
+	Describe("Scan Triggering", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
+		})
+
+		It("triggers scan when creating a new library", func() {
+			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+
+			_, err := repo.Save(library)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Wait briefly for the goroutine to complete
+			Eventually(func() int {
+				return len(scanner.ScanCalls)
+			}, "1s", "10ms").Should(Equal(1))
+
+			// Verify scan was called with correct parameters
+			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+		})
+
+		It("triggers scan when updating library path", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			// Create a new temporary directory for the update
+			newTempDir, err := os.MkdirTemp("", "navidrome-library-update-")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { os.RemoveAll(newTempDir) })
+
+			// Update the library with a new path
+			library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
+			err = repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Wait briefly for the goroutine to complete
+			Eventually(func() int {
+				return len(scanner.ScanCalls)
+			}, "1s", "10ms").Should(Equal(1))
+
+			// Verify scan was called with correct parameters
+			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+		})
+
+		It("does not trigger scan when updating library without path change", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			// Update the library name only (same path)
+			library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
+			err := repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Wait a bit to ensure no scan was triggered
+			Consistently(func() int {
+				return len(scanner.ScanCalls)
+			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("does not trigger scan when library creation fails", func() {
+			// Try to create library with invalid data (empty name)
+			library := &model.Library{Path: tempDir}
+
+			_, err := repo.Save(library)
+			Expect(err).To(HaveOccurred())
+
+			// Ensure no scan was triggered since creation failed
+			Consistently(func() int {
+				return len(scanner.ScanCalls)
+			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("does not trigger scan when library update fails", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			// Try to update with invalid data (empty name)
+			library := &model.Library{ID: 1, Name: "", Path: tempDir}
+			err := repo.Update("1", library)
+			Expect(err).To(HaveOccurred())
+
+			// Ensure no scan was triggered since update failed
+			Consistently(func() int {
+				return len(scanner.ScanCalls)
+			}, "100ms", "10ms").Should(Equal(0))
 		})
 	})
 })

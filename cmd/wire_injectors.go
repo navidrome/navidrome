@@ -44,6 +44,7 @@ var allProviders = wire.NewSet(
 	db.Db,
 	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(core.Scanner), new(scanner.Scanner)),
 )
 
 func CreateDataStore() model.DataStore {
@@ -58,7 +59,7 @@ func CreateServer() *server.Server {
 	))
 }
 
-func CreateNativeAPIRouter() *nativeapi.Router {
+func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	panic(wire.Build(
 		allProviders,
 	))

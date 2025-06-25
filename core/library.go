@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -17,6 +18,11 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
+
+// Scanner defines the interface for triggering library scans
+type Scanner interface {
+	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
+}
 
 // Library provides business logic for library management and user-library associations
 type Library interface {
@@ -28,12 +34,13 @@ type Library interface {
 }
 
 type libraryService struct {
-	ds model.DataStore
+	ds      model.DataStore
+	scanner Scanner
 }
 
 // NewLibrary creates a new Library service
-func NewLibrary(ds model.DataStore) Library {
-	return &libraryService{ds: ds}
+func NewLibrary(ds model.DataStore, scanner Scanner) Library {
+	return &libraryService{ds: ds, scanner: scanner}
 }
 
 // User-library association operations
@@ -110,7 +117,7 @@ func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
 		LibraryRepository: repo,
 		Repository:        repo.(rest.Repository),
 		ds:                s.ds,
-		service:           s,
+		scanner:           s.scanner,
 	}
 	return wrapper
 }
@@ -120,7 +127,7 @@ type libraryRepositoryWrapper struct {
 	model.LibraryRepository
 	ctx     context.Context
 	ds      model.DataStore
-	service *libraryService
+	scanner Scanner
 }
 
 func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
@@ -132,6 +139,20 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 	err := r.LibraryRepository.Put(lib)
 	if err != nil {
 		return "", r.mapError(err)
+	}
+
+	// Trigger scan after successful library creation
+	if r.scanner != nil {
+		go func() {
+			log.Info(r.ctx, "Triggering scan for new library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+			start := time.Now()
+			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
+			if err != nil {
+				log.Error(r.ctx, "Error scanning new library", "libraryID", lib.ID, "name", lib.Name, err)
+			} else {
+				log.Info(r.ctx, "Scan completed for new library", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+			}
+		}()
 	}
 
 	return strconv.Itoa(lib.ID), nil
@@ -149,13 +170,34 @@ func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ..
 		return err
 	}
 
-	// Verify library exists
-	if _, err := r.Get(libID); err != nil {
+	// Get the original library to check if path changed
+	originalLib, err := r.Get(libID)
+	if err != nil {
 		return r.mapError(err)
 	}
 
+	pathChanged := originalLib.Path != lib.Path
+
 	err = r.LibraryRepository.Put(lib)
-	return r.mapError(err)
+	if err != nil {
+		return r.mapError(err)
+	}
+
+	// Trigger scan if path was updated
+	if pathChanged && r.scanner != nil {
+		go func() {
+			log.Info(r.ctx, "Triggering scan for updated library", "libraryID", lib.ID, "name", lib.Name, "oldPath", originalLib.Path, "newPath", lib.Path)
+			start := time.Now()
+			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for path change
+			if err != nil {
+				log.Error(r.ctx, "Error scanning updated library", "libraryID", lib.ID, "name", lib.Name, err)
+			} else {
+				log.Info(r.ctx, "Scan completed for updated library", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (r *libraryRepositoryWrapper) Delete(id string) error {
