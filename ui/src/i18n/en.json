@@ -517,6 +517,12 @@
   },
   "menu": {
     "library": "Library",
+    "librarySelector": {
+      "allLibraries": "All Libraries (%{count})",
+      "multipleLibraries": "%{selected} of %{total} Libraries",
+      "selectLibraries": "Select Libraries",
+      "none": "None"
+    },
     "settings": "Settings",
     "version": "Version",
     "theme": "Theme",
