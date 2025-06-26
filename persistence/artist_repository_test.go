@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -95,7 +96,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex(false)
+				idx, err := repo.GetIndex(false, 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("F"))
@@ -113,7 +114,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			// BFR Empty SortArtistName is not saved in the DB anymore
 			XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
-				idx, err := repo.GetIndex(false)
+				idx, err := repo.GetIndex(false, 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -135,7 +136,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex(false)
+				idx, err := repo.GetIndex(false, 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -152,7 +153,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns the index when SortArtistName is empty", func() {
-				idx, err := repo.GetIndex(false)
+				idx, err := repo.GetIndex(false, 0)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -189,7 +190,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns only artists with the specified role", func() {
-				idx, err := repo.GetIndex(false, model.RoleComposer)
+				idx, err := repo.GetIndex(false, 0, model.RoleComposer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(1))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -198,7 +199,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns artists with any of the specified roles", func() {
-				idx, err := repo.GetIndex(false, model.RoleComposer, model.RoleProducer)
+				idx, err := repo.GetIndex(false, 0, model.RoleComposer, model.RoleProducer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 
@@ -219,7 +220,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns empty index when no artists have the specified role", func() {
-				idx, err := repo.GetIndex(false, model.RoleDirector)
+				idx, err := repo.GetIndex(false, 0, model.RoleDirector)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
@@ -306,6 +307,45 @@ var _ = Describe("ArtistRepository", func() {
 				raw = repo.(*artistRepository)
 				_, err := raw.executeSQL(squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missing.ID}))
 				Expect(err).ToNot(HaveOccurred())
+
+				// Add missing artist to library 1 so it can be found by library filtering
+				lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				err = lr.AddArtist(1, missing.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Ensure the test user exists and has library access
+				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				currentUser, ok := request.UserFrom(repo.(*artistRepository).ctx)
+				if ok {
+					// Create the user if it doesn't exist with default values if missing
+					testUser := model.User{
+						ID:       currentUser.ID,
+						UserName: currentUser.UserName,
+						Name:     currentUser.Name,
+						Email:    currentUser.Email,
+						IsAdmin:  currentUser.IsAdmin,
+					}
+					// Provide defaults for missing fields
+					if testUser.UserName == "" {
+						testUser.UserName = testUser.ID
+					}
+					if testUser.Name == "" {
+						testUser.Name = testUser.ID
+					}
+					if testUser.Email == "" {
+						testUser.Email = testUser.ID + "@test.com"
+					}
+
+					// Try to put the user (will fail silently if already exists)
+					_ = ur.Put(&testUser)
+
+					// Add library association
+					err = ur.AddUserLibrary(currentUser.ID, 1)
+					// Ignore error if user-library association already exists
+					if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") && !strings.Contains(err.Error(), "duplicate key") {
+						Expect(err).ToNot(HaveOccurred())
+					}
+				}
 			}
 
 			removeMissing := func() {
@@ -337,7 +377,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("does not return missing artist in GetIndex", func() {
-					idx, err := repo.GetIndex(false)
+					idx, err := repo.GetIndex(false, 0)
 					Expect(err).ToNot(HaveOccurred())
 					// Only 2 artists should be present
 					total := 0
@@ -371,7 +411,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("returns missing artist in GetIndex when included", func() {
-					idx, err := repo.GetIndex(true)
+					idx, err := repo.GetIndex(true, 0)
 					Expect(err).ToNot(HaveOccurred())
 					total := 0
 					for _, ix := range idx {

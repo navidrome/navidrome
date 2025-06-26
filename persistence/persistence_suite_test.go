@@ -141,6 +141,14 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
+	// Associate users with library 1 (default test library)
+	for i := range testUsers {
+		err := ur.AddUserLibrary(testUsers[i].ID, 1)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	//gr := NewGenreRepository(ctx, conn)
 	//for i := range testGenres {
 	//	g := testGenres[i]
@@ -163,6 +171,15 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Associate artists with library 1 (default test library)
+	lr := NewLibraryRepository(ctx, conn)
+	for i := range testArtists {
+		err := lr.AddArtist(1, testArtists[i].ID)
 		if err != nil {
 			panic(err)
 		}
