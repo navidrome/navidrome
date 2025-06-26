@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -78,11 +77,11 @@ func (m *metrics) RecordPluginRequest(ctx context.Context, plugin, method string
 	}
 	getPrometheusMetrics().pluginRequestCounter.With(pluginLabel).Inc()
 
-	httpLatencyLabel := prometheus.Labels{
+	pluginLatencyLabel := prometheus.Labels{
 		"plugin": plugin,
 		"method": method,
 	}
-	getPrometheusMetrics().pluginRequestDuration.With(httpLatencyLabel).Observe(float64(elapsed))
+	getPrometheusMetrics().pluginRequestDuration.With(pluginLatencyLabel).Observe(float64(elapsed))
 }
 
 func (m *metrics) GetHandler() http.Handler {
@@ -111,6 +110,8 @@ type prometheusMetrics struct {
 
 // Prometheus' metrics requires initialization. But not more than once
 var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
+	quartilesToEstimate := map[float64]float64{0.5: 0.05, 0.75: 0.025, 0.9: 0.01, 0.99: 0.001}
+
 	instance := &prometheusMetrics{
 		dbTotal: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -151,7 +152,7 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 			prometheus.SummaryOpts{
 				Name:       "http_request_latency",
 				Help:       "Latency (in ms) of HTTP requests",
-				Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+				Objectives: quartilesToEstimate,
 			},
 			[]string{"endpoint", "method"},
 		),
@@ -166,43 +167,23 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 			prometheus.SummaryOpts{
 				Name:       "plugin_request_latency",
 				Help:       "Latency (in ms) of plugin requests",
-				Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+				Objectives: quartilesToEstimate,
 			},
 			[]string{"plugin", "method"},
 		),
 	}
-	err := prometheus.DefaultRegisterer.Register(instance.dbTotal)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register db_model_totals metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.versionInfo)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register navidrome_info metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.lastMediaScan)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register media_scan_last metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.mediaScansCounter)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register media_scans metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.httpRequestCounter)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register http_requests metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.httpRequestDuration)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register http_requests_duration metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.pluginRequestCounter)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register plugin_requests metrics: %w", err))
-	}
-	err = prometheus.DefaultRegisterer.Register(instance.pluginRequestDuration)
-	if err != nil {
-		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register plugin_requests_duration metrics: %w", err))
-	}
+
+	prometheus.DefaultRegisterer.MustRegister(
+		instance.dbTotal,
+		instance.versionInfo,
+		instance.lastMediaScan,
+		instance.mediaScansCounter,
+		instance.httpRequestCounter,
+		instance.httpRequestDuration,
+		instance.pluginRequestCounter,
+		instance.pluginRequestDuration,
+	)
+
 	return instance
 })
 

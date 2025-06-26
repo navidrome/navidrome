@@ -2,9 +2,11 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
@@ -81,11 +83,16 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	elapsed := time.Since(start)
 
 	if em, ok := any(w).(errorMapper); ok {
-		err := em.mapError(err)
-		metrics.GetPrometheusInstance().RecordPluginRequest(ctx, w.PluginID(), methodName, err == nil, elapsed.Milliseconds())
-		log.Trace(ctx, "callMethod", "plugin", w.PluginID(), "method", methodName, "ok", err == nil, elapsed)
+		mappedErr := em.mapError(err)
 
-		return r, em.mapError(err)
+		if !errors.Is(mappedErr, agents.ErrNotFound) {
+			id := w.PluginID()
+			isOk := mappedErr == nil
+			metrics.GetPrometheusInstance().RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
+			log.Trace(ctx, "callMethod", "plugin", id, "method", methodName, "ok", isOk, elapsed)
+		}
+
+		return r, mappedErr
 	}
 	return r, err
 }
