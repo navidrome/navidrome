@@ -146,7 +146,7 @@ func roleFilter(_ string, role any) Sqlizer {
 
 // artistLibraryFilter handles filtering artists by library_id through the library_artist junction table
 func artistLibraryFilter(_ string, value any) Sqlizer {
-	// Use a subquery with Eq to properly handle array parameters
+	// Use a subquery to find artists that belong to the specified library
 	subquery := Select("1").From("library_artist la").Where(And{
 		Expr("la.artist_id = artist.id"),
 		Eq{"la.library_id": value},
@@ -225,7 +225,7 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 }
 
 // TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (model.ArtistIndexes, error) {
+func (r *artistRepository) GetIndex(includeMissing bool, libraryId int, roles ...model.Role) (model.ArtistIndexes, error) {
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
@@ -240,10 +240,37 @@ func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (m
 			options.Filters = And{options.Filters, Eq{"artist.missing": false}}
 		}
 	}
-	artists, err := r.GetAll(options)
+
+	// Get artists based on library filtering
+	var artists model.Artists
+	var err error
+
+	var libFilter Sqlizer
+
+	if libraryId > 0 {
+		libFilter = artistLibraryFilter("library_id", libraryId)
+	} else {
+		// All accessible libraries - use regular GetAll for backward compatibility
+		userRepo := NewUserRepository(r.ctx, r.db)
+		libs, err := userRepo.GetUserLibraries(userId(r.ctx))
+		if err != nil {
+			return nil, fmt.Errorf("getting user libraries: %w", err)
+		}
+		libIds := slice.Map(libs, func(lib model.Library) int { return lib.ID })
+		libFilter = artistLibraryFilter("library_id", libIds)
+	}
+
+	if options.Filters == nil {
+		options.Filters = libFilter
+	} else {
+		options.Filters = And{options.Filters, libFilter}
+	}
+
+	artists, err = r.GetAll(options)
 	if err != nil {
 		return nil, err
 	}
+
 	var result model.ArtistIndexes
 	for k, v := range slice.Group(artists, r.getIndexKey) {
 		result = append(result, model.ArtistIndex{ID: k, Artists: v})
