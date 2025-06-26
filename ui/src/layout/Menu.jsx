@@ -9,6 +9,7 @@ import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
+import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -111,6 +112,7 @@ const Menu = ({ dense = false }) => {
         [classes.closed]: !open,
       })}
     >
+      {open && <LibrarySelector />}
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}

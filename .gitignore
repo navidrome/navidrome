@@ -26,6 +26,7 @@ docker-compose.yml
 binaries
 navidrome-*
 AGENTS.md
+.github/instructions
 *.exe
 *.test
 *.wasm
