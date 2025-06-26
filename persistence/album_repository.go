@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -183,42 +182,6 @@ func artistRoleFilter(name string, value interface{}) Sqlizer {
 
 func allRolesFilter(_ string, value interface{}) Sqlizer {
 	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
-}
-
-func libraryIdFilter(field string, value interface{}) Sqlizer {
-	switch v := value.(type) {
-	case string:
-		// Handle single library ID as string
-		if libID, err := strconv.Atoi(v); err == nil {
-			return Eq{"library_id": libID}
-		}
-		return Eq{"library_id": v}
-	case int:
-		return Eq{"library_id": v}
-	case int64:
-		return Eq{"library_id": v}
-	case float64:
-		return Eq{"library_id": int(v)}
-	case []interface{}:
-		// Handle multiple library IDs
-		var ids []interface{}
-		for _, id := range v {
-			switch idVal := id.(type) {
-			case string:
-				if libID, err := strconv.Atoi(idVal); err == nil {
-					ids = append(ids, libID)
-				} else {
-					ids = append(ids, idVal)
-				}
-			case int, int64, float64:
-				ids = append(ids, idVal)
-			}
-		}
-		if len(ids) > 0 {
-			return Eq{"library_id": ids}
-		}
-	}
-	return Eq{"library_id": value}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
