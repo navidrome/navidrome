@@ -474,3 +474,13 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses
 	}
 	return res
 }
+
+// getUserAccessibleLibraries returns the list of libraries the current user has access to
+// Admin users get all libraries (auto-assigned), regular users get their assigned libraries
+func getUserAccessibleLibraries(ctx context.Context, ds model.DataStore) ([]model.Library, error) {
+	user := getUser(ctx)
+
+	// All users (admin and regular) use the same method since admin users
+	// are automatically assigned to all libraries via user_library table
+	return ds.User(ctx).GetUserLibraries(user.ID)
+}
