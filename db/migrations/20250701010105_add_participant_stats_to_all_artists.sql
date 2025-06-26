@@ -39,7 +39,7 @@ artist_participant_counter AS (
         sum(mf.size) AS size
     FROM media_file_artists mfa
     JOIN media_file mf ON mfa.media_file_id = mf.id
-    AND role IN ('albumartist', 'artist')
+    AND mfa.role IN ('albumartist', 'artist')
     GROUP BY mfa.artist_id
 ),
 combined_counters AS (

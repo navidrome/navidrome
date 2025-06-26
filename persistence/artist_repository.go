@@ -124,6 +124,11 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"song_count":  "stats->>'total'->>'m'",
 		"album_count": "stats->>'total'->>'a'",
 		"size":        "stats->>'total'->>'s'",
+
+		// Stats by credits that are currently available
+		"primary_song_count":  "stats->>'primary'->>'m'",
+		"primary_album_count": "stats->>'primary'->>'a'",
+		"primary_size":        "stats->>'primary'->>'a'",
 	})
 	return r
 }
@@ -361,7 +366,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
         FROM media_file_artists mfa
         JOIN media_file mf ON mfa.media_file_id = mf.id
         WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        AND role IN ('albumartist', 'artist')
+        AND mfa.role IN ('albumartist', 'artist')
         GROUP BY mfa.artist_id
     ),
     combined_counters AS (
