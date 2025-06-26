@@ -303,12 +303,11 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		}
 		log.Debug(r.ctx, "RefreshStats: Refreshing all artists.", "count", len(allTouchedArtistIDs))
 	} else {
-		// Only refresh artists with updated media files
+		// Only refresh artists with updated timestamps
 		touchedArtistsQuerySQL := `
-        SELECT DISTINCT mfa.artist_id
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mf.updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
+        SELECT DISTINCT id
+        FROM artist
+        WHERE updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
         `
 		if err := r.db.NewQuery(touchedArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
 			return 0, fmt.Errorf("fetching touched artist IDs: %w", err)
