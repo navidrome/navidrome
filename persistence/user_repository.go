@@ -58,6 +58,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r.tableName = "user"
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"password": invalidFilter(ctx),
+		"name":     r.withTableName(startsWithFilter),
 	})
 	once.Do(func() {
 		_ = r.initPasswordEncryptionKey()
