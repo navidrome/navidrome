@@ -199,6 +199,15 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+func (r *sqlRepository) withTableName(filter filterFunc) filterFunc {
+	return func(field string, value any) Sqlizer {
+		if r.tableName != "" {
+			field = r.tableName + "." + field
+		}
+		return filter(field, value)
+	}
+}
+
 // libraryIdFilter is a filter function to be added to resources that have a library_id column.
 func libraryIdFilter(_ string, value interface{}) Sqlizer {
 	return Eq{"library_id": value}
