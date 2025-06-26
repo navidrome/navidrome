@@ -113,11 +113,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter(r.tableName, "mbz_artist_id"),
-		"starred": booleanFilter,
-		"role":    roleFilter,
-		"missing": booleanFilter,
+		"id":         idFilter(r.tableName),
+		"name":       fullTextFilter(r.tableName, "mbz_artist_id"),
+		"starred":    booleanFilter,
+		"role":       roleFilter,
+		"missing":    booleanFilter,
+		"library_id": artistLibraryFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -141,6 +142,16 @@ func roleFilter(_ string, role any) Sqlizer {
 		}
 	}
 	return Eq{"1": 2}
+}
+
+// artistLibraryFilter handles filtering artists by library_id through the library_artist junction table
+func artistLibraryFilter(_ string, value any) Sqlizer {
+	// Use a subquery with Eq to properly handle array parameters
+	subquery := Select("1").From("library_artist la").Where(And{
+		Expr("la.artist_id = artist.id"),
+		Eq{"la.library_id": value},
+	})
+	return Expr("EXISTS (?)", subquery)
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
