@@ -9,6 +9,15 @@ const isAdmin = () => {
   return role === 'admin'
 }
 
+const getSelectedLibraries = () => {
+  try {
+    const state = JSON.parse(localStorage.getItem('state'))
+    return state?.library?.selectedLibraries || []
+  } catch (err) {
+    return []
+  }
+}
+
 const mapResource = (resource, params) => {
   switch (resource) {
     case 'playlistTrack': {
@@ -24,10 +33,26 @@ const mapResource = (resource, params) => {
     }
     case 'album':
     case 'song':
-    case 'artist': {
+    case 'artist':
+    case 'playlist': {
+      // Content resources that should be filtered by selected libraries
+      const contentResources = ['album', 'song', 'artist', 'playlist']
+
+      // Get selected libraries from localStorage
+      const selectedLibraries = getSelectedLibraries()
+
       if (params.filter && !isAdmin()) {
         params.filter.missing = false
       }
+
+      // Add library filter for content resources if libraries are selected
+      if (contentResources.includes(resource) && selectedLibraries.length > 0) {
+        if (!params.filter) {
+          params.filter = {}
+        }
+        params.filter.library_id = selectedLibraries
+      }
+
       return [resource, params]
     }
     default:
