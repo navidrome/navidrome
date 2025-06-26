@@ -108,4 +108,37 @@ func (m *MockArtistRepo) RefreshPlayCounts() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
+func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryId int, roles ...model.Role) (model.ArtistIndexes, error) {
+	if m.Err {
+		return nil, errors.New("mock repo error")
+	}
+
+	artists, err := m.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// For mock purposes, if no artists available, return empty result
+	if len(artists) == 0 {
+		return model.ArtistIndexes{}, nil
+	}
+
+	// Simple index grouping by first letter (simplified implementation for mocks)
+	indexMap := make(map[string]model.Artists)
+	for _, artist := range artists {
+		key := "#"
+		if len(artist.Name) > 0 {
+			key = string(artist.Name[0])
+		}
+		indexMap[key] = append(indexMap[key], artist)
+	}
+
+	var result model.ArtistIndexes
+	for k, artists := range indexMap {
+		result = append(result, model.ArtistIndex{ID: k, Artists: artists})
+	}
+
+	return result, nil
+}
+
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)
