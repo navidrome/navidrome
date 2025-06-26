@@ -27,6 +27,7 @@ binaries
 navidrome-*
 AGENTS.md
 .github/instructions
+.github/prompts
 *.exe
 *.test
 *.wasm
