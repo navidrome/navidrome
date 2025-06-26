@@ -1,3 +1,4 @@
+export * from './library'
 export * from './player'
 export * from './themes'
 export * from './albumView'
