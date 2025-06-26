@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
@@ -69,6 +70,12 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
+
+	if conf.Server.Prometheus.Enabled {
+		metrics := metrics.GetPrometheusInstance()
+		r.Use(recordStats(metrics))
+	}
+
 	r.Use(postFormToQueryParams)
 
 	// Public

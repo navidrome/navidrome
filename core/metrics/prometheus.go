@@ -13,42 +13,76 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Metrics interface {
-	WriteInitialMetrics(ctx context.Context)
-	WriteAfterScanMetrics(ctx context.Context, success bool)
+	WriteInitialMetrics(ctx context.Context, ds model.DataStore)
+	WriteAfterScanMetrics(ctx context.Context, ds model.DataStore, success bool)
+	RecordRequest(ctx context.Context, endpoint, method string, status int, elapsed int64)
+	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
 	GetHandler() http.Handler
 }
 
-type metrics struct {
-	ds model.DataStore
-}
+type metrics struct{}
 
-func NewPrometheusInstance(ds model.DataStore) Metrics {
-	if conf.Server.Prometheus.Enabled {
-		return &metrics{ds: ds}
+func GetPrometheusInstance() Metrics {
+	if !conf.Server.Prometheus.Enabled {
+		return noopMetrics{}
 	}
-	return noopMetrics{}
+
+	return singleton.GetInstance(func() *metrics {
+		return &metrics{}
+	})
 }
 
 func NewNoopInstance() Metrics {
 	return noopMetrics{}
 }
 
-func (m *metrics) WriteInitialMetrics(ctx context.Context) {
+func (m *metrics) WriteInitialMetrics(ctx context.Context, ds model.DataStore) {
 	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
-	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+	processSqlAggregateMetrics(ctx, ds, getPrometheusMetrics().dbTotal)
 }
 
-func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
-	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+func (m *metrics) WriteAfterScanMetrics(ctx context.Context, ds model.DataStore, success bool) {
+	processSqlAggregateMetrics(ctx, ds, getPrometheusMetrics().dbTotal)
 
 	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
 	getPrometheusMetrics().lastMediaScan.With(scanLabels).SetToCurrentTime()
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
+}
+
+func (m *metrics) RecordRequest(ctx context.Context, endpoint string, method string, status int, elapsed int64) {
+	httpLabel := prometheus.Labels{
+		"endpoint": endpoint,
+		"method":   method,
+		"status":   strconv.FormatInt(int64(status), 10),
+	}
+	getPrometheusMetrics().httpRequestCounter.With(httpLabel).Inc()
+
+	httpLatencyLabel := prometheus.Labels{
+		"endpoint": endpoint,
+		"method":   method,
+	}
+	getPrometheusMetrics().httpRequestDuration.With(httpLatencyLabel).Observe(float64(elapsed))
+}
+
+func (m *metrics) RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64) {
+	pluginLabel := prometheus.Labels{
+		"plugin": plugin,
+		"method": method,
+		"ok":     strconv.FormatBool(ok),
+	}
+	getPrometheusMetrics().pluginRequestCounter.With(pluginLabel).Inc()
+
+	httpLatencyLabel := prometheus.Labels{
+		"plugin": plugin,
+		"method": method,
+	}
+	getPrometheusMetrics().pluginRequestDuration.With(httpLatencyLabel).Observe(float64(elapsed))
 }
 
 func (m *metrics) GetHandler() http.Handler {
@@ -65,10 +99,14 @@ func (m *metrics) GetHandler() http.Handler {
 }
 
 type prometheusMetrics struct {
-	dbTotal           *prometheus.GaugeVec
-	versionInfo       *prometheus.GaugeVec
-	lastMediaScan     *prometheus.GaugeVec
-	mediaScansCounter *prometheus.CounterVec
+	dbTotal               *prometheus.GaugeVec
+	versionInfo           *prometheus.GaugeVec
+	lastMediaScan         *prometheus.GaugeVec
+	mediaScansCounter     *prometheus.CounterVec
+	httpRequestCounter    *prometheus.CounterVec
+	httpRequestDuration   *prometheus.SummaryVec
+	pluginRequestCounter  *prometheus.CounterVec
+	pluginRequestDuration *prometheus.SummaryVec
 }
 
 // Prometheus' metrics requires initialization. But not more than once
@@ -102,6 +140,36 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 			},
 			[]string{"success"},
 		),
+		httpRequestCounter: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "http_request_count",
+				Help: "Request types by status",
+			},
+			[]string{"endpoint", "method", "status"},
+		),
+		httpRequestDuration: prometheus.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Name:       "http_request_latency",
+				Help:       "Latency (in ms) of HTTP requests",
+				Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+			},
+			[]string{"endpoint", "method"},
+		),
+		pluginRequestCounter: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "plugin_request_count",
+				Help: "Plugin requests by method/status",
+			},
+			[]string{"plugin", "method", "ok"},
+		),
+		pluginRequestDuration: prometheus.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Name:       "plugin_request_latency",
+				Help:       "Latency (in ms) of plugin requests",
+				Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+			},
+			[]string{"plugin", "method"},
+		),
 	}
 	err := prometheus.DefaultRegisterer.Register(instance.dbTotal)
 	if err != nil {
@@ -118,6 +186,22 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 	err = prometheus.DefaultRegisterer.Register(instance.mediaScansCounter)
 	if err != nil {
 		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register media_scans metrics: %w", err))
+	}
+	err = prometheus.DefaultRegisterer.Register(instance.httpRequestCounter)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register http_requests metrics: %w", err))
+	}
+	err = prometheus.DefaultRegisterer.Register(instance.httpRequestDuration)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register http_requests_duration metrics: %w", err))
+	}
+	err = prometheus.DefaultRegisterer.Register(instance.pluginRequestCounter)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register plugin_requests metrics: %w", err))
+	}
+	err = prometheus.DefaultRegisterer.Register(instance.pluginRequestDuration)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register plugin_requests_duration metrics: %w", err))
 	}
 	return instance
 })
@@ -155,8 +239,12 @@ func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetG
 type noopMetrics struct {
 }
 
-func (n noopMetrics) WriteInitialMetrics(context.Context) {}
+func (n noopMetrics) WriteInitialMetrics(context.Context, model.DataStore) {}
 
-func (n noopMetrics) WriteAfterScanMetrics(context.Context, bool) {}
+func (n noopMetrics) WriteAfterScanMetrics(context.Context, model.DataStore, bool) {}
+
+func (n noopMetrics) RecordRequest(context.Context, string, string, int, int64) {}
+
+func (n noopMetrics) RecordPluginRequest(context.Context, string, string, bool, int64) {}
 
 func (n noopMetrics) GetHandler() http.Handler { return nil }

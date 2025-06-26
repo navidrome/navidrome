@@ -79,7 +79,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	metricsMetrics := metrics.GetPrometheusInstance()
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
@@ -126,9 +126,7 @@ func CreateInsights() metrics.Insights {
 }
 
 func CreatePrometheus() metrics.Metrics {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
-	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	metricsMetrics := metrics.GetPrometheusInstance()
 	return metricsMetrics
 }
 
@@ -144,7 +142,7 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	metricsMetrics := metrics.GetPrometheusInstance()
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	return scannerScanner
 }
@@ -161,7 +159,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	metricsMetrics := metrics.GetPrometheusInstance()
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	watcher := scanner.NewWatcher(dataStore, scannerScanner)
 	return watcher
@@ -183,7 +181,7 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, metrics.NewPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, metrics.GetPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
 )
@@ -58,6 +59,7 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 
 type wasmPlugin[S any] interface {
 	getInstance(ctx context.Context, methodName string) (S, func(), error)
+	PluginID() string
 }
 
 type errorMapper interface {
@@ -73,9 +75,16 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	if err != nil {
 		return r, err
 	}
+	start := time.Now()
 	defer done()
 	r, err = fn(inst)
+	elapsed := time.Since(start)
+
 	if em, ok := any(w).(errorMapper); ok {
+		err := em.mapError(err)
+		metrics.GetPrometheusInstance().RecordPluginRequest(ctx, w.PluginID(), methodName, err == nil, elapsed.Milliseconds())
+		log.Trace(ctx, "callMethod", "plugin", w.PluginID(), "method", methodName, "ok", err == nil, elapsed)
+
 		return r, em.mapError(err)
 	}
 	return r, err
