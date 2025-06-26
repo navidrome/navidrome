@@ -53,6 +53,7 @@ var fieldMap = map[string]*mappedField{
 	"mbz_recording_id":     {field: "media_file.mbz_recording_id"},
 	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
 	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
+	"library_id":           {field: "media_file.library_id", numeric: true},
 
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
