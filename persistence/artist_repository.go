@@ -409,16 +409,16 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		// Replace the placeholder markers with actual SQL placeholders
 		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 4)
 
-		// Create a single parameter array with all IDs (repeated 3 times for each IN clause)
-		// We need to repeat each ID 3 times (once for each IN clause)
+		// Create a single parameter array with all IDs (repeated 4 times for each IN clause)
+		// We need to repeat each ID 4 times (once for each IN clause)
 		args := make([]any, 4*len(artistIDBatch))
-		for i := range 4 {
-			startIdx := i * len(artistIDBatch)
-
-			for idx, id := range artistIDBatch {
+		for idx, id := range artistIDBatch {
+			for i := range 4 {
+				startIdx := i * len(artistIDBatch)
 				args[startIdx+idx] = id
 			}
 		}
+
 		// Now use Expr with the expanded SQL and all parameters
 		sqlizer := Expr(batchSQL, args...)
 
