@@ -29,6 +29,7 @@ var allKeys = []contextKey{
 	Transcoding,
 	ClientUniqueId,
 	ReverseProxyIp,
+	InternalAuth,
 }
 
 func WithUser(ctx context.Context, u model.User) context.Context {
