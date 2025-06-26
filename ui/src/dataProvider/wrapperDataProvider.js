@@ -18,40 +18,48 @@ const getSelectedLibraries = () => {
   }
 }
 
+// Function to apply library filtering to appropriate resources
+const applyLibraryFilter = (resource, params) => {
+  // Content resources that should be filtered by selected libraries
+  const filteredResources = ['album', 'song', 'playlistTrack']
+
+  // Get selected libraries from localStorage
+  const selectedLibraries = getSelectedLibraries()
+
+  // Add library filter for content resources if libraries are selected
+  if (filteredResources.includes(resource) && selectedLibraries.length > 0) {
+    if (!params.filter) {
+      params.filter = {}
+    }
+    params.filter.library_id = selectedLibraries
+  }
+
+  return params
+}
+
 const mapResource = (resource, params) => {
   switch (resource) {
+    // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
     case 'playlistTrack': {
-      // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
+      params.filter = params.filter || {}
+
       let plsId = '0'
-      if (params.filter) {
-        plsId = params.filter.playlist_id
-        if (!isAdmin()) {
-          params.filter.missing = false
-        }
+      plsId = params.filter.playlist_id
+      if (!isAdmin()) {
+        params.filter.missing = false
       }
+      params = applyLibraryFilter(resource, params)
+
       return [`playlist/${plsId}/tracks`, params]
     }
     case 'album':
     case 'song':
-    case 'artist':
-    case 'playlist': {
-      // Content resources that should be filtered by selected libraries
-      const contentResources = ['album', 'song', 'artist', 'playlist']
-
-      // Get selected libraries from localStorage
-      const selectedLibraries = getSelectedLibraries()
-
-      if (params.filter && !isAdmin()) {
+    case 'artist': {
+      params.filter = params.filter || {}
+      if (!isAdmin()) {
         params.filter.missing = false
       }
-
-      // Add library filter for content resources if libraries are selected
-      if (contentResources.includes(resource) && selectedLibraries.length > 0) {
-        if (!params.filter) {
-          params.filter = {}
-        }
-        params.filter.library_id = selectedLibraries
-      }
+      params = applyLibraryFilter(resource, params)
 
       return [resource, params]
     }
