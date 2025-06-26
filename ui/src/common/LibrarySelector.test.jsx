@@ -10,6 +10,7 @@ const mockDataProvider = {
   getOne: vi.fn(),
 }
 const mockIdentity = { username: 'testuser' }
+const mockRefresh = vi.fn()
 const mockTranslate = vi.fn((key, options = {}) => {
   const translations = {
     'menu.librarySelector.allLibraries': `All Libraries (${options.count || 0})`,
@@ -29,6 +30,7 @@ vi.mock('react-admin', () => ({
   useDataProvider: () => mockDataProvider,
   useGetIdentity: () => ({ identity: mockIdentity }),
   useTranslate: () => mockTranslate,
+  useRefresh: () => mockRefresh,
 }))
 
 // Mock Material-UI components
@@ -458,6 +460,9 @@ describe('LibrarySelector', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('popper')).not.toBeInTheDocument()
       })
+
+      // Should trigger refresh when closing
+      expect(mockRefresh).toHaveBeenCalledTimes(1)
     })
 
     it('should load user libraries on mount', async () => {

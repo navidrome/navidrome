@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useDataProvider, useTranslate } from 'react-admin'
+import { useDataProvider, useTranslate, useRefresh } from 'react-admin'
 import {
   Box,
   Chip,
@@ -71,6 +71,7 @@ const LibrarySelector = () => {
   const dispatch = useDispatch()
   const dataProvider = useDataProvider()
   const translate = useTranslate()
+  const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
   const [open, setOpen] = useState(false)
 
@@ -113,6 +114,7 @@ const LibrarySelector = () => {
 
   const handleClose = () => {
     setOpen(false)
+    refresh()
   }
 
   const handleLibraryToggle = (libraryId) => {
