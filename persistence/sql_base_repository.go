@@ -199,9 +199,14 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+// libraryIdFilter is a filter function to be added to resources that have a library_id column.
+func libraryIdFilter(_ string, value interface{}) Sqlizer {
+	return Eq{"library_id": value}
+}
+
 // applyLibraryFilter adds library filtering to queries for tables that have a library_id column
 // This ensures users only see content from libraries they have access to
-func (r sqlRepository) applyLibraryFilter(sq SelectBuilder) SelectBuilder {
+func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
 	user := loggedUser(r.ctx)
 
 	// Admin users see all content
@@ -216,9 +221,14 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder) SelectBuilder {
 		return sq.Where(Eq{"1": "0"})
 	}
 
+	table := r.tableName
+	if len(tableName) > 0 {
+		table = tableName[0]
+	}
+
 	// Use subquery to filter by user's library access
 	// This approach doesn't require DataStore in context
-	return sq.Where(Expr(r.tableName+".library_id IN ("+
+	return sq.Where(Expr(table+".library_id IN ("+
 		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", userID))
 }
 

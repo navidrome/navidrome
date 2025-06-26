@@ -96,6 +96,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
+		"library_id": libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {

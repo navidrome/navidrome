@@ -379,6 +379,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 }
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
+	sel = r.applyLibraryFilter(sel, "f")
 	tracksQuery := sel.
 		Columns(
 			"coalesce(starred, 0) as starred",
