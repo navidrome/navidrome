@@ -156,7 +156,6 @@ const LibrarySelector = () => {
         onDelete={open ? handleToggle : undefined}
         deleteIcon={open ? <ExpandLess /> : <ExpandMore />}
         variant="outlined"
-        clickable
         className={classes.chip}
       />
 
