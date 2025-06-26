@@ -47,6 +47,7 @@ var fieldMap = map[string]*mappedField{
 	"lastplayed":      {field: "annotation.play_date"},
 	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
 	"rating":          {field: "COALESCE(annotation.rating, 0)"},
+	"library_id":      {field: "media_file.library_id", numeric: true},
 
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
