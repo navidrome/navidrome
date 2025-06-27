@@ -61,6 +61,10 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 		return nil, 0, newError(responses.ErrorGeneric, "type '%s' not implemented", typ)
 	}
 
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+
 	opts.Offset = p.IntOr("offset", 0)
 	opts.Max = min(p.IntOr("size", 10), 500)
 	albums, err := api.ds.Album(r.Context()).GetAll(opts)
