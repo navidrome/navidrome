@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -63,6 +64,74 @@ var _ = Describe("Album Lists", func() {
 			errors.As(err, &subErr)
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter albums by specific library when musicFolderId is provided", func() {
+				r := newGetRequest("type=newest", "musicFolderId=1")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList.Album).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?)"))
+				Expect(args).To(ContainElement(1))
+			})
+
+			It("should filter albums by multiple libraries when multiple musicFolderId are provided", func() {
+				r := newGetRequest("type=newest", "musicFolderId=1", "musicFolderId=2")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList.Album).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?)"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("should return all accessible albums when no musicFolderId is provided", func() {
+				r := newGetRequest("type=newest")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList.Album).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?,?)"))
+				Expect(args).To(ContainElements(1, 2, 3))
+			})
+		})
 	})
 
 	Describe("GetAlbumList2", func() {
@@ -99,6 +168,66 @@ var _ = Describe("Album Lists", func() {
 			var subErr subError
 			errors.As(err, &subErr)
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter albums by specific library when musicFolderId is provided", func() {
+				r := newGetRequest("type=newest", "musicFolderId=1")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList2(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList2.Album).To(HaveLen(2))
+				// Verify that library filter was applied
+				Expect(mockRepo.Options.Filters).ToNot(BeNil())
+			})
+
+			It("should filter albums by multiple libraries when multiple musicFolderId are provided", func() {
+				r := newGetRequest("type=newest", "musicFolderId=1", "musicFolderId=2")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList2(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList2.Album).To(HaveLen(2))
+				// Verify that library filter was applied
+				Expect(mockRepo.Options.Filters).ToNot(BeNil())
+			})
+
+			It("should return all accessible albums when no musicFolderId is provided", func() {
+				r := newGetRequest("type=newest")
+				r = r.WithContext(ctx)
+				mockRepo.SetData(model.Albums{
+					{ID: "1"}, {ID: "2"},
+				})
+
+				resp, err := router.GetAlbumList2(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.AlbumList2.Album).To(HaveLen(2))
+			})
 		})
 	})
 })
