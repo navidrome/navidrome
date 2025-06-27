@@ -18,10 +18,7 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	libraries, err := getUserAccessibleLibraries(r.Context(), api.ds)
-	if err != nil {
-		return nil, err
-	}
+	libraries := getUserAccessibleLibraries(r.Context())
 
 	folders := make([]responses.MusicFolder, len(libraries))
 	for i, f := range libraries {
