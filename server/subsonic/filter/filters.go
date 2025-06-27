@@ -138,6 +138,33 @@ func ApplyLibraryFilter(opts Options, musicFolderIds []int) Options {
 	return opts
 }
 
+// ApplyArtistLibraryFilter applies a filter to the given Options to ensure that only artists
+// that are associated with the specified music folders are included in the results.
+//
+// This creates: EXISTS (SELECT 1 FROM library_artist la WHERE la.artist_id = artist.id AND la.library_id IN (...))
+// Unfortunately for artists we don't have a direct `library_id` field in the artist table.
+// We then need to use a subquery to filter through the library_artist junction table.
+// I know, this should be the repository's responsibility, hopefully we can refactor this later.
+func ApplyArtistLibraryFilter(opts Options, musicFolderIds []int) Options {
+	if len(musicFolderIds) == 0 {
+		return opts
+	}
+
+	subquery := Select("1").From("library_artist la").Where(And{
+		Expr("la.artist_id = artist.id"),
+		Eq{"la.library_id": musicFolderIds},
+	})
+	artistLibraryFilter := Expr("EXISTS (?)", subquery)
+
+	if opts.Filters == nil {
+		opts.Filters = artistLibraryFilter
+	} else {
+		opts.Filters = And{opts.Filters, artistLibraryFilter}
+	}
+
+	return opts
+}
+
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
 		Sort:    "name",
