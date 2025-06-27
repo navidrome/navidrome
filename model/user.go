@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	ID           string     `structs:"id" json:"id"`
@@ -23,6 +25,45 @@ type User struct {
 	NewPassword string `structs:"password,omitempty" json:"password,omitempty"`
 	// If changing the password, this is also required
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
+}
+
+func (u User) HasLibraryAccess(libraryID int) bool {
+	if u.IsAdmin {
+		return true // Admin users have access to all libraries
+	}
+	for _, lib := range u.Libraries {
+		if lib.ID == libraryID {
+			return true
+		}
+	}
+	return false
+}
+
+// AccessibleLibraryIDs returns a slice of library IDs that the user has access to
+func (u User) AccessibleLibraryIDs() []int {
+	if len(u.Libraries) == 0 {
+		return nil
+	}
+
+	ids := make([]int, len(u.Libraries))
+	for i, lib := range u.Libraries {
+		ids[i] = lib.ID
+	}
+	return ids
+}
+
+func (u User) FilteredLibraries(libraryIds []int) Libraries {
+	libMap := make(map[int]Library, len(u.Libraries))
+	for _, lib := range u.Libraries {
+		libMap[lib.ID] = lib
+	}
+	var filtered Libraries
+	for _, id := range libraryIds {
+		if lib, ok := libMap[id]; ok {
+			filtered = append(filtered, lib)
+		}
+	}
+	return filtered
 }
 
 type Users []User
