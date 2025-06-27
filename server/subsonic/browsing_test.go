@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"fmt"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/core/auth"
@@ -11,6 +12,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+func contextWithUser(ctx context.Context, userID string, libraryIDs ...int) context.Context {
+	libraries := make([]model.Library, len(libraryIDs))
+	for i, id := range libraryIDs {
+		libraries[i] = model.Library{ID: id, Name: fmt.Sprintf("Test Library %d", id), Path: fmt.Sprintf("/music/library%d", id)}
+	}
+	user := model.User{
+		ID:        userID,
+		Libraries: libraries,
+	}
+	return request.WithUser(ctx, user)
+}
 
 var _ = Describe("Browsing", func() {
 	var api *Router
@@ -26,16 +39,8 @@ var _ = Describe("Browsing", func() {
 
 	Describe("GetMusicFolders", func() {
 		It("should return all libraries the user has access", func() {
-			// Create mock user
-			user := model.User{
-				ID: "user-id",
-			}
-			ctx = request.WithUser(ctx, user)
-
-			// Setup mock expectations - admin users get all libraries via GetUserLibraries
-			mockUserRepo := ds.User(ctx).(*tests.MockedUserRepo)
-			err := mockUserRepo.SetUserLibraries("user-id", []int{1, 2, 3})
-			Expect(err).ToNot(HaveOccurred())
+			// Create mock user with libraries
+			ctx := contextWithUser(ctx, "user-id", 1, 2, 3)
 
 			// Create request
 			r := httptest.NewRequest("GET", "/rest/getMusicFolders", nil)
@@ -57,16 +62,8 @@ var _ = Describe("Browsing", func() {
 
 	Describe("GetIndexes", func() {
 		It("should validate user access to the specified musicFolderId", func() {
-			// Create mock user
-			user := model.User{
-				ID: "user-id",
-			}
-			ctx = request.WithUser(ctx, user)
-
-			// Setup mock expectations - user only has access to library 1
-			mockUserRepo := ds.User(ctx).(*tests.MockedUserRepo)
-			err := mockUserRepo.SetUserLibraries("user-id", []int{1})
-			Expect(err).ToNot(HaveOccurred())
+			// Create mock user with access to library 1 only
+			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=2 (not accessible)
 			r := httptest.NewRequest("GET", "/rest/getIndexes?musicFolderId=2", nil)
@@ -81,11 +78,8 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
-			// Create mock user
-			user := model.User{
-				ID: "user-id",
-			}
-			ctx = request.WithUser(ctx, user)
+			// Create mock user with access to libraries 2 and 3
+			ctx = contextWithUser(ctx, "user-id", 2, 3)
 
 			// Setup minimal mock library data for working tests
 			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
@@ -93,11 +87,6 @@ var _ = Describe("Browsing", func() {
 				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
 				{ID: 3, Name: "Test Library 3", Path: "/music/library3"},
 			})
-
-			// Setup mock expectations
-			mockUserRepo := ds.User(ctx).(*tests.MockedUserRepo)
-			err := mockUserRepo.SetUserLibraries("user-id", []int{2, 3})
-			Expect(err).ToNot(HaveOccurred())
 
 			// Setup mock artist data
 			mockArtistRepo := ds.Artist(ctx).(*tests.MockArtistRepo)
@@ -122,16 +111,8 @@ var _ = Describe("Browsing", func() {
 
 	Describe("GetArtists", func() {
 		It("should validate user access to the specified musicFolderId", func() {
-			// Create mock user
-			user := model.User{
-				ID: "user-id",
-			}
-			ctx = request.WithUser(ctx, user)
-
-			// Setup mock expectations - user only has access to library 1
-			mockUserRepo := ds.User(ctx).(*tests.MockedUserRepo)
-			err := mockUserRepo.SetUserLibraries("user-id", []int{1})
-			Expect(err).ToNot(HaveOccurred())
+			// Create mock user with access to library 1 only
+			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=3 (not accessible)
 			r := httptest.NewRequest("GET", "/rest/getArtists?musicFolderId=3", nil)
@@ -146,11 +127,8 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
-			// Create mock user
-			user := model.User{
-				ID: "user-id",
-			}
-			ctx = request.WithUser(ctx, user)
+			// Create mock user with access to libraries 1 and 2
+			ctx = contextWithUser(ctx, "user-id", 1, 2)
 
 			// Setup minimal mock library data for working tests
 			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
@@ -158,11 +136,6 @@ var _ = Describe("Browsing", func() {
 				{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
 				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
 			})
-
-			// Setup mock expectations
-			mockUserRepo := ds.User(ctx).(*tests.MockedUserRepo)
-			err := mockUserRepo.SetUserLibraries("user-id", []int{1, 2})
-			Expect(err).ToNot(HaveOccurred())
 
 			// Setup mock artist data
 			mockArtistRepo := ds.Artist(ctx).(*tests.MockArtistRepo)
