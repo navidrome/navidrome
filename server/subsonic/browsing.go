@@ -30,7 +30,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
+func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
 	ctx := r.Context()
 
 	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
@@ -45,13 +45,13 @@ func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Ti
 
 	var indexes model.ArtistIndexes
 	if lastScan.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex(false, libId, model.RoleAlbumArtist)
+		indexes, err = api.ds.Artist(ctx).GetIndex(false, libIds, model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
 		}
 		if len(indexes) == 0 {
-			log.Debug(ctx, "No artists found in library", "libId", libId)
+			log.Debug(ctx, "No artists found in library", "libId", libIds)
 			return nil, 0, newError(responses.ErrorDataNotFound, "Library not found or empty")
 		}
 	}
@@ -59,8 +59,8 @@ func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Ti
 	return indexes, lastScan.UnixMilli(), err
 }
 
-func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+func (api *Router) getArtistIndex(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +78,8 @@ func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince ti
 	return res, nil
 }
 
-func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Artists, error) {
-	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+func (api *Router) getArtistIndexID3(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Artists, error) {
+	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +99,10 @@ func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince
 
 func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 0) // 0 means all accessible libraries
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
 	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
 
-	res, err := api.getArtistIndex(r, musicFolderId, ifModifiedSince)
+	res, err := api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +113,9 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
-	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 0) // 0 means all accessible libraries
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
 
-	res, err := api.getArtistIndexID3(r, musicFolderId, time.Time{})
+	res, err := api.getArtistIndexID3(r, musicFolderIds, time.Time{})
 	if err != nil {
 		return nil, err
 	}

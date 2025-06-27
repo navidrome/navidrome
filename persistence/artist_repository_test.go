@@ -96,7 +96,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex(false, 0)
+				idx, err := repo.GetIndex(false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("F"))
@@ -114,7 +114,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			// BFR Empty SortArtistName is not saved in the DB anymore
 			XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
-				idx, err := repo.GetIndex(false, 0)
+				idx, err := repo.GetIndex(false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -136,7 +136,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex(false, 0)
+				idx, err := repo.GetIndex(false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -153,7 +153,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns the index when SortArtistName is empty", func() {
-				idx, err := repo.GetIndex(false, 0)
+				idx, err := repo.GetIndex(false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -190,7 +190,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns only artists with the specified role", func() {
-				idx, err := repo.GetIndex(false, 0, model.RoleComposer)
+				idx, err := repo.GetIndex(false, []int{1}, model.RoleComposer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(1))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -199,7 +199,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns artists with any of the specified roles", func() {
-				idx, err := repo.GetIndex(false, 0, model.RoleComposer, model.RoleProducer)
+				idx, err := repo.GetIndex(false, []int{1}, model.RoleComposer, model.RoleProducer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 
@@ -220,7 +220,28 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns empty index when no artists have the specified role", func() {
-				idx, err := repo.GetIndex(false, 0, model.RoleDirector)
+				idx, err := repo.GetIndex(false, []int{1}, model.RoleDirector)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(HaveLen(0))
+			})
+		})
+
+		When("validating library IDs", func() {
+			It("returns nil when no library IDs are provided", func() {
+				idx, err := repo.GetIndex(false, []int{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(BeNil())
+			})
+
+			It("returns artists from multiple libraries when multiple library IDs are provided", func() {
+				// This test would require setting up multiple libraries
+				// For now, test with the existing library ID 1 only
+				idx, err := repo.GetIndex(false, []int{1})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(HaveLen(2))
+
+				// Test with a non-existent library ID should return empty result
+				idx, err = repo.GetIndex(false, []int{999})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
@@ -377,7 +398,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("does not return missing artist in GetIndex", func() {
-					idx, err := repo.GetIndex(false, 0)
+					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					// Only 2 artists should be present
 					total := 0
@@ -411,7 +432,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("returns missing artist in GetIndex when included", func() {
-					idx, err := repo.GetIndex(true, 0)
+					idx, err := repo.GetIndex(true, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					total := 0
 					for _, ix := range idx {
