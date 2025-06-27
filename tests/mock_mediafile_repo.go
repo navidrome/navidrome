@@ -231,5 +231,17 @@ func (m *MockMediaFileRepo) NewInstance() interface{} {
 	return &model.MediaFile{}
 }
 
+func (m *MockMediaFileRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.MediaFiles, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("unexpected error")
+	}
+	// Simple mock implementation - just return all media files for testing
+	allFiles, err := m.GetAll()
+	return allFiles, err
+}
+
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)
 var _ model.ResourceRepository = (*MockMediaFileRepo)(nil)
