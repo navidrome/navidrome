@@ -16,7 +16,7 @@ type User struct {
 	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
 
 	// Library associations (many-to-many relationship)
-	Libraries []Library `structs:"-" json:"libraries,omitempty"`
+	Libraries Libraries `structs:"-" json:"libraries,omitempty"`
 
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`
@@ -41,15 +41,7 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 
 // AccessibleLibraryIDs returns a slice of library IDs that the user has access to
 func (u User) AccessibleLibraryIDs() []int {
-	if len(u.Libraries) == 0 {
-		return nil
-	}
-
-	ids := make([]int, len(u.Libraries))
-	for i, lib := range u.Libraries {
-		ids[i] = lib.ID
-	}
-	return ids
+	return u.Libraries.IDs()
 }
 
 func (u User) FilteredLibraries(libraryIds []int) Libraries {
