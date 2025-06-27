@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -41,9 +42,9 @@ func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	return sp, nil
 }
 
-type searchFunc[T any] func(q string, offset int, size int, includeMissing bool) (T, error)
+type searchFunc[T any] func(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (T, error)
 
-func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, size int, result *T) func() error {
+func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, size int, result *T, options ...model.QueryOptions) func() error {
 	return func() error {
 		if size == 0 {
 			return nil
@@ -51,7 +52,7 @@ func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, s
 		typ := strings.TrimPrefix(reflect.TypeOf(*result).String(), "model.")
 		var err error
 		start := time.Now()
-		*result, err = s(q, offset, size, false)
+		*result, err = s(q, offset, size, false, options...)
 		if err != nil {
 			log.Error(ctx, "Error searching "+typ, "query", q, "elapsed", time.Since(start), err)
 		} else {
@@ -61,15 +62,23 @@ func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, s
 	}
 }
 
-func (api *Router) searchAll(ctx context.Context, sp *searchParams) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
+func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderIds []int) (mediaFiles model.MediaFiles, albums model.Albums, artists model.Artists) {
 	start := time.Now()
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 
+	// Create query options for library filtering
+	var options []model.QueryOptions
+	if len(musicFolderIds) > 0 {
+		options = append(options, model.QueryOptions{
+			Filters: Eq{"library_id": musicFolderIds},
+		})
+	}
+
 	// Run searches in parallel
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles))
-	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums))
-	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists))
+	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles, options...))
+	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums, options...))
+	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists, options...))
 	err := g.Wait()
 	if err == nil {
 		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",
@@ -86,7 +95,13 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := api.searchAll(ctx, sp)
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
+	mfs, als, as := api.searchAll(ctx, sp, musicFolderIds)
 
 	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
@@ -115,7 +130,13 @@ func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	mfs, als, as := api.searchAll(ctx, sp)
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
+	mfs, als, as := api.searchAll(ctx, sp, musicFolderIds)
 
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}

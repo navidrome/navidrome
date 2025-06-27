@@ -515,9 +515,9 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
+func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(r.selectArtist(), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
+	err := r.doSearch(r.selectArtist(options...), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
 	if err != nil {
 		return nil, err
 	}
