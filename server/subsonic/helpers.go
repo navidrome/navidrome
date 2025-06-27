@@ -482,6 +482,9 @@ func getUserAccessibleLibraries(ctx context.Context) []model.Library {
 	return user.Libraries
 }
 
+// selectedMusicFolderIds retrieves the music folder IDs from the request parameters.
+// If no IDs are provided, it returns all libraries the user has access to (based on the user found in the context).
+// If the parameter is required and not present, it returns an error.
 func selectedMusicFolderIds(r *http.Request, required bool) ([]int, error) {
 	p := req.Params(r)
 	musicFolderIds, err := p.Ints("musicFolderId")
