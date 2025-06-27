@@ -146,7 +146,7 @@ var _ = Describe("User", func() {
 		It("returns nil when user has no libraries", func() {
 			user.Libraries = nil
 			ids := user.AccessibleLibraryIDs()
-			Expect(ids).To(BeNil())
+			Expect(ids).To(BeEmpty())
 		})
 	})
 })
