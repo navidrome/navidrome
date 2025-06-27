@@ -204,22 +204,14 @@ var _ = Describe("helpers", func() {
 				Expect(ids).To(Equal([]int{2})) // Only valid ID is returned
 			})
 
-			It("should filter out library IDs the user doesn't have access to", func() {
+			It("should return error when any library ID is not accessible", func() {
 				r := httptest.NewRequest("GET", "/test?musicFolderId=1&musicFolderId=5&musicFolderId=2&musicFolderId=99", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(ids).To(Equal([]int{1, 2})) // Only accessible libraries (1, 2) are returned, 5 and 99 are filtered out
-			})
-
-			It("should return empty slice when user has no access to any of the requested libraries", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=99&musicFolderId=100", nil)
-				r = r.WithContext(ctx)
-
-				ids, err := selectedMusicFolderIds(r, false)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(ids).To(Equal([]int{})) // No accessible libraries in the request
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Library 5 not found or not accessible"))
+				Expect(ids).To(BeNil())
 			})
 		})
 
