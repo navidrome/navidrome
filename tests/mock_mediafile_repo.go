@@ -27,6 +27,7 @@ type MockMediaFileRepo struct {
 	CountAllValue         int64
 	CountAllOptions       model.QueryOptions
 	DeleteAllMissingValue int64
+	Options               model.QueryOptions
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -72,7 +73,10 @@ func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, er
 	return nil, model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, error) {
+	if len(qo) > 0 {
+		m.Options = qo[0]
+	}
 	if m.Err {
 		return nil, errors.New("error")
 	}

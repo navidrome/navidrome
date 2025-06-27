@@ -16,8 +16,9 @@ func CreateMockArtistRepo() *MockArtistRepo {
 
 type MockArtistRepo struct {
 	model.ArtistRepository
-	Data map[string]*model.Artist
-	Err  bool
+	Data    map[string]*model.Artist
+	Err     bool
+	Options model.QueryOptions
 }
 
 func (m *MockArtistRepo) SetError(err bool) {
@@ -73,6 +74,9 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 }
 
 func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
 	if m.Err {
 		return nil, errors.New("mock repo error")
 	}
