@@ -5,13 +5,13 @@ import (
 	"errors"
 	"net/http/httptest"
 
-	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils/req"
-
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -25,6 +25,7 @@ var _ = Describe("Album Lists", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
+		auth.Init(ds)
 		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
