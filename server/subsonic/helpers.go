@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -475,9 +476,24 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses
 	return res
 }
 
-// getUserAccessibleLibraries returns the list of libraries the current user has access to
-// Admin users get all libraries (auto-assigned), regular users get their assigned libraries
-func getUserAccessibleLibraries(ctx context.Context, ds model.DataStore) ([]model.Library, error) {
+// getUserAccessibleLibraries returns the list of libraries the current user has access to.
+func getUserAccessibleLibraries(ctx context.Context) []model.Library {
 	user := getUser(ctx)
-	return ds.User(ctx).GetUserLibraries(user.ID)
+	return user.Libraries
+}
+
+// selectedMusicFolderIds returns the music folder IDs from the request parameters.
+// If no IDs are provided, it returns all libraries accessible to the user.
+func selectedMusicFolderIds(r *http.Request) ([]int, error) {
+	user := getUser(r.Context())
+	p := req.Params(r)
+	musicFolderIds, err := p.Ints("musicFolderId")
+	if !errors.Is(err, req.ErrMissingParam) {
+		return nil, err
+	}
+
+	if len(musicFolderIds) > 0 {
+		return musicFolderIds, nil
+	}
+	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
 }
