@@ -108,7 +108,7 @@ func (m *MockArtistRepo) RefreshPlayCounts() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryId int, roles ...model.Role) (model.ArtistIndexes, error) {
+func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
 	if m.Err {
 		return nil, errors.New("mock repo error")
 	}

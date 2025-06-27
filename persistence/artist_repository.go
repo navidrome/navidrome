@@ -224,8 +224,15 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 	return "#"
 }
 
-// TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex(includeMissing bool, libraryId int, roles ...model.Role) (model.ArtistIndexes, error) {
+// GetIndex returns a list of artists grouped by the first letter of their name, or by the index group if configured.
+// It can filter by roles and libraries, and optionally include artists that are missing (i.e., have no albums).
+// TODO Cache the index (recalculate at scan time)
+func (r *artistRepository) GetIndex(includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
+	// Validate library IDs. If no library IDs are provided, return an empty index.
+	if len(libraryIds) == 0 {
+		return nil, nil
+	}
+
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
@@ -241,32 +248,14 @@ func (r *artistRepository) GetIndex(includeMissing bool, libraryId int, roles ..
 		}
 	}
 
-	// Get artists based on library filtering
-	var artists model.Artists
-	var err error
-
-	var libFilter Sqlizer
-
-	if libraryId > 0 {
-		libFilter = artistLibraryFilter("library_id", libraryId)
-	} else {
-		// All accessible libraries - use regular GetAll for backward compatibility
-		userRepo := NewUserRepository(r.ctx, r.db)
-		libs, err := userRepo.GetUserLibraries(userId(r.ctx))
-		if err != nil {
-			return nil, fmt.Errorf("getting user libraries: %w", err)
-		}
-		libIds := slice.Map(libs, func(lib model.Library) int { return lib.ID })
-		libFilter = artistLibraryFilter("library_id", libIds)
-	}
-
+	libFilter := artistLibraryFilter("library_id", libraryIds)
 	if options.Filters == nil {
 		options.Filters = libFilter
 	} else {
 		options.Filters = And{options.Filters, libFilter}
 	}
 
-	artists, err = r.GetAll(options)
+	artists, err := r.GetAll(options)
 	if err != nil {
 		return nil, err
 	}
