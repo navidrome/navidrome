@@ -123,6 +123,21 @@ func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
 	})
 }
 
+func ApplyLibraryFilter(opts Options, musicFolderIds []int) Options {
+	if len(musicFolderIds) == 0 {
+		return opts
+	}
+
+	libraryFilter := Eq{"library_id": musicFolderIds}
+	if opts.Filters == nil {
+		opts.Filters = libraryFilter
+	} else {
+		opts.Filters = And{opts.Filters, libraryFilter}
+	}
+
+	return opts
+}
+
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
 		Sort:    "name",
