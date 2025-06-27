@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,7 +119,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"starred":    booleanFilter,
 		"role":       roleFilter,
 		"missing":    booleanFilter,
-		"library_id": artistLibraryFilter,
+		"library_id": r.artistLibraryFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -145,11 +146,51 @@ func roleFilter(_ string, role any) Sqlizer {
 }
 
 // artistLibraryFilter handles filtering artists by library_id through the library_artist junction table
-func artistLibraryFilter(_ string, value any) Sqlizer {
+// It checks the logged-in user's permissions and returns a Sqlizer that can be used in a query.
+// If the user is an admin, it returns a condition that always evaluates to true.
+// If the value is nil, it uses the user's accessible library IDs.
+func (r *artistRepository) artistLibraryFilter(_ string, value any) Sqlizer {
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return Eq{"1": 1} // Always true, no filtering needed
+	}
+
+	var accessibleLibraryIDs []int
+	if value == nil {
+		accessibleLibraryIDs = user.AccessibleLibraryIDs()
+	} else {
+		// Convert various input types to []int
+		var libIds []int
+		switch v := value.(type) {
+		case []int:
+			libIds = v
+		case []string:
+			for _, str := range v {
+				if id, err := strconv.Atoi(str); err == nil {
+					libIds = append(libIds, id)
+				}
+			}
+		case int:
+			libIds = []int{v}
+		case string:
+			if id, err := strconv.Atoi(v); err == nil {
+				libIds = []int{id}
+			}
+		}
+
+		accessibleLibraryIDs = user.FilteredLibraries(libIds).IDs()
+		if len(accessibleLibraryIDs) == 0 {
+			// User has no library access - return empty result set
+			return Eq{"1": "0"}
+		}
+	}
+
 	// Use a subquery to find artists that belong to the specified library
 	subquery := Select("1").From("library_artist la").Where(And{
 		Expr("la.artist_id = artist.id"),
-		Eq{"la.library_id": value},
+		Eq{"la.library_id": accessibleLibraryIDs},
 	})
 	return Expr("EXISTS (?)", subquery)
 }
@@ -157,22 +198,8 @@ func artistLibraryFilter(_ string, value any) Sqlizer {
 // applyArtistLibraryFilter adds library filtering based on user permissions for artists
 // This ensures users only see artists from libraries they have access to
 func (r *artistRepository) applyArtistLibraryFilter(sq SelectBuilder) SelectBuilder {
-	user := loggedUser(r.ctx)
-
-	// Admin users see all content
-	if user.IsAdmin {
-		return sq
-	}
-
-	// Get user's accessible library IDs using User model method
-	accessibleLibraryIDs := user.AccessibleLibraryIDs()
-	if len(accessibleLibraryIDs) == 0 {
-		// User has no library access - return empty result set
-		return sq.Where(Eq{"1": "0"})
-	}
-
 	// Use existing artistLibraryFilter with the user's accessible library IDs
-	libFilter := artistLibraryFilter("library_id", accessibleLibraryIDs)
+	libFilter := r.artistLibraryFilter("library_id", nil)
 	return sq.Where(libFilter)
 }
 
@@ -190,26 +217,10 @@ func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	// For Exists, we need to check if the artist exists AND the user has access to it
-	user := loggedUser(r.ctx)
-
-	// Admin users see all content
-	if user.IsAdmin {
-		return r.exists(Eq{"artist.id": id})
-	}
-
-	// Get user's accessible library IDs using User model method
-	accessibleLibraryIDs := user.AccessibleLibraryIDs()
-	if len(accessibleLibraryIDs) == 0 {
-		// User has no library access - return false
-		return false, nil
-	}
-
 	// Check if artist exists AND user has access to it via library permissions
-	libFilter := artistLibraryFilter("library_id", accessibleLibraryIDs)
 	condition := And{
 		Eq{"artist.id": id},
-		libFilter,
+		r.artistLibraryFilter("library_id", nil),
 	}
 
 	return r.exists(condition)
@@ -293,7 +304,7 @@ func (r *artistRepository) GetIndex(includeMissing bool, libraryIds []int, roles
 		}
 	}
 
-	libFilter := artistLibraryFilter("library_id", libraryIds)
+	libFilter := r.artistLibraryFilter("library_id", libraryIds)
 	if options.Filters == nil {
 		options.Filters = libFilter
 	} else {
