@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -485,6 +486,7 @@ func getUserAccessibleLibraries(ctx context.Context) []model.Library {
 // selectedMusicFolderIds retrieves the music folder IDs from the request parameters.
 // If no IDs are provided, it returns all libraries the user has access to (based on the user found in the context).
 // If the parameter is required and not present, it returns an error.
+// Invalid library IDs (those the user doesn't have access to) are silently filtered out.
 func selectedMusicFolderIds(r *http.Request, required bool) ([]int, error) {
 	p := req.Params(r)
 	musicFolderIds, err := p.Ints("musicFolderId")
@@ -494,11 +496,21 @@ func selectedMusicFolderIds(r *http.Request, required bool) ([]int, error) {
 		return nil, err
 	}
 
+	// Get user's accessible libraries for validation
+	libraries := getUserAccessibleLibraries(r.Context())
+	accessibleLibraryIds := slice.Map(libraries, func(lib model.Library) int { return lib.ID })
+
 	if len(musicFolderIds) > 0 {
-		return musicFolderIds, nil
+		// Validate and filter out invalid library IDs
+		validIds := make([]int, 0, len(musicFolderIds))
+		for _, id := range musicFolderIds {
+			if slices.Contains(accessibleLibraryIds, id) {
+				validIds = append(validIds, id)
+			}
+		}
+		return validIds, nil
 	}
 
 	// If no musicFolderId is provided, return all libraries the user has access to.
-	libraries := getUserAccessibleLibraries(r.Context())
-	return slice.Map(libraries, func(lib model.Library) int { return lib.ID }), nil
+	return accessibleLibraryIds, nil
 }
