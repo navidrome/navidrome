@@ -115,18 +115,32 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 
 func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	artists, err := api.ds.Artist(ctx).GetAll(filter.ArtistsByStarred())
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+
+	// Get starred artists with library filtering
+	artistOpts := filter.ArtistsByStarred()
+	artistOpts = filter.ApplyLibraryFilter(artistOpts, musicFolderIds)
+	artists, err := api.ds.Artist(ctx).GetAll(artistOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
-	options := filter.ByStarred()
-	albums, err := api.ds.Album(ctx).GetAll(options)
+
+	// Get starred albums with library filtering
+	albumOpts := filter.ByStarred()
+	albumOpts = filter.ApplyLibraryFilter(albumOpts, musicFolderIds)
+	albums, err := api.ds.Album(ctx).GetAll(albumOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err
 	}
-	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(options)
+
+	// Get starred media files with library filtering
+	mediaFileOpts := filter.ByStarred()
+	mediaFileOpts = filter.ApplyLibraryFilter(mediaFileOpts, musicFolderIds)
+	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
@@ -142,18 +156,32 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	artists, err := api.ds.Artist(ctx).GetAll(filter.ArtistsByStarred())
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+
+	// Get starred artists with library filtering
+	artistOpts := filter.ArtistsByStarred()
+	artistOpts = filter.ApplyLibraryFilter(artistOpts, musicFolderIds)
+	artists, err := api.ds.Artist(ctx).GetAll(artistOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
-	options := filter.ByStarred()
-	albums, err := api.ds.Album(ctx).GetAll(options)
+
+	// Get starred albums with library filtering
+	albumOpts := filter.ByStarred()
+	albumOpts = filter.ApplyLibraryFilter(albumOpts, musicFolderIds)
+	albums, err := api.ds.Album(ctx).GetAll(albumOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err
 	}
-	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(options)
+
+	// Get starred media files with library filtering
+	mediaFileOpts := filter.ByStarred()
+	mediaFileOpts = filter.ApplyLibraryFilter(mediaFileOpts, musicFolderIds)
+	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
 	if err != nil {
 		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
@@ -197,7 +225,12 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	fromYear := p.IntOr("fromYear", 0)
 	toYear := p.IntOr("toYear", 0)
 
-	songs, err := api.getSongs(r.Context(), 0, size, filter.SongsByRandom(genre, fromYear, toYear))
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	opts := filter.SongsByRandom(genre, fromYear, toYear)
+	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+
+	songs, err := api.getSongs(r.Context(), 0, size, opts)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
@@ -215,8 +248,13 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	offset := p.IntOr("offset", 0)
 	genre, _ := p.String("genre")
 
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	opts := filter.ByGenre(genre)
+	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+
 	ctx := r.Context()
-	songs, err := api.getSongs(ctx, offset, count, filter.ByGenre(genre))
+	songs, err := api.getSongs(ctx, offset, count, opts)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err

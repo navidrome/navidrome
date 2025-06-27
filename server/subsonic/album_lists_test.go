@@ -230,4 +230,312 @@ var _ = Describe("Album Lists", func() {
 			})
 		})
 	})
+
+	Describe("GetRandomSongs", func() {
+		var mockMediaFileRepo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("should return random songs", func() {
+			mockMediaFileRepo.SetData(model.MediaFiles{
+				{ID: "1", Title: "Song 1"},
+				{ID: "2", Title: "Song 2"},
+			})
+			r := newGetRequest("size=2")
+
+			resp, err := router.GetRandomSongs(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.RandomSongs.Songs).To(HaveLen(2))
+		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter songs by specific library when musicFolderId is provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("size=2", "musicFolderId=1")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetRandomSongs(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.RandomSongs.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?)"))
+				Expect(args).To(ContainElement(1))
+			})
+
+			It("should filter songs by multiple libraries when multiple musicFolderId are provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("size=2", "musicFolderId=1", "musicFolderId=2")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetRandomSongs(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.RandomSongs.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?)"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("should return all accessible songs when no musicFolderId is provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("size=2")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetRandomSongs(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.RandomSongs.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?,?)"))
+				Expect(args).To(ContainElements(1, 2, 3))
+			})
+		})
+	})
+
+	Describe("GetSongsByGenre", func() {
+		var mockMediaFileRepo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("should return songs by genre", func() {
+			mockMediaFileRepo.SetData(model.MediaFiles{
+				{ID: "1", Title: "Song 1"},
+				{ID: "2", Title: "Song 2"},
+			})
+			r := newGetRequest("count=2", "genre=rock")
+
+			resp, err := router.GetSongsByGenre(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SongsByGenre.Songs).To(HaveLen(2))
+		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter songs by specific library when musicFolderId is provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("count=2", "genre=rock", "musicFolderId=1")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetSongsByGenre(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.SongsByGenre.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?)"))
+				Expect(args).To(ContainElement(1))
+			})
+
+			It("should filter songs by multiple libraries when multiple musicFolderId are provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("count=2", "genre=rock", "musicFolderId=1", "musicFolderId=2")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetSongsByGenre(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.SongsByGenre.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?)"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("should return all accessible songs when no musicFolderId is provided", func() {
+				mockMediaFileRepo.SetData(model.MediaFiles{
+					{ID: "1", Title: "Song 1"},
+					{ID: "2", Title: "Song 2"},
+				})
+				r := newGetRequest("count=2", "genre=rock")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetSongsByGenre(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.SongsByGenre.Songs).To(HaveLen(2))
+				// Verify that library filter was applied
+				query, args, _ := mockMediaFileRepo.Options.Filters.ToSql()
+				Expect(query).To(ContainSubstring("library_id IN (?,?,?)"))
+				Expect(args).To(ContainElements(1, 2, 3))
+			})
+		})
+	})
+
+	Describe("GetStarred", func() {
+		var mockArtistRepo *tests.MockArtistRepo
+		var mockAlbumRepo *tests.MockAlbumRepo
+		var mockMediaFileRepo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("should return starred items", func() {
+			mockArtistRepo.SetData(model.Artists{{ID: "1", Name: "Artist 1"}})
+			mockAlbumRepo.SetData(model.Albums{{ID: "1", Name: "Album 1"}})
+			mockMediaFileRepo.SetData(model.MediaFiles{{ID: "1", Title: "Song 1"}})
+			r := newGetRequest()
+
+			resp, err := router.GetStarred(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Starred.Artist).To(HaveLen(1))
+			Expect(resp.Starred.Album).To(HaveLen(1))
+			Expect(resp.Starred.Song).To(HaveLen(1))
+		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter starred items by specific library when musicFolderId is provided", func() {
+				mockArtistRepo.SetData(model.Artists{{ID: "1", Name: "Artist 1"}})
+				mockAlbumRepo.SetData(model.Albums{{ID: "1", Name: "Album 1"}})
+				mockMediaFileRepo.SetData(model.MediaFiles{{ID: "1", Title: "Song 1"}})
+				r := newGetRequest("musicFolderId=1")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetStarred(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.Starred.Artist).To(HaveLen(1))
+				Expect(resp.Starred.Album).To(HaveLen(1))
+				Expect(resp.Starred.Song).To(HaveLen(1))
+				// Verify that library filter was applied to all types
+				artistQuery, artistArgs, _ := mockArtistRepo.Options.Filters.ToSql()
+				Expect(artistQuery).To(ContainSubstring("library_id IN (?)"))
+				Expect(artistArgs).To(ContainElement(1))
+			})
+		})
+	})
+
+	Describe("GetStarred2", func() {
+		var mockArtistRepo *tests.MockArtistRepo
+		var mockAlbumRepo *tests.MockAlbumRepo
+		var mockMediaFileRepo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("should return starred items in ID3 format", func() {
+			mockArtistRepo.SetData(model.Artists{{ID: "1", Name: "Artist 1"}})
+			mockAlbumRepo.SetData(model.Albums{{ID: "1", Name: "Album 1"}})
+			mockMediaFileRepo.SetData(model.MediaFiles{{ID: "1", Title: "Song 1"}})
+			r := newGetRequest()
+
+			resp, err := router.GetStarred2(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Starred2.Artist).To(HaveLen(1))
+			Expect(resp.Starred2.Album).To(HaveLen(1))
+			Expect(resp.Starred2.Song).To(HaveLen(1))
+		})
+
+		Context("with musicFolderId parameter", func() {
+			var user model.User
+			var ctx context.Context
+
+			BeforeEach(func() {
+				user = model.User{
+					ID: "test-user",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				}
+				ctx = request.WithUser(context.Background(), user)
+			})
+
+			It("should filter starred items by specific library when musicFolderId is provided", func() {
+				mockArtistRepo.SetData(model.Artists{{ID: "1", Name: "Artist 1"}})
+				mockAlbumRepo.SetData(model.Albums{{ID: "1", Name: "Album 1"}})
+				mockMediaFileRepo.SetData(model.MediaFiles{{ID: "1", Title: "Song 1"}})
+				r := newGetRequest("musicFolderId=1")
+				r = r.WithContext(ctx)
+
+				resp, err := router.GetStarred2(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.Starred2.Artist).To(HaveLen(1))
+				Expect(resp.Starred2.Album).To(HaveLen(1))
+				Expect(resp.Starred2.Song).To(HaveLen(1))
+				// Verify that library filter was applied to all types
+				artistQuery, artistArgs, _ := mockArtistRepo.Options.Filters.ToSql()
+				Expect(artistQuery).To(ContainSubstring("library_id IN (?)"))
+				Expect(artistArgs).To(ContainElement(1))
+			})
+		})
+	})
 })
