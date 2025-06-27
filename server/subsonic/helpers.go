@@ -482,18 +482,20 @@ func getUserAccessibleLibraries(ctx context.Context) []model.Library {
 	return user.Libraries
 }
 
-// selectedMusicFolderIds returns the music folder IDs from the request parameters.
-// If no IDs are provided, it returns all libraries accessible to the user.
-func selectedMusicFolderIds(r *http.Request) ([]int, error) {
-	user := getUser(r.Context())
+func selectedMusicFolderIds(r *http.Request, required bool) ([]int, error) {
 	p := req.Params(r)
 	musicFolderIds, err := p.Ints("musicFolderId")
-	if !errors.Is(err, req.ErrMissingParam) {
+
+	// If the parameter is not present, it returns an error if it is required.
+	if errors.Is(err, req.ErrMissingParam) && required {
 		return nil, err
 	}
 
 	if len(musicFolderIds) > 0 {
 		return musicFolderIds, nil
 	}
-	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
+
+	// If no musicFolderId is provided, return all libraries the user has access to.
+	libraries := getUserAccessibleLibraries(r.Context())
+	return slice.Map(libraries, func(lib model.Library) int { return lib.ID }), nil
 }
