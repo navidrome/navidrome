@@ -154,20 +154,65 @@ func artistLibraryFilter(_ string, value any) Sqlizer {
 	return Expr("EXISTS (?)", subquery)
 }
 
+// applyArtistLibraryFilter adds library filtering based on user permissions for artists
+// This ensures users only see artists from libraries they have access to
+func (r *artistRepository) applyArtistLibraryFilter(sq SelectBuilder) SelectBuilder {
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return sq
+	}
+
+	// Get user's accessible library IDs using User model method
+	accessibleLibraryIDs := user.AccessibleLibraryIDs()
+	if len(accessibleLibraryIDs) == 0 {
+		// User has no library access - return empty result set
+		return sq.Where(Eq{"1": "0"})
+	}
+
+	// Use existing artistLibraryFilter with the user's accessible library IDs
+	libFilter := artistLibraryFilter("library_id", accessibleLibraryIDs)
+	return sq.Where(libFilter)
+}
+
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	query := r.newSelect(options...).Columns("artist.*")
 	query = r.withAnnotation(query, "artist.id")
-	return query
+	return r.applyArtistLibraryFilter(query)
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "artist.id")
+	query = r.applyArtistLibraryFilter(query)
 	return r.count(query, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"artist.id": id})
+	// For Exists, we need to check if the artist exists AND the user has access to it
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return r.exists(Eq{"artist.id": id})
+	}
+
+	// Get user's accessible library IDs using User model method
+	accessibleLibraryIDs := user.AccessibleLibraryIDs()
+	if len(accessibleLibraryIDs) == 0 {
+		// User has no library access - return false
+		return false, nil
+	}
+
+	// Check if artist exists AND user has access to it via library permissions
+	libFilter := artistLibraryFilter("library_id", accessibleLibraryIDs)
+	condition := And{
+		Eq{"artist.id": id},
+		libFilter,
+	}
+
+	return r.exists(condition)
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {

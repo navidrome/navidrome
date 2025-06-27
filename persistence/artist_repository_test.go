@@ -377,8 +377,16 @@ var _ = Describe("ArtistRepository", func() {
 
 			Context("regular user", func() {
 				BeforeEach(func() {
+					// Create user with library access (simulating middleware behavior)
+					regularUserWithLibs := model.User{
+						ID:      "u1",
+						IsAdmin: false,
+						Libraries: model.Libraries{
+							{ID: 1, Name: "Test Library", Path: "/test"},
+						},
+					}
 					ctx := log.NewContext(context.TODO())
-					ctx = request.WithUser(ctx, model.User{ID: "u1"})
+					ctx = request.WithUser(ctx, regularUserWithLibs)
 					repo = NewArtistRepository(ctx, GetDBXBuilder())
 					insertMissing()
 				})
@@ -528,6 +536,152 @@ var _ = Describe("ArtistRepository", func() {
 
 			// Clean up
 			_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
+		})
+	})
+
+	Describe("Library permission security", func() {
+		var restrictedRepo model.ArtistRepository
+		var unauthorizedUser model.User
+
+		BeforeEach(func() {
+			// Create a user without access to any libraries
+			unauthorizedUser = model.User{ID: "restricted_user", UserName: "restricted", Name: "Restricted User", Email: "restricted@test.com", IsAdmin: false}
+
+			// Create repository context for the unauthorized user
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, unauthorizedUser)
+			restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
+		})
+
+		It("CountAll returns 0 for users without library access", func() {
+			count, err := restrictedRepo.CountAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(0)))
+		})
+
+		It("GetAll returns empty list for users without library access", func() {
+			artists, err := restrictedRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artists).To(BeEmpty())
+		})
+
+		It("Exists returns false for existing artists when user has no library access", func() {
+			// These artists exist in the DB but the user has no access to them
+			exists, err := restrictedRepo.Exists(artistBeatles.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+
+			exists, err = restrictedRepo.Exists(artistKraftwerk.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("Get returns ErrNotFound for existing artists when user has no library access", func() {
+			_, err := restrictedRepo.Get(artistBeatles.ID)
+			Expect(err).To(Equal(model.ErrNotFound))
+
+			_, err = restrictedRepo.Get(artistKraftwerk.ID)
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+
+		It("Search returns empty results for users without library access", func() {
+			results, err := restrictedRepo.Search("Beatles", 0, 10, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+
+			results, err = restrictedRepo.Search("Kraftwerk", 0, 10, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("GetIndex returns empty index for users without library access", func() {
+			idx, err := restrictedRepo.GetIndex(false, []int{1})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(idx).To(HaveLen(0))
+		})
+
+		Context("when user gains library access", func() {
+			BeforeEach(func() {
+				// Give the user access to library 1
+				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+
+				// First create the user if not exists
+				err := ur.Put(&unauthorizedUser)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Then add library access
+				err = ur.AddUserLibrary(unauthorizedUser.ID, 1)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Update the user object with the libraries to simulate middleware behavior
+				libraries, err := ur.GetUserLibraries(unauthorizedUser.ID)
+				Expect(err).ToNot(HaveOccurred())
+				unauthorizedUser.Libraries = libraries
+
+				// Recreate repository context with updated user
+				ctx := log.NewContext(context.TODO())
+				ctx = request.WithUser(ctx, unauthorizedUser)
+				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
+			})
+
+			AfterEach(func() {
+				// Clean up: remove the user's library access
+				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				_ = ur.RemoveUserLibrary(unauthorizedUser.ID, 1)
+			})
+
+			It("CountAll returns correct count after gaining access", func() {
+				count, err := restrictedRepo.CountAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(2))) // Beatles and Kraftwerk
+			})
+
+			It("GetAll returns artists after gaining access", func() {
+				artists, err := restrictedRepo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(artists).To(HaveLen(2))
+
+				var names []string
+				for _, artist := range artists {
+					names = append(names, artist.Name)
+				}
+				Expect(names).To(ContainElements("The Beatles", "Kraftwerk"))
+			})
+
+			It("Exists returns true for accessible artists", func() {
+				exists, err := restrictedRepo.Exists(artistBeatles.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeTrue())
+
+				exists, err = restrictedRepo.Exists(artistKraftwerk.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeTrue())
+			})
+		})
+
+		Context("admin users", func() {
+			var adminRepo model.ArtistRepository
+
+			BeforeEach(func() {
+				adminUser := model.User{ID: "admin_test", UserName: "admin", Name: "Admin User", Email: "admin@test.com", IsAdmin: true}
+				ctx := log.NewContext(context.TODO())
+				ctx = request.WithUser(ctx, adminUser)
+				adminRepo = NewArtistRepository(ctx, GetDBXBuilder())
+			})
+
+			It("see all artists regardless of library permissions", func() {
+				count, err := adminRepo.CountAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(2)))
+
+				artists, err := adminRepo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(artists).To(HaveLen(2))
+
+				exists, err := adminRepo.Exists(artistBeatles.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeTrue())
+			})
 		})
 	})
 })
