@@ -63,7 +63,10 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	}
 
 	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, 0, err
+	}
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
 	opts.Offset = p.IntOr("offset", 0)
@@ -118,7 +121,10 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 	ctx := r.Context()
 
 	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// Prepare variables to capture results from parallel execution
 	var artists model.Artists
@@ -126,7 +132,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 	var mediaFiles model.MediaFiles
 
 	// Execute all three queries in parallel for better performance
-	err := run.Parallel(
+	err = run.Parallel(
 		// Query starred artists
 		func() error {
 			artistOpts := filter.ApplyArtistLibraryFilter(filter.ArtistsByStarred(), musicFolderIds)
@@ -226,7 +232,10 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	toYear := p.IntOr("toYear", 0)
 
 	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
 	opts := filter.SongsByRandom(genre, fromYear, toYear)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
@@ -249,7 +258,10 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	genre, _ := p.String("genre")
 
 	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
 	opts := filter.ByGenre(genre)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
