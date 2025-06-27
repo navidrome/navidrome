@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -113,85 +114,84 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 	return response, nil
 }
 
-func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums, model.MediaFiles, error) {
 	ctx := r.Context()
 
 	// Get optional library IDs from musicFolderId parameter
 	musicFolderIds, _ := selectedMusicFolderIds(r, false)
 
-	// Get starred artists with library filtering
-	artistOpts := filter.ArtistsByStarred()
-	artistOpts = filter.ApplyLibraryFilter(artistOpts, musicFolderIds)
-	artists, err := api.ds.Artist(ctx).GetAll(artistOpts)
+	// Prepare variables to capture results from parallel execution
+	var artists model.Artists
+	var albums model.Albums
+	var mediaFiles model.MediaFiles
+
+	// Execute all three queries in parallel for better performance
+	err := run.Parallel(
+		// Query starred artists
+		func() error {
+			artistOpts := filter.ApplyLibraryFilter(filter.ArtistsByStarred(), musicFolderIds)
+			var err error
+			artists, err = api.ds.Artist(ctx).GetAll(artistOpts)
+			if err != nil {
+				log.Error(r, "Error retrieving starred artists", err)
+			}
+			return err
+		},
+		// Query starred albums
+		func() error {
+			albumOpts := filter.ApplyLibraryFilter(filter.ByStarred(), musicFolderIds)
+			var err error
+			albums, err = api.ds.Album(ctx).GetAll(albumOpts)
+			if err != nil {
+				log.Error(r, "Error retrieving starred albums", err)
+			}
+			return err
+		},
+		// Query starred media files
+		func() error {
+			mediaFileOpts := filter.ApplyLibraryFilter(filter.ByStarred(), musicFolderIds)
+			var err error
+			mediaFiles, err = api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
+			if err != nil {
+				log.Error(r, "Error retrieving starred mediaFiles", err)
+			}
+			return err
+		},
+	)()
+
+	// Return the first error if any occurred
 	if err != nil {
-		log.Error(r, "Error retrieving starred artists", err)
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	// Get starred albums with library filtering
-	albumOpts := filter.ByStarred()
-	albumOpts = filter.ApplyLibraryFilter(albumOpts, musicFolderIds)
-	albums, err := api.ds.Album(ctx).GetAll(albumOpts)
-	if err != nil {
-		log.Error(r, "Error retrieving starred albums", err)
-		return nil, err
-	}
+	return artists, albums, mediaFiles, nil
+}
 
-	// Get starred media files with library filtering
-	mediaFileOpts := filter.ByStarred()
-	mediaFileOpts = filter.ApplyLibraryFilter(mediaFileOpts, musicFolderIds)
-	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
+func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
+	artists, albums, mediaFiles, err := api.getStarredItems(r)
 	if err != nil {
-		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
 	}
 
 	response := newResponse()
 	response.Starred = &responses.Starred{}
 	response.Starred.Artist = slice.MapWithArg(artists, r, toArtist)
-	response.Starred.Album = slice.MapWithArg(albums, ctx, childFromAlbum)
-	response.Starred.Song = slice.MapWithArg(mediaFiles, ctx, childFromMediaFile)
+	response.Starred.Album = slice.MapWithArg(albums, r.Context(), childFromAlbum)
+	response.Starred.Song = slice.MapWithArg(mediaFiles, r.Context(), childFromMediaFile)
 	return response, nil
 }
 
 func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
-	ctx := r.Context()
-
-	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
-
-	// Get starred artists with library filtering
-	artistOpts := filter.ArtistsByStarred()
-	artistOpts = filter.ApplyLibraryFilter(artistOpts, musicFolderIds)
-	artists, err := api.ds.Artist(ctx).GetAll(artistOpts)
+	artists, albums, mediaFiles, err := api.getStarredItems(r)
 	if err != nil {
-		log.Error(r, "Error retrieving starred artists", err)
-		return nil, err
-	}
-
-	// Get starred albums with library filtering
-	albumOpts := filter.ByStarred()
-	albumOpts = filter.ApplyLibraryFilter(albumOpts, musicFolderIds)
-	albums, err := api.ds.Album(ctx).GetAll(albumOpts)
-	if err != nil {
-		log.Error(r, "Error retrieving starred albums", err)
-		return nil, err
-	}
-
-	// Get starred media files with library filtering
-	mediaFileOpts := filter.ByStarred()
-	mediaFileOpts = filter.ApplyLibraryFilter(mediaFileOpts, musicFolderIds)
-	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
-	if err != nil {
-		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
 	}
 
 	response := newResponse()
 	response.Starred2 = &responses.Starred2{}
 	response.Starred2.Artist = slice.MapWithArg(artists, r, toArtistID3)
-	response.Starred2.Album = slice.MapWithArg(albums, ctx, buildAlbumID3)
-	response.Starred2.Song = slice.MapWithArg(mediaFiles, ctx, childFromMediaFile)
+	response.Starred2.Album = slice.MapWithArg(albums, r.Context(), buildAlbumID3)
+	response.Starred2.Song = slice.MapWithArg(mediaFiles, r.Context(), childFromMediaFile)
 	return response, nil
 }
 
