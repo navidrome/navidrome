@@ -145,4 +145,16 @@ func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles .
 	return result, nil
 }
 
+func (m *MockArtistRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("unexpected error")
+	}
+	// Simple mock implementation - just return all artists for testing
+	allArtists, err := m.GetAll()
+	return allArtists, err
+}
+
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)

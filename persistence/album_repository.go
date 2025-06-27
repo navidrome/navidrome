@@ -349,15 +349,15 @@ func (r *albumRepository) purgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
+func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Albums, error) {
 	var res dbAlbums
 	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectAlbum(), q, []string{"mbz_album_id", "mbz_release_group_id"}, includeMissing, &res)
+		err := r.searchByMBID(r.selectAlbum(options...), q, []string{"mbz_album_id", "mbz_release_group_id"}, includeMissing, &res)
 		if err != nil {
 			return nil, fmt.Errorf("searching album by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectAlbum(), q, offset, size, includeMissing, &res, "name")
+		err := r.doSearch(r.selectAlbum(options...), q, offset, size, includeMissing, &res, "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching album by query %q: %w", q, err)
 		}

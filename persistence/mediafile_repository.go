@@ -297,15 +297,15 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	}, nil
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
+func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.MediaFiles, error) {
 	var res dbMediaFiles
 	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectMediaFile(), q, []string{"mbz_recording_id", "mbz_release_track_id"}, includeMissing, &res)
+		err := r.searchByMBID(r.selectMediaFile(options...), q, []string{"mbz_recording_id", "mbz_release_track_id"}, includeMissing, &res)
 		if err != nil {
 			return nil, fmt.Errorf("searching media_file by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &res, "title")
+		err := r.doSearch(r.selectMediaFile(options...), q, offset, size, includeMissing, &res, "title")
 		if err != nil {
 			return nil, fmt.Errorf("searching media_file by query %q: %w", q, err)
 		}

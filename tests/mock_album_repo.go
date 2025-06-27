@@ -117,4 +117,15 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	return nil
 }
 
+func (m *MockAlbumRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Albums, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("unexpected error")
+	}
+	// Simple mock implementation - just return all albums for testing
+	return m.All, nil
+}
+
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)
