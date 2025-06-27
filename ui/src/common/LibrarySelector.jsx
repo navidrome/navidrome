@@ -109,7 +109,12 @@ const LibrarySelector = () => {
 
   const handleToggle = (event) => {
     setAnchorEl(event.currentTarget)
+    const wasOpen = open
     setOpen(!open)
+    // Refresh data when closing the dropdown
+    if (wasOpen) {
+      refresh()
+    }
   }
 
   const handleClose = () => {
