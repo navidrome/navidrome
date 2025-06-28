@@ -18,7 +18,7 @@ const LibraryFilter = (props) => (
 
 const LibraryList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
-  useResourceRefresh()
+  useResourceRefresh('library')
 
   return (
     <List
