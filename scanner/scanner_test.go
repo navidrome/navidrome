@@ -612,6 +612,99 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 		})
 	})
+
+	Describe("RefreshStats", func() {
+		var refreshStatsCalls []bool
+		var fsys storagetest.FakeFS
+		var help func(...map[string]any) *fstest.MapFile
+
+		BeforeEach(func() {
+			refreshStatsCalls = nil
+
+			// Create a mock artist repository that tracks RefreshStats calls
+			originalArtistRepo := ds.RealDS.Artist(ctx)
+			ds.MockedArtist = &testArtistRepo{
+				ArtistRepository: originalArtistRepo,
+				callTracker:      &refreshStatsCalls,
+			}
+
+			// Create a simple filesystem for testing
+			help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+			fsys = createFS(fstest.MapFS{
+				"The Beatles/Help!/01 - Help!.mp3": help(track(1, "Help!")),
+			})
+		})
+
+		It("should call RefreshStats with allArtists=true for full scans", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeTrue(), "RefreshStats should be called with allArtists=true for full scans")
+		})
+
+		It("should call RefreshStats with allArtists=false for incremental scans", func() {
+			// First do a full scan to set up the data
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Reset the tracker to only track the incremental scan
+			refreshStatsCalls = nil
+
+			// Add a new file to trigger changes detection
+			fsys.Add("The Beatles/Help!/02 - The Night Before.mp3", help(track(2, "The Night Before")))
+
+			// Do an incremental scan
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeFalse(), "RefreshStats should be called with allArtists=false for incremental scans")
+		})
+
+		It("should update artist stats during quick scans when new albums are added", func() {
+			// Don't use the mocked artist repo for this test - we need the real one
+			ds.MockedArtist = nil
+
+			By("Initial scan with one album")
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify initial artist stats - should have 1 album, 1 song
+			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"name": "The Beatles"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artists).To(HaveLen(1))
+			artist := artists[0]
+			Expect(artist.AlbumCount).To(Equal(1)) // 1 album
+			Expect(artist.SongCount).To(Equal(1))  // 1 song
+
+			By("Adding files to an existing directory during incremental scan")
+			// Add more files to the existing Help! album - this should trigger artist stats update during incremental scan
+			fsys.Add("The Beatles/Help!/02 - The Night Before.mp3", help(track(2, "The Night Before")))
+			fsys.Add("The Beatles/Help!/03 - You've Got to Hide Your Love Away.mp3", help(track(3, "You've Got to Hide Your Love Away")))
+
+			// Do a quick scan (incremental)
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			By("Verifying artist stats were updated correctly")
+			// Fetch the artist again to check updated stats
+			artists, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"name": "The Beatles"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artists).To(HaveLen(1))
+			updatedArtist := artists[0]
+
+			// Should now have 1 album and 3 songs total
+			// This is the key test - that artist stats are updated during quick scans
+			Expect(updatedArtist.AlbumCount).To(Equal(1)) // 1 album
+			Expect(updatedArtist.SongCount).To(Equal(3))  // 3 songs
+
+			// Also verify that role-specific stats are updated (albumartist role)
+			Expect(updatedArtist.Stats).To(HaveKey(model.RoleAlbumArtist))
+			albumArtistStats := updatedArtist.Stats[model.RoleAlbumArtist]
+			Expect(albumArtistStats.AlbumCount).To(Equal(1)) // 1 album
+			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
+		})
+	})
 })
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
@@ -637,4 +730,14 @@ func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCur
 		return nil, m.GetMissingAndMatchingError
 	}
 	return m.MediaFileRepository.GetMissingAndMatching(libId)
+}
+
+type testArtistRepo struct {
+	model.ArtistRepository
+	callTracker *[]bool
+}
+
+func (m *testArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+	*m.callTracker = append(*m.callTracker, allArtists)
+	return m.ArtistRepository.RefreshStats(allArtists)
 }

@@ -15,7 +15,7 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.0.2-1
+CROSS_TAGLIB_VERSION ?= 2.1.0-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -220,6 +220,24 @@ pre-push: lintall testall
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
+
+# Generate Go code from plugins/api/api.proto
+plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf files
+	go generate ./plugins/...
+.PHONY: plugin-gen
+
+plugin-examples: check_go_env ##@Development Build all example plugins
+	$(MAKE) -C plugins/examples clean all
+.PHONY: plugin-examples
+
+plugin-clean: check_go_env ##@Development Clean all plugins
+	$(MAKE) -C plugins/examples clean
+	$(MAKE) -C plugins/testdata clean
+.PHONY: plugin-clean
+
+plugin-tests: check_go_env ##@Development Build all test plugins
+	$(MAKE) -C plugins/testdata clean all
+.PHONY: plugin-tests
 
 .DEFAULT_GOAL := help
 

@@ -14,7 +14,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -80,6 +80,7 @@ type configOptions struct {
 	DefaultUIVolume                 int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
+	EnableNowPlaying                bool
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -87,6 +88,8 @@ type configOptions struct {
 	PasswordEncryptionKey           string
 	ReverseProxyUserHeader          string
 	ReverseProxyWhitelist           string
+	Plugins                         pluginsOptions
+	PluginConfig                    map[string]map[string]string
 	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
 	Prometheus                      prometheusOptions   `json:",omitzero"`
 	Scanner                         scannerOptions      `json:",omitzero"`
@@ -122,6 +125,7 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
+	DevPluginCompilationTimeout      time.Duration
 }
 
 type scannerOptions struct {
@@ -208,6 +212,12 @@ type inspectOptions struct {
 	BacklogTimeout int
 }
 
+type pluginsOptions struct {
+	Enabled   bool
+	Folder    string
+	CacheSize string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -247,6 +257,15 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
+	if Server.Plugins.Folder == "" {
+		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
+	}
+	err = os.MkdirAll(Server.Plugins.Folder, 0700)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
+		os.Exit(1)
+	}
+
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
@@ -275,7 +294,7 @@ func Load(noConfigDump bool) {
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
-	err = chain.RunSequentially(
+	err = run.Sequentially(
 		validateScanSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
@@ -482,6 +501,7 @@ func setViperDefaults() {
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
@@ -491,6 +511,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
+	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
@@ -519,7 +540,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
-	viper.SetDefault("scanner.purgemissing", "never")
+	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
@@ -544,7 +565,11 @@ func setViperDefaults() {
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
-	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
+	viper.SetDefault("plugins.folder", "")
+	viper.SetDefault("plugins.enabled", false)
+	viper.SetDefault("plugins.cachesize", "100MB")
+
+	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
@@ -564,6 +589,7 @@ func setViperDefaults() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 }
 
 func init() {

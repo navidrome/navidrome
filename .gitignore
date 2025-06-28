@@ -5,6 +5,7 @@
 /navidrome
 /iTunes*.xml
 /tmp
+/bin
 data/*
 vendor/*/
 wiki
@@ -23,7 +24,8 @@ music
 docker-compose.yml
 !contrib/docker-compose.yml
 binaries
-navidrome-master
+navidrome-*
 AGENTS.md
 *.exe
-bin/
+*.test
+*.wasm

@@ -73,7 +73,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
 	repo := api.ds.PlayQueue(r.Context())
-	pq, err := repo.Retrieve(user.ID)
+	pq, err := repo.RetrieveWithMediaFiles(user.ID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
@@ -82,9 +82,13 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	response := newResponse()
+	var currentID string
+	if pq.Current >= 0 && pq.Current < len(pq.Items) {
+		currentID = pq.Items[pq.Current].ID
+	}
 	response.PlayQueue = &responses.PlayQueue{
 		Entry:     slice.MapWithArg(pq.Items, r.Context(), childFromMediaFile),
-		Current:   pq.Current,
+		Current:   currentID,
 		Position:  pq.Position,
 		Username:  user.UserName,
 		Changed:   &pq.UpdatedAt,
@@ -96,20 +100,27 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	ids, _ := p.Strings("id")
-	current, _ := p.String("current")
+	currentID, _ := p.String("current")
 	position := p.Int64Or("position", 0)
 
 	user, _ := request.UserFrom(r.Context())
 	client, _ := request.ClientFrom(r.Context())
 
-	var items model.MediaFiles
-	for _, id := range ids {
-		items = append(items, model.MediaFile{ID: id})
+	items := slice.Map(ids, func(id string) model.MediaFile {
+		return model.MediaFile{ID: id}
+	})
+
+	currentIndex := 0
+	for i, id := range ids {
+		if id == currentID {
+			currentIndex = i
+			break
+		}
 	}
 
 	pq := &model.PlayQueue{
 		UserID:    user.ID,
-		Current:   current,
+		Current:   currentIndex,
 		Position:  position,
 		ChangedBy: client,
 		Items:     items,

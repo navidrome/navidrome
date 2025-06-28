@@ -63,6 +63,11 @@ type RefreshResource struct {
 	resources map[string][]string
 }
 
+type NowPlayingCount struct {
+	baseEvent
+	Count int `json:"count"`
+}
+
 func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource {
 	if rr.resources == nil {
 		rr.resources = make(map[string][]string)

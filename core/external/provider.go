@@ -3,6 +3,7 @@ package external
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -35,7 +36,7 @@ const (
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
-	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -60,6 +61,7 @@ type auxArtist struct {
 
 type Agents interface {
 	agents.AlbumInfoRetriever
+	agents.AlbumImageRetriever
 	agents.ArtistBiographyRetriever
 	agents.ArtistMBIDRetriever
 	agents.ArtistImageRetriever
@@ -140,19 +142,20 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		album.Description = info.Description
 	}
 
-	if len(info.Images) > 0 {
-		sort.Slice(info.Images, func(i, j int) bool {
-			return info.Images[i].Size > info.Images[j].Size
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if err == nil && len(images) > 0 {
+		sort.Slice(images, func(i, j int) bool {
+			return images[i].Size > images[j].Size
 		})
 
-		album.LargeImageUrl = info.Images[0].URL
+		album.LargeImageUrl = images[0].URL
 
-		if len(info.Images) >= 2 {
-			album.MediumImageUrl = info.Images[1].URL
+		if len(images) >= 2 {
+			album.MediumImageUrl = images[1].URL
 		}
 
-		if len(info.Images) >= 3 {
-			album.SmallImageUrl = info.Images[2].URL
+		if len(images) >= 3 {
+			album.SmallImageUrl = images[2].URL
 		}
 	}
 
@@ -258,7 +261,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -266,14 +269,14 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 
 	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+		log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 		return nil, ctx.Err()
 	}
 
 	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
 	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+			log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 			return ctx.Err()
 		}
 
@@ -341,29 +344,28 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		return nil, err
 	}
 
-	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
 	if err != nil {
 		switch {
 		case errors.Is(err, agents.ErrNotFound):
 			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumInfo call canceled", err)
+			log.Debug(ctx, "GetAlbumImages call canceled", err)
 		default:
-			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
 		}
-
 		return nil, err
 	}
 
-	if info == nil {
-		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+	if len(images) == 0 {
+		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 		return nil, model.ErrNotFound
 	}
 
 	// Return the biggest image
 	var img agents.ExternalImage
-	for _, i := range info.Images {
+	for _, i := range images {
 		if img.Size <= i.Size {
 			img = i
 		}
@@ -401,20 +403,21 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artist.Name, err)
 	}
 
-	var mfs model.MediaFiles
-	for _, t := range songs {
-		mf, err := e.findMatchingTrack(ctx, t.MBID, artist.ID, t.Name)
-		if err != nil {
-			continue
-		}
-		mfs = append(mfs, *mf)
-		if len(mfs) == count {
-			break
-		}
+	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
+	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, mbidMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
+
+	log.Trace(ctx, "Top Songs loaded", "name", artist.Name, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
+	mfs := e.selectTopSongs(songs, mbidMatches, titleMatches, count)
+
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
 	} else {
@@ -424,35 +427,94 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	return mfs, nil
 }
 
-func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
-	if mbid != "" {
-		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"mbz_recording_id": mbid},
-				squirrel.Eq{"missing": false},
-			},
-		})
-		if err == nil && len(mfs) > 0 {
-			return &mfs[0], nil
+func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+	var mbids []string
+	for _, s := range songs {
+		if s.MBID != "" {
+			mbids = append(mbids, s.MBID)
 		}
-		return e.findMatchingTrack(ctx, "", artistID, title)
 	}
-	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	matches := map[string]model.MediaFile{}
+	if len(mbids) == 0 {
+		return matches, nil
+	}
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"mbz_recording_id": mbids},
+			squirrel.Eq{"missing": false},
+		},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, mf := range res {
+		if id := mf.MbzRecordingID; id != "" {
+			if _, ok := matches[id]; !ok {
+				matches[id] = mf
+			}
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, artist *auxArtist, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	titleMap := map[string]string{}
+	for _, s := range songs {
+		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		sanitized := str.SanitizeFieldForSorting(s.Name)
+		titleMap[sanitized] = s.Name
+	}
+	matches := map[string]model.MediaFile{}
+	if len(titleMap) == 0 {
+		return matches, nil
+	}
+	titleFilters := squirrel.Or{}
+	for sanitized := range titleMap {
+		titleFilters = append(titleFilters, squirrel.Like{"order_title": sanitized})
+	}
+
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Or{
-				squirrel.Eq{"artist_id": artistID},
-				squirrel.Eq{"album_artist_id": artistID},
+				squirrel.Eq{"artist_id": artist.ID},
+				squirrel.Eq{"album_artist_id": artist.ID},
 			},
-			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
+			titleFilters,
 			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
-		Max:  1,
 	})
-	if err != nil || len(mfs) == 0 {
-		return nil, model.ErrNotFound
+	if err != nil {
+		return matches, err
 	}
-	return &mfs[0], nil
+	for _, mf := range res {
+		sanitized := str.SanitizeFieldForSorting(mf.Title)
+		if _, ok := matches[sanitized]; !ok {
+			matches[sanitized] = mf
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) selectTopSongs(songs []agents.Song, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
+	var mfs model.MediaFiles
+	for _, t := range songs {
+		if len(mfs) == count {
+			break
+		}
+		if t.MBID != "" {
+			if mf, ok := byMBID[t.MBID]; ok {
+				mfs = append(mfs, mf)
+				continue
+			}
+		}
+		if mf, ok := byTitle[str.SanitizeFieldForSorting(t.Name)]; ok {
+			mfs = append(mfs, mf)
+		}
+	}
+	return mfs
 }
 
 func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {

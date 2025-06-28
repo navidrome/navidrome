@@ -55,6 +55,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"defaultLanguage":           conf.Server.DefaultLanguage,
 			"defaultUIVolume":           conf.Server.DefaultUIVolume,
 			"enableCoverAnimation":      conf.Server.EnableCoverAnimation,
+			"enableNowPlaying":          conf.Server.EnableNowPlaying,
 			"gaTrackingId":              conf.Server.GATrackingID,
 			"losslessFormats":           strings.ToUpper(strings.Join(mime.LosslessFormats, ",")),
 			"devActivityPanel":          conf.Server.DevActivityPanel,

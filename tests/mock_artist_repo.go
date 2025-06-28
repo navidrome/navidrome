@@ -94,4 +94,18 @@ func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
 	return nil
 }
 
+func (m *MockArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+	if m.Err {
+		return 0, errors.New("mock repo error")
+	}
+	return int64(len(m.Data)), nil
+}
+
+func (m *MockArtistRepo) RefreshPlayCounts() (int64, error) {
+	if m.Err {
+		return 0, errors.New("mock repo error")
+	}
+	return int64(len(m.Data)), nil
+}
+
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)

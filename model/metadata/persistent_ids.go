@@ -24,6 +24,7 @@ type hashFunc = func(...string) string
 func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec string) string {
 	var getPID func(mf model.MediaFile, md Metadata, spec string) string
 	getAttr := func(mf model.MediaFile, md Metadata, attr string) string {
+		attr = strings.TrimSpace(strings.ToLower(attr))
 		switch attr {
 		case "albumid":
 			return getPID(mf, md, conf.Server.PID.Album)

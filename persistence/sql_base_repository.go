@@ -86,6 +86,10 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 // which gives precedence to sort tags.
 // Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
 // To avoid performance issues, indexes should be created for these sort expressions
+//
+// NOTE: if an individual item has spaces, it should be wrapped in parentheses. For example,
+// you should write "(lyrics != '[]')". This prevents the item being split unexpectedly.
+// Without parentheses, "lyrics != '[]'" would be mapped as simply "lyrics"
 func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ...string) {
 	tn := r.tableName
 	if len(tableName) > 0 {
