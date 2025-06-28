@@ -83,8 +83,8 @@ func getArtistAlbumCount(a *model.Artist) int32 {
 	// primary for this calculation.
 	// Otherwise, return just the roles as album artist (precise)
 	if conf.Server.Subsonic.ArtistParticipations {
-		primaryStats := a.Stats[model.RolePrimary]
-		return int32(primaryStats.AlbumCount)
+		mainCreditStats := a.Stats[model.RoleMainCredit]
+		return int32(mainCreditStats.AlbumCount)
 	} else {
 		albumStats := a.Stats[model.RoleAlbumArtist]
 		return int32(albumStats.AlbumCount)

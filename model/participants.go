@@ -25,8 +25,8 @@ var (
 	RoleRemixer     = Role{"remixer"}
 	RoleDJMixer     = Role{"djmixer"}
 	RolePerformer   = Role{"performer"}
-	// Credit where the artist is an album artist or artist
-	RolePrimary = Role{"primary"}
+	// RoleMainCredit is a credit where the artist is an album artist or artist
+	RoleMainCredit = Role{"maincredit"}
 )
 
 var AllRoles = map[string]Role{
@@ -43,7 +43,7 @@ var AllRoles = map[string]Role{
 	RoleRemixer.role:     RoleRemixer,
 	RoleDJMixer.role:     RoleDJMixer,
 	RolePerformer.role:   RolePerformer,
-	RolePrimary.role:     RolePrimary,
+	RoleMainCredit.role:  RoleMainCredit,
 }
 
 // Role represents the role of an artist in a track or album.

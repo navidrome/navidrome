@@ -126,9 +126,9 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"size":        "stats->>'total'->>'s'",
 
 		// Stats by credits that are currently available
-		"primary_song_count":  "stats->>'primary'->>'m'",
-		"primary_album_count": "stats->>'primary'->>'a'",
-		"primary_size":        "stats->>'primary'->>'a'",
+		"maincredit_song_count":  "stats->>'maincredit'->>'m'",
+		"maincredit_album_count": "stats->>'maincredit'->>'a'",
+		"maincredit_size":        "stats->>'maincredit'->>'a'",
 	})
 	return r
 }
@@ -359,7 +359,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     ),
     artist_participant_counter AS (
         SELECT mfa.artist_id,
-            'primary' AS role,
+            'maincredit' AS role,
             count(DISTINCT mf.album_id) AS album_count,
             count(DISTINCT mf.id) AS count,
             sum(mf.size) AS size

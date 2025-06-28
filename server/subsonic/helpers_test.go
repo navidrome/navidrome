@@ -145,7 +145,7 @@ var _ = Describe("helpers", func() {
 				model.RoleAlbumArtist: {
 					AlbumCount: 3,
 				},
-				model.RolePrimary: {
+				model.RoleMainCredit: {
 					AlbumCount: 4,
 				},
 			},
