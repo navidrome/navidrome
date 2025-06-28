@@ -80,7 +80,7 @@ func sortName(sortName, orderName string) string {
 func getArtistAlbumCount(a *model.Artist) int32 {
 	// If ArtistParticipations are set, then `getArtist` will return albums
 	// where the artist is an album artist OR artist. Use the custom stat
-	// primary for this calculation.
+	// main credit for this calculation.
 	// Otherwise, return just the roles as album artist (precise)
 	if conf.Server.Subsonic.ArtistParticipations {
 		mainCreditStats := a.Stats[model.RoleMainCredit]
