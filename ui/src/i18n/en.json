@@ -124,7 +124,8 @@
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Performer |||| Performers"
+        "performer": "Performer |||| Performers",
+        "maincredit": "Album Artist or Artist |||| Album Artists or Artists"
       },
       "actions": {
         "topSongs": "Top Songs",

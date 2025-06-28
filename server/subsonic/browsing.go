@@ -397,7 +397,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	if artist.PlayCount > 0 {
 		dir.Played = artist.PlayDate
 	}
-	dir.AlbumCount = int32(artist.AlbumCount)
+	dir.AlbumCount = getArtistAlbumCount(artist)
 	dir.UserRating = int32(artist.Rating)
 	if artist.Starred {
 		dir.Starred = artist.StarredAt

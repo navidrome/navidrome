@@ -96,10 +96,10 @@ const ArtistShowLayout = (props) => {
   let perPage = 0
   let pagination = null
 
-  const count = Math.max(
-    record?.stats?.['albumartist']?.albumCount || 0,
-    record?.stats?.['artist']?.albumCount ?? 0,
-  )
+  // Use the main credit count instead of total count, as this is a precise measure
+  // of the number of albums where the artist is credited as an album artist OR
+  // artist
+  const count = record?.stats?.['maincredit']?.albumCount || 0
 
   if (count > maxPerPage) {
     perPage = Math.trunc(maxPerPage / perPageOptions[0]) * perPageOptions[0]
