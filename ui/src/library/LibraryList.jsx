@@ -8,7 +8,7 @@ import {
   NumberField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { List, DateField } from '../common'
+import { List, DateField, useResourceRefresh } from '../common'
 
 const LibraryFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -18,6 +18,7 @@ const LibraryFilter = (props) => (
 
 const LibraryList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  useResourceRefresh()
 
   return (
     <List
