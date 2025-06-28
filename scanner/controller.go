@@ -216,7 +216,6 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 
 	// Prepare the context for the scan
 	ctx := request.AddValues(s.rootCtx, requestCtx)
-	ctx = events.BroadcastToAll(ctx)
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
 	// Send the initial scan status event
@@ -236,7 +235,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
 		log.Debug(ctx, "Library changes imported. Sending refresh event")
-		s.broker.SendMessage(ctx, &events.RefreshResource{})
+		s.broker.SendBroadcastMessage(ctx, &events.RefreshResource{})
 	}
 	// Send the final scan status event, with totals
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
@@ -315,5 +314,5 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 }
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
-	s.broker.SendMessage(ctx, status)
+	s.broker.SendBroadcastMessage(ctx, status)
 }
