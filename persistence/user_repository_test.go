@@ -272,31 +272,6 @@ var _ = Describe("UserRepository", func() {
 			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 		})
 
-		Describe("AddUserLibrary", func() {
-			It("adds a library association for a user", func() {
-				err := repo.AddUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-
-				libraries, err := repo.GetUserLibraries(userID)
-				Expect(err).To(BeNil())
-				Expect(libraries).To(HaveLen(1))
-				Expect(libraries[0].ID).To(Equal(library1.ID))
-			})
-
-			It("does not create duplicate associations", func() {
-				err := repo.AddUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-
-				// Add the same association again
-				err = repo.AddUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-
-				libraries, err := repo.GetUserLibraries(userID)
-				Expect(err).To(BeNil())
-				Expect(libraries).To(HaveLen(1))
-			})
-		})
-
 		Describe("GetUserLibraries", func() {
 			It("returns empty list when user has no library associations", func() {
 				libraries, err := repo.GetUserLibraries("non-existent-user")
@@ -305,9 +280,7 @@ var _ = Describe("UserRepository", func() {
 			})
 
 			It("returns user's associated libraries", func() {
-				err := repo.AddUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-				err = repo.AddUserLibrary(userID, library2.ID)
+				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
 				Expect(err).To(BeNil())
 
 				libraries, err := repo.GetUserLibraries(userID)
@@ -352,32 +325,6 @@ var _ = Describe("UserRepository", func() {
 
 				// Remove all
 				err = repo.SetUserLibraries(userID, []int{})
-				Expect(err).To(BeNil())
-
-				libraries, err := repo.GetUserLibraries(userID)
-				Expect(err).To(BeNil())
-				Expect(libraries).To(HaveLen(0))
-			})
-		})
-
-		Describe("RemoveUserLibrary", func() {
-			It("removes a library association", func() {
-				err := repo.AddUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-				err = repo.AddUserLibrary(userID, library2.ID)
-				Expect(err).To(BeNil())
-
-				err = repo.RemoveUserLibrary(userID, library1.ID)
-				Expect(err).To(BeNil())
-
-				libraries, err := repo.GetUserLibraries(userID)
-				Expect(err).To(BeNil())
-				Expect(libraries).To(HaveLen(1))
-				Expect(libraries[0].ID).To(Equal(library2.ID))
-			})
-
-			It("does nothing when association doesn't exist", func() {
-				err := repo.RemoveUserLibrary(userID, library1.ID)
 				Expect(err).To(BeNil())
 
 				libraries, err := repo.GetUserLibraries(userID)

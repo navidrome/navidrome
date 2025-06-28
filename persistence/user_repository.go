@@ -458,24 +458,6 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (r *userRepository) AddUserLibrary(userID string, libraryID int) error {
-	insert := Insert("user_library").
-		Columns("user_id", "library_id").
-		Values(userID, libraryID).
-		Suffix("ON CONFLICT (user_id, library_id) DO NOTHING")
-	_, err := r.executeSQL(insert)
-	return err
-}
-
-func (r *userRepository) RemoveUserLibrary(userID string, libraryID int) error {
-	del := Delete("user_library").Where(And{
-		Eq{"user_id": userID},
-		Eq{"library_id": libraryID},
-	})
-	_, err := r.executeSQL(del)
-	return err
-}
-
 var _ model.UserRepository = (*userRepository)(nil)
 var _ rest.Repository = (*userRepository)(nil)
 var _ rest.Persistable = (*userRepository)(nil)
