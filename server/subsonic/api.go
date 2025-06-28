@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
@@ -43,11 +44,13 @@ type Router struct {
 	scrobbler scrobbler.PlayTracker
 	share     core.Share
 	playback  playback.PlaybackServer
+	metrics   metrics.Metrics
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
+	metrics metrics.Metrics,
 ) *Router {
 	r := &Router{
 		ds:        ds,
@@ -62,6 +65,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 		scrobbler: scrobbler,
 		share:     share,
 		playback:  playback,
+		metrics:   metrics,
 	}
 	r.Handler = r.routes()
 	return r
@@ -69,6 +73,11 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
+
+	if conf.Server.Prometheus.Enabled {
+		r.Use(recordStats(api.metrics))
+	}
+
 	r.Use(postFormToQueryParams)
 
 	// Public
@@ -223,7 +232,7 @@ func h(r chi.Router, path string, f handler) {
 	})
 }
 
-// Add a Subsonic handler that requires a http.ResponseWriter (ex: stream, getCoverArt...)
+// Add a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)

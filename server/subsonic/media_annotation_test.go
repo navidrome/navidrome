@@ -27,7 +27,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil)
 	})
 
 	Describe("Scrobble", func() {

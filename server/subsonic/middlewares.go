@@ -11,12 +11,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	ua "github.com/mileusna/useragent"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -221,4 +224,24 @@ func playerIDFromCookie(r *http.Request, userName string) string {
 func playerIDCookieName(userName string) string {
 	cookieName := fmt.Sprintf("nd-player-%x", userName)
 	return cookieName
+}
+
+func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			start := time.Now()
+			defer func() {
+				// We want to get the client name (even if not present for certain endpoints)
+				p := req.Params(r)
+				client, _ := p.String("c")
+
+				metrics.RecordRequest(r.Context(), strings.Replace(r.URL.Path, ".view", "", 1), r.Method, client, ww.Status(), time.Since(start).Milliseconds())
+			}()
+
+			next.ServeHTTP(ww, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }
