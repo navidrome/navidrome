@@ -145,7 +145,7 @@ var _ = Describe("helpers", func() {
 				model.RoleAlbumArtist: {
 					AlbumCount: 3,
 				},
-				model.RoleArtist: {
+				model.RoleMainCredit: {
 					AlbumCount: 4,
 				},
 			},
@@ -153,13 +153,13 @@ var _ = Describe("helpers", func() {
 
 		It("Handles album count without artist participations", func() {
 			conf.Server.Subsonic.ArtistParticipations = false
-			result := getArtistAlbumCount(artist)
+			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(3)))
 		})
 
 		It("Handles album count without with participations", func() {
 			conf.Server.Subsonic.ArtistParticipations = true
-			result := getArtistAlbumCount(artist)
+			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(4)))
 		})
 	})

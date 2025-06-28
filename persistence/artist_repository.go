@@ -124,6 +124,11 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"song_count":  "stats->>'total'->>'m'",
 		"album_count": "stats->>'total'->>'a'",
 		"size":        "stats->>'total'->>'s'",
+
+		// Stats by credits that are currently available
+		"maincredit_song_count":  "stats->>'maincredit'->>'m'",
+		"maincredit_album_count": "stats->>'maincredit'->>'a'",
+		"maincredit_size":        "stats->>'maincredit'->>'a'",
 	})
 	return r
 }
@@ -348,13 +353,27 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
                sum(mf.size) AS size
         FROM media_file_artists mfa
         JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (TOTAL_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY mfa.artist_id
+    ),
+    artist_participant_counter AS (
+        SELECT mfa.artist_id,
+            'maincredit' AS role,
+            count(DISTINCT mf.album_id) AS album_count,
+            count(DISTINCT mf.id) AS count,
+            sum(mf.size) AS size
+        FROM media_file_artists mfa
+        JOIN media_file mf ON mfa.media_file_id = mf.id
+        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        AND mfa.role IN ('albumartist', 'artist')
         GROUP BY mfa.artist_id
     ),
     combined_counters AS (
         SELECT artist_id, role, album_count, count, size FROM artist_role_counters
         UNION
         SELECT artist_id, role, album_count, count, size FROM artist_total_counters
+        UNION
+        SELECT artist_id, role, album_count, count, size FROM artist_participant_counter
     ),
     artist_counters AS (
         SELECT artist_id AS id,
@@ -368,7 +387,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     UPDATE artist
     SET stats = coalesce((SELECT counters FROM artist_counters ac WHERE ac.id = artist.id), '{}'),
        updated_at = datetime(current_timestamp, 'localtime')
-    WHERE artist.id IN (UPDATE_IDS_PLACEHOLDER) AND artist.id <> '';` // Will replace with actual placeholders
+    WHERE artist.id IN (ROLE_IDS_PLACEHOLDER) AND artist.id <> '';` // Will replace with actual placeholders
 
 	var totalRowsAffected int64 = 0
 	const batchSize = 1000
@@ -387,21 +406,16 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		inClause := strings.Join(placeholders, ",")
 
 		// Replace the placeholder markers with actual SQL placeholders
-		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 1)
-		batchSQL = strings.Replace(batchSQL, "TOTAL_IDS_PLACEHOLDER", inClause, 1)
-		batchSQL = strings.Replace(batchSQL, "UPDATE_IDS_PLACEHOLDER", inClause, 1)
+		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 4)
 
-		// Create a single parameter array with all IDs (repeated 3 times for each IN clause)
-		// We need to repeat each ID 3 times (once for each IN clause)
-		var args []interface{}
-		for _, id := range artistIDBatch {
-			args = append(args, id) // For ROLE_IDS_PLACEHOLDER
-		}
-		for _, id := range artistIDBatch {
-			args = append(args, id) // For TOTAL_IDS_PLACEHOLDER
-		}
-		for _, id := range artistIDBatch {
-			args = append(args, id) // For UPDATE_IDS_PLACEHOLDER
+		// Create a single parameter array with all IDs (repeated 4 times for each IN clause)
+		// We need to repeat each ID 4 times (once for each IN clause)
+		args := make([]any, 4*len(artistIDBatch))
+		for idx, id := range artistIDBatch {
+			for i := range 4 {
+				startIdx := i * len(artistIDBatch)
+				args[startIdx+idx] = id
+			}
 		}
 
 		// Now use Expr with the expanded SQL and all parameters
