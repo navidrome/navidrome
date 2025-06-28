@@ -40,7 +40,7 @@ var allProviders = wire.NewSet(
 	scanner.New,
 	scanner.NewWatcher,
 	plugins.GetManager,
-	metrics.NewPrometheusInstance,
+	metrics.GetPrometheusInstance,
 	db.Db,
 	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
