@@ -74,12 +74,18 @@ const LibrarySelector = () => {
   const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
   const [open, setOpen] = useState(false)
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now())
 
   const { userLibraries, selectedLibraries } = useSelector(
     (state) => state.library,
   )
 
-  // Load user's libraries when component mounts
+  // Watch for refresh events to reload libraries
+  const refreshData = useSelector(
+    (state) => state.activity?.refresh || { lastReceived: lastRefreshTime },
+  )
+
+  // Load user's libraries when component mounts or when refresh events occur
   useEffect(() => {
     const loadUserLibraries = async () => {
       // Get userId from localStorage (not from identity which returns username)
@@ -101,6 +107,43 @@ const LibrarySelector = () => {
 
     loadUserLibraries()
   }, [dataProvider, dispatch])
+
+  // Watch for refresh events and reload libraries when they occur
+  useEffect(() => {
+    const { resources, lastReceived } = refreshData
+    
+    if (lastReceived <= lastRefreshTime) {
+      return
+    }
+
+    const shouldReload = resources && 
+      (resources['*'] === '*' || 
+       resources.library || 
+       resources.user)
+
+    if (shouldReload) {
+      setLastRefreshTime(lastReceived)
+      
+      const loadUserLibraries = async () => {
+        const userId = localStorage.getItem('userId')
+        if (userId) {
+          try {
+            const { data } = await dataProvider.getOne('user', { id: userId })
+            const libraries = data.libraries || []
+            dispatch(setUserLibraries(libraries))
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              'Could not reload user libraries after refresh event:',
+              error,
+            )
+          }
+        }
+      }
+      
+      loadUserLibraries()
+    }
+  }, [dataProvider, dispatch, refreshData, lastRefreshTime])
 
   // Don't render if user has no libraries or only has one library
   if (!userLibraries.length || userLibraries.length === 1) {
