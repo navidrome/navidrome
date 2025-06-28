@@ -28,6 +28,7 @@ navidrome-*
 AGENTS.md
 .github/instructions
 .github/prompts
+.github/git-commit-instructions.md
 *.exe
 *.test
 *.wasm

@@ -123,19 +123,3 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 	u.UserLibraries[userID] = libraryIDs
 	return nil
 }
-
-func (u *MockedUserRepo) AddUserLibrary(userID string, libraryID int) error {
-	if u.Error != nil {
-		return u.Error
-	}
-	// Mock: do nothing for now
-	return nil
-}
-
-func (u *MockedUserRepo) RemoveUserLibrary(userID string, libraryID int) error {
-	if u.Error != nil {
-		return u.Error
-	}
-	// Mock: do nothing for now
-	return nil
-}
