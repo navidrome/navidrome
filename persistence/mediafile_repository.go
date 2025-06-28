@@ -93,6 +93,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
+		"library_id": libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
@@ -106,6 +107,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
+	query = r.applyLibraryFilter(query)
 	return r.count(query, options...)
 }
 
@@ -124,10 +126,11 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path").
+	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
-	return r.withBookmark(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
@@ -263,7 +266,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
-	sel := r.newSelect().Columns("media_file.*", "library.path as library_path").
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id").
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
@@ -284,9 +287,9 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	}, nil
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
+func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.MediaFiles, error) {
 	results := dbMediaFiles{}
-	err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &results, "title")
+	err := r.doSearch(r.selectMediaFile(options...), q, offset, size, includeMissing, &results, "title")
 	if err != nil {
 		return nil, err
 	}

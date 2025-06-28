@@ -16,8 +16,9 @@ func CreateMockArtistRepo() *MockArtistRepo {
 
 type MockArtistRepo struct {
 	model.ArtistRepository
-	Data map[string]*model.Artist
-	Err  bool
+	Data    map[string]*model.Artist
+	Err     bool
+	Options model.QueryOptions
 }
 
 func (m *MockArtistRepo) SetError(err bool) {
@@ -73,6 +74,9 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 }
 
 func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
 	if m.Err {
 		return nil, errors.New("mock repo error")
 	}
@@ -106,6 +110,51 @@ func (m *MockArtistRepo) RefreshPlayCounts() (int64, error) {
 		return 0, errors.New("mock repo error")
 	}
 	return int64(len(m.Data)), nil
+}
+
+func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
+	if m.Err {
+		return nil, errors.New("mock repo error")
+	}
+
+	artists, err := m.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// For mock purposes, if no artists available, return empty result
+	if len(artists) == 0 {
+		return model.ArtistIndexes{}, nil
+	}
+
+	// Simple index grouping by first letter (simplified implementation for mocks)
+	indexMap := make(map[string]model.Artists)
+	for _, artist := range artists {
+		key := "#"
+		if len(artist.Name) > 0 {
+			key = string(artist.Name[0])
+		}
+		indexMap[key] = append(indexMap[key], artist)
+	}
+
+	var result model.ArtistIndexes
+	for k, artists := range indexMap {
+		result = append(result, model.ArtistIndex{ID: k, Artists: artists})
+	}
+
+	return result, nil
+}
+
+func (m *MockArtistRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("unexpected error")
+	}
+	// Simple mock implementation - just return all artists for testing
+	allArtists, err := m.GetAll()
+	return allArtists, err
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)

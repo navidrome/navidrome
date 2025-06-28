@@ -61,8 +61,9 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Columns("folder.*", "library.path as library_path").
+	sql := r.newSelect(options...).Columns("folder.*", "library.path as library_path").
 		Join("library on library.id = folder.library_id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r folderRepository) Get(id string) (*model.Folder, error) {
@@ -85,8 +86,9 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, err
 }
 
 func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
-	sq := r.newSelect(opt...).Columns("count(*)")
-	return r.count(sq)
+	query := r.newSelect(opt...).Columns("count(*)")
+	query = r.applyLibraryFilter(query)
+	return r.count(query)
 }
 
 func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]model.FolderUpdateInfo, error) {

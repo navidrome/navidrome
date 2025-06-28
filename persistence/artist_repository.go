@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,11 +113,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter(r.tableName),
-		"starred": booleanFilter,
-		"role":    roleFilter,
-		"missing": booleanFilter,
+		"id":         idFilter(r.tableName),
+		"name":       fullTextFilter(r.tableName),
+		"starred":    booleanFilter,
+		"role":       roleFilter,
+		"missing":    booleanFilter,
+		"library_id": r.artistLibraryFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -142,20 +144,85 @@ func roleFilter(_ string, role any) Sqlizer {
 	return Eq{"1": 2}
 }
 
+// artistLibraryFilter handles filtering artists by library_id through the library_artist junction table
+// It checks the logged-in user's permissions and returns a Sqlizer that can be used in a query.
+// If the user is an admin, it returns a condition that always evaluates to true.
+// If the value is nil, it uses the user's accessible library IDs.
+func (r *artistRepository) artistLibraryFilter(_ string, value any) Sqlizer {
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return Eq{"1": 1} // Always true, no filtering needed
+	}
+
+	var accessibleLibraryIDs []int
+	if value == nil {
+		accessibleLibraryIDs = user.AccessibleLibraryIDs()
+	} else {
+		// Convert various input types to []int
+		var libIds []int
+		switch v := value.(type) {
+		case []int:
+			libIds = v
+		case []string:
+			for _, str := range v {
+				if id, err := strconv.Atoi(str); err == nil {
+					libIds = append(libIds, id)
+				}
+			}
+		case int:
+			libIds = []int{v}
+		case string:
+			if id, err := strconv.Atoi(v); err == nil {
+				libIds = []int{id}
+			}
+		}
+
+		accessibleLibraryIDs = user.FilteredLibraries(libIds).IDs()
+		if len(accessibleLibraryIDs) == 0 {
+			// User has no library access - return empty result set
+			return Eq{"1": "0"}
+		}
+	}
+
+	// Use a subquery to find artists that belong to the specified library
+	subquery := Select("1").From("library_artist la").Where(And{
+		Expr("la.artist_id = artist.id"),
+		Eq{"la.library_id": accessibleLibraryIDs},
+	})
+	return Expr("EXISTS (?)", subquery)
+}
+
+// applyArtistLibraryFilter adds library filtering based on user permissions for artists
+// This ensures users only see artists from libraries they have access to
+func (r *artistRepository) applyArtistLibraryFilter(sq SelectBuilder) SelectBuilder {
+	// Use existing artistLibraryFilter with the user's accessible library IDs
+	libFilter := r.artistLibraryFilter("library_id", nil)
+	return sq.Where(libFilter)
+}
+
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	query := r.newSelect(options...).Columns("artist.*")
 	query = r.withAnnotation(query, "artist.id")
-	return query
+	return r.applyArtistLibraryFilter(query)
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "artist.id")
+	query = r.applyArtistLibraryFilter(query)
 	return r.count(query, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"artist.id": id})
+	// Check if artist exists AND user has access to it via library permissions
+	condition := And{
+		Eq{"artist.id": id},
+		r.artistLibraryFilter("library_id", nil),
+	}
+
+	return r.exists(condition)
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
@@ -212,8 +279,15 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 	return "#"
 }
 
-// TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (model.ArtistIndexes, error) {
+// GetIndex returns a list of artists grouped by the first letter of their name, or by the index group if configured.
+// It can filter by roles and libraries, and optionally include artists that are missing (i.e., have no albums).
+// TODO Cache the index (recalculate at scan time)
+func (r *artistRepository) GetIndex(includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
+	// Validate library IDs. If no library IDs are provided, return an empty index.
+	if len(libraryIds) == 0 {
+		return nil, nil
+	}
+
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
@@ -228,10 +302,19 @@ func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (m
 			options.Filters = And{options.Filters, Eq{"artist.missing": false}}
 		}
 	}
+
+	libFilter := r.artistLibraryFilter("library_id", libraryIds)
+	if options.Filters == nil {
+		options.Filters = libFilter
+	} else {
+		options.Filters = And{options.Filters, libFilter}
+	}
+
 	artists, err := r.GetAll(options)
 	if err != nil {
 		return nil, err
 	}
+
 	var result model.ArtistIndexes
 	for k, v := range slice.Group(artists, r.getIndexKey) {
 		result = append(result, model.ArtistIndex{ID: k, Artists: v})
@@ -432,9 +515,9 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
+func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(r.selectArtist(), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
+	err := r.doSearch(r.selectArtist(options...), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
 	if err != nil {
 		return nil, err
 	}

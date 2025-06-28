@@ -379,6 +379,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 }
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
+	sel = r.applyLibraryFilter(sel, "f")
 	tracksQuery := sel.
 		Columns(
 			"coalesce(starred, 0) as starred",
@@ -389,6 +390,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			"f.*",
 			"playlist_tracks.*",
 			"library.path as library_path",
+			"library.name as library_name",
 		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +

@@ -13,8 +13,8 @@ type eventCtxKey string
 
 const broadcastToAllKey eventCtxKey = "broadcastToAll"
 
-// BroadcastToAll is a context key that can be used to broadcast an event to all clients
-func BroadcastToAll(ctx context.Context) context.Context {
+// broadcastToAll is a context key that can be used to broadcast an event to all clients
+func broadcastToAll(ctx context.Context) context.Context {
 	return context.WithValue(ctx, broadcastToAllKey, true)
 }
 
