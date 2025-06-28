@@ -122,8 +122,7 @@ func startServer(ctx context.Context) func() error {
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails
-			ds := CreateDataStore()
-			p.WriteInitialMetrics(ctx, ds)
+			p.WriteInitialMetrics(ctx)
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {

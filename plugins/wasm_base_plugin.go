@@ -12,6 +12,18 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 )
 
+// newWasmBasePlugin creates a new instance of wasmBasePlugin with the required parameters.
+func newWasmBasePlugin[S any, P any](wasmPath, id, capability string, m metrics.Metrics, loader P, loadFunc loaderFunc[S, P]) *wasmBasePlugin[S, P] {
+	return &wasmBasePlugin[S, P]{
+		wasmPath:   wasmPath,
+		id:         id,
+		capability: capability,
+		loader:     loader,
+		loadFunc:   loadFunc,
+		metrics:    m,
+	}
+}
+
 // LoaderFunc is a generic function type that loads a plugin instance.
 type loaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (S, error)
 
@@ -23,6 +35,7 @@ type wasmBasePlugin[S any, P any] struct {
 	capability string
 	loader     P
 	loadFunc   loaderFunc[S, P]
+	metrics    metrics.Metrics
 }
 
 func (w *wasmBasePlugin[S, P]) PluginID() string {
@@ -35,6 +48,10 @@ func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), er
 
 func (w *wasmBasePlugin[S, P]) serviceName() string {
 	return w.id + "_" + w.capability
+}
+
+func (w *wasmBasePlugin[S, P]) getMetrics() metrics.Metrics {
+	return w.metrics
 }
 
 // getInstance loads a new plugin instance and returns a cleanup function.
@@ -60,8 +77,9 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 }
 
 type wasmPlugin[S any] interface {
-	getInstance(ctx context.Context, methodName string) (S, func(), error)
 	PluginID() string
+	getInstance(ctx context.Context, methodName string) (S, func(), error)
+	getMetrics() metrics.Metrics
 }
 
 type errorMapper interface {
@@ -88,7 +106,10 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 		if !errors.Is(mappedErr, agents.ErrNotFound) {
 			id := w.PluginID()
 			isOk := mappedErr == nil
-			metrics.GetPrometheusInstance().RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
+			metrics := w.getMetrics()
+			if metrics != nil {
+				metrics.RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
+			}
 			log.Trace(ctx, "callMethod", "plugin", id, "method", methodName, "ok", isOk, elapsed)
 		}
 

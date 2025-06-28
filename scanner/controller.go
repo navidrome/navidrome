@@ -222,11 +222,11 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	}
 	// Send the final scan status event, with totals
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
-		s.metrics.WriteAfterScanMetrics(ctx, s.ds, false)
+		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return scanWarnings, err
 	} else {
 		scanType, elapsed, lastErr := s.getScanInfo(ctx)
-		s.metrics.WriteAfterScanMetrics(ctx, s.ds, true)
+		s.metrics.WriteAfterScanMetrics(ctx, true)
 		s.sendMessage(ctx, &events.ScanStatus{
 			Scanning:    false,
 			Count:       count,

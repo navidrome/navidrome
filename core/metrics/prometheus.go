@@ -18,22 +18,24 @@ import (
 )
 
 type Metrics interface {
-	WriteInitialMetrics(ctx context.Context, ds model.DataStore)
-	WriteAfterScanMetrics(ctx context.Context, ds model.DataStore, success bool)
+	WriteInitialMetrics(ctx context.Context)
+	WriteAfterScanMetrics(ctx context.Context, success bool)
 	RecordRequest(ctx context.Context, endpoint, method, client string, status int, elapsed int64)
 	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
 	GetHandler() http.Handler
 }
 
-type metrics struct{}
+type metrics struct {
+	ds model.DataStore
+}
 
-func GetPrometheusInstance() Metrics {
+func GetPrometheusInstance(ds model.DataStore) Metrics {
 	if !conf.Server.Prometheus.Enabled {
 		return noopMetrics{}
 	}
 
 	return singleton.GetInstance(func() *metrics {
-		return &metrics{}
+		return &metrics{ds: ds}
 	})
 }
 
@@ -41,20 +43,20 @@ func NewNoopInstance() Metrics {
 	return noopMetrics{}
 }
 
-func (m *metrics) WriteInitialMetrics(ctx context.Context, ds model.DataStore) {
+func (m *metrics) WriteInitialMetrics(ctx context.Context) {
 	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
-	processSqlAggregateMetrics(ctx, ds, getPrometheusMetrics().dbTotal)
+	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
 }
 
-func (m *metrics) WriteAfterScanMetrics(ctx context.Context, ds model.DataStore, success bool) {
-	processSqlAggregateMetrics(ctx, ds, getPrometheusMetrics().dbTotal)
+func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
+	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
 
 	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
 	getPrometheusMetrics().lastMediaScan.With(scanLabels).SetToCurrentTime()
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
 }
 
-func (m *metrics) RecordRequest(ctx context.Context, endpoint, method, client string, status int, elapsed int64) {
+func (m *metrics) RecordRequest(_ context.Context, endpoint, method, client string, status int, elapsed int64) {
 	httpLabel := prometheus.Labels{
 		"endpoint": endpoint,
 		"method":   method,
@@ -71,7 +73,7 @@ func (m *metrics) RecordRequest(ctx context.Context, endpoint, method, client st
 	getPrometheusMetrics().httpRequestDuration.With(httpLatencyLabel).Observe(float64(elapsed))
 }
 
-func (m *metrics) RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64) {
+func (m *metrics) RecordPluginRequest(_ context.Context, plugin, method string, ok bool, elapsed int64) {
 	pluginLabel := prometheus.Labels{
 		"plugin": plugin,
 		"method": method,
@@ -227,9 +229,9 @@ func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetG
 type noopMetrics struct {
 }
 
-func (n noopMetrics) WriteInitialMetrics(context.Context, model.DataStore) {}
+func (n noopMetrics) WriteInitialMetrics(context.Context) {}
 
-func (n noopMetrics) WriteAfterScanMetrics(context.Context, model.DataStore, bool) {}
+func (n noopMetrics) WriteAfterScanMetrics(context.Context, bool) {}
 
 func (n noopMetrics) RecordRequest(context.Context, string, string, string, int, int64) {}
 

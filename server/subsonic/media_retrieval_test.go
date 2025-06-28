@@ -33,7 +33,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
