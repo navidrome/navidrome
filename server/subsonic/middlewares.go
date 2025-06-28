@@ -237,7 +237,7 @@ func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 				p := req.Params(r)
 				client, _ := p.String("c")
 
-				metrics.RecordRequest(r.Context(), r.URL.Path, r.Method, client, ww.Status(), time.Since(start).Milliseconds())
+				metrics.RecordRequest(r.Context(), strings.Replace(r.URL.Path, ".view", "", 1), r.Method, client, ww.Status(), time.Since(start).Milliseconds())
 			}()
 
 			next.ServeHTTP(ww, r)
