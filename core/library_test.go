@@ -3,6 +3,7 @@ package core_test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,6 +31,7 @@ var _ = Describe("Library Service", func() {
 	var tempDir string
 	var scanner *mockScanner
 	var watcherManager *mockWatcherManager
+	var broker *mockEventBroker
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -45,7 +48,9 @@ var _ = Describe("Library Service", func() {
 		watcherManager = &mockWatcherManager{
 			libraryStates: make(map[int]model.Library),
 		}
-		service = core.NewLibrary(ds, scanner, watcherManager)
+		// Create a mock event broker
+		broker = &mockEventBroker{}
+		service = core.NewLibrary(ds, scanner, watcherManager, broker)
 		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
@@ -816,6 +821,51 @@ var _ = Describe("Library Service", func() {
 			})
 		})
 	})
+
+	Describe("Event Broadcasting", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
+			// Clear any events from broker
+			broker.Events = []events.Event{}
+		})
+
+		It("sends refresh event when creating a library", func() {
+			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+
+			_, err := repo.Save(library)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(broker.Events).To(HaveLen(1))
+		})
+
+		It("sends refresh event when updating a library", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
+			err := repo.Update("1", library)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(broker.Events).To(HaveLen(1))
+		})
+
+		It("sends refresh event when deleting a library", func() {
+			// First create a library
+			libraryRepo.SetData(model.Libraries{
+				{ID: 2, Name: "Library to Delete", Path: tempDir},
+			})
+
+			err := repo.Delete("2")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(broker.Events).To(HaveLen(1))
+		})
+	})
 })
 
 // mockScanner provides a simple mock implementation of core.Scanner for testing
@@ -908,4 +958,23 @@ func (m *mockWatcherManager) simulateExistingLibrary(lib model.Library) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.libraryStates[lib.ID] = lib
+}
+
+// mockEventBroker provides a mock implementation of events.Broker for testing
+type mockEventBroker struct {
+	http.Handler
+	Events []events.Event
+	mu     sync.RWMutex
+}
+
+func (m *mockEventBroker) SendMessage(ctx context.Context, event events.Event) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Events = append(m.Events, event)
+}
+
+func (m *mockEventBroker) SendBroadcastMessage(ctx context.Context, event events.Event) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Events = append(m.Events, event)
 }

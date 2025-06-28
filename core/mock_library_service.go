@@ -18,7 +18,7 @@ type MockLibraryService struct {
 	Libraries model.Libraries
 }
 
-// NewMockLibraryService creates a new mock library service with some default test data
+// NewMockLibraryService creates a new mock library service for testing
 func NewMockLibraryService() *MockLibraryService {
 	return &MockLibraryService{
 		Libraries: model.Libraries{
