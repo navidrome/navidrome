@@ -149,15 +149,6 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	//gr := NewGenreRepository(ctx, conn)
-	//for i := range testGenres {
-	//	g := testGenres[i]
-	//	err := gr.Put(&g)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
-
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
 		a := testAlbums[i]
