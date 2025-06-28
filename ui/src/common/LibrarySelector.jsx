@@ -105,7 +105,7 @@ const LibrarySelector = () => {
 
   // Reload user libraries when library changes occur
   useRefreshOnEvents({
-    events: ['library'],
+    events: ['library', 'user'],
     onRefresh: loadUserLibraries,
   })
 
