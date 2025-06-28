@@ -20,6 +20,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -39,7 +40,7 @@ const (
 )
 
 // pluginCreators maps capability types to their respective creator functions
-type pluginConstructor func(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
+type pluginConstructor func(wasmPath, pluginID string, m *Manager, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
 	CapabilityMetadataAgent:     newWasmMediaAgent,
@@ -95,21 +96,23 @@ type Manager struct {
 	lifecycle        *pluginLifecycleManager        // Manages plugin lifecycle and initialization
 	adapters         map[string]WasmPlugin          // Map of plugin folder name + capability to adapter
 	ds               model.DataStore                // DataStore for accessing persistent data
+	metrics          metrics.Metrics
 }
 
 // GetManager returns the singleton instance of Manager
-func GetManager(ds model.DataStore) *Manager {
+func GetManager(ds model.DataStore, metrics metrics.Metrics) *Manager {
 	return singleton.GetInstance(func() *Manager {
-		return createManager(ds)
+		return createManager(ds, metrics)
 	})
 }
 
 // createManager creates a new Manager instance. Used in tests
-func createManager(ds model.DataStore) *Manager {
+func createManager(ds model.DataStore, metrics metrics.Metrics) *Manager {
 	m := &Manager{
 		plugins:   make(map[string]*plugin),
 		lifecycle: newPluginLifecycleManager(),
 		ds:        ds,
+		metrics:   metrics,
 	}
 
 	// Create the host services
@@ -174,7 +177,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 			}
 			continue
 		}
-		adapter := constructor(wasmPath, pluginID, customRuntime, mc)
+		adapter := constructor(wasmPath, pluginID, m, customRuntime, mc)
 		if adapter == nil {
 			log.Error("Failed to create plugin adapter", "plugin", pluginID, "capability", capabilityStr, "path", wasmPath)
 			continue

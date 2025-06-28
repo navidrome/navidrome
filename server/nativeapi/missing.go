@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -89,6 +90,17 @@ func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Refresh artist stats in background after deleting missing files
+	go func() {
+		bgCtx := request.AddValues(context.Background(), r.Context())
+		if _, err := ds.Artist(bgCtx).RefreshStats(true); err != nil {
+			log.Error(bgCtx, "Error refreshing artist stats after deleting missing files", err)
+		} else {
+			log.Debug(bgCtx, "Successfully refreshed artist stats after deleting missing files")
+		}
+	}()
+
 	writeDeleteManyResponse(w, r, ids)
 }
 

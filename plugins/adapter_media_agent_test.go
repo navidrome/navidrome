@@ -23,7 +23,7 @@ var _ = Describe("Adapter Media Agent", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Folder = testDataDir
 
-		mgr = createManager(nil)
+		mgr = createManager(nil, nil)
 		mgr.ScanPlugins()
 	})
 

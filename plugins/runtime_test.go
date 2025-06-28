@@ -40,7 +40,7 @@ var _ = Describe("CachingRuntime", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		mgr = createManager(nil)
+		mgr = createManager(nil, nil)
 		// Add permissions for the test plugin using typed struct
 		permissions := schema.PluginManifestPermissions{
 			Http: &schema.PluginManifestPermissionsHttp{
@@ -58,6 +58,7 @@ var _ = Describe("CachingRuntime", func() {
 		plugin = newWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",
+			mgr,
 			rtFunc,
 			wazero.NewModuleConfig().WithStartFunctions("_initialize"),
 		).(*wasmScrobblerPlugin)
