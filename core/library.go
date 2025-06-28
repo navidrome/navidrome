@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 )
 
 // Scanner interface for triggering scans
@@ -43,14 +44,16 @@ type libraryService struct {
 	ds      model.DataStore
 	scanner Scanner
 	watcher Watcher
+	broker  events.Broker
 }
 
 // NewLibrary creates a new Library service
-func NewLibrary(ds model.DataStore, scanner Scanner, watcher Watcher) Library {
+func NewLibrary(ds model.DataStore, scanner Scanner, watcher Watcher, broker events.Broker) Library {
 	return &libraryService{
 		ds:      ds,
 		scanner: scanner,
 		watcher: watcher,
+		broker:  broker,
 	}
 }
 
@@ -130,6 +133,7 @@ func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
 		ds:                s.ds,
 		scanner:           s.scanner,
 		watcher:           s.watcher,
+		broker:            s.broker,
 	}
 	return wrapper
 }
@@ -141,6 +145,7 @@ type libraryRepositoryWrapper struct {
 	ds      model.DataStore
 	scanner Scanner
 	watcher Watcher
+	broker  events.Broker
 }
 
 func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
@@ -163,6 +168,13 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 
 	if r.scanner != nil {
 		go r.triggerScan(lib, "new")
+	}
+
+	// Send library refresh event to all clients
+	if r.broker != nil {
+		event := &events.RefreshResource{}
+		r.broker.SendBroadcastMessage(r.ctx, event.With("library", strconv.Itoa(lib.ID)))
+		log.Debug(r.ctx, "Library created - sent refresh event", "libraryID", lib.ID, "name", lib.Name)
 	}
 
 	return strconv.Itoa(lib.ID), nil
@@ -206,6 +218,13 @@ func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ..
 		}
 	}
 
+	// Send library refresh event to all clients
+	if r.broker != nil {
+		event := &events.RefreshResource{}
+		r.broker.SendBroadcastMessage(r.ctx, event.With("library", id))
+		log.Debug(r.ctx, "Library updated - sent refresh event", "libraryID", libID, "name", lib.Name)
+	}
+
 	return nil
 }
 
@@ -237,6 +256,13 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 
 	if r.scanner != nil {
 		go r.triggerScan(lib, "deleted")
+	}
+
+	// Send library refresh event to all clients
+	if r.broker != nil {
+		event := &events.RefreshResource{}
+		r.broker.SendBroadcastMessage(r.ctx, event.With("library", id))
+		log.Debug(r.ctx, "Library deleted - sent refresh event", "libraryID", libID, "name", lib.Name)
 	}
 
 	return nil
