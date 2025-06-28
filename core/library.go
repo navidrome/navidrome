@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // Scanner interface for triggering scans
@@ -92,7 +93,18 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 		}
 	}
 
-	return s.ds.User(ctx).SetUserLibraries(userID, libraryIDs)
+	// Set user libraries
+	err = s.ds.User(ctx).SetUserLibraries(userID, libraryIDs)
+	if err != nil {
+		return fmt.Errorf("error setting user libraries: %w", err)
+	}
+
+	// Send refresh event to all clients
+	event := &events.RefreshResource{}
+	libIDs := slice.Map(libraryIDs, func(id int) string { return strconv.Itoa(id) })
+	event = event.With("user", userID).With("library", libIDs...)
+	s.broker.SendBroadcastMessage(ctx, event)
+	return nil
 }
 
 func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error {

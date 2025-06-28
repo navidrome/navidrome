@@ -75,6 +75,8 @@ type UserRepository interface {
 	// Library association methods
 	GetUserLibraries(userID string) (Libraries, error)
 	SetUserLibraries(userID string, libraryIDs []int) error
+
+	// TODO Remove these methods in favor of SetUserLibraries
 	AddUserLibrary(userID string, libraryID int) error
 	RemoveUserLibrary(userID string, libraryID int) error
 }
