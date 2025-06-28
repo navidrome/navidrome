@@ -90,6 +90,8 @@ func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, e
 
 func init() {
 	conf.AddHook(func() {
-		agents.Register(deezerAgentName, deezerConstructor)
+		if conf.Server.Deezer.Enabled {
+			agents.Register(deezerAgentName, deezerConstructor)
+		}
 	})
 }
