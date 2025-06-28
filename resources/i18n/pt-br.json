@@ -44,7 +44,8 @@
         "shuffleAll": "Aleatório",
         "download": "Baixar",
         "playNext": "Toca a seguir",
-        "info": "Detalhes"
+        "info": "Detalhes",
+        "showInPlaylist": "Ir para playlist"
       }
     },
     "album": {
@@ -123,7 +124,8 @@
         "mixer": "Mixador |||| Mixadores",
         "remixer": "Remixador |||| Remixadores",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Músico |||| Músicos"
+        "performer": "Músico |||| Músicos",
+        "maincredit": "Artista do Álbum ou Artista |||| Artistas do Álbum ou Artistas"
       },
       "actions": {
         "topSongs": "Mais tocadas",
