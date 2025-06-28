@@ -233,7 +233,11 @@ func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 
 			start := time.Now()
 			defer func() {
-				metrics.RecordRequest(r.Context(), r.URL.Path, r.Method, ww.Status(), time.Since(start).Milliseconds())
+				// We want to get the client name (even if not present for certain endpoints)
+				p := req.Params(r)
+				client, _ := p.String("c")
+
+				metrics.RecordRequest(r.Context(), r.URL.Path, r.Method, client, ww.Status(), time.Since(start).Milliseconds())
 			}()
 
 			next.ServeHTTP(ww, r)

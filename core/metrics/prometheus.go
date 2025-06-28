@@ -20,7 +20,7 @@ import (
 type Metrics interface {
 	WriteInitialMetrics(ctx context.Context, ds model.DataStore)
 	WriteAfterScanMetrics(ctx context.Context, ds model.DataStore, success bool)
-	RecordRequest(ctx context.Context, endpoint, method string, status int, elapsed int64)
+	RecordRequest(ctx context.Context, endpoint, method, client string, status int, elapsed int64)
 	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
 	GetHandler() http.Handler
 }
@@ -54,10 +54,11 @@ func (m *metrics) WriteAfterScanMetrics(ctx context.Context, ds model.DataStore,
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
 }
 
-func (m *metrics) RecordRequest(ctx context.Context, endpoint string, method string, status int, elapsed int64) {
+func (m *metrics) RecordRequest(ctx context.Context, endpoint, method, client string, status int, elapsed int64) {
 	httpLabel := prometheus.Labels{
 		"endpoint": endpoint,
 		"method":   method,
+		"client":   client,
 		"status":   strconv.FormatInt(int64(status), 10),
 	}
 	getPrometheusMetrics().httpRequestCounter.With(httpLabel).Inc()
@@ -65,6 +66,7 @@ func (m *metrics) RecordRequest(ctx context.Context, endpoint string, method str
 	httpLatencyLabel := prometheus.Labels{
 		"endpoint": endpoint,
 		"method":   method,
+		"client":   client,
 	}
 	getPrometheusMetrics().httpRequestDuration.With(httpLatencyLabel).Observe(float64(elapsed))
 }
@@ -92,8 +94,13 @@ func (m *metrics) GetHandler() http.Handler {
 			consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
 		}))
 	}
-	r.Handle("/", promhttp.Handler())
 
+	// Enable created at timestamp to handle zero counter on create.
+	// This requires --enable-feature=created-timestamp-zero-ingestion to be passed in Prometheus
+	r.Handle("/", promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		EnableOpenMetrics:                   true,
+		EnableOpenMetricsTextCreatedSamples: true,
+	}))
 	return r
 }
 
@@ -146,7 +153,7 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 				Name: "http_request_count",
 				Help: "Request types by status",
 			},
-			[]string{"endpoint", "method", "status"},
+			[]string{"endpoint", "method", "client", "status"},
 		),
 		httpRequestDuration: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -154,7 +161,7 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 				Help:       "Latency (in ms) of HTTP requests",
 				Objectives: quartilesToEstimate,
 			},
-			[]string{"endpoint", "method"},
+			[]string{"endpoint", "method", "client"},
 		),
 		pluginRequestCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -224,7 +231,7 @@ func (n noopMetrics) WriteInitialMetrics(context.Context, model.DataStore) {}
 
 func (n noopMetrics) WriteAfterScanMetrics(context.Context, model.DataStore, bool) {}
 
-func (n noopMetrics) RecordRequest(context.Context, string, string, int, int64) {}
+func (n noopMetrics) RecordRequest(context.Context, string, string, string, int, int64) {}
 
 func (n noopMetrics) RecordPluginRequest(context.Context, string, string, bool, int64) {}
 
