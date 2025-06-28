@@ -55,6 +55,7 @@ const LibraryEdit = (props) => {
 
   // Library ID 1 is protected (main library)
   const canDelete = props.id !== '1'
+  const canEditPath = props.id !== '1'
 
   const save = useCallback(
     async (values) => {
@@ -99,14 +100,13 @@ const LibraryEdit = (props) => {
                     source="name"
                     validate={[required()]}
                     variant="outlined"
-                    InputProps={{ readOnly: !canDelete }} // Disable editing path for library 1
                   />
                   <TextInput
                     source="path"
                     validate={[required()]}
                     fullWidth
                     variant="outlined"
-                    InputProps={{ readOnly: !canDelete }} // Disable editing path for library 1
+                    InputProps={{ readOnly: !canEditPath }} // Disable editing path for library 1
                   />
 
                   <Box mt="2em" />
