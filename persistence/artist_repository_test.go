@@ -363,9 +363,9 @@ var _ = Describe("ArtistRepository", func() {
 						// Try to put the user (will fail silently if already exists)
 						_ = ur.Put(&testUser)
 
-						// Add library association
-						err = ur.AddUserLibrary(currentUser.ID, 1)
-						// Ignore error if user-library association already exists
+						// Add library association using SetUserLibraries
+						err = ur.SetUserLibraries(currentUser.ID, []int{1})
+						// Ignore error if user already has these libraries or other conflicts
 						if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") && !strings.Contains(err.Error(), "duplicate key") {
 							Expect(err).ToNot(HaveOccurred())
 						}
@@ -633,9 +633,9 @@ var _ = Describe("ArtistRepository", func() {
 					err := ur.Put(&unauthorizedUser)
 					Expect(err).ToNot(HaveOccurred())
 
-					// Then add library access
-					err = ur.AddUserLibrary(unauthorizedUser.ID, 1)
-					Expect(err).ToNot(HaveOccurred())
+				// Then add library access
+				err = ur.SetUserLibraries(unauthorizedUser.ID, []int{1})
+				Expect(err).ToNot(HaveOccurred())
 
 					// Update the user object with the libraries to simulate middleware behavior
 					libraries, err := ur.GetUserLibraries(unauthorizedUser.ID)
@@ -648,11 +648,11 @@ var _ = Describe("ArtistRepository", func() {
 					restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 				})
 
-				AfterEach(func() {
-					// Clean up: remove the user's library access
-					ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
-					_ = ur.RemoveUserLibrary(unauthorizedUser.ID, 1)
-				})
+			AfterEach(func() {
+				// Clean up: remove the user's library access
+				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
+			})
 
 				It("CountAll returns correct count after gaining access", func() {
 					count, err := restrictedRepo.CountAll()

@@ -143,7 +143,7 @@ var _ = BeforeSuite(func() {
 
 	// Associate users with library 1 (default test library)
 	for i := range testUsers {
-		err := ur.AddUserLibrary(testUsers[i].ID, 1)
+		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
 		if err != nil {
 			panic(err)
 		}
