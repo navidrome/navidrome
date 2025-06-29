@@ -116,6 +116,7 @@ type configOptions struct {
 	DevSidebarPlaylists              bool
 	DevShowArtistPage                bool
 	DevUIShowConfig                  bool
+	DevNewEventStream                bool
 	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
@@ -586,6 +587,7 @@ func setViperDefaults() {
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devuishowconfig", true)
+	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
