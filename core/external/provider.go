@@ -253,7 +253,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "ArtistInfo update canceled", "elapsed", "id", artist.ID, "name", artist.Name(), time.Since(start), ctx.Err())
+		log.Warn(ctx, "ArtistInfo update canceled", "id", artist.ID, "name", artist.Name(), "elapsed", time.Since(start), ctx.Err())
 		return artist, ctx.Err()
 	}
 
