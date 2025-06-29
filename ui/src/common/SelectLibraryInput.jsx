@@ -8,8 +8,9 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
+  Box,
 } from '@material-ui/core'
-import { useGetList } from 'react-admin'
+import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
 import { makeStyles } from '@material-ui/core'
 
@@ -17,6 +18,17 @@ const useStyles = makeStyles((theme) => ({
   root: {
     width: '960px', // MD breakpoint width
     maxWidth: '100%',
+  },
+  headerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(1),
+    paddingLeft: theme.spacing(1),
+  },
+  masterCheckbox: {
+    padding: '7px', // Match the default Material-UI checkbox padding
+    marginLeft: '-9px', // Negative margin to align with FormControlLabel checkboxes
+    marginRight: theme.spacing(1),
   },
   libraryList: {
     height: '120px', // 3 rows of libraries
@@ -72,6 +84,7 @@ const LibraryListItem = ({ library, isSelected, onToggle }) => {
 
 export const SelectLibraryInput = ({ onChange, value = [] }) => {
   const classes = useStyles()
+  const translate = useTranslate()
   const [selectedLibraryIds, setSelectedLibraryIds] = useState([])
 
   const { ids, data } = useGetList(
@@ -109,8 +122,35 @@ export const SelectLibraryInput = ({ onChange, value = [] }) => {
     onChange(newSelection)
   }
 
+  const handleMasterCheckboxChange = () => {
+    const isAllSelected = selectedLibraryIds.length === options.length
+    const newSelection = isAllSelected ? [] : options.map((lib) => lib.id)
+
+    setSelectedLibraryIds(newSelection)
+    onChange(newSelection)
+  }
+
+  const selectedCount = selectedLibraryIds.length
+  const totalCount = options.length
+  const isAllSelected = selectedCount === totalCount && totalCount > 0
+  const isIndeterminate = selectedCount > 0 && selectedCount < totalCount
+
   return (
     <div className={classes.root}>
+      {options.length > 1 && (
+        <Box className={classes.headerContainer}>
+          <Checkbox
+            checked={isAllSelected}
+            indeterminate={isIndeterminate}
+            onChange={handleMasterCheckboxChange}
+            size="small"
+            className={classes.masterCheckbox}
+          />
+          <Typography variant="body2">
+            {translate('resources.user.message.selectAllLibraries')}
+          </Typography>
+        </Box>
+      )}
       <List className={classes.libraryList}>
         {options.length === 0 ? (
           <EmptyLibraryMessage />
