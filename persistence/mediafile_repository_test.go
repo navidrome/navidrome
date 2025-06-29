@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -153,6 +155,28 @@ var _ = Describe("MediaRepository", func() {
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
+		})
+	})
+
+	Context("Sort options", func() {
+		It("supports recently_added sort with RecentlyAddedByModTime=false", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.RecentlyAddedByModTime = false
+
+			// Test with default configuration (uses created_at)
+			results, err := mr.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(results)).To(BeNumerically(">", 0))
+		})
+
+		It("supports recently_added sort with RecentlyAddedByModTime=true", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.RecentlyAddedByModTime = true
+
+			// Test with RecentlyAddedByModTime enabled (uses updated_at)
+			results, err := mr.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(results)).To(BeNumerically(">", 0))
 		})
 	})
 })
