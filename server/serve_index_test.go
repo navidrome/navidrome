@@ -102,6 +102,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultDownsamplingFormat", func() { conf.Server.DefaultDownsamplingFormat = "mp3" }, "defaultDownsamplingFormat", "mp3"),
 		Entry("enableUserEditing", func() { conf.Server.EnableUserEditing = false }, "enableUserEditing", false),
 		Entry("enableSharing", func() { conf.Server.EnableSharing = true }, "enableSharing", true),
+		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
 	)
 
 	DescribeTable("sets other UI configuration values",

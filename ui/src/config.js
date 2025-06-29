@@ -32,6 +32,7 @@ const defaultConfig = {
   enableNowPlaying: true,
   devShowArtistPage: true,
   devUIShowConfig: true,
+  devNewEventStream: false,
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
