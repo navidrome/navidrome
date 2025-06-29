@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -19,6 +20,7 @@ var _ = Describe("Agents", func() {
 	var ds model.DataStore
 	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
 		ctx, cancel = context.WithCancel(context.Background())
 		mfRepo = tests.CreateMockMediaFileRepo()
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
@@ -240,6 +242,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetArtistTopSongs", func() {
 			It("returns on first match", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
 				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
 					Name: "A Song",
 					MBID: "mbid444",
@@ -247,6 +250,7 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
@@ -257,6 +261,14 @@ var _ = Describe("Agents", func() {
 				_, err := ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
+			})
+			It("fetches with multiplier", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 2
+				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
+					Name: "A Song",
+					MBID: "mbid444",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 4))
 			})
 		})
 

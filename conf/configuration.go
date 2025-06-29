@@ -129,6 +129,7 @@ type configOptions struct {
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
 	DevPluginCompilationTimeout      time.Duration
+	DevExternalArtistFetchMultiplier float64
 }
 
 type scannerOptions struct {
@@ -620,6 +621,7 @@ func setViperDefaults() {
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
+	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
 }
 
 func init() {
