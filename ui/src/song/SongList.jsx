@@ -182,7 +182,9 @@ const SongList = (props) => {
       ),
       comment: <TextField source="comment" />,
       path: <PathField source="path" />,
-      createdAt: <DateField source="createdAt" showTime />,
+      createdAt: (
+        <DateField source="createdAt" sortBy="recently_added" showTime />
+      ),
     }
   }, [isDesktop, classes.ratingField])
 
