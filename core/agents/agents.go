@@ -258,6 +258,8 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 	return "", ErrNotFound
 }
 
+// GetSimilarArtists returns similar artists by id, name, and/or mbid. Because some artists returned from an enabled
+// agent may not exist in the database, return at most limit * conf.Server.DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error) {
 	switch id {
 	case consts.UnknownArtistID:
@@ -265,6 +267,9 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	case consts.VariousArtistsID:
 		return nil, nil
 	}
+
+	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
+
 	start := time.Now()
 	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
@@ -278,7 +283,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 		if !ok {
 			continue
 		}
-		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, limit)
+		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, overLimit)
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -320,6 +325,8 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 	return nil, ErrNotFound
 }
 
+// GetArtistTopSongs returns top songs by id, name, and/or mbid. Because some songs returned from an enabled
+// agent may not exist in the database, return at most limit * conf.Server.DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
 	switch id {
 	case consts.UnknownArtistID:
@@ -327,6 +334,9 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 	case consts.VariousArtistsID:
 		return nil, nil
 	}
+
+	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
+
 	start := time.Now()
 	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
@@ -340,7 +350,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 		if !ok {
 			continue
 		}
-		songs, err := retriever.GetArtistTopSongs(ctx, id, artistName, mbid, count)
+		songs, err := retriever.GetArtistTopSongs(ctx, id, artistName, mbid, overLimit)
 		if len(songs) > 0 && err == nil {
 			log.Debug(ctx, "Got Top Songs", "agent", ag.AgentName(), "artist", artistName, "songs", songs, "elapsed", time.Since(start))
 			return songs, nil
