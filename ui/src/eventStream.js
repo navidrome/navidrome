@@ -1,6 +1,6 @@
 import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
-import { processEvent, serverDown } from './actions'
+import { processEvent, serverDown, streamReconnected } from './actions'
 import { REST_URL } from './consts'
 import config from './config'
 
@@ -47,6 +47,8 @@ const connect = async (dispatchFn) => {
     const stream = await newEventStream()
     eventStream = stream
     setupHandlers(stream, dispatchFn)
+    // Dispatch reconnection event to refresh critical data
+    dispatchFn(streamReconnected())
     return stream
   } catch (e) {
     // eslint-disable-next-line no-console

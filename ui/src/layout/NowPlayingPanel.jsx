@@ -245,6 +245,12 @@ NowPlayingList.propTypes = {
 const NowPlayingPanel = () => {
   const dispatch = useDispatch()
   const count = useSelector((state) => state.activity.nowPlayingCount)
+  const streamReconnected = useSelector(
+    (state) => state.activity.streamReconnected,
+  )
+  const serverUp = useSelector(
+    (state) => !!state.activity.serverStart.startTime,
+  )
   const translate = useTranslate()
   const notify = useNotify()
   const theme = useTheme()
@@ -301,21 +307,30 @@ const NowPlayingPanel = () => {
     [dispatch, notify],
   )
 
-  // Initialize count and entries on mount
+  // Initialize count and entries on mount, and refresh on server/stream changes
   useEffect(() => {
-    fetchList()
-  }, [fetchList])
+    if (serverUp) fetchList()
+  }, [fetchList, serverUp, streamReconnected])
 
   // Refresh when count changes from WebSocket events (if panel is open)
   useEffect(() => {
-    if (open) fetchList()
-  }, [count, open, fetchList])
+    if (open && serverUp) fetchList()
+  }, [count, open, fetchList, serverUp])
 
+  // Periodic refresh when panel is open (10 seconds)
   useInterval(
     () => {
-      if (open) fetchList()
+      if (open && serverUp) fetchList()
     },
     open ? 10000 : null,
+  )
+
+  // Periodic refresh when panel is closed (60 seconds) to keep badge accurate
+  useInterval(
+    () => {
+      if (!open && serverUp) fetchList()
+    },
+    !open ? 60000 : null,
   )
 
   return (
