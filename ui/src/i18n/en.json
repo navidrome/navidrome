@@ -166,9 +166,8 @@
       },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",
-        "clickHereForToken": "Click here to get your token"
-      },
-      "messages": {
+        "clickHereForToken": "Click here to get your token",
+        "selectAllLibraries": "Select all libraries",
         "adminAutoLibraries": "Admin users automatically have access to all libraries"
       }
     },

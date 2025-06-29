@@ -171,7 +171,7 @@ const UserEdit = (props) => {
                     color="textSecondary"
                     style={{ marginTop: 16, marginBottom: 16 }}
                   >
-                    {translate('resources.user.messages.adminAutoLibraries')}
+                    {translate('resources.user.message.adminAutoLibraries')}
                   </Typography>
                 )}
               </>
