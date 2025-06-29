@@ -106,29 +106,30 @@ type configOptions struct {
 	Agents                          string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevLogLevels                     map[string]string `json:",omitempty"`
-	DevLogSourceLine                 bool
-	DevEnableProfiler                bool
-	DevAutoCreateAdminPassword       string
-	DevAutoLoginUsername             string
-	DevActivityPanel                 bool
-	DevActivityPanelUpdateRate       time.Duration
-	DevSidebarPlaylists              bool
-	DevShowArtistPage                bool
-	DevUIShowConfig                  bool
-	DevNewEventStream                bool
-	DevOffsetOptimize                int
-	DevArtworkMaxRequests            int
-	DevArtworkThrottleBacklogLimit   int
-	DevArtworkThrottleBacklogTimeout time.Duration
-	DevArtistInfoTimeToLive          time.Duration
-	DevAlbumInfoTimeToLive           time.Duration
-	DevExternalScanner               bool
-	DevScannerThreads                uint
-	DevInsightsInitialDelay          time.Duration
-	DevEnablePlayerInsights          bool
-	DevPluginCompilationTimeout      time.Duration
-	DevExternalArtistFetchMultiplier float64
+	DevLogLevels                      map[string]string `json:",omitempty"`
+	DevLogSourceLine                  bool
+	DevEnableProfiler                 bool
+	DevAutoCreateAdminPassword        string
+	DevAutoLoginUsername              string
+	DevActivityPanel                  bool
+	DevActivityPanelUpdateRate        time.Duration
+	DevSidebarPlaylists               bool
+	DevShowArtistPage                 bool
+	DevUIShowConfig                   bool
+	DevNewEventStream                 bool
+	DevOffsetOptimize                 int
+	DevArtworkMaxRequests             int
+	DevArtworkThrottleBacklogLimit    int
+	DevArtworkThrottleBacklogTimeout  time.Duration
+	DevArtistInfoTimeToLive           time.Duration
+	DevAlbumInfoTimeToLive            time.Duration
+	DevExternalScanner                bool
+	DevScannerThreads                 uint
+	DevInsightsInitialDelay           time.Duration
+	DevEnablePlayerInsights           bool
+	DevPluginCompilationTimeout       time.Duration
+	DevExternalArtistFetchMultiplier  float64
+	DevPreserveUnicodeInExternalCalls bool
 }
 
 type scannerOptions struct {
@@ -601,6 +602,7 @@ func setViperDefaults() {
 	viper.SetDefault("devenableplayerinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
+	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 }
 
 func init() {
