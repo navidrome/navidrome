@@ -107,9 +107,9 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 
 func mediaFileRecentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "updated_at"
+		return "media_file.updated_at"
 	}
-	return "created_at"
+	return "media_file.created_at"
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {

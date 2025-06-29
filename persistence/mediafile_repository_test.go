@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("MediaRepository", func() {
@@ -159,24 +160,154 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	Context("Sort options", func() {
-		It("supports recently_added sort with RecentlyAddedByModTime=false", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.RecentlyAddedByModTime = false
+		Context("recently_added sort", func() {
+			var testMediaFiles []model.MediaFile
 
-			// Test with default configuration (uses created_at)
-			results, err := mr.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(results)).To(BeNumerically(">", 0))
-		})
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 
-		It("supports recently_added sort with RecentlyAddedByModTime=true", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.RecentlyAddedByModTime = true
+				// Create test media files with specific timestamps
+				testMediaFiles = []model.MediaFile{
+					{
+						ID:        id.NewRandom(),
+						LibraryID: 1,
+						Title:     "Old Song",
+						Path:      "/test/old.mp3",
+					},
+					{
+						ID:        id.NewRandom(),
+						LibraryID: 1,
+						Title:     "Middle Song",
+						Path:      "/test/middle.mp3",
+					},
+					{
+						ID:        id.NewRandom(),
+						LibraryID: 1,
+						Title:     "New Song",
+						Path:      "/test/new.mp3",
+					},
+				}
 
-			// Test with RecentlyAddedByModTime enabled (uses updated_at)
-			results, err := mr.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(results)).To(BeNumerically(">", 0))
+				// Insert test data first
+				for i := range testMediaFiles {
+					Expect(mr.Put(&testMediaFiles[i])).To(Succeed())
+				}
+
+				// Then manually update timestamps using direct SQL to bypass the repository logic
+				db := GetDBXBuilder()
+
+				// Set specific timestamps for testing
+				oldTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+				middleTime := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+				newTime := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+
+				// Update "Old Song": created long ago, updated recently
+				_, err := db.Update("media_file",
+					map[string]interface{}{
+						"created_at": oldTime,
+						"updated_at": newTime,
+					},
+					dbx.HashExp{"id": testMediaFiles[0].ID}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Update "Middle Song": created and updated at the same middle time
+				_, err = db.Update("media_file",
+					map[string]interface{}{
+						"created_at": middleTime,
+						"updated_at": middleTime,
+					},
+					dbx.HashExp{"id": testMediaFiles[1].ID}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Update "New Song": created recently, updated long ago
+				_, err = db.Update("media_file",
+					map[string]interface{}{
+						"created_at": newTime,
+						"updated_at": oldTime,
+					},
+					dbx.HashExp{"id": testMediaFiles[2].ID}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				// Clean up test data
+				for _, mf := range testMediaFiles {
+					_ = mr.Delete(mf.ID)
+				}
+			})
+
+			When("RecentlyAddedByModTime is false", func() {
+				var testRepo model.MediaFileRepository
+
+				BeforeEach(func() {
+					conf.Server.RecentlyAddedByModTime = false
+					// Create repository AFTER setting config
+					ctx := log.NewContext(GinkgoT().Context())
+					ctx = request.WithUser(ctx, model.User{ID: "userid"})
+					testRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+				})
+
+				It("sorts by created_at", func() {
+					// Get results sorted by recently_added (should use created_at)
+					results, err := testRepo.GetAll(model.QueryOptions{
+						Sort:    "recently_added",
+						Order:   "desc",
+						Filters: squirrel.Eq{"media_file.id": []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(3))
+
+					// Verify sorting by created_at (newest first in descending order)
+					Expect(results[0].Title).To(Equal("New Song"))    // created 2022
+					Expect(results[1].Title).To(Equal("Middle Song")) // created 2021
+					Expect(results[2].Title).To(Equal("Old Song"))    // created 2020
+				})
+
+				It("sorts in ascending order when specified", func() {
+					// Get results sorted by recently_added in ascending order
+					results, err := testRepo.GetAll(model.QueryOptions{
+						Sort:    "recently_added",
+						Order:   "asc",
+						Filters: squirrel.Eq{"media_file.id": []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(3))
+
+					// Verify sorting by created_at (oldest first)
+					Expect(results[0].Title).To(Equal("Old Song"))    // created 2020
+					Expect(results[1].Title).To(Equal("Middle Song")) // created 2021
+					Expect(results[2].Title).To(Equal("New Song"))    // created 2022
+				})
+			})
+
+			When("RecentlyAddedByModTime is true", func() {
+				var testRepo model.MediaFileRepository
+
+				BeforeEach(func() {
+					conf.Server.RecentlyAddedByModTime = true
+					// Create repository AFTER setting config
+					ctx := log.NewContext(GinkgoT().Context())
+					ctx = request.WithUser(ctx, model.User{ID: "userid"})
+					testRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+				})
+
+				It("sorts by updated_at", func() {
+					// Get results sorted by recently_added (should use updated_at)
+					results, err := testRepo.GetAll(model.QueryOptions{
+						Sort:    "recently_added",
+						Order:   "desc",
+						Filters: squirrel.Eq{"media_file.id": []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(3))
+
+					// Verify sorting by updated_at (newest first in descending order)
+					Expect(results[0].Title).To(Equal("Old Song"))    // updated 2022
+					Expect(results[1].Title).To(Equal("Middle Song")) // updated 2021
+					Expect(results[2].Title).To(Equal("New Song"))    // updated 2020
+				})
+			})
+
 		})
 	})
 })
