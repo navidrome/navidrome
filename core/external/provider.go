@@ -560,7 +560,7 @@ func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimila
 		return
 	}
 	start := time.Now()
-	sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
+	sa, err := e.mapSimilarArtists(ctx, similar, limit, includeNotPresent)
 	log.Debug(ctx, "Mapped Similar Artists", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
 		return
@@ -568,7 +568,7 @@ func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimila
 	artist.SimilarArtists = sa
 }
 
-func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
+func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, limit int, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string
 
@@ -591,21 +591,33 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 		artistMap[artist.Name] = artist
 	}
 
+	count := 0
+
 	// Process the similar artists
 	for _, s := range similar {
 		if artist, found := artistMap[s.Name]; found {
 			result = append(result, artist)
+			count++
+
+			if count >= limit {
+				break
+			}
 		} else {
 			notPresent = append(notPresent, s.Name)
 		}
 	}
 
 	// Then fill up with non-present artists
-	if includeNotPresent {
+	if includeNotPresent && count < limit {
 		for _, s := range notPresent {
 			// Let the ID empty to indicate that the artist is not present in the DB
 			sa := model.Artist{Name: s}
 			result = append(result, sa)
+
+			count++
+			if count >= limit {
+				break
+			}
 		}
 	}
 
