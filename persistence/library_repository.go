@@ -90,10 +90,11 @@ func (r *libraryRepository) Put(l *model.Library) error {
 	} else {
 		// Try to update first
 		cols := map[string]any{
-			"name":        l.Name,
-			"path":        l.Path,
-			"remote_path": l.RemotePath,
-			"updated_at":  time.Now(),
+			"name":              l.Name,
+			"path":              l.Path,
+			"remote_path":       l.RemotePath,
+			"default_new_users": l.DefaultNewUsers,
+			"updated_at":        time.Now(),
 		}
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
 		rowsAffected, updateErr := r.executeSQL(sq)

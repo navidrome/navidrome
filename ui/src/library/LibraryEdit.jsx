@@ -3,6 +3,7 @@ import {
   Edit,
   FormWithRedirect,
   TextInput,
+  BooleanInput,
   required,
   SaveButton,
   DateField,
@@ -98,15 +99,24 @@ const LibraryEdit = (props) => {
 
                   <TextInput
                     source="name"
+                    label={translate('resources.library.fields.name')}
                     validate={[required()]}
                     variant="outlined"
                   />
                   <TextInput
                     source="path"
+                    label={translate('resources.library.fields.path')}
                     validate={[required()]}
                     fullWidth
                     variant="outlined"
                     InputProps={{ readOnly: !canEditPath }} // Disable editing path for library 1
+                  />
+                  <BooleanInput
+                    source="defaultNewUsers"
+                    label={translate(
+                      'resources.library.fields.defaultNewUsers',
+                    )}
+                    variant="outlined"
                   />
 
                   <Box mt="2em" />
@@ -122,6 +132,7 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalSongs'}
+                        label={translate('resources.library.fields.totalSongs')}
                         fullWidth
                         variant="outlined"
                       />
@@ -131,6 +142,9 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalAlbums'}
+                        label={translate(
+                          'resources.library.fields.totalAlbums',
+                        )}
                         fullWidth
                         variant="outlined"
                       />
@@ -143,6 +157,9 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalArtists'}
+                        label={translate(
+                          'resources.library.fields.totalArtists',
+                        )}
                         fullWidth
                         variant="outlined"
                       />
@@ -152,6 +169,7 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalSize'}
+                        label={translate('resources.library.fields.totalSize')}
                         format={formatBytes}
                         fullWidth
                         variant="outlined"
@@ -165,6 +183,9 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalDuration'}
+                        label={translate(
+                          'resources.library.fields.totalDuration',
+                        )}
                         format={formatDuration2}
                         fullWidth
                         variant="outlined"
@@ -175,6 +196,9 @@ const LibraryEdit = (props) => {
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalMissingFiles'}
+                        label={translate(
+                          'resources.library.fields.totalMissingFiles',
+                        )}
                         fullWidth
                         variant="outlined"
                       />
