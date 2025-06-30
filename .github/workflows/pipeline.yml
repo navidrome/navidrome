@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.1.0-1"
+  CROSS_TAGLIB_VERSION: "2.1.1-1"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
