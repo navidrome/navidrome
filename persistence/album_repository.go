@@ -113,7 +113,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
 		"id":              idFilter("album"),
-		"name":            fullTextFilter("album"),
+		"name":            fullTextFilter("album", "mbz_album_id", "mbz_release_group_id"),
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -38,17 +39,24 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, in
 }
 
 func (r sqlRepository) searchByMBID(sq SelectBuilder, mbid string, mbidFields []string, includeMissing bool, results any) error {
-	cond := Or{}
-	for _, field := range mbidFields {
-		cond = append(cond, Eq{r.tableName + "." + field: mbid})
-	}
-	sq = sq.Where(cond)
+	sq = sq.Where(mbidExpr(r.tableName, mbid, mbidFields...))
 
 	if !includeMissing {
 		sq = sq.Where(Eq{r.tableName + ".missing": false})
 	}
 
 	return r.queryAll(sq, results)
+}
+
+func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
+	if uuid.Validate(mbid) != nil || len(mbidFields) == 0 {
+		return nil
+	}
+	var cond []Sqlizer
+	for _, mbidField := range mbidFields {
+		cond = append(cond, Eq{tableName + "." + mbidField: mbid})
+	}
+	return Or(cond)
 }
 
 func fullTextExpr(tableName string, s string) Sqlizer {

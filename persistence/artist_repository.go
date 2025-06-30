@@ -114,7 +114,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter(r.tableName),
+		"name":    fullTextFilter(r.tableName, "mbz_artist_id"),
 		"starred": booleanFilter,
 		"role":    roleFilter,
 		"missing": booleanFilter,
