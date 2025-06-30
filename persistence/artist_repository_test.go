@@ -633,9 +633,9 @@ var _ = Describe("ArtistRepository", func() {
 					err := ur.Put(&unauthorizedUser)
 					Expect(err).ToNot(HaveOccurred())
 
-				// Then add library access
-				err = ur.SetUserLibraries(unauthorizedUser.ID, []int{1})
-				Expect(err).ToNot(HaveOccurred())
+					// Then add library access
+					err = ur.SetUserLibraries(unauthorizedUser.ID, []int{1})
+					Expect(err).ToNot(HaveOccurred())
 
 					// Update the user object with the libraries to simulate middleware behavior
 					libraries, err := ur.GetUserLibraries(unauthorizedUser.ID)
@@ -648,11 +648,11 @@ var _ = Describe("ArtistRepository", func() {
 					restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 				})
 
-			AfterEach(func() {
-				// Clean up: remove the user's library access
-				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
-				_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
-			})
+				AfterEach(func() {
+					// Clean up: remove the user's library access
+					ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+					_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
+				})
 
 				It("CountAll returns correct count after gaining access", func() {
 					count, err := restrictedRepo.CountAll()
