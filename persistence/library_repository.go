@@ -82,10 +82,10 @@ func (r *libraryRepository) Put(l *model.Library) error {
 	}
 
 	var err error
+	l.UpdatedAt = time.Now()
 	if l.ID == 0 {
 		// Insert with autoassigned ID
 		l.CreatedAt = time.Now()
-		l.UpdatedAt = time.Now()
 		err = r.db.Model(l).Insert()
 	} else {
 		// Try to update first
@@ -94,7 +94,7 @@ func (r *libraryRepository) Put(l *model.Library) error {
 			"path":              l.Path,
 			"remote_path":       l.RemotePath,
 			"default_new_users": l.DefaultNewUsers,
-			"updated_at":        time.Now(),
+			"updated_at":        l.UpdatedAt,
 		}
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
 		rowsAffected, updateErr := r.executeSQL(sq)
