@@ -11,6 +11,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -113,7 +114,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter(r.tableName),
+		"name":    fullTextFilter(r.tableName, "mbz_artist_id"),
 		"starred": booleanFilter,
 		"role":    roleFilter,
 		"missing": booleanFilter,
@@ -433,12 +434,19 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
-	var dba dbArtists
-	err := r.doSearch(r.selectArtist(), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
-	if err != nil {
-		return nil, err
+	var res dbArtists
+	if uuid.Validate(q) == nil {
+		err := r.searchByMBID(r.selectArtist(), q, []string{"mbz_artist_id"}, includeMissing, &res)
+		if err != nil {
+			return nil, fmt.Errorf("searching artist by MBID %q: %w", q, err)
+		}
+	} else {
+		err := r.doSearch(r.selectArtist(), q, offset, size, includeMissing, &res, "json_extract(stats, '$.total.m') desc", "name")
+		if err != nil {
+			return nil, fmt.Errorf("searching artist by query %q: %w", q, err)
+		}
 	}
-	return dba.toModels(), nil
+	return res.toModels(), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {

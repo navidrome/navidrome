@@ -404,4 +404,69 @@ var _ = Describe("ArtistRepository", func() {
 			Expect(roleFilter("", "artist') SELECT LIKE(CHAR(65,66,67,68,69,70,71),UPPER(HEX(RANDOMBLOB(500000000/2))))--")).To(Equal(squirrel.Eq{"1": 2}))
 		})
 	})
+
+	Context("MBID Search", func() {
+		var artistWithMBID model.Artist
+		var raw *artistRepository
+
+		BeforeEach(func() {
+			raw = repo.(*artistRepository)
+			// Create a test artist with MBID
+			artistWithMBID = model.Artist{
+				ID:          "test-mbid-artist",
+				Name:        "Test MBID Artist",
+				MbzArtistID: "550e8400-e29b-41d4-a716-446655440010", // Valid UUID v4
+			}
+
+			// Insert the test artist into the database
+			err := repo.Put(&artistWithMBID)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			// Clean up test data using direct SQL
+			_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithMBID.ID}))
+		})
+
+		It("finds artist by mbz_artist_id", func() {
+			results, err := repo.Search("550e8400-e29b-41d4-a716-446655440010", 0, 10, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("test-mbid-artist"))
+			Expect(results[0].Name).To(Equal("Test MBID Artist"))
+		})
+
+		It("returns empty result when MBID is not found", func() {
+			results, err := repo.Search("550e8400-e29b-41d4-a716-446655440099", 0, 10, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("handles includeMissing parameter for MBID search", func() {
+			// Create a missing artist with MBID
+			missingArtist := model.Artist{
+				ID:          "test-missing-mbid-artist",
+				Name:        "Test Missing MBID Artist",
+				MbzArtistID: "550e8400-e29b-41d4-a716-446655440012",
+				Missing:     true,
+			}
+
+			err := repo.Put(&missingArtist)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should not find missing artist when includeMissing is false
+			results, err := repo.Search("550e8400-e29b-41d4-a716-446655440012", 0, 10, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+
+			// Should find missing artist when includeMissing is true
+			results, err = repo.Search("550e8400-e29b-41d4-a716-446655440012", 0, 10, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("test-missing-mbid-artist"))
+
+			// Clean up
+			_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
+		})
+	})
 })
