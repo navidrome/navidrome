@@ -12,6 +12,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -112,7 +113,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
 		"id":              idFilter("album"),
-		"name":            fullTextFilter("album"),
+		"name":            fullTextFilter("album", "mbz_album_id", "mbz_release_group_id"),
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
@@ -347,11 +348,18 @@ func (r *albumRepository) purgeEmpty() error {
 
 func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
 	var res dbAlbums
-	err := r.doSearch(r.selectAlbum(), q, offset, size, includeMissing, &res, "name")
-	if err != nil {
-		return nil, err
+	if uuid.Validate(q) == nil {
+		err := r.searchByMBID(r.selectAlbum(), q, []string{"mbz_album_id", "mbz_release_group_id"}, includeMissing, &res)
+		if err != nil {
+			return nil, fmt.Errorf("searching album by MBID %q: %w", q, err)
+		}
+	} else {
+		err := r.doSearch(r.selectAlbum(), q, offset, size, includeMissing, &res, "name")
+		if err != nil {
+			return nil, fmt.Errorf("searching album by query %q: %w", q, err)
+		}
 	}
-	return res.toModels(), err
+	return res.toModels(), nil
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

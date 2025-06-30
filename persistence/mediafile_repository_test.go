@@ -310,4 +310,110 @@ var _ = Describe("MediaRepository", func() {
 
 		})
 	})
+
+	Describe("Search", func() {
+		Context("text search", func() {
+			It("finds media files by title", func() {
+				results, err := mr.Search("Antenna", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(3)) // songAntenna, songAntennaWithLyrics, songAntenna2
+				for _, result := range results {
+					Expect(result.Title).To(Equal("Antenna"))
+				}
+			})
+
+			It("finds media files case insensitively", func() {
+				results, err := mr.Search("antenna", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(3))
+				for _, result := range results {
+					Expect(result.Title).To(Equal("Antenna"))
+				}
+			})
+
+			It("returns empty result when no matches found", func() {
+				results, err := mr.Search("nonexistent", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
+			})
+		})
+
+		Context("MBID search", func() {
+			var mediaFileWithMBID model.MediaFile
+			var raw *mediaFileRepository
+
+			BeforeEach(func() {
+				raw = mr.(*mediaFileRepository)
+				// Create a test media file with MBID
+				mediaFileWithMBID = model.MediaFile{
+					ID:                "test-mbid-mediafile",
+					Title:             "Test MBID MediaFile",
+					MbzRecordingID:    "550e8400-e29b-41d4-a716-446655440020", // Valid UUID v4
+					MbzReleaseTrackID: "550e8400-e29b-41d4-a716-446655440021", // Valid UUID v4
+					LibraryID:         1,
+					Path:              "/test/path/test.mp3",
+				}
+
+				// Insert the test media file into the database
+				err := mr.Put(&mediaFileWithMBID)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				// Clean up test data using direct SQL
+				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": mediaFileWithMBID.ID}))
+			})
+
+			It("finds media file by mbz_recording_id", func() {
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(1))
+				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
+				Expect(results[0].Title).To(Equal("Test MBID MediaFile"))
+			})
+
+			It("finds media file by mbz_release_track_id", func() {
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(1))
+				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
+				Expect(results[0].Title).To(Equal("Test MBID MediaFile"))
+			})
+
+			It("returns empty result when MBID is not found", func() {
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
+			})
+
+			It("handles includeMissing parameter for MBID search", func() {
+				// Create a missing media file with MBID
+				missingMediaFile := model.MediaFile{
+					ID:             "test-missing-mbid-mediafile",
+					Title:          "Test Missing MBID MediaFile",
+					MbzRecordingID: "550e8400-e29b-41d4-a716-446655440022",
+					LibraryID:      1,
+					Path:           "/test/path/missing.mp3",
+					Missing:        true,
+				}
+
+				err := mr.Put(&missingMediaFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should not find missing media file when includeMissing is false
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", 0, 10, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
+
+				// Should find missing media file when includeMissing is true
+				results, err = mr.Search("550e8400-e29b-41d4-a716-446655440022", 0, 10, true)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(1))
+				Expect(results[0].ID).To(Equal("test-missing-mbid-mediafile"))
+
+				// Clean up
+				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
+			})
+		})
+	})
 })
