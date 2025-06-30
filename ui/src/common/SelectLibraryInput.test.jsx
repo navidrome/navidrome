@@ -259,4 +259,200 @@ describe('<SelectLibraryInput />', () => {
     // Note: Testing indeterminate property directly through JSDOM can be unreliable
     // The important behavior is that it's not checked when only some are selected
   })
+
+  describe('New User Default Library Selection', () => {
+    // Helper function to create mock libraries with configurable default settings
+    const createMockLibraries = (libraryConfigs) => {
+      const libraries = {}
+      const ids = []
+
+      libraryConfigs.forEach(({ id, name, defaultNewUsers }) => {
+        libraries[id] = {
+          id,
+          name,
+          ...(defaultNewUsers !== undefined && { defaultNewUsers }),
+        }
+        ids.push(id)
+      })
+
+      return { libraries, ids }
+    }
+
+    // Helper function to setup useGetList mock
+    const setupMockLibraries = (libraryConfigs, isLoading = false) => {
+      const { libraries, ids } = createMockLibraries(libraryConfigs)
+      useGetList.mockReturnValue({
+        ids,
+        data: libraries,
+        isLoading,
+      })
+      return { libraries, ids }
+    }
+
+    beforeEach(() => {
+      mockOnChange.mockClear()
+    })
+
+    it('should pre-select default libraries for new users', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+        { id: '2', name: 'Library 2', defaultNewUsers: false },
+        { id: '3', name: 'Library 3', defaultNewUsers: true },
+      ])
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).toHaveBeenCalledWith(['1', '3'])
+    })
+
+    it('should not pre-select default libraries if new user already has values', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+        { id: '2', name: 'Library 2', defaultNewUsers: false },
+      ])
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={['2']} // Already has a value
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).not.toHaveBeenCalled()
+    })
+
+    it('should not pre-select libraries while data is still loading', () => {
+      setupMockLibraries(
+        [{ id: '1', name: 'Library 1', defaultNewUsers: true }],
+        true,
+      ) // isLoading = true
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).not.toHaveBeenCalled()
+    })
+
+    it('should not pre-select anything if no libraries have defaultNewUsers flag', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: false },
+        { id: '2', name: 'Library 2', defaultNewUsers: false },
+      ])
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).not.toHaveBeenCalled()
+    })
+
+    it('should reset initialization state when isNewUser prop changes', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+      ])
+
+      const { rerender } = render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={false} // Start as existing user
+        />,
+      )
+
+      expect(mockOnChange).not.toHaveBeenCalled()
+
+      // Change to new user
+      rerender(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).toHaveBeenCalledWith(['1'])
+    })
+
+    it('should not override pre-selection when value prop is empty for new users', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+        { id: '2', name: 'Library 2', defaultNewUsers: false },
+      ])
+
+      const { rerender } = render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).toHaveBeenCalledWith(['1'])
+      mockOnChange.mockClear()
+
+      // Re-render with empty value prop (simulating form state update)
+      rerender(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]} // Still empty
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).not.toHaveBeenCalled()
+    })
+
+    it('should sync from value prop for existing users even when empty', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+      ])
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]} // Empty value for existing user
+          isNewUser={false}
+        />,
+      )
+
+      // Check that no libraries are selected (checkboxes should be unchecked)
+      const checkboxes = screen.getAllByRole('checkbox')
+      // Only one checkbox since there's only one library and no master checkbox for single library
+      expect(checkboxes[0].checked).toBe(false)
+    })
+
+    it('should handle libraries with missing defaultNewUsers property', () => {
+      setupMockLibraries([
+        { id: '1', name: 'Library 1', defaultNewUsers: true },
+        { id: '2', name: 'Library 2' }, // Missing defaultNewUsers property
+        { id: '3', name: 'Library 3', defaultNewUsers: false },
+      ])
+
+      render(
+        <SelectLibraryInput
+          onChange={mockOnChange}
+          value={[]}
+          isNewUser={true}
+        />,
+      )
+
+      expect(mockOnChange).toHaveBeenCalledWith(['1'])
+    })
+  })
 })

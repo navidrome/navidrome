@@ -148,6 +148,15 @@ func (r *userRepository) Put(u *model.User) error {
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign all libraries to admin user: %w", err)
 		}
+	} else if count == 0 { // Only for new regular users
+		// Auto-assign default libraries to new regular users
+		sql := Expr(
+			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
+			u.ID,
+		)
+		if _, err := r.executeSQL(sql); err != nil {
+			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
+		}
 	}
 
 	return nil

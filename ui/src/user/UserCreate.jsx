@@ -54,15 +54,8 @@ const UserCreate = (props) => {
   // Custom validation function
   const validateUserForm = (values) => {
     const errors = {}
-    // Only require library selection for non-admin users
-    if (
-      !values.isAdmin &&
-      (!values.libraryIds || values.libraryIds.length === 0)
-    ) {
-      errors.libraryIds = translate(
-        'resources.user.validation.librariesRequired',
-      )
-    }
+    // Library selection is optional for non-admin users since they will be auto-assigned to default libraries
+    // No validation required for library selection
     return errors
   }
 
