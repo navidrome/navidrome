@@ -9,6 +9,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -74,13 +75,14 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 	r.tableName = "media_file"
 	r.registerModel(&model.MediaFile{}, mediaFileFilter())
 	r.setSortMappings(map[string]string{
-		"title":        "order_title",
-		"artist":       "order_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album_artist": "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
-		"random":       "random",
-		"created_at":   "media_file.created_at",
-		"starred_at":   "starred, starred_at",
+		"title":          "order_title",
+		"artist":         "order_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album_artist":   "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+		"random":         "random",
+		"created_at":     "media_file.created_at",
+		"recently_added": mediaFileRecentlyAddedSort(),
+		"starred_at":     "starred, starred_at",
 	})
 	return r
 }
@@ -102,6 +104,13 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	}
 	return filters
 })
+
+func mediaFileRecentlyAddedSort() string {
+	if conf.Server.RecentlyAddedByModTime {
+		return "media_file.updated_at"
+	}
+	return "media_file.created_at"
+}
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
