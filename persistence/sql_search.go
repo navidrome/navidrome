@@ -52,6 +52,7 @@ func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
 	if uuid.Validate(mbid) != nil || len(mbidFields) == 0 {
 		return nil
 	}
+	mbid = strings.ToLower(mbid)
 	var cond []Sqlizer
 	for _, mbidField := range mbidFields {
 		cond = append(cond, Eq{tableName + "." + mbidField: mbid})
