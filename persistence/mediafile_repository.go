@@ -9,6 +9,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -294,12 +295,19 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
-	results := dbMediaFiles{}
-	err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &results, "title")
-	if err != nil {
-		return nil, err
+	var res dbMediaFiles
+	if uuid.Validate(q) == nil {
+		err := r.searchByMBID(r.selectMediaFile(), q, []string{"mbz_recording_id", "mbz_release_track_id"}, includeMissing, &res)
+		if err != nil {
+			return nil, fmt.Errorf("searching media_file by MBID %q: %w", q, err)
+		}
+	} else {
+		err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &res, "title")
+		if err != nil {
+			return nil, fmt.Errorf("searching media_file by query %q: %w", q, err)
+		}
 	}
-	return results.toModels(), err
+	return res.toModels(), nil
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {

@@ -21,9 +21,6 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, in
 		return nil
 	}
 
-	//sq := r.newSelect().Columns(r.tableName + ".*")
-	//sq = r.withAnnotation(sq, r.tableName+".id")
-	//sq = r.withBookmark(sq, r.tableName+".id")
 	filter := fullTextExpr(r.tableName, q)
 	if filter != nil {
 		sq = sq.Where(filter)
@@ -38,6 +35,20 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, in
 	}
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
+}
+
+func (r sqlRepository) searchByMBID(sq SelectBuilder, mbid string, mbidFields []string, includeMissing bool, results any) error {
+	cond := Or{}
+	for _, field := range mbidFields {
+		cond = append(cond, Eq{r.tableName + "." + field: mbid})
+	}
+	sq = sq.Where(cond)
+
+	if !includeMissing {
+		sq = sq.Where(Eq{r.tableName + ".missing": false})
+	}
+
+	return r.queryAll(sq, results)
 }
 
 func fullTextExpr(tableName string, s string) Sqlizer {
