@@ -15,7 +15,7 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.1.0-1
+CROSS_TAGLIB_VERSION ?= 2.1.1-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -152,6 +152,20 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
+
+run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
+    VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
+	if [ -f navidrome.toml ]; then \
+		VOLUMES="$$VOLUMES -v $(PWD)/navidrome.toml:/data/navidrome.toml:ro"; \
+		MUSIC_FOLDER=$$(grep '^MusicFolder' navidrome.toml | head -n1 | sed 's/.*= *"//' | sed 's/".*//'); \
+		if [ -n "$$MUSIC_FOLDER" ] && [ -d "$$MUSIC_FOLDER" ]; then \
+		  VOLUMES="$$VOLUMES -v $$MUSIC_FOLDER:/music:ro"; \
+	  	fi; \
+	fi; \
+	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
+.PHONY: run-docker
 
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
