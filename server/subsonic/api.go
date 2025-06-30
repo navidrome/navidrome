@@ -333,6 +333,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		sendError(w, r, err)
 		return
 	}
+
 	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
@@ -342,6 +343,17 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	} else {
 		log.Warn(r.Context(), "API: Failed response", "endpoint", r.URL.Path, "error", payload.Error.Code, "message", payload.Error.Message)
 	}
+
+	statusPointer, ok := r.Context().Value(subsonicErrorPointer).(*int32)
+
+	if ok && statusPointer != nil {
+		if payload.Status == responses.StatusOK {
+			*statusPointer = 0
+		} else {
+			*statusPointer = payload.Error.Code
+		}
+	}
+
 	if _, err := w.Write(response); err != nil {
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
