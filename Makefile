@@ -153,6 +153,20 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
 
+run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
+    VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
+	if [ -f navidrome.toml ]; then \
+		VOLUMES="$$VOLUMES -v $(PWD)/navidrome.toml:/data/navidrome.toml:ro"; \
+		MUSIC_FOLDER=$$(grep '^MusicFolder' navidrome.toml | head -n1 | sed 's/.*= *"//' | sed 's/".*//'); \
+		if [ -n "$$MUSIC_FOLDER" ] && [ -d "$$MUSIC_FOLDER" ]; then \
+		  VOLUMES="$$VOLUMES -v $$MUSIC_FOLDER:/music:ro"; \
+	  	fi; \
+	fi; \
+	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
+.PHONY: run-docker
+
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
 	goreleaser release -f release/goreleaser.yml --clean --skip=publish --snapshot
