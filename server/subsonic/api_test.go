@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
@@ -109,4 +110,18 @@ var _ = Describe("sendResponse", func() {
 		})
 	})
 
+	It("updates status pointer when an error occurs", func() {
+		pointer := int32(0)
+
+		ctx := request.WithErrorPointer(r.Context(), &pointer)
+		r = r.WithContext(ctx)
+
+		payload.Status = responses.StatusFailed
+		payload.Error = &responses.Error{Code: responses.ErrorDataNotFound}
+
+		sendResponse(w, r, payload)
+		Expect(w.Code).To(Equal(http.StatusOK))
+
+		Expect(pointer).To(Equal(responses.ErrorDataNotFound))
+	})
 })

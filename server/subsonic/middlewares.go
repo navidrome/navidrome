@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5/middleware"
 	ua "github.com/mileusna/useragent"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -229,7 +228,8 @@ func playerIDCookieName(userName string) string {
 func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			status := int32(0)
+			contextWithStatus := request.WithErrorPointer(r.Context(), &status)
 
 			start := time.Now()
 			defer func() {
@@ -237,10 +237,10 @@ func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 				p := req.Params(r)
 				client, _ := p.String("c")
 
-				metrics.RecordRequest(r.Context(), strings.Replace(r.URL.Path, ".view", "", 1), r.Method, client, ww.Status(), time.Since(start).Milliseconds())
+				metrics.RecordRequest(r.Context(), strings.Replace(r.URL.Path, ".view", "", 1), r.Method, client, status, time.Since(start).Milliseconds())
 			}()
 
-			next.ServeHTTP(ww, r)
+			next.ServeHTTP(w, r.WithContext(contextWithStatus))
 		}
 		return http.HandlerFunc(fn)
 	}

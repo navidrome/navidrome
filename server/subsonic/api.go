@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
@@ -333,6 +334,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		sendError(w, r, err)
 		return
 	}
+
 	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
@@ -340,8 +342,15 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK")
 		}
 	} else {
+		statusPointer, ok := request.ErrorPointerFrom(r.Context())
+
+		if ok && statusPointer != nil {
+			*statusPointer = payload.Error.Code
+		}
+
 		log.Warn(r.Context(), "API: Failed response", "endpoint", r.URL.Path, "error", payload.Error.Code, "message", payload.Error.Message)
 	}
+
 	if _, err := w.Write(response); err != nil {
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
