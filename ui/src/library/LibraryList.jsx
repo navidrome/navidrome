@@ -6,6 +6,7 @@ import {
   SimpleList,
   TextField,
   NumberField,
+  BooleanField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { List, DateField, useResourceRefresh } from '../common'
@@ -35,9 +36,9 @@ const LibraryList = (props) => {
         />
       ) : (
         <Datagrid rowClick="edit">
-          <TextField source="id" />
           <TextField source="name" />
           <TextField source="path" />
+          <BooleanField source="defaultNewUsers" />
           <NumberField source="totalSongs" label="Songs" />
           <NumberField source="totalAlbums" label="Albums" />
           <NumberField source="totalMissingFiles" label="Missing Files" />

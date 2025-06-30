@@ -24,6 +24,7 @@ type Library struct {
 	TotalMissingFiles  int       `json:"totalMissingFiles" db:"total_missing_files"`
 	TotalSize          int64     `json:"totalSize" db:"total_size"`
 	TotalDuration      float64   `json:"totalDuration" db:"total_duration"`
+	DefaultNewUsers    bool      `json:"defaultNewUsers" db:"default_new_users"`
 }
 
 const (

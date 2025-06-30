@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Checkbox from '@material-ui/core/Checkbox'
 import CheckBoxIcon from '@material-ui/icons/CheckBox'
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank'
@@ -82,29 +82,75 @@ const LibraryListItem = ({ library, isSelected, onToggle }) => {
   )
 }
 
-export const SelectLibraryInput = ({ onChange, value = [] }) => {
+export const SelectLibraryInput = ({
+  onChange,
+  value = [],
+  isNewUser = false,
+}) => {
   const classes = useStyles()
   const translate = useTranslate()
   const [selectedLibraryIds, setSelectedLibraryIds] = useState([])
+  const [hasInitialized, setHasInitialized] = useState(false)
 
-  const { ids, data } = useGetList(
+  const { ids, data, isLoading } = useGetList(
     'library',
     { page: 1, perPage: -1 },
     { field: 'name', order: 'ASC' },
-    { smart: false },
   )
 
-  const options = (ids && ids.map((id) => data[id])) || []
+  const options = useMemo(
+    () => (ids && ids.map((id) => data[id])) || [],
+    [ids, data],
+  )
 
-  // Update selectedLibraryIds when value prop changes (for editing mode)
+  // Reset initialization state when isNewUser changes
   useEffect(() => {
+    if (isNewUser) {
+      setHasInitialized(false)
+    }
+  }, [isNewUser])
+
+  // Pre-select default libraries for new users
+  useEffect(() => {
+    if (
+      isNewUser &&
+      !isLoading &&
+      options.length > 0 &&
+      !hasInitialized &&
+      Array.isArray(value) &&
+      value.length === 0
+    ) {
+      const defaultLibraryIds = options
+        .filter((lib) => lib.defaultNewUsers)
+        .map((lib) => lib.id)
+
+      if (defaultLibraryIds.length > 0) {
+        setSelectedLibraryIds(defaultLibraryIds)
+        onChange(defaultLibraryIds)
+      }
+
+      setHasInitialized(true)
+    }
+  }, [isNewUser, isLoading, options, hasInitialized, value, onChange])
+
+  // Update selectedLibraryIds when value prop changes (for editing mode and pre-selection)
+  useEffect(() => {
+    // For new users, only sync from value prop if it has actual data
+    // This prevents empty initial state from overriding our pre-selection
+    if (isNewUser && Array.isArray(value) && value.length === 0) {
+      return
+    }
+
     if (Array.isArray(value)) {
       const libraryIds = value.map((item) =>
         typeof item === 'object' ? item.id : item,
       )
       setSelectedLibraryIds(libraryIds)
+    } else if (value.length === 0) {
+      // Handle case where value is explicitly set to empty array (for existing users)
+      setSelectedLibraryIds([])
     }
-  }, [value])
+  }, [value, isNewUser, hasInitialized])
 
   const isLibrarySelected = (library) => selectedLibraryIds.includes(library.id)
 
@@ -172,6 +218,7 @@ export const SelectLibraryInput = ({ onChange, value = [] }) => {
 SelectLibraryInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   value: PropTypes.array,
+  isNewUser: PropTypes.bool,
 }
 
 LibraryListItem.propTypes = {

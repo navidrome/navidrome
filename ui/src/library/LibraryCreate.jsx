@@ -3,6 +3,7 @@ import {
   Create,
   SimpleForm,
   TextInput,
+  BooleanInput,
   required,
   useTranslate,
   useMutation,
@@ -74,6 +75,7 @@ const LibraryCreate = (props) => {
       <SimpleForm save={save} variant={'outlined'}>
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth />
+        <BooleanInput source="defaultNewUsers" />
       </SimpleForm>
     </Create>
   )

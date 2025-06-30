@@ -27,13 +27,20 @@ export const LibrarySelectionField = () => {
     return []
   }, [value, record])
 
+  // Determine if this is a new user (no ID means new record)
+  const isNewUser = !record?.id
+
   return (
     <FormControl error={!!(touched && error)} fullWidth margin="normal">
-      <FormLabel component="legend" required>
+      <FormLabel component="legend">
         {translate('resources.user.fields.libraries')}
       </FormLabel>
       <Box mt={1} mb={1}>
-        <SelectLibraryInput onChange={onChange} value={libraryIds} />
+        <SelectLibraryInput
+          onChange={onChange}
+          value={libraryIds}
+          isNewUser={isNewUser}
+        />
       </Box>
       {touched && error && (
         <Typography color="error" variant="caption">

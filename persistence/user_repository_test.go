@@ -420,7 +420,7 @@ var _ = Describe("UserRepository", func() {
 			Expect(libIDs).To(ContainElements(library1.ID, library2.ID, 1))
 		})
 
-		It("does not affect regular users", func() {
+		It("assigns default libraries to regular users", func() {
 			regularUser := model.User{
 				ID:          "regular-user-id-2",
 				UserName:    "regularuser2",
@@ -433,10 +433,12 @@ var _ = Describe("UserRepository", func() {
 			err := repo.Put(&regularUser)
 			Expect(err).To(BeNil())
 
-			// Regular user should have no library associations
+			// Regular user should be assigned to default libraries (library ID 1 from migration)
 			libraries, err := repo.GetUserLibraries(regularUser.ID)
 			Expect(err).To(BeNil())
-			Expect(libraries).To(HaveLen(0))
+			Expect(libraries).To(HaveLen(1))
+			Expect(libraries[0].ID).To(Equal(1))
+			Expect(libraries[0].DefaultNewUsers).To(BeTrue())
 		})
 	})
 
@@ -530,8 +532,8 @@ var _ = Describe("UserRepository", func() {
 			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
 		})
 
-		It("returns empty Libraries array when user has no library associations", func() {
-			// Create a user with no library associations
+		It("returns default Libraries array for new regular users", func() {
+			// Create a user with no explicit library associations - should get default libraries
 			userWithoutLibs := model.User{
 				ID:          "no-libs-user",
 				UserName:    "nolibsuser",
@@ -548,7 +550,9 @@ var _ = Describe("UserRepository", func() {
 			user, err := repo.Get(userWithoutLibs.ID)
 			Expect(err).To(BeNil())
 			Expect(user.Libraries).ToNot(BeNil())
-			Expect(user.Libraries).To(HaveLen(0))
+			// Regular users should be assigned to default libraries (library ID 1 from migration)
+			Expect(user.Libraries).To(HaveLen(1))
+			Expect(user.Libraries[0].ID).To(Equal(1))
 		})
 	})
 })

@@ -154,7 +154,7 @@
       },
       "helperTexts": {
         "name": "Changes to your name will only be reflected on next login",
-        "libraries": "Select which libraries this user can access"
+        "libraries": "Select specific libraries for this user, or leave empty to use default libraries"
       },
       "notifications": {
         "created": "User created",
@@ -296,6 +296,7 @@
         "totalMissingFiles": "Missing Files",
         "totalSize": "Total Size",
         "totalDuration": "Duration",
+        "defaultNewUsers": "Default for New Users",
         "createdAt": "Created",
         "updatedAt": "Updated"
       },
