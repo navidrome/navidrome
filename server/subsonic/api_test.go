@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("sendResponse", func() {
@@ -113,7 +113,7 @@ var _ = Describe("sendResponse", func() {
 	It("updates status pointer when an error occurs", func() {
 		pointer := int32(0)
 
-		ctx := request.WithErrorPointer(r.Context(), &pointer)
+		ctx := context.WithValue(r.Context(), subsonicErrorPointer, &pointer)
 		r = r.WithContext(ctx)
 
 		payload.Status = responses.StatusFailed
