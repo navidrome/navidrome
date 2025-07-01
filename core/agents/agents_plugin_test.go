@@ -172,31 +172,6 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			Expect(mockLoader.pluginCallCount["plugin_agent"]).To(Equal(1))
 		})
 
-		It("should cache plugin agents", func() {
-			ctx := context.Background()
-
-			// Configure to use our plugin
-			conf.Server.Agents = "plugin_agent"
-
-			// Add a plugin agent
-			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
-			mockLoader.loadedAgents["plugin_agent"] = &MockAgent{
-				name: "plugin_agent",
-				mbid: "plugin-mbid",
-			}
-
-			// Call multiple times
-			_, err := agents.GetArtistMBID(ctx, "123", "Artist")
-			Expect(err).ToNot(HaveOccurred())
-			_, err = agents.GetArtistMBID(ctx, "123", "Artist")
-			Expect(err).ToNot(HaveOccurred())
-			_, err = agents.GetArtistMBID(ctx, "123", "Artist")
-			Expect(err).ToNot(HaveOccurred())
-
-			// Should only load once
-			Expect(mockLoader.pluginCallCount["plugin_agent"]).To(Equal(1))
-		})
-
 		It("should try both built-in and plugin agents", func() {
 			// Create a mock built-in agent
 			Register("built_in", func(ds model.DataStore) Interface {
@@ -269,6 +244,49 @@ var _ = Describe("Agents with Plugin Loading", func() {
 
 			// Verify the order matches configuration, with LocalAgentName at the end
 			Expect(agentNames).To(HaveExactElements("plugin_y", "agent_b", "plugin_x", "agent_a", LocalAgentName))
+		})
+
+		It("should NOT call LoadMediaAgent for built-in agents", func() {
+			ctx := context.Background()
+
+			// Create a mock built-in agent
+			Register("builtin_agent", func(ds model.DataStore) Interface {
+				return &MockAgent{
+					name: "builtin_agent",
+					mbid: "builtin-mbid",
+				}
+			})
+			defer func() {
+				delete(Map, "builtin_agent")
+			}()
+
+			// Configure to use only built-in agents
+			conf.Server.Agents = "builtin_agent"
+
+			// Call GetArtistMBID which should only use the built-in agent
+			mbid, err := agents.GetArtistMBID(ctx, "123", "Artist")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mbid).To(Equal("builtin-mbid"))
+
+			// Verify LoadMediaAgent was NEVER called (no plugin loading for built-in agents)
+			Expect(mockLoader.pluginCallCount).To(BeEmpty())
+		})
+
+		It("should NOT call LoadMediaAgent for invalid agent names", func() {
+			ctx := context.Background()
+
+			// Configure with an invalid agent name (not built-in, not a plugin)
+			conf.Server.Agents = "invalid_agent"
+
+			// This should only result in using the local agent (as the invalid one is ignored)
+			_, err := agents.GetArtistMBID(ctx, "123", "Artist")
+
+			// Should get ErrNotFound since only local agent is available and it returns not found for this operation
+			Expect(err).To(MatchError(ErrNotFound))
+
+			// Verify LoadMediaAgent was NEVER called for the invalid agent
+			Expect(mockLoader.pluginCallCount).To(BeEmpty())
 		})
 	})
 })

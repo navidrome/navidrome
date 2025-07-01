@@ -4,7 +4,6 @@ import (
 	"context"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -23,54 +22,9 @@ type PluginLoader interface {
 	LoadMediaAgent(name string) (Interface, bool)
 }
 
-type cachedAgent struct {
-	agent      Interface
-	expiration time.Time
-}
-
-// Encapsulates agent caching logic
-// agentCache is a simple TTL cache for agents
-// Not exported, only used by Agents
-
-type agentCache struct {
-	mu    sync.Mutex
-	items map[string]cachedAgent
-	ttl   time.Duration
-}
-
-// TTL for cached agents
-const agentCacheTTL = 5 * time.Minute
-
-func newAgentCache(ttl time.Duration) *agentCache {
-	return &agentCache{
-		items: make(map[string]cachedAgent),
-		ttl:   ttl,
-	}
-}
-
-func (c *agentCache) Get(name string) Interface {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	cached, ok := c.items[name]
-	if ok && cached.expiration.After(time.Now()) {
-		return cached.agent
-	}
-	return nil
-}
-
-func (c *agentCache) Set(name string, agent Interface) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.items[name] = cachedAgent{
-		agent:      agent,
-		expiration: time.Now().Add(c.ttl),
-	}
-}
-
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
-	cache        *agentCache
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -85,7 +39,6 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return &Agents{
 		ds:           ds,
 		pluginLoader: pluginLoader,
-		cache:        newAgentCache(agentCacheTTL),
 	}
 }
 
@@ -147,33 +100,23 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 }
 
 func (a *Agents) getAgent(ea enabledAgent) Interface {
-	name, isPlugin := ea.name, ea.isPlugin
-
-	// Check cache first
-	agent := a.cache.Get(name)
-	if agent != nil {
-		return agent
-	}
-
-	if isPlugin {
+	if ea.isPlugin {
 		// Try to load WASM plugin agent (if plugin loader is available)
 		if a.pluginLoader != nil {
-			agent, ok := a.pluginLoader.LoadMediaAgent(name)
+			agent, ok := a.pluginLoader.LoadMediaAgent(ea.name)
 			if ok && agent != nil {
-				a.cache.Set(name, agent)
 				return agent
 			}
 		}
 	} else {
 		// Try to get built-in agent
-		constructor, ok := Map[name]
+		constructor, ok := Map[ea.name]
 		if ok {
 			agent := constructor(a.ds)
 			if agent != nil {
-				a.cache.Set(name, agent)
 				return agent
 			}
-			log.Debug("Built-in agent not available. Missing configuration?", "name", name)
+			log.Debug("Built-in agent not available. Missing configuration?", "name", ea.name)
 		}
 	}
 
