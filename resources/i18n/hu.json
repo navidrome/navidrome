@@ -541,7 +541,7 @@
   },
   "nowPlaying": {
     "title": "Most megy",
-    "empty": "Nem játszas le semmit",
+    "empty": "Nem hallgatsz semmit",
     "minutesAgo": "%{smart_count} perce |||| %{smart_count} perce"
   },
   "help": {
