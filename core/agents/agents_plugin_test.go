@@ -73,8 +73,10 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent", "another_plugin")
 
 			// Should only include the local agent
-			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+			enabledAgents := agents.getEnabledAgentNames()
+			Expect(enabledAgents).To(HaveLen(1))
+			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
+			Expect(enabledAgents[0].isPlugin).To(BeFalse()) // LocalAgent is built-in, not plugin
 		})
 
 		It("should NOT include plugin agents when no config is specified", func() {
@@ -85,8 +87,13 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
 
 			// Should only include the local agent
-			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+			enabledAgents := agents.getEnabledAgentNames()
+			Expect(enabledAgents).To(HaveLen(1))
+			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
+			var agentNames []string
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+			}
 			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
 		})
 
@@ -96,14 +103,29 @@ var _ = Describe("Agents with Plugin Loading", func() {
 
 			// With no config, should not include plugin
 			conf.Server.Agents = ""
-			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+			enabledAgents := agents.getEnabledAgentNames()
+			Expect(enabledAgents).To(HaveLen(1))
+			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
+			var agentNames []string
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+			}
 			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
 
 			// When explicitly configured, should include plugin
 			conf.Server.Agents = "plugin_agent"
-			agentNames = agents.getEnabledAgentNames()
+			enabledAgents = agents.getEnabledAgentNames()
+			agentNames = nil
+			var pluginAgentFound bool
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+				if agent.name == "plugin_agent" {
+					pluginAgentFound = true
+					Expect(agent.isPlugin).To(BeTrue()) // plugin_agent is a plugin
+				}
+			}
 			Expect(agentNames).To(ContainElements(LocalAgentName, "plugin_agent"))
+			Expect(pluginAgentFound).To(BeTrue())
 		})
 
 		It("should only include configured plugin agents when config is specified", func() {
@@ -114,9 +136,19 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			conf.Server.Agents = "plugin_one"
 
 			// Verify only the configured one is included
-			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(ContainElement("plugin_one"))
+			enabledAgents := agents.getEnabledAgentNames()
+			var agentNames []string
+			var pluginOneFound bool
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+				if agent.name == "plugin_one" {
+					pluginOneFound = true
+					Expect(agent.isPlugin).To(BeTrue()) // plugin_one is a plugin
+				}
+			}
+			Expect(agentNames).To(ContainElements(LocalAgentName, "plugin_one"))
 			Expect(agentNames).NotTo(ContainElement("plugin_two"))
+			Expect(pluginOneFound).To(BeTrue())
 		})
 
 		It("should load plugin agents on demand", func() {
@@ -188,8 +220,23 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			}
 
 			// Verify that both are in the enabled list
-			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(ContainElements("built_in", "plugin_agent"))
+			enabledAgents := agents.getEnabledAgentNames()
+			var agentNames []string
+			var builtInFound, pluginFound bool
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+				if agent.name == "built_in" {
+					builtInFound = true
+					Expect(agent.isPlugin).To(BeFalse()) // built-in agent
+				}
+				if agent.name == "plugin_agent" {
+					pluginFound = true
+					Expect(agent.isPlugin).To(BeTrue()) // plugin agent
+				}
+			}
+			Expect(agentNames).To(ContainElements("built_in", "plugin_agent", LocalAgentName))
+			Expect(builtInFound).To(BeTrue())
+			Expect(pluginFound).To(BeTrue())
 		})
 
 		It("should respect the order specified in configuration", func() {
@@ -212,7 +259,13 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			conf.Server.Agents = "plugin_y,agent_b,plugin_x,agent_a"
 
 			// Get the agent names
-			agentNames := agents.getEnabledAgentNames()
+			enabledAgents := agents.getEnabledAgentNames()
+
+			// Extract just the names to verify the order
+			var agentNames []string
+			for _, agent := range enabledAgents {
+				agentNames = append(agentNames, agent.name)
+			}
 
 			// Verify the order matches configuration, with LocalAgentName at the end
 			Expect(agentNames).To(HaveExactElements("plugin_y", "agent_b", "plugin_x", "agent_a", LocalAgentName))
