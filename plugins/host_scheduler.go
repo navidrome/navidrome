@@ -49,13 +49,13 @@ func (s SchedulerHostFunctions) CancelSchedule(ctx context.Context, req *schedul
 type schedulerService struct {
 	// Map of schedule IDs to their callback info
 	schedules  map[string]*ScheduledCallback
-	manager    *Manager
+	manager    *managerImpl
 	navidSched navidsched.Scheduler // Navidrome scheduler for recurring jobs
 	mu         sync.Mutex
 }
 
 // newSchedulerService creates a new schedulerService instance
-func newSchedulerService(manager *Manager) *schedulerService {
+func newSchedulerService(manager *managerImpl) *schedulerService {
 	return &schedulerService{
 		schedules:  make(map[string]*ScheduledCallback),
 		manager:    manager,

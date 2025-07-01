@@ -47,7 +47,7 @@ func createTestPlugin(tempDir, name string, permissions schema.PluginManifestPer
 
 var _ = Describe("Plugin Permissions", func() {
 	var (
-		mgr     *Manager
+		mgr     *managerImpl
 		tempDir string
 		ctx     context.Context
 	)

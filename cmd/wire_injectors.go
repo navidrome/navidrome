@@ -42,8 +42,8 @@ var allProviders = wire.NewSet(
 	plugins.GetManager,
 	metrics.GetPrometheusInstance,
 	db.Db,
-	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
-	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
 )
 
 func CreateDataStore() model.DataStore {
@@ -118,13 +118,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	))
 }
 
-func getPluginManager() *plugins.Manager {
+func getPluginManager() plugins.Manager {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func GetPluginManager(ctx context.Context) *plugins.Manager {
+func GetPluginManager(ctx context.Context) plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
 	return manager

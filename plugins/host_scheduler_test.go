@@ -11,7 +11,7 @@ import (
 var _ = Describe("SchedulerService", func() {
 	var (
 		ss         *schedulerService
-		manager    *Manager
+		manager    *managerImpl
 		pluginName = "test_plugin"
 	)
 

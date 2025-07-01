@@ -50,12 +50,12 @@ func (s WebSocketHostFunctions) Close(ctx context.Context, req *websocket.CloseR
 // websocketService implements the WebSocket service functionality
 type websocketService struct {
 	connections map[string]*WebSocketConnection
-	manager     *Manager
+	manager     *managerImpl
 	mu          sync.RWMutex
 }
 
 // newWebsocketService creates a new websocketService instance
-func newWebsocketService(manager *Manager) *websocketService {
+func newWebsocketService(manager *managerImpl) *websocketService {
 	return &websocketService{
 		connections: make(map[string]*WebSocketConnection),
 		manager:     manager,
