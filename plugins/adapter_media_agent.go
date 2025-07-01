@@ -10,7 +10,7 @@ import (
 )
 
 // NewWasmMediaAgent creates a new adapter for a MetadataAgent plugin
-func newWasmMediaAgent(wasmPath, pluginID string, m *Manager, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+func newWasmMediaAgent(wasmPath, pluginID string, m *managerImpl, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, err := api.NewMetadataAgentPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating media metadata service plugin", "plugin", pluginID, "path", wasmPath, err)

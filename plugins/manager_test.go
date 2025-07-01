@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Plugin Manager", func() {
-	var mgr *Manager
+var _ = Describe("Plugin managerImpl", func() {
+	var mgr *managerImpl
 	var ctx context.Context
 
 	BeforeEach(func() {
@@ -76,7 +76,7 @@ var _ = Describe("Plugin Manager", func() {
 
 	Describe("ScanPlugins", func() {
 		var tempPluginsDir string
-		var m *Manager
+		var m *managerImpl
 
 		BeforeEach(func() {
 			tempPluginsDir, _ = os.MkdirTemp("", "navidrome-plugins-test-*")
