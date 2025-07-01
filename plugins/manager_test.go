@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Plugin managerImpl", func() {
+var _ = Describe("Plugin Manager", func() {
 	var mgr *managerImpl
 	var ctx context.Context
 
