@@ -68,13 +68,7 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 	configuredAgents := strings.Split(conf.Server.Agents, ",")
 
 	// Always add LocalAgentName if not already included
-	hasLocalAgent := false
-	for _, name := range configuredAgents {
-		if name == LocalAgentName {
-			hasLocalAgent = true
-			break
-		}
-	}
+	hasLocalAgent := slices.Contains(configuredAgents, LocalAgentName)
 	if !hasLocalAgent {
 		configuredAgents = append(configuredAgents, LocalAgentName)
 	}
