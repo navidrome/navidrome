@@ -15,11 +15,11 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.0.2-1
+CROSS_TAGLIB_VERSION ?= 2.1.1-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
-setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
+setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
 .PHONY: setup
@@ -46,11 +46,11 @@ testrace: ##@Development Run Go tests with race detector
 .PHONY: test
 
 testall: testrace ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test:ci)
+	@(cd ./ui && npm run test)
 .PHONY: testall
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
@@ -64,7 +64,7 @@ lintall: lint ##@Development Lint Go and JS code
 
 format: ##@Development Format code
 	@(cd ./ui && npm run prettier)
-	@go tool goimports -w `find . -name '*.go' | grep -v _gen.go$$`
+	@go tool goimports -w `find . -name '*.go' | grep -v _gen.go$$ | grep -v .pb.go$$`
 	@go mod tidy
 .PHONY: format
 
@@ -153,6 +153,20 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
 
+run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
+    VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
+	if [ -f navidrome.toml ]; then \
+		VOLUMES="$$VOLUMES -v $(PWD)/navidrome.toml:/data/navidrome.toml:ro"; \
+		MUSIC_FOLDER=$$(grep '^MusicFolder' navidrome.toml | head -n1 | sed 's/.*= *"//' | sed 's/".*//'); \
+		if [ -n "$$MUSIC_FOLDER" ] && [ -d "$$MUSIC_FOLDER" ]; then \
+		  VOLUMES="$$VOLUMES -v $$MUSIC_FOLDER:/music:ro"; \
+	  	fi; \
+	fi; \
+	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
+.PHONY: run-docker
+
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
 	goreleaser release -f release/goreleaser.yml --clean --skip=publish --snapshot
@@ -220,6 +234,24 @@ pre-push: lintall testall
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
+
+# Generate Go code from plugins/api/api.proto
+plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf files
+	go generate ./plugins/...
+.PHONY: plugin-gen
+
+plugin-examples: check_go_env ##@Development Build all example plugins
+	$(MAKE) -C plugins/examples clean all
+.PHONY: plugin-examples
+
+plugin-clean: check_go_env ##@Development Clean all plugins
+	$(MAKE) -C plugins/examples clean
+	$(MAKE) -C plugins/testdata clean
+.PHONY: plugin-clean
+
+plugin-tests: check_go_env ##@Development Build all test plugins
+	$(MAKE) -C plugins/testdata clean all
+.PHONY: plugin-tests
 
 .DEFAULT_GOAL := help
 

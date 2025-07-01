@@ -59,23 +59,13 @@ func (n *Router) routes() http.Handler {
 
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
+		n.addSongPlaylistsRoute(r)
+		n.addQueueRoute(r)
 		n.addMissingFilesRoute(r)
 		n.addInspectRoute(r)
-
-		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
-		})
-
-		// Insights status endpoint
-		r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
-			last, success := n.insights.LastRun(r.Context())
-			if conf.Server.EnableInsightsCollector {
-				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
-			} else {
-				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
-			}
-		})
+		n.addConfigRoute(r)
+		n.addKeepAliveRoute(r)
+		n.addInsightsRoute(r)
 	})
 
 	return r
@@ -144,6 +134,9 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				getPlaylistTrack(n.ds)(w, r)
+			})
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
 				reorderItem(n.ds)(w, r)
 			})
@@ -151,6 +144,21 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
 		})
+	})
+}
+
+func (n *Router) addSongPlaylistsRoute(r chi.Router) {
+	r.With(server.URLParamsMiddleware).Get("/song/{id}/playlists", func(w http.ResponseWriter, r *http.Request) {
+		getSongPlaylists(n.ds)(w, r)
+	})
+}
+
+func (n *Router) addQueueRoute(r chi.Router) {
+	r.Route("/queue", func(r chi.Router) {
+		r.Get("/", getQueue(n.ds))
+		r.Post("/", saveQueue(n.ds))
+		r.Put("/", updateQueue(n.ds))
+		r.Delete("/", clearQueue(n.ds))
 	})
 }
 
@@ -195,4 +203,27 @@ func (n *Router) addInspectRoute(r chi.Router) {
 			r.Get("/inspect", inspect(n.ds))
 		})
 	}
+}
+
+func (n *Router) addConfigRoute(r chi.Router) {
+	if conf.Server.DevUIShowConfig {
+		r.Get("/config/*", getConfig)
+	}
+}
+
+func (n *Router) addKeepAliveRoute(r chi.Router) {
+	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+	})
+}
+
+func (n *Router) addInsightsRoute(r chi.Router) {
+	r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
+		last, success := n.insights.LastRun(r.Context())
+		if conf.Server.EnableInsightsCollector {
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
+		} else {
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
+		}
+	})
 }

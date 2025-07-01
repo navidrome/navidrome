@@ -402,6 +402,72 @@ var _ = Describe("MediaFiles", func() {
 			})
 		})
 	})
+
+	Describe("ToM3U8", func() {
+		It("returns header only for empty MediaFiles", func() {
+			mfs = MediaFiles{}
+			result := mfs.ToM3U8("My Playlist", false)
+			Expect(result).To(Equal("#EXTM3U\n#PLAYLIST:My Playlist\n"))
+		})
+
+		DescribeTable("duration formatting",
+			func(duration float32, expected string) {
+				mfs = MediaFiles{{Title: "Song", Artist: "Artist", Duration: duration, Path: "song.mp3"}}
+				result := mfs.ToM3U8("Test", false)
+				Expect(result).To(ContainSubstring(expected))
+			},
+			Entry("zero duration", float32(0.0), "#EXTINF:0,"),
+			Entry("whole number", float32(120.0), "#EXTINF:120,"),
+			Entry("rounds 0.5 down", float32(180.5), "#EXTINF:180,"),
+			Entry("rounds 0.6 up", float32(240.6), "#EXTINF:241,"),
+		)
+
+		Context("multiple tracks", func() {
+			BeforeEach(func() {
+				mfs = MediaFiles{
+					{Title: "Song One", Artist: "Artist A", Duration: 120, Path: "a/song1.mp3", LibraryPath: "/music"},
+					{Title: "Song Two", Artist: "Artist B", Duration: 241, Path: "b/song2.mp3", LibraryPath: "/music"},
+					{Title: "Song with \"quotes\" & ampersands", Artist: "Artist with Ümläuts", Duration: 90, Path: "special/file.mp3", LibraryPath: "/música"},
+				}
+			})
+
+			DescribeTable("generates correct output",
+				func(absolutePaths bool, expectedContent string) {
+					result := mfs.ToM3U8("Multi Track", absolutePaths)
+					Expect(result).To(Equal(expectedContent))
+				},
+				Entry("relative paths",
+					false,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
+				),
+				Entry("absolute paths",
+					true,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\n/music/a/song1.mp3\n#EXTINF:241,Artist B - Song Two\n/music/b/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\n/música/special/file.mp3\n",
+				),
+				Entry("special characters",
+					false,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
+				),
+			)
+		})
+
+		Context("path variations", func() {
+			It("handles different path structures", func() {
+				mfs = MediaFiles{
+					{Title: "Root", Artist: "Artist", Duration: 60, Path: "song.mp3", LibraryPath: "/lib"},
+					{Title: "Nested", Artist: "Artist", Duration: 60, Path: "deep/nested/song.mp3", LibraryPath: "/lib"},
+				}
+
+				relativeResult := mfs.ToM3U8("Test", false)
+				Expect(relativeResult).To(ContainSubstring("song.mp3\n"))
+				Expect(relativeResult).To(ContainSubstring("deep/nested/song.mp3\n"))
+
+				absoluteResult := mfs.ToM3U8("Test", true)
+				Expect(absoluteResult).To(ContainSubstring("/lib/song.mp3\n"))
+				Expect(absoluteResult).To(ContainSubstring("/lib/deep/nested/song.mp3\n"))
+			})
+		})
+	})
 })
 
 var _ = Describe("MediaFile", func() {

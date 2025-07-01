@@ -38,15 +38,16 @@ export const RatingField = ({
 
   const handleRating = useCallback(
     (e, val) => {
-      rate(val ?? 0, e.target.name)
+      const targetId = record.mediaFileId || record.id
+      rate(val ?? 0, targetId)
     },
-    [rate],
+    [rate, record.mediaFileId, record.id],
   )
 
   return (
     <span onClick={(e) => stopPropagation(e)}>
       <Rating
-        name={record.id}
+        name={record.mediaFileId || record.id}
         className={clsx(
           className,
           classes.rating,

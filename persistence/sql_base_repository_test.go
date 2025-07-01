@@ -136,6 +136,10 @@ var _ = Describe("sqlRepository", func() {
 	})
 
 	Describe("buildSortOrder", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{}
+		})
+
 		Context("single field", func() {
 			It("sorts by specified field", func() {
 				sql := r.buildSortOrder("name", "desc")
@@ -163,6 +167,14 @@ var _ = Describe("sqlRepository", func() {
 				sql := r.buildSortOrder("name desc, age, status asc", "desc")
 				Expect(sql).To(Equal("name asc, age desc, status desc"))
 			})
+			It("handles spaces in mapped field", func() {
+				r.sortMappings = map[string]string{
+					"has_lyrics": "(lyrics != '[]'), updated_at",
+				}
+				sql := r.buildSortOrder("has_lyrics", "desc")
+				Expect(sql).To(Equal("(lyrics != '[]') desc, updated_at desc"))
+			})
+
 		})
 		Context("function fields", func() {
 			It("handles functions with multiple params", func() {

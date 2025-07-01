@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.0.2-1"
+  CROSS_TAGLIB_VERSION: "2.1.1-1"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
@@ -71,14 +71,14 @@ jobs:
           version: ${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v8
         with:
           version: latest
           problem-matchers: true
           args: --timeout 2m
 
       - name: Run go goimports
-        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$'`
+        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`
       - run: go mod tidy
       - name: Verify no changes from goimports and go mod tidy
         run: |

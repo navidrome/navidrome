@@ -112,6 +112,37 @@
         ],
         "displayComposer": "composer 1 \u0026 composer 2",
         "explicitStatus": "clean"
+      },
+      {
+        "id": "",
+        "isDir": false,
+        "isVideo": false,
+        "bpm": 0,
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "isrc": [],
+        "genres": [],
+        "replayGain": {
+          "trackGain": 0,
+          "albumGain": 0,
+          "trackPeak": 0,
+          "albumPeak": 0,
+          "baseGain": 0,
+          "fallbackGain": 0
+        },
+        "channelCount": 0,
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [],
+        "artists": [],
+        "displayArtist": "",
+        "albumArtists": [],
+        "displayAlbumArtist": "",
+        "contributors": [],
+        "displayComposer": "",
+        "explicitStatus": ""
       }
     ],
     "id": "1",

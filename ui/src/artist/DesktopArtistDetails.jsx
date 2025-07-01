@@ -29,6 +29,7 @@ const useStyles = makeStyles(
       float: 'left',
       wordBreak: 'break-word',
       cursor: 'pointer',
+      minHeight: '4.5em',
     },
     content: {
       flex: '1 0 auto',
@@ -38,11 +39,22 @@ const useStyles = makeStyles(
       height: '12rem',
       borderRadius: '6em',
       cursor: 'pointer',
+      backgroundColor: 'transparent',
+      transition: 'opacity 0.3s ease-in-out',
+      objectFit: 'cover',
+    },
+    coverLoading: {
+      opacity: 0.5,
     },
     artistImage: {
       maxHeight: '12rem',
+      minHeight: '12rem',
+      width: '12rem',
+      minWidth: '12rem',
       backgroundColor: 'inherit',
       display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       boxShadow: 'none',
     },
     artistDetail: {
@@ -73,8 +85,31 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const classes = useStyles()
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [imageLoading, setImageLoading] = React.useState(false)
+  const [imageError, setImageError] = React.useState(false)
 
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
+  // Reset image state when artist changes
+  React.useEffect(() => {
+    setImageLoading(true)
+    setImageError(false)
+  }, [record.id])
+
+  const handleImageLoad = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(false)
+  }, [])
+
+  const handleImageError = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(true)
+  }, [])
+
+  const handleOpenLightbox = React.useCallback(() => {
+    if (!imageError) {
+      setLightboxOpen(true)
+    }
+  }, [imageError])
+
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
     [],
@@ -86,10 +121,17 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
         <Card className={classes.artistImage}>
           {artistInfo && (
             <CardMedia
-              className={classes.cover}
-              image={subsonic.getCoverArtUrl(record, 300)}
+              key={record.id}
+              component="img"
+              src={subsonic.getCoverArtUrl(record, 300)}
+              className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
               onClick={handleOpenLightbox}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
               title={title}
+              style={{
+                cursor: imageError ? 'default' : 'pointer',
+              }}
             />
           )}
         </Card>
@@ -140,7 +182,7 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
             )}
           </Typography>
         </div>
-        {isLightboxOpen && (
+        {isLightboxOpen && !imageError && (
           <Lightbox
             imagePadding={50}
             animationDuration={200}

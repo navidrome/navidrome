@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -26,11 +26,13 @@ import {
   useResourceRefresh,
   DateField,
   ArtistLinkField,
+  RatingField,
 } from '../common'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -66,10 +68,16 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $ratingField': {
+          visibility: 'visible',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
+    ratingField: {
+      visibility: 'hidden',
     },
   }),
   { name: 'RaList' },
@@ -84,7 +92,8 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
-  const { data, ids, selectedIds, onUnselectItems, refetch } = listContext
+  const { data, ids, selectedIds, onUnselectItems, refetch, setPage } =
+    listContext
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -92,6 +101,11 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const notify = useNotify()
   const version = useVersion()
   useResourceRefresh('song', 'playlist')
+
+  useEffect(() => {
+    setPage(1)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [playlistId, setPage])
 
   const onAddToPlaylist = useCallback(
     (pls) => {
@@ -149,12 +163,22 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
-      playDate: <DateField source="playDate" sortByOrder={'DESC'} showTime />,
+      playDate: isDesktop && (
+        <DateField source="playDate" sortByOrder={'DESC'} showTime />
+      ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" />,
       bpm: isDesktop && <NumberField source="bpm" />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'song'}
+          className={classes.ratingField}
+        />
+      ),
     }
-  }, [isDesktop, classes.draggable])
+  }, [isDesktop, classes.draggable, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'playlistTrack',
@@ -166,6 +190,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       'playCount',
       'playDate',
       'albumArtist',
+      'rating',
     ],
   })
 
@@ -205,7 +230,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               {columns}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
-                showLove={false}
+                showLove={true}
                 className={classes.contextMenu}
               />
             </SongDatagrid>

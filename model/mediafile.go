@@ -9,6 +9,7 @@ import (
 	"mime"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -35,53 +36,53 @@ type MediaFile struct {
 	Artist        string `structs:"artist" json:"artist"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
 	// AlbumArtist is the display name used for the album artist.
-	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
-	AlbumID              string  `structs:"album_id" json:"albumId"`
-	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
-	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
-	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
-	DiscSubtitle         string  `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
-	Year                 int     `structs:"year" json:"year"`
-	Date                 string  `structs:"date" json:"date,omitempty"`
-	OriginalYear         int     `structs:"original_year" json:"originalYear"`
-	OriginalDate         string  `structs:"original_date" json:"originalDate,omitempty"`
-	ReleaseYear          int     `structs:"release_year" json:"releaseYear"`
-	ReleaseDate          string  `structs:"release_date" json:"releaseDate,omitempty"`
-	Size                 int64   `structs:"size" json:"size"`
-	Suffix               string  `structs:"suffix" json:"suffix"`
-	Duration             float32 `structs:"duration" json:"duration"`
-	BitRate              int     `structs:"bit_rate" json:"bitRate"`
-	SampleRate           int     `structs:"sample_rate" json:"sampleRate"`
-	BitDepth             int     `structs:"bit_depth" json:"bitDepth"`
-	Channels             int     `structs:"channels" json:"channels"`
-	Genre                string  `structs:"genre" json:"genre"`
-	Genres               Genres  `structs:"-" json:"genres,omitempty"`
-	SortTitle            string  `structs:"sort_title" json:"sortTitle,omitempty"`
-	SortAlbumName        string  `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
-	SortArtistName       string  `structs:"sort_artist_name" json:"sortArtistName,omitempty"`            // Deprecated: Use Participants instead
-	SortAlbumArtistName  string  `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"` // Deprecated: Use Participants instead
-	OrderTitle           string  `structs:"order_title" json:"orderTitle,omitempty"`
-	OrderAlbumName       string  `structs:"order_album_name" json:"orderAlbumName"`
-	OrderArtistName      string  `structs:"order_artist_name" json:"orderArtistName"`            // Deprecated: Use Participants instead
-	OrderAlbumArtistName string  `structs:"order_album_artist_name" json:"orderAlbumArtistName"` // Deprecated: Use Participants instead
-	Compilation          bool    `structs:"compilation" json:"compilation"`
-	Comment              string  `structs:"comment" json:"comment,omitempty"`
-	Lyrics               string  `structs:"lyrics" json:"lyrics"`
-	BPM                  int     `structs:"bpm" json:"bpm,omitempty"`
-	ExplicitStatus       string  `structs:"explicit_status" json:"explicitStatus"`
-	CatalogNum           string  `structs:"catalog_num" json:"catalogNum,omitempty"`
-	MbzRecordingID       string  `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
-	MbzReleaseTrackID    string  `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty"`
-	MbzAlbumID           string  `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
-	MbzReleaseGroupID    string  `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
-	MbzArtistID          string  `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`            // Deprecated: Use Participants instead
-	MbzAlbumArtistID     string  `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"` // Deprecated: Use Participants instead
-	MbzAlbumType         string  `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
-	MbzAlbumComment      string  `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	RGAlbumGain          float64 `structs:"rg_album_gain" json:"rgAlbumGain"`
-	RGAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
-	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
-	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
+	AlbumID              string   `structs:"album_id" json:"albumId"`
+	HasCoverArt          bool     `structs:"has_cover_art" json:"hasCoverArt"`
+	TrackNumber          int      `structs:"track_number" json:"trackNumber"`
+	DiscNumber           int      `structs:"disc_number" json:"discNumber"`
+	DiscSubtitle         string   `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
+	Year                 int      `structs:"year" json:"year"`
+	Date                 string   `structs:"date" json:"date,omitempty"`
+	OriginalYear         int      `structs:"original_year" json:"originalYear"`
+	OriginalDate         string   `structs:"original_date" json:"originalDate,omitempty"`
+	ReleaseYear          int      `structs:"release_year" json:"releaseYear"`
+	ReleaseDate          string   `structs:"release_date" json:"releaseDate,omitempty"`
+	Size                 int64    `structs:"size" json:"size"`
+	Suffix               string   `structs:"suffix" json:"suffix"`
+	Duration             float32  `structs:"duration" json:"duration"`
+	BitRate              int      `structs:"bit_rate" json:"bitRate"`
+	SampleRate           int      `structs:"sample_rate" json:"sampleRate"`
+	BitDepth             int      `structs:"bit_depth" json:"bitDepth"`
+	Channels             int      `structs:"channels" json:"channels"`
+	Genre                string   `structs:"genre" json:"genre"`
+	Genres               Genres   `structs:"-" json:"genres,omitempty"`
+	SortTitle            string   `structs:"sort_title" json:"sortTitle,omitempty"`
+	SortAlbumName        string   `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortArtistName       string   `structs:"sort_artist_name" json:"sortArtistName,omitempty"`            // Deprecated: Use Participants instead
+	SortAlbumArtistName  string   `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"` // Deprecated: Use Participants instead
+	OrderTitle           string   `structs:"order_title" json:"orderTitle,omitempty"`
+	OrderAlbumName       string   `structs:"order_album_name" json:"orderAlbumName"`
+	OrderArtistName      string   `structs:"order_artist_name" json:"orderArtistName"`            // Deprecated: Use Participants instead
+	OrderAlbumArtistName string   `structs:"order_album_artist_name" json:"orderAlbumArtistName"` // Deprecated: Use Participants instead
+	Compilation          bool     `structs:"compilation" json:"compilation"`
+	Comment              string   `structs:"comment" json:"comment,omitempty"`
+	Lyrics               string   `structs:"lyrics" json:"lyrics"`
+	BPM                  int      `structs:"bpm" json:"bpm,omitempty"`
+	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
+	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzRecordingID       string   `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
+	MbzReleaseTrackID    string   `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty"`
+	MbzAlbumID           string   `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
+	MbzReleaseGroupID    string   `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
+	MbzArtistID          string   `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`            // Deprecated: Use Participants instead
+	MbzAlbumArtistID     string   `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"` // Deprecated: Use Participants instead
+	MbzAlbumType         string   `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string   `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	RGAlbumGain          *float64 `structs:"rg_album_gain" json:"rgAlbumGain"`
+	RGAlbumPeak          *float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
+	RGTrackGain          *float64 `structs:"rg_track_gain" json:"rgTrackGain"`
+	RGTrackPeak          *float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
 	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags from the original file
 	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this track
@@ -330,6 +331,23 @@ func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int
 	return currentPath, currentDisc
 }
 
+// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
+// https://docs.fileformat.com/audio/m3u/#extended-m3u
+func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
+	buf := strings.Builder{}
+	buf.WriteString("#EXTM3U\n")
+	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
+	for _, t := range mfs {
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		if absolutePaths {
+			buf.WriteString(t.AbsolutePath() + "\n")
+		} else {
+			buf.WriteString(t.Path + "\n")
+		}
+	}
+	return buf.String()
+}
+
 type MediaFileCursor iter.Seq2[MediaFile, error]
 
 type MediaFileRepository interface {
@@ -342,6 +360,7 @@ type MediaFileRepository interface {
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error
+	DeleteAllMissing() (int64, error)
 	FindByPaths(paths []string) (MediaFiles, error)
 
 	// The following methods are used exclusively by the scanner:

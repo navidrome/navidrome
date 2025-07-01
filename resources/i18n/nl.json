@@ -26,7 +26,16 @@
         "bpm": "BPM",
         "playDate": "Laatst afgespeeld",
         "channels": "Kanalen",
-        "createdAt": "Datum toegevoegd"
+        "createdAt": "Datum toegevoegd",
+        "grouping": "Groep",
+        "mood": "Sfeer",
+        "participants": "Extra deelnemers",
+        "tags": "Extra tags",
+        "mappedTags": "Gemapte tags",
+        "rawTags": "Onbewerkte tags",
+        "bitDepth": "Bit diepte",
+        "sampleRate": "Sample waarde",
+        "missing": "Ontbrekend"
       },
       "actions": {
         "addToQueue": "Voeg toe aan wachtrij",
@@ -58,7 +67,15 @@
         "originalDate": "Origineel",
         "releaseDate": "Uitgegeven",
         "releases": "Uitgave |||| Uitgaven",
-        "released": "Uitgegeven"
+        "released": "Uitgegeven",
+        "recordLabel": "Label",
+        "catalogNum": "Catalogus nummer",
+        "releaseType": "Type",
+        "grouping": "Groep",
+        "media": "Media",
+        "mood": "Sfeer",
+        "date": "Opnamedatum",
+        "missing": "Ontbrekend"
       },
       "actions": {
         "playAll": "Afspelen",
@@ -89,7 +106,24 @@
         "playCount": "Afgespeeld",
         "rating": "Beoordeling",
         "genre": "Genre",
-        "size": "Grootte"
+        "size": "Grootte",
+        "role": "Rol",
+        "missing": "Ontbrekend"
+      },
+      "roles": {
+        "albumartist": "Album artiest |||| Album artiesten",
+        "artist": "Artiest |||| Artiesten",
+        "composer": "Componist |||| Componisten",
+        "conductor": "Dirigent |||| Dirigenten",
+        "lyricist": "Tekstschrijver |||| Tekstschrijvers",
+        "arranger": "Arrangeur |||| Arrangeurs",
+        "producer": "Producent |||| Producenten",
+        "director": "Regisseur |||| Regisseurs",
+        "engineer": "Opnametechnicus |||| Opnametechnici",
+        "mixer": "Mixer |||| Mixers",
+        "remixer": "Remixer |||| Remixers",
+        "djmixer": "DJ Mixer |||| DJ Mixers",
+        "performer": "Performer |||| Performers"
       }
     },
     "user": {
@@ -162,7 +196,8 @@
         "addNewPlaylist": "Creëer \"%{name}\"",
         "export": "Exporteer",
         "makePublic": "Openbaar maken",
-        "makePrivate": "Privé maken"
+        "makePrivate": "Privé maken",
+        "saveQueue": "Bewaar wachtrij als playlist"
       },
       "message": {
         "duplicate_song": "Dubbele nummers toevoegen",
@@ -198,6 +233,22 @@
         "createdAt": "Gecreëerd op",
         "downloadable": "Downloads toestaan?"
       }
+    },
+    "missing": {
+      "name": "Ontbrekend bestand |||| Ontbrekende bestanden",
+      "fields": {
+        "path": "Pad",
+        "size": "Grootte",
+        "updatedAt": "Verdwenen op"
+      },
+      "actions": {
+        "remove": "Verwijder",
+        "remove_all": "Alles verwijderen"
+      },
+      "notifications": {
+        "removed": "Ontbrekende bestanden verwijderd"
+      },
+      "empty": "Geen ontbrekende bestanden"
     }
   },
   "ra": {
@@ -212,7 +263,8 @@
       "password": "Wachtwoord",
       "sign_in": "Inloggen",
       "sign_in_error": "Authenticatie mislukt, probeer opnieuw a.u.b.",
-      "logout": "Uitloggen"
+      "logout": "Uitloggen",
+      "insightsCollectionNote": "Navidrome verzamelt anonieme gebruiksdata om het project te verbeteren. Klik [hier] voor meer info en de mogelijkheid om te weigeren"
     },
     "validation": {
       "invalidChars": "Gebruik alleen letters en cijfers",
@@ -374,7 +426,11 @@
     "shareSuccess": "URL gekopieeerd naar klembord: %{url}",
     "shareFailure": "Fout bij kopieren URL %{url} naar klembord",
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Kopieeer naar klembord: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Kopieeer naar klembord: Ctrl+C, Enter",
+    "remove_missing_title": "Verwijder ontbrekende bestanden",
+    "remove_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
+    "remove_all_missing_title": "Verwijder alle ontbrekende bestanden",
+    "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen."
   },
   "menu": {
     "library": "Bibliotheek",
@@ -396,16 +452,17 @@
           "none": "Uitgeschakeld",
           "album": "Gebruik Album Gain",
           "track": "Gebruik Track Gain"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API-sleutel is niet geconfigureerd"
       }
     },
     "albumList": "Albums",
     "about": "Over",
-    "playlists": "Playlists",
-    "sharedPlaylists": "Gedeelde playlists"
+    "playlists": "Afspeellijsten",
+    "sharedPlaylists": "Gedeelde afspeellijsten"
   },
   "player": {
-    "playListsText": "Afspeellijst afspelen",
+    "playListsText": "Wachtrij",
     "openText": "Openen",
     "closeText": "Sluiten",
     "notContentText": "Geen muziek",
@@ -433,7 +490,12 @@
     "links": {
       "homepage": "Thuispagina",
       "source": "Broncode",
-      "featureRequests": "Functie verzoeken"
+      "featureRequests": "Functie verzoeken",
+      "lastInsightsCollection": "Laatste inzichten",
+      "insights": {
+        "disabled": "Uitgeschakeld",
+        "waiting": "Wachten"
+      }
     }
   },
   "activity": {
@@ -442,7 +504,10 @@
     "quickScan": "Snelle scan",
     "fullScan": "Volledige scan",
     "serverUptime": "Server uptime",
-    "serverDown": "Offline"
+    "serverDown": "Offline",
+    "scanType": "Type",
+    "status": "Scan fout",
+    "elapsedTime": "Verlopen tijd"
   },
   "help": {
     "title": "Navidrome sneltoetsen",

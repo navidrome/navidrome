@@ -22,6 +22,7 @@ import {
   addToPlaylistDialogReducer,
   expandInfoDialogReducer,
   listenBrainzTokenDialogReducer,
+  saveQueueDialogReducer,
   playerReducer,
   albumViewReducer,
   activityReducer,
@@ -62,6 +63,7 @@ const adminStore = createAdminStore({
     downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    saveQueueDialog: saveQueueDialogReducer,
     shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
@@ -135,6 +137,7 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,
+        <Resource name="config" />,
         <Player />,
       ]}
     </RAAdmin>

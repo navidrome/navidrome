@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/pocketbase/dbx"
 )
 
@@ -167,10 +167,10 @@ func (s *SQLStore) GC(ctx context.Context) error {
 		}
 	}
 
-	err := chain.RunSequentially(
+	err := run.Sequentially(
 		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() }),
 		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
-		trace(ctx, "mark missing artists", func() error { _, err := s.Artist(ctx).(*artistRepository).markMissing(); return err }),
+		trace(ctx, "mark missing artists", func() error { return s.Artist(ctx).(*artistRepository).markMissing() }),
 		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() }),
 		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
 		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),

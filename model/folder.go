@@ -25,6 +25,7 @@ type Folder struct {
 	NumPlaylists    int       `structs:"num_playlists"`
 	ImageFiles      []string  `structs:"image_files"`
 	ImagesUpdatedAt time.Time `structs:"images_updated_at"`
+	Hash            string    `structs:"hash"`
 	Missing         bool      `structs:"missing"`
 	UpdateAt        time.Time `structs:"updated_at"`
 	CreatedAt       time.Time `structs:"created_at"`
@@ -74,12 +75,17 @@ func NewFolder(lib Library, folderPath string) *Folder {
 
 type FolderCursor iter.Seq2[Folder, error]
 
+type FolderUpdateInfo struct {
+	UpdatedAt time.Time
+	Hash      string
+}
+
 type FolderRepository interface {
 	Get(id string) (*Folder, error)
 	GetByPath(lib Library, path string) (*Folder, error)
 	GetAll(...QueryOptions) ([]Folder, error)
 	CountAll(...QueryOptions) (int64, error)
-	GetLastUpdates(lib Library) (map[string]time.Time, error)
+	GetLastUpdates(lib Library) (map[string]FolderUpdateInfo, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)

@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -63,13 +62,12 @@ func (s *controller) getScanner() scanner {
 	if conf.Server.DevExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls, metrics: s.metrics}
+	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
 // CallScan starts an in-process scan of the music library.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists,
-	metrics metrics.Metrics, fullScan bool) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -80,7 +78,7 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls, metrics: metrics}
+		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
 		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil
@@ -98,6 +96,7 @@ type ProgressInfo struct {
 	ChangesDetected bool
 	Warning         string
 	Error           string
+	ForceUpdate     bool
 }
 
 type scanner interface {
@@ -178,20 +177,14 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	count, err := s.ds.MediaFile(ctx).CountAll()
+	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		return 0, 0, fmt.Errorf("media file count: %w", err)
+		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
-	folderCount, err := s.ds.Folder(ctx).CountAll(
-		model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Gt{"num_audio_files": 0},
-				squirrel.Eq{"missing": false},
-			},
-		},
-	)
-	if err != nil {
-		return 0, 0, fmt.Errorf("folder count: %w", err)
+	var count, folderCount int64
+	for _, l := range libs {
+		count += int64(l.TotalSongs)
+		folderCount += int64(l.TotalFolders)
 	}
 	return count, folderCount, nil
 }
@@ -229,9 +222,11 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	}
 	// Send the final scan status event, with totals
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
+		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return scanWarnings, err
 	} else {
 		scanType, elapsed, lastErr := s.getScanInfo(ctx)
+		s.metrics.WriteAfterScanMetrics(ctx, true)
 		s.sendMessage(ctx, &events.ScanStatus{
 			Scanning:    false,
 			Count:       count,
@@ -292,7 +287,7 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 			ScanType:    scanType,
 			ElapsedTime: elapsed,
 		}
-		if s.limiter != nil {
+		if s.limiter != nil && !p.ForceUpdate {
 			s.limiter.Do(func() { s.sendMessage(ctx, status) })
 		} else {
 			s.sendMessage(ctx, status)

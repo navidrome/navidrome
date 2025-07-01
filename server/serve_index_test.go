@@ -39,7 +39,7 @@ var _ = Describe("serveIndex", func() {
 
 		Expect(w.Code).To(Equal(200))
 		config := extractAppConfig(w.Body.String())
-		Expect(config).To(BeAssignableToTypeOf(map[string]interface{}{}))
+		Expect(config).To(BeAssignableToTypeOf(map[string]any{}))
 	})
 
 	It("sets firstTime = true when User table is empty", func() {
@@ -53,17 +53,6 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", true))
 	})
 
-	It("includes the VariousArtistsID", func() {
-		mockUser.empty = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("variousArtistsId", consts.VariousArtistsID))
-	})
-
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -75,267 +64,64 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("firstTime", false))
 	})
 
-	It("sets baseURL", func() {
-		conf.Server.BasePath = "base_url_test"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("baseURL", "base_url_test"))
-	})
-
-	It("sets the welcomeMessage", func() {
-		conf.Server.UIWelcomeMessage = "Hello"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("welcomeMessage", "Hello"))
-	})
-
-	It("sets the maxSidebarPlaylists", func() {
-		conf.Server.MaxSidebarPlaylists = 42
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("maxSidebarPlaylists", float64(42)))
-	})
-
-	It("sets the enableTranscodingConfig", func() {
-		conf.Server.EnableTranscodingConfig = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableTranscodingConfig", true))
-	})
-
-	It("sets the enableDownloads", func() {
-		conf.Server.EnableDownloads = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableDownloads", true))
-	})
-
-	It("sets the enableLoved", func() {
-		conf.Server.EnableFavourites = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableFavourites", true))
-	})
-
-	It("sets the enableStarRating", func() {
-		conf.Server.EnableStarRating = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableStarRating", true))
-	})
-
-	It("sets the defaultTheme", func() {
-		conf.Server.DefaultTheme = "Light"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("defaultTheme", "Light"))
-	})
-
-	It("sets the defaultLanguage", func() {
-		conf.Server.DefaultLanguage = "pt"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("defaultLanguage", "pt"))
-	})
-
-	It("sets the defaultUIVolume", func() {
-		conf.Server.DefaultUIVolume = 45
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("defaultUIVolume", float64(45)))
-	})
-
-	It("sets the enableCoverAnimation", func() {
-		conf.Server.EnableCoverAnimation = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableCoverAnimation", true))
-	})
-
-	It("sets the gaTrackingId", func() {
-		conf.Server.GATrackingID = "UA-12345"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("gaTrackingId", "UA-12345"))
-	})
-
-	It("sets the version", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("version", consts.Version))
-	})
-
-	It("sets the losslessFormats", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		expected := strings.ToUpper(strings.Join(mime.LosslessFormats, ","))
-		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
-	})
-
-	It("sets the enableUserEditing", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableUserEditing", true))
-	})
-
-	It("sets the enableSharing", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableSharing", false))
-	})
-
-	It("sets the defaultDownloadableShare", func() {
-		conf.Server.DefaultDownloadableShare = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("defaultDownloadableShare", true))
-	})
-
-	It("sets the defaultDownsamplingFormat", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("defaultDownsamplingFormat", conf.Server.DefaultDownsamplingFormat))
-	})
-
-	It("sets the devSidebarPlaylists", func() {
-		conf.Server.DevSidebarPlaylists = true
-
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devSidebarPlaylists", true))
-	})
-
-	It("sets the lastFMEnabled", func() {
-		conf.Server.LastFM.Enabled = true
-
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("lastFMEnabled", true))
-	})
-
-	It("sets the devShowArtistPage", func() {
-		conf.Server.DevShowArtistPage = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
-	})
-
-	It("sets the listenBrainzEnabled", func() {
-		conf.Server.ListenBrainz.Enabled = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("listenBrainzEnabled", true))
-	})
-
-	It("sets the enableReplayGain", func() {
-		conf.Server.EnableReplayGain = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableReplayGain", true))
-	})
-
-	It("sets the enableExternalServices", func() {
-		conf.Server.EnableExternalServices = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("enableExternalServices", true))
-	})
+	DescribeTable("sets configuration values",
+		func(configSetter func(), configKey string, expectedValue any) {
+			configSetter()
+			r := httptest.NewRequest("GET", "/index.html", nil)
+			w := httptest.NewRecorder()
+
+			serveIndex(ds, fs, nil)(w, r)
+
+			config := extractAppConfig(w.Body.String())
+			Expect(config).To(HaveKeyWithValue(configKey, expectedValue))
+		},
+		Entry("baseURL", func() { conf.Server.BasePath = "base_url_test" }, "baseURL", "base_url_test"),
+		Entry("welcomeMessage", func() { conf.Server.UIWelcomeMessage = "Hello" }, "welcomeMessage", "Hello"),
+		Entry("maxSidebarPlaylists", func() { conf.Server.MaxSidebarPlaylists = 42 }, "maxSidebarPlaylists", float64(42)),
+		Entry("enableTranscodingConfig", func() { conf.Server.EnableTranscodingConfig = true }, "enableTranscodingConfig", true),
+		Entry("enableDownloads", func() { conf.Server.EnableDownloads = true }, "enableDownloads", true),
+		Entry("enableFavourites", func() { conf.Server.EnableFavourites = true }, "enableFavourites", true),
+		Entry("enableStarRating", func() { conf.Server.EnableStarRating = true }, "enableStarRating", true),
+		Entry("defaultTheme", func() { conf.Server.DefaultTheme = "Light" }, "defaultTheme", "Light"),
+		Entry("defaultLanguage", func() { conf.Server.DefaultLanguage = "pt" }, "defaultLanguage", "pt"),
+		Entry("defaultUIVolume", func() { conf.Server.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
+		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
+		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
+		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
+		Entry("defaultDownloadableShare", func() { conf.Server.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
+		Entry("devSidebarPlaylists", func() { conf.Server.DevSidebarPlaylists = true }, "devSidebarPlaylists", true),
+		Entry("lastFMEnabled", func() { conf.Server.LastFM.Enabled = true }, "lastFMEnabled", true),
+		Entry("devShowArtistPage", func() { conf.Server.DevShowArtistPage = true }, "devShowArtistPage", true),
+		Entry("devUIShowConfig", func() { conf.Server.DevUIShowConfig = true }, "devUIShowConfig", true),
+		Entry("listenBrainzEnabled", func() { conf.Server.ListenBrainz.Enabled = true }, "listenBrainzEnabled", true),
+		Entry("enableReplayGain", func() { conf.Server.EnableReplayGain = true }, "enableReplayGain", true),
+		Entry("enableExternalServices", func() { conf.Server.EnableExternalServices = true }, "enableExternalServices", true),
+		Entry("devActivityPanel", func() { conf.Server.DevActivityPanel = true }, "devActivityPanel", true),
+		Entry("shareURL", func() { conf.Server.ShareURL = "https://share.example.com" }, "shareURL", "https://share.example.com"),
+		Entry("enableInspect", func() { conf.Server.Inspect.Enabled = true }, "enableInspect", true),
+		Entry("defaultDownsamplingFormat", func() { conf.Server.DefaultDownsamplingFormat = "mp3" }, "defaultDownsamplingFormat", "mp3"),
+		Entry("enableUserEditing", func() { conf.Server.EnableUserEditing = false }, "enableUserEditing", false),
+		Entry("enableSharing", func() { conf.Server.EnableSharing = true }, "enableSharing", true),
+		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
+	)
+
+	DescribeTable("sets other UI configuration values",
+		func(configKey string, expectedValueFunc func() any) {
+			r := httptest.NewRequest("GET", "/index.html", nil)
+			w := httptest.NewRecorder()
+
+			serveIndex(ds, fs, nil)(w, r)
+
+			config := extractAppConfig(w.Body.String())
+			Expect(config).To(HaveKeyWithValue(configKey, expectedValueFunc()))
+		},
+		Entry("version", "version", func() any { return consts.Version }),
+		Entry("variousArtistsId", "variousArtistsId", func() any { return consts.VariousArtistsID }),
+		Entry("losslessFormats", "losslessFormats", func() any {
+			return strings.ToUpper(strings.Join(mime.LosslessFormats, ","))
+		}),
+		Entry("separator", "separator", func() any { return string(os.PathSeparator) }),
+	)
 
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
@@ -426,12 +212,12 @@ var _ = Describe("serveIndex", func() {
 var _ = Describe("addShareData", func() {
 	var (
 		r         *http.Request
-		data      map[string]interface{}
+		data      map[string]any
 		shareInfo *model.Share
 	)
 
 	BeforeEach(func() {
-		data = make(map[string]interface{})
+		data = make(map[string]any)
 		r = httptest.NewRequest("GET", "/", nil)
 	})
 
@@ -516,8 +302,8 @@ var _ = Describe("addShareData", func() {
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__=(.*);</script>`)
 
-func extractAppConfig(body string) map[string]interface{} {
-	config := make(map[string]interface{})
+func extractAppConfig(body string) map[string]any {
+	config := make(map[string]any)
 	match := appConfigRegex.FindStringSubmatch(body)
 	if match == nil {
 		return config

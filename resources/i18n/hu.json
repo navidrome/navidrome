@@ -18,6 +18,8 @@
         "size": "Fájlméret",
         "updatedAt": "Legutóbb frissítve",
         "bitRate": "Bitráta",
+        "bitDepth": "Bitmélység",
+        "sampleRate": "Mintavételezési frekvencia",
         "discSubtitle": "Lemezfelirat",
         "starred": "Kedvenc",
         "comment": "Megjegyzés",
@@ -32,7 +34,8 @@
         "participants": "További résztvevők",
         "tags": "További címkék",
         "mappedTags": "Feldolgozott címkék",
-        "rawTags": "Nyers címkék"
+        "rawTags": "Nyers címkék",
+        "missing": "Hiányzó"
       },
       "actions": {
         "addToQueue": "Lejátszás útolsóként",
@@ -56,6 +59,7 @@
         "genre": "Stílus",
         "compilation": "Válogatásalbum",
         "year": "Év",
+        "date": "Felvétel dátuma",
         "updatedAt": "Legutóbb frissítve",
         "comment": "Megjegyzés",
         "rating": "Értékelés",
@@ -70,7 +74,8 @@
         "releaseType": "Típus",
         "grouping": "Csoportosítás",
         "media": "Média",
-        "mood": "Hangulat"
+        "mood": "Hangulat",
+        "missing": "Hiányzó"
       },
       "actions": {
         "playAll": "Lejátszás",
@@ -102,7 +107,8 @@
         "rating": "Értékelés",
         "genre": "Stílus",
         "size": "Méret",
-        "role": "Szerep"
+        "role": "Szerep",
+        "missing": "Hiányzó"
       },
       "roles": {
         "albumartist": "Album előadó |||| Album előadók",
@@ -189,6 +195,7 @@
         "selectPlaylist": "Válassz egy lejátszási listát:",
         "addNewPlaylist": "\"%{name}\" létrehozása",
         "export": "Exportálás",
+        "saveQueue": "Műsorlista elmentése lejátszási listaként",
         "makePublic": "Publikussá tétel",
         "makePrivate": "Priváttá tétel"
       },
@@ -229,13 +236,15 @@
     },
     "missing": {
       "name": "Hiányzó fájl|||| Hiányzó fájlok",
+      "empty": "Nincsenek hiányzó fájlok",
       "fields": {
         "path": "Útvonal",
         "size": "Méret",
         "updatedAt": "Eltűnt ekkor:"
       },
       "actions": {
-        "remove": "Eltávolítás"
+        "remove": "Eltávolítás",
+        "remove_all": "Összes eltávolítása"
       },
       "notifications": {
         "removed": "Hiányzó fájl(ok) eltávolítva"
@@ -395,6 +404,8 @@
     "noPlaylistsAvailable": "Nem áll rendelkezésre",
     "delete_user_title": "Felhasználó törlése '%{name}'",
     "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival (beállítások és lejátszási listák) együtt?",
+    "remove_all_missing_title": "Összes hiányzó fájl eltávolítása",
+    "remove_all_missing_content": "Biztos, hogy minden hiányzó fájlt törölni akarsz az adatbázisból? Ez minden hozzájuk fűződő referenciát törölni fog, beleértve a lejátszásaikat és értékeléseiket.",
     "notifications_blocked": "A böngésződ beállításaiban letiltottad az értesítéseket erre az oldalra.",
     "notifications_not_available": "Ez a böngésző nem támogatja az asztali értesítéseket, vagy a Navidrome-ot nem https-en keresztül használod.",
     "lastfmLinkSuccess": "Sikeresen összekapcsolva Last.fm-el és halgatott számok küldése engedélyezve.",
@@ -406,7 +417,7 @@
       "musicbrainz": "Megnyitás MusicBrainz-ben"
     },
     "lastfmLink": "Bővebben...",
-    "listenBrainzLinkSuccess": "Sikeresen összekapcsolva ListenBrainz-el és halgatott számok küldése %{user} felhasználónak engedélyezve.",
+    "listenBrainzLinkSuccess": "Sikeresen összekapcsolva ListenBrainz-el. Halgatott számok küldése %{user} felhasználónak engedélyezve.",
     "listenBrainzLinkFailure": "Nem lehet kapcsolódni a Listenbrainz-hez: %{error}",
     "listenBrainzUnlinkSuccess": "ListenBrainz Last.fm leválasztva és a halgatott számok küldése kikapcsolva.",
     "listenBrainzUnlinkFailure": "Nem sikerült leválasztani a ListenBrainz-et.",
@@ -451,7 +462,7 @@
     "sharedPlaylists": "Megosztott lej. listák"
   },
   "player": {
-    "playListsText": "Lejátszási lista",
+    "playListsText": "Műsorlista",
     "openText": "Megnyitás",
     "closeText": "Bezárás",
     "notContentText": "Nincs zene",
@@ -493,7 +504,10 @@
     "quickScan": "Gyors beolvasás",
     "fullScan": "Teljes beolvasás",
     "serverUptime": "Szerver üzemidő",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Típus",
+    "status": "Szkennelési hiba",
+    "elapsedTime": "Eltelt idő"
   },
   "help": {
     "title": "Navidrome Gyorsbillentyűk",

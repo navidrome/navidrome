@@ -343,7 +343,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.provider.SimilarSongs(ctx, id, count)
+	songs, err := api.provider.ArtistRadio(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	if artist.PlayCount > 0 {
 		dir.Played = artist.PlayDate
 	}
-	dir.AlbumCount = int32(artist.AlbumCount)
+	dir.AlbumCount = getArtistAlbumCount(artist)
 	dir.UserRating = int32(artist.Rating)
 	if artist.Starred {
 		dir.Starred = artist.StarredAt

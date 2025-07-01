@@ -45,6 +45,23 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
+func getPlaylistTrack(ds model.DataStore) http.HandlerFunc {
+	// Add a middleware to capture the playlistId
+	wrapper := func(handler restHandler) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			constructor := func(ctx context.Context) rest.Repository {
+				plsRepo := ds.Playlist(ctx)
+				plsId := chi.URLParam(r, "playlistId")
+				return plsRepo.Tracks(plsId, true)
+			}
+
+			handler(constructor).ServeHTTP(w, r)
+		}
+	}
+
+	return wrapper(rest.Get)
+}
+
 func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -205,5 +222,23 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+	}
+}
+
+func getSongPlaylists(ds model.DataStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := req.Params(r)
+		trackId, _ := p.String(":id")
+		playlists, err := ds.Playlist(r.Context()).GetPlaylists(trackId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data, err := json.Marshal(playlists)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(data)
 	}
 }

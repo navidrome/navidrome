@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
@@ -47,14 +49,15 @@ var _ = Describe("Scanner", Ordered, func() {
 	}
 
 	BeforeAll(func() {
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
 		//conf.Server.DbPath = ":memory:"
+		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
-		ctx = context.Background()
 		db.Init(ctx)
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
@@ -501,6 +504,206 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(aa[0].MbzArtistID).To(Equal(beatlesMBID))
 			Expect(aa[0].SortArtistName).To(Equal("Beatles, The"))
 		})
+
+		Context("When PurgeMissing is configured", func() {
+			When("PurgeMissing is set to 'never'", func() {
+				BeforeEach(func() {
+					DeferCleanup(configtest.SetupConfig())
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+				})
+
+				It("should mark files as missing but not delete them", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running another scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Checking files are marked as missing but not deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(Equal(int64(1)))
+
+					mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.Missing).To(BeTrue())
+				})
+			})
+
+			When("PurgeMissing is set to 'always'", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+				})
+
+				It("should purge missing files on any scan", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running an incremental scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Checking missing files are deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(BeZero())
+
+					_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).To(MatchError(model.ErrNotFound))
+				})
+			})
+
+			When("PurgeMissing is set to 'full'", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
+				})
+
+				It("should not purge missing files on incremental scans", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running an incremental scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Checking files are marked as missing but not deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(Equal(int64(1)))
+
+					mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.Missing).To(BeTrue())
+				})
+
+				It("should purge missing files only on full scans", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running a full scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Checking missing files are deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(BeZero())
+
+					_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).To(MatchError(model.ErrNotFound))
+				})
+			})
+		})
+	})
+
+	Describe("RefreshStats", func() {
+		var refreshStatsCalls []bool
+		var fsys storagetest.FakeFS
+		var help func(...map[string]any) *fstest.MapFile
+
+		BeforeEach(func() {
+			refreshStatsCalls = nil
+
+			// Create a mock artist repository that tracks RefreshStats calls
+			originalArtistRepo := ds.RealDS.Artist(ctx)
+			ds.MockedArtist = &testArtistRepo{
+				ArtistRepository: originalArtistRepo,
+				callTracker:      &refreshStatsCalls,
+			}
+
+			// Create a simple filesystem for testing
+			help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+			fsys = createFS(fstest.MapFS{
+				"The Beatles/Help!/01 - Help!.mp3": help(track(1, "Help!")),
+			})
+		})
+
+		It("should call RefreshStats with allArtists=true for full scans", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeTrue(), "RefreshStats should be called with allArtists=true for full scans")
+		})
+
+		It("should call RefreshStats with allArtists=false for incremental scans", func() {
+			// First do a full scan to set up the data
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Reset the tracker to only track the incremental scan
+			refreshStatsCalls = nil
+
+			// Add a new file to trigger changes detection
+			fsys.Add("The Beatles/Help!/02 - The Night Before.mp3", help(track(2, "The Night Before")))
+
+			// Do an incremental scan
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeFalse(), "RefreshStats should be called with allArtists=false for incremental scans")
+		})
+
+		It("should update artist stats during quick scans when new albums are added", func() {
+			// Don't use the mocked artist repo for this test - we need the real one
+			ds.MockedArtist = nil
+
+			By("Initial scan with one album")
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify initial artist stats - should have 1 album, 1 song
+			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"name": "The Beatles"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artists).To(HaveLen(1))
+			artist := artists[0]
+			Expect(artist.AlbumCount).To(Equal(1)) // 1 album
+			Expect(artist.SongCount).To(Equal(1))  // 1 song
+
+			By("Adding files to an existing directory during incremental scan")
+			// Add more files to the existing Help! album - this should trigger artist stats update during incremental scan
+			fsys.Add("The Beatles/Help!/02 - The Night Before.mp3", help(track(2, "The Night Before")))
+			fsys.Add("The Beatles/Help!/03 - You've Got to Hide Your Love Away.mp3", help(track(3, "You've Got to Hide Your Love Away")))
+
+			// Do a quick scan (incremental)
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			By("Verifying artist stats were updated correctly")
+			// Fetch the artist again to check updated stats
+			artists, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"name": "The Beatles"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artists).To(HaveLen(1))
+			updatedArtist := artists[0]
+
+			// Should now have 1 album and 3 songs total
+			// This is the key test - that artist stats are updated during quick scans
+			Expect(updatedArtist.AlbumCount).To(Equal(1)) // 1 album
+			Expect(updatedArtist.SongCount).To(Equal(3))  // 3 songs
+
+			// Also verify that role-specific stats are updated (albumartist role)
+			Expect(updatedArtist.Stats).To(HaveKey(model.RoleAlbumArtist))
+			albumArtistStats := updatedArtist.Stats[model.RoleAlbumArtist]
+			Expect(albumArtistStats.AlbumCount).To(Equal(1)) // 1 album
+			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
+		})
 	})
 })
 
@@ -527,4 +730,14 @@ func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCur
 		return nil, m.GetMissingAndMatchingError
 	}
 	return m.MediaFileRepository.GetMissingAndMatching(libId)
+}
+
+type testArtistRepo struct {
+	model.ArtistRepository
+	callTracker *[]bool
+}
+
+func (m *testArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+	*m.callTracker = append(*m.callTracker, allArtists)
+	return m.ArtistRepository.RefreshStats(allArtists)
 }

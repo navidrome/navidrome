@@ -11,6 +11,8 @@ import {
   SelectInput,
   TextField,
   useTranslate,
+  NullableBooleanInput,
+  usePermissions,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -63,6 +65,8 @@ const useStyles = makeStyles({
 
 const ArtistFilter = (props) => {
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
   const rolesObj = en?.resources?.artist?.roles
   const roles = Object.keys(rolesObj).reduce((acc, role) => {
     acc.push({
@@ -85,6 +89,7 @@ const ArtistFilter = (props) => {
           defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }

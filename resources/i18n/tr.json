@@ -34,7 +34,8 @@
         "mappedTags": "Eşlenen etiketler",
         "rawTags": "Ham etiketler",
         "bitDepth": "Bit derinliği",
-        "sampleRate": "Örnekleme Oranı"
+        "sampleRate": "Örnekleme Oranı",
+        "missing": "Eksik"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -43,7 +44,8 @@
         "shuffleAll": "Tümünü karıştır",
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
-        "info": "Bilgiler"
+        "info": "Bilgiler",
+        "showInPlaylist": "Çalma Listesinde Göster"
       }
     },
     "album": {
@@ -73,7 +75,8 @@
         "grouping": "Gruplama",
         "media": "Medya",
         "mood": "Mod",
-        "date": "Kayıt Tarihi"
+        "date": "Kayıt Tarihi",
+        "missing": "Eksik"
       },
       "actions": {
         "playAll": "Oynat",
@@ -105,7 +108,8 @@
         "rating": "Derecelendirme",
         "genre": "Tür",
         "size": "Boyut",
-        "role": "Rol"
+        "role": "Rol",
+        "missing": "Eksik"
       },
       "roles": {
         "albumartist": "Albüm Sanatçısı |||| Albüm Sanatçısı",
@@ -120,7 +124,13 @@
         "mixer": "Mikser |||| Mikser",
         "remixer": "Remiks |||| Remiks",
         "djmixer": "DJ Mikseri |||| DJ Mikseri",
-        "performer": "Sanatçı |||| Sanatçı"
+        "performer": "Sanatçı |||| Sanatçı",
+        "maincredit": "Albüm Sanatçısı veya Sanatçı |||| Albüm Sanatçısı veya Sanatçılar"
+      },
+      "actions": {
+        "shuffle": "Karıştır",
+        "radio": "Radyo",
+        "topSongs": "En İyi Şarkılar"
       }
     },
     "user": {
@@ -193,11 +203,18 @@
         "addNewPlaylist": "Oluştur  \"%{name}\"",
         "export": "Aktar",
         "makePublic": "Herkese Açık Yap",
-        "makePrivate": "Özel Yap"
+        "makePrivate": "Özel Yap",
+        "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
+        "searchOrCreate": "Çalma listelerini arayın veya yenisini oluşturmak için yazın...",
+        "pressEnterToCreate": "Yeni çalma listesi oluşturmak için Enter'a basın",
+        "removeFromSelection": "Seçimden kaldır",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Yinelenen şarkıları ekle",
-        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?"
+        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?",
+        "noPlaylistsFound": "Hiç çalma listesi bulunamadı",
+        "noPlaylists": "Çalma listesi mevcut değil"
       }
     },
     "radio": {
@@ -238,7 +255,8 @@
         "updatedAt": "Kaybolma"
       },
       "actions": {
-        "remove": "Kaldır"
+        "remove": "Kaldır",
+        "remove_all": "Tümünü Kaldır"
       },
       "notifications": {
         "removed": "Eksik dosya(lar) kaldırıldı"
@@ -423,7 +441,11 @@
     "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
     "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter",
     "remove_missing_title": "Eksik dosyaları kaldır",
-    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır."
+    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
+    "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
+    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
+    "noSimilarSongsFound": "Benzer şarkı bulunamadı",
+    "noTopSongsFound": "En iyi şarkı listesi boş"
   },
   "menu": {
     "library": "Kütüphane",
@@ -489,6 +511,21 @@
         "disabled": "Pasif",
         "waiting": "Bekle"
       }
+    },
+    "tabs": {
+      "about": "Hakkında",
+      "config": "Yapılandırma"
+    },
+    "config": {
+      "configName": "Yapılandırma Adı",
+      "environmentVariable": "Çevre Değişkeni",
+      "currentValue": "Güncel Değer",
+      "configurationFile": "Yapılandırma Dosyası",
+      "exportToml": "Yapılandırmayı Dışa Aktar (TOML)",
+      "exportSuccess": "Yapılandırma TOML formatında dışa aktarıldı",
+      "exportFailed": "Yapılandırma kopyalanamadı",
+      "devFlagsHeader": "Geliştirme Bayrakları (değişime/kaldırılmaya tabidir)",
+      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir"
     }
   },
   "activity": {
@@ -497,7 +534,10 @@
     "quickScan": "Hızlı Tarama",
     "fullScan": "Tam Tarama",
     "serverUptime": "Sunucu Çalışma Süresi",
-    "serverDown": "ÇEVRİMDIŞI"
+    "serverDown": "ÇEVRİMDIŞI",
+    "scanType": "Tür",
+    "status": "Tarama Hatası",
+    "elapsedTime": "Geçen Süre"
   },
   "help": {
     "title": "Navidrome Kısayolları",
@@ -512,5 +552,10 @@
       "toggle_love": "Bu şarkıyı favorilere ekle",
       "current_song": "Mevcut Şarkıya Git"
     }
+  },
+  "nowPlaying": {
+    "title": "Şu An Çalıyor",
+    "empty": "Çalan şarkı yok",
+    "minutesAgo": "%{smart_count} dakika önce"
   }
 }
