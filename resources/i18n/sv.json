@@ -44,7 +44,8 @@
         "shuffleAll": "Shuffle",
         "download": "Ladda ner",
         "playNext": "Spela nästa",
-        "info": "Mer information"
+        "info": "Mer information",
+        "showInPlaylist": "Visa i spellista"
       }
     },
     "album": {
@@ -123,7 +124,13 @@
         "mixer": "Mixare |||| Mixare",
         "remixer": "Remixare |||| Remixare",
         "djmixer": "DJ-mixare |||| DJ-mixare",
-        "performer": "Utövande artist |||| Utövande artister"
+        "performer": "Utövande artist |||| Utövande artister",
+        "maincredit": "Albumartister eller Artist |||| Albumartister eller Artister"
+      },
+      "actions": {
+        "shuffle": "Shuffle",
+        "radio": "Radio",
+        "topSongs": "Topplåtar"
       }
     },
     "user": {
@@ -197,11 +204,17 @@
         "export": "Exportera",
         "makePublic": "Gör offentlig",
         "makePrivate": "Gör privat",
-        "saveQueue": "Spara kö till spellista"
+        "saveQueue": "Spara kö till spellista",
+        "searchOrCreate": "Sök spellista eller skapa ny...",
+        "pressEnterToCreate": "Tryck Enter för att skapa ny spellista",
+        "removeFromSelection": "Ta bort från urval",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Lägg till dubletter",
-        "song_exist": "Vissa låtar finns redan i spellistan. Vill du lägga till dubbletterna eller hoppa över dem?"
+        "song_exist": "Vissa låtar finns redan i spellistan. Vill du lägga till dubbletterna eller hoppa över dem?",
+        "noPlaylistsFound": "Hittade inga spellistor",
+        "noPlaylists": "Inga spellistor tillgängliga"
       }
     },
     "radio": {
@@ -430,7 +443,9 @@
     "remove_missing_title": "Ta bort saknade filer",
     "remove_missing_content": "Är du säker på att du vill ta bort de valda saknade filerna från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg.",
     "remove_all_missing_title": "Ta bort alla saknade filer",
-    "remove_all_missing_content": "Är du säker på att du vill ta bort alla saknade filer från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg."
+    "remove_all_missing_content": "Är du säker på att du vill ta bort alla saknade filer från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg.",
+    "noSimilarSongsFound": "Hittade inga liknande låtar",
+    "noTopSongsFound": "Hittade inga topplåtar"
   },
   "menu": {
     "library": "Bibliotek",
@@ -496,6 +511,21 @@
         "disabled": "Inaktiverad",
         "waiting": "Väntar"
       }
+    },
+    "tabs": {
+      "about": "Om",
+      "config": "Inställningar"
+    },
+    "config": {
+      "configName": "Inställningsnamn",
+      "environmentVariable": "Miljövariabel",
+      "currentValue": "Nuvarande värde",
+      "configurationFile": "Inställningsfil",
+      "exportToml": "Exportera inställningar (TOML)",
+      "exportSuccess": "Inställningarna kopierade till urklippet i TOML-format",
+      "exportFailed": "Kopiering av inställningarna misslyckades",
+      "devFlagsHeader": "Utvecklingsflaggor (kan ändras eller tas bort)",
+      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner"
     }
   },
   "activity": {
@@ -522,5 +552,10 @@
       "toggle_love": "Lägg till låt i favoriter",
       "current_song": "Hoppa till nuvarande låt"
     }
+  },
+  "nowPlaying": {
+    "title": "Spelas nu",
+    "empty": "Inget spelas",
+    "minutesAgo": "%{smart_count} minut sedan |||| %{smart_count} minuter sedan"
   }
 }

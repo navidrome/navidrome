@@ -2,7 +2,7 @@
   "languageName": "Français",
   "resources": {
     "song": {
-      "name": "Piste |||| Pistes",
+      "name": "Titre |||| Titres",
       "fields": {
         "albumArtist": "Artiste",
         "duration": "Durée",
@@ -44,7 +44,8 @@
         "shuffleAll": "Tout mélanger",
         "download": "Télécharger",
         "playNext": "Jouer ensuite",
-        "info": "Plus d'informations"
+        "info": "Plus d'informations",
+        "showInPlaylist": "Montrer dans la playlist"
       }
     },
     "album": {
@@ -53,7 +54,7 @@
         "albumArtist": "Artiste",
         "artist": "Artiste",
         "duration": "Durée",
-        "songCount": "Nombre de pistes",
+        "songCount": "Titres",
         "playCount": "Nombre d'écoutes",
         "name": "Nom",
         "genre": "Genre",
@@ -102,7 +103,7 @@
       "fields": {
         "name": "Nom",
         "albumCount": "Nombre d'albums",
-        "songCount": "Nombre de pistes",
+        "songCount": "Nombre de titres",
         "playCount": "Lectures",
         "rating": "Classement",
         "genre": "Genre",
@@ -123,7 +124,13 @@
         "mixer": "Mixeur |||| Mixeurs",
         "remixer": "Remixeur |||| Remixeurs",
         "djmixer": "Mixeur DJ |||| Mixeurs DJ",
-        "performer": "Interprète |||| Interprètes"
+        "performer": "Interprète |||| Interprètes",
+        "maincredit": "Artiste de l'album ou Artiste |||| Artistes de l'album ou Artistes"
+      },
+      "actions": {
+        "shuffle": "Lecture aléatoire",
+        "radio": "Radio",
+        "topSongs": "Meilleurs titres"
       }
     },
     "user": {
@@ -192,16 +199,22 @@
         "path": "Importer depuis"
       },
       "actions": {
-        "selectPlaylist": "Ajouter les pistes à la playlist",
+        "selectPlaylist": "Sélectionner une playlist :",
         "addNewPlaylist": "Créer \"%{name}\"",
         "export": "Exporter",
         "makePublic": "Rendre publique",
         "makePrivate": "Rendre privée",
-        "saveQueue": "Sauvegarder la file de lecture dans la playlist"
+        "saveQueue": "Sauvegarder la file de lecture dans la playlist",
+        "searchOrCreate": "Chercher ou créer une nouvelle playlist...",
+        "pressEnterToCreate": "Appuyer sur entrée pour créer une nouvelle playlist",
+        "removeFromSelection": "Supprimer de la sélection",
+        "removeSymbol": "×"
       },
       "message": {
-        "duplicate_song": "Pistes déjà présentes dans la playlist",
-        "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
+        "duplicate_song": "Ajouter les titres déjà présents dans la playlist",
+        "song_exist": "Certains des titres sélectionnés font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?",
+        "noPlaylistsFound": "Aucune playlist trouvée",
+        "noPlaylists": "Aucune playlist disponible"
       }
     },
     "radio": {
@@ -400,7 +413,7 @@
     "note": "NOTE",
     "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
     "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
-    "songsAddedToPlaylist": "Une piste a été ajoutée à la playlist |||| %{smart_count} pistes ont été ajoutées à la playlist",
+    "songsAddedToPlaylist": "1 titre a été ajouté à la playlist |||| %{smart_count} titres ont été ajoutés à la playlist",
     "noPlaylistsAvailable": "Aucune playlist",
     "delete_user_title": "Supprimer l'utilisateur '%{name}'",
     "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
@@ -430,7 +443,9 @@
     "remove_missing_title": "Supprimer les fichiers manquants",
     "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations",
     "remove_all_missing_title": "Supprimer tous les fichiers manquants",
-    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence."
+    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence.",
+    "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
+    "noTopSongsFound": "Aucun meilleur titre n'a été trouvé"
   },
   "menu": {
     "library": "Bibliothèque",
@@ -451,7 +466,7 @@
         "gain": {
           "none": "Désactivé",
           "album": "Utiliser le gain de l'album",
-          "track": "Utiliser le gain des pistes"
+          "track": "Utiliser le gain des titres"
         },
         "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée"
       }
@@ -496,6 +511,21 @@
         "disabled": "Désactivée",
         "waiting": "En attente"
       }
+    },
+    "tabs": {
+      "about": "À propos",
+      "config": "Paramètres"
+    },
+    "config": {
+      "configName": "Nom de la configuration",
+      "environmentVariable": "Variable d'environnement",
+      "currentValue": "Valeur actuelle",
+      "configurationFile": "Fichier de configuration",
+      "exportToml": "Exporter la configuration (TOML)",
+      "exportSuccess": "La configuration a été copiée vers le presse-papier au format TOML",
+      "exportFailed": "Une erreur est survenue en copiant la configuration",
+      "devFlagsHeader": "Options de développement (peuvent être amenés à changer / être supprimés)",
+      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur"
     }
   },
   "activity": {
@@ -520,7 +550,12 @@
       "vol_up": "Augmenter le volume",
       "vol_down": "Baisser le volume",
       "toggle_love": "Ajouter/Enlever le morceau des favoris",
-      "current_song": "Aller à la chanson en cours"
+      "current_song": "Aller au titre en cours"
     }
+  },
+  "nowPlaying": {
+    "title": "En cours de lecture",
+    "empty": "Aucun titre en cours de lecture",
+    "minutesAgo": "Il y a %{smart_count} minute |||| Il y a %{smart_count} minutes"
   }
 }

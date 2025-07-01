@@ -44,7 +44,8 @@
         "shuffleAll": "Acak Semua",
         "download": "Unduh",
         "playNext": "Putar Berikutnya",
-        "info": "Lihat Info"
+        "info": "Lihat Info",
+        "showInPlaylist": "Tampilkan di Playlist"
       }
     },
     "album": {
@@ -123,7 +124,13 @@
         "mixer": "Mixer |||| Mixer",
         "remixer": "Remixer |||| Remixer",
         "djmixer": "DJ Mixer |||| Dj Mixer",
-        "performer": "Performer |||| Performer"
+        "performer": "Performer |||| Performer",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -197,11 +204,17 @@
         "export": "Ekspor",
         "makePublic": "Jadikan Publik",
         "makePrivate": "Jadikan Pribadi",
-        "saveQueue": "Simpan Antrean ke Playlist"
+        "saveQueue": "Simpan Antrean ke Playlist",
+        "searchOrCreate": "Cari playlist atau ketik untuk buat baru..",
+        "pressEnterToCreate": "Tekan Enter untuk membuat playlist baru",
+        "removeFromSelection": "Hapus yang dipilih",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Tambahkan lagu duplikat",
-        "song_exist": "Ada lagu duplikat yang ditambahkan ke daftar putar. Apakah Kamu ingin menambahkan lagu duplikat atau melewatkannya?"
+        "song_exist": "Ada lagu duplikat yang ditambahkan ke daftar putar. Apakah Kamu ingin menambahkan lagu duplikat atau melewatkannya?",
+        "noPlaylistsFound": "Playlist tidak ditemukan",
+        "noPlaylists": "Playlist tidak tersedia"
       }
     },
     "radio": {
@@ -430,7 +443,9 @@
     "remove_missing_title": "Hapus file yang hilang",
     "remove_missing_content": "Apakah Anda yakin ingin menghapus file-file yang hilang dari basis data? Tindakan ini akan menghapus secara permanen semua referensi ke file-file tersebut, termasuk jumlah pemutaran dan peringkatnya.",
     "remove_all_missing_title": "Hapus semua file yang hilang",
-    "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka."
+    "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka.",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Pustaka",
@@ -496,6 +511,21 @@
         "disabled": "Nonaktifkan",
         "waiting": "Menunggu"
       }
+    },
+    "tabs": {
+      "about": "Tentang",
+      "config": "Konfigurasi"
+    },
+    "config": {
+      "configName": "Nama Konfigurasi",
+      "environmentVariable": "",
+      "currentValue": "Value Saat Ini",
+      "configurationFile": "File Konfigurasi",
+      "exportToml": "Ekspor Konfigurasi (TOML)",
+      "exportSuccess": "Konfigurasi sudah diekspor ke papan klip dalam bentuk format TOML",
+      "exportFailed": "Gagal menyalin konfigurasi",
+      "devFlagsHeader": "Flag Pengembangan (subyek untuk perubahan/pemindahan)",
+      "devFlagsComment": "Ini adalan pengaturan eksperimen dan mungkin akan dihapus di versi mendatang"
     }
   },
   "activity": {
@@ -522,5 +552,10 @@
       "toggle_love": "Tambahkan lagu ini ke favorit",
       "current_song": "Buka Lagu Saat Ini"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }
