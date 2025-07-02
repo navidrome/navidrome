@@ -18,7 +18,7 @@ func hasInitService(info *plugin) bool {
 }
 
 var _ = Describe("LifecycleManagement", func() {
-	Describe("Plugin Lifecycle Manager", func() {
+	Describe("Plugin Lifecycle managerImpl", func() {
 		var lifecycleManager *pluginLifecycleManager
 
 		BeforeEach(func() {
