@@ -174,7 +174,14 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      tags.insert(item.first, item.second.front().toString());
+      char *key = (char *)item.first.toCString(true);
+
+      for (auto j = item.second.begin();
+           j != item.second.end(); ++j) {
+
+        char *val = (char *) j->toString().toCString(true);
+        goPutStr(id, key, val);
+      }
     }
   }
 
@@ -242,12 +249,19 @@ char has_cover(const TagLib::FileRef f) {
   // ----- WMA
   else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
     const TagLib::ASF::Tag *tag{ asfFile->tag() };
-    hasCover = tag && asfFile->tag()->attributeListMap().contains("WM/Picture");
+    hasCover = tag && tag->attributeListMap().contains("WM/Picture");
   }
   // ----- DSF
   else if (TagLib::DSF::File * dsffile{ dynamic_cast<TagLib::DSF::File *>(f.file())}) {
-    const auto& frameListMap = dsffile->tag()->frameListMap();
-    hasCover = !frameListMap["APIC"].isEmpty();
+    const TagLib::ID3v2::Tag *tag { dsffile->tag() };
+    hasCover = tag && !tag->frameListMap()["APIC"].isEmpty();
+  }
+  // ----- WAVPAK (APE tag)
+  else if (TagLib::WavPack::File * wvFile{dynamic_cast<TagLib::WavPack::File *>(f.file())}) {
+    if (wvFile->hasAPETag()) {
+      // This is the particular string that Picard uses
+      hasCover = !wvFile->APETag()->itemListMap()["COVER ART (FRONT)"].isEmpty();
+    }
   }
 
   return hasCover;
