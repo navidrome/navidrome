@@ -41,6 +41,7 @@
         "addToQueue": "Lejátszás útolsóként",
         "playNow": "Lejátszás",
         "addToPlaylist": "Lejátszási listához adás",
+        "showInPlaylist": "Megjelenítés a lejátszási listában",
         "shuffleAll": "Keverés",
         "download": "Letöltés",
         "playNext": "Lejátszás következőként",
@@ -123,7 +124,13 @@
         "mixer": "Keverő |||| Keverők",
         "remixer": "Átdolgozó |||| Átdolgozók",
         "djmixer": "DJ keverő |||| DJ keverők",
-        "performer": "Előadóművész |||| Előadóművészek"
+        "performer": "Előadóművész |||| Előadóművészek",
+        "maincredit": "Album előadó vagy előadó |||| Album előadók vagy előadók"
+      },
+      "actions": {
+        "topSongs": "Top számok",
+        "shuffle": "Keverés",
+        "radio": "Rádió"
       }
     },
     "user": {
@@ -197,11 +204,17 @@
         "export": "Exportálás",
         "saveQueue": "Műsorlista elmentése lejátszási listaként",
         "makePublic": "Publikussá tétel",
-        "makePrivate": "Priváttá tétel"
+        "makePrivate": "Priváttá tétel",
+        "searchOrCreate": "Keress lejátszási listák között vagy hozz létre egyet...",
+        "pressEnterToCreate": "Nyomj Entert, hogy létrehozz egy lejátszási listát",
+        "removeFromSelection": "Eltávolítás a kiválasztásból",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Duplikált számok hozzáadása",
-        "song_exist": "Egyes számok már hozzá vannak adva a listához. Még egyszer hozzá akarod adni?"
+        "song_exist": "Egyes számok már hozzá vannak adva a listához. Még egyszer hozzá akarod adni?",
+        "noPlaylistsFound": "Nem található lejátszási lista",
+        "noPlaylists": "Nincsenek lejátszási listák"
       }
     },
     "radio": {
@@ -401,6 +414,8 @@
     "transcodingDisabled": "Az átkódolási konfiguráció módosítása a webes felületen keresztül biztonsági okokból nem lehetséges. Ha módosítani szeretnéd az átkódolási beállításokat, indítsd újra a kiszolgálót a %{config} konfigurációs opcióval.",
     "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd ezt le, és csak az átkódolási beállítások konfigurálásának idejére kapcsold be.",
     "songsAddedToPlaylist": "1 szám hozzáadva a lejátszási listához |||| %{smart_count} szám hozzáadva a lejátszási listához",
+    "noSimilarSongsFound": "Nem találhatóak hasonló számok",
+    "noTopSongsFound": "Nincsenek top számok",
     "noPlaylistsAvailable": "Nem áll rendelkezésre",
     "delete_user_title": "Felhasználó törlése '%{name}'",
     "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival (beállítások és lejátszási listák) együtt?",
@@ -498,6 +513,21 @@
       }
     }
   },
+  "tabs": {
+    "about": "Rólunk",
+    "config": "Konfiguráció"
+  },
+  "config": {
+    "configName": "Beállítás neve",
+    "environmentVariable": "Környezeti változó",
+    "currentValue": "Jelenlegi érték",
+    "configurationFile": "Konfigurációs fájl",
+    "exportToml": "Konfiguráció exportálása (TOML)",
+    "exportSuccess": "Konfiguráció kiexportálva a vágólapra, TOML formában",
+    "exportFailed": "Nem sikerült kimásolni a konfigurációt",
+    "devFlagsHeader": "Fejlesztői beállítások (változások/eltávolítás jogát fenntartjuk)",
+    "devFlagsComment": "Ezek kísérleti beállítások, és a jövőbeli verziókban eltávolíthatók"
+  },
   "activity": {
     "title": "Aktivitás",
     "totalScanned": "Összes beolvasott mappa:",
@@ -508,6 +538,11 @@
     "scanType": "Típus",
     "status": "Szkennelési hiba",
     "elapsedTime": "Eltelt idő"
+  },
+  "nowPlaying": {
+    "title": "Most megy",
+    "empty": "Nem hallgatsz semmit",
+    "minutesAgo": "%{smart_count} perce |||| %{smart_count} perce"
   },
   "help": {
     "title": "Navidrome Gyorsbillentyűk",
