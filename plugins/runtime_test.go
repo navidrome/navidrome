@@ -34,7 +34,7 @@ var _ = Describe("Runtime", func() {
 var _ = Describe("CachingRuntime", func() {
 	var (
 		ctx    context.Context
-		mgr    *Manager
+		mgr    *managerImpl
 		plugin *wasmScrobblerPlugin
 	)
 

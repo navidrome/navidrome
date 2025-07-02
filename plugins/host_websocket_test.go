@@ -17,7 +17,7 @@ import (
 var _ = Describe("WebSocket Host Service", func() {
 	var (
 		wsService      *websocketService
-		manager        *Manager
+		manager        *managerImpl
 		ctx            context.Context
 		server         *httptest.Server
 		upgrader       gorillaws.Upgrader

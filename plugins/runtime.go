@@ -41,7 +41,7 @@ var (
 
 // createRuntime returns a function that creates a new wazero runtime and instantiates the required host functions
 // based on the given plugin permissions
-func (m *Manager) createRuntime(pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
+func (m *managerImpl) createRuntime(pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginID); ok {
@@ -70,7 +70,7 @@ func (m *Manager) createRuntime(pluginID string, permissions schema.PluginManife
 }
 
 // createCachingRuntime handles the complex logic of setting up a new cachingRuntime
-func (m *Manager) createCachingRuntime(ctx context.Context, pluginID string, permissions schema.PluginManifestPermissions) (*cachingRuntime, error) {
+func (m *managerImpl) createCachingRuntime(ctx context.Context, pluginID string, permissions schema.PluginManifestPermissions) (*cachingRuntime, error) {
 	// Get compilation cache
 	compCache, err := getCompilationCache()
 	if err != nil {
@@ -94,7 +94,7 @@ func (m *Manager) createCachingRuntime(ctx context.Context, pluginID string, per
 }
 
 // setupHostServices configures all the permitted host services for a plugin
-func (m *Manager) setupHostServices(ctx context.Context, r wazero.Runtime, pluginID string, permissions schema.PluginManifestPermissions) error {
+func (m *managerImpl) setupHostServices(ctx context.Context, r wazero.Runtime, pluginID string, permissions schema.PluginManifestPermissions) error {
 	// Define all available host services
 	type hostService struct {
 		name        string

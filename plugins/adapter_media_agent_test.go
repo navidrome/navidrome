@@ -14,7 +14,7 @@ import (
 
 var _ = Describe("Adapter Media Agent", func() {
 	var ctx context.Context
-	var mgr *Manager
+	var mgr *managerImpl
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
