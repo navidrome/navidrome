@@ -160,9 +160,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   if (m4afile != NULL) {
     const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      char *key = (char *)item.first.toCString(true);
+      char *key = const_cast<char*>(item.first.toCString(true));
       for (const auto value: item.second.toStringList()) {
-        char *val = (char *)value.toCString(true);
+        char *val = const_cast<char*>(value.toCString(true));
         goPutM4AStr(id, key, val);
       }
     }
