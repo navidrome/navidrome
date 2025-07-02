@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -90,11 +91,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			enabledAgents := agents.getEnabledAgentNames()
 			Expect(enabledAgents).To(HaveLen(1))
 			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
-			var agentNames []string
-			for _, agent := range enabledAgents {
-				agentNames = append(agentNames, agent.name)
-			}
-			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
+			Expect(enabledAgents[0].isPlugin).To(BeFalse()) // LocalAgent is built-in, not plugin
 		})
 
 		It("should include plugin agents in the enabled agents list ONLY when explicitly configured", func() {
@@ -106,16 +103,11 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			enabledAgents := agents.getEnabledAgentNames()
 			Expect(enabledAgents).To(HaveLen(1))
 			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
-			var agentNames []string
-			for _, agent := range enabledAgents {
-				agentNames = append(agentNames, agent.name)
-			}
-			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
 
 			// When explicitly configured, should include plugin
 			conf.Server.Agents = "plugin_agent"
 			enabledAgents = agents.getEnabledAgentNames()
-			agentNames = nil
+			var agentNames []string
 			var pluginAgentFound bool
 			for _, agent := range enabledAgents {
 				agentNames = append(agentNames, agent.name)
@@ -237,10 +229,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			enabledAgents := agents.getEnabledAgentNames()
 
 			// Extract just the names to verify the order
-			var agentNames []string
-			for _, agent := range enabledAgents {
-				agentNames = append(agentNames, agent.name)
-			}
+			agentNames := slice.Map(enabledAgents, func(a enabledAgent) string { return a.name })
 
 			// Verify the order matches configuration, with LocalAgentName at the end
 			Expect(agentNames).To(HaveExactElements("plugin_y", "agent_b", "plugin_x", "agent_a", LocalAgentName))
