@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/api"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,7 +24,7 @@ var _ = Describe("Adapter Media Agent", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Folder = testDataDir
 
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
 	})
 

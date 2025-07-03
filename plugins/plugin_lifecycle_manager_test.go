@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,7 +23,7 @@ var _ = Describe("LifecycleManagement", func() {
 		var lifecycleManager *pluginLifecycleManager
 
 		BeforeEach(func() {
-			lifecycleManager = newPluginLifecycleManager()
+			lifecycleManager = newPluginLifecycleManager(metrics.NewNoopInstance())
 		})
 
 		It("should track initialization state of plugins", func() {

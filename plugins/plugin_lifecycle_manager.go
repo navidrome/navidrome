@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
 )
@@ -16,13 +17,15 @@ import (
 type pluginLifecycleManager struct {
 	plugins sync.Map // string -> bool
 	config  map[string]map[string]string
+	metrics metrics.Metrics
 }
 
 // newPluginLifecycleManager creates a new plugin lifecycle manager
-func newPluginLifecycleManager() *pluginLifecycleManager {
+func newPluginLifecycleManager(metrics metrics.Metrics) *pluginLifecycleManager {
 	config := maps.Clone(conf.Server.PluginConfig)
 	return &pluginLifecycleManager{
-		config: config,
+		config:  config,
+		metrics: metrics,
 	}
 }
 
@@ -71,7 +74,9 @@ func (m *pluginLifecycleManager) callOnInit(plugin *plugin) {
 	}
 
 	// Call OnInit
+	callStart := time.Now()
 	resp, err := initPlugin.OnInit(ctx, req)
+	m.metrics.RecordPluginRequest(ctx, plugin.ID, "OnInit", err != nil, time.Since(callStart).Milliseconds())
 	if err != nil {
 		log.Error("Error initializing plugin", "plugin", plugin.ID, "elapsed", time.Since(start), err)
 		return

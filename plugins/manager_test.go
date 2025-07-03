@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/metrics"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +28,7 @@ var _ = Describe("Plugin Manager", func() {
 		conf.Server.Plugins.Folder = testDataDir
 
 		ctx = GinkgoT().Context()
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
 	})
 
@@ -85,7 +86,7 @@ var _ = Describe("Plugin Manager", func() {
 			})
 
 			conf.Server.Plugins.Folder = tempPluginsDir
-			m = createManager(nil, nil)
+			m = createManager(nil, metrics.NewNoopInstance())
 		})
 
 		// Helper to create a complete valid plugin for manager testing

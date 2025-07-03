@@ -9,6 +9,7 @@ import (
 	"time"
 
 	gorillaws "github.com/gorilla/websocket"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -84,7 +85,7 @@ var _ = Describe("WebSocket Host Service", func() {
 		DeferCleanup(server.Close)
 
 		// Create a new manager and websocket service
-		manager = createManager(nil, nil)
+		manager = createManager(nil, metrics.NewNoopInstance())
 		wsService = newWebsocketService(manager)
 	})
 

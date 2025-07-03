@@ -126,7 +126,7 @@ func GetManager(ds model.DataStore, metrics metrics.Metrics) Manager {
 func createManager(ds model.DataStore, metrics metrics.Metrics) *managerImpl {
 	m := &managerImpl{
 		plugins:   make(map[string]*plugin),
-		lifecycle: newPluginLifecycleManager(),
+		lifecycle: newPluginLifecycleManager(metrics),
 		ds:        ds,
 		metrics:   metrics,
 	}
