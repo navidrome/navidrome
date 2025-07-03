@@ -41,13 +41,20 @@ test: ##@Development Run Go tests
 	go test -tags netgo $(PKG)
 .PHONY: test
 
-testrace: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on ./...
-.PHONY: test
-
-testall: testrace ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test)
+testall: test-race test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
+
+test-race: ##@Development Run Go tests with race detector
+	go test -tags netgo -race -shuffle=on ./...
+.PHONY: test-race
+
+test-js: ##@Development Run JS tests
+	@(cd ./ui && npm run test)
+.PHONY: test-js
+
+test-i18n: ##@Development Validate all translations files
+	./.github/workflows/validate-translations.sh 
+.PHONY: test-i18n
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
 	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)

@@ -511,22 +511,22 @@
         "disabled": "Kikapcsolva",
         "waiting": "Várakozás"
       }
+    },
+    "tabs": {
+      "about": "Rólunk",
+      "config": "Konfiguráció"
+    },
+    "config": {
+      "configName": "Beállítás neve",
+      "environmentVariable": "Környezeti változó",
+      "currentValue": "Jelenlegi érték",
+      "configurationFile": "Konfigurációs fájl",
+      "exportToml": "Konfiguráció exportálása (TOML)",
+      "exportSuccess": "Konfiguráció kiexportálva a vágólapra, TOML formában",
+      "exportFailed": "Nem sikerült kimásolni a konfigurációt",
+      "devFlagsHeader": "Fejlesztői beállítások (változások/eltávolítás jogát fenntartjuk)",
+      "devFlagsComment": "Ezek kísérleti beállítások, és a jövőbeli verziókban eltávolíthatók"
     }
-  },
-  "tabs": {
-    "about": "Rólunk",
-    "config": "Konfiguráció"
-  },
-  "config": {
-    "configName": "Beállítás neve",
-    "environmentVariable": "Környezeti változó",
-    "currentValue": "Jelenlegi érték",
-    "configurationFile": "Konfigurációs fájl",
-    "exportToml": "Konfiguráció exportálása (TOML)",
-    "exportSuccess": "Konfiguráció kiexportálva a vágólapra, TOML formában",
-    "exportFailed": "Nem sikerült kimásolni a konfigurációt",
-    "devFlagsHeader": "Fejlesztői beállítások (változások/eltávolítás jogát fenntartjuk)",
-    "devFlagsComment": "Ezek kísérleti beállítások, és a jövőbeli verziókban eltávolíthatók"
   },
   "activity": {
     "title": "Aktivitás",
