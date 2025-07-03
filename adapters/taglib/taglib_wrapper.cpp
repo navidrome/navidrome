@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <typeinfo>
 
 #define TAGLIB_STATIC
 #include <apeproperties.h>
@@ -113,7 +112,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             strncpy(language, bv.data(), 3);
           }
 
-          char *val = (char *)frame->text().toCString(true);
+          char *val = const_cast<char*>(frame->text().toCString(true));
 
           goPutLyrics(id, language, val);
         }
@@ -132,7 +131,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
 
             for (const auto &line: frame->synchedText()) {
-              char *text = (char *)line.text.toCString(true);
+              char *text = const_cast<char*>(line.text.toCString(true));
               goPutLyricLine(id, language, text, line.time);
             }
           } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
@@ -141,7 +140,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             if (sampleRate != 0) {
               for (const auto &line: frame->synchedText()) {
                 const int timeInMs = (line.time * 1000) / sampleRate;
-                char *text = (char *)line.text.toCString(true);
+                char *text = const_cast<char*>(line.text.toCString(true));
                 goPutLyricLine(id, language, text, timeInMs);
               }
             }
@@ -160,9 +159,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   if (m4afile != NULL) {
     const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      char *key = (char *)item.first.toCString(true);
+      char *key = const_cast<char*>(item.first.toCString(true));
       for (const auto value: item.second.toStringList()) {
-        char *val = (char *)value.toCString(true);
+        char *val = const_cast<char*>(value.toCString(true));
         goPutM4AStr(id, key, val);
       }
     }
@@ -174,17 +173,24 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      tags.insert(item.first, item.second.front().toString());
+      char *key = const_cast<char*>(item.first.toCString(true));
+
+      for (auto j = item.second.begin();
+           j != item.second.end(); ++j) {
+
+        char *val = const_cast<char*>(j->toString().toCString(true));
+        goPutStr(id, key, val);
+      }
     }
   }
 
   // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
-    char *key = (char *)i->first.toCString(true);
+    char *key = const_cast<char*>(i->first.toCString(true));
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *val = (char *)(*j).toCString(true);
+      char *val = const_cast<char*>((*j).toCString(true));
       goPutStr(id, key, val);
     }
   }
@@ -242,7 +248,19 @@ char has_cover(const TagLib::FileRef f) {
   // ----- WMA
   else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
     const TagLib::ASF::Tag *tag{ asfFile->tag() };
-    hasCover = tag && asfFile->tag()->attributeListMap().contains("WM/Picture");
+    hasCover = tag && tag->attributeListMap().contains("WM/Picture");
+  }
+  // ----- DSF
+  else if (TagLib::DSF::File * dsffile{ dynamic_cast<TagLib::DSF::File *>(f.file())}) {
+    const TagLib::ID3v2::Tag *tag { dsffile->tag() };
+    hasCover = tag && !tag->frameListMap()["APIC"].isEmpty();
+  }
+  // ----- WAVPAK (APE tag)
+  else if (TagLib::WavPack::File * wvFile{dynamic_cast<TagLib::WavPack::File *>(f.file())}) {
+    if (wvFile->hasAPETag()) {
+      // This is the particular string that Picard uses
+      hasCover = !wvFile->APETag()->itemListMap()["COVER ART (FRONT)"].isEmpty();
+    }
   }
 
   return hasCover;

@@ -168,11 +168,49 @@ var _ = Describe("Extractor", func() {
 			Entry("FLAC format", "flac"),
 			Entry("M4a format", "m4a"),
 			Entry("OGG format", "ogg"),
-			Entry("WMA format", "wv"),
+			Entry("WV format", "wv"),
 
 			Entry("MP3 format", "mp3"),
 			Entry("WAV format", "wav"),
 			Entry("AIFF format", "aiff"),
 		)
+
+		It("should parse wma", func() {
+			path := "tests/fixtures/test.wma"
+			mds, err := e.Parse(path)
+			Expect(err).ToNot(HaveOccurred())
+
+			info := mds[path]
+			fileInfo, _ := os.Stat(path)
+			info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+			metadata := metadata.New(path, info)
+			mf := metadata.ToMediaFile(1, "folderID")
+
+			for _, data := range roles {
+				role := data.Role
+				artists := data.ParticipantList
+				actual := mf.Participants[role]
+
+				// WMA has no Arranger role
+				if role == model.RoleArranger {
+					Expect(actual).To(HaveLen(0))
+					continue
+				}
+
+				Expect(actual).To(HaveLen(len(artists)), role.String())
+
+				// For some bizarre reason, the order is inverted. We also don't get
+				// sort names or MBIDs
+				for i := range artists {
+					idx := len(artists) - 1 - i
+
+					actualArtist := actual[i]
+					expectedArtist := artists[idx]
+
+					Expect(actualArtist.Name).To(Equal(expectedArtist.Name))
+				}
+			}
+		})
 	})
 })
