@@ -33,3 +33,15 @@ func newWasmSchedulerCallback(wasmPath, pluginID string, m *managerImpl, runtime
 type wasmSchedulerCallback struct {
 	*wasmBasePlugin[api.SchedulerCallback, *api.SchedulerCallbackPlugin]
 }
+
+func (w *wasmSchedulerCallback) OnSchedulerCallback(ctx context.Context, scheduleID string, payload []byte, isRecurring bool) error {
+	_, err := callMethod(ctx, w, "OnSchedulerCallback", func(inst api.SchedulerCallback) (struct{}, error) {
+		_, err := inst.OnSchedulerCallback(ctx, &api.SchedulerCallbackRequest{
+			ScheduleId:  scheduleID,
+			Payload:     payload,
+			IsRecurring: isRecurring,
+		})
+		return struct{}{}, err
+	})
+	return err
+}
