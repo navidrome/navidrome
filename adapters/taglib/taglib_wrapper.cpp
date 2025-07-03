@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <typeinfo>
 
 #define TAGLIB_STATIC
 #include <apeproperties.h>
@@ -113,7 +112,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             strncpy(language, bv.data(), 3);
           }
 
-          char *val = (char *)frame->text().toCString(true);
+          char *val = const_cast<char*>(frame->text().toCString(true));
 
           goPutLyrics(id, language, val);
         }
@@ -132,7 +131,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
 
             for (const auto &line: frame->synchedText()) {
-              char *text = (char *)line.text.toCString(true);
+              char *text = const_cast<char*>(line.text.toCString(true));
               goPutLyricLine(id, language, text, line.time);
             }
           } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
@@ -141,7 +140,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             if (sampleRate != 0) {
               for (const auto &line: frame->synchedText()) {
                 const int timeInMs = (line.time * 1000) / sampleRate;
-                char *text = (char *)line.text.toCString(true);
+                char *text = const_cast<char*>(line.text.toCString(true));
                 goPutLyricLine(id, language, text, timeInMs);
               }
             }
@@ -174,12 +173,12 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      char *key = (char *)item.first.toCString(true);
+      char *key = const_cast<char*>(item.first.toCString(true));
 
       for (auto j = item.second.begin();
            j != item.second.end(); ++j) {
 
-        char *val = (char *) j->toString().toCString(true);
+        char *val = const_cast<char*>(j->toString().toCString(true));
         goPutStr(id, key, val);
       }
     }
@@ -188,10 +187,10 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
-    char *key = (char *)i->first.toCString(true);
+    char *key = const_cast<char*>(i->first.toCString(true));
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *val = (char *)(*j).toCString(true);
+      char *val = const_cast<char*>((*j).toCString(true));
       goPutStr(id, key, val);
     }
   }
