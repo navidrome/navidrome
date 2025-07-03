@@ -157,7 +157,7 @@ jobs:
               exit 1
             fi
           done
-      - run: ./.github/workflows/validate-translations.sh
+      - run: ./.github/workflows/validate-translations.sh -v
 
 
   check-push-enabled:
