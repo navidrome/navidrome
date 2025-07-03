@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/api"
 )
 
 // newWasmBasePlugin creates a new instance of wasmBasePlugin with the required parameters.
@@ -101,19 +101,18 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	elapsed := time.Since(start)
 
 	if em, ok := any(w).(errorMapper); ok {
-		mappedErr := em.mapError(err)
-
-		if !errors.Is(mappedErr, agents.ErrNotFound) {
-			id := w.PluginID()
-			isOk := mappedErr == nil
-			metrics := w.getMetrics()
-			if metrics != nil {
-				metrics.RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
-			}
-			log.Trace(ctx, "callMethod", "plugin", id, "method", methodName, "ok", isOk, elapsed)
-		}
-
-		return r, mappedErr
+		err = em.mapError(err)
 	}
+
+	if !errors.Is(err, api.ErrNotImplemented) {
+		id := w.PluginID()
+		isOk := err == nil
+		metrics := w.getMetrics()
+		if metrics != nil {
+			metrics.RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
+			log.Trace(ctx, "callMethod: sending metrics", "plugin", id, "method", methodName, "ok", isOk, elapsed)
+		}
+	}
+
 	return r, err
 }
