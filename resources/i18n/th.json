@@ -26,7 +26,16 @@
         "bpm": "BPM",
         "playDate": "เล่นล่าสุด",
         "channels": "ช่อง",
-        "createdAt": "เพิ่มเมื่อ"
+        "createdAt": "เพิ่มเมื่อ",
+        "grouping": "",
+        "mood": "",
+        "participants": "",
+        "tags": "",
+        "mappedTags": "",
+        "rawTags": "",
+        "bitDepth": "",
+        "sampleRate": "",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "เพิ่มในคิว",
@@ -35,7 +44,8 @@
         "shuffleAll": "สุ่มทั้งหมด",
         "download": "ดาวน์โหลด",
         "playNext": "เล่นถัดไป",
-        "info": "ดูรายละเอียด"
+        "info": "ดูรายละเอียด",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -58,7 +68,15 @@
         "originalDate": "วันที่เริ่ม",
         "releaseDate": "เผยแพร่เมื่อ",
         "releases": "เผยแพร่ |||| เผยแพร่",
-        "released": "เผยแพร่เมื่อ"
+        "released": "เผยแพร่เมื่อ",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "",
+        "grouping": "",
+        "media": "",
+        "mood": "",
+        "date": "",
+        "missing": ""
       },
       "actions": {
         "playAll": "เล่นทั้งหมด",
@@ -89,7 +107,30 @@
         "playCount": "เล่นแล้ว",
         "rating": "ความนิยม",
         "genre": "ประเภท",
-        "size": "ขนาด"
+        "size": "ขนาด",
+        "role": "",
+        "missing": ""
+      },
+      "roles": {
+        "albumartist": "",
+        "artist": "",
+        "composer": "",
+        "conductor": "",
+        "lyricist": "",
+        "arranger": "",
+        "producer": "",
+        "director": "",
+        "engineer": "",
+        "mixer": "",
+        "remixer": "",
+        "djmixer": "",
+        "performer": "",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -162,11 +203,18 @@
         "addNewPlaylist": "สร้าง \"%{name}\"",
         "export": "ส่งออก",
         "makePublic": "ทำเป็นสาธารณะ",
-        "makePrivate": "ทำเป็นส่วนตัว"
+        "makePrivate": "ทำเป็นส่วนตัว",
+        "saveQueue": "",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "เพิ่มเพลงซ้ำ",
-        "song_exist": "เพิ่มเพลงซ้ำกันในเพลย์ลิสต์ คุณจะเพิ่มเพลงต่อหรือข้าม"
+        "song_exist": "เพิ่มเพลงซ้ำกันในเพลย์ลิสต์ คุณจะเพิ่มเพลงต่อหรือข้าม",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -198,6 +246,22 @@
         "createdAt": "สร้างเมื่อ",
         "downloadable": "อนุญาตให้ดาวโหลด?"
       }
+    },
+    "missing": {
+      "name": "",
+      "fields": {
+        "path": "",
+        "size": "",
+        "updatedAt": ""
+      },
+      "actions": {
+        "remove": "",
+        "remove_all": ""
+      },
+      "notifications": {
+        "removed": ""
+      },
+      "empty": ""
     }
   },
   "ra": {
@@ -375,7 +439,13 @@
     "shareSuccess": "คัดลอก URL ไปคลิปบอร์ด: %{url}",
     "shareFailure": "คัดลอก URL %{url} ไปคลิปบอร์ดผิดพลาด",
     "downloadDialogTitle": "ดาวโหลด %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "คัดลอกไปคลิปบอร์ด: Ctrl+C, Enter"
+    "shareCopyToClipboard": "คัดลอกไปคลิปบอร์ด: Ctrl+C, Enter",
+    "remove_missing_title": "",
+    "remove_missing_content": "",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": "",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "ห้องสมุดเพลง",
@@ -441,6 +511,21 @@
         "disabled": "ปิดการทำงาน",
         "waiting": "รอ"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -449,7 +534,10 @@
     "quickScan": "สแกนแบบเร็ว",
     "fullScan": "สแกนทั้งหมด",
     "serverUptime": "เซิร์ฟเวอร์ออนไลน์นาน",
-    "serverDown": "ออฟไลน์"
+    "serverDown": "ออฟไลน์",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
   },
   "help": {
     "title": "คีย์ลัด Navidrome",
@@ -464,5 +552,10 @@
       "toggle_love": "เพิ่มเพลงนี้ไปยังรายการโปรด",
       "current_song": "ไปยังเพลงปัจจุบัน"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }

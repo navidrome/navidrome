@@ -32,7 +32,10 @@
         "participants": "Participantes adicionais",
         "tags": "Etiquetas adicionais",
         "mappedTags": "",
-        "rawTags": "Etiquetas en cru"
+        "rawTags": "Etiquetas en cru",
+        "bitDepth": "",
+        "sampleRate": "",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -41,7 +44,8 @@
         "shuffleAll": "Remexer todo",
         "download": "Descargar",
         "playNext": "A continuación",
-        "info": "Obter info"
+        "info": "Obter info",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -70,7 +74,9 @@
         "releaseType": "Tipo",
         "grouping": "Grupos",
         "media": "Multimedia",
-        "mood": "Estado"
+        "mood": "Estado",
+        "date": "",
+        "missing": ""
       },
       "actions": {
         "playAll": "Reproducir",
@@ -102,7 +108,8 @@
         "rating": "Valoración",
         "genre": "Xénero",
         "size": "Tamaño",
-        "role": "Rol"
+        "role": "Rol",
+        "missing": ""
       },
       "roles": {
         "albumartist": "Artista do álbum |||| Artistas do álbum",
@@ -117,7 +124,13 @@
         "mixer": "Mistura |||| Mistura",
         "remixer": "Remezcla |||| Remezcla",
         "djmixer": "Mezcla DJs |||| Mezcla DJs",
-        "performer": "Intérprete |||| Intérpretes"
+        "performer": "Intérprete |||| Intérpretes",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -190,11 +203,18 @@
         "addNewPlaylist": "Crear \"%{name}\"",
         "export": "Exportar",
         "makePublic": "Facela Pública",
-        "makePrivate": "Facela Privada"
+        "makePrivate": "Facela Privada",
+        "saveQueue": "",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "Engadir cancións duplicadas",
-        "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?"
+        "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -235,11 +255,13 @@
         "updatedAt": "Desapareceu o"
       },
       "actions": {
-        "remove": "Retirar"
+        "remove": "Retirar",
+        "remove_all": ""
       },
       "notifications": {
         "removed": "Ficheiro(s) faltantes retirados"
-      }
+      },
+      "empty": ""
     }
   },
   "ra": {
@@ -419,7 +441,11 @@
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copiar ao portapapeis: Ctrl+C, Enter",
     "remove_missing_title": "Retirar ficheiros que faltan",
-    "remove_missing_content": "Tes certeza de querer retirar da base de datos os ficheiros que faltan? Isto retirará de xeito permanente todas a referencias a eles, incluíndo a conta de reproducións e valoracións."
+    "remove_missing_content": "Tes certeza de querer retirar da base de datos os ficheiros que faltan? Isto retirará de xeito permanente todas a referencias a eles, incluíndo a conta de reproducións e valoracións.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": "",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Biblioteca",
@@ -485,6 +511,21 @@
         "disabled": "Desactivado",
         "waiting": "Agardando"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -493,7 +534,10 @@
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
     "serverUptime": "Servidor a funcionar",
-    "serverDown": "SEN CONEXIÓN"
+    "serverDown": "SEN CONEXIÓN",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
   },
   "help": {
     "title": "Atallos de Navidrome",
@@ -508,5 +552,10 @@
       "toggle_love": "Engadir canción a favoritas",
       "current_song": "Ir á Canción actual "
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }

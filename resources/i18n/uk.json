@@ -44,7 +44,8 @@
         "shuffleAll": "Перемішати",
         "download": "Завантажити",
         "playNext": "Наступна",
-        "info": "Отримати інформацію"
+        "info": "Отримати інформацію",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -123,7 +124,13 @@
         "mixer": "Звукоінженер |||| Звукоінженери",
         "remixer": "Реміксер |||| Реміксери",
         "djmixer": "DJ-звукоінженер |||| DJ-звукоінженери",
-        "performer": "Виконавець |||| Виконавці"
+        "performer": "Виконавець |||| Виконавці",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -197,11 +204,17 @@
         "export": "Експортувати",
         "makePublic": "Зробити публічним",
         "makePrivate": "Зробити приватним",
-        "saveQueue": "Зберегти чергу до плейлиста"
+        "saveQueue": "Зберегти чергу до плейлиста",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "Додати повторювані пісні",
-        "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?"
+        "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -430,7 +443,9 @@
     "remove_missing_title": "Видалити зниклі файли",
     "remove_missing_content": "Ви впевнені, що хочете видалити вибрані відсутні файли з бази даних? Це назавжди видалить усі посилання на них, включаючи кількість прослуховувань та рейтинги.",
     "remove_all_missing_title": "Видалити всі відсутні файли",
-    "remove_all_missing_content": "Ви впевнені, що хочете видалити всі відсутні файли з бази даних? Це назавжди видалить будь-які посилання на них, включно з кількістю відтворень та рейтингами."
+    "remove_all_missing_content": "Ви впевнені, що хочете видалити всі відсутні файли з бази даних? Це назавжди видалить будь-які посилання на них, включно з кількістю відтворень та рейтингами.",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Бібліотека",
@@ -496,6 +511,21 @@
         "disabled": "Вимкнено",
         "waiting": "Очікування"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -522,5 +552,10 @@
       "toggle_love": "Відмітити поточні пісні",
       "current_song": "Перейти до поточної пісні"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }

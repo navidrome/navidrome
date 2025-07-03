@@ -44,7 +44,8 @@
         "shuffleAll": "Sekoita kaikki",
         "download": "Lataa",
         "playNext": "Soita seuraavaksi",
-        "info": "Info"
+        "info": "Info",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -123,7 +124,13 @@
         "mixer": "Miksaaja |||| Miksaajat",
         "remixer": "Remiksaaja |||| Remiksaajat",
         "djmixer": "DJ-miksaaja |||| DJ-miksaajat",
-        "performer": "Esiintyjä |||| Esiintyjät"
+        "performer": "Esiintyjä |||| Esiintyjät",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -197,11 +204,17 @@
         "export": "Vie",
         "makePublic": "Tee julkinen",
         "makePrivate": "Tee yksityinen",
-        "saveQueue": ""
+        "saveQueue": "",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
-        "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?"
+        "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -430,7 +443,9 @@
     "remove_missing_title": "Poista puuttuvat tiedostot",
     "remove_missing_content": "Oletko varma, että haluat poistaa valitut puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien niiden soittojen määrät ja arvostelut.",
     "remove_all_missing_title": "",
-    "remove_all_missing_content": ""
+    "remove_all_missing_content": "",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Kirjasto",
@@ -496,6 +511,21 @@
         "disabled": "Ei käytössä",
         "waiting": "Odottaa"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -522,5 +552,10 @@
       "toggle_love": "Lisää kappale suosikkeihin",
       "current_song": "Siirry nykyiseen kappaleeseen"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }
