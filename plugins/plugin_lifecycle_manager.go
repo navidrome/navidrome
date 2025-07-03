@@ -43,7 +43,7 @@ func (m *pluginLifecycleManager) markInitialized(plugin *plugin) {
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
-func (m *pluginLifecycleManager) callOnInit(plugin *plugin) {
+func (m *pluginLifecycleManager) callOnInit(plugin *plugin) error {
 	ctx := context.Background()
 	log.Debug("Initializing plugin", "name", plugin.ID)
 	start := time.Now()
@@ -52,13 +52,13 @@ func (m *pluginLifecycleManager) callOnInit(plugin *plugin) {
 	loader, err := api.NewLifecycleManagementPlugin(ctx, api.WazeroRuntime(plugin.Runtime), api.WazeroModuleConfig(plugin.ModConfig))
 	if loader == nil || err != nil {
 		log.Error("Error creating LifecycleManagement plugin", "plugin", plugin.ID, err)
-		return
+		return err
 	}
 
 	initPlugin, err := loader.Load(ctx, plugin.WasmPath)
 	if err != nil {
 		log.Error("Error loading LifecycleManagement plugin", "plugin", plugin.ID, "path", plugin.WasmPath, err)
-		return
+		return err
 	}
 	defer initPlugin.Close(ctx)
 
@@ -75,17 +75,15 @@ func (m *pluginLifecycleManager) callOnInit(plugin *plugin) {
 
 	// Call OnInit
 	callStart := time.Now()
-	resp, err := initPlugin.OnInit(ctx, req)
+	_, err = convertError(initPlugin.OnInit(ctx, req))
 	m.metrics.RecordPluginRequest(ctx, plugin.ID, "OnInit", err != nil, time.Since(callStart).Milliseconds())
 	if err != nil {
 		log.Error("Error initializing plugin", "plugin", plugin.ID, "elapsed", time.Since(start), err)
-		return
+		return err
 	}
 
-	if resp.Error != "" {
-		log.Error("Plugin reported error during initialization", "plugin", plugin.ID, "error", resp.Error)
-		return
-	}
-
+	// Mark the plugin as initialized
+	m.markInitialized(plugin)
 	log.Debug("Plugin initialized successfully", "plugin", plugin.ID, "elapsed", time.Since(start))
+	return nil
 }

@@ -116,3 +116,22 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 
 	return r, err
 }
+
+type errorResponse interface {
+	GetError() string
+}
+
+func convertError[T any](resp T, err error) (T, error) {
+	if any(resp) == nil {
+		return resp, err
+	}
+	respErr, ok := any(resp).(errorResponse)
+	if ok && respErr.GetError() != "" {
+		if err == nil {
+			err = errors.New(respErr.GetError())
+		} else {
+			err = fmt.Errorf("%s: %w", respErr.GetError(), err)
+		}
+	}
+	return resp, err
+}

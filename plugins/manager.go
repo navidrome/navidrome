@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -170,16 +171,8 @@ func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manif
 		compilationReady: make(chan struct{}),
 	}
 
-	// Start pre-compilation of WASM module in background
-	go func() {
-		precompilePlugin(p)
-		// Check if this plugin implements InitService and hasn't been initialized yet
-		m.initializePluginIfNeeded(p)
-	}()
-
-	// Register the plugin
+	// Register the plugin first
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.plugins[pluginID] = p
 
 	// Register one plugin adapter for each capability
@@ -200,6 +193,14 @@ func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manif
 		}
 		m.adapters[pluginID+"_"+capabilityStr] = adapter
 	}
+	m.mu.Unlock()
+
+	// Start pre-compilation of WASM module in background AFTER registration
+	go func() {
+		precompilePlugin(p)
+		// Check if this plugin implements InitService and hasn't been initialized yet
+		m.initializePluginIfNeeded(p)
+	}()
 
 	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[pluginID]
@@ -213,13 +214,31 @@ func (m *managerImpl) initializePluginIfNeeded(plugin *plugin) {
 	}
 
 	// Check if the plugin implements LifecycleManagement
-	for _, capability := range plugin.Manifest.Capabilities {
-		if capability == CapabilityLifecycleManagement {
-			m.lifecycle.callOnInit(plugin)
-			m.lifecycle.markInitialized(plugin)
-			break
+	if slices.Contains(plugin.Manifest.Capabilities, CapabilityLifecycleManagement) {
+		if err := m.lifecycle.callOnInit(plugin); err != nil {
+			m.unregisterPlugin(plugin.ID)
 		}
 	}
+}
+
+// unregisterPlugin removes a plugin from the manager
+func (m *managerImpl) unregisterPlugin(pluginID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	plugin, ok := m.plugins[pluginID]
+	if !ok {
+		return
+	}
+
+	// Unregister plugin adapters
+	for _, capability := range plugin.Manifest.Capabilities {
+		delete(m.adapters, pluginID+"_"+string(capability))
+	}
+
+	// Unregister plugin
+	delete(m.plugins, pluginID)
+	log.Info("Unregistered plugin", "plugin", pluginID)
 }
 
 // ScanPlugins scans the plugins directory, discovers all valid plugins, and registers them for use.

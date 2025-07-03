@@ -234,5 +234,3 @@ elif [[ "$VERBOSE" == "true" ]]; then
 fi
 
 exit 0
-
-# Contains AI-generated edits.

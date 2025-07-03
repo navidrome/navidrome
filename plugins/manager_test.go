@@ -255,4 +255,60 @@ var _ = Describe("Plugin Manager", func() {
 			}
 		})
 	})
+
+	Describe("Plugin Initialization Lifecycle", func() {
+		BeforeEach(func() {
+			conf.Server.Plugins.Enabled = true
+			conf.Server.Plugins.Folder = testDataDir
+		})
+
+		Context("when OnInit is successful", func() {
+			It("should register and initialize the plugin", func() {
+				conf.Server.PluginConfig = nil
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				plugin := mgr.plugins["fake_init_service"]
+				Expect(plugin).NotTo(BeNil())
+
+				Eventually(func() bool {
+					return mgr.lifecycle.isInitialized(plugin)
+				}).Should(BeTrue())
+
+				// Check that the plugin is still registered
+				names := mgr.PluginNames(CapabilityLifecycleManagement)
+				Expect(names).To(ContainElement("fake_init_service"))
+			})
+		})
+
+		Context("when OnInit fails", func() {
+			It("should unregister the plugin if OnInit returns an error string", func() {
+				conf.Server.PluginConfig = map[string]map[string]string{
+					"fake_init_service": {
+						"returnError": "response_error",
+					},
+				}
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				Eventually(func() []string {
+					return mgr.PluginNames(CapabilityLifecycleManagement)
+				}).ShouldNot(ContainElement("fake_init_service"))
+			})
+
+			It("should unregister the plugin if OnInit returns a Go error", func() {
+				conf.Server.PluginConfig = map[string]map[string]string{
+					"fake_init_service": {
+						"returnError": "go_error",
+					},
+				}
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				Eventually(func() []string {
+					return mgr.PluginNames(CapabilityLifecycleManagement)
+				}).ShouldNot(ContainElement("fake_init_service"))
+			})
+		})
+	})
 })
