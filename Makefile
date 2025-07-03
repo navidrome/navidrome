@@ -41,7 +41,7 @@ test: ##@Development Run Go tests
 	go test -tags netgo $(PKG)
 .PHONY: test
 
-testall: test-js test-race ##@Development Run Go and JS tests
+testall: test-race test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
