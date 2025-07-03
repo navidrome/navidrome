@@ -294,12 +294,8 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 		return
 	}
 
-	callbackType := "one-time"
-	if isRecurring {
-		callbackType = "recurring"
-	}
-
-	log.Debug("Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
+	ctx = log.NewContext(ctx, "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callback.Type)
+	log.Debug("Executing schedule callback")
 	start := time.Now()
 
 	// Get the plugin
@@ -317,11 +313,11 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 	}
 
 	// Call the plugin's OnSchedulerCallback method
-	log.Trace(ctx, "Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
+	log.Trace(ctx, "Executing schedule callback")
 	err := plugin.OnSchedulerCallback(ctx, callback.ID, callback.Payload, isRecurring)
 	if err != nil {
-		log.Error("Error executing schedule callback", "plugin", callback.PluginID, "elapsed", time.Since(start), err)
+		log.Error("Error executing schedule callback", "elapsed", time.Since(start), err)
 		return
 	}
-	log.Debug("Schedule callback executed", "plugin", callback.PluginID, "elapsed", time.Since(start))
+	log.Debug("Schedule callback executed", "elapsed", time.Since(start))
 }
