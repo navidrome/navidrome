@@ -110,7 +110,7 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 		metrics := w.getMetrics()
 		if metrics != nil {
 			metrics.RecordPluginRequest(ctx, id, methodName, isOk, elapsed.Milliseconds())
-			log.Trace(ctx, "callMethod: sending metrics", "plugin", id, "method", methodName, "ok", isOk, elapsed)
+			log.Trace(ctx, "callMethod: sending metrics", "plugin", id, "method", methodName, "ok", isOk, "elapsed", elapsed)
 		}
 	}
 
