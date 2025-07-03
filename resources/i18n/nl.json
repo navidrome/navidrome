@@ -44,8 +44,7 @@
         "shuffleAll": "Shuffle alles",
         "download": "Downloaden",
         "playNext": "Volgende",
-        "info": "Meer info",
-        "showInPlaylist": ""
+        "info": "Meer info"
       }
     },
     "album": {
@@ -124,13 +123,7 @@
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Performer |||| Performers",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": "Performer |||| Performers"
       }
     },
     "user": {
@@ -204,17 +197,11 @@
         "export": "Exporteer",
         "makePublic": "Openbaar maken",
         "makePrivate": "Privé maken",
-        "saveQueue": "Bewaar wachtrij als playlist",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "saveQueue": "Bewaar wachtrij als playlist"
       },
       "message": {
         "duplicate_song": "Dubbele nummers toevoegen",
-        "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
       }
     },
     "radio": {
@@ -443,9 +430,7 @@
     "remove_missing_title": "Verwijder ontbrekende bestanden",
     "remove_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
     "remove_all_missing_title": "Verwijder alle ontbrekende bestanden",
-    "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen."
   },
   "menu": {
     "library": "Bibliotheek",
@@ -511,21 +496,6 @@
         "disabled": "Uitgeschakeld",
         "waiting": "Wachten"
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -552,10 +522,5 @@
       "toggle_love": "Voeg toe aan favorieten",
       "current_song": "Ga naar huidig nummer"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }

@@ -32,10 +32,7 @@
         "participants": "",
         "tags": "",
         "mappedTags": "",
-        "rawTags": "",
-        "bitDepth": "",
-        "sampleRate": "",
-        "missing": ""
+        "rawTags": ""
       },
       "actions": {
         "addToQueue": "最後に再生",
@@ -44,8 +41,7 @@
         "shuffleAll": "全曲シャッフル",
         "download": "ダウンロード",
         "playNext": "次に再生",
-        "info": "詳細",
-        "showInPlaylist": ""
+        "info": "詳細"
       }
     },
     "album": {
@@ -74,9 +70,7 @@
         "releaseType": "",
         "grouping": "",
         "media": "",
-        "mood": "",
-        "date": "",
-        "missing": ""
+        "mood": ""
       },
       "actions": {
         "playAll": "再生",
@@ -108,8 +102,7 @@
         "rating": "レート",
         "genre": "ジャンル",
         "size": "サイズ",
-        "role": "",
-        "missing": ""
+        "role": ""
       },
       "roles": {
         "albumartist": "",
@@ -124,13 +117,7 @@
         "mixer": "",
         "remixer": "",
         "djmixer": "",
-        "performer": "",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": ""
       }
     },
     "user": {
@@ -203,18 +190,11 @@
         "addNewPlaylist": "'%{name}' を作成",
         "export": "エクスポート",
         "makePublic": "公開する",
-        "makePrivate": "非公開にする",
-        "saveQueue": "",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "makePrivate": "非公開にする"
       },
       "message": {
         "duplicate_song": "重複する曲を追加",
-        "song_exist": "既にプレイリストに存在する曲です。追加しますか？",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
       }
     },
     "radio": {
@@ -255,13 +235,11 @@
         "updatedAt": ""
       },
       "actions": {
-        "remove": "",
-        "remove_all": ""
+        "remove": ""
       },
       "notifications": {
         "removed": ""
-      },
-      "empty": ""
+      }
     }
   },
   "ra": {
@@ -441,11 +419,7 @@
     "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter",
     "remove_missing_title": "",
-    "remove_missing_content": "",
-    "remove_all_missing_title": "",
-    "remove_all_missing_content": "",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "remove_missing_content": ""
   },
   "menu": {
     "library": "ライブラリ",
@@ -511,21 +485,6 @@
         "disabled": "無効",
         "waiting": "待機中"
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -534,10 +493,7 @@
     "quickScan": "クイックスキャン",
     "fullScan": "フルスキャン",
     "serverUptime": "サーバー稼働時間",
-    "serverDown": "サーバーオフライン",
-    "scanType": "",
-    "status": "",
-    "elapsedTime": ""
+    "serverDown": "サーバーオフライン"
   },
   "help": {
     "title": "ホットキー",
@@ -552,10 +508,5 @@
       "toggle_love": "星の付け外し",
       "current_song": "現在の曲へ移動"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }

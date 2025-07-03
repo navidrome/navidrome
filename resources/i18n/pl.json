@@ -33,9 +33,7 @@
         "tags": "Dodatkowe Tagi",
         "mappedTags": "Zmapowane tagi",
         "rawTags": "Surowe tagi",
-        "bitDepth": "Głębokość próbkowania",
-        "sampleRate": "",
-        "missing": ""
+        "bitDepth": "Głębokość próbkowania"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -44,8 +42,7 @@
         "shuffleAll": "Losuj Wszystkie",
         "download": "Pobierz",
         "playNext": "Odtwarzaj Następny",
-        "info": "Zdobądź Informacje",
-        "showInPlaylist": ""
+        "info": "Zdobądź Informacje"
       }
     },
     "album": {
@@ -75,8 +72,7 @@
         "grouping": "Grupowanie",
         "media": "Media",
         "mood": "Nastrój",
-        "date": "",
-        "missing": ""
+        "date": ""
       },
       "actions": {
         "playAll": "Odtwarzaj",
@@ -108,8 +104,7 @@
         "rating": "Ocena",
         "genre": "Gatunek",
         "size": "Rozmiar",
-        "role": "Rola",
-        "missing": ""
+        "role": "Rola"
       },
       "roles": {
         "albumartist": "Wykonawca Albumu |||| Wykonawcy Albumu",
@@ -124,13 +119,7 @@
         "mixer": "Mikser |||| Mikserzy",
         "remixer": "Remixer |||| Remixerzy",
         "djmixer": "Didżej |||| Didżerzy",
-        "performer": "Wykonawca |||| Wykonawcy",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": "Wykonawca |||| Wykonawcy"
       }
     },
     "user": {
@@ -203,18 +192,11 @@
         "addNewPlaylist": "Stwórz \"%{name}\"",
         "export": "Wyeksportuj",
         "makePublic": "Zmień na Publiczną",
-        "makePrivate": "Zmień na Prywatną",
-        "saveQueue": "",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "makePrivate": "Zmień na Prywatną"
       },
       "message": {
         "duplicate_song": "Dodaj zduplikowane utwory",
-        "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
       }
     },
     "radio": {
@@ -255,8 +237,7 @@
         "updatedAt": "Zniknął na"
       },
       "actions": {
-        "remove": "Usuń",
-        "remove_all": ""
+        "remove": "Usuń"
       },
       "notifications": {
         "removed": "Usunięto brakujące pliki"
@@ -441,11 +422,7 @@
     "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter",
     "remove_missing_title": "Usuń brakujące dane",
-    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny.",
-    "remove_all_missing_title": "",
-    "remove_all_missing_content": "",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny."
   },
   "menu": {
     "library": "Biblioteka",
@@ -511,21 +488,6 @@
         "disabled": "Wyłączone",
         "waiting": "Oczekujące"
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -534,10 +496,7 @@
     "quickScan": "Szybkie Skanowanie",
     "fullScan": "Pełne Skanowanie",
     "serverUptime": "Czas Działania Serwera",
-    "serverDown": "NIEDOSTĘPNY",
-    "scanType": "",
-    "status": "",
-    "elapsedTime": ""
+    "serverDown": "NIEDOSTĘPNY"
   },
   "help": {
     "title": "Skróty Klawiszowe Navidrome",
@@ -552,10 +511,5 @@
       "toggle_love": "Dodaj ten utwór do ulubionych",
       "current_song": "Przejdź do Bieżącego Utworu"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }

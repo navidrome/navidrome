@@ -18,6 +18,9 @@
         "size": "Fitxategiaren tamaina",
         "updatedAt": "Eguneratze-data:",
         "bitRate": "Bit-tasa",
+        "bitDepth": "Bit-sakonera",
+        "sampleRate": "Lagin-tasa",
+        "channels": "Kanalak",
         "discSubtitle": "Diskoaren azpititulua",
         "starred": "Gogokoa",
         "comment": "Iruzkina",
@@ -25,17 +28,13 @@
         "quality": "Kalitatea",
         "bpm": "BPM",
         "playDate": "Azkenekoz erreproduzitua:",
-        "channels": "Kanalak",
         "createdAt": "Gehitu zen data:",
         "grouping": "Multzokatzea",
         "mood": "Aldartea",
         "participants": "Partaide gehiago",
         "tags": "Traola gehiago",
         "mappedTags": "Esleitutako traolak",
-        "rawTags": "Traola gordinak",
-        "bitDepth": "Bit-sakonera",
-        "sampleRate": "Lagin-tasa",
-        "missing": ""
+        "rawTags": "Traola gordinak"
       },
       "actions": {
         "addToQueue": "Erreproduzitu ondoren",
@@ -44,8 +43,7 @@
         "shuffleAll": "Erreprodukzio aleatorioa",
         "download": "Deskargatu",
         "playNext": "Hurrengoa",
-        "info": "Lortu informazioa",
-        "showInPlaylist": ""
+        "info": "Lortu informazioa"
       }
     },
     "album": {
@@ -56,27 +54,26 @@
         "duration": "Iraupena",
         "songCount": "abesti",
         "playCount": "Erreprodukzioak",
+        "size": "Fitxategiaren tamaina",
         "name": "Izena",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
-        "updatedAt": "Aktualizatze-data:",
-        "comment": "Iruzkina",
-        "rating": "Balorazioa",
-        "createdAt": "Gehitu zen data:",
-        "size": "Fitxategiaren tamaina",
+        "date": "Recording Date",
         "originalDate": "Jatorrizkoa",
         "releaseDate": "Argitaratze-data:",
         "releases": "Argitaratzea |||| Argitaratzeak",
         "released": "Argitaratua",
+        "updatedAt": "Aktualizatze-data:",
+        "comment": "Iruzkina",
+        "rating": "Balorazioa",
+        "createdAt": "Gehitu zen data:",
         "recordLabel": "Disketxea",
         "catalogNum": "Katalogo-zenbakia",
         "releaseType": "Mota",
         "grouping": "Multzokatzea",
         "media": "Multimedia",
-        "mood": "Aldartea",
-        "date": "Recording Date",
-        "missing": ""
+        "mood": "Aldartea"
       },
       "actions": {
         "playAll": "Erreproduzitu",
@@ -104,12 +101,11 @@
         "name": "Izena",
         "albumCount": "Album kopurua",
         "songCount": "Abesti kopurua",
+        "size": "Tamaina",
         "playCount": "Erreprodukzio kopurua",
         "rating": "Balorazioa",
         "genre": "Generoa",
-        "size": "Tamaina",
-        "role": "Rola",
-        "missing": ""
+        "role": "Rola"
       },
       "roles": {
         "albumartist": "Albumeko egilea |||| Albumeko artistak",
@@ -124,13 +120,7 @@
         "mixer": "Nahaslea |||| Nahasleak",
         "remixer": "Remixerra |||| Remixerrak",
         "djmixer": "DJ nahaslea |||| DJ nahasleak",
-        "performer": "Interpretatzailea |||| Interpretatzaileak",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": "Interpretatzailea |||| Interpretatzaileak"
       }
     },
     "user": {
@@ -203,18 +193,11 @@
         "addNewPlaylist": "Sortu \"%{name}\"",
         "export": "Esportatu",
         "makePublic": "Egin publikoa",
-        "makePrivate": "Egin pribatua",
-        "saveQueue": "",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "makePrivate": "Egin pribatua"
       },
       "message": {
         "duplicate_song": "Hautatutako abesti batzuk lehendik ere daude zerrendan",
-        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?"
       }
     },
     "radio": {
@@ -236,6 +219,7 @@
         "username": "Partekatzailea:",
         "url": "URLa",
         "description": "Deskribapena",
+        "downloadable": "Deskargatzea ahalbidetu?",
         "contents": "Edukia",
         "expiresAt": "Iraungitze-data:",
         "lastVisitedAt": "Azkenekoz bisitatu zen:",
@@ -243,12 +227,14 @@
         "format": "Formatua",
         "maxBitRate": "Gehienezko bit tasa",
         "updatedAt": "Eguneratze-data:",
-        "createdAt": "Sortze-data:",
-        "downloadable": "Deskargatzea ahalbidetu?"
-      }
+        "createdAt": "Sortze-data:"
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
       "name": "Fitxategia falta da|||| Fitxategiak falta dira",
+      "empty": "Ez da fitxategirik falta",
       "fields": {
         "path": "Bidea",
         "size": "Tamaina",
@@ -260,8 +246,7 @@
       },
       "notifications": {
         "removed": "Faltan zeuden fitxategiak kendu dira"
-      },
-      "empty": "Ez da fitxategirik falta"
+      }
     }
   },
   "ra": {
@@ -417,35 +402,33 @@
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
     "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
+    "remove_missing_title": "Kendu faltan dauden fitxategiak",
+    "remove_missing_content": "Ziur hautatutako fitxategiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
+    "remove_all_missing_title": "Kendu faltan dauden fitxategi guztiak",
+    "remove_all_missing_content": "Ziur aurkitu ez diren fitxategi guztiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
     "notifications_blocked": "Nabigatzaileak jakinarazpenak blokeatzen ditu",
     "notifications_not_available": "Nabigatzaile hau ez da jakinarazpenekin bateragarria edo Navidrome ez da HTTPS erabiltzen ari",
     "lastfmLinkSuccess": "Last.fm konektatuta dago eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea gaituta dago",
     "lastfmLinkFailure": "Ezin izan da Last.fm-rekin konektatu",
     "lastfmUnlinkSuccess": "Last.fm deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea ezgaitu da",
     "lastfmUnlinkFailure": "Ezin izan da Last.fm deskonektatu",
+    "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
+    "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
+    "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
     "openIn": {
       "lastfm": "Ikusi Last.fm-n",
       "musicbrainz": "Ikusi MusicBrainz-en"
     },
     "lastfmLink": "Irakurri gehiago…",
-    "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
-    "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
-    "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
-    "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
-    "downloadOriginalFormat": "Deskargatu jatorrizko formatua",
     "shareOriginalFormat": "Partekatu jatorrizko formatua",
     "shareDialogTitle": "Partekatu '%{name}' %{resource}",
     "shareBatchDialogTitle": "Partekatu %{resource} bat |||| Partekatu %{smart_count} %{resource}",
+    "shareCopyToClipboard": "Kopiatu arbelera: Ktrl + C, Sartu tekla",
     "shareSuccess": "URLa arbelera kopiatu da: %{url}",
     "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
     "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
-    "shareCopyToClipboard": "Kopiatu arbelera: Ktrl + C, Sartu tekla",
-    "remove_missing_title": "Kendu faltan dauden fitxategiak",
-    "remove_missing_content": "Ziur hautatutako fitxategiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
-    "remove_all_missing_title": "Kendu faltan dauden fitxategi guztiak",
-    "remove_all_missing_content": "Ziur aurkitu ez diren fitxategi guztiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"    
   },
   "menu": {
     "library": "Liburutegia",
@@ -459,6 +442,7 @@
         "language": "Hizkuntza",
         "defaultView": "Bista, defektuz",
         "desktop_notifications": "Mahaigaineko jakinarazpenak",
+        "lastfmNotConfigured": "Last.fm-ren API-gakoa ez dago konfiguratuta",
         "lastfmScrobbling": "Bidali Last.fm-ra erabiltzailearen ohiturak",
         "listenBrainzScrobbling": "Bidali ListenBrainz-era erabiltzailearen ohiturak",
         "replaygain": "ReplayGain modua",
@@ -467,14 +451,13 @@
           "none": "Bat ere ez",
           "album": "Albuma",
           "track": "Pista"
-        },
-        "lastfmNotConfigured": "Last.fm-ren API-gakoa ez dago konfiguratuta"
+        }
       }
     },
     "albumList": "Albumak",
-    "about": "Honi buruz",
     "playlists": "Zerrendak",
-    "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak"
+    "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
+    "about": "Honi buruz"
   },
   "player": {
     "playListsText": "Erreprodukzio-zerrenda",
@@ -511,21 +494,6 @@
         "disabled": "Ezgaituta",
         "waiting": "Zain"
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -552,10 +520,5 @@
       "toggle_love": "Abestia gogoko bai / ez",
       "current_song": "Uneko abestia"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }

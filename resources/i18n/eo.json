@@ -44,8 +44,7 @@
         "shuffleAll": "Miksu Ĉiujn",
         "download": "Elŝuti",
         "playNext": "Ludu Poste",
-        "info": "Akiri Informon",
-        "showInPlaylist": ""
+        "info": "Akiri Informon"
       }
     },
     "album": {
@@ -124,13 +123,7 @@
         "mixer": "Miksisto |||| Miksistoj",
         "remixer": "Remiksisto |||| Remiksistoj",
         "djmixer": "",
-        "performer": "",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": ""
       }
     },
     "user": {
@@ -204,17 +197,11 @@
         "export": "Eksporti",
         "makePublic": "Publikigi",
         "makePrivate": "Malpublikigi",
-        "saveQueue": "",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Aldoni duobligitajn kantojn",
-        "song_exist": "Estas duoblaĵoj kiuj aldoniĝas al la kantolisto. Ĉu vi ŝatus aldoni la duoblaĵojn aŭ pasigi ilin?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "Estas duoblaĵoj kiuj aldoniĝas al la kantolisto. Ĉu vi ŝatus aldoni la duoblaĵojn aŭ pasigi ilin?"
       }
     },
     "radio": {
@@ -443,9 +430,7 @@
     "remove_missing_title": "",
     "remove_missing_content": "Ĉu vi certas, ke vi volas forigi la elektitajn mankajn dosierojn de la datumbazo? Ĉi tio forigos eterne ĉiujn referencojn de ili, inkluzive iliajn ludkvantojn kaj taksojn.",
     "remove_all_missing_title": "",
-    "remove_all_missing_content": "",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "remove_all_missing_content": ""
   },
   "menu": {
     "library": "Biblioteko",
@@ -511,21 +496,6 @@
         "disabled": "Malebligita",
         "waiting": ""
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -552,10 +522,5 @@
       "toggle_love": "Baskuli la stelon de nuna kanto",
       "current_song": "Iri al Nuna Kanto"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }

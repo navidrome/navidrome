@@ -128,9 +128,9 @@
         "maincredit": "Artista do Álbum ou Artista |||| Artistas do Álbum ou Artistas"
       },
       "actions": {
+        "topSongs": "Mais tocadas",
         "shuffle": "Aleatório",
-        "radio": "Rádio",
-        "topSongs": "Mais tocadas"
+        "radio": "Rádio"
       }
     },
     "user": {
@@ -414,6 +414,8 @@
     "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
     "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
+    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
@@ -443,9 +445,7 @@
     "remove_missing_title": "Remover arquivos ausentes",
     "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "remove_all_missing_title": "Remover todos os arquivos ausentes",
-    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
-    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
-    "noTopSongsFound": "Nenhuma música mais tocada encontrada"
+    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
   },
   "menu": {
     "library": "Biblioteca",
@@ -539,6 +539,11 @@
     "status": "Erro",
     "elapsedTime": "Duração"
   },
+  "nowPlaying": {
+    "title": "Tocando agora",
+    "empty": "Nada tocando",
+    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
+  },
   "help": {
     "title": "Teclas de atalho",
     "hotkeys": {
@@ -552,10 +557,5 @@
       "toggle_love": "Marcar/desmarcar favorita",
       "current_song": "Vai para música atual"
     }
-  },
-  "nowPlaying": {
-    "title": "Tocando agora",
-    "empty": "Nada tocando",
-    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
   }
 }

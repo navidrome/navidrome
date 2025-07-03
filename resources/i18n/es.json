@@ -44,8 +44,7 @@
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
-        "info": "Obtener información",
-        "showInPlaylist": ""
+        "info": "Obtener información"
       }
     },
     "album": {
@@ -124,13 +123,7 @@
         "mixer": "Mezclador",
         "remixer": "Remixer",
         "djmixer": "DJ Mixer",
-        "performer": "Intérprete",
-        "maincredit": ""
-      },
-      "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "performer": "Intérprete"
       }
     },
     "user": {
@@ -204,17 +197,11 @@
         "export": "Exportar",
         "makePublic": "Hazla pública",
         "makePrivate": "Hazla privada",
-        "saveQueue": "Guardar la fila de reproducción en una playlist",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": "",
-        "removeSymbol": ""
+        "saveQueue": "Guardar la fila de reproducción en una playlist"
       },
       "message": {
         "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
-        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
       }
     },
     "radio": {
@@ -443,9 +430,7 @@
     "remove_missing_title": "Eliminar elemento faltante",
     "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "remove_all_missing_title": "Eliminar todos los archivos perdidos",
-    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones."
   },
   "menu": {
     "library": "Biblioteca",
@@ -511,21 +496,6 @@
         "disabled": "Deshabilitado",
         "waiting": "Esperando"
       }
-    },
-    "tabs": {
-      "about": "",
-      "config": ""
-    },
-    "config": {
-      "configName": "",
-      "environmentVariable": "",
-      "currentValue": "",
-      "configurationFile": "",
-      "exportToml": "",
-      "exportSuccess": "",
-      "exportFailed": "",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -552,10 +522,5 @@
       "toggle_love": "Marca esta canción como favorita",
       "current_song": "Canción actual"
     }
-  },
-  "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
   }
 }
