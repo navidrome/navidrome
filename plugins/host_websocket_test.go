@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	gorillaws "github.com/gorilla/websocket"
@@ -189,6 +190,10 @@ var _ = Describe("WebSocket Host Service", func() {
 		})
 
 		It("handles connection errors gracefully", func() {
+			if testing.Short() {
+				GinkgoT().Skip("skipping test in short mode.")
+			}
+
 			// Try to connect to an invalid URL
 			req := &websocket.ConnectRequest{
 				Url:          "ws://invalid-url-that-does-not-exist",

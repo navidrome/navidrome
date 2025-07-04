@@ -10,12 +10,12 @@ import (
 
 type nilInstance struct{}
 
-var _ = Describe("wasmBasePlugin", func() {
+var _ = Describe("baseCapability", func() {
 	var ctx = context.Background()
 
 	It("should load instance using loadFunc", func() {
 		called := false
-		plugin := &wasmBasePlugin[*nilInstance, any]{
+		plugin := &baseCapability[*nilInstance, any]{
 			wasmPath:   "",
 			id:         "test",
 			capability: "test",

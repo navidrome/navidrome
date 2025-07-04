@@ -19,7 +19,7 @@ func newWasmScrobblerPlugin(wasmPath, pluginID string, m *managerImpl, runtime a
 		return nil
 	}
 	return &wasmScrobblerPlugin{
-		wasmBasePlugin: newWasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin](
+		baseCapability: newBaseCapability[api.Scrobbler, *api.ScrobblerPlugin](
 			wasmPath,
 			pluginID,
 			CapabilityScrobbler,
@@ -33,7 +33,7 @@ func newWasmScrobblerPlugin(wasmPath, pluginID string, m *managerImpl, runtime a
 }
 
 type wasmScrobblerPlugin struct {
-	*wasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin]
+	*baseCapability[api.Scrobbler, *api.ScrobblerPlugin]
 }
 
 func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
@@ -44,21 +44,16 @@ func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) b
 			username = u.UserName
 		}
 	}
-
-	result, err := callMethod(ctx, w, "IsAuthorized", func(inst api.Scrobbler) (bool, error) {
-		resp, err := inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{
+	resp, err := callMethod(ctx, w, "IsAuthorized", func(inst api.Scrobbler) (*api.ScrobblerIsAuthorizedResponse, error) {
+		return inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{
 			UserId:   userId,
 			Username: username,
 		})
-		if err != nil {
-			return false, err
-		}
-		if resp.Error != "" {
-			return false, nil
-		}
-		return resp.Authorized, nil
 	})
-	return err == nil && result
+	if err != nil {
+		log.Warn("Error calling IsAuthorized", "userId", userId, "pluginID", w.id, err)
+	}
+	return err == nil && resp.Authorized
 }
 
 func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
@@ -70,25 +65,7 @@ func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, tra
 		}
 	}
 
-	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
-	for _, a := range track.Participants[model.RoleArtist] {
-		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
-	}
-	albumArtists := make([]*api.Artist, 0, len(track.Participants[model.RoleAlbumArtist]))
-	for _, a := range track.Participants[model.RoleAlbumArtist] {
-		albumArtists = append(albumArtists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
-	}
-	trackInfo := &api.TrackInfo{
-		Id:           track.ID,
-		Mbid:         track.MbzRecordingID,
-		Name:         track.Title,
-		Album:        track.Album,
-		AlbumMbid:    track.MbzAlbumID,
-		Artists:      artists,
-		AlbumArtists: albumArtists,
-		Length:       int32(track.Duration),
-		Position:     int32(position),
-	}
+	trackInfo := w.toTrackInfo(track, position)
 	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
 			UserId:    userId,
@@ -115,26 +92,7 @@ func (w *wasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s scr
 			username = u.UserName
 		}
 	}
-
-	track := &s.MediaFile
-	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
-	for _, a := range track.Participants[model.RoleArtist] {
-		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
-	}
-	albumArtists := make([]*api.Artist, 0, len(track.Participants[model.RoleAlbumArtist]))
-	for _, a := range track.Participants[model.RoleAlbumArtist] {
-		albumArtists = append(albumArtists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
-	}
-	trackInfo := &api.TrackInfo{
-		Id:           track.ID,
-		Mbid:         track.MbzRecordingID,
-		Name:         track.Title,
-		Album:        track.Album,
-		AlbumMbid:    track.MbzAlbumID,
-		Artists:      artists,
-		AlbumArtists: albumArtists,
-		Length:       int32(track.Duration),
-	}
+	trackInfo := w.toTrackInfo(&s.MediaFile, 0)
 	_, err := callMethod(ctx, w, "Scrobble", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.Scrobble(ctx, &api.ScrobblerScrobbleRequest{
 			UserId:    userId,
@@ -151,4 +109,28 @@ func (w *wasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s scr
 		return struct{}{}, nil
 	})
 	return err
+}
+
+func (w *wasmScrobblerPlugin) toTrackInfo(track *model.MediaFile, position int) *api.TrackInfo {
+	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
+
+	for _, a := range track.Participants[model.RoleArtist] {
+		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	albumArtists := make([]*api.Artist, 0, len(track.Participants[model.RoleAlbumArtist]))
+	for _, a := range track.Participants[model.RoleAlbumArtist] {
+		albumArtists = append(albumArtists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	trackInfo := &api.TrackInfo{
+		Id:           track.ID,
+		Mbid:         track.MbzRecordingID,
+		Name:         track.Title,
+		Album:        track.Album,
+		AlbumMbid:    track.MbzAlbumID,
+		Artists:      artists,
+		AlbumArtists: albumArtists,
+		Length:       int32(track.Duration),
+		Position:     int32(position),
+	}
+	return trackInfo
 }

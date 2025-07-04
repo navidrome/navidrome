@@ -10,7 +10,6 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/subsonicapi/subsonicapi.proto
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -54,8 +53,6 @@ var pluginCreators = map[string]pluginConstructor{
 type WasmPlugin interface {
 	// PluginID returns the unique identifier of the plugin (folder name)
 	PluginID() string
-	// Instantiate creates a new instance of the plugin and returns it along with a cleanup function
-	Instantiate(ctx context.Context) (any, func(), error)
 }
 
 type plugin struct {

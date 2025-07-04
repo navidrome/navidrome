@@ -326,7 +326,7 @@ func (s *websocketService) executeCallback(ctx context.Context, pluginID, method
 		return
 	}
 
-	_, _ = callMethod(ctx, p.(wasmPlugin[api.WebSocketCallback]), methodName, func(inst api.WebSocketCallback) (struct{}, error) {
+	_, _ = callMethod(ctx, p, methodName, func(inst api.WebSocketCallback) (struct{}, error) {
 		// Call the appropriate callback function
 		log.Trace(ctx, "Executing WebSocket callback")
 		if err := fn(ctx, inst); err != nil {
@@ -348,7 +348,7 @@ func (s *websocketService) notifyTextCallback(ctx context.Context, connectionID 
 	ctx = log.NewContext(ctx, "callback", "OnTextMessage", "size", len(message))
 
 	s.executeCallback(ctx, conn.PluginName, "OnTextMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnTextMessage(ctx, req)
+		_, err := checkErr(plugin.OnTextMessage(ctx, req))
 		return err
 	})
 }
@@ -363,7 +363,7 @@ func (s *websocketService) notifyBinaryCallback(ctx context.Context, connectionI
 	ctx = log.NewContext(ctx, "callback", "OnBinaryMessage", "size", len(data))
 
 	s.executeCallback(ctx, conn.PluginName, "OnBinaryMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnBinaryMessage(ctx, req)
+		_, err := checkErr(plugin.OnBinaryMessage(ctx, req))
 		return err
 	})
 }
@@ -378,7 +378,7 @@ func (s *websocketService) notifyErrorCallback(ctx context.Context, connectionID
 	ctx = log.NewContext(ctx, "callback", "OnError", "error", errorMsg)
 
 	s.executeCallback(ctx, conn.PluginName, "OnError", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnError(ctx, req)
+		_, err := checkErr(plugin.OnError(ctx, req))
 		return err
 	})
 }
@@ -394,7 +394,7 @@ func (s *websocketService) notifyCloseCallback(ctx context.Context, connectionID
 	ctx = log.NewContext(ctx, "callback", "OnClose", "code", code, "reason", reason)
 
 	s.executeCallback(ctx, conn.PluginName, "OnClose", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnClose(ctx, req)
+		_, err := checkErr(plugin.OnClose(ctx, req))
 		return err
 	})
 }
