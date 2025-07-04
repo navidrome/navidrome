@@ -42,6 +42,12 @@ func (m *pluginLifecycleManager) markInitialized(plugin *plugin) {
 	m.plugins.Store(key, true)
 }
 
+// clearInitialized removes the initialization state of a plugin
+func (m *pluginLifecycleManager) clearInitialized(plugin *plugin) {
+	key := plugin.ID + consts.Zwsp + plugin.Manifest.Version
+	m.plugins.Delete(key)
+}
+
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
 func (m *pluginLifecycleManager) callOnInit(plugin *plugin) error {
 	ctx := context.Background()

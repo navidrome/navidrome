@@ -228,6 +228,9 @@ func (m *managerImpl) unregisterPlugin(pluginID string) {
 		return
 	}
 
+	// Clear initialization state from lifecycle manager
+	m.lifecycle.clearInitialized(plugin)
+
 	// Unregister plugin adapters
 	for _, capability := range plugin.Manifest.Capabilities {
 		delete(m.adapters, pluginID+"_"+string(capability))

@@ -141,5 +141,26 @@ var _ = Describe("LifecycleManagement", func() {
 
 			Expect(actualKey).To(Equal(expectedKey))
 		})
+
+		It("should clear initialization state when requested", func() {
+			plugin := &plugin{
+				ID:           "test-plugin",
+				Capabilities: []string{CapabilityLifecycleManagement},
+				Manifest: &schema.PluginManifest{
+					Version: "1.0.0",
+				},
+			}
+
+			// Initially not initialized
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeFalse())
+
+			// Mark as initialized
+			lifecycleManager.markInitialized(plugin)
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeTrue())
+
+			// Clear initialization state
+			lifecycleManager.clearInitialized(plugin)
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeFalse())
+		})
 	})
 })

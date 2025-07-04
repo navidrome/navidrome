@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -305,6 +306,41 @@ var _ = Describe("Plugin Manager", func() {
 					return mgr.PluginNames(CapabilityLifecycleManagement)
 				}).ShouldNot(ContainElement("fake_init_service"))
 			})
+		})
+
+		It("should clear lifecycle state when unregistering a plugin", func() {
+			// Create a manager and register a plugin
+			mgr := createManager(nil, metrics.NewNoopInstance())
+
+			// Create a mock plugin with LifecycleManagement capability
+			plugin := &plugin{
+				ID:           "test-plugin",
+				Capabilities: []string{CapabilityLifecycleManagement},
+				Manifest: &schema.PluginManifest{
+					Version: "1.0.0",
+				},
+			}
+
+			// Register the plugin in the manager
+			mgr.mu.Lock()
+			mgr.plugins[plugin.ID] = plugin
+			mgr.mu.Unlock()
+
+			// Mark the plugin as initialized in the lifecycle manager
+			mgr.lifecycle.markInitialized(plugin)
+			Expect(mgr.lifecycle.isInitialized(plugin)).To(BeTrue())
+
+			// Unregister the plugin
+			mgr.unregisterPlugin(plugin.ID)
+
+			// Verify that the plugin is no longer in the manager
+			mgr.mu.RLock()
+			_, exists := mgr.plugins[plugin.ID]
+			mgr.mu.RUnlock()
+			Expect(exists).To(BeFalse())
+
+			// Verify that the lifecycle state has been cleared
+			Expect(mgr.lifecycle.isInitialized(plugin)).To(BeFalse())
 		})
 	})
 })
