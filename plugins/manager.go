@@ -92,11 +92,8 @@ type Manager interface {
 	EnsureCompiled(name string) error
 	PluginNames(serviceName string) []string
 	LoadPlugin(name string, capability string) WasmPlugin
-	LoadAllPlugins(capability string) []WasmPlugin
 	LoadMediaAgent(name string) (agents.Interface, bool)
-	LoadAllMediaAgents() []agents.Interface
 	LoadScrobbler(name string) (scrobbler.Scrobbler, bool)
-	LoadAllScrobblers() []scrobbler.Scrobbler
 	ScanPlugins()
 }
 
@@ -363,23 +360,6 @@ func (m *managerImpl) EnsureCompiled(name string) error {
 	return plugin.waitForCompilation()
 }
 
-// LoadAllPlugins instantiates and returns all plugins that implement the specified capability
-func (m *managerImpl) LoadAllPlugins(capability string) []WasmPlugin {
-	names := m.PluginNames(capability)
-	if len(names) == 0 {
-		return nil
-	}
-
-	var plugins []WasmPlugin
-	for _, name := range names {
-		plugin := m.LoadPlugin(name, capability)
-		if plugin != nil {
-			plugins = append(plugins, plugin)
-		}
-	}
-	return plugins
-}
-
 // LoadMediaAgent instantiates and returns a media agent plugin by folder name
 func (m *managerImpl) LoadMediaAgent(name string) (agents.Interface, bool) {
 	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
@@ -388,15 +368,6 @@ func (m *managerImpl) LoadMediaAgent(name string) (agents.Interface, bool) {
 	}
 	agent, ok := plugin.(*wasmMediaAgent)
 	return agent, ok
-}
-
-// LoadAllMediaAgents instantiates and returns all media agent plugins
-func (m *managerImpl) LoadAllMediaAgents() []agents.Interface {
-	plugins := m.LoadAllPlugins(CapabilityMetadataAgent)
-
-	return slice.Map(plugins, func(p WasmPlugin) agents.Interface {
-		return p.(agents.Interface)
-	})
 }
 
 // LoadScrobbler instantiates and returns a scrobbler plugin by folder name
@@ -409,15 +380,6 @@ func (m *managerImpl) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return s, ok
 }
 
-// LoadAllScrobblers instantiates and returns all scrobbler plugins
-func (m *managerImpl) LoadAllScrobblers() []scrobbler.Scrobbler {
-	plugins := m.LoadAllPlugins(CapabilityScrobbler)
-
-	return slice.Map(plugins, func(p WasmPlugin) scrobbler.Scrobbler {
-		return p.(scrobbler.Scrobbler)
-	})
-}
-
 type noopManager struct{}
 
 func (n noopManager) SetSubsonicRouter(router SubsonicRouter) {}
@@ -428,14 +390,8 @@ func (n noopManager) PluginNames(serviceName string) []string { return nil }
 
 func (n noopManager) LoadPlugin(name string, capability string) WasmPlugin { return nil }
 
-func (n noopManager) LoadAllPlugins(capability string) []WasmPlugin { return nil }
-
 func (n noopManager) LoadMediaAgent(name string) (agents.Interface, bool) { return nil, false }
 
-func (n noopManager) LoadAllMediaAgents() []agents.Interface { return nil }
-
 func (n noopManager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) { return nil, false }
-
-func (n noopManager) LoadAllScrobblers() []scrobbler.Scrobbler { return nil }
 
 func (n noopManager) ScanPlugins() {}
