@@ -117,11 +117,15 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	return r, err
 }
 
+// errorResponse is an interface that defines a method to retrieve an error message.
+// It is automatically implemented (generated) by all plugin repsonses that have an Error field
 type errorResponse interface {
 	GetError() string
 }
 
-func convertError[T any](resp T, err error) (T, error) {
+// checkErr returns an updated error if the response implements errorResponse and contains an error message.
+// If the response is nil, it returns the original error. Otherwise, it wraps or creates an error as needed.
+func checkErr[T any](resp T, err error) (T, error) {
 	if any(resp) == nil {
 		return resp, err
 	}
