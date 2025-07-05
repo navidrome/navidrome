@@ -108,7 +108,8 @@ main:
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
-    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics, unsyncedlyrics ]
+    # Note, @lyr and wm/lyrics have been removed. Taglib somehow appears to always populate `lyrics:xxx`
+    aliases: [ uslt:description, lyrics, unsyncedlyrics ]
     maxLength: 32768
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:
