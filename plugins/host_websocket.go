@@ -314,7 +314,7 @@ func (s *websocketService) handleMessages(internalID string, conn *WebSocketConn
 
 // executeCallback is a common function that handles the plugin loading and execution
 // for all types of callbacks
-func (s *websocketService) executeCallback(ctx context.Context, pluginID string, fn func(context.Context, api.WebSocketCallback) error) {
+func (s *websocketService) executeCallback(ctx context.Context, pluginID, methodName string, fn func(context.Context, api.WebSocketCallback) error) {
 	log.Debug(ctx, "WebSocket received")
 
 	start := time.Now()
@@ -326,30 +326,16 @@ func (s *websocketService) executeCallback(ctx context.Context, pluginID string,
 		return
 	}
 
-	// Get instance
-	inst, closeFn, err := p.Instantiate(ctx)
-	if err != nil {
-		log.Error(ctx, "Error getting plugin instance for WebSocket callback", err)
-		return
-	}
-	defer closeFn()
-
-	// Type-check the plugin
-	plugin, ok := inst.(api.WebSocketCallback)
-	if !ok {
-		log.Error(ctx, "Plugin does not implement WebSocketCallback")
-		return
-	}
-
-	// Call the appropriate callback function
-	log.Trace(ctx, "Executing WebSocket callback")
-
-	if err = fn(ctx, plugin); err != nil {
-		log.Error(ctx, "Error executing WebSocket callback", "elapsed", time.Since(start), err)
-		return
-	}
-
-	log.Debug(ctx, "WebSocket callback executed", "elapsed", time.Since(start))
+	_, _ = callMethod(ctx, p, methodName, func(inst api.WebSocketCallback) (struct{}, error) {
+		// Call the appropriate callback function
+		log.Trace(ctx, "Executing WebSocket callback")
+		if err := fn(ctx, inst); err != nil {
+			log.Error(ctx, "Error executing WebSocket callback", "elapsed", time.Since(start), err)
+			return struct{}{}, fmt.Errorf("error executing WebSocket callback: %w", err)
+		}
+		log.Debug(ctx, "WebSocket callback executed", "elapsed", time.Since(start))
+		return struct{}{}, nil
+	})
 }
 
 // notifyTextCallback notifies the plugin of a text message
@@ -361,8 +347,8 @@ func (s *websocketService) notifyTextCallback(ctx context.Context, connectionID 
 
 	ctx = log.NewContext(ctx, "callback", "OnTextMessage", "size", len(message))
 
-	s.executeCallback(ctx, conn.PluginName, func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnTextMessage(ctx, req)
+	s.executeCallback(ctx, conn.PluginName, "OnTextMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
+		_, err := checkErr(plugin.OnTextMessage(ctx, req))
 		return err
 	})
 }
@@ -376,8 +362,8 @@ func (s *websocketService) notifyBinaryCallback(ctx context.Context, connectionI
 
 	ctx = log.NewContext(ctx, "callback", "OnBinaryMessage", "size", len(data))
 
-	s.executeCallback(ctx, conn.PluginName, func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnBinaryMessage(ctx, req)
+	s.executeCallback(ctx, conn.PluginName, "OnBinaryMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
+		_, err := checkErr(plugin.OnBinaryMessage(ctx, req))
 		return err
 	})
 }
@@ -391,8 +377,8 @@ func (s *websocketService) notifyErrorCallback(ctx context.Context, connectionID
 
 	ctx = log.NewContext(ctx, "callback", "OnError", "error", errorMsg)
 
-	s.executeCallback(ctx, conn.PluginName, func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnError(ctx, req)
+	s.executeCallback(ctx, conn.PluginName, "OnError", func(ctx context.Context, plugin api.WebSocketCallback) error {
+		_, err := checkErr(plugin.OnError(ctx, req))
 		return err
 	})
 }
@@ -407,8 +393,8 @@ func (s *websocketService) notifyCloseCallback(ctx context.Context, connectionID
 
 	ctx = log.NewContext(ctx, "callback", "OnClose", "code", code, "reason", reason)
 
-	s.executeCallback(ctx, conn.PluginName, func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := plugin.OnClose(ctx, req)
+	s.executeCallback(ctx, conn.PluginName, "OnClose", func(ctx context.Context, plugin api.WebSocketCallback) error {
+		_, err := checkErr(plugin.OnClose(ctx, req))
 		return err
 	})
 }

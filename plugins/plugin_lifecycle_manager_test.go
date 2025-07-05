@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,11 +19,11 @@ func hasInitService(info *plugin) bool {
 }
 
 var _ = Describe("LifecycleManagement", func() {
-	Describe("Plugin Lifecycle managerImpl", func() {
+	Describe("Plugin Lifecycle Manager", func() {
 		var lifecycleManager *pluginLifecycleManager
 
 		BeforeEach(func() {
-			lifecycleManager = newPluginLifecycleManager()
+			lifecycleManager = newPluginLifecycleManager(metrics.NewNoopInstance())
 		})
 
 		It("should track initialization state of plugins", func() {
@@ -139,6 +140,27 @@ var _ = Describe("LifecycleManagement", func() {
 			actualKey := plugin.ID + consts.Zwsp + plugin.Manifest.Version
 
 			Expect(actualKey).To(Equal(expectedKey))
+		})
+
+		It("should clear initialization state when requested", func() {
+			plugin := &plugin{
+				ID:           "test-plugin",
+				Capabilities: []string{CapabilityLifecycleManagement},
+				Manifest: &schema.PluginManifest{
+					Version: "1.0.0",
+				},
+			}
+
+			// Initially not initialized
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeFalse())
+
+			// Mark as initialized
+			lifecycleManager.markInitialized(plugin)
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeTrue())
+
+			// Clear initialization state
+			lifecycleManager.clearInitialized(plugin)
+			Expect(lifecycleManager.isInitialized(plugin)).To(BeFalse())
 		})
 	})
 })

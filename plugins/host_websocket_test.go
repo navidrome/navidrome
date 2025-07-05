@@ -6,9 +6,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	gorillaws "github.com/gorilla/websocket"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -84,7 +86,7 @@ var _ = Describe("WebSocket Host Service", func() {
 		DeferCleanup(server.Close)
 
 		// Create a new manager and websocket service
-		manager = createManager(nil, nil)
+		manager = createManager(nil, metrics.NewNoopInstance())
 		wsService = newWebsocketService(manager)
 	})
 
@@ -188,6 +190,10 @@ var _ = Describe("WebSocket Host Service", func() {
 		})
 
 		It("handles connection errors gracefully", func() {
+			if testing.Short() {
+				GinkgoT().Skip("skipping test in short mode.")
+			}
+
 			// Try to connect to an invalid URL
 			req := &websocket.ConnectRequest{
 				Url:          "ws://invalid-url-that-does-not-exist",

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,7 +41,7 @@ var _ = Describe("CachingRuntime", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		// Add permissions for the test plugin using typed struct
 		permissions := schema.PluginManifestPermissions{
 			Http: &schema.PluginManifestPermissionsHttp{
