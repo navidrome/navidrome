@@ -19,10 +19,16 @@ type updateQueuePayload struct {
 	Position *int64    `json:"position,omitempty"`
 }
 
-// validateCurrentIndex validates that the current index is within bounds of the items array.
+// validateCurrentIndex validates that the current index is within bounds of the items array, or is nil.
 // Returns false if validation fails (and sends error response), true if validation passes.
-func validateCurrentIndex(w http.ResponseWriter, current int, itemsLength int) bool {
-	if current < 0 || current >= itemsLength {
+func validateCurrentIndex(w http.ResponseWriter, current *int, itemsLength int) bool {
+	if current == nil {
+		return true
+	}
+
+	currentValue := *current
+
+	if currentValue < 0 || currentValue >= itemsLength {
 		http.Error(w, "current index out of bounds", http.StatusBadRequest)
 		return false
 	}
@@ -101,13 +107,12 @@ func saveQueue(ds model.DataStore) http.HandlerFunc {
 		user, client := extractUserAndClient(ctx)
 		ids := V(payload.Ids)
 		items := createMediaFileItems(ids)
-		current := V(payload.Current)
-		if len(ids) > 0 && !validateCurrentIndex(w, current, len(ids)) {
+		if len(ids) > 0 && !validateCurrentIndex(w, payload.Current, len(ids)) {
 			return
 		}
 		pq := &model.PlayQueue{
 			UserID:    user.ID,
-			Current:   current,
+			Current:   payload.Current,
 			Position:  max(V(payload.Position), 0),
 			ChangedBy: client,
 			Items:     items,
@@ -158,12 +163,12 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 
 		// Handle current track index update
 		if payload.Current != nil {
-			pq.Current = *payload.Current
+			pq.Current = payload.Current
 			cols = append(cols, "current")
 
 			if payload.Ids != nil {
 				// If items are also being updated, validate current index against new items
-				if !validateCurrentIndex(w, *payload.Current, len(*payload.Ids)) {
+				if !validateCurrentIndex(w, payload.Current, len(*payload.Ids)) {
 					return
 				}
 			} else {
@@ -172,7 +177,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 				if !ok {
 					return
 				}
-				if existing != nil && !validateCurrentIndex(w, *payload.Current, len(existing.Items)) {
+				if existing != nil && !validateCurrentIndex(w, payload.Current, len(existing.Items)) {
 					return
 				}
 			}
