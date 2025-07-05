@@ -2,17 +2,20 @@ import React, { useCallback } from 'react'
 import {
   BooleanInput,
   Create,
-  TextInput,
+  email,
+  FormDataConsumer,
   PasswordInput,
   required,
-  email,
   SimpleForm,
-  useTranslate,
+  TextInput,
   useMutation,
   useNotify,
   useRedirect,
+  useTranslate,
 } from 'react-admin'
+import { Typography } from '@material-ui/core'
 import { Title } from '../common'
+import { LibrarySelectionField } from './LibrarySelectionField.jsx'
 
 const UserCreate = (props) => {
   const translate = useTranslate()
@@ -48,9 +51,17 @@ const UserCreate = (props) => {
     [mutate, notify, redirect],
   )
 
+  // Custom validation function
+  const validateUserForm = (values) => {
+    const errors = {}
+    // Library selection is optional for non-admin users since they will be auto-assigned to default libraries
+    // No validation required for library selection
+    return errors
+  }
+
   return (
     <Create title={<Title subTitle={title} />} {...props}>
-      <SimpleForm save={save} variant={'outlined'}>
+      <SimpleForm save={save} validate={validateUserForm} variant={'outlined'}>
         <TextInput
           spellCheck={false}
           source="userName"
@@ -64,6 +75,25 @@ const UserCreate = (props) => {
           validate={[required()]}
         />
         <BooleanInput source="isAdmin" defaultValue={false} />
+
+        {/* Conditional Library Selection */}
+        <FormDataConsumer>
+          {({ formData }) => (
+            <>
+              {!formData.isAdmin && <LibrarySelectionField />}
+
+              {formData.isAdmin && (
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  style={{ marginTop: 16, marginBottom: 16 }}
+                >
+                  {translate('resources.user.message.adminAutoLibraries')}
+                </Typography>
+              )}
+            </>
+          )}
+        </FormDataConsumer>
       </SimpleForm>
     </Create>
   )

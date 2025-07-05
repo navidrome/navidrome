@@ -14,17 +14,24 @@ import (
 // These are the legacy ID functions that were used in the original Navidrome ID generation.
 // They are kept here for backwards compatibility with existing databases.
 
-func legacyTrackID(mf model.MediaFile) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(mf.Path)))
+func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
+	id := mf.Path
+	if prependLibId && mf.LibraryID != model.DefaultLibraryID {
+		id = fmt.Sprintf("%d\\%s", mf.LibraryID, id)
+	}
+	return fmt.Sprintf("%x", md5.Sum([]byte(id)))
 }
 
-func legacyAlbumID(md Metadata) string {
+func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
 	releaseDate := legacyReleaseDate(md)
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", legacyMapAlbumArtistName(md), legacyMapAlbumName(md)))
 	if !conf.Server.Scanner.GroupAlbumReleases {
 		if len(releaseDate) != 0 {
 			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}
+	}
+	if prependLibId && mf.LibraryID != model.DefaultLibraryID {
+		albumPath = fmt.Sprintf("%d\\%s", mf.LibraryID, albumPath)
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }

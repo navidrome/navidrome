@@ -429,6 +429,12 @@ func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
 	f.events = append(f.events, event)
 }
 
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
 func (f *fakeEventBroker) getEvents() []events.Event {
 	f.mu.Lock()
 	defer f.mu.Unlock()

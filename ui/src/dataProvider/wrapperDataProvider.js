@@ -9,25 +9,58 @@ const isAdmin = () => {
   return role === 'admin'
 }
 
+const getSelectedLibraries = () => {
+  try {
+    const state = JSON.parse(localStorage.getItem('state'))
+    return state?.library?.selectedLibraries || []
+  } catch (err) {
+    return []
+  }
+}
+
+// Function to apply library filtering to appropriate resources
+const applyLibraryFilter = (resource, params) => {
+  // Content resources that should be filtered by selected libraries
+  const filteredResources = ['album', 'song', 'artist', 'playlistTrack']
+
+  // Get selected libraries from localStorage
+  const selectedLibraries = getSelectedLibraries()
+
+  // Add library filter for content resources if libraries are selected
+  if (filteredResources.includes(resource) && selectedLibraries.length > 0) {
+    if (!params.filter) {
+      params.filter = {}
+    }
+    params.filter.library_id = selectedLibraries
+  }
+
+  return params
+}
+
 const mapResource = (resource, params) => {
   switch (resource) {
+    // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
     case 'playlistTrack': {
-      // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
+      params.filter = params.filter || {}
+
       let plsId = '0'
-      if (params.filter) {
-        plsId = params.filter.playlist_id
-        if (!isAdmin()) {
-          params.filter.missing = false
-        }
+      plsId = params.filter.playlist_id
+      if (!isAdmin()) {
+        params.filter.missing = false
       }
+      params = applyLibraryFilter(resource, params)
+
       return [`playlist/${plsId}/tracks`, params]
     }
     case 'album':
     case 'song':
     case 'artist': {
-      if (params.filter && !isAdmin()) {
+      params.filter = params.filter || {}
+      if (!isAdmin()) {
         params.filter.missing = false
       }
+      params = applyLibraryFilter(resource, params)
+
       return [resource, params]
     }
     default:
@@ -41,6 +74,60 @@ const callDeleteMany = (resource, params) => {
   return httpClient(`${REST_URL}/${resource}${query}`, {
     method: 'DELETE',
   }).then((response) => ({ data: response.json.ids || [] }))
+}
+
+// Helper function to handle user-library associations
+const handleUserLibraryAssociation = async (userId, libraryIds) => {
+  if (!libraryIds || libraryIds.length === 0) {
+    return // Admin users or users without library assignments
+  }
+
+  try {
+    await httpClient(`${REST_URL}/user/${userId}/library`, {
+      method: 'PUT',
+      body: JSON.stringify({ libraryIds }),
+    })
+  } catch (error) {
+    console.error('Error setting user libraries:', error) //eslint-disable-line no-console
+    throw error
+  }
+}
+
+// Enhanced user creation that handles library associations
+const createUser = async (params) => {
+  const { data } = params
+  const { libraryIds, ...userData } = data
+
+  // First create the user
+  const userResponse = await dataProvider.create('user', { data: userData })
+  const userId = userResponse.data.id
+
+  // Then set library associations for non-admin users
+  if (!userData.isAdmin && libraryIds && libraryIds.length > 0) {
+    await handleUserLibraryAssociation(userId, libraryIds)
+  }
+
+  return userResponse
+}
+
+// Enhanced user update that handles library associations
+const updateUser = async (params) => {
+  const { data } = params
+  const { libraryIds, ...userData } = data
+  const userId = params.id
+
+  // First update the user
+  const userResponse = await dataProvider.update('user', {
+    ...params,
+    data: userData,
+  })
+
+  // Then handle library associations for non-admin users
+  if (!userData.isAdmin && libraryIds !== undefined) {
+    await handleUserLibraryAssociation(userId, libraryIds)
+  }
+
+  return userResponse
 }
 
 const wrapperDataProvider = {
@@ -62,6 +149,9 @@ const wrapperDataProvider = {
     return dataProvider.getManyReference(r, p)
   },
   update: (resource, params) => {
+    if (resource === 'user') {
+      return updateUser(params)
+    }
     const [r, p] = mapResource(resource, params)
     return dataProvider.update(r, p)
   },
@@ -70,6 +160,9 @@ const wrapperDataProvider = {
     return dataProvider.updateMany(r, p)
   },
   create: (resource, params) => {
+    if (resource === 'user') {
+      return createUser(params)
+    }
     const [r, p] = mapResource(resource, params)
     return dataProvider.create(r, p)
   },
