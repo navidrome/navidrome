@@ -245,10 +245,14 @@ func processPairMapping(name model.TagName, mapping model.TagConf, lowered model
 		}
 	}
 
+	// always parse id3 pairs. For lyrics, Taglib appears to always provide lyrics:xxx
+	// Prefer that over format-specific tags
+	id3Base := parseID3Pairs(name, lowered)
+
 	if len(aliasValues) > 0 {
-		return parseVorbisPairs(aliasValues)
+		id3Base = append(id3Base, parseVorbisPairs(aliasValues)...)
 	}
-	return parseID3Pairs(name, lowered)
+	return id3Base
 }
 
 func parseID3Pairs(name model.TagName, lowered model.Tags) []string {

@@ -106,6 +106,149 @@ var _ = Describe("Extractor", func() {
 		)
 	})
 
+	Describe("lyrics", func() {
+		It("should fetch both synced and unsynced lyrics in mixed flac", func() {
+			path := "tests/fixtures/mixed-lyrics.flac"
+			mds, err := e.Parse(path)
+			Expect(err).ToNot(HaveOccurred())
+
+			info := mds[path]
+			fileInfo, _ := os.Stat(path)
+			info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+			metadata := metadata.New(path, info)
+			mf := metadata.ToMediaFile(1, "folderID")
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(2))
+
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[1].Synced).To(BeFalse())
+		})
+
+		It("should handle mp3 with uslt and sylt", func() {
+			path := "tests/fixtures/test.mp3"
+			mds, err := e.Parse(path)
+			Expect(err).ToNot(HaveOccurred())
+
+			info := mds[path]
+			fileInfo, _ := os.Stat(path)
+			info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+			metadata := metadata.New(path, info)
+			mf := metadata.ToMediaFile(1, "folderID")
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(4))
+
+			Expect(lyrics).To(Equal(model.LyricList{
+				{
+					DisplayArtist: "",
+					DisplayTitle:  "",
+					Lang:          "eng",
+					Line: []model.Line{
+						{Start: gg.P(int64(0)), Value: "This is"},
+						{Start: gg.P(int64(2500)), Value: "English SYLT"},
+					},
+					Offset: nil,
+					Synced: true,
+				},
+				{
+					DisplayArtist: "",
+					DisplayTitle:  "",
+					Lang:          "eng",
+					Line: []model.Line{
+						{Start: gg.P(int64(0)), Value: "This is"},
+						{Start: gg.P(int64(2500)), Value: "English"},
+					},
+					Offset: nil,
+					Synced: true,
+				},
+				{
+					DisplayArtist: "",
+					DisplayTitle:  "",
+					Lang:          "xxx",
+					Line: []model.Line{
+						{Start: gg.P(int64(0)), Value: "This is"},
+						{Start: gg.P(int64(2500)), Value: "unspecified SYLT"},
+					},
+					Offset: nil,
+					Synced: true,
+				},
+				{
+					DisplayArtist: "",
+					DisplayTitle:  "",
+					Lang:          "xxx",
+					Line: []model.Line{
+						{Start: gg.P(int64(0)), Value: "This is"},
+						{Start: gg.P(int64(2500)), Value: "unspecified"},
+					},
+					Offset: nil,
+					Synced: true,
+				},
+			}))
+		})
+
+		DescribeTable("format-specific lyrics", func(file string, isId3 bool) {
+			path := "tests/fixtures/" + file
+			mds, err := e.Parse(path)
+			Expect(err).ToNot(HaveOccurred())
+
+			info := mds[path]
+			fileInfo, _ := os.Stat(path)
+			info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+			metadata := metadata.New(path, info)
+			mf := metadata.ToMediaFile(1, "folderID")
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(2))
+
+			unspec := model.Lyrics{
+				DisplayArtist: "",
+				DisplayTitle:  "",
+				Lang:          "xxx",
+				Line: []model.Line{
+					{Start: gg.P(int64(0)), Value: "This is"},
+					{Start: gg.P(int64(2500)), Value: "unspecified"},
+				},
+				Offset: nil,
+				Synced: true,
+			}
+
+			eng := model.Lyrics{
+				DisplayArtist: "",
+				DisplayTitle:  "",
+				Lang:          "xxx",
+				Line: []model.Line{
+					{Start: gg.P(int64(0)), Value: "This is"},
+					{Start: gg.P(int64(2500)), Value: "English"},
+				},
+				Offset: nil,
+				Synced: true,
+			}
+
+			if isId3 {
+				eng.Lang = "eng"
+			}
+
+			Expect(lyrics).To(Or(
+				Equal(model.LyricList{unspec, eng}),
+				Equal(model.LyricList{eng, unspec})))
+		},
+			Entry("flac", "test.flac", false),
+			Entry("m4a", "test.m4a", false),
+			Entry("ogg", "test.ogg", false),
+			Entry("wma", "test.wma", false),
+			Entry("wv", "test.wv", false),
+			Entry("wav", "test.wav", true),
+			Entry("aiff", "test.aiff", true),
+		)
+	})
+
 	Describe("Participants", func() {
 		DescribeTable("test tags consistent across formats", func(format string) {
 			path := "tests/fixtures/test." + format
