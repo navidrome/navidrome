@@ -27,23 +27,25 @@
         "rating": "Balorazioa",
         "quality": "Kalitatea",
         "bpm": "BPM",
-        "playDate": "Azkenekoz erreproduzitua:",
+        "playDate": "Azken erreprodukzioa:",
         "createdAt": "Gehitu zen data:",
         "grouping": "Multzokatzea",
         "mood": "Aldartea",
         "participants": "Partaide gehiago",
         "tags": "Traola gehiago",
         "mappedTags": "Esleitutako traolak",
-        "rawTags": "Traola gordinak"
+        "rawTags": "Traola gordinak",
+        "missing": "Ez da aurkitu"
       },
       "actions": {
         "addToQueue": "Erreproduzitu ondoren",
         "playNow": "Erreproduzitu orain",
         "addToPlaylist": "Gehitu erreprodukzio-zerrendara",
+        "showInPlaylist": "Erakutsi erreprodukzio-zerrendan",
         "shuffleAll": "Erreprodukzio aleatorioa",
         "download": "Deskargatu",
         "playNext": "Hurrengoa",
-        "info": "Lortu informazioa"
+        "info": "Erakutsi informazioa"
       }
     },
     "album": {
@@ -61,7 +63,7 @@
         "year": "Urtea",
         "date": "Recording Date",
         "originalDate": "Jatorrizkoa",
-        "releaseDate": "Argitaratze-data:",
+        "releaseDate": "Argitaratze-data",
         "releases": "Argitaratzea |||| Argitaratzeak",
         "released": "Argitaratua",
         "updatedAt": "Aktualizatze-data:",
@@ -73,21 +75,22 @@
         "releaseType": "Mota",
         "grouping": "Multzokatzea",
         "media": "Multimedia",
-        "mood": "Aldartea"
+        "mood": "Aldartea",
+        "missing": "Ez da aurkitu"
       },
       "actions": {
         "playAll": "Erreproduzitu",
-        "playNext": "Erreproduzitu segidan",
+        "playNext": "Erreproduzitu orain",
         "addToQueue": "Erreproduzitu amaieran",
         "shuffle": "Aletorioa",
         "addToPlaylist": "Gehitu zerrendara",
         "download": "Deskargatu",
-        "info": "Lortu informazioa",
+        "info": "Erakutsi informazioa",
         "share": "Partekatu"
       },
       "lists": {
         "all": "Guztiak",
-        "random": "Aleatorioki",
+        "random": "Aleatorioa",
         "recentlyAdded": "Berriki gehitutakoak",
         "recentlyPlayed": "Berriki entzundakoak",
         "mostPlayed": "Gehien entzundakoak",
@@ -105,7 +108,8 @@
         "playCount": "Erreprodukzio kopurua",
         "rating": "Balorazioa",
         "genre": "Generoa",
-        "role": "Rola"
+        "role": "Rola",
+        "missing": "Ez da aurkitu"
       },
       "roles": {
         "albumartist": "Albumeko egilea |||| Albumeko artistak",
@@ -120,7 +124,13 @@
         "mixer": "Nahaslea |||| Nahasleak",
         "remixer": "Remixerra |||| Remixerrak",
         "djmixer": "DJ nahaslea |||| DJ nahasleak",
-        "performer": "Interpretatzailea |||| Interpretatzaileak"
+        "performer": "Interpretatzailea |||| Interpretatzaileak",
+        "maincredit": "Albumeko egilea edo egilea |||| Albumeko egileak edo egileak"
+      },
+      "actions": {
+        "topSongs": "Abesti apartak",
+        "shuffle": "Aleatorioki",
+        "radio": "Irratia"
       }
     },
     "user": {
@@ -192,12 +202,19 @@
         "selectPlaylist": "Hautatu zerrenda:",
         "addNewPlaylist": "Sortu \"%{name}\"",
         "export": "Esportatu",
+        "saveQueue": "Gorde ilaran daudek erreprodukzio-zerrendan",
         "makePublic": "Egin publikoa",
-        "makePrivate": "Egin pribatua"
+        "makePrivate": "Egin pribatua",
+        "searchOrCreate": "Bilatu erreprodukzio-zerrenda edo idatzi berria sortzeko…",
+        "pressEnterToCreate": "Sakatu Enter erreprodukzio-zerrenda berria sortzeko",
+        "removeFromSelection": "Kendu hautaketatik",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Hautatutako abesti batzuk lehendik ere daude zerrendan",
-        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?"
+        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?",
+        "noPlaylistsFound": "Ez da erreprodukzio-zerrenda aurkitu",
+        "noPlaylists": "Ez dago erreprodukzio-zerrendarik eskuragarri"
       }
     },
     "radio": {
@@ -233,7 +250,7 @@
       "actions": {}
     },
     "missing": {
-      "name": "Fitxategia falta da|||| Fitxategiak falta dira",
+      "name": "Aurkitu ez den fitxategia |||| Aurkitu ez diren fitxategiak",
       "empty": "Ez da fitxategirik falta",
       "fields": {
         "path": "Bidea",
@@ -242,10 +259,10 @@
       },
       "actions": {
         "remove": "Kendu",
-        "remove_all": "Kendu guztia"
+        "remove_all": "Kendu guztiak"
       },
       "notifications": {
-        "removed": "Faltan zeuden fitxategiak kendu dira"
+        "removed": "Aurkitzen ez ziren fitxategiak kendu dira"
       }
     }
   },
@@ -399,6 +416,8 @@
     "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
     "songsAddedToPlaylist": "Abesti bat zerrendara gehitu da |||| %{smart_count} abesti zerrendara gehitu dira",
+    "noSimilarSongsFound": "Ez da antzeko abestirik aurkitu",
+    "noTopSongsFound": "Ez da aparteko abestirik aurkitu",
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
     "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
@@ -480,8 +499,8 @@
     "playModeText": {
       "order": "Ordenean",
       "orderLoop": "Errepikatu",
-      "singleLoop": "Errepikatu bakarra",
-      "shufflePlay": "Aleatorioa"
+      "singleLoop": "Errepikatu abesti hau",
+      "shufflePlay": "Aleatorioki"
     }
   },
   "about": {
@@ -494,6 +513,21 @@
         "disabled": "Ezgaituta",
         "waiting": "Zain"
       }
+    },
+    "tabs": {
+      "about": "Honi buruz",
+      "config": "Konfigurazioa"
+    },
+    "config": {
+      "configName": "Konfigurazioaren izena",
+      "environmentVariable": "Ingurune-aldagaia",
+      "currentValue": "Uneko balioa",
+      "configurationFile": "Konfigurazio-fitxategia",
+      "exportToml": "Esportatu konfigurazioa (TOML)",
+      "exportSuccess": "Konfigurazioa arbelera esportatu da TOML formatuan",
+      "exportFailed": "Konfigurazioa kopiatzeak huts egin du",
+      "devFlagsHeader": "Garapen-adierazleak (aldatu/kendu litezke)",
+      "devFlagsComment": "Ezarpen esperimentalak dira eta litekeena da etorkizunean desagertzea"
     }
   },
   "activity": {
@@ -506,6 +540,11 @@
     "scanType": "Mota",
     "status": "Errorea arakatzean",
     "elapsedTime": "Igarotako denbora"
+  },
+  "nowPlaying": {
+    "title": "Une honetan erreproduzitzen",
+    "empty": "Ez dago erreproduzitzeko ezer",
+    "minutesAgo": "Duela minutu %{smart_count} |||| Duela %{smart_count} minutu"
   },
   "help": {
     "title": "Navidromeren laster-teklak",
