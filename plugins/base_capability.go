@@ -78,10 +78,6 @@ type wasmPlugin[S any] interface {
 	getMetrics() metrics.Metrics
 }
 
-type errorMapper interface {
-	mapError(err error) error
-}
-
 func callMethod[S any, R any](ctx context.Context, wp WasmPlugin, methodName string, fn func(inst S) (R, error)) (R, error) {
 	// Add a unique call ID to the context for tracing
 	ctx = log.NewContext(ctx, "callID", id.NewRandom())
@@ -101,10 +97,6 @@ func callMethod[S any, R any](ctx context.Context, wp WasmPlugin, methodName str
 	defer done()
 	r, err = checkErr(fn(inst))
 	elapsed := time.Since(start)
-
-	if em, ok := any(p).(errorMapper); ok {
-		err = em.mapError(err)
-	}
 
 	if !errors.Is(err, api.ErrNotImplemented) {
 		id := p.PluginID()
