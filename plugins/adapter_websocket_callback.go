@@ -16,7 +16,7 @@ func newWasmWebSocketCallback(wasmPath, pluginID string, m *managerImpl, runtime
 		return nil
 	}
 	return &wasmWebSocketCallback{
-		wasmBasePlugin: newWasmBasePlugin[api.WebSocketCallback, *api.WebSocketCallbackPlugin](
+		baseCapability: newBaseCapability[api.WebSocketCallback, *api.WebSocketCallbackPlugin](
 			wasmPath,
 			pluginID,
 			CapabilityWebSocketCallback,
@@ -31,5 +31,5 @@ func newWasmWebSocketCallback(wasmPath, pluginID string, m *managerImpl, runtime
 
 // wasmWebSocketCallback adapts a WebSocketCallback plugin
 type wasmWebSocketCallback struct {
-	*wasmBasePlugin[api.WebSocketCallback, *api.WebSocketCallbackPlugin]
+	*baseCapability[api.WebSocketCallback, *api.WebSocketCallbackPlugin]
 }

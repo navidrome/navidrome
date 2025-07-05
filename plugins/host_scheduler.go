@@ -8,7 +8,6 @@ import (
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	navidsched "github.com/navidrome/navidrome/scheduler"
 )
@@ -295,20 +294,9 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 		return
 	}
 
-	callbackType := "one-time"
-	if isRecurring {
-		callbackType = "recurring"
-	}
-
-	log.Debug("Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
+	ctx = log.NewContext(ctx, "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callback.Type)
+	log.Debug("Executing schedule callback")
 	start := time.Now()
-
-	// Create a SchedulerCallbackRequest
-	req := &api.SchedulerCallbackRequest{
-		ScheduleId:  callback.ID,
-		Payload:     callback.Payload,
-		IsRecurring: isRecurring,
-	}
 
 	// Get the plugin
 	p := s.manager.LoadPlugin(callback.PluginID, CapabilitySchedulerCallback)
@@ -317,31 +305,19 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 		return
 	}
 
-	// Get instance
-	inst, closeFn, err := p.Instantiate(ctx)
-	if err != nil {
-		log.Error("Error getting plugin instance for callback", "plugin", callback.PluginID, err)
-		return
-	}
-	defer closeFn()
-
 	// Type-check the plugin
-	plugin, ok := inst.(api.SchedulerCallback)
+	plugin, ok := p.(*wasmSchedulerCallback)
 	if !ok {
 		log.Error("Plugin does not implement SchedulerCallback", "plugin", callback.PluginID)
 		return
 	}
 
 	// Call the plugin's OnSchedulerCallback method
-	log.Trace(ctx, "Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
-	resp, err := plugin.OnSchedulerCallback(ctx, req)
+	log.Trace(ctx, "Executing schedule callback")
+	err := plugin.OnSchedulerCallback(ctx, callback.ID, callback.Payload, isRecurring)
 	if err != nil {
-		log.Error("Error executing schedule callback", "plugin", callback.PluginID, "elapsed", time.Since(start), err)
+		log.Error("Error executing schedule callback", "elapsed", time.Since(start), err)
 		return
 	}
-	log.Debug("Schedule callback executed", "plugin", callback.PluginID, "elapsed", time.Since(start))
-
-	if resp.Error != "" {
-		log.Error("Plugin reported error in schedule callback", "plugin", callback.PluginID, resp.Error)
-	}
+	log.Debug("Schedule callback executed", "elapsed", time.Since(start))
 }

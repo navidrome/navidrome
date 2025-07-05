@@ -15,7 +15,7 @@ This is a WebSocket-based WASM plugin for Navidrome that displays real-time cryp
 In your `navidrome.toml` file, add:
 
 ```toml
-[PluginSettings.crypto-ticker]
+[PluginConfig.crypto-ticker]
 tickers = "BTC,ETH,SOL,MATIC"
 ```
 

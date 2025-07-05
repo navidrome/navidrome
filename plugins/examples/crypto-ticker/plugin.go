@@ -294,6 +294,10 @@ func calculatePercentChange(open, current string) string {
 func main() {}
 
 func init() {
+	// Configure logging: No timestamps, no source file/line, prepend [Crypto]
+	log.SetFlags(0)
+	log.SetPrefix("[Crypto] ")
+
 	api.RegisterWebSocketCallback(CryptoTickerPlugin{})
 	api.RegisterLifecycleManagement(CryptoTickerPlugin{})
 	api.RegisterSchedulerCallback(CryptoTickerPlugin{})

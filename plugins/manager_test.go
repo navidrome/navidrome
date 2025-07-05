@@ -7,6 +7,8 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +29,7 @@ var _ = Describe("Plugin Manager", func() {
 		conf.Server.Plugins.Folder = testDataDir
 
 		ctx = GinkgoT().Context()
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
 	})
 
@@ -36,17 +38,21 @@ var _ = Describe("Plugin Manager", func() {
 
 		mediaAgentNames := mgr.PluginNames("MetadataAgent")
 		Expect(mediaAgentNames).To(HaveLen(4))
-		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
-		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
-		Expect(mediaAgentNames).To(ContainElement("multi_plugin"))
-		Expect(mediaAgentNames).To(ContainElement("unauthorized_plugin"))
+		Expect(mediaAgentNames).To(ContainElements(
+			"fake_artist_agent",
+			"fake_album_agent",
+			"multi_plugin",
+			"unauthorized_plugin",
+		))
 
 		scrobblerNames := mgr.PluginNames("Scrobbler")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))
 
 		initServiceNames := mgr.PluginNames("LifecycleManagement")
-		Expect(initServiceNames).To(ContainElement("multi_plugin"))
-		Expect(initServiceNames).To(ContainElement("fake_init_service"))
+		Expect(initServiceNames).To(ContainElements("multi_plugin", "fake_init_service"))
+
+		schedulerCallbackNames := mgr.PluginNames("SchedulerCallback")
+		Expect(schedulerCallbackNames).To(ContainElement("multi_plugin"))
 	})
 
 	It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
@@ -65,13 +71,18 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	It("should load all MetadataAgent plugins", func() {
-		agents := mgr.LoadAllMediaAgents()
-		Expect(agents).To(HaveLen(4))
-		var names []string
-		for _, a := range agents {
-			names = append(names, a.AgentName())
+		mediaAgentNames := mgr.PluginNames("MetadataAgent")
+		Expect(mediaAgentNames).To(HaveLen(4))
+
+		var agentNames []string
+		for _, name := range mediaAgentNames {
+			agent, ok := mgr.LoadMediaAgent(name)
+			if ok {
+				agentNames = append(agentNames, agent.AgentName())
+			}
 		}
-		Expect(names).To(ContainElements("fake_artist_agent", "fake_album_agent", "multi_plugin", "unauthorized_plugin"))
+
+		Expect(agentNames).To(ContainElements("fake_artist_agent", "fake_album_agent", "multi_plugin", "unauthorized_plugin"))
 	})
 
 	Describe("ScanPlugins", func() {
@@ -85,7 +96,7 @@ var _ = Describe("Plugin Manager", func() {
 			})
 
 			conf.Server.Plugins.Folder = tempPluginsDir
-			m = createManager(nil, nil)
+			m = createManager(nil, metrics.NewNoopInstance())
 		})
 
 		// Helper to create a complete valid plugin for manager testing
@@ -193,21 +204,8 @@ var _ = Describe("Plugin Manager", func() {
 
 	Describe("Invoke Methods", func() {
 		It("should load all MetadataAgent plugins and invoke methods", func() {
-			mediaAgentNames := mgr.PluginNames("MetadataAgent")
-			Expect(mediaAgentNames).NotTo(BeEmpty())
-
-			plugins := mgr.LoadAllPlugins("MetadataAgent")
-			Expect(plugins).To(HaveLen(len(mediaAgentNames)))
-
-			var fakeAlbumPlugin agents.Interface
-			for _, p := range plugins {
-				if agent, ok := p.(agents.Interface); ok {
-					if agent.AgentName() == "fake_album_agent" {
-						fakeAlbumPlugin = agent
-						break
-					}
-				}
-			}
+			fakeAlbumPlugin, isMediaAgent := mgr.LoadMediaAgent("fake_album_agent")
+			Expect(isMediaAgent).To(BeTrue())
 
 			Expect(fakeAlbumPlugin).NotTo(BeNil(), "fake_album_agent should be loaded")
 
@@ -252,6 +250,97 @@ var _ = Describe("Plugin Manager", func() {
 				// If the plugin doesn't implement the interface, that's also acceptable
 				Expect(agent.AgentName()).To(Equal("unauthorized_plugin"))
 			}
+		})
+	})
+
+	Describe("Plugin Initialization Lifecycle", func() {
+		BeforeEach(func() {
+			conf.Server.Plugins.Enabled = true
+			conf.Server.Plugins.Folder = testDataDir
+		})
+
+		Context("when OnInit is successful", func() {
+			It("should register and initialize the plugin", func() {
+				conf.Server.PluginConfig = nil
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				plugin := mgr.plugins["fake_init_service"]
+				Expect(plugin).NotTo(BeNil())
+
+				Eventually(func() bool {
+					return mgr.lifecycle.isInitialized(plugin)
+				}).Should(BeTrue())
+
+				// Check that the plugin is still registered
+				names := mgr.PluginNames(CapabilityLifecycleManagement)
+				Expect(names).To(ContainElement("fake_init_service"))
+			})
+		})
+
+		Context("when OnInit fails", func() {
+			It("should unregister the plugin if OnInit returns an error string", func() {
+				conf.Server.PluginConfig = map[string]map[string]string{
+					"fake_init_service": {
+						"returnError": "response_error",
+					},
+				}
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				Eventually(func() []string {
+					return mgr.PluginNames(CapabilityLifecycleManagement)
+				}).ShouldNot(ContainElement("fake_init_service"))
+			})
+
+			It("should unregister the plugin if OnInit returns a Go error", func() {
+				conf.Server.PluginConfig = map[string]map[string]string{
+					"fake_init_service": {
+						"returnError": "go_error",
+					},
+				}
+				mgr = createManager(nil, metrics.NewNoopInstance()) // Create manager after setting config
+				mgr.ScanPlugins()
+
+				Eventually(func() []string {
+					return mgr.PluginNames(CapabilityLifecycleManagement)
+				}).ShouldNot(ContainElement("fake_init_service"))
+			})
+		})
+
+		It("should clear lifecycle state when unregistering a plugin", func() {
+			// Create a manager and register a plugin
+			mgr := createManager(nil, metrics.NewNoopInstance())
+
+			// Create a mock plugin with LifecycleManagement capability
+			plugin := &plugin{
+				ID:           "test-plugin",
+				Capabilities: []string{CapabilityLifecycleManagement},
+				Manifest: &schema.PluginManifest{
+					Version: "1.0.0",
+				},
+			}
+
+			// Register the plugin in the manager
+			mgr.mu.Lock()
+			mgr.plugins[plugin.ID] = plugin
+			mgr.mu.Unlock()
+
+			// Mark the plugin as initialized in the lifecycle manager
+			mgr.lifecycle.markInitialized(plugin)
+			Expect(mgr.lifecycle.isInitialized(plugin)).To(BeTrue())
+
+			// Unregister the plugin
+			mgr.unregisterPlugin(plugin.ID)
+
+			// Verify that the plugin is no longer in the manager
+			mgr.mu.RLock()
+			_, exists := mgr.plugins[plugin.ID]
+			mgr.mu.RUnlock()
+			Expect(exists).To(BeFalse())
+
+			// Verify that the lifecycle state has been cleared
+			Expect(mgr.lifecycle.isInitialized(plugin)).To(BeFalse())
 		})
 	})
 })

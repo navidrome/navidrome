@@ -16,7 +16,7 @@ func newWasmSchedulerCallback(wasmPath, pluginID string, m *managerImpl, runtime
 		return nil
 	}
 	return &wasmSchedulerCallback{
-		wasmBasePlugin: newWasmBasePlugin[api.SchedulerCallback, *api.SchedulerCallbackPlugin](
+		baseCapability: newBaseCapability[api.SchedulerCallback, *api.SchedulerCallbackPlugin](
 			wasmPath,
 			pluginID,
 			CapabilitySchedulerCallback,
@@ -31,5 +31,16 @@ func newWasmSchedulerCallback(wasmPath, pluginID string, m *managerImpl, runtime
 
 // wasmSchedulerCallback adapts a SchedulerCallback plugin
 type wasmSchedulerCallback struct {
-	*wasmBasePlugin[api.SchedulerCallback, *api.SchedulerCallbackPlugin]
+	*baseCapability[api.SchedulerCallback, *api.SchedulerCallbackPlugin]
+}
+
+func (w *wasmSchedulerCallback) OnSchedulerCallback(ctx context.Context, scheduleID string, payload []byte, isRecurring bool) error {
+	_, err := callMethod(ctx, w, "OnSchedulerCallback", func(inst api.SchedulerCallback) (*api.SchedulerCallbackResponse, error) {
+		return inst.OnSchedulerCallback(ctx, &api.SchedulerCallbackRequest{
+			ScheduleId:  scheduleID,
+			Payload:     payload,
+			IsRecurring: isRecurring,
+		})
+	})
+	return err
 }

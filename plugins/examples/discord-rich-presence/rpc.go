@@ -248,9 +248,37 @@ func (r *discordRPC) sendHeartbeat(ctx context.Context, username string) error {
 	return r.sendMessage(ctx, username, heartbeatOpCode, resp.Value)
 }
 
+func (r *discordRPC) cleanupFailedConnection(ctx context.Context, username string) {
+	log.Printf("Cleaning up failed connection for user %s", username)
+
+	// Cancel the heartbeat schedule
+	if resp, _ := r.sched.CancelSchedule(ctx, &scheduler.CancelRequest{ScheduleId: username}); resp.Error != "" {
+		log.Printf("Failed to cancel heartbeat schedule for user %s: %s", username, resp.Error)
+	}
+
+	// Close the WebSocket connection
+	if resp, _ := r.ws.Close(ctx, &websocket.CloseRequest{
+		ConnectionId: username,
+		Code:         1000,
+		Reason:       "Connection lost",
+	}); resp.Error != "" {
+		log.Printf("Failed to close WebSocket connection for user %s: %s", username, resp.Error)
+	}
+
+	// Clean up cache entries (just the sequence number, no failure tracking needed)
+	_, _ = r.mem.Remove(ctx, &cache.RemoveRequest{Key: fmt.Sprintf("discord.seq.%s", username)})
+
+	log.Printf("Cleaned up connection for user %s", username)
+}
+
 func (r *discordRPC) isConnected(ctx context.Context, username string) bool {
+	// Try to send a heartbeat to test the connection
 	err := r.sendHeartbeat(ctx, username)
-	return err == nil
+	if err != nil {
+		log.Printf("Heartbeat test failed for user %s: %v", username, err)
+		return false
+	}
+	return true
 }
 
 func (r *discordRPC) connect(ctx context.Context, username string, token string) error {
@@ -361,5 +389,14 @@ func (r *discordRPC) OnClose(_ context.Context, req *api.OnCloseRequest) (*api.O
 }
 
 func (r *discordRPC) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
-	return nil, r.sendHeartbeat(ctx, req.ScheduleId)
+	err := r.sendHeartbeat(ctx, req.ScheduleId)
+	if err != nil {
+		// On first heartbeat failure, immediately clean up the connection
+		// The next NowPlaying call will reconnect if needed
+		log.Printf("Heartbeat failed for user %s, cleaning up connection: %v", req.ScheduleId, err)
+		r.cleanupFailedConnection(ctx, req.ScheduleId)
+		return nil, fmt.Errorf("heartbeat failed, connection cleaned up: %w", err)
+	}
+
+	return nil, nil
 }
