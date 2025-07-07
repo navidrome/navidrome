@@ -82,7 +82,7 @@ func (m *pluginLifecycleManager) callOnInit(plugin *plugin) error {
 	// Call OnInit
 	callStart := time.Now()
 	_, err = checkErr(initPlugin.OnInit(ctx, req))
-	m.metrics.RecordPluginRequest(ctx, plugin.ID, "OnInit", err != nil, time.Since(callStart).Milliseconds())
+	m.metrics.RecordPluginRequest(ctx, plugin.ID, "OnInit", err == nil, time.Since(callStart).Milliseconds())
 	if err != nil {
 		log.Error("Error initializing plugin", "plugin", plugin.ID, "elapsed", time.Since(start), err)
 		return err
