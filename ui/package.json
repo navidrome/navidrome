@@ -74,7 +74,7 @@
     "ra-test": "^3.19.12",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
-    "vite-plugin-pwa": "^0.21.2",
+    "vite-plugin-pwa": "^1.0.1",
     "vitest": "^3.1.4"
   },
   "overrides": {
