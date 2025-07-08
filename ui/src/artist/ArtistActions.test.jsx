@@ -53,7 +53,19 @@ describe('ArtistActions', () => {
       json: {
         'subsonic-response': {
           status: 'ok',
-          similarSongs2: { song: [{ id: 'rec1' }] },
+          similarSongs2: {
+            song: [
+              {
+                id: 'rec1',
+                replayGain: {
+                  albumGain: -5,
+                  albumPeak: 1,
+                  trackGain: -6,
+                  trackPeak: 0.8,
+                },
+              },
+            ],
+          },
         },
       },
     })
@@ -61,7 +73,19 @@ describe('ArtistActions', () => {
       json: {
         'subsonic-response': {
           status: 'ok',
-          topSongs: { song: [{ id: 'rec1' }] },
+          topSongs: {
+            song: [
+              {
+                id: 'rec1',
+                replayGain: {
+                  albumGain: -5,
+                  albumPeak: 1,
+                  trackGain: -6,
+                  trackPeak: 0.8,
+                },
+              },
+            ],
+          },
         },
       },
     })
@@ -93,6 +117,20 @@ describe('ArtistActions', () => {
       )
       expect(mockDispatch).toHaveBeenCalled()
     })
+
+    it('maps replaygain info', async () => {
+      renderArtistActions()
+      clickActionButton('radio')
+
+      await waitFor(() =>
+        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('ar1', 100),
+      )
+      const action = mockDispatch.mock.calls[0][0]
+      expect(action.data.rec1.rgAlbumGain).toBe(-5)
+      expect(action.data.rec1.rgAlbumPeak).toBe(1)
+      expect(action.data.rec1.rgTrackGain).toBe(-6)
+      expect(action.data.rec1.rgTrackPeak).toBe(0.8)
+    })
   })
 
   describe('Play action', () => {
@@ -104,6 +142,20 @@ describe('ArtistActions', () => {
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
       )
       expect(mockDispatch).toHaveBeenCalled()
+    })
+
+    it('maps replaygain info for top songs', async () => {
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      const action = mockDispatch.mock.calls[0][0]
+      expect(action.data.rec1.rgAlbumGain).toBe(-5)
+      expect(action.data.rec1.rgAlbumPeak).toBe(1)
+      expect(action.data.rec1.rgTrackGain).toBe(-6)
+      expect(action.data.rec1.rgTrackPeak).toBe(0.8)
     })
 
     it('handles API rejection', async () => {

@@ -1,6 +1,17 @@
 import subsonic from '../subsonic/index.js'
 import { playTracks } from '../actions/index.js'
 
+const mapReplayGain = (song) => {
+  const rg = song.replayGain
+  if (rg) {
+    if (rg.albumGain !== undefined) song.rgAlbumGain = rg.albumGain
+    if (rg.albumPeak !== undefined) song.rgAlbumPeak = rg.albumPeak
+    if (rg.trackGain !== undefined) song.rgTrackGain = rg.trackGain
+    if (rg.trackPeak !== undefined) song.rgTrackPeak = rg.trackPeak
+  }
+  return song
+}
+
 export const playTopSongs = async (dispatch, notify, artistName) => {
   const res = await subsonic.getTopSongs(artistName, 100)
   const data = res.json['subsonic-response']
@@ -20,8 +31,9 @@ export const playTopSongs = async (dispatch, notify, artistName) => {
   const songData = {}
   const ids = []
   songs.forEach((s) => {
-    songData[s.id] = s
-    ids.push(s.id)
+    const song = mapReplayGain(s)
+    songData[song.id] = song
+    ids.push(song.id)
   })
   dispatch(playTracks(songData, ids))
 }
@@ -45,8 +57,9 @@ export const playSimilar = async (dispatch, notify, id) => {
   const songData = {}
   const ids = []
   songs.forEach((s) => {
-    songData[s.id] = s
-    ids.push(s.id)
+    const song = mapReplayGain(s)
+    songData[song.id] = song
+    ids.push(song.id)
   })
   dispatch(playTracks(songData, ids))
 }
