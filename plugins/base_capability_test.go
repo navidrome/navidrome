@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/plugins/api"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -34,7 +35,16 @@ var _ = Describe("baseCapability", func() {
 
 var _ = Describe("checkErr", func() {
 	Context("when resp is nil", func() {
-		It("should return the original error unchanged", func() {
+		It("should return nil error when both resp and err are nil", func() {
+			var resp *testErrorResponse
+
+			result, err := checkErr(resp, nil)
+
+			Expect(result).To(BeNil())
+			Expect(err).To(BeNil())
+		})
+
+		It("should return original error unchanged for non-API errors", func() {
 			var resp *testErrorResponse
 			originalErr := errors.New("original error")
 
@@ -44,13 +54,24 @@ var _ = Describe("checkErr", func() {
 			Expect(err).To(Equal(originalErr))
 		})
 
-		It("should return nil error when both resp and err are nil", func() {
+		It("should return mapped API error for ErrNotImplemented", func() {
 			var resp *testErrorResponse
+			err := errors.New("plugin:not_implemented")
 
-			result, err := checkErr(resp, nil)
+			result, mappedErr := checkErr(resp, err)
 
 			Expect(result).To(BeNil())
-			Expect(err).To(BeNil())
+			Expect(mappedErr).To(Equal(api.ErrNotImplemented))
+		})
+
+		It("should return mapped API error for ErrNotFound", func() {
+			var resp *testErrorResponse
+			err := errors.New("plugin:not_found")
+
+			result, mappedErr := checkErr(resp, err)
+
+			Expect(result).To(BeNil())
+			Expect(mappedErr).To(Equal(api.ErrNotFound))
 		})
 	})
 
@@ -94,7 +115,49 @@ var _ = Describe("checkErr", func() {
 			result, err := checkErr(resp, originalErr)
 
 			Expect(result).To(Equal(resp))
-			Expect(err).To(MatchError("plugin error: original error"))
+			Expect(err).To(HaveOccurred())
+			// Check that both error messages are present in the joined error
+			errStr := err.Error()
+			Expect(errStr).To(ContainSubstring("plugin error"))
+			Expect(errStr).To(ContainSubstring("original error"))
+		})
+
+		It("should return mapped API error for ErrNotImplemented when no original error", func() {
+			resp := &testErrorResponse{errorMsg: "plugin:not_implemented"}
+
+			result, err := checkErr(resp, nil)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotImplemented))
+		})
+
+		It("should return mapped API error for ErrNotFound when no original error", func() {
+			resp := &testErrorResponse{errorMsg: "plugin:not_found"}
+
+			result, err := checkErr(resp, nil)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotFound))
+		})
+
+		It("should return mapped API error for ErrNotImplemented even with original error", func() {
+			resp := &testErrorResponse{errorMsg: "plugin:not_implemented"}
+			originalErr := errors.New("original error")
+
+			result, err := checkErr(resp, originalErr)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotImplemented))
+		})
+
+		It("should return mapped API error for ErrNotFound even with original error", func() {
+			resp := &testErrorResponse{errorMsg: "plugin:not_found"}
+			originalErr := errors.New("original error")
+
+			result, err := checkErr(resp, originalErr)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotFound))
 		})
 	})
 
@@ -106,7 +169,7 @@ var _ = Describe("checkErr", func() {
 			result, err := checkErr(resp, originalErr)
 
 			Expect(result).To(Equal(resp))
-			Expect(err).To(Equal(originalErr))
+			Expect(err).To(MatchError(originalErr))
 		})
 
 		It("should return nil error when both are empty/nil", func() {
@@ -116,6 +179,16 @@ var _ = Describe("checkErr", func() {
 
 			Expect(result).To(Equal(resp))
 			Expect(err).To(BeNil())
+		})
+
+		It("should map original API error when response error is empty", func() {
+			resp := &testErrorResponse{errorMsg: ""}
+			originalErr := errors.New("plugin:not_implemented")
+
+			result, err := checkErr(resp, originalErr)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotImplemented))
 		})
 	})
 
@@ -138,6 +211,16 @@ var _ = Describe("checkErr", func() {
 			Expect(result).To(Equal(resp))
 			Expect(err).To(BeNil())
 		})
+
+		It("should map original API error when response doesn't implement errorResponse", func() {
+			resp := &testNonErrorResponse{data: "some data"}
+			originalErr := errors.New("plugin:not_found")
+
+			result, err := checkErr(resp, originalErr)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotFound))
+		})
 	})
 
 	Context("when resp is a value type (not pointer)", func() {
@@ -148,7 +231,11 @@ var _ = Describe("checkErr", func() {
 			result, err := checkErr(resp, originalErr)
 
 			Expect(result).To(Equal(resp))
-			Expect(err).To(MatchError("value error: original error"))
+			Expect(err).To(HaveOccurred())
+			// Check that both error messages are present in the joined error
+			errStr := err.Error()
+			Expect(errStr).To(ContainSubstring("value error"))
+			Expect(errStr).To(ContainSubstring("original error"))
 		})
 
 		It("should handle value types with empty error", func() {
@@ -158,7 +245,17 @@ var _ = Describe("checkErr", func() {
 			result, err := checkErr(resp, originalErr)
 
 			Expect(result).To(Equal(resp))
-			Expect(err).To(Equal(originalErr))
+			Expect(err).To(MatchError(originalErr))
+		})
+
+		It("should handle value types with API error", func() {
+			resp := testValueErrorResponse{errorMsg: "plugin:not_implemented"}
+			originalErr := errors.New("original error")
+
+			result, err := checkErr(resp, originalErr)
+
+			Expect(result).To(Equal(resp))
+			Expect(err).To(MatchError(api.ErrNotImplemented))
 		})
 	})
 })
