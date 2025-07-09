@@ -79,22 +79,29 @@ var _ = Describe("Extractor", func() {
 
 	var e *extractor
 
+	parseTestFile := func(path string) *model.MediaFile {
+		mds, err := e.Parse(path)
+		Expect(err).ToNot(HaveOccurred())
+
+		info, ok := mds[path]
+		Expect(ok).To(BeTrue())
+
+		fileInfo, err := os.Stat(path)
+		Expect(err).ToNot(HaveOccurred())
+		info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+		metadata := metadata.New(path, info)
+		mf := metadata.ToMediaFile(1, "folderID")
+		return &mf
+	}
+
 	BeforeEach(func() {
 		e = &extractor{}
 	})
 
 	Describe("ReplayGain", func() {
 		DescribeTable("test replaygain end-to-end", func(file string, trackGain, trackPeak, albumGain, albumPeak *float64) {
-			path := "tests/fixtures/" + file
-			mds, err := e.Parse(path)
-			Expect(err).ToNot(HaveOccurred())
-
-			info := mds[path]
-			fileInfo, _ := os.Stat(path)
-			info.FileInfo = testFileInfo{FileInfo: fileInfo}
-
-			metadata := metadata.New(path, info)
-			mf := metadata.ToMediaFile(1, "folderID")
+			mf := parseTestFile("tests/fixtures/" + file)
 
 			Expect(mf.RGTrackGain).To(Equal(trackGain))
 			Expect(mf.RGTrackPeak).To(Equal(trackPeak))
@@ -106,18 +113,82 @@ var _ = Describe("Extractor", func() {
 		)
 	})
 
+	Describe("lyrics", func() {
+		makeLyrics := func(code, secondLine string) model.Lyrics {
+			return model.Lyrics{
+				DisplayArtist: "",
+				DisplayTitle:  "",
+				Lang:          code,
+				Line: []model.Line{
+					{Start: gg.P(int64(0)), Value: "This is"},
+					{Start: gg.P(int64(2500)), Value: secondLine},
+				},
+				Offset: nil,
+				Synced: true,
+			}
+		}
+
+		It("should fetch both synced and unsynced lyrics in mixed flac", func() {
+			mf := parseTestFile("tests/fixtures/mixed-lyrics.flac")
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(2))
+
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[1].Synced).To(BeFalse())
+		})
+
+		It("should handle mp3 with uslt and sylt", func() {
+			mf := parseTestFile("tests/fixtures/test.mp3")
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(4))
+
+			engSylt := makeLyrics("eng", "English SYLT")
+			engUslt := makeLyrics("eng", "English")
+			unsSylt := makeLyrics("xxx", "unspecified SYLT")
+			unsUslt := makeLyrics("xxx", "unspecified")
+
+			// Why is the order inconsistent between runs? Nobody knows
+			Expect(lyrics).To(Or(
+				Equal(model.LyricList{engSylt, engUslt, unsSylt, unsUslt}),
+				Equal(model.LyricList{unsSylt, unsUslt, engSylt, engUslt}),
+			))
+		})
+
+		DescribeTable("format-specific lyrics", func(file string, isId3 bool) {
+			mf := parseTestFile("tests/fixtures/" + file)
+
+			lyrics, err := mf.StructuredLyrics()
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(lyrics).To(HaveLen(2))
+
+			unspec := makeLyrics("xxx", "unspecified")
+			eng := makeLyrics("xxx", "English")
+
+			if isId3 {
+				eng.Lang = "eng"
+			}
+
+			Expect(lyrics).To(Or(
+				Equal(model.LyricList{unspec, eng}),
+				Equal(model.LyricList{eng, unspec})))
+		},
+			Entry("flac", "test.flac", false),
+			Entry("m4a", "test.m4a", false),
+			Entry("ogg", "test.ogg", false),
+			Entry("wma", "test.wma", false),
+			Entry("wv", "test.wv", false),
+			Entry("wav", "test.wav", true),
+			Entry("aiff", "test.aiff", true),
+		)
+	})
+
 	Describe("Participants", func() {
 		DescribeTable("test tags consistent across formats", func(format string) {
-			path := "tests/fixtures/test." + format
-			mds, err := e.Parse(path)
-			Expect(err).ToNot(HaveOccurred())
-
-			info := mds[path]
-			fileInfo, _ := os.Stat(path)
-			info.FileInfo = testFileInfo{FileInfo: fileInfo}
-
-			metadata := metadata.New(path, info)
-			mf := metadata.ToMediaFile(1, "folderID")
+			mf := parseTestFile("tests/fixtures/test." + format)
 
 			for _, data := range roles {
 				role := data.Role
@@ -176,16 +247,7 @@ var _ = Describe("Extractor", func() {
 		)
 
 		It("should parse wma", func() {
-			path := "tests/fixtures/test.wma"
-			mds, err := e.Parse(path)
-			Expect(err).ToNot(HaveOccurred())
-
-			info := mds[path]
-			fileInfo, _ := os.Stat(path)
-			info.FileInfo = testFileInfo{FileInfo: fileInfo}
-
-			metadata := metadata.New(path, info)
-			mf := metadata.ToMediaFile(1, "folderID")
+			mf := parseTestFile("tests/fixtures/test.wma")
 
 			for _, data := range roles {
 				role := data.Role
