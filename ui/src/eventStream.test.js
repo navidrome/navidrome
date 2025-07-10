@@ -32,6 +32,8 @@ describe('startEventStream', () => {
     localStorage.setItem('is-authenticated', 'true')
     localStorage.setItem('token', 'abc')
     config.devNewEventStream = true
+    // Mock console.log to suppress output during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   afterEach(() => {
