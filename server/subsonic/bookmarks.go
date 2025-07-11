@@ -83,9 +83,14 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	var currentID string
-	if pq.Current >= 0 && pq.Current < len(pq.Items) {
-		currentID = pq.Items[pq.Current].ID
+
+	if pq.Current != nil {
+		current := *pq.Current
+		if current >= 0 && current < len(pq.Items) {
+			currentID = pq.Items[current].ID
+		}
 	}
+
 	response.PlayQueue = &responses.PlayQueue{
 		Entry:     slice.MapWithArg(pq.Items, r.Context(), childFromMediaFile),
 		Current:   currentID,
@@ -110,10 +115,10 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 		return model.MediaFile{ID: id}
 	})
 
-	currentIndex := 0
+	var currentIndex *int
 	for i, id := range ids {
 		if id == currentID {
-			currentIndex = i
+			currentIndex = &i
 			break
 		}
 	}
@@ -130,6 +135,71 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 	repo := api.ds.PlayQueue(r.Context())
 	err := repo.Store(pq)
+	if err != nil {
+		return nil, err
+	}
+	return newResponse(), nil
+}
+
+func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, error) {
+	user, _ := request.UserFrom(r.Context())
+
+	repo := api.ds.PlayQueue(r.Context())
+	pq, err := repo.RetrieveWithMediaFiles(user.ID)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	if pq == nil || len(pq.Items) == 0 {
+		return newResponse(), nil
+	}
+
+	response := newResponse()
+
+	response.PlayQueueByIndex = &responses.PlayQueueByIndex{
+		Entry:        slice.MapWithArg(pq.Items, r.Context(), childFromMediaFile),
+		CurrentIndex: pq.Current,
+		Position:     pq.Position,
+		Username:     user.UserName,
+		Changed:      &pq.UpdatedAt,
+		ChangedBy:    pq.ChangedBy,
+	}
+	return response, nil
+}
+
+func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	ids, _ := p.Strings("id")
+	currentIndex, err := p.Int("currentIndex")
+	position := p.Int64Or("position", 0)
+
+	items := slice.Map(ids, func(id string) model.MediaFile {
+		return model.MediaFile{ID: id}
+	})
+
+	var index *int
+	if err == nil {
+		index = &currentIndex
+
+		if currentIndex < 0 || currentIndex >= len(items) {
+			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
+		}
+	}
+
+	user, _ := request.UserFrom(r.Context())
+	client, _ := request.ClientFrom(r.Context())
+
+	pq := &model.PlayQueue{
+		UserID:    user.ID,
+		Current:   index,
+		Position:  position,
+		ChangedBy: client,
+		Items:     items,
+		CreatedAt: time.Time{},
+		UpdatedAt: time.Time{},
+	}
+
+	repo := api.ds.PlayQueue(r.Context())
+	err = repo.Store(pq)
 	if err != nil {
 		return nil, err
 	}

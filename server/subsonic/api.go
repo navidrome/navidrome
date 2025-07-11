@@ -148,7 +148,9 @@ func (api *Router) routes() http.Handler {
 			h(r, "createBookmark", api.CreateBookmark)
 			h(r, "deleteBookmark", api.DeleteBookmark)
 			h(r, "getPlayQueue", api.GetPlayQueue)
+			h(r, "getPlayQueueByIndex", api.GetPlayQueueByIndex)
 			h(r, "savePlayQueue", api.SavePlayQueue)
+			h(r, "savePlayQueueByIndex", api.SavePlayQueueByIndex)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
