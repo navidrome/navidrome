@@ -60,5 +60,9 @@ func (SubsonicAPIDemoPlugin) OnInit(ctx context.Context, req *api.InitRequest) (
 func main() {}
 
 func init() {
+	// Configure logging: No timestamps, no source file/line
+	log.SetFlags(0)
+	log.SetPrefix("[Subsonic Plugin] ")
+
 	api.RegisterLifecycleManagement(&SubsonicAPIDemoPlugin{})
 }

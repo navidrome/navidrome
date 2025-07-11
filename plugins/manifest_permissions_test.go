@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,7 +48,7 @@ func createTestPlugin(tempDir, name string, permissions schema.PluginManifestPer
 
 var _ = Describe("Plugin Permissions", func() {
 	var (
-		mgr     *Manager
+		mgr     *managerImpl
 		tempDir string
 		ctx     context.Context
 	)
@@ -55,7 +56,7 @@ var _ = Describe("Plugin Permissions", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		tempDir = GinkgoT().TempDir()
 	})
 

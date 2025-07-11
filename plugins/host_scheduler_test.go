@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,12 +12,12 @@ import (
 var _ = Describe("SchedulerService", func() {
 	var (
 		ss         *schedulerService
-		manager    *Manager
+		manager    *managerImpl
 		pluginName = "test_plugin"
 	)
 
 	BeforeEach(func() {
-		manager = createManager(nil, nil)
+		manager = createManager(nil, metrics.NewNoopInstance())
 		ss = manager.schedulerService
 	})
 

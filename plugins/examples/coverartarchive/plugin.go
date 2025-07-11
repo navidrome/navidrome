@@ -143,5 +143,9 @@ func (CoverArtArchiveAgent) GetArtistTopSongs(ctx context.Context, req *api.Arti
 func main() {}
 
 func init() {
+	// Configure logging: No timestamps, no source file/line
+	log.SetFlags(0)
+	log.SetPrefix("[CAA] ")
+
 	api.RegisterMetadataAgent(CoverArtArchiveAgent{})
 }

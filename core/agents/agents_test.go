@@ -56,8 +56,8 @@ var _ = Describe("Agents", func() {
 
 		It("does not register disabled agents", func() {
 			var ags []string
-			for _, name := range ag.getEnabledAgentNames() {
-				agent := ag.getAgent(name)
+			for _, enabledAgent := range ag.getEnabledAgentNames() {
+				agent := ag.getAgent(enabledAgent)
 				if agent != nil {
 					ags = append(ags, agent.AgentName())
 				}

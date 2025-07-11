@@ -10,10 +10,10 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/subsonicapi/subsonicapi.proto
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,7 +40,7 @@ const (
 )
 
 // pluginCreators maps capability types to their respective creator functions
-type pluginConstructor func(wasmPath, pluginID string, m *Manager, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
+type pluginConstructor func(wasmPath, pluginID string, m *managerImpl, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
 	CapabilityMetadataAgent:     newWasmMediaAgent,
@@ -53,8 +53,6 @@ var pluginCreators = map[string]pluginConstructor{
 type WasmPlugin interface {
 	// PluginID returns the unique identifier of the plugin (folder name)
 	PluginID() string
-	// Instantiate creates a new instance of the plugin and returns it along with a cleanup function
-	Instantiate(ctx context.Context) (any, func(), error)
 }
 
 type plugin struct {
@@ -86,8 +84,18 @@ func (p *plugin) waitForCompilation() error {
 
 type SubsonicRouter http.Handler
 
-// Manager is a singleton that manages plugins
-type Manager struct {
+type Manager interface {
+	SetSubsonicRouter(router SubsonicRouter)
+	EnsureCompiled(name string) error
+	PluginNames(serviceName string) []string
+	LoadPlugin(name string, capability string) WasmPlugin
+	LoadMediaAgent(name string) (agents.Interface, bool)
+	LoadScrobbler(name string) (scrobbler.Scrobbler, bool)
+	ScanPlugins()
+}
+
+// managerImpl is a singleton that manages plugins
+type managerImpl struct {
 	plugins          map[string]*plugin             // Map of plugin folder name to plugin info
 	mu               sync.RWMutex                   // Protects plugins map
 	subsonicRouter   atomic.Pointer[SubsonicRouter] // Subsonic API router
@@ -99,18 +107,21 @@ type Manager struct {
 	metrics          metrics.Metrics
 }
 
-// GetManager returns the singleton instance of Manager
-func GetManager(ds model.DataStore, metrics metrics.Metrics) *Manager {
-	return singleton.GetInstance(func() *Manager {
+// GetManager returns the singleton instance of managerImpl
+func GetManager(ds model.DataStore, metrics metrics.Metrics) Manager {
+	if !conf.Server.Plugins.Enabled {
+		return &noopManager{}
+	}
+	return singleton.GetInstance(func() *managerImpl {
 		return createManager(ds, metrics)
 	})
 }
 
-// createManager creates a new Manager instance. Used in tests
-func createManager(ds model.DataStore, metrics metrics.Metrics) *Manager {
-	m := &Manager{
+// createManager creates a new managerImpl instance. Used in tests
+func createManager(ds model.DataStore, metrics metrics.Metrics) *managerImpl {
+	m := &managerImpl{
 		plugins:   make(map[string]*plugin),
-		lifecycle: newPluginLifecycleManager(),
+		lifecycle: newPluginLifecycleManager(metrics),
 		ds:        ds,
 		metrics:   metrics,
 	}
@@ -122,14 +133,14 @@ func createManager(ds model.DataStore, metrics metrics.Metrics) *Manager {
 	return m
 }
 
-// SetSubsonicRouter sets the SubsonicRouter after Manager initialization
-func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
+// SetSubsonicRouter sets the SubsonicRouter after managerImpl initialization
+func (m *managerImpl) SetSubsonicRouter(router SubsonicRouter) {
 	m.subsonicRouter.Store(&router)
 }
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest) *plugin {
+func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest) *plugin {
 	// Create custom runtime function
 	customRuntime := m.createRuntime(pluginID, manifest.Permissions)
 
@@ -154,16 +165,8 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 		compilationReady: make(chan struct{}),
 	}
 
-	// Start pre-compilation of WASM module in background
-	go func() {
-		precompilePlugin(p)
-		// Check if this plugin implements InitService and hasn't been initialized yet
-		m.initializePluginIfNeeded(p)
-	}()
-
-	// Register the plugin
+	// Register the plugin first
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.plugins[pluginID] = p
 
 	// Register one plugin adapter for each capability
@@ -184,30 +187,59 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 		}
 		m.adapters[pluginID+"_"+capabilityStr] = adapter
 	}
+	m.mu.Unlock()
+
+	// Start pre-compilation of WASM module in background AFTER registration
+	go func() {
+		precompilePlugin(p)
+		// Check if this plugin implements InitService and hasn't been initialized yet
+		m.initializePluginIfNeeded(p)
+	}()
 
 	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[pluginID]
 }
 
 // initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
-func (m *Manager) initializePluginIfNeeded(plugin *plugin) {
+func (m *managerImpl) initializePluginIfNeeded(plugin *plugin) {
 	// Skip if already initialized
 	if m.lifecycle.isInitialized(plugin) {
 		return
 	}
 
 	// Check if the plugin implements LifecycleManagement
-	for _, capability := range plugin.Manifest.Capabilities {
-		if capability == CapabilityLifecycleManagement {
-			m.lifecycle.callOnInit(plugin)
-			m.lifecycle.markInitialized(plugin)
-			break
+	if slices.Contains(plugin.Manifest.Capabilities, CapabilityLifecycleManagement) {
+		if err := m.lifecycle.callOnInit(plugin); err != nil {
+			m.unregisterPlugin(plugin.ID)
 		}
 	}
 }
 
+// unregisterPlugin removes a plugin from the manager
+func (m *managerImpl) unregisterPlugin(pluginID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	plugin, ok := m.plugins[pluginID]
+	if !ok {
+		return
+	}
+
+	// Clear initialization state from lifecycle manager
+	m.lifecycle.clearInitialized(plugin)
+
+	// Unregister plugin adapters
+	for _, capability := range plugin.Manifest.Capabilities {
+		delete(m.adapters, pluginID+"_"+string(capability))
+	}
+
+	// Unregister plugin
+	delete(m.plugins, pluginID)
+	log.Info("Unregistered plugin", "plugin", pluginID)
+}
+
 // ScanPlugins scans the plugins directory, discovers all valid plugins, and registers them for use.
-func (m *Manager) ScanPlugins() {
+func (m *managerImpl) ScanPlugins() {
 	// Clear existing plugins
 	m.mu.Lock()
 	m.plugins = make(map[string]*plugin)
@@ -259,7 +291,7 @@ func (m *Manager) ScanPlugins() {
 }
 
 // PluginNames returns the folder names of all plugins that implement the specified capability
-func (m *Manager) PluginNames(capability string) []string {
+func (m *managerImpl) PluginNames(capability string) []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -275,28 +307,26 @@ func (m *Manager) PluginNames(capability string) []string {
 	return names
 }
 
-func (m *Manager) getPlugin(name string, capability string) (*plugin, WasmPlugin) {
+func (m *managerImpl) getPlugin(name string, capability string) (*plugin, WasmPlugin, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	info, infoOk := m.plugins[name]
 	adapter, adapterOk := m.adapters[name+"_"+capability]
 
 	if !infoOk {
-		log.Warn("Plugin not found", "name", name)
-		return nil, nil
+		return nil, nil, fmt.Errorf("plugin not registered: %s", name)
 	}
 	if !adapterOk {
-		log.Warn("Plugin adapter not found", "name", name, "capability", capability)
-		return nil, nil
+		return nil, nil, fmt.Errorf("plugin adapter not registered: %s, capability: %s", name, capability)
 	}
-	return info, adapter
+	return info, adapter, nil
 }
 
 // LoadPlugin instantiates and returns a plugin by folder name
-func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
-	info, adapter := m.getPlugin(name, capability)
-	if info == nil {
-		log.Warn("Plugin not found", "name", name, "capability", capability)
+func (m *managerImpl) LoadPlugin(name string, capability string) WasmPlugin {
+	info, adapter, err := m.getPlugin(name, capability)
+	if err != nil {
+		log.Warn("Error loading plugin", err)
 		return nil
 	}
 
@@ -318,7 +348,7 @@ func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 // EnsureCompiled waits for a plugin to finish compilation and returns any compilation error.
 // This is useful when you need to wait for compilation without loading a specific capability,
 // such as during plugin refresh operations or health checks.
-func (m *Manager) EnsureCompiled(name string) error {
+func (m *managerImpl) EnsureCompiled(name string) error {
 	m.mu.RLock()
 	plugin, ok := m.plugins[name]
 	m.mu.RUnlock()
@@ -330,25 +360,8 @@ func (m *Manager) EnsureCompiled(name string) error {
 	return plugin.waitForCompilation()
 }
 
-// LoadAllPlugins instantiates and returns all plugins that implement the specified capability
-func (m *Manager) LoadAllPlugins(capability string) []WasmPlugin {
-	names := m.PluginNames(capability)
-	if len(names) == 0 {
-		return nil
-	}
-
-	var plugins []WasmPlugin
-	for _, name := range names {
-		plugin := m.LoadPlugin(name, capability)
-		if plugin != nil {
-			plugins = append(plugins, plugin)
-		}
-	}
-	return plugins
-}
-
 // LoadMediaAgent instantiates and returns a media agent plugin by folder name
-func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
+func (m *managerImpl) LoadMediaAgent(name string) (agents.Interface, bool) {
 	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
 	if plugin == nil {
 		return nil, false
@@ -357,17 +370,8 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 	return agent, ok
 }
 
-// LoadAllMediaAgents instantiates and returns all media agent plugins
-func (m *Manager) LoadAllMediaAgents() []agents.Interface {
-	plugins := m.LoadAllPlugins(CapabilityMetadataAgent)
-
-	return slice.Map(plugins, func(p WasmPlugin) agents.Interface {
-		return p.(agents.Interface)
-	})
-}
-
 // LoadScrobbler instantiates and returns a scrobbler plugin by folder name
-func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
+func (m *managerImpl) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	plugin := m.LoadPlugin(name, CapabilityScrobbler)
 	if plugin == nil {
 		return nil, false
@@ -376,11 +380,18 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return s, ok
 }
 
-// LoadAllScrobblers instantiates and returns all scrobbler plugins
-func (m *Manager) LoadAllScrobblers() []scrobbler.Scrobbler {
-	plugins := m.LoadAllPlugins(CapabilityScrobbler)
+type noopManager struct{}
 
-	return slice.Map(plugins, func(p WasmPlugin) scrobbler.Scrobbler {
-		return p.(scrobbler.Scrobbler)
-	})
-}
+func (n noopManager) SetSubsonicRouter(router SubsonicRouter) {}
+
+func (n noopManager) EnsureCompiled(name string) error { return nil }
+
+func (n noopManager) PluginNames(serviceName string) []string { return nil }
+
+func (n noopManager) LoadPlugin(name string, capability string) WasmPlugin { return nil }
+
+func (n noopManager) LoadMediaAgent(name string) (agents.Interface, bool) { return nil, false }
+
+func (n noopManager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) { return nil, false }
+
+func (n noopManager) ScanPlugins() {}
