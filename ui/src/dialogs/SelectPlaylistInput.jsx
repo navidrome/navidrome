@@ -226,7 +226,7 @@ const SelectedPlaylistChip = ({ playlist, onRemove }) => {
         onClick={() => onRemove(playlist)}
         title={translate('resources.playlist.actions.removeFromSelection')}
       >
-        {translate('resources.playlist.actions.removeSymbol')}
+        {'×'}
       </IconButton>
     </span>
   )
