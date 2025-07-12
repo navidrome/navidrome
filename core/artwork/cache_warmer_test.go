@@ -80,6 +80,7 @@ var _ = Describe("CacheWarmer", func() {
 		})
 
 		It("adds multiple items to buffer", func() {
+			fc.SetReady(false) // Make cache unavailable so items stay in buffer
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
 			cw.PreCache(model.MustParseArtworkID("al-1"))
 			cw.PreCache(model.MustParseArtworkID("al-2"))
@@ -213,4 +214,8 @@ func (f *mockFileCache) Disabled(ctx context.Context) bool {
 func (f *mockFileCache) SetDisabled(v bool) {
 	f.disabled.Store(v)
 	f.ready.Store(true)
+}
+
+func (f *mockFileCache) SetReady(v bool) {
+	f.ready.Store(v)
 }

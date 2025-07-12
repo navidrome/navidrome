@@ -58,11 +58,7 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 			put(&mt)
 		}
 	}
-	libs, err := p.ds.Library(p.ctx).GetAll()
-	if err != nil {
-		return fmt.Errorf("loading libraries: %w", err)
-	}
-	for _, lib := range libs {
+	for _, lib := range p.state.libraries {
 		if lib.LastScanStartedAt.IsZero() {
 			continue
 		}
