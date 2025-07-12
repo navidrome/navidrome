@@ -188,7 +188,7 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, "", fmt.Errorf("error retrieveing artwork from %s: %s", imageUrl, resp.Status)
+		return nil, "", fmt.Errorf("error retrieving artwork from %s: %s", imageUrl, resp.Status)
 	}
 	return resp.Body, imageUrl.String(), nil
 }
