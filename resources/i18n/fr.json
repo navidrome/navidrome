@@ -207,8 +207,7 @@
         "saveQueue": "Sauvegarder la file de lecture dans la playlist",
         "searchOrCreate": "Chercher ou créer une nouvelle playlist...",
         "pressEnterToCreate": "Appuyer sur entrée pour créer une nouvelle playlist",
-        "removeFromSelection": "Supprimer de la sélection",
-        "removeSymbol": "×"
+        "removeFromSelection": "Supprimer de la sélection"
       },
       "message": {
         "duplicate_song": "Ajouter les titres déjà présents dans la playlist",

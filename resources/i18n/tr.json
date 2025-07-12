@@ -207,8 +207,7 @@
         "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
         "searchOrCreate": "Çalma listelerini arayın veya yenisini oluşturmak için yazın...",
         "pressEnterToCreate": "Yeni çalma listesi oluşturmak için Enter'a basın",
-        "removeFromSelection": "Seçimden kaldır",
-        "removeSymbol": "×"
+        "removeFromSelection": "Seçimden kaldır"
       },
       "message": {
         "duplicate_song": "Yinelenen şarkıları ekle",

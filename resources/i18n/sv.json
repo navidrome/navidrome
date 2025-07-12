@@ -207,8 +207,7 @@
         "saveQueue": "Spara kö till spellista",
         "searchOrCreate": "Sök spellista eller skapa ny...",
         "pressEnterToCreate": "Tryck Enter för att skapa ny spellista",
-        "removeFromSelection": "Ta bort från urval",
-        "removeSymbol": "×"
+        "removeFromSelection": "Ta bort från urval"
       },
       "message": {
         "duplicate_song": "Lägg till dubletter",

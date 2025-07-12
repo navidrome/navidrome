@@ -207,8 +207,7 @@
         "makePrivate": "Priváttá tétel",
         "searchOrCreate": "Keress lejátszási listák között vagy hozz létre egyet...",
         "pressEnterToCreate": "Nyomj Entert, hogy létrehozz egy lejátszási listát",
-        "removeFromSelection": "Eltávolítás a kiválasztásból",
-        "removeSymbol": "×"
+        "removeFromSelection": "Eltávolítás a kiválasztásból"
       },
       "message": {
         "duplicate_song": "Duplikált számok hozzáadása",

@@ -207,8 +207,7 @@
         "saveQueue": "Сохранить очередь в плейлист",
         "searchOrCreate": "Поиск плейлистов или введите текст для создания новых...",
         "pressEnterToCreate": "Нажмите Enter, чтобы создать новый список воспроизведения",
-        "removeFromSelection": "Удалить из списка выделенных",
-        "removeSymbol": "×"
+        "removeFromSelection": "Удалить из списка выделенных"
       },
       "message": {
         "duplicate_song": "Повторяющиеся треки",

@@ -207,8 +207,7 @@
         "makePrivate": "Make Private",
         "searchOrCreate": "Search playlists or type to create new...",
         "pressEnterToCreate": "Press Enter to create new playlist",
-        "removeFromSelection": "Remove from selection",
-        "removeSymbol": "×"
+        "removeFromSelection": "Remove from selection"
       },
       "message": {
         "duplicate_song": "Add duplicated songs",

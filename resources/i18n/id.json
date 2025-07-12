@@ -207,8 +207,7 @@
         "saveQueue": "Simpan Antrean ke Playlist",
         "searchOrCreate": "Cari playlist atau ketik untuk buat baru..",
         "pressEnterToCreate": "Tekan Enter untuk membuat playlist baru",
-        "removeFromSelection": "Hapus yang dipilih",
-        "removeSymbol": "×"
+        "removeFromSelection": "Hapus yang dipilih"
       },
       "message": {
         "duplicate_song": "Tambahkan lagu duplikat",

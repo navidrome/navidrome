@@ -207,8 +207,7 @@
         "saveQueue": "Warteschlange in Wiedergabeliste speichern",
         "searchOrCreate": "Wiedergabeliste suchen oder neue erstellen...",
         "pressEnterToCreate": "Enter drücken um neue Wiedergabeliste zu erstellen",
-        "removeFromSelection": "Von Auswahl entfernen",
-        "removeSymbol": "×"
+        "removeFromSelection": "Von Auswahl entfernen"
       },
       "message": {
         "duplicate_song": "Duplikate hinzufügen",
