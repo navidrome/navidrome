@@ -207,8 +207,7 @@
         "makePrivate": "Egin pribatua",
         "searchOrCreate": "Bilatu erreprodukzio-zerrenda edo idatzi berria sortzeko…",
         "pressEnterToCreate": "Sakatu Enter erreprodukzio-zerrenda berria sortzeko",
-        "removeFromSelection": "Kendu hautaketatik",
-        "removeSymbol": "×"
+        "removeFromSelection": "Kendu hautaketatik"
       },
       "message": {
         "duplicate_song": "Hautatutako abesti batzuk lehendik ere daude zerrendan",

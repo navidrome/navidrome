@@ -207,8 +207,7 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção",
-        "removeSymbol": "×"
+        "removeFromSelection": "Remover da seleção"
       },
       "message": {
         "duplicate_song": "Adicionar músicas duplicadas",
