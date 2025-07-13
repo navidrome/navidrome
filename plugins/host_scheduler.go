@@ -45,6 +45,10 @@ func (s SchedulerHostFunctions) CancelSchedule(ctx context.Context, req *schedul
 	return s.ss.cancelSchedule(ctx, s.pluginID, req)
 }
 
+func (s SchedulerHostFunctions) TimeNow(ctx context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
+	return s.ss.timeNow(ctx, req)
+}
+
 type schedulerService struct {
 	// Map of schedule IDs to their callback info
 	schedules  map[string]*ScheduledCallback
@@ -257,6 +261,17 @@ func (s *schedulerService) cancelSchedule(_ context.Context, pluginID string, re
 
 	return &scheduler.CancelResponse{
 		Success: true,
+	}, nil
+}
+
+// timeNow returns the current time in multiple formats
+func (s *schedulerService) timeNow(_ context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
+	now := time.Now()
+
+	return &scheduler.TimeNowResponse{
+		Rfc3339Nano:   now.Format(time.RFC3339Nano),
+		UnixMilli:     now.UnixMilli(),
+		LocalTimeZone: now.Location().String(),
 	}, nil
 }
 

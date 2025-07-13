@@ -88,3 +88,26 @@ func (h schedulerService) CancelSchedule(ctx context.Context, request *CancelReq
 	}
 	return response, nil
 }
+
+//go:wasmimport env time_now
+func _time_now(ptr uint32, size uint32) uint64
+
+func (h schedulerService) TimeNow(ctx context.Context, request *TimeNowRequest) (*TimeNowResponse, error) {
+	buf, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	ptr, size := wasm.ByteToPtr(buf)
+	ptrSize := _time_now(ptr, size)
+	wasm.Free(ptr)
+
+	ptr = uint32(ptrSize >> 32)
+	size = uint32(ptrSize)
+	buf = wasm.PtrToByte(ptr, size)
+
+	response := new(TimeNowResponse)
+	if err = response.UnmarshalVT(buf); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
