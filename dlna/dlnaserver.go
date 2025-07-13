@@ -124,7 +124,7 @@ func New(ds model.DataStore, broker events.Broker, mediastreamer core.MediaStrea
 
 // Run starts the DLNA server (both SSDP and HTTP) with the given address
 func (s *DLNAServer) Run(ctx context.Context, addr string, port int) (err error) {
-	log.Warn("Starting DLNA Server")
+	log.Info("Starting DLNA Server")
 
 	s.ctx = ctx
 	if s.ssdp.HTTPConn == nil {
