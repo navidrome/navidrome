@@ -44,6 +44,11 @@ func Instantiate(ctx context.Context, r wazero.Runtime, hostFunctions SchedulerS
 		WithParameterNames("offset", "size").
 		Export("cancel_schedule")
 
+	envBuilder.NewFunctionBuilder().
+		WithGoModuleFunction(api.GoModuleFunc(h._TimeNow), []api.ValueType{i32, i32}, []api.ValueType{i64}).
+		WithParameterNames("offset", "size").
+		Export("time_now")
+
 	_, err := envBuilder.Instantiate(ctx)
 	return err
 }
@@ -120,6 +125,35 @@ func (h _schedulerService) _CancelSchedule(ctx context.Context, m api.Module, st
 		panic(err)
 	}
 	resp, err := h.CancelSchedule(ctx, request)
+	if err != nil {
+		panic(err)
+	}
+	buf, err = resp.MarshalVT()
+	if err != nil {
+		panic(err)
+	}
+	ptr, err := wasm.WriteMemory(ctx, m, buf)
+	if err != nil {
+		panic(err)
+	}
+	ptrLen := (ptr << uint64(32)) | uint64(len(buf))
+	stack[0] = ptrLen
+}
+
+// Get current time in multiple formats
+
+func (h _schedulerService) _TimeNow(ctx context.Context, m api.Module, stack []uint64) {
+	offset, size := uint32(stack[0]), uint32(stack[1])
+	buf, err := wasm.ReadMemory(m.Memory(), offset, size)
+	if err != nil {
+		panic(err)
+	}
+	request := new(TimeNowRequest)
+	err = request.UnmarshalVT(buf)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := h.TimeNow(ctx, request)
 	if err != nil {
 		panic(err)
 	}

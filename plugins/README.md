@@ -196,7 +196,7 @@ See the [cache.proto](host/cache/cache.proto) file for the full API definition.
 
 #### SchedulerService
 
-The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
+The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks, as well as accessing current time information. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
 
 ```protobuf
 service SchedulerService {
@@ -208,11 +208,50 @@ service SchedulerService {
 
    // Cancel any scheduled job
    rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+
+   // Get current time in multiple formats
+   rpc TimeNow(TimeNowRequest) returns (TimeNowResponse);
 }
 ```
 
+**Key Features:**
+
 - **One-time scheduling**: Schedule a callback to be executed once after a specified delay.
 - **Recurring scheduling**: Schedule a callback to be executed repeatedly according to a cron expression.
+- **Current time access**: Get the current time in standardized formats for time-based operations.
+
+**TimeNow Function:**
+
+The `TimeNow` function returns the current time in three formats:
+
+```protobuf
+message TimeNowResponse {
+    string rfc3339_nano = 1;     // RFC3339 format with nanosecond precision
+    int64 unix_milli = 2;        // Unix timestamp in milliseconds
+    string local_time_zone = 3;  // Local timezone name (e.g., "UTC", "America/New_York")
+}
+```
+
+This allows plugins to:
+
+- Get high-precision timestamps for logging and event correlation
+- Perform time-based calculations using Unix timestamps
+- Handle timezone-aware operations by knowing the server's local timezone
+
+Example usage:
+
+```go
+// Get current time information
+timeResp, err := scheduler.TimeNow(ctx, &scheduler.TimeNowRequest{})
+if err != nil {
+    return err
+}
+
+// Use the different time formats
+timestamp := timeResp.Rfc3339Nano     // "2024-01-15T10:30:45.123456789Z"
+unixMs := timeResp.UnixMilli          // 1705312245123
+timezone := timeResp.LocalTimeZone    // "UTC"
+```
 
 Plugins using this service must implement the `SchedulerCallback` interface:
 
@@ -433,7 +472,7 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 The following permission keys correspond to host services:
 
 | Permission    | Host Service       | Description                                        | Required Fields                                       |
-|---------------|--------------------|----------------------------------------------------|-------------------------------------------------------|
+| ------------- | ------------------ | -------------------------------------------------- | ----------------------------------------------------- |
 | `http`        | HttpService        | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls`                               |
 | `websocket`   | WebSocketService   | Connect to and communicate via WebSockets          | `reason`, `allowedUrls`                               |
 | `cache`       | CacheService       | Store and retrieve cached data with TTL            | `reason`                                              |

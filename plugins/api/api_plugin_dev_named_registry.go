@@ -88,3 +88,7 @@ func (n *namedSchedulerService) CancelSchedule(ctx context.Context, request *sch
 	request.ScheduleId = key
 	return n.svc.CancelSchedule(ctx, request)
 }
+
+func (n *namedSchedulerService) TimeNow(ctx context.Context, request *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
+	return n.svc.TimeNow(ctx, request)
+}
