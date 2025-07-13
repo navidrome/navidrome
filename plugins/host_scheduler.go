@@ -269,8 +269,9 @@ func (s *schedulerService) timeNow(_ context.Context, req *scheduler.TimeNowRequ
 	now := time.Now()
 
 	return &scheduler.TimeNowResponse{
-		Rfc3339Nano: now.Format(time.RFC3339Nano),
-		UnixMilli:   now.UnixMilli(),
+		Rfc3339Nano:   now.Format(time.RFC3339Nano),
+		UnixMilli:     now.UnixMilli(),
+		LocalTimeZone: now.Location().String(),
 	}, nil
 }
 

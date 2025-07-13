@@ -169,8 +169,9 @@ type TimeNowResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Rfc3339Nano string `protobuf:"bytes,1,opt,name=rfc3339_nano,json=rfc3339Nano,proto3" json:"rfc3339_nano,omitempty"` // Current time in RFC3339Nano format
-	UnixMilli   int64  `protobuf:"varint,2,opt,name=unix_milli,json=unixMilli,proto3" json:"unix_milli,omitempty"`      // Current time as Unix milliseconds timestamp
+	Rfc3339Nano   string `protobuf:"bytes,1,opt,name=rfc3339_nano,json=rfc3339Nano,proto3" json:"rfc3339_nano,omitempty"`         // Current time in RFC3339Nano format
+	UnixMilli     int64  `protobuf:"varint,2,opt,name=unix_milli,json=unixMilli,proto3" json:"unix_milli,omitempty"`              // Current time as Unix milliseconds timestamp
+	LocalTimeZone string `protobuf:"bytes,3,opt,name=local_time_zone,json=localTimeZone,proto3" json:"local_time_zone,omitempty"` // Local timezone name (e.g., "America/New_York", "UTC")
 }
 
 func (x *TimeNowResponse) ProtoReflect() protoreflect.Message {
@@ -189,6 +190,13 @@ func (x *TimeNowResponse) GetUnixMilli() int64 {
 		return x.UnixMilli
 	}
 	return 0
+}
+
+func (x *TimeNowResponse) GetLocalTimeZone() string {
+	if x != nil {
+		return x.LocalTimeZone
+	}
+	return ""
 }
 
 // go:plugin type=host version=1

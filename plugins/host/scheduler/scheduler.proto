@@ -51,4 +51,5 @@ message TimeNowRequest {
 message TimeNowResponse {
     string rfc3339_nano = 1;       // Current time in RFC3339Nano format
     int64 unix_milli = 2;          // Current time as Unix milliseconds timestamp
+    string local_time_zone = 3;    // Local timezone name (e.g., "America/New_York", "UTC")
 } 

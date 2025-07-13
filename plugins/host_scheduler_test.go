@@ -167,13 +167,14 @@ var _ = Describe("SchedulerService", func() {
 	})
 
 	Describe("TimeNow", func() {
-		It("returns current time in RFC3339Nano and Unix milliseconds", func() {
+		It("returns current time in RFC3339Nano, Unix milliseconds, and local timezone", func() {
 			now := time.Now()
 			req := &scheduler.TimeNowRequest{}
 			resp, err := ss.timeNow(context.Background(), req)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.UnixMilli).To(BeNumerically(">=", now.UnixMilli()))
+			Expect(resp.LocalTimeZone).ToNot(BeEmpty())
 
 			// Validate RFC3339Nano format can be parsed
 			parsedTime, parseErr := time.Parse(time.RFC3339Nano, resp.Rfc3339Nano)
@@ -182,6 +183,10 @@ var _ = Describe("SchedulerService", func() {
 			// Validate that Unix milliseconds is reasonably close to the RFC3339Nano time
 			expectedMillis := parsedTime.UnixMilli()
 			Expect(resp.UnixMilli).To(Equal(expectedMillis))
+
+			// Validate local timezone matches the current system timezone
+			expectedTimezone := now.Location().String()
+			Expect(resp.LocalTimeZone).To(Equal(expectedTimezone))
 		})
 	})
 })
