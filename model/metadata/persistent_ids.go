@@ -16,7 +16,7 @@ import (
 
 type hashFunc = func(...string) string
 
-// getPID returns the persistent ID for a given spec, getting the referenced values from the metadata
+// createGetPID returns a function that calculates the persistent ID for a given spec, getting the referenced values from the metadata
 // The spec is a pipe-separated list of fields, where each field is a comma-separated list of attributes
 // Attributes can be either tags or some processed values like folder, albumid, albumartistid, etc.
 // For each field, it gets all its attributes values and concatenates them, then hashes the result.
