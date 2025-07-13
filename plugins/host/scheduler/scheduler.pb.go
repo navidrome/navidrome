@@ -154,6 +154,43 @@ func (x *CancelResponse) GetError() string {
 	return ""
 }
 
+type TimeNowRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *TimeNowRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+type TimeNowResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Rfc3339Nano string `protobuf:"bytes,1,opt,name=rfc3339_nano,json=rfc3339Nano,proto3" json:"rfc3339_nano,omitempty"` // Current time in RFC3339Nano format
+	UnixMilli   int64  `protobuf:"varint,2,opt,name=unix_milli,json=unixMilli,proto3" json:"unix_milli,omitempty"`      // Current time as Unix milliseconds timestamp
+}
+
+func (x *TimeNowResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *TimeNowResponse) GetRfc3339Nano() string {
+	if x != nil {
+		return x.Rfc3339Nano
+	}
+	return ""
+}
+
+func (x *TimeNowResponse) GetUnixMilli() int64 {
+	if x != nil {
+		return x.UnixMilli
+	}
+	return 0
+}
+
 // go:plugin type=host version=1
 type SchedulerService interface {
 	// One-time event scheduling
@@ -162,4 +199,6 @@ type SchedulerService interface {
 	ScheduleRecurring(context.Context, *ScheduleRecurringRequest) (*ScheduleResponse, error)
 	// Cancel any scheduled job
 	CancelSchedule(context.Context, *CancelRequest) (*CancelResponse, error)
+	// Get current time in multiple formats
+	TimeNow(context.Context, *TimeNowRequest) (*TimeNowResponse, error)
 }

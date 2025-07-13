@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
@@ -162,6 +163,25 @@ var _ = Describe("SchedulerService", func() {
 				return ss.hasSchedule(pluginName + ":" + "replace-cron")
 			}).Should(BeTrue(), "Schedule should exist after replacement")
 			Expect(ss.scheduleCount()).To(Equal(beforeCount), "Job count should remain the same after replacement")
+		})
+	})
+
+	Describe("TimeNow", func() {
+		It("returns current time in RFC3339Nano and Unix milliseconds", func() {
+			now := time.Now()
+			req := &scheduler.TimeNowRequest{}
+			resp, err := ss.timeNow(context.Background(), req)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.UnixMilli).To(BeNumerically(">=", now.UnixMilli()))
+
+			// Validate RFC3339Nano format can be parsed
+			parsedTime, parseErr := time.Parse(time.RFC3339Nano, resp.Rfc3339Nano)
+			Expect(parseErr).ToNot(HaveOccurred())
+
+			// Validate that Unix milliseconds is reasonably close to the RFC3339Nano time
+			expectedMillis := parsedTime.UnixMilli()
+			Expect(resp.UnixMilli).To(Equal(expectedMillis))
 		})
 	})
 })
