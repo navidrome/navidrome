@@ -8,10 +8,10 @@ import (
 )
 
 func init() {
-	goose.AddMigrationContext(upAddUserLibraryTable, downAddUserLibraryTable)
+	goose.AddMigrationContext(upAddMultiLibrarySupport, downAddMultiLibrarySupport)
 }
 
-func upAddUserLibraryTable(ctx context.Context, tx *sql.Tx) error {
+func upAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
 	-- Create user_library association table
 		CREATE TABLE user_library (
@@ -41,13 +41,43 @@ func upAddUserLibraryTable(ctx context.Context, tx *sql.Tx) error {
 		ALTER TABLE library ADD COLUMN default_new_users boolean DEFAULT false;
 		-- Set library ID 1 (default library) as default for new users
 		UPDATE library SET default_new_users = true WHERE id = 1;
+
+	-- Add stats column to library_artist junction table for per-library artist statistics
+		ALTER TABLE library_artist ADD COLUMN stats text DEFAULT '{}';
+		
+	-- Migrate existing global artist stats to per-library format in library_artist table
+	-- For each library_artist association, copy the artist's global stats
+		UPDATE library_artist 
+		SET stats = (
+			SELECT COALESCE(artist.stats, '{}')
+			FROM artist 
+			WHERE artist.id = library_artist.artist_id
+		);
+
+	-- Remove stats column from artist table to eliminate duplication
+	-- Stats are now stored per-library in library_artist table
+		ALTER TABLE artist DROP COLUMN stats;
 	`)
 
 	return err
 }
 
-func downAddUserLibraryTable(ctx context.Context, tx *sql.Tx) error {
+func downAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
+		-- Restore stats column to artist table before removing from library_artist
+		ALTER TABLE artist ADD COLUMN stats text DEFAULT '{}';
+		
+		-- Restore global stats by aggregating from library_artist (simplified approach)
+		-- In a real rollback scenario, this might need more sophisticated logic
+		UPDATE artist 
+		SET stats = (
+			SELECT COALESCE(la.stats, '{}')
+			FROM library_artist la 
+			WHERE la.artist_id = artist.id 
+			LIMIT 1
+		);
+		
+		ALTER TABLE library_artist DROP COLUMN IF EXISTS stats;
 		DROP INDEX IF EXISTS idx_user_library_library_id;
 		DROP INDEX IF EXISTS idx_user_library_user_id;
 		DROP TABLE IF EXISTS user_library;
