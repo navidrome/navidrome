@@ -189,13 +189,6 @@ func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manif
 	}
 	m.mu.Unlock()
 
-	// Start pre-compilation of WASM module in background AFTER registration
-	go func() {
-		precompilePlugin(p)
-		// Check if this plugin implements InitService and hasn't been initialized yet
-		m.initializePluginIfNeeded(p)
-	}()
-
 	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[pluginID]
 }
@@ -261,6 +254,7 @@ func (m *managerImpl) ScanPlugins() {
 	discoveries := DiscoverPlugins(root)
 
 	var validPluginNames []string
+	var registeredPlugins []*plugin
 	for _, discovery := range discoveries {
 		if discovery.Error != nil {
 			// Handle global errors (like directory read failure)
@@ -284,7 +278,20 @@ func (m *managerImpl) ScanPlugins() {
 		validPluginNames = append(validPluginNames, discovery.ID)
 
 		// Register the plugin
-		m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest)
+		plugin := m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest)
+		if plugin != nil {
+			registeredPlugins = append(registeredPlugins, plugin)
+		}
+	}
+
+	// Start background processing for all registered plugins after registration is complete
+	// This avoids race conditions between registration and goroutines that might unregister plugins
+	for _, p := range registeredPlugins {
+		go func(plugin *plugin) {
+			precompilePlugin(plugin)
+			// Check if this plugin implements InitService and hasn't been initialized yet
+			m.initializePluginIfNeeded(plugin)
+		}(p)
 	}
 
 	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
