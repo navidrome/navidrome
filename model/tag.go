@@ -153,7 +153,7 @@ func (t Tags) Add(name TagName, v string) {
 }
 
 type TagRepository interface {
-	Add(...Tag) error
+	Add(libraryID int, tags ...Tag) error
 	UpdateCounts() error
 }
 

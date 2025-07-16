@@ -21,13 +21,7 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 }
 
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(opt...).
-		Columns(
-			"id",
-			"tag_value as name",
-			"album_count",
-			"media_file_count as song_count",
-		)
+	return r.newSelect(opt...)
 }
 
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
@@ -40,7 +34,7 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 // Override ResourceRepository methods to return Genre objects instead of Tag objects
 
 func (r *genreRepository) Read(id string) (interface{}, error) {
-	sel := r.selectGenre().Columns("*").Where(Eq{"id": id})
+	sel := r.selectGenre().Where(Eq{"tag.id": id})
 	var res model.Genre
 	err := r.queryOne(sel, &res)
 	return &res, err

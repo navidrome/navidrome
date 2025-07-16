@@ -59,7 +59,7 @@ func userId(ctx context.Context) string {
 
 func loggedUser(ctx context.Context) *model.User {
 	if user, ok := request.UserFrom(ctx); !ok {
-		return &model.User{}
+		return &model.User{ID: invalidUserId}
 	} else {
 		return &user
 	}

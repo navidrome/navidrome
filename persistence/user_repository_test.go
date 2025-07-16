@@ -336,13 +336,20 @@ var _ = Describe("UserRepository", func() {
 
 	Describe("Admin User Auto-Assignment", func() {
 		var (
-			libRepo  model.LibraryRepository
-			library1 model.Library
-			library2 model.Library
+			libRepo         model.LibraryRepository
+			library1        model.Library
+			library2        model.Library
+			initialLibCount int
 		)
 
 		BeforeEach(func() {
 			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+
+			// Count initial libraries
+			existingLibs, err := libRepo.GetAll()
+			Expect(err).To(BeNil())
+			initialLibCount = len(existingLibs)
+
 			library1 = model.Library{ID: 0, Name: "Admin Test Library 1", Path: "/admin/test/path1"}
 			library2 = model.Library{ID: 0, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
 
@@ -375,13 +382,13 @@ var _ = Describe("UserRepository", func() {
 			// Admin should automatically have access to all libraries (including existing ones)
 			libraries, err := repo.GetUserLibraries(adminUser.ID)
 			Expect(err).To(BeNil())
-			Expect(libraries).To(HaveLen(3)) // Our 2 test libraries + existing library ID 1
+			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
 
 			libIDs := make([]int, len(libraries))
 			for i, lib := range libraries {
 				libIDs[i] = lib.ID
 			}
-			Expect(libIDs).To(ContainElements(library1.ID, library2.ID, 1))
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
 		})
 
 		It("automatically assigns all libraries to admin users when updated", func() {
@@ -410,14 +417,14 @@ var _ = Describe("UserRepository", func() {
 			// Should now have access to all libraries (including existing ones)
 			libraries, err := repo.GetUserLibraries(regularUser.ID)
 			Expect(err).To(BeNil())
-			Expect(libraries).To(HaveLen(3)) // Our 2 test libraries + existing library ID 1
+			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
 
 			libIDs := make([]int, len(libraries))
 			for i, lib := range libraries {
 				libIDs[i] = lib.ID
 			}
 			// Should include our test libraries plus all existing ones
-			Expect(libIDs).To(ContainElements(library1.ID, library2.ID, 1))
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
 		})
 
 		It("assigns default libraries to regular users", func() {

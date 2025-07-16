@@ -730,8 +730,8 @@ var _ = Describe("ArtistRepository", func() {
 				ctx = request.WithUser(ctx, adminUser)
 				adminRepo = NewArtistRepository(ctx, GetDBXBuilder())
 
-				// Create library 2 for testing access restrictions
-				lib2 = model.Library{ID: 0, Name: "Library 2", Path: "/lib2"}
+				// Create library for testing access restrictions
+				lib2 = model.Library{ID: 0, Name: "Artist Test Library", Path: "/artist/test/lib"}
 				lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
 				err := lr.Put(&lib2)
 				Expect(err).ToNot(HaveOccurred())

@@ -22,7 +22,7 @@ var _ = Describe("TagRepository", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		tagRepo := NewTagRepository(ctx, GetDBXBuilder())
 		repo = tagRepo
 		restRepo = tagRepo.(model.ResourceRepository)
@@ -31,13 +31,23 @@ var _ = Describe("TagRepository", func() {
 		db := GetDBXBuilder()
 		_, err := db.NewQuery("DELETE FROM tag").Execute()
 		Expect(err).ToNot(HaveOccurred())
+		_, err = db.NewQuery("DELETE FROM library_tag").Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		// Ensure library 1 exists (if it doesn't already)
+		_, err = db.NewQuery("INSERT OR IGNORE INTO library (id, name, path, default_new_users) VALUES (1, 'Test Library', '/test', true)").Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		// Ensure the admin user has access to library 1
+		_, err = db.NewQuery("INSERT OR IGNORE INTO user_library (user_id, library_id) VALUES ('userid', 1)").Execute()
+		Expect(err).ToNot(HaveOccurred())
 
 		// Add comprehensive test data that covers all test scenarios
 		newTag := func(name, value string) model.Tag {
 			return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
 		}
 
-		err = repo.Add(
+		err = repo.Add(1,
 			// Genre tags
 			newTag("genre", "rock"),
 			newTag("genre", "pop"),
@@ -73,7 +83,7 @@ var _ = Describe("TagRepository", func() {
 				TagValue: "experimental",
 			}
 
-			err := repo.Add(newTag)
+			err := repo.Add(1, newTag)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify tag was added
@@ -100,7 +110,7 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(20))) // Still 20 tags
 
-			err = repo.Add(duplicateTag)
+			err = repo.Add(1, duplicateTag)
 			Expect(err).ToNot(HaveOccurred()) // Should not error
 
 			// Count should remain the same

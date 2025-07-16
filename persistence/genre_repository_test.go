@@ -24,7 +24,7 @@ var _ = Describe("GenreRepository", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		genreRepo := NewGenreRepository(ctx, GetDBXBuilder())
 		repo = genreRepo
 		restRepo = genreRepo.(model.ResourceRepository)
@@ -35,12 +35,18 @@ var _ = Describe("GenreRepository", func() {
 		_, err := db.NewQuery("DELETE FROM tag").Execute()
 		Expect(err).ToNot(HaveOccurred())
 
+		// Ensure library 1 exists and user has access to it
+		_, err = db.NewQuery("INSERT OR IGNORE INTO library (id, name, path, default_new_users) VALUES (1, 'Test Library', '/test', true)").Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = db.NewQuery("INSERT OR IGNORE INTO user_library (user_id, library_id) VALUES ('userid', 1)").Execute()
+		Expect(err).ToNot(HaveOccurred())
+
 		// Add comprehensive test data that covers all test scenarios
 		newTag := func(name, value string) model.Tag {
 			return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
 		}
 
-		err = tagRepo.Add(
+		err = tagRepo.Add(1,
 			newTag("genre", "rock"),
 			newTag("genre", "pop"),
 			newTag("genre", "jazz"),
@@ -167,7 +173,7 @@ var _ = Describe("GenreRepository", func() {
 				TagName:  "mood",
 				TagValue: "energetic",
 			}
-			err := tagRepo.Add(nonGenreTag)
+			err := tagRepo.Add(1, nonGenreTag)
 			Expect(err).ToNot(HaveOccurred())
 
 			count, err := restRepo.Count()

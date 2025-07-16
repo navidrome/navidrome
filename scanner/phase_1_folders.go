@@ -342,7 +342,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.tags...)
+		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err

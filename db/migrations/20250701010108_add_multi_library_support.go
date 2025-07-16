@@ -79,6 +79,10 @@ func upAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 		SELECT t.id, 1, t.album_count, t.media_file_count
 		FROM tag t
 		WHERE EXISTS (SELECT 1 FROM library WHERE id = 1);
+
+	-- Remove global stats from tag table as they are now per-library
+		ALTER TABLE tag DROP COLUMN album_count;
+		ALTER TABLE tag DROP COLUMN media_file_count;
 	`)
 
 	return err
