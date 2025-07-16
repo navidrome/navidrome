@@ -57,6 +57,28 @@ func upAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 	-- Remove stats column from artist table to eliminate duplication
 	-- Stats are now stored per-library in library_artist table
 		ALTER TABLE artist DROP COLUMN stats;
+
+	-- Create library_tag table for per-library tag statistics
+		CREATE TABLE library_tag (
+			tag_id VARCHAR NOT NULL,
+			library_id INTEGER NOT NULL,
+			album_count INTEGER DEFAULT 0 NOT NULL,
+			media_file_count INTEGER DEFAULT 0 NOT NULL,
+			PRIMARY KEY (tag_id, library_id),
+			FOREIGN KEY (tag_id) REFERENCES tag(id) ON DELETE CASCADE,
+			FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE
+		);
+
+	-- Create indexes for optimal query performance
+		CREATE INDEX idx_library_tag_tag_id ON library_tag(tag_id);
+		CREATE INDEX idx_library_tag_library_id ON library_tag(library_id);
+
+	-- Migrate existing tag stats to per-library format in library_tag table
+	-- For existing installations, copy current global stats to library ID 1 (default library)
+		INSERT INTO library_tag (tag_id, library_id, album_count, media_file_count)
+		SELECT t.id, 1, t.album_count, t.media_file_count
+		FROM tag t
+		WHERE EXISTS (SELECT 1 FROM library WHERE id = 1);
 	`)
 
 	return err
@@ -83,6 +105,11 @@ func downAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 		DROP TABLE IF EXISTS user_library;
 		ALTER TABLE library DROP COLUMN IF EXISTS total_duration;
 		ALTER TABLE library DROP COLUMN IF EXISTS default_new_users;
+		
+		-- Drop library_tag table and its indexes
+		DROP INDEX IF EXISTS idx_library_tag_library_id;
+		DROP INDEX IF EXISTS idx_library_tag_tag_id;
+		DROP TABLE IF EXISTS library_tag;
 	`)
 	return err
 }
