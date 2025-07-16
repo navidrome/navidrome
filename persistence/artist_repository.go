@@ -139,7 +139,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"starred":    booleanFilter,
 		"role":       roleFilter,
 		"missing":    booleanFilter,
-		"library_id": libraryIdFilter,
+		"library_id": artistLibraryIdFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -165,23 +165,23 @@ func roleFilter(_ string, role any) Sqlizer {
 	return Eq{"1": 2}
 }
 
+// artistLibraryIdFilter filters artists based on library access through the library_artist table
+func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
+	return Eq{"library_artist.library_id": value}
+}
+
 // applyLibraryFilterToArtistQuery applies library filtering to artist queries through the library_artist junction table
 func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	if !user.IsAdmin {
-		// For non-admin users, apply library filtering by joining only with accessible libraries
-		userID := userId(r.ctx)
-		if userID == invalidUserId {
-			// No user context - return empty result set
-			return query.Where(Eq{"1": "0"})
-		}
-		query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id AND library_artist.library_id IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", userID)
-		// Ensure the artist has at least one accessible library association
-		query = query.Where("library_artist.artist_id IS NOT NULL")
-	} else {
-		// For admin users, include all library associations
-		query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id")
+	if user.ID == invalidUserId {
+		// No user context - return empty result set
+		return query.Where(Eq{"1": "0"})
 	}
+
+	// Apply library filtering by joining only with accessible libraries
+	query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id").
+		Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+
 	return query
 }
 
@@ -291,7 +291,7 @@ func (r *artistRepository) GetIndex(includeMissing bool, libraryIds []int, roles
 		}
 	}
 
-	libFilter := libraryIdFilter("library_id", libraryIds)
+	libFilter := artistLibraryIdFilter("library_id", libraryIds)
 	if options.Filters == nil {
 		options.Filters = libFilter
 	} else {
