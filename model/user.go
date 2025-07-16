@@ -39,25 +39,6 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 	return false
 }
 
-// AccessibleLibraryIDs returns a slice of library IDs that the user has access to
-func (u User) AccessibleLibraryIDs() []int {
-	return u.Libraries.IDs()
-}
-
-func (u User) FilteredLibraries(libraryIds []int) Libraries {
-	libMap := make(map[int]Library, len(u.Libraries))
-	for _, lib := range u.Libraries {
-		libMap[lib.ID] = lib
-	}
-	var filtered Libraries
-	for _, id := range libraryIds {
-		if lib, ok := libMap[id]; ok {
-			filtered = append(filtered, lib)
-		}
-	}
-	return filtered
-}
-
 type Users []User
 
 type UserRepository interface {
