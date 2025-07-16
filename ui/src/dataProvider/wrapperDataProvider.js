@@ -139,7 +139,19 @@ const wrapperDataProvider = {
   },
   getOne: (resource, params) => {
     const [r, p] = mapResource(resource, params)
-    return dataProvider.getOne(r, p)
+    const response = dataProvider.getOne(r, p)
+
+    // Transform user data to ensure libraryIds is present for form compatibility
+    if (resource === 'user') {
+      return response.then((result) => {
+        if (result.data.libraries && Array.isArray(result.data.libraries)) {
+          result.data.libraryIds = result.data.libraries.map((lib) => lib.id)
+        }
+        return result
+      })
+    }
+
+    return response
   },
   getMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)

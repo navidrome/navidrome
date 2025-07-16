@@ -18,11 +18,13 @@ import {
   useRefresh,
   FormDataConsumer,
   usePermissions,
+  useRecordContext,
 } from 'react-admin'
 import { Typography } from '@material-ui/core'
 import { Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
+import { validateUserForm } from './userValidation'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -103,18 +105,8 @@ const UserEdit = (props) => {
   )
 
   // Custom validation function
-  const validateUserForm = (values) => {
-    const errors = {}
-    // Only require library selection for non-admin users
-    if (
-      !values.isAdmin &&
-      (!values.libraryIds || values.libraryIds.length === 0)
-    ) {
-      errors.libraryIds = translate(
-        'resources.user.validation.librariesRequired',
-      )
-    }
-    return errors
+  const validateForm = (values) => {
+    return validateUserForm(values, translate)
   }
 
   return (
@@ -123,7 +115,7 @@ const UserEdit = (props) => {
         variant={'outlined'}
         toolbar={<UserToolbar showDelete={canDelete} />}
         save={save}
-        validate={validateUserForm}
+        validate={validateForm}
       >
         {permissions === 'admin' && (
           <TextInput
