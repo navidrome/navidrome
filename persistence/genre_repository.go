@@ -10,20 +10,14 @@ import (
 )
 
 type genreRepository struct {
-	sqlRepository
+	*baseTagRepository
 }
 
 func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreRepository {
-	r := &genreRepository{}
-	r.ctx = ctx
-	r.db = db
-	r.registerModel(&model.Tag{}, map[string]filterFunc{
-		"name": containsFilter("tag_value"),
-	})
-	r.setSortMappings(map[string]string{
-		"name": "tag_name",
-	})
-	return r
+	genreFilter := model.TagGenre
+	return &genreRepository{
+		baseTagRepository: newBaseTagRepository(ctx, db, &genreFilter),
+	}
 }
 
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
@@ -33,8 +27,7 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 			"tag_value as name",
 			"album_count",
 			"media_file_count as song_count",
-		).
-		Where(Eq{"tag.tag_name": model.TagGenre})
+		)
 }
 
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
@@ -44,9 +37,7 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	return res, err
 }
 
-func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(r.selectGenre(), r.parseRestOptions(r.ctx, options...))
-}
+// Override ResourceRepository methods to return Genre objects instead of Tag objects
 
 func (r *genreRepository) Read(id string) (interface{}, error) {
 	sel := r.selectGenre().Columns("*").Where(Eq{"id": id})
@@ -57,10 +48,6 @@ func (r *genreRepository) Read(id string) (interface{}, error) {
 
 func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *genreRepository) EntityName() string {
-	return r.tableName
 }
 
 func (r *genreRepository) NewInstance() interface{} {

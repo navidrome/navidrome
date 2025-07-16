@@ -7,23 +7,19 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
 
 type tagRepository struct {
-	sqlRepository
+	*baseTagRepository
 }
 
 func NewTagRepository(ctx context.Context, db dbx.Builder) model.TagRepository {
-	r := &tagRepository{}
-	r.ctx = ctx
-	r.db = db
-	r.tableName = "tag"
-	r.registerModel(&model.Tag{}, nil)
-	return r
+	return &tagRepository{
+		baseTagRepository: newBaseTagRepository(ctx, db, nil), // nil = no filter, works with all tags
+	}
 }
 
 func (r *tagRepository) Add(tags ...model.Tag) error {
@@ -85,32 +81,6 @@ func (r *tagRepository) purgeUnused() error {
 		log.Debug(r.ctx, "Purged unused tags", "totalDeleted", c)
 	}
 	return err
-}
-
-func (r *tagRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(r.newSelect(), r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *tagRepository) Read(id string) (interface{}, error) {
-	query := r.newSelect().Columns("*").Where(Eq{"id": id})
-	var res model.Tag
-	err := r.queryOne(query, &res)
-	return &res, err
-}
-
-func (r *tagRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	query := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
-	var res model.TagList
-	err := r.queryAll(query, &res)
-	return res, err
-}
-
-func (r *tagRepository) EntityName() string {
-	return "tag"
-}
-
-func (r *tagRepository) NewInstance() interface{} {
-	return model.Tag{}
 }
 
 var _ model.ResourceRepository = &tagRepository{}
