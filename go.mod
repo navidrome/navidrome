@@ -34,7 +34,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jellydator/ttlcache/v3 v3.4.0
-	github.com/kardianos/service v1.2.2
+	github.com/kardianos/service v1.2.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/knqyf263/go-plugin v0.9.0
 	github.com/kr/pretty v0.3.1
@@ -64,7 +64,7 @@ require (
 	golang.org/x/image v0.28.0
 	golang.org/x/net v0.41.0
 	golang.org/x/sync v0.15.0
-	golang.org/x/sys v0.33.0
+	golang.org/x/sys v0.34.0
 	golang.org/x/text v0.26.0
 	golang.org/x/time v0.12.0
 	google.golang.org/protobuf v1.36.6
