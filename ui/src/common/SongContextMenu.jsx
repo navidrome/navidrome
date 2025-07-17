@@ -31,6 +31,9 @@ const useStyles = makeStyles({
   noWrap: {
     whiteSpace: 'nowrap',
   },
+  disabledMenuItem: {
+    pointerEvents: 'auto',
+  },
 })
 
 const MoreButton = ({ record, onClick, info }) => {
@@ -243,13 +246,13 @@ export const SongContextMenu = ({
                 key={key}
                 onClick={
                   showInPlaylistDisabled
-                    ? (e) => {
-                        e.stopPropagation()
-                      }
+                    ? (e) => e.stopPropagation()
                     : handleItemClick
                 }
                 disabled={showInPlaylistDisabled}
-                style={showInPlaylistDisabled ? { pointerEvents: 'auto' } : {}}
+                style={
+                  showInPlaylistDisabled ? { pointerEvents: 'auto' } : undefined
+                }
               >
                 {options[key].label}
               </MenuItem>
