@@ -43,7 +43,7 @@ var _ = Describe("Queue Endpoints", func() {
 			saveQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue).ToNot(BeNil())
-			Expect(repo.Queue.Current).To(Equal(1))
+			Expect(repo.Queue.Current).To(Equal(gg.P(1)))
 			Expect(repo.Queue.Items).To(HaveLen(2))
 			Expect(repo.Queue.Items[1].ID).To(Equal("s2"))
 			Expect(repo.Queue.ChangedBy).To(Equal("TestClient"))
@@ -112,7 +112,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("returns the queue", func() {
 			queue := &model.PlayQueue{
 				UserID:   user.ID,
-				Current:  1,
+				Current:  gg.P(1),
 				Position: 55,
 				Items: model.MediaFiles{
 					{ID: "track1", Title: "Song 1"},
@@ -130,7 +130,7 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
 			var resp model.PlayQueue
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-			Expect(resp.Current).To(Equal(1))
+			Expect(resp.Current).To(Equal(gg.P(1)))
 			Expect(resp.Position).To(Equal(int64(55)))
 			Expect(resp.Items).To(HaveLen(3))
 			Expect(resp.Items[0].ID).To(Equal("track1"))
@@ -148,7 +148,7 @@ var _ = Describe("Queue Endpoints", func() {
 			var resp model.PlayQueue
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 			Expect(resp.Items).To(BeEmpty())
-			Expect(resp.Current).To(Equal(0))
+			Expect(resp.Current).To(BeNil())
 			Expect(resp.Position).To(Equal(int64(0)))
 		})
 
@@ -177,13 +177,13 @@ var _ = Describe("Queue Endpoints", func() {
 			updateQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue).ToNot(BeNil())
-			Expect(repo.Queue.Current).To(Equal(2))
+			Expect(repo.Queue.Current).To(Equal(gg.P(2)))
 			Expect(repo.Queue.Position).To(Equal(int64(20)))
 			Expect(repo.Queue.ChangedBy).To(Equal("TestClient"))
 		})
 
 		It("updates only ids", func() {
-			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1}
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: gg.P(1)}
 			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
@@ -207,12 +207,12 @@ var _ = Describe("Queue Endpoints", func() {
 			updateQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue.Items).To(HaveLen(2))
-			Expect(repo.Queue.Current).To(Equal(1))
+			Expect(repo.Queue.Current).To(Equal(gg.P(1)))
 			Expect(repo.LastCols).To(ConsistOf("items", "current"))
 		})
 
 		It("returns bad request when new ids invalidate current", func() {
-			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2}
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: gg.P(2)}
 			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
