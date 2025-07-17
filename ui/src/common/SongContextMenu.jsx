@@ -31,9 +31,6 @@ const useStyles = makeStyles({
   noWrap: {
     whiteSpace: 'nowrap',
   },
-  disabledMenuItem: {
-    pointerEvents: 'auto',
-  },
 })
 
 const MoreButton = ({ record, onClick, info }) => {
