@@ -680,4 +680,90 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(state.changesDetected.Load()).To(BeFalse())
 		})
 	})
+
+	Describe("Album Annotation Reassignment", func() {
+		var (
+			albumRepo    *tests.MockAlbumRepo
+			missingTrack model.MediaFile
+			matchedTrack model.MediaFile
+			oldAlbumID   string
+			newAlbumID   string
+		)
+
+		BeforeEach(func() {
+			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo.ReassignAnnotationCalls = make(map[string]string)
+
+			oldAlbumID = "old-album-id"
+			newAlbumID = "new-album-id"
+
+			missingTrack = model.MediaFile{
+				ID:        "missing-track-id",
+				PID:       "same-pid",
+				Path:      "old/path.mp3",
+				AlbumID:   oldAlbumID,
+				LibraryID: 1,
+				Missing:   true,
+				Annotations: model.Annotations{
+					PlayCount: 5,
+					Rating:    4,
+					Starred:   true,
+				},
+			}
+
+			matchedTrack = model.MediaFile{
+				ID:        "matched-track-id",
+				PID:       "same-pid",
+				Path:      "new/path.mp3",
+				AlbumID:   newAlbumID,
+				LibraryID: 2, // Different library
+				Missing:   false,
+				Annotations: model.Annotations{
+					PlayCount: 2,
+					Rating:    3,
+					Starred:   false,
+				},
+			}
+
+			// Store both tracks in the database
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+		})
+
+		When("album ID changes during cross-library move", func() {
+			It("should reassign album annotations when AlbumID changes", func() {
+				err := phase.moveMatched(matchedTrack, missingTrack)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Verify that ReassignAnnotation was called
+				Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue(oldAlbumID, newAlbumID))
+			})
+
+			It("should not reassign annotations when AlbumID is the same", func() {
+				missingTrack.AlbumID = newAlbumID // Same album
+
+				err := phase.moveMatched(matchedTrack, missingTrack)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Verify that ReassignAnnotation was NOT called
+				Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+			})
+		})
+
+		When("error handling", func() {
+			It("should handle ReassignAnnotation errors gracefully", func() {
+				// Make the album repo return an error
+				albumRepo.SetError(true)
+
+				// The move should still succeed even if annotation reassignment fails
+				err := phase.moveMatched(matchedTrack, missingTrack)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Verify that the track was still moved (ID should be updated)
+				movedTrack, err := ds.MediaFile(ctx).Get(missingTrack.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+			})
+		})
+	})
 })
