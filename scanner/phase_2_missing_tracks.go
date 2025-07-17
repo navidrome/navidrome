@@ -52,8 +52,10 @@ func (p *phaseMissingTracks) producer() ppl.Producer[*missingTracks] {
 func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 	count := 0
 	var putIfMatched = func(mt missingTracks) {
-		if mt.pid != "" && len(mt.matched) > 0 {
-			log.Trace(p.ctx, "Scanner: Found missing and matching tracks", "pid", mt.pid, "missing", len(mt.missing), "matched", len(mt.matched), "lib", mt.lib.Name)
+		if mt.pid != "" && len(mt.missing) > 0 {
+			log.Trace(p.ctx, "Scanner: Found missing tracks", "pid", mt.pid, "missing", "title", mt.missing[0].Title,
+				len(mt.missing), "matched", len(mt.matched), "lib", mt.lib.Name,
+			)
 			count++
 			put(&mt)
 		}
@@ -100,10 +102,13 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 func (p *phaseMissingTracks) stages() []ppl.Stage[*missingTracks] {
 	return []ppl.Stage[*missingTracks]{
 		ppl.NewStage(p.processMissingTracks, ppl.Name("process missing tracks")),
+		ppl.NewStage(p.processCrossLibraryMoves, ppl.Name("process cross-library moves")),
 	}
 }
 
 func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTracks, error) {
+	hasMatches := false
+
 	for _, ms := range in.missing {
 		var exactMatch model.MediaFile
 		var equivalentMatch model.MediaFile
@@ -128,6 +133,7 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 				return nil, err
 			}
 			p.totalMatched.Add(1)
+			hasMatches = true
 			continue
 		}
 
@@ -141,6 +147,7 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 				return nil, err
 			}
 			p.totalMatched.Add(1)
+			hasMatches = true
 			continue
 		}
 
@@ -153,9 +160,93 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 				return nil, err
 			}
 			p.totalMatched.Add(1)
+			hasMatches = true
 		}
 	}
+
+	// If any matches were found in this missingTracks group, return nil
+	// This signals the next stage to skip processing this group
+	if hasMatches {
+		return nil, nil
+	}
+
+	// If no matches found, pass through to next stage
 	return in, nil
+}
+
+// processCrossLibraryMoves processes files that weren't matched within their library
+// and attempts to find matches in other libraries
+func (p *phaseMissingTracks) processCrossLibraryMoves(in *missingTracks) (*missingTracks, error) {
+	// Skip if input is nil (meaning previous stage found matches)
+	if in == nil {
+		return nil, nil
+	}
+
+	log.Debug(p.ctx, "Scanner: Processing cross-library moves", "pid", in.pid, "missing", len(in.missing), "lib", in.lib.Name)
+
+	for _, missing := range in.missing {
+		found, err := p.findCrossLibraryMatch(missing)
+		if err != nil {
+			log.Error(p.ctx, "Scanner: Error searching for cross-library matches", "missing", missing.Path, "lib", in.lib.Name, err)
+			continue
+		}
+
+		if found.ID != "" {
+			log.Debug(p.ctx, "Scanner: Found cross-library moved track", "missing", missing.Path, "movedTo", found.Path, "fromLib", in.lib.Name, "toLib", found.LibraryName)
+			err := p.moveMatched(found, missing)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error moving cross-library track", "missing", missing.Path, "movedTo", found.Path, err)
+				continue
+			}
+			p.totalMatched.Add(1)
+		}
+	}
+
+	return in, nil
+}
+
+// findCrossLibraryMatch searches for a missing file in other libraries using two-tier matching
+func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (model.MediaFile, error) {
+	// First tier: Search by MusicBrainz Track ID if available
+	if missing.MbzReleaseTrackID != "" {
+		matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByMBZTrackID(missing, missing.CreatedAt)
+		if err != nil {
+			log.Error(p.ctx, "Scanner: Error searching for recent files by MBZ Track ID", "mbzTrackID", missing.MbzReleaseTrackID, err)
+		} else {
+			// Apply the same matching logic as within-library matching
+			for _, match := range matches {
+				if missing.Equals(match) {
+					return match, nil // Exact match found
+				}
+			}
+
+			// If only one match and it's equivalent, use it
+			if len(matches) == 1 && missing.IsEquivalent(matches[0]) {
+				return matches[0], nil
+			}
+		}
+	}
+
+	// Second tier: Search by intrinsic properties (title, size, suffix, etc.)
+	matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByProperties(missing, missing.CreatedAt)
+	if err != nil {
+		log.Error(p.ctx, "Scanner: Error searching for recent files by properties", "missing", missing.Path, err)
+		return model.MediaFile{}, err
+	}
+
+	// Apply the same matching logic as within-library matching
+	for _, match := range matches {
+		if missing.Equals(match) {
+			return match, nil // Exact match found
+		}
+	}
+
+	// If only one match and it's equivalent, use it
+	if len(matches) == 1 && missing.IsEquivalent(matches[0]) {
+		return matches[0], nil
+	}
+
+	return model.MediaFile{}, nil
 }
 
 func (p *phaseMissingTracks) moveMatched(mt, ms model.MediaFile) error {

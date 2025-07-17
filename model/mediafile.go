@@ -368,6 +368,8 @@ type MediaFileRepository interface {
 	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int) (MediaFileCursor, error)
+	FindRecentFilesByMBZTrackID(missing MediaFile, since time.Time) (MediaFiles, error)
+	FindRecentFilesByProperties(missing MediaFile, since time.Time) (MediaFiles, error)
 
 	AnnotatedRepository
 	BookmarkableRepository
