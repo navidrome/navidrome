@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 
@@ -185,6 +187,125 @@ func (m *MockLibraryRepo) EntityName() string {
 
 func (m *MockLibraryRepo) NewInstance() interface{} {
 	return &model.Library{}
+}
+
+// REST Repository methods (string-based IDs)
+
+func (m *MockLibraryRepo) Save(entity interface{}) (string, error) {
+	lib := entity.(*model.Library)
+	if m.Err != nil {
+		return "", m.Err
+	}
+
+	// Validate required fields
+	if lib.Name == "" {
+		return "", &rest.ValidationError{Errors: map[string]string{"name": "library name is required"}}
+	}
+	if lib.Path == "" {
+		return "", &rest.ValidationError{Errors: map[string]string{"path": "library path is required"}}
+	}
+
+	// Generate ID if not set
+	if lib.ID == 0 {
+		lib.ID = len(m.Data) + 1
+	}
+	if m.Data == nil {
+		m.Data = make(map[int]model.Library)
+	}
+	m.Data[lib.ID] = *lib
+	return strconv.Itoa(lib.ID), nil
+}
+
+func (m *MockLibraryRepo) Update(id string, entity interface{}, cols ...string) error {
+	lib := entity.(*model.Library)
+	if m.Err != nil {
+		return m.Err
+	}
+
+	// Validate required fields
+	if lib.Name == "" {
+		return &rest.ValidationError{Errors: map[string]string{"name": "library name is required"}}
+	}
+	if lib.Path == "" {
+		return &rest.ValidationError{Errors: map[string]string{"path": "library path is required"}}
+	}
+
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return errors.New("invalid ID format")
+	}
+	if _, exists := m.Data[idInt]; !exists {
+		return rest.ErrNotFound
+	}
+	lib.ID = idInt
+	m.Data[idInt] = *lib
+	return nil
+}
+
+func (m *MockLibraryRepo) DeleteByStringID(id string) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return errors.New("invalid ID format")
+	}
+	if _, exists := m.Data[idInt]; !exists {
+		return rest.ErrNotFound
+	}
+	delete(m.Data, idInt)
+	return nil
+}
+
+// Service-level methods for core.Library interface
+
+func (m *MockLibraryRepo) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	if userID == "non-existent" {
+		return nil, model.ErrNotFound
+	}
+	// Convert map to slice for return
+	var libraries model.Libraries
+	for _, lib := range m.Data {
+		libraries = append(libraries, lib)
+	}
+	// Sort by ID for predictable order
+	slices.SortFunc(libraries, func(a, b model.Library) int {
+		return a.ID - b.ID
+	})
+	return libraries, nil
+}
+
+func (m *MockLibraryRepo) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	if userID == "non-existent" {
+		return model.ErrNotFound
+	}
+	if userID == "admin-1" {
+		return fmt.Errorf("%w: cannot manually assign libraries to admin users", model.ErrValidation)
+	}
+	if len(libraryIDs) == 0 {
+		return fmt.Errorf("%w: at least one library must be assigned to non-admin users", model.ErrValidation)
+	}
+	// Validate all library IDs exist
+	for _, id := range libraryIDs {
+		if _, exists := m.Data[id]; !exists {
+			return fmt.Errorf("%w: library ID %d does not exist", model.ErrValidation, id)
+		}
+	}
+	return nil
+}
+
+func (m *MockLibraryRepo) ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	// For testing purposes, allow access to all libraries
+	return nil
 }
 
 var _ model.LibraryRepository = (*MockLibraryRepo)(nil)
