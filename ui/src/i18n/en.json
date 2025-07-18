@@ -284,10 +284,6 @@
         "songCount": "Songs",
         "albumCount": "Albums",
         "artistCount": "Artists",
-        "scanCount": "Scan Count",
-        "missingFileCount": "Missing Files",
-        "size": "Size",
-        "duration": "Duration",
         "totalSongs": "Songs",
         "totalAlbums": "Albums",
         "totalArtists": "Artists",
@@ -302,8 +298,7 @@
       },
       "sections": {
         "basic": "Basic Information",
-        "statistics": "Statistics",
-        "scan": "Scan Information"
+        "statistics": "Statistics"
       },
       "actions": {
         "scan": "Scan Library",

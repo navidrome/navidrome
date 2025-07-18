@@ -12,6 +12,7 @@
         "artist": "Artista",
         "album": "Álbum",
         "path": "Arquivo",
+        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -57,6 +58,7 @@
         "songCount": "Músicas",
         "playCount": "Execuções",
         "name": "Nome",
+        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -147,19 +149,26 @@
         "currentPassword": "Senha Atual",
         "newPassword": "Nova Senha",
         "token": "Token",
-        "lastAccessAt": "Últ. Acesso"
+        "lastAccessAt": "Últ. Acesso",
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
-        "name": "Alterações no seu nome só serão refletidas no próximo login"
+        "name": "Alterações no seu nome só serão refletidas no próximo login",
+        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão"
       },
       "notifications": {
         "created": "Novo usuário criado",
         "updated": "Usuário atualizado com sucesso",
         "deleted": "Usuário deletado com sucesso"
       },
+      "validation": {
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
+      },
       "message": {
         "listenBrainzToken": "Entre seu token do ListenBrainz",
-        "clickHereForToken": "Clique aqui para obter seu token"
+        "clickHereForToken": "Clique aqui para obter seu token",
+        "selectAllLibraries": "Selecionar todas as bibliotecas",
+        "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
       }
     },
     "player": {
@@ -251,6 +260,7 @@
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
+        "libraryName": "Biblioteca",
         "updatedAt": "Desaparecido em"
       },
       "actions": {
@@ -261,6 +271,58 @@
         "removed": "Arquivo(s) ausente(s) removido(s)"
       },
       "empty": "Nenhum arquivo ausente"
+    },
+    "library": {
+      "name": "Biblioteca |||| Bibliotecas",
+      "fields": {
+        "name": "Nome",
+        "path": "Caminho",
+        "remotePath": "Caminho Remoto",
+        "lastScanAt": "Último Scan",
+        "songCount": "Músicas",
+        "albumCount": "Álbuns",
+        "artistCount": "Artistas",
+        "totalSongs": "Músicas",
+        "totalAlbums": "Álbuns",
+        "totalArtists": "Artistas",
+        "totalFolders": "Pastas",
+        "totalFiles": "Arquivos",
+        "totalMissingFiles": "Arquivos Ausentes",
+        "totalSize": "Tamanho Total",
+        "totalDuration": "Duração",
+        "defaultNewUsers": "Padrão para Novos Usuários",
+        "createdAt": "Data de Criação",
+        "updatedAt": "Últ. Atualização"
+      },
+      "sections": {
+        "basic": "Informações Básicas",
+        "statistics": "Estatísticas"
+      },
+      "actions": {
+        "scan": "Scanear Biblioteca",
+        "manageUsers": "Gerenciar Acesso do Usuário",
+        "viewDetails": "Ver Detalhes"
+      },
+      "notifications": {
+        "created": "Biblioteca criada com sucesso",
+        "updated": "Biblioteca atualizada com sucesso",
+        "deleted": "Biblioteca excluída com sucesso",
+        "scanStarted": "Scan da biblioteca iniciada",
+        "scanCompleted": "Scan da biblioteca concluída"
+      },
+      "validation": {
+        "nameRequired": "Nome da biblioteca é obrigatório",
+        "pathRequired": "Caminho da biblioteca é obrigatório",
+        "pathNotDirectory": "Caminho da biblioteca deve ser um diretório",
+        "pathNotFound": "Caminho da biblioteca não encontrado",
+        "pathNotAccessible": "Caminho da biblioteca não está acessível",
+        "pathInvalid": "Caminho da biblioteca inválido"
+      },
+      "messages": {
+        "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
+        "scanInProgress": "Scan em progresso...",
+        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+      }
     }
   },
   "ra": {
@@ -448,6 +510,12 @@
   },
   "menu": {
     "library": "Biblioteca",
+    "librarySelector": {
+      "allLibraries": "Todas as Bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
+      "selectLibraries": "Selecionar Bibliotecas",
+      "none": "Nenhuma"
+    },
     "settings": "Configurações",
     "version": "Versão",
     "theme": "Tema",
@@ -529,7 +597,7 @@
   },
   "activity": {
     "title": "Atividade",
-    "totalScanned": "Total de pastas analisadas",
+    "totalScanned": "Total de pastas scaneadas",
     "quickScan": "Scan rápido",
     "fullScan": "Scan completo",
     "serverUptime": "Uptime do servidor",
