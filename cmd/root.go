@@ -110,7 +110,7 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer()
-		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {

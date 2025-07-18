@@ -34,6 +34,7 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
 	mf.LibraryPath = "music" // Default folder
+	mf.LibraryName = "Music Library"
 	mf.Participants = model.Participants{
 		model.RoleArtist: model.ParticipantList{
 			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
@@ -47,6 +48,8 @@ func mf(mf model.MediaFile) model.MediaFile {
 
 func al(al model.Album) model.Album {
 	al.LibraryID = 1
+	al.LibraryPath = "music"
+	al.LibraryName = "Music Library"
 	al.Discs = model.Discs{}
 	al.Tags = model.Tags{}
 	al.Participants = model.Participants{}
@@ -138,14 +141,13 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	//gr := NewGenreRepository(ctx, conn)
-	//for i := range testGenres {
-	//	g := testGenres[i]
-	//	err := gr.Put(&g)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
+	// Associate users with library 1 (default test library)
+	for i := range testUsers {
+		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
@@ -160,6 +162,15 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Associate artists with library 1 (default test library)
+	lr := NewLibraryRepository(ctx, conn)
+	for i := range testArtists {
+		err := lr.AddArtist(1, testArtists[i].ID)
 		if err != nil {
 			panic(err)
 		}
@@ -190,9 +201,9 @@ var _ = BeforeSuite(func() {
 		Public:    true,
 		SongCount: 2,
 	}
-	plsBest.AddTracks([]string{"1001", "1003"})
+	plsBest.AddMediaFilesByID([]string{"1001", "1003"})
 	plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
-	plsCool.AddTracks([]string{"1004"})
+	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
 	pr := NewPlaylistRepository(ctx, conn)

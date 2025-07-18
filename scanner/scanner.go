@@ -28,6 +28,7 @@ type scanState struct {
 	progress        chan<- *ProgressInfo
 	fullScan        bool
 	changesDetected atomic.Bool
+	libraries       model.Libraries // Store libraries list for consistency across phases
 }
 
 func (s *scanState) sendProgress(info *ProgressInfo) {
@@ -63,6 +64,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
 		return
 	}
+	state.libraries = libs
 
 	log.Info(ctx, "Scanner: Starting scan", "fullScan", state.fullScan, "numLibraries", len(libs))
 
@@ -111,7 +113,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		s.runRefreshStats(ctx, &state),
 
 		// Update last_scan_completed_at for all libraries
-		s.runUpdateLibraries(ctx, libs, &state),
+		s.runUpdateLibraries(ctx, &state),
 
 		// Optimize DB
 		s.runOptimize(ctx),
@@ -186,11 +188,11 @@ func (s *scannerImpl) runOptimize(ctx context.Context) func() error {
 	}
 }
 
-func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries, state *scanState) func() error {
+func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) func() error {
 	return func() error {
 		start := time.Now()
 		return s.ds.WithTx(func(tx model.DataStore) error {
-			for _, lib := range libs {
+			for _, lib := range state.libraries {
 				err := tx.Library(ctx).ScanEnd(lib.ID)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
@@ -216,7 +218,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)
 				}
 			}
-			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(libs))
+			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(state.libraries))
 			return nil
 		}, "scanner: update libraries")
 	}

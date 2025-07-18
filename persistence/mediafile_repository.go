@@ -96,6 +96,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
+		"library_id": libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
@@ -116,6 +117,7 @@ func mediaFileRecentlyAddedSort() string {
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
+	query = r.applyLibraryFilter(query)
 	return r.count(query, options...)
 }
 
@@ -134,10 +136,11 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path").
+	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
-	return r.withBookmark(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
@@ -273,7 +276,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
-	sel := r.newSelect().Columns("media_file.*", "library.path as library_path").
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id").
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
@@ -294,15 +297,57 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	}, nil
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
+// FindRecentFilesByMBZTrackID finds recently added files by MusicBrainz Track ID in other libraries
+func (r *mediaFileRepository) FindRecentFilesByMBZTrackID(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+	sel := r.selectMediaFile().Where(And{
+		NotEq{"media_file.library_id": missing.LibraryID},
+		Eq{"media_file.mbz_release_track_id": missing.MbzReleaseTrackID},
+		NotEq{"media_file.mbz_release_track_id": ""}, // Exclude empty MBZ Track IDs
+		Eq{"media_file.suffix": missing.Suffix},
+		Gt{"media_file.created_at": since},
+		Eq{"media_file.missing": false},
+	}).OrderBy("media_file.created_at DESC")
+
+	var res dbMediaFiles
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
+// FindRecentFilesByProperties finds recently added files by intrinsic properties in other libraries
+func (r *mediaFileRepository) FindRecentFilesByProperties(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+	sel := r.selectMediaFile().Where(And{
+		NotEq{"media_file.library_id": missing.LibraryID},
+		Eq{"media_file.title": missing.Title},
+		Eq{"media_file.size": missing.Size},
+		Eq{"media_file.suffix": missing.Suffix},
+		Eq{"media_file.disc_number": missing.DiscNumber},
+		Eq{"media_file.track_number": missing.TrackNumber},
+		Eq{"media_file.album": missing.Album},
+		Eq{"media_file.mbz_release_track_id": ""}, // Exclude files with MBZ Track ID
+		Gt{"media_file.created_at": since},
+		Eq{"media_file.missing": false},
+	}).OrderBy("media_file.created_at DESC")
+
+	var res dbMediaFiles
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
+func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.MediaFiles, error) {
 	var res dbMediaFiles
 	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectMediaFile(), q, []string{"mbz_recording_id", "mbz_release_track_id"}, includeMissing, &res)
+		err := r.searchByMBID(r.selectMediaFile(options...), q, []string{"mbz_recording_id", "mbz_release_track_id"}, includeMissing, &res)
 		if err != nil {
 			return nil, fmt.Errorf("searching media_file by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &res, "title")
+		err := r.doSearch(r.selectMediaFile(options...), q, offset, size, includeMissing, &res, "title")
 		if err != nil {
 			return nil, fmt.Errorf("searching media_file by query %q: %w", q, err)
 		}

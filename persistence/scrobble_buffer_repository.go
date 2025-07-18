@@ -8,6 +8,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/pocketbase/dbx"
 )
 
@@ -82,7 +83,20 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 	if err != nil {
 		return nil, err
 	}
+
+	// Create context with user information for getParticipants call
+	// This is needed because the artist repository requires user context for multi-library support
+	userRepo := NewUserRepository(r.ctx, r.db)
+	user, err := userRepo.Get(res.ScrobbleEntry.UserID)
+	if err != nil {
+		return nil, err
+	}
+	// Temporarily use user context for getParticipants
+	originalCtx := r.ctx
+	r.ctx = request.WithUser(r.ctx, *user)
 	res.ScrobbleEntry.Participants, err = r.getParticipants(&res.ScrobbleEntry.MediaFile)
+	r.ctx = originalCtx // Restore original context
+
 	if err != nil {
 		return nil, err
 	}

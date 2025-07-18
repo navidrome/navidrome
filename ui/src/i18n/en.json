@@ -12,6 +12,7 @@
         "artist": "Artist",
         "album": "Album",
         "path": "File path",
+        "libraryName": "Library",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
@@ -58,6 +59,7 @@
         "playCount": "Plays",
         "size": "Size",
         "name": "Name",
+        "libraryName": "Library",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
@@ -147,19 +149,26 @@
         "changePassword": "Change Password?",
         "currentPassword": "Current Password",
         "newPassword": "New Password",
-        "token": "Token"
+        "token": "Token",
+        "libraries": "Libraries"
       },
       "helperTexts": {
-        "name": "Changes to your name will only be reflected on next login"
+        "name": "Changes to your name will only be reflected on next login",
+        "libraries": "Select specific libraries for this user, or leave empty to use default libraries"
       },
       "notifications": {
         "created": "User created",
         "updated": "User updated",
         "deleted": "User deleted"
       },
+      "validation": {
+        "librariesRequired": "At least one library must be selected for non-admin users"
+      },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",
-        "clickHereForToken": "Click here to get your token"
+        "clickHereForToken": "Click here to get your token",
+        "selectAllLibraries": "Select all libraries",
+        "adminAutoLibraries": "Admin users automatically have access to all libraries"
       }
     },
     "player": {
@@ -254,6 +263,7 @@
       "fields": {
         "path": "Path",
         "size": "Size",
+        "libraryName": "Library",
         "updatedAt": "Disappeared on"
       },
       "actions": {
@@ -262,6 +272,63 @@
       },
       "notifications": {
         "removed": "Missing file(s) removed"
+      }
+    },
+    "library": {
+      "name": "Library |||| Libraries",
+      "fields": {
+        "name": "Name",
+        "path": "Path",
+        "remotePath": "Remote Path",
+        "lastScanAt": "Last Scan",
+        "songCount": "Songs",
+        "albumCount": "Albums",
+        "artistCount": "Artists",
+        "scanCount": "Scan Count",
+        "missingFileCount": "Missing Files",
+        "size": "Size",
+        "duration": "Duration",
+        "totalSongs": "Songs",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artists",
+        "totalFolders": "Folders",
+        "totalFiles": "Files",
+        "totalMissingFiles": "Missing Files",
+        "totalSize": "Total Size",
+        "totalDuration": "Duration",
+        "defaultNewUsers": "Default for New Users",
+        "createdAt": "Created",
+        "updatedAt": "Updated"
+      },
+      "sections": {
+        "basic": "Basic Information",
+        "statistics": "Statistics",
+        "scan": "Scan Information"
+      },
+      "actions": {
+        "scan": "Scan Library",
+        "manageUsers": "Manage User Access",
+        "viewDetails": "View Details"
+      },
+      "notifications": {
+        "created": "Library created successfully",
+        "updated": "Library updated successfully",
+        "deleted": "Library deleted successfully",
+        "scanStarted": "Library scan started",
+        "scanCompleted": "Library scan completed"
+      },
+      "validation": {
+        "nameRequired": "Library name is required",
+        "pathRequired": "Library path is required",
+        "pathNotDirectory": "Library path must be a directory",
+        "pathNotFound": "Library path not found",
+        "pathNotAccessible": "Library path is not accessible",
+        "pathInvalid": "Invalid library path"
+      },
+      "messages": {
+        "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
+        "scanInProgress": "Scan in progress...",
+        "noLibrariesAssigned": "No libraries assigned to this user"
       }
     }
   },
@@ -450,6 +517,12 @@
   },
   "menu": {
     "library": "Library",
+    "librarySelector": {
+      "allLibraries": "All Libraries (%{count})",
+      "multipleLibraries": "%{selected} of %{total} Libraries",
+      "selectLibraries": "Select Libraries",
+      "none": "None"
+    },
     "settings": "Settings",
     "version": "Version",
     "theme": "Theme",
