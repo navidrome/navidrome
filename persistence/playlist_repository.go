@@ -161,7 +161,7 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
 	}
-	pls.Tracks = tracks
+	pls.SetTracks(tracks)
 	return pls, nil
 }
 
