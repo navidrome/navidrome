@@ -245,7 +245,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 }
 
 func (r *libraryRepository) Delete(id int) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return model.ErrNotAuthorized
 	}
 	if id == 1 {

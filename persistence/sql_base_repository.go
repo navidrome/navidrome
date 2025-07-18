@@ -49,25 +49,12 @@ type sqlRepository struct {
 
 const invalidUserId = "-1"
 
-func userId(ctx context.Context) string {
-	if user, ok := request.UserFrom(ctx); !ok {
-		return invalidUserId
-	} else {
-		return user.ID
-	}
-}
-
 func loggedUser(ctx context.Context) *model.User {
 	if user, ok := request.UserFrom(ctx); !ok {
 		return &model.User{ID: invalidUserId}
 	} else {
 		return &user
 	}
-}
-
-func isAdmin(ctx context.Context) bool {
-	user := loggedUser(ctx)
-	return user.IsAdmin
 }
 
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
@@ -224,7 +211,7 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 	}
 
 	// Get user's accessible library IDs
-	userID := userId(r.ctx)
+	userID := loggedUser(r.ctx).ID
 	if userID == invalidUserId {
 		// No user context - return empty result set
 		return sq.Where(Eq{"1": "0"})
@@ -244,7 +231,7 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 func (r sqlRepository) seedKey() string {
 	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
 	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
-	userIDHash := md5.Sum([]byte(userId(r.ctx)))
+	userIDHash := md5.Sum([]byte(loggedUser(r.ctx).ID))
 	return fmt.Sprintf("%s|%x", r.tableName, userIDHash)
 }
 

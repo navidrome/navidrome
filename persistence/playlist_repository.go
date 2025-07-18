@@ -263,7 +263,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + userId(r.ctx) + "')")
+		" AND annotation.user_id = '" + usr.ID + "')")
 	sq = r.addCriteria(sq, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
@@ -380,6 +380,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
 	sel = r.applyLibraryFilter(sel, "f")
+	userID := loggedUser(r.ctx).ID
 	tracksQuery := sel.
 		Columns(
 			"coalesce(starred, 0) as starred",
@@ -395,7 +396,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
 			" AND annotation.item_type = 'media_file'" +
-			" AND annotation.user_id = '" + userId(r.ctx) + "')").
+			" AND annotation.user_id = '" + userID + "')").
 		Join("media_file f on f.id = media_file_id").
 		Join("library on f.library_id = library.id").
 		Where(Eq{"playlist_id": id})
