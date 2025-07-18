@@ -16,10 +16,11 @@ func CreateMockAlbumRepo() *MockAlbumRepo {
 
 type MockAlbumRepo struct {
 	model.AlbumRepository
-	Data    map[string]*model.Album
-	All     model.Albums
-	Err     bool
-	Options model.QueryOptions
+	Data                    map[string]*model.Album
+	All                     model.Albums
+	Err                     bool
+	Options                 model.QueryOptions
+	ReassignAnnotationCalls map[string]string // prevID -> newID
 }
 
 func (m *MockAlbumRepo) SetError(err bool) {
@@ -111,6 +112,46 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 }
 
 func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	return nil
+}
+
+func (m *MockAlbumRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Albums, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("unexpected error")
+	}
+	// Simple mock implementation - just return all albums for testing
+	return m.All, nil
+}
+
+// ReassignAnnotation reassigns annotations from one album to another
+func (m *MockAlbumRepo) ReassignAnnotation(prevID string, newID string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	// Mock implementation - track the reassignment calls
+	if m.ReassignAnnotationCalls == nil {
+		m.ReassignAnnotationCalls = make(map[string]string)
+	}
+	m.ReassignAnnotationCalls[prevID] = newID
+	return nil
+}
+
+// SetRating sets the rating for an album
+func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	return nil
+}
+
+// SetStar sets the starred status for albums
+func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}

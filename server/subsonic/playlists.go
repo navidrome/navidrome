@@ -76,7 +76,7 @@ func (api *Router) create(ctx context.Context, playlistId, name string, ids []st
 			pls.OwnerID = owner.ID
 		}
 		pls.Tracks = nil
-		pls.AddTracks(ids)
+		pls.AddMediaFilesByID(ids)
 
 		err = tx.Playlist(ctx).Put(pls)
 		playlistId = pls.ID

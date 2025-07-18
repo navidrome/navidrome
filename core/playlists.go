@@ -326,7 +326,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		if needsTrackRefresh {
 			pls, err = repo.GetWithTracks(playlistID, true, false)
 			pls.RemoveTracks(idxToRemove)
-			pls.AddTracks(idsToAdd)
+			pls.AddMediaFilesByID(idsToAdd)
 		} else {
 			if len(idsToAdd) > 0 {
 				_, err = tracks.Add(idsToAdd)

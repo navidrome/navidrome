@@ -49,25 +49,12 @@ type sqlRepository struct {
 
 const invalidUserId = "-1"
 
-func userId(ctx context.Context) string {
-	if user, ok := request.UserFrom(ctx); !ok {
-		return invalidUserId
-	} else {
-		return user.ID
-	}
-}
-
 func loggedUser(ctx context.Context) *model.User {
 	if user, ok := request.UserFrom(ctx); !ok {
-		return &model.User{}
+		return &model.User{ID: invalidUserId}
 	} else {
 		return &user
 	}
-}
-
-func isAdmin(ctx context.Context) bool {
-	user := loggedUser(ctx)
-	return user.IsAdmin
 }
 
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
@@ -199,10 +186,52 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+func (r *sqlRepository) withTableName(filter filterFunc) filterFunc {
+	return func(field string, value any) Sqlizer {
+		if r.tableName != "" {
+			field = r.tableName + "." + field
+		}
+		return filter(field, value)
+	}
+}
+
+// libraryIdFilter is a filter function to be added to resources that have a library_id column.
+func libraryIdFilter(_ string, value interface{}) Sqlizer {
+	return Eq{"library_id": value}
+}
+
+// applyLibraryFilter adds library filtering to queries for tables that have a library_id column
+// This ensures users only see content from libraries they have access to
+func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return sq
+	}
+
+	// Get user's accessible library IDs
+	userID := loggedUser(r.ctx).ID
+	if userID == invalidUserId {
+		// No user context - return empty result set
+		return sq.Where(Eq{"1": "0"})
+	}
+
+	table := r.tableName
+	if len(tableName) > 0 {
+		table = tableName[0]
+	}
+
+	// Use subquery to filter by user's library access
+	// This approach doesn't require DataStore in context
+	return sq.Where(Expr(table+".library_id IN ("+
+		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", userID))
+}
+
 func (r sqlRepository) seedKey() string {
 	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
 	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
-	userIDHash := md5.Sum([]byte(userId(r.ctx)))
+	userIDHash := md5.Sum([]byte(loggedUser(r.ctx).ID))
 	return fmt.Sprintf("%s|%x", r.tableName, userIDHash)
 }
 

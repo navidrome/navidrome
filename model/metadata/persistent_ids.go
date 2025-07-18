@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"cmp"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -21,13 +22,15 @@ type hashFunc = func(...string) string
 // Attributes can be either tags or some processed values like folder, albumid, albumartistid, etc.
 // For each field, it gets all its attributes values and concatenates them, then hashes the result.
 // If a field is empty, it is skipped and the function looks for the next field.
-func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec string) string {
-	var getPID func(mf model.MediaFile, md Metadata, spec string) string
-	getAttr := func(mf model.MediaFile, md Metadata, attr string) string {
+type getPIDFunc = func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string
+
+func createGetPID(hash hashFunc) getPIDFunc {
+	var getPID getPIDFunc
+	getAttr := func(mf model.MediaFile, md Metadata, attr string, prependLibId bool) string {
 		attr = strings.TrimSpace(strings.ToLower(attr))
 		switch attr {
 		case "albumid":
-			return getPID(mf, md, conf.Server.PID.Album)
+			return getPID(mf, md, conf.Server.PID.Album, prependLibId)
 		case "folder":
 			return filepath.Dir(mf.Path)
 		case "albumartistid":
@@ -39,14 +42,14 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 		}
 		return md.String(model.TagName(attr))
 	}
-	getPID = func(mf model.MediaFile, md Metadata, spec string) string {
+	getPID = func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
 		pid := ""
 		fields := strings.Split(spec, "|")
 		for _, field := range fields {
 			attributes := strings.Split(field, ",")
 			hasValue := false
 			values := slice.Map(attributes, func(attr string) string {
-				v := getAttr(mf, md, attr)
+				v := getAttr(mf, md, attr, prependLibId)
 				if v != "" {
 					hasValue = true
 				}
@@ -57,32 +60,35 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 				break
 			}
 		}
+		if prependLibId {
+			pid = fmt.Sprintf("%d\\%s", mf.LibraryID, pid)
+		}
 		return hash(pid)
 	}
 
-	return func(mf model.MediaFile, md Metadata, spec string) string {
+	return func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
 		switch spec {
 		case "track_legacy":
-			return legacyTrackID(mf)
+			return legacyTrackID(mf, prependLibId)
 		case "album_legacy":
-			return legacyAlbumID(md)
+			return legacyAlbumID(mf, md, prependLibId)
 		}
-		return getPID(mf, md, spec)
+		return getPID(mf, md, spec, prependLibId)
 	}
 }
 
 func (md Metadata) trackPID(mf model.MediaFile) string {
-	return createGetPID(id.NewHash)(mf, md, conf.Server.PID.Track)
+	return createGetPID(id.NewHash)(mf, md, conf.Server.PID.Track, true)
 }
 
-func (md Metadata) albumID(mf model.MediaFile) string {
-	return createGetPID(id.NewHash)(mf, md, conf.Server.PID.Album)
+func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
+	return createGetPID(id.NewHash)(mf, md, pidConf, true)
 }
 
 // BFR Must be configurable?
 func (md Metadata) artistID(name string) string {
 	mf := model.MediaFile{AlbumArtist: name}
-	return createGetPID(id.NewHash)(mf, md, "albumartistid")
+	return createGetPID(id.NewHash)(mf, md, "albumartistid", false)
 }
 
 func (md Metadata) mapTrackTitle() string {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -473,4 +475,41 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses
 		StructuredLyrics: lyricList,
 	}
 	return res
+}
+
+// getUserAccessibleLibraries returns the list of libraries the current user has access to.
+func getUserAccessibleLibraries(ctx context.Context) []model.Library {
+	user := getUser(ctx)
+	return user.Libraries
+}
+
+// selectedMusicFolderIds retrieves the music folder IDs from the request parameters.
+// If no IDs are provided, it returns all libraries the user has access to (based on the user found in the context).
+// If the parameter is required and not present, it returns an error.
+// If any of the provided library IDs are invalid (don't exist or user doesn't have access), returns ErrorDataNotFound.
+func selectedMusicFolderIds(r *http.Request, required bool) ([]int, error) {
+	p := req.Params(r)
+	musicFolderIds, err := p.Ints("musicFolderId")
+
+	// If the parameter is not present, it returns an error if it is required.
+	if errors.Is(err, req.ErrMissingParam) && required {
+		return nil, err
+	}
+
+	// Get user's accessible libraries for validation
+	libraries := getUserAccessibleLibraries(r.Context())
+	accessibleLibraryIds := slice.Map(libraries, func(lib model.Library) int { return lib.ID })
+
+	if len(musicFolderIds) > 0 {
+		// Validate all provided library IDs - if any are invalid, return an error
+		for _, id := range musicFolderIds {
+			if !slices.Contains(accessibleLibraryIds, id) {
+				return nil, newError(responses.ErrorDataNotFound, "Library %d not found or not accessible", id)
+			}
+		}
+		return musicFolderIds, nil
+	}
+
+	// If no musicFolderId is provided, return all libraries the user has access to.
+	return accessibleLibraryIds, nil
 }

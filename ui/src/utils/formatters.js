@@ -25,6 +25,42 @@ export const formatDuration = (d) => {
   return `${days > 0 ? days + ':' : ''}${f}`
 }
 
+export const formatDuration2 = (totalSeconds) => {
+  if (totalSeconds == null || totalSeconds < 0) {
+    return '0s'
+  }
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = Math.floor(totalSeconds % 60)
+
+  const parts = []
+
+  if (days > 0) {
+    // When days are present, show only d h m (3 levels max)
+    parts.push(`${days}d`)
+    if (hours > 0) {
+      parts.push(`${hours}h`)
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes}m`)
+    }
+  } else {
+    // When no days, show h m s (3 levels max)
+    if (hours > 0) {
+      parts.push(`${hours}h`)
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes}m`)
+    }
+    if (seconds > 0 || parts.length === 0) {
+      parts.push(`${seconds}s`)
+    }
+  }
+
+  return parts.join(' ')
+}
+
 export const formatShortDuration = (ns) => {
   // Convert nanoseconds to seconds
   const seconds = ns / 1e9
@@ -57,4 +93,9 @@ export const formatFullDate = (date, locale) => {
     return ''
   }
   return new Date(date).toLocaleDateString(locale, options)
+}
+
+export const formatNumber = (value) => {
+  if (value === null || value === undefined) return '0'
+  return value.toLocaleString()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -233,6 +234,332 @@ var _ = Describe("UserRepository", func() {
 			var newUser = &model.User{ID: "2", UserName: "newuser"}
 			err := validateUsernameUnique(repo, newUser)
 			Expect(err).To(MatchError("fake error"))
+		})
+	})
+
+	Describe("Library Association Methods", func() {
+		var userID string
+		var library1, library2 model.Library
+
+		BeforeEach(func() {
+			// Create a test user first to satisfy foreign key constraints
+			testUser := model.User{
+				ID:          "test-user-id",
+				UserName:    "testuser",
+				Name:        "Test User",
+				Email:       "test@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+			Expect(repo.Put(&testUser)).To(BeNil())
+			userID = testUser.ID
+
+			library1 = model.Library{ID: 0, Name: "Library 500", Path: "/path/500"}
+			library2 = model.Library{ID: 0, Name: "Library 501", Path: "/path/501"}
+
+			// Create test libraries
+			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			Expect(libRepo.Put(&library1)).To(BeNil())
+			Expect(libRepo.Put(&library2)).To(BeNil())
+		})
+
+		AfterEach(func() {
+			// Clean up user-library associations to ensure test isolation
+			_ = repo.SetUserLibraries(userID, []int{})
+
+			// Clean up test libraries to ensure isolation between test groups
+			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+		})
+
+		Describe("GetUserLibraries", func() {
+			It("returns empty list when user has no library associations", func() {
+				libraries, err := repo.GetUserLibraries("non-existent-user")
+				Expect(err).To(BeNil())
+				Expect(libraries).To(HaveLen(0))
+			})
+
+			It("returns user's associated libraries", func() {
+				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				Expect(err).To(BeNil())
+
+				libraries, err := repo.GetUserLibraries(userID)
+				Expect(err).To(BeNil())
+				Expect(libraries).To(HaveLen(2))
+
+				libIDs := []int{libraries[0].ID, libraries[1].ID}
+				Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+			})
+		})
+
+		Describe("SetUserLibraries", func() {
+			It("sets user's library associations", func() {
+				libraryIDs := []int{library1.ID, library2.ID}
+				err := repo.SetUserLibraries(userID, libraryIDs)
+				Expect(err).To(BeNil())
+
+				libraries, err := repo.GetUserLibraries(userID)
+				Expect(err).To(BeNil())
+				Expect(libraries).To(HaveLen(2))
+			})
+
+			It("replaces existing associations", func() {
+				// Set initial associations
+				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				Expect(err).To(BeNil())
+
+				// Replace with just one library
+				err = repo.SetUserLibraries(userID, []int{library1.ID})
+				Expect(err).To(BeNil())
+
+				libraries, err := repo.GetUserLibraries(userID)
+				Expect(err).To(BeNil())
+				Expect(libraries).To(HaveLen(1))
+				Expect(libraries[0].ID).To(Equal(library1.ID))
+			})
+
+			It("removes all associations when passed empty slice", func() {
+				// Set initial associations
+				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				Expect(err).To(BeNil())
+
+				// Remove all
+				err = repo.SetUserLibraries(userID, []int{})
+				Expect(err).To(BeNil())
+
+				libraries, err := repo.GetUserLibraries(userID)
+				Expect(err).To(BeNil())
+				Expect(libraries).To(HaveLen(0))
+			})
+		})
+	})
+
+	Describe("Admin User Auto-Assignment", func() {
+		var (
+			libRepo         model.LibraryRepository
+			library1        model.Library
+			library2        model.Library
+			initialLibCount int
+		)
+
+		BeforeEach(func() {
+			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+
+			// Count initial libraries
+			existingLibs, err := libRepo.GetAll()
+			Expect(err).To(BeNil())
+			initialLibCount = len(existingLibs)
+
+			library1 = model.Library{ID: 0, Name: "Admin Test Library 1", Path: "/admin/test/path1"}
+			library2 = model.Library{ID: 0, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
+
+			// Create test libraries
+			Expect(libRepo.Put(&library1)).To(BeNil())
+			Expect(libRepo.Put(&library2)).To(BeNil())
+		})
+
+		AfterEach(func() {
+			// Clean up test libraries and their associations
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+
+			// Clean up user-library associations for these test libraries
+			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+		})
+
+		It("automatically assigns all libraries to admin users when created", func() {
+			adminUser := model.User{
+				ID:          "admin-user-id-1",
+				UserName:    "adminuser1",
+				Name:        "Admin User",
+				Email:       "admin1@example.com",
+				NewPassword: "password",
+				IsAdmin:     true,
+			}
+
+			err := repo.Put(&adminUser)
+			Expect(err).To(BeNil())
+
+			// Admin should automatically have access to all libraries (including existing ones)
+			libraries, err := repo.GetUserLibraries(adminUser.ID)
+			Expect(err).To(BeNil())
+			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
+
+			libIDs := make([]int, len(libraries))
+			for i, lib := range libraries {
+				libIDs[i] = lib.ID
+			}
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+		})
+
+		It("automatically assigns all libraries to admin users when updated", func() {
+			// Create regular user first
+			regularUser := model.User{
+				ID:          "regular-user-id-1",
+				UserName:    "regularuser1",
+				Name:        "Regular User",
+				Email:       "regular1@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+
+			err := repo.Put(&regularUser)
+			Expect(err).To(BeNil())
+
+			// Give them access to just one library
+			err = repo.SetUserLibraries(regularUser.ID, []int{library1.ID})
+			Expect(err).To(BeNil())
+
+			// Promote to admin
+			regularUser.IsAdmin = true
+			err = repo.Put(&regularUser)
+			Expect(err).To(BeNil())
+
+			// Should now have access to all libraries (including existing ones)
+			libraries, err := repo.GetUserLibraries(regularUser.ID)
+			Expect(err).To(BeNil())
+			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
+
+			libIDs := make([]int, len(libraries))
+			for i, lib := range libraries {
+				libIDs[i] = lib.ID
+			}
+			// Should include our test libraries plus all existing ones
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+		})
+
+		It("assigns default libraries to regular users", func() {
+			regularUser := model.User{
+				ID:          "regular-user-id-2",
+				UserName:    "regularuser2",
+				Name:        "Regular User",
+				Email:       "regular2@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+
+			err := repo.Put(&regularUser)
+			Expect(err).To(BeNil())
+
+			// Regular user should be assigned to default libraries (library ID 1 from migration)
+			libraries, err := repo.GetUserLibraries(regularUser.ID)
+			Expect(err).To(BeNil())
+			Expect(libraries).To(HaveLen(1))
+			Expect(libraries[0].ID).To(Equal(1))
+			Expect(libraries[0].DefaultNewUsers).To(BeTrue())
+		})
+	})
+
+	Describe("Libraries Field Population", func() {
+		var (
+			libRepo  model.LibraryRepository
+			library1 model.Library
+			library2 model.Library
+			testUser model.User
+		)
+
+		BeforeEach(func() {
+			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			library1 = model.Library{ID: 0, Name: "Field Test Library 1", Path: "/field/test/path1"}
+			library2 = model.Library{ID: 0, Name: "Field Test Library 2", Path: "/field/test/path2"}
+
+			// Create test libraries
+			Expect(libRepo.Put(&library1)).To(BeNil())
+			Expect(libRepo.Put(&library2)).To(BeNil())
+
+			// Create test user
+			testUser = model.User{
+				ID:          "field-test-user",
+				UserName:    "fieldtestuser",
+				Name:        "Field Test User",
+				Email:       "fieldtest@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+			Expect(repo.Put(&testUser)).To(BeNil())
+
+			// Assign libraries to user
+			Expect(repo.SetUserLibraries(testUser.ID, []int{library1.ID, library2.ID})).To(BeNil())
+		})
+
+		AfterEach(func() {
+			// Clean up test libraries and their associations
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = repo.(*userRepository).delete(squirrel.Eq{"id": testUser.ID})
+
+			// Clean up user-library associations for these test libraries
+			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+		})
+
+		It("populates Libraries field when getting a single user", func() {
+			user, err := repo.Get(testUser.ID)
+			Expect(err).To(BeNil())
+			Expect(user.Libraries).To(HaveLen(2))
+
+			libIDs := []int{user.Libraries[0].ID, user.Libraries[1].ID}
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+
+			// Check that library details are properly populated
+			for _, lib := range user.Libraries {
+				if lib.ID == library1.ID {
+					Expect(lib.Name).To(Equal("Field Test Library 1"))
+					Expect(lib.Path).To(Equal("/field/test/path1"))
+				} else if lib.ID == library2.ID {
+					Expect(lib.Name).To(Equal("Field Test Library 2"))
+					Expect(lib.Path).To(Equal("/field/test/path2"))
+				}
+			}
+		})
+
+		It("populates Libraries field when getting all users", func() {
+			users, err := repo.(*userRepository).GetAll()
+			Expect(err).To(BeNil())
+
+			// Find our test user in the results
+			var foundUser *model.User
+			for i := range users {
+				if users[i].ID == testUser.ID {
+					foundUser = &users[i]
+					break
+				}
+			}
+
+			Expect(foundUser).ToNot(BeNil())
+			Expect(foundUser.Libraries).To(HaveLen(2))
+
+			libIDs := []int{foundUser.Libraries[0].ID, foundUser.Libraries[1].ID}
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+		})
+
+		It("populates Libraries field when finding user by username", func() {
+			user, err := repo.FindByUsername(testUser.UserName)
+			Expect(err).To(BeNil())
+			Expect(user.Libraries).To(HaveLen(2))
+
+			libIDs := []int{user.Libraries[0].ID, user.Libraries[1].ID}
+			Expect(libIDs).To(ContainElements(library1.ID, library2.ID))
+		})
+
+		It("returns default Libraries array for new regular users", func() {
+			// Create a user with no explicit library associations - should get default libraries
+			userWithoutLibs := model.User{
+				ID:          "no-libs-user",
+				UserName:    "nolibsuser",
+				Name:        "No Libs User",
+				Email:       "nolibs@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+			Expect(repo.Put(&userWithoutLibs)).To(BeNil())
+			defer func() {
+				_ = repo.(*userRepository).delete(squirrel.Eq{"id": userWithoutLibs.ID})
+			}()
+
+			user, err := repo.Get(userWithoutLibs.ID)
+			Expect(err).To(BeNil())
+			Expect(user.Libraries).ToNot(BeNil())
+			// Regular users should be assigned to default libraries (library ID 1 from migration)
+			Expect(user.Libraries).To(HaveLen(1))
+			Expect(user.Libraries[0].ID).To(Equal(1))
 		})
 	})
 })

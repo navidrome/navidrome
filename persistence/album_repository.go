@@ -123,6 +123,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
 		"role_total_id":   allRolesFilter,
+		"library_id":      libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
@@ -184,9 +185,10 @@ func allRolesFilter(_ string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelect()
-	sql = r.withAnnotation(sql, "album.id")
-	return r.count(sql, options...)
+	query := r.newSelect()
+	query = r.withAnnotation(query, "album.id")
+	query = r.applyLibraryFilter(query)
+	return r.count(query, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
@@ -216,8 +218,10 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("album.*")
-	return r.withAnnotation(sql, "album.id")
+	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
+		LeftJoin("library on album.library_id = library.id")
+	sql = r.withAnnotation(sql, "album.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
@@ -291,7 +295,6 @@ func (r *albumRepository) TouchByMissingFolder() (int64, error) {
 // It does not need to load participants, as they are not used by the scanner.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	query := r.selectAlbum().
-		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
 			ConcatExpr("album.imported_at > library.last_scan_at"),
@@ -346,15 +349,15 @@ func (r *albumRepository) purgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
+func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Albums, error) {
 	var res dbAlbums
 	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectAlbum(), q, []string{"mbz_album_id", "mbz_release_group_id"}, includeMissing, &res)
+		err := r.searchByMBID(r.selectAlbum(options...), q, []string{"mbz_album_id", "mbz_release_group_id"}, includeMissing, &res)
 		if err != nil {
 			return nil, fmt.Errorf("searching album by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectAlbum(), q, offset, size, includeMissing, &res, "name")
+		err := r.doSearch(r.selectAlbum(options...), q, offset, size, includeMissing, &res, "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching album by query %q: %w", q, err)
 		}

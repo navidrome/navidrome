@@ -78,7 +78,7 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	GetIndex(includeMissing bool, roles ...Role) (ArtistIndexes, error)
+	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
 	RefreshPlayCounts() (int64, error)
