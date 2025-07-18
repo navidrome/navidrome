@@ -79,13 +79,13 @@ var _ = Describe("PlaylistRepository", func() {
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
 		newPls := model.Playlist{Name: "Great!", OwnerID: "userid"}
-		newPls.AddTracks([]string{"1004", "1003"})
+		newPls.AddMediaFilesByID([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
 		Expect(repo.Put(&newPls)).To(BeNil())
 
 		By("adds repeated songs to a playlist and keeps the order")
-		newPls.AddTracks([]string{"1004"})
+		newPls.AddMediaFilesByID([]string{"1004"})
 		Expect(repo.Put(&newPls)).To(BeNil())
 		saved, _ := repo.GetWithTracks(newPls.ID, true, false)
 		Expect(saved.Tracks).To(HaveLen(3))

@@ -72,7 +72,7 @@ func (pls *Playlist) ToM3U8() string {
 	return pls.MediaFiles().ToM3U8(pls.Name, true)
 }
 
-func (pls *Playlist) AddTracks(mediaFileIds []string) {
+func (pls *Playlist) AddMediaFilesByID(mediaFileIds []string) {
 	pos := len(pls.Tracks)
 	for _, mfId := range mediaFileIds {
 		pos++

@@ -201,9 +201,9 @@ var _ = BeforeSuite(func() {
 		Public:    true,
 		SongCount: 2,
 	}
-	plsBest.AddTracks([]string{"1001", "1003"})
+	plsBest.AddMediaFilesByID([]string{"1001", "1003"})
 	plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
-	plsCool.AddTracks([]string{"1004"})
+	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
 	pr := NewPlaylistRepository(ctx, conn)
