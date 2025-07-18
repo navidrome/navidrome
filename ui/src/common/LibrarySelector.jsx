@@ -28,11 +28,11 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   chip: {
-    borderRadius: theme.spacing(1), // Less rounded corners to better match search input
-    height: theme.spacing(4.8), // Slightly reduce height to better match search input
-    fontSize: '1rem', // Match sidebar menu items font size
-    fontWeight: 'normal', // Match sidebar menu items font weight
-    minWidth: '210px', // Ensure minimum width
+    borderRadius: theme.spacing(1),
+    height: theme.spacing(4.8),
+    fontSize: '1rem',
+    fontWeight: 'normal',
+    minWidth: '210px',
     justifyContent: 'flex-start',
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
@@ -61,8 +61,8 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 0,
   },
   masterCheckbox: {
-    padding: '7px', // Match the default Material-UI checkbox padding
-    marginLeft: '-9px', // Negative margin to align with FormControlLabel checkboxes
+    padding: '7px',
+    marginLeft: '-9px',
     marginRight: 0,
   },
 }))

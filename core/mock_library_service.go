@@ -20,7 +20,6 @@ type MockLibraryRestAdapter struct {
 }
 
 // NewMockLibraryService creates a new mock library service for testing
-// This replaces the old MockLibraryService with a much simpler implementation
 func NewMockLibraryService() Library {
 	repo := &tests.MockLibraryRepo{
 		Data: make(map[int]model.Library),
@@ -37,7 +36,7 @@ func (m *MockLibraryWrapper) NewRepository(ctx context.Context) rest.Repository 
 	return &MockLibraryRestAdapter{MockLibraryRepo: m.MockLibraryRepo}
 }
 
-// Rest.Repository interface implementation
+// rest.Repository interface implementation
 
 func (a *MockLibraryRestAdapter) Delete(id string) error {
 	return a.DeleteByStringID(id)

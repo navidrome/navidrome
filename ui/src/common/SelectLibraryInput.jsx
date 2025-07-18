@@ -16,7 +16,7 @@ import { makeStyles } from '@material-ui/core'
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    width: '960px', // MD breakpoint width
+    width: '960px',
     maxWidth: '100%',
   },
   headerContainer: {
@@ -26,12 +26,12 @@ const useStyles = makeStyles((theme) => ({
     paddingLeft: theme.spacing(1),
   },
   masterCheckbox: {
-    padding: '7px', // Match the default Material-UI checkbox padding
-    marginLeft: '-9px', // Negative margin to align with FormControlLabel checkboxes
+    padding: '7px',
+    marginLeft: '-9px',
     marginRight: theme.spacing(1),
   },
   libraryList: {
-    height: '120px', // 3 rows of libraries
+    height: '120px',
     overflow: 'auto',
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,

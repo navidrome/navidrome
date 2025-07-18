@@ -22,8 +22,6 @@ func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectB
 	return query.
 		LeftJoin("bookmark on (" +
 			"bookmark.item_id = " + idField +
-			// item_ids are unique across different item_types, so the clause below is not needed
-			//" AND bookmark.item_type = '" + r.tableName + "'" +
 			" AND bookmark.user_id = '" + userID + "')").
 		Columns("coalesce(position, 0) as bookmark_position")
 }
