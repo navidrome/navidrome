@@ -68,9 +68,6 @@ func (a *dbArtist) PostScan() error {
 					continue
 				}
 
-				if _, ok := a.Artist.Stats[role]; !ok {
-					a.Artist.Stats[role] = model.ArtistStats{}
-				}
 				current := a.Artist.Stats[role]
 				current.Size += artistStats.Size
 				current.SongCount += artistStats.SongCount

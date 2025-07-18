@@ -130,7 +130,9 @@ func (r *userRepository) Put(u *model.User) error {
 	if err != nil {
 		return err
 	}
-	if count == 0 {
+
+	isNewUser := count == 0
+	if isNewUser {
 		values["created_at"] = time.Now()
 		insert := Insert(r.tableName).SetMap(values)
 		_, err = r.executeSQL(insert)
@@ -148,7 +150,7 @@ func (r *userRepository) Put(u *model.User) error {
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign all libraries to admin user: %w", err)
 		}
-	} else if count == 0 { // Only for new regular users
+	} else if isNewUser { // Only for new regular users
 		// Auto-assign default libraries to new regular users
 		sql := Expr(
 			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
