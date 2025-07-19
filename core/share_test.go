@@ -48,5 +48,23 @@ var _ = Describe("Share", func() {
 				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description", "downloadable"))
 			})
 		})
+
+		Describe("Album Contents Label", func() {
+			It("properly qualifies album.id in GetAll filter to avoid SQL ambiguity", func() {
+				wrapper := &shareRepositoryWrapper{ctx: ctx, ds: ds}
+
+				// Set up mock data
+				mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
+				mockAlbumRepo.SetData(model.Albums{
+					{ID: "album1", Name: "Test Album 1"},
+					{ID: "album2", Name: "Test Album 2"},
+				})
+
+				// This should not cause SQL ambiguity errors - the key test is that
+				// the function calls ds.Album().GetAll() with "album.id" qualified filter
+				result := wrapper.contentsLabelFromAlbums("shareID", "album1,album2")
+				Expect(result).To(Equal("Test Album 1, Test Album 2"))
+			})
+		})
 	})
 })
