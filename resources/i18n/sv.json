@@ -35,7 +35,8 @@
         "rawTags": "Omodifierade taggar",
         "bitDepth": "Bitdjup",
         "sampleRate": "Samplingsfrekvens",
-        "missing": "Saknade"
+        "missing": "Saknade",
+        "libraryName": "Bibliotek"
       },
       "actions": {
         "addToQueue": "Lägg till i kön",
@@ -76,7 +77,8 @@
         "media": "Media",
         "mood": "Stämning",
         "date": "Inspelningsdatum",
-        "missing": "Saknade"
+        "missing": "Saknade",
+        "libraryName": "Bibliotek"
       },
       "actions": {
         "playAll": "Spela",
@@ -147,10 +149,12 @@
         "currentPassword": "Nuvarande lösenord",
         "newPassword": "Nytt lösenord",
         "token": "Token",
-        "lastAccessAt": "Senaste åtkomst"
+        "lastAccessAt": "Senaste åtkomst",
+        "libraries": "Bibliotek"
       },
       "helperTexts": {
-        "name": "Ändringar av ditt namn syns först vid nästa inloggning"
+        "name": "Ändringar av ditt namn syns först vid nästa inloggning",
+        "libraries": "Välj ett bibliotek för denna användare eller lämna blankt för standardbibliotek"
       },
       "notifications": {
         "created": "Användare skapad",
@@ -159,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Ange din ListenBrainz användar-token.",
-        "clickHereForToken": "Klicka här för att hämta din token"
+        "clickHereForToken": "Klicka här för att hämta din token",
+        "selectAllLibraries": "Välj alla bibliotek",
+        "adminAutoLibraries": "Administratörer har automatiskt tillgång till alla bibliotek"
+      },
+      "validation": {
+        "librariesRequired": "Minst ett bibliotek måste väljas för icke-administratörer"
       }
     },
     "player": {
@@ -251,7 +260,8 @@
       "fields": {
         "path": "Sökväg",
         "size": "Storlek",
-        "updatedAt": "Försvann"
+        "updatedAt": "Försvann",
+        "libraryName": "Bibliotek"
       },
       "actions": {
         "remove": "Radera",
@@ -261,6 +271,58 @@
         "removed": "Saknade fil(er) borttagna"
       },
       "empty": "Inga saknade filer"
+    },
+    "library": {
+      "name": "Bibliotek |||| Bibliotek",
+      "fields": {
+        "name": "Namn",
+        "path": "Sökväg",
+        "remotePath": "Ta bort sökväg",
+        "lastScanAt": "Senaste scan",
+        "songCount": "Låtar",
+        "albumCount": "Album",
+        "artistCount": "Artister",
+        "totalSongs": "Låtar",
+        "totalAlbums": "Album",
+        "totalArtists": "Artister",
+        "totalFolders": "Mappar",
+        "totalFiles": "Filer",
+        "totalMissingFiles": "Saknade filer",
+        "totalSize": "Sammanlagd storlek",
+        "totalDuration": "Längd",
+        "defaultNewUsers": "Standard för nya användare",
+        "createdAt": "Skapad",
+        "updatedAt": "Uppdaterad"
+      },
+      "sections": {
+        "basic": "Grundinformation",
+        "statistics": "Statistik"
+      },
+      "actions": {
+        "scan": "Scanna bibliotek",
+        "manageUsers": "Hantera användaråtkomst",
+        "viewDetails": "Se detaljer"
+      },
+      "notifications": {
+        "created": "Biblioteket har skapats",
+        "updated": "Biblioteket har uppdaterats",
+        "deleted": "Biblioteket har raderats",
+        "scanStarted": "Biblioteksscan startad",
+        "scanCompleted": "Biblioteksscan avslutad"
+      },
+      "validation": {
+        "nameRequired": "Biblioteksnamn krävs",
+        "pathRequired": "Bibliotekssökväg krävs",
+        "pathNotDirectory": "Bibliotekssökvägen måste vara en katalog",
+        "pathNotFound": "Bibliotekssökväg hittades inte",
+        "pathNotAccessible": "Bibliotekssökväg inte tillgänglig",
+        "pathInvalid": "Ogiltig bibliotekssökväg"
+      },
+      "messages": {
+        "deleteConfirm": "Är du säker på att du vill ta bort detta bibliotek? Detta raderar all förbunden data och användartillgång.",
+        "scanInProgress": "Scanning pågår...",
+        "noLibrariesAssigned": "Inga bibliotek har tilldelats den här användaren"
+      }
     }
   },
   "ra": {
@@ -473,7 +535,13 @@
     "albumList": "Album",
     "about": "Om",
     "playlists": "Spellistor",
-    "sharedPlaylists": "Delade spellistor"
+    "sharedPlaylists": "Delade spellistor",
+    "librarySelector": {
+      "allLibraries": "Alla bibliotek (%{count})",
+      "multipleLibraries": "%{selected} av %{total} bibliotek",
+      "selectLibraries": "Valda bibliotek",
+      "none": "Inga"
+    }
   },
   "player": {
     "playListsText": "Spela kön",
