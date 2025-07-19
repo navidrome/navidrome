@@ -183,9 +183,15 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	// Stats Format: {"1": {"albumartist": {"songCount": 10, "albumCount": 5, "size": 1024}, "artist": {...}}, "2": {...}}
-	query := r.newSelect(options...).Columns("artist.*",
-		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
+	query := r.newSelect(options...).Columns("artist.*")
+	if loggedUser(r.ctx).ID == invalidUserId {
+		// No user context - return basic artist data without library stats
+		query = query.Columns("'{}' as library_stats_json")
+	} else {
+		// Stats Format: {"1": {"albumartist": {"songCount": 10, "albumCount": 5, "size": 1024}, "artist": {...}}, "2": {...}}
+		query = query.Columns(
+			"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
+	}
 
 	query = r.applyLibraryFilterToArtistQuery(query)
 	query = query.GroupBy("artist.id")

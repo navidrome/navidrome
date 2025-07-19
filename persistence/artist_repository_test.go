@@ -864,6 +864,54 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 	})
+
+	Context("No User Context", func() {
+		Describe("SQL Query Generation", func() {
+			It("should handle no user context gracefully", func() {
+				// Create a repository without any user context
+				ctx := log.NewContext(context.TODO())
+				// No user is set in the context, which will return invalidUserId
+				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+
+				// This should not cause a SQL error about missing library_artist columns
+				query := repo.selectArtist()
+				sql, args, err := query.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).ToNot(BeEmpty())
+
+				// Verify the query contains the empty JSON placeholder instead of attempting to reference library_artist columns
+				Expect(sql).To(ContainSubstring("'{}' as library_stats_json"))
+				// Squirrel parameterizes the WHERE clause, so check for the parameterized version
+				Expect(sql).To(ContainSubstring("WHERE 1 = ?"))
+				Expect(args).ToNot(BeNil())
+				// The parameterized value should be "0"
+				Expect(args).To(ContainElement("0"))
+
+				// Also test that the query can be executed without SQL errors
+				results, err := repo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty()) // Should return empty due to WHERE 1 = 0
+			})
+
+			It("should handle count queries without user context", func() {
+				ctx := log.NewContext(context.TODO())
+				repo := NewArtistRepository(ctx, GetDBXBuilder())
+
+				count, err := repo.CountAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(0))) // Should return 0 due to WHERE 1 = 0
+			})
+
+			It("should handle exists queries without user context", func() {
+				ctx := log.NewContext(context.TODO())
+				repo := NewArtistRepository(ctx, GetDBXBuilder())
+
+				exists, err := repo.Exists("any-id")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exists).To(BeFalse()) // Should return false due to WHERE 1 = 0
+			})
+		})
+	})
 })
 
 // Helper function to create an artist with proper library association.
