@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -21,6 +22,10 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
+
+	// Use admin context for share image requests to bypass library filtering
+	// Share images should be accessible regardless of user library permissions
+	ctx = request.WithUser(ctx, model.User{IsAdmin: true})
 
 	p := req.Params(r)
 	id, _ := p.String(":id")

@@ -149,7 +149,7 @@ func (r *shareRepositoryWrapper) contentsLabelFromArtist(shareID string, ids str
 
 func (r *shareRepositoryWrapper) contentsLabelFromAlbums(shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
+	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.id": idList}})
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""
