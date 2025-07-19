@@ -1,460 +1,628 @@
 {
-    "languageName": "Dansk",
-    "resources": {
-        "song": {
-            "name": "Sang |||| Sange",
-            "fields": {
-                "albumArtist": "Album kunstner",
-                "duration": "Varighed",
-                "trackNumber": "#",
-                "playCount": "Afspilninger",
-                "title": "Titel",
-                "artist": "Kunstner",
-                "album": "Album navn",
-                "path": "Fil placering",
-                "genre": "Genre",
-                "compilation": "Samling",
-                "year": "År",
-                "size": "Fil størrelse",
-                "updatedAt": "Opdateret den",
-                "bitRate": "Bitrate",
-                "discSubtitle": "Plade undernavn",
-                "starred": "Stjernemarkeret",
-                "comment": "Kommentar",
-                "rating": "",
-                "quality": "",
-                "bpm": "",
-                "playDate": "",
-                "channels": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "addToQueue": "Afspil senere",
-                "playNow": "Afspil nu",
-                "addToPlaylist": "Tilføj til afspilningsliste",
-                "shuffleAll": "Bland alle",
-                "download": "Hent",
-                "playNext": "Spil næste",
-                "info": ""
-            }
-        },
-        "album": {
-            "name": "Album |||| Albums",
-            "fields": {
-                "albumArtist": "Album kunstner",
-                "artist": "Kunstner",
-                "duration": "Varighed",
-                "songCount": "Sange",
-                "playCount": "Afspilninger",
-                "name": "Navn",
-                "genre": "Genre",
-                "compilation": "Samling",
-                "year": "År",
-                "updatedAt": "Opdateret den",
-                "comment": "Kommentar",
-                "rating": "",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
-            },
-            "actions": {
-                "playAll": "Afspil",
-                "playNext": "Afspil næste",
-                "addToQueue": "Afspil senere",
-                "shuffle": "Bland",
-                "addToPlaylist": "Tilføj til afspilningsliste",
-                "download": "Hent",
-                "info": "",
-                "share": ""
-            },
-            "lists": {
-                "all": "Alle",
-                "random": "Tilfældig",
-                "recentlyAdded": "Nyligt tilføjet",
-                "recentlyPlayed": "Nyligt Afspillet",
-                "mostPlayed": "Mest Afspillet",
-                "starred": "Stjernemarkeret",
-                "topRated": ""
-            }
-        },
-        "artist": {
-            "name": "Kunstner |||| Kunstnere",
-            "fields": {
-                "name": "Navn",
-                "albumCount": "Antal album",
-                "songCount": "Antal sange",
-                "playCount": "Afspilninger",
-                "rating": "",
-                "genre": "",
-                "size": ""
-            }
-        },
-        "user": {
-            "name": "Bruger |||| Brugere",
-            "fields": {
-                "userName": "Brugernavn",
-                "isAdmin": "Er administrator",
-                "lastLoginAt": "Sidste login",
-                "updatedAt": "Opdateret den",
-                "name": "Navn",
-                "password": "Kodeord",
-                "createdAt": "Oprettet den",
-                "changePassword": "",
-                "currentPassword": "",
-                "newPassword": "",
-                "token": ""
-            },
-            "helperTexts": {
-                "name": ""
-            },
-            "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
-            },
-            "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
-            }
-        },
-        "player": {
-            "name": "Afspiller |||| Afspillere",
-            "fields": {
-                "name": "Navn",
-                "transcodingId": "Omkodning",
-                "maxBitRate": "Maks. bitrate",
-                "client": "Klient",
-                "userName": "Brugernavn",
-                "lastSeen": "Sidst set",
-                "reportRealPath": "",
-                "scrobbleEnabled": ""
-            }
-        },
-        "transcoding": {
-            "name": "Omkodning |||| Omkodninger",
-            "fields": {
-                "name": "Navn",
-                "targetFormat": "Målformat",
-                "defaultBitRate": "Standard bitrate",
-                "command": "Kommando"
-            }
-        },
-        "playlist": {
-            "name": "Afspilningsliste |||| Afspilningslister",
-            "fields": {
-                "name": "Navn",
-                "duration": "Varighed",
-                "ownerName": "Ejer",
-                "public": "Offentlig",
-                "updatedAt": "Opdateret den",
-                "createdAt": "Oprettet den",
-                "songCount": "Sange",
-                "comment": "Kommentar",
-                "sync": "Auto-importér",
-                "path": "Importér fra"
-            },
-            "actions": {
-                "selectPlaylist": "Vælg en afspilningsliste:",
-                "addNewPlaylist": "Opret \"%{name}\"",
-                "export": "Eksporter",
-                "makePublic": "",
-                "makePrivate": ""
-            },
-            "message": {
-                "duplicate_song": "",
-                "song_exist": ""
-            }
-        },
-        "radio": {
-            "name": "",
-            "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "playNow": ""
-            }
-        },
-        "share": {
-            "name": "",
-            "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
-            }
-        }
+  "languageName": "Dansk",
+  "resources": {
+    "song": {
+      "name": "Sang |||| Sange",
+      "fields": {
+        "albumArtist": "Album kunstner",
+        "duration": "Varighed",
+        "trackNumber": "#",
+        "playCount": "Afspilninger",
+        "title": "Titel",
+        "artist": "Kunstner",
+        "album": "Album navn",
+        "path": "Filsti",
+        "genre": "Genre",
+        "compilation": "Opsamling",
+        "year": "År",
+        "size": "Fil størrelse",
+        "updatedAt": "Opdateret den",
+        "bitRate": "Bitrate",
+        "discSubtitle": "Plade undertitel",
+        "starred": "Stjernemarkeret",
+        "comment": "Kommentar",
+        "rating": "Bedømmelse",
+        "quality": "Kvalitet",
+        "bpm": "BPM",
+        "playDate": "Senest afspillet",
+        "channels": "Kanaler",
+        "createdAt": "Tilføjet d.",
+        "grouping": "Gruppering",
+        "mood": "Humør",
+        "participants": "Yderligere deltagere",
+        "tags": "Yderligere tags",
+        "mappedTags": "Mappede tags",
+        "rawTags": "Rå tags",
+        "bitDepth": "Bitdybde",
+        "sampleRate": "Samplingfrekvens",
+        "missing": "Manglende",
+        "libraryName": "Bibliotek"
+      },
+      "actions": {
+        "addToQueue": "Afspil senere",
+        "playNow": "Afspil nu",
+        "addToPlaylist": "Føj til afspilningsliste",
+        "shuffleAll": "Bland alle",
+        "download": "Download",
+        "playNext": "Afspil næste",
+        "info": "Hent info",
+        "showInPlaylist": "Vis i afspilningsliste"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Tak fordi du installerede Navidrome!",
-            "welcome2": "Opret administrator for at begynde",
-            "confirmPassword": "Bekræft kodeord",
-            "buttonCreateAdmin": "Opret administrator",
-            "auth_check_error": "Venligst login for at fortsætte",
-            "user_menu": "Profil",
-            "username": "Brugernavn",
-            "password": "Password",
-            "sign_in": "Log ind",
-            "sign_in_error": "Dit log ind fejlede, prøv igen",
-            "logout": "Log ud"
-        },
-        "validation": {
-            "invalidChars": "Vær venlig kun at benytte bogstaver og tal",
-            "passwordDoesNotMatch": "Kodeord er ikke ens",
-            "required": "Obligatorisk",
-            "minLength": "Skal være mindst %{min} tegn",
-            "maxLength": "Skal være max %{max} tegn",
-            "minValue": "Skal være mindst %{min}",
-            "maxValue": "Skal være max %{max}",
-            "number": "Skal være et nummer",
-            "email": "Skal være en gyldig e-mail-adresse",
-            "oneOf": "Skal være en af: %{options}",
-            "regex": "Skal matche et bestemt format (regexp): %{pattern}",
-            "unique": "",
-            "url": ""
-        },
-        "action": {
-            "add_filter": "Tilføj filter",
-            "add": "Tilføj",
-            "back": "Tilbage",
-            "bulk_actions": "%{smart_count} valgt",
-            "cancel": "Annuller",
-            "clear_input_value": "Ryd",
-            "clone": "Klon",
-            "confirm": "Bekræft",
-            "create": "Opret",
-            "delete": "Slet",
-            "edit": "Rediger",
-            "export": "Eksporter",
-            "list": "Liste",
-            "refresh": "Opdater",
-            "remove_filter": "Slet filter",
-            "remove": "Fjern",
-            "save": "Gem",
-            "search": "Søg",
-            "show": "Vis",
-            "sort": "Sortér",
-            "undo": "Fortryd",
-            "expand": "Udvid",
-            "close": "Luk",
-            "open_menu": "Åben menu",
-            "close_menu": "Luk menu",
-            "unselect": "Fravælg",
-            "skip": "",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
-        },
-        "boolean": {
-            "true": "Ja",
-            "false": "Nej"
-        },
-        "page": {
-            "create": "Opret %{name}",
-            "dashboard": "Dashboard",
-            "edit": "%{name} #%{id}",
-            "error": "Noget gik galt",
-            "list": "%{name} liste",
-            "loading": "Henter",
-            "not_found": "Ikke fundet",
-            "show": "%{name} #%{id}",
-            "empty": "Ingen %{name} endnu",
-            "invite": "Vil du tilføje en?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Træk og slip filer for at uploade, eller klik for at vælge filer.",
-                "upload_single": "Træk og slip en fil for at uploade, eller klik for at vælge en fil."
-            },
-            "image": {
-                "upload_several": "Træk og slip filer for at uploade, eller klik for at vælge filer.",
-                "upload_single": "Træk og slip et billede for at uploade, eller klik for at vælge en fil."
-            },
-            "references": {
-                "all_missing": "Kan ikke finde nogle referencedata.",
-                "many_missing": "Mindst en af de tilknyttede referencer synes ikke længere at være tilgængelig.",
-                "single_missing": "Tilknyttede referencer synes ikke længere at være tilgængelige."
-            },
-            "password": {
-                "toggle_visible": "Skjul kodeord",
-                "toggle_hidden": "Vis kodeord"
-            }
-        },
-        "message": {
-            "about": "Om",
-            "are_you_sure": "Er du sikker?",
-            "bulk_delete_content": "Er du sikker på du vil slette %{name}? |||| Er du sikker på du ville slette %{smart_count} poster?",
-            "bulk_delete_title": "Slet %{name} |||| Sletter %{smart_count} %{name} poster",
-            "delete_content": "Er du sikker på du ville slette denne post?",
-            "delete_title": "Slet %{name} #%{id}",
-            "details": "Detaljer",
-            "error": "Der opstod en klientfejl, og din forespørgsel kunne ikke udføres.",
-            "invalid_form": "Formularen er ikke gyldig. Kontroller for fejl",
-            "loading": "Siden indlæses, Vent et øjeblik",
-            "no": "Nej",
-            "not_found": "Enten har du skrevet en forkert URL eller du har fulgt et invalidt link.",
-            "yes": "Ja",
-            "unsaved_changes": "Du har lavet ændringer der ikke er gemt. Er du sikker på at du vil ignorere dem?"
-        },
-        "navigation": {
-            "no_results": "Ingen resultater fundet",
-            "no_more_results": "Sidenummeret %{page} eksistere ikke. Gå tilbage til forrige side.",
-            "page_out_of_boundaries": "Sidenummeret %{page} eksistere ikke",
-            "page_out_from_end": "Der findes ikke flere sider",
-            "page_out_from_begin": "Der er ingen side før end side 1",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} af %{total}",
-            "page_rows_per_page": "Rækker pr. side:",
-            "next": "Næste",
-            "prev": "Forrige",
-            "skip_nav": ""
-        },
-        "notification": {
-            "updated": "Objekt opdateret |||| %{smart_count} objekter opdateret",
-            "created": "Objekt oprettet",
-            "deleted": "Objekt slettet |||| %{smart_count} objekter slettet",
-            "bad_item": "Incorrect element",
-            "item_doesnt_exist": "Objektet findes ikke",
-            "http_error": "Kommunikationsfejl med serveren",
-            "data_provider_error": "dataProvider fejl. Check din console for detaljer.",
-            "i18n_error": "Kan ikke indlæse oversættelse af det ønskede sprog",
-            "canceled": "Handling blev annulleret",
-            "logged_out": "Din session er udløbet, venligst tilslut igen",
-            "new_version": ""
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "",
-            "layout": "",
-            "grid": "",
-            "table": ""
-        }
+    "album": {
+      "name": "Album |||| Albums",
+      "fields": {
+        "albumArtist": "Album kunstner",
+        "artist": "Kunstner",
+        "duration": "Varighed",
+        "songCount": "Sange",
+        "playCount": "Afspilninger",
+        "name": "Navn",
+        "genre": "Genre",
+        "compilation": "Opsamling",
+        "year": "År",
+        "updatedAt": "Opdateret d.",
+        "comment": "Kommentar",
+        "rating": "Bedømmelse",
+        "createdAt": "Tilføjet d.",
+        "size": "Størrelse",
+        "originalDate": "Original",
+        "releaseDate": "Udgivet",
+        "releases": "Udgivelse |||| Udgivelser",
+        "released": "Udgivet",
+        "recordLabel": "Plademærke",
+        "catalogNum": "Katalognummer",
+        "releaseType": "Type",
+        "grouping": "Gruppering",
+        "media": "Medier",
+        "mood": "Humør",
+        "date": "Optagelsesdato",
+        "missing": "Manglende",
+        "libraryName": "Bibliotek"
+      },
+      "actions": {
+        "playAll": "Afspil",
+        "playNext": "Afspil næste",
+        "addToQueue": "Afspil senere",
+        "shuffle": "Bland",
+        "addToPlaylist": "Føj til afspilningsliste",
+        "download": "Download",
+        "info": "Hent info",
+        "share": "Del"
+      },
+      "lists": {
+        "all": "Alle",
+        "random": "Tilfældig",
+        "recentlyAdded": "Nyligt tilføjet",
+        "recentlyPlayed": "Nyligt Afspillet",
+        "mostPlayed": "Mest Afspillet",
+        "starred": "Stjernemarkerede",
+        "topRated": "Top bedømmelse"
+      }
     },
-    "message": {
-        "note": "NOTE",
-        "transcodingDisabled": "Skift af indstillinger for omkodning gennem web platformen er frakoblet af sikkerhedsgrunde. Genstart serveren med %{config} indstilling tilvalgt.",
-        "transcodingEnabled": "Navidrome kører i øjeblikket med %{config}, hvilket gør det muligt at køre system kommandoer fra web platformen. Vi anbefaler at slå det fra af sikkerhedsgrunde og kun slå det til ved indstilling af omkodning.",
-        "songsAddedToPlaylist": "Tilføjede 1 sang til afspilningsliste |||| Tilføjede %{smart_count} sange til afspilningsliste",
-        "noPlaylistsAvailable": "Ingen tilgængelige",
-        "delete_user_title": "Slet bruger '%{name}'",
-        "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?",
-        "notifications_blocked": "",
-        "notifications_not_available": "",
-        "lastfmLinkSuccess": "",
-        "lastfmLinkFailure": "",
-        "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": "",
-        "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": "",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+    "artist": {
+      "name": "Kunstner |||| Kunstnere",
+      "fields": {
+        "name": "Navn",
+        "albumCount": "Antal albums",
+        "songCount": "Antal sange",
+        "playCount": "Afspilninger",
+        "rating": "Bedømmelse",
+        "genre": "Genre",
+        "size": "Størrelse",
+        "role": "Rolle",
+        "missing": "Manglende"
+      },
+      "roles": {
+        "albumartist": "Albumkunstner |||| Albumkunstnere",
+        "artist": "Kunstner |||| Kunstnere",
+        "composer": "Komponist |||| Komponister",
+        "conductor": "Dirigent |||| Dirigenter",
+        "lyricist": "Tekstforfatter |||| Tekstforfattere",
+        "arranger": "Arrangør |||| Arrangører",
+        "producer": "Producent |||| Producenter",
+        "director": "Instruktør |||| Instruktører",
+        "engineer": "Tekniker||||Teknikere",
+        "mixer": "Mixer |||| Mixere",
+        "remixer": "Remixer |||| Remixere",
+        "djmixer": "DJ-mixer |||| DJ-mixere",
+        "performer": "Udførende kunstner |||| Udførende kunstnere",
+        "maincredit": "Albumkunstner eller kunstner |||| Albumkunstnere eller kunstnere"
+      },
+      "actions": {
+        "shuffle": "Bland",
+        "radio": "Radio",
+        "topSongs": "Topsange"
+      }
     },
-    "menu": {
-        "library": "Bibliotek",
-        "settings": "Indstillinger",
-        "version": "Version",
-        "theme": "Tema",
-        "personal": {
-            "name": "Personligt",
-            "options": {
-                "theme": "Tema",
-                "language": "Sprog",
-                "defaultView": "Standardopsætning",
-                "desktop_notifications": "",
-                "lastfmScrobbling": "",
-                "listenBrainzScrobbling": "",
-                "replaygain": "",
-                "preAmp": "",
-                "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
-                }
-            }
-        },
-        "albumList": "Albums",
-        "about": "Om",
-        "playlists": "",
-        "sharedPlaylists": ""
+    "user": {
+      "name": "Bruger |||| Brugere",
+      "fields": {
+        "userName": "Brugernavn",
+        "isAdmin": "Er administrator",
+        "lastLoginAt": "Seneste login",
+        "updatedAt": "Opdateret d.",
+        "name": "Navn",
+        "password": "Kodeord",
+        "createdAt": "Oprettet d.",
+        "changePassword": "Skifte kodeord?",
+        "currentPassword": "Nuværende kodeord",
+        "newPassword": "Nyt kodeord",
+        "token": "Token",
+        "lastAccessAt": "Senest tilgået",
+        "libraries": "Biblioteker"
+      },
+      "helperTexts": {
+        "name": "Ændringer i dit navn vises først ved næste login",
+        "libraries": "Vælg specifikke biblioteker til denne bruger, eller lad det stå tomt for at bruge standardbiblioteker"
+      },
+      "notifications": {
+        "created": "Bruger oprettet",
+        "updated": "Bruger opdateret",
+        "deleted": "Bruger slettet"
+      },
+      "message": {
+        "listenBrainzToken": "Skriv dit ListenBrainz token",
+        "clickHereForToken": "Tryk her for at få dit token",
+        "selectAllLibraries": "Vælg alle biblioteker",
+        "adminAutoLibraries": "Administratorbrugere har automatisk adgang til alle biblioteker"
+      },
+      "validation": {
+        "librariesRequired": "Der skal være valgt mindst ét bibliotek til ikke-administrative brugere"
+      }
     },
     "player": {
-        "playListsText": "Afspilnings kø",
-        "openText": "Åben",
-        "closeText": "Luk",
-        "notContentText": "Ingen musik",
-        "clickToPlayText": "Tryk for at afspille",
-        "clickToPauseText": "Tryk for at pause",
-        "nextTrackText": "Næste nummer",
-        "previousTrackText": "Forrige nummer",
-        "reloadText": "Genindlæs",
-        "volumeText": "Lydstyrke",
-        "toggleLyricText": "Skift sangtekst",
-        "toggleMiniModeText": "Minimer",
-        "destroyText": "Fjern",
-        "downloadText": "Hent",
-        "removeAudioListsText": "Slet afspillingsliste",
-        "clickToDeleteText": "Tryk for at slette %{name}",
-        "emptyLyricText": "Ingen sangtekst",
-        "playModeText": {
-            "order": "I rækkefølge",
-            "orderLoop": "Gentag",
-            "singleLoop": "Gentag enkelt",
-            "shufflePlay": "Bland"
-        }
+      "name": "Afspiller |||| Afspillere",
+      "fields": {
+        "name": "Navn",
+        "transcodingId": "Transkodning",
+        "maxBitRate": "Maks. bitrate",
+        "client": "Klient",
+        "userName": "Brugernavn",
+        "lastSeen": "Sidst set",
+        "reportRealPath": "Vis den virkelige sti",
+        "scrobbleEnabled": "Send scrobbles til eksterne tjenester"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Hjme",
-            "source": "Kildekode",
-            "featureRequests": "Ønskede funktioner"
-        }
+    "transcoding": {
+      "name": "Transkodning |||| Transkodninger",
+      "fields": {
+        "name": "Navn",
+        "targetFormat": "Målformat",
+        "defaultBitRate": "Standard bitrate",
+        "command": "Kommando"
+      }
     },
-    "activity": {
-        "title": "Aktivitet",
-        "totalScanned": "Antal sange fundet",
-        "quickScan": "Hurtig søgning",
-        "fullScan": "Fuld søgning\n",
-        "serverUptime": "Server uptime",
-        "serverDown": "OFFLINE"
+    "playlist": {
+      "name": "Afspilningsliste |||| Afspilningslister",
+      "fields": {
+        "name": "Navn",
+        "duration": "Varighed",
+        "ownerName": "Ejer",
+        "public": "Offentlig",
+        "updatedAt": "Opdateret d.",
+        "createdAt": "Oprettet d.",
+        "songCount": "Sange",
+        "comment": "Kommentar",
+        "sync": "Auto-importér",
+        "path": "Importér fra"
+      },
+      "actions": {
+        "selectPlaylist": "Vælg en afspilningsliste:",
+        "addNewPlaylist": "Opret \"%{name}\"",
+        "export": "Eksportér",
+        "makePublic": "Offentliggør",
+        "makePrivate": "Gør privat",
+        "saveQueue": "Gem kø på afspilningsliste",
+        "searchOrCreate": "Søg i afspilningslister eller skriv for at oprette nye...",
+        "pressEnterToCreate": "Tryk Enter for at oprette en ny afspilningsliste",
+        "removeFromSelection": "Fjern fra valg"
+      },
+      "message": {
+        "duplicate_song": "Tilføj dubletter af sange",
+        "song_exist": "Der føjes dubletter til playlisten",
+        "noPlaylistsFound": "Ingen playlister fundet",
+        "noPlaylists": "Ingen tilgængelige playlister"
+      }
     },
-    "help": {
-        "title": "",
-        "hotkeys": {
-            "show_help": "",
-            "toggle_menu": "",
-            "toggle_play": "",
-            "prev_song": "",
-            "next_song": "",
-            "vol_up": "",
-            "vol_down": "",
-            "toggle_love": "",
-            "current_song": ""
-        }
+    "radio": {
+      "name": "Radio |||| Radioer",
+      "fields": {
+        "name": "Navn",
+        "streamUrl": "Stream-URL",
+        "homePageUrl": "Hjemmeside-URL",
+        "updatedAt": "Opdateret d.",
+        "createdAt": "Oprettet d."
+      },
+      "actions": {
+        "playNow": "Afspil nu"
+      }
+    },
+    "share": {
+      "name": "Del |||| Delinger",
+      "fields": {
+        "username": "Delt af",
+        "url": "URL",
+        "description": "Beskrivelse",
+        "contents": "Indhold",
+        "expiresAt": "Udløber",
+        "lastVisitedAt": "Senest besøgt",
+        "visitCount": "Besøg",
+        "format": "Format",
+        "maxBitRate": "Maks. bitrate",
+        "updatedAt": "Opdateret d.",
+        "createdAt": "Oprettet d.",
+        "downloadable": "Tillad downloads?"
+      }
+    },
+    "missing": {
+      "name": "Manglende fil |||| Manglende filer",
+      "fields": {
+        "path": "Sti",
+        "size": "Størrelse",
+        "updatedAt": "Forsvandt d.",
+        "libraryName": "Bibliotek"
+      },
+      "actions": {
+        "remove": "Fjern",
+        "remove_all": "Fjern alle"
+      },
+      "notifications": {
+        "removed": "Manglende fil(er) fjernet"
+      },
+      "empty": "Ingen manglende filer"
+    },
+    "library": {
+      "name": "Bibliotek |||| Biblioteker",
+      "fields": {
+        "name": "Navn",
+        "path": "Sti",
+        "remotePath": "Fjernsti",
+        "lastScanAt": "Sidste scanning",
+        "songCount": "Sange",
+        "albumCount": "Albummer",
+        "artistCount": "Kunstnere",
+        "totalSongs": "Sange",
+        "totalAlbums": "Albummer",
+        "totalArtists": "Kunstnere",
+        "totalFolders": "Mapper",
+        "totalFiles": "Filer",
+        "totalMissingFiles": "Manglende filer",
+        "totalSize": "Samlet størrelse",
+        "totalDuration": "Varighed",
+        "defaultNewUsers": "Standard for nye brugere",
+        "createdAt": "Oprettet d.",
+        "updatedAt": "Opdateret d."
+      },
+      "sections": {
+        "basic": "Grundlæggende oplysninger",
+        "statistics": "Statistik"
+      },
+      "actions": {
+        "scan": "Scanningsbibliotek",
+        "manageUsers": "Administrer brugeradgang",
+        "viewDetails": "Se detaljer"
+      },
+      "notifications": {
+        "created": "Bibliotek oprettet",
+        "updated": "Biblioteket er blevet opdateret",
+        "deleted": "Biblioteket er blevet slettet",
+        "scanStarted": "Biblioteksscanning startet",
+        "scanCompleted": "Biblioteksscanning fuldført"
+      },
+      "validation": {
+        "nameRequired": "Biblioteksnavn er påkrævet",
+        "pathRequired": "Bibliotekssti er påkrævet",
+        "pathNotDirectory": "Biblioteksstien skal være en mappe",
+        "pathNotFound": "Biblioteksstien blev ikke fundet",
+        "pathNotAccessible": "Biblioteksstien er ikke tilgængelig",
+        "pathInvalid": "Ugyldig bibliotekssti"
+      },
+      "messages": {
+        "deleteConfirm": "Er du sikker på, at du vil slette dette bibliotek? Dét vil fjerne alle tilknyttede data og brugeradgange",
+        "scanInProgress": "Scanning i gang...",
+        "noLibrariesAssigned": "Ingen biblioteker tildelt denne bruger"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Tak fordi du installerede Navidrome!",
+      "welcome2": "Først, opret en administrator",
+      "confirmPassword": "Bekræft kodeord",
+      "buttonCreateAdmin": "Opret administrator",
+      "auth_check_error": "Venligst login for at fortsætte",
+      "user_menu": "Profil",
+      "username": "Brugernavn",
+      "password": "Kodeord",
+      "sign_in": "Log ind",
+      "sign_in_error": "Dit log ind slog fejl, prøv igen",
+      "logout": "Log ud",
+      "insightsCollectionNote": "Navidrome indsamler anonyme brugsdata for at forbedre projektet. Klik [her] for at få mere at vide og fravælge, hvis du ønsker det."
+    },
+    "validation": {
+      "invalidChars": "Venligst, benyt kun bogstaver og tal",
+      "passwordDoesNotMatch": "Kodeord er ikke ens",
+      "required": "Nødvendig",
+      "minLength": "Skal være mindst %{min} tegn",
+      "maxLength": "Skal være op til %{max} tegn",
+      "minValue": "Skal være mindst %{min}",
+      "maxValue": "Skal være op til %{max}",
+      "number": "Skal være et tal",
+      "email": "Skal være en gyldig e-mail-adresse",
+      "oneOf": "Skal være én af: %{options}",
+      "regex": "Skal matche et specifikt format (regexp): %{pattern}",
+      "unique": "Skal være unik",
+      "url": "Skal være en gyldig URL"
+    },
+    "action": {
+      "add_filter": "Tilføj filter",
+      "add": "Tilføj",
+      "back": "Tilbage",
+      "bulk_actions": "1 emne valgt |||| %{smart_count} emner valgt",
+      "cancel": "Annuller",
+      "clear_input_value": "Ryd",
+      "clone": "Klon",
+      "confirm": "Bekræft",
+      "create": "Opret",
+      "delete": "Slet",
+      "edit": "Rediger",
+      "export": "Eksportér",
+      "list": "Liste",
+      "refresh": "Opdater",
+      "remove_filter": "Slet filter",
+      "remove": "Fjern",
+      "save": "Gem",
+      "search": "Søg",
+      "show": "Vis",
+      "sort": "Sortér",
+      "undo": "Fortryd",
+      "expand": "Udvid",
+      "close": "Luk",
+      "open_menu": "Åbn menu",
+      "close_menu": "Luk menu",
+      "unselect": "Fravælg",
+      "skip": "Spring over",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Del",
+      "download": "Download"
+    },
+    "boolean": {
+      "true": "Ja",
+      "false": "Nej"
+    },
+    "page": {
+      "create": "Opret %{name}",
+      "dashboard": "Instrumentbræt",
+      "edit": "%{name} #%{id}",
+      "error": "Noget gik galt",
+      "list": "%{name} liste",
+      "loading": "Henter",
+      "not_found": "Ikke fundet",
+      "show": "%{name} #%{id}",
+      "empty": "Ingen %{name} endnu.",
+      "invite": "Vil du tilføje en?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Træk nogle filer herind for at uploade, eller klik for at vælge en.",
+        "upload_single": "Træk en fil herind for at uploade, eller klik for at vælge den."
+      },
+      "image": {
+        "upload_several": "Træk billedfiler herind for at uploade, eller klik for at vælge en.",
+        "upload_single": "Træk en billedfil herind for at uploade, eller klik for at vælge den."
+      },
+      "references": {
+        "all_missing": "Kan ikke finde nogen referencedata.",
+        "many_missing": "Mindst en af de tilknyttede referencer synes ikke længere at være tilgængelig.",
+        "single_missing": "Tilknyttede referencer synes ikke længere at være tilgængelige."
+      },
+      "password": {
+        "toggle_visible": "Skjul kodeord",
+        "toggle_hidden": "Vis kodeord"
+      }
+    },
+    "message": {
+      "about": "Om",
+      "are_you_sure": "Er du sikker?",
+      "bulk_delete_content": "Er du sikker på, at du vil slette %{name}? |||| Er du sikker på, at du vil slette disse %{smart_count} poster?",
+      "bulk_delete_title": "Slet %{name} |||| Sletter %{smart_count} %{name} poster",
+      "delete_content": "Er du sikker på, at du vil slette denne post?",
+      "delete_title": "Slet %{name} #%{id}",
+      "details": "Detaljer",
+      "error": "Der opstod en klientfejl, og din forespørgsel kunne ikke udføres.",
+      "invalid_form": "Formularen er ikke gyldig. Tjek for fejl",
+      "loading": "Siden indlæses, vent et øjeblik",
+      "no": "Nej",
+      "not_found": "Enten har du skrevet en forkert URL eller du har fulgt et ugyldigt link.",
+      "yes": "Ja",
+      "unsaved_changes": "Du har lavet ændringer der ikke er gemt. Er du sikker på at du vil ignorere dem?"
+    },
+    "navigation": {
+      "no_results": "Ingen resultater fundet",
+      "no_more_results": "Sidenummeret %{page} eksisterer ikke. Gå tilbage til forrige side.",
+      "page_out_of_boundaries": "Sidenummeret %{page} ligger uden for grænserne",
+      "page_out_from_end": "Dette er sidste side",
+      "page_out_from_begin": "Dette er side 1",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} af %{total}",
+      "page_rows_per_page": "Rækker pr. side:",
+      "next": "Næste",
+      "prev": "Forrige",
+      "skip_nav": "Hop til indhold"
+    },
+    "notification": {
+      "updated": "Element opdateret |||| %{smart_count} elementer opdateret",
+      "created": "Element oprettet",
+      "deleted": "Element slettet |||| %{smart_count} elementer slettet",
+      "bad_item": "Forkert element",
+      "item_doesnt_exist": "Elementet findes ikke",
+      "http_error": "Kommunikationsfejl med serveren",
+      "data_provider_error": "dataProvider fejl. Tjek konsollen for detaljer.",
+      "i18n_error": "Kan ikke indlæse oversættelsen af det ønskede sprog",
+      "canceled": "Handling blev annulleret",
+      "logged_out": "Din session er udløbet, venligst tilslut igen",
+      "new_version": "Ny version tilgængelig! – genopfrisk venligst vinduet"
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Antal synlige kolonner",
+      "layout": "Layout",
+      "grid": "Gitter",
+      "table": "Tabel"
+    }
+  },
+  "message": {
+    "note": "NOTE",
+    "transcodingDisabled": "Ændring af indstillinger til transkodning via webgrænsefladen er deaktiveret af sikkerhedshensyn.\nFor at ændre eller tilføje indstillinger skal du genstarte serveren med %{config} konfigurations option.",
+    "transcodingEnabled": "Navidrome kører i øjeblikket med %{config}. Dét gør det muligt at køre systemkommandoer fra transkodningsindstillingerne, via webgrænsefladen.\nVi anbefaler at deaktivere dette af sikkerhedshensyn og kun have det aktiveret, når du konfigurerer indstillinger til transkodning.",
+    "songsAddedToPlaylist": "Føjede 1 sang til afspilningsliste |||| Føjede %{smart_count} sange til afspilningsliste",
+    "noPlaylistsAvailable": "Ingen tilgængelige",
+    "delete_user_title": "Slet bruger '%{name}'",
+    "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og valgte indstillinger)?",
+    "notifications_blocked": "Du blokerer for notifikationer fra dette site i dine browserindstillinger",
+    "notifications_not_available": "Denne browser understøtter ikke skrivebordsnotifikationer, eller: Du tilgår ikke Navidrome over https",
+    "lastfmLinkSuccess": "Du er koblet til Last.fm, og scrobbling er slået til",
+    "lastfmLinkFailure": "Du kan ikke kobles til Last.fm",
+    "lastfmUnlinkSuccess": "Last.fm frakoblet, og scrobbling deaktiveret",
+    "lastfmUnlinkFailure": "Last.fm kunne ikke frakobles",
+    "openIn": {
+      "lastfm": "Åbn i Last.fm",
+      "musicbrainz": "Åbn i MusicBrainz"
+    },
+    "lastfmLink": "Læs mere...",
+    "listenBrainzLinkSuccess": "Du er koblet til ListenBrainz og scrobbling er aktiveret som bruger: %{user}",
+    "listenBrainzLinkFailure": "Du kunne ikke kobles til ListenBrainz: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz er frakoblet, og scrobbling deaktiveret",
+    "listenBrainzUnlinkFailure": "ListenBrainz kunne ikke frakobles",
+    "downloadOriginalFormat": "Download i originalformat",
+    "shareOriginalFormat": "Del i originalformat",
+    "shareDialogTitle": "Del %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Del 1 %{resource} |||| Del %{smart_count} %{resource}",
+    "shareSuccess": "URL kopieret til udklipsholder: %{url}",
+    "shareFailure": "Fejl ved kopiering af URL %{url} til udklipsholder",
+    "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Kopiér til udklipsholder: Ctrl+C, Enter",
+    "remove_missing_title": "Fjern manglende filer",
+    "remove_missing_content": "Er du sikker på, at du vil fjerne de valgte manglende filer fra databasen? Dét vil permanent fjerne alle referencer til dem, inklusive deres afspilningstællere og vurderinger.",
+    "remove_all_missing_title": "Fjern alle manglende filer",
+    "remove_all_missing_content": "Er du sikker på, at du vil fjerne alle manglende filer fra databasen? Dét vil permanent fjerne alle referencer til dem, inklusive deres afspilningstællere og vurderinger.",
+    "noSimilarSongsFound": "Ingen lignende sange fundet",
+    "noTopSongsFound": "Ingen topsange fundet"
+  },
+  "menu": {
+    "library": "Bibliotek",
+    "settings": "Indstillinger",
+    "version": "Version",
+    "theme": "Tema",
+    "personal": {
+      "name": "Personligt",
+      "options": {
+        "theme": "Tema",
+        "language": "Sprog",
+        "defaultView": "Standardopsætning",
+        "desktop_notifications": "Skrivebordsnotifikationer",
+        "lastfmScrobbling": "Scrobble til Last.fm",
+        "listenBrainzScrobbling": "Scrobble til ListenBrainz",
+        "replaygain": "ReplayGain-tilstand",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "Slået fra",
+          "album": "Brug Album Gain",
+          "track": "Brug Gain for spor"
+        },
+        "lastfmNotConfigured": "Last.fm API-nøglen er ikke konfigureret"
+      }
+    },
+    "albumList": "Albums",
+    "about": "Om",
+    "playlists": "Afspilningslister",
+    "sharedPlaylists": "Delte afspilningslister",
+    "librarySelector": {
+      "allLibraries": "Alle biblioteker (%{count})",
+      "multipleLibraries": "%{selected} af %{total} biblioteker",
+      "selectLibraries": "Vælg biblioteker",
+      "none": "Ingen"
+    }
+  },
+  "player": {
+    "playListsText": "Afspilningskø",
+    "openText": "Åbn",
+    "closeText": "Luk",
+    "notContentText": "Ingen musik",
+    "clickToPlayText": "Tryk for at afspille",
+    "clickToPauseText": "Tryk for at pause",
+    "nextTrackText": "Næste nummer",
+    "previousTrackText": "Forrige nummer",
+    "reloadText": "Genindlæs",
+    "volumeText": "Lydstyrke",
+    "toggleLyricText": "Skift sangtekst til/fra",
+    "toggleMiniModeText": "Minimer",
+    "destroyText": "Fjern",
+    "downloadText": "Hent",
+    "removeAudioListsText": "Slet afspilningslister",
+    "clickToDeleteText": "Tryk for at slette %{name}",
+    "emptyLyricText": "Ingen sangtekst",
+    "playModeText": {
+      "order": "I rækkefølge",
+      "orderLoop": "Gentag",
+      "singleLoop": "Gentag enkelt",
+      "shufflePlay": "Bland"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Hjemmeside",
+      "source": "Kildekode",
+      "featureRequests": "Funktionsønsker",
+      "lastInsightsCollection": "Seneste indsamling af indsigter",
+      "insights": {
+        "disabled": "Slået fra",
+        "waiting": "Venter"
+      }
+    },
+    "tabs": {
+      "about": "Om",
+      "config": "Konfiguration"
+    },
+    "config": {
+      "configName": "Navn på konfiguration",
+      "environmentVariable": "Miljøvariabel",
+      "currentValue": "Nuværende værdi",
+      "configurationFile": "Konfigurationsfil",
+      "exportToml": "Eksportér konfigurationen (TOML)",
+      "exportSuccess": "Konfigurationen eksporteret til udklipsholder i TOML-format",
+      "exportFailed": "Kunne ikke kopiere konfigurationen",
+      "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
+      "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver"
+    }
+  },
+  "activity": {
+    "title": "Aktivitet",
+    "totalScanned": "Antal mapper gennemsøgt",
+    "quickScan": "Hurtig søgning",
+    "fullScan": "Fuld søgning",
+    "serverUptime": "Server oppetid",
+    "serverDown": "OFFLINE",
+    "scanType": "Type",
+    "status": "Scanningsfejl",
+    "elapsedTime": "Medgået tid"
+  },
+  "help": {
+    "title": "Navidrome genvejstaster",
+    "hotkeys": {
+      "show_help": "Vis denne hjælp",
+      "toggle_menu": "Skift menu sidepanel",
+      "toggle_play": "Play / Pause",
+      "prev_song": "Forrige sang",
+      "next_song": "Næste sang",
+      "vol_up": "Volumen op",
+      "vol_down": "Volumen ned",
+      "toggle_love": "Føj dette nummer til dine favoritter",
+      "current_song": "Gå til den aktuelle sang"
+    }
+  },
+  "nowPlaying": {
+    "title": "Afspilles nu",
+    "empty": "Intet afspilles nu",
+    "minutesAgo": "for %{smart_count} minut siden |||| for %{smart_count} minutter siden"
+  }
 }
