@@ -83,28 +83,30 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	noMissing := func(cond Sqlizer) Sqlizer {
 		return And{cond, Eq{"missing": false}}
 	}
+
+	// Create a context with a fake admin user, to be able to access all libraries
+	ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
+
 	switch share.ResourceType {
 	case "artist":
-		albumRepo := NewAlbumRepository(r.ctx, r.db)
+		albumRepo := NewAlbumRepository(ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
 		return err
 	case "album":
-		albumRepo := NewAlbumRepository(r.ctx, r.db)
+		albumRepo := NewAlbumRepository(ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
 		return err
 	case "playlist":
-		// Create a context with a fake admin user, to be able to access all playlists
-		ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
 		plsRepo := NewPlaylistRepository(ctx, r.db)
 		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
 		if err != nil {
@@ -115,7 +117,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		}
 		return nil
 	case "media_file":
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"media_file.id": ids})})
 		share.Tracks = sortByIdPosition(tracks, ids)
 		return err
