@@ -8,7 +8,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
@@ -158,8 +157,7 @@ var _ = Describe("ArtistRepository", func() {
 		var repo model.ArtistRepository
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			ctx := log.NewContext(context.TODO())
+			ctx := GinkgoT().Context()
 			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(ctx, GetDBXBuilder())
 		})
@@ -448,12 +446,11 @@ var _ = Describe("ArtistRepository", func() {
 		var unauthorizedUser model.User
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			// Create a user without access to any libraries
 			unauthorizedUser = model.User{ID: "restricted_user", UserName: "restricted", Name: "Restricted User", Email: "restricted@test.com", IsAdmin: false}
 
 			// Create repository context for the unauthorized user
-			ctx := log.NewContext(context.TODO())
+			ctx := GinkgoT().Context()
 			ctx = request.WithUser(ctx, unauthorizedUser)
 			restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 		})
@@ -509,8 +506,9 @@ var _ = Describe("ArtistRepository", func() {
 
 		Context("when user gains library access", func() {
 			BeforeEach(func() {
+				ctx := GinkgoT().Context()
 				// Give the user access to library 1
-				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				ur := NewUserRepository(request.WithUser(ctx, adminUser), GetDBXBuilder())
 
 				// First create the user if not exists
 				err := ur.Put(&unauthorizedUser)
@@ -526,14 +524,13 @@ var _ = Describe("ArtistRepository", func() {
 				unauthorizedUser.Libraries = libraries
 
 				// Recreate repository context with updated user
-				ctx := log.NewContext(context.TODO())
 				ctx = request.WithUser(ctx, unauthorizedUser)
 				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 			})
 
 			AfterEach(func() {
 				// Clean up: remove the user's library access
-				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
 			})
 
@@ -593,12 +590,12 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Add missing artist to library 1 so it can be found by library filtering
-				lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				err = lr.AddArtist(1, missing.ID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Ensure the test user exists and has library access
-				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				currentUser, ok := request.UserFrom(repo.(*artistRepository).ctx)
 				if ok {
 					// Create the user if it doesn't exist with default values if missing
@@ -640,7 +637,6 @@ var _ = Describe("ArtistRepository", func() {
 
 			Context("regular user", func() {
 				BeforeEach(func() {
-					DeferCleanup(configtest.SetupConfig())
 					// Create user with library access (simulating middleware behavior)
 					regularUserWithLibs := model.User{
 						ID:      "u1",
@@ -649,7 +645,7 @@ var _ = Describe("ArtistRepository", func() {
 							{ID: 1, Name: "Test Library", Path: "/test"},
 						},
 					}
-					ctx := log.NewContext(context.TODO())
+					ctx := GinkgoT().Context()
 					ctx = request.WithUser(ctx, regularUserWithLibs)
 					repo = NewArtistRepository(ctx, GetDBXBuilder())
 					insertMissing()
@@ -683,8 +679,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			Context("admin user", func() {
 				BeforeEach(func() {
-					DeferCleanup(configtest.SetupConfig())
-					ctx := log.NewContext(context.TODO())
+					ctx := GinkgoT().Context()
 					ctx = request.WithUser(ctx, model.User{ID: "admin", IsAdmin: true})
 					repo = NewArtistRepository(ctx, GetDBXBuilder())
 					insertMissing()
@@ -720,19 +715,22 @@ var _ = Describe("ArtistRepository", func() {
 			var restrictedUser model.User
 			var restrictedRepo model.ArtistRepository
 			var adminRepo model.ArtistRepository
+			var headlessRepo model.ArtistRepository
 			var lib2 model.Library
+			var lr model.LibraryRepository
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-
 				// Set up admin repo
-				ctx := log.NewContext(context.TODO())
+				ctx := GinkgoT().Context()
 				ctx = request.WithUser(ctx, adminUser)
 				adminRepo = NewArtistRepository(ctx, GetDBXBuilder())
 
+				// Set up headless repo (no user context)
+				headlessRepo = NewArtistRepository(context.Background(), GetDBXBuilder())
+
 				// Create library for testing access restrictions
 				lib2 = model.Library{ID: 0, Name: "Artist Test Library", Path: "/artist/test/lib"}
-				lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				lr = NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				err := lr.Put(&lib2)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -746,7 +744,7 @@ var _ = Describe("ArtistRepository", func() {
 				}
 
 				// Create repository context for the restricted user
-				ctx = log.NewContext(context.TODO())
+				ctx = GinkgoT().Context()
 				ctx = request.WithUser(ctx, restrictedUser)
 				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 
@@ -757,7 +755,7 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create the restricted user in the database
-				ur := NewUserRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				err = ur.Put(&restrictedUser)
 				Expect(err).ToNot(HaveOccurred())
 				err = ur.SetUserLibraries(restrictedUser.ID, []int{1})
@@ -766,7 +764,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			AfterEach(func() {
 				// Clean up library 2
-				lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+				lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				_ = lr.(*libraryRepository).delete(squirrel.Eq{"id": lib2.ID})
 			})
 
@@ -813,7 +811,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Add to library 2 (not accessible to restricted user)
-					lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+					lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 					err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -846,7 +844,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Add to library 2 (not accessible to restricted user)
-					lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+					lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 					err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -862,6 +860,59 @@ var _ = Describe("ArtistRepository", func() {
 					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 				})
 			})
+
+			Context("Headless Processes (No User Context)", func() {
+				It("should see all artists from all libraries when no user is in context", func() {
+					// Add artists to different libraries
+					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Headless processes should see all artists regardless of library
+					artists, err := headlessRepo.GetAll()
+					Expect(err).ToNot(HaveOccurred())
+
+					// Should see all artists from all libraries
+					found := false
+					for _, artist := range artists {
+						if artist.ID == artistBeatles.ID {
+							found = true
+							break
+						}
+					}
+					Expect(found).To(BeTrue(), "Headless process should see artists from all libraries")
+				})
+
+				It("should allow headless processes to apply explicit library_id filters", func() {
+					// Add artists to different libraries
+					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Filter by specific library
+					artists, err := headlessRepo.GetAll(model.QueryOptions{
+						Filters: squirrel.Eq{"library_id": lib2.ID},
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					// Should see only artists from the specified library
+					for _, artist := range artists {
+						if artist.ID == artistBeatles.ID {
+							return // Found the expected artist
+						}
+					}
+					Expect(false).To(BeTrue(), "Should find artist from specified library")
+				})
+
+				It("should get individual artists when no user is in context", func() {
+					// Add artist to a library
+					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Headless process should be able to get the artist
+					artist, err := headlessRepo.Get(artistBeatles.ID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(artist.ID).To(Equal(artistBeatles.ID))
+				})
+			})
 		})
 	})
 })
@@ -875,6 +926,6 @@ func createArtistWithLibrary(repo model.ArtistRepository, artist *model.Artist, 
 	}
 
 	// Add the artist to the specified library
-	lr := NewLibraryRepository(request.WithUser(log.NewContext(context.TODO()), adminUser), GetDBXBuilder())
+	lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 	return lr.AddArtist(libraryID, artist.ID)
 }

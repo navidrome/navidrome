@@ -7,8 +7,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
@@ -23,8 +21,7 @@ var _ = Describe("GenreRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		genreRepo := NewGenreRepository(ctx, GetDBXBuilder())
 		repo = genreRepo
 		restRepo = genreRepo.(model.ResourceRepository)
@@ -237,6 +234,82 @@ var _ = Describe("GenreRepository", func() {
 			result, err := restRepo.ReadAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).ToNot(BeNil())
+		})
+	})
+
+	Describe("Library Filtering", func() {
+		Context("Headless Processes (No User Context)", func() {
+			var headlessRepo model.GenreRepository
+			var headlessRestRepo model.ResourceRepository
+
+			BeforeEach(func() {
+				// Create a repository with no user context (headless)
+				headlessGenreRepo := NewGenreRepository(context.Background(), GetDBXBuilder())
+				headlessRepo = headlessGenreRepo
+				headlessRestRepo = headlessGenreRepo.(model.ResourceRepository)
+
+				// Add genres to different libraries
+				db := GetDBXBuilder()
+				_, err := db.NewQuery("INSERT OR IGNORE INTO library (id, name, path) VALUES (2, 'Test Library 2', '/test2')").Execute()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Add tags to different libraries
+				newTag := func(name, value string) model.Tag {
+					return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
+				}
+
+				err = tagRepo.Add(2, newTag("genre", "jazz"))
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should see all genres from all libraries when no user is in context", func() {
+				// Headless processes should see all genres regardless of library
+				genres, err := headlessRepo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should see genres from all libraries
+				var genreNames []string
+				for _, genre := range genres {
+					genreNames = append(genreNames, genre.Name)
+				}
+
+				// Should include both rock (library 1) and jazz (library 2)
+				Expect(genreNames).To(ContainElement("rock"))
+				Expect(genreNames).To(ContainElement("jazz"))
+			})
+
+			It("should count all genres from all libraries when no user is in context", func() {
+				count, err := headlessRestRepo.Count()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should count all genres from all libraries
+				Expect(count).To(BeNumerically(">=", 2))
+			})
+
+			It("should allow headless processes to apply explicit library_id filters", func() {
+				// Filter by specific library
+				genres, err := headlessRestRepo.ReadAll(rest.QueryOptions{
+					Filters: map[string]interface{}{"library_id": 2},
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				genreList := genres.(model.Genres)
+				// Should see only genres from library 2
+				Expect(genreList).To(HaveLen(1))
+				Expect(genreList[0].Name).To(Equal("jazz"))
+			})
+
+			It("should get individual genres when no user is in context", func() {
+				// Get all genres first to find an ID
+				genres, err := headlessRepo.GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(genres).ToNot(BeEmpty())
+
+				// Headless process should be able to get the genre
+				genre, err := headlessRestRepo.Read(genres[0].ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(genre).ToNot(BeNil())
+			})
 		})
 	})
 
