@@ -170,14 +170,11 @@ func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
 // applyLibraryFilterToArtistQuery applies library filtering to artist queries through the library_artist junction table
 func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId {
-		// No user context - skip library filtering
-		return query
+	if user.ID != invalidUserId {
+		// Apply library filtering by joining only with accessible libraries
+		query = query.Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
 	}
-
-	// Apply library filtering by joining only with accessible libraries
-	query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id").
-		Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+	query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id")
 
 	return query
 }
