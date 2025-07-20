@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
 
 ########################################################################################################################
-### Build xx (orignal image: tonistiigi/xx)
+### Build xx (original image: tonistiigi/xx)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.19 AS xx-build
 
 # v1.5.0
