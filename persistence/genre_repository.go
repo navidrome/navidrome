@@ -21,7 +21,7 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 }
 
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(opt...)
+	return r.newSelect(opt...).Columns("tag.tag_value as name")
 }
 
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
