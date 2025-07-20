@@ -171,8 +171,8 @@ func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
 func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
 	if user.ID == invalidUserId {
-		// No user context - return empty result set
-		return query.Where(Eq{"1": "0"})
+		// No user context - skip library filtering
+		return query
 	}
 
 	// Apply library filtering by joining only with accessible libraries

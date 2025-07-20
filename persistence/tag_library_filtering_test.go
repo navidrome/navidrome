@@ -169,6 +169,105 @@ var _ = Describe("Tag Library Filtering", func() {
 			})
 		})
 
+		Context("Headless Processes (No User Context)", func() {
+			It("should see all tags from all libraries when no user is in context", func() {
+				// Create context without user (simulates headless processes like shares, providers, etc.)
+				headlessCtx := context.Background() // No user in context
+				tagRepo := NewTagRepository(headlessCtx, GetDBXBuilder())
+				repo := tagRepo.(model.ResourceRepository)
+
+				tags, err := repo.ReadAll()
+				Expect(err).ToNot(HaveOccurred())
+				tagList := tags.(model.TagList)
+
+				// Should see all tags from all libraries (no filtering applied)
+				Expect(tagList).To(HaveLen(3))
+
+				// Verify we can see tags from all libraries
+				tagValues := make([]string, len(tagList))
+				for i, tag := range tagList {
+					tagValues[i] = tag.TagValue
+				}
+				Expect(tagValues).To(ContainElements("rock", "pop", "jazz"))
+			})
+
+			It("should count all tags from all libraries when no user is in context", func() {
+				// Create context without user
+				headlessCtx := context.Background()
+				tagRepo := NewTagRepository(headlessCtx, GetDBXBuilder())
+				repo := tagRepo.(model.ResourceRepository)
+
+				count, err := repo.Count()
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should count all tags from all libraries
+				Expect(count).To(Equal(int64(3)))
+			})
+
+			It("should calculate proper statistics from all libraries for headless processes", func() {
+				// Create context without user
+				headlessCtx := context.Background()
+				tagRepo := NewTagRepository(headlessCtx, GetDBXBuilder())
+				repo := tagRepo.(model.ResourceRepository)
+
+				// Debug: Check what's in the library_tag table for rock
+				db := GetDBXBuilder()
+				rockTagId := id.NewTagID("genre", "rock")
+
+				type libraryTagRow struct {
+					LibraryId      int `db:"library_id"`
+					AlbumCount     int `db:"album_count"`
+					MediaFileCount int `db:"media_file_count"`
+				}
+				var rows []libraryTagRow
+				err := db.NewQuery("SELECT library_id, album_count, media_file_count FROM library_tag WHERE tag_id = {:tagId}").
+					Bind(dbx.Params{"tagId": rockTagId}).
+					All(&rows)
+				Expect(err).ToNot(HaveOccurred())
+
+				tags, err := repo.ReadAll()
+				Expect(err).ToNot(HaveOccurred())
+				tagList := tags.(model.TagList)
+
+				// Find the rock tag (appears in libraries 1 and 2)
+				var rockTag *model.Tag
+				for _, tag := range tagList {
+					if tag.TagValue == "rock" {
+						rockTag = &tag
+						break
+					}
+				}
+				Expect(rockTag).ToNot(BeNil())
+
+				// Should have stats from all libraries where rock appears
+				// Library 1: 5 albums, 20 songs
+				// Library 2: 1 album, 4 songs
+				// Total: 6 albums, 24 songs
+				Expect(rockTag.AlbumCount).To(Equal(6))
+				Expect(rockTag.SongCount).To(Equal(24))
+			})
+
+			It("should allow headless processes to apply explicit library_id filters", func() {
+				// Create context without user
+				headlessCtx := context.Background()
+				tagRepo := NewTagRepository(headlessCtx, GetDBXBuilder())
+				repo := tagRepo.(model.ResourceRepository)
+
+				// Filter by library 3 (even without user context)
+				tags, err := repo.ReadAll(rest.QueryOptions{
+					Filters: map[string]interface{}{
+						"library_id": 3,
+					},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				tagList := tags.(model.TagList)
+
+				// Should see only jazz from library 3
+				Expect(tagList).To(HaveLen(1))
+				Expect(tagList[0].TagValue).To(Equal("jazz"))
+			})
+		})
+
 		Context("Admin User with Explicit Library Filtering", func() {
 			It("should see all tags when no filter is applied", func() {
 				adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
