@@ -22,9 +22,14 @@ var _ = Describe("ShareRepository", func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
 		repo = NewShareRepository(ctx, GetDBXBuilder())
 
+		// Insert the admin user into the database (required for foreign key constraint)
+		ur := NewUserRepository(ctx, GetDBXBuilder())
+		err := ur.Put(&adminUser)
+		Expect(err).ToNot(HaveOccurred())
+
 		// Clean up shares
 		db := GetDBXBuilder()
-		_, err := db.NewQuery("DELETE FROM share").Execute()
+		_, err = db.NewQuery("DELETE FROM share").Execute()
 		Expect(err).ToNot(HaveOccurred())
 	})
 

@@ -176,6 +176,16 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
+	// Populate stats for library_artist to make artists visible with new filtering
+	// The new filtering logic requires stats to be non-empty
+	for i := range testArtists {
+		_, err := conn.NewQuery("UPDATE library_artist SET stats = '{\"albumartist\":{\"albumCount\":1,\"songCount\":1}}' WHERE artist_id = {:artist_id} AND library_id = 1").
+			Bind(dbx.Params{"artist_id": testArtists[i].ID}).Execute()
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	mr := NewMediaFileRepository(ctx, conn)
 	for i := range testSongs {
 		err := mr.Put(&testSongs[i])
@@ -218,7 +228,13 @@ var _ = BeforeSuite(func() {
 	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
 		panic(err)
 	}
-	ar, _ := arr.Get(artistBeatles.ID)
+	ar, err := arr.Get(artistBeatles.ID)
+	if err != nil {
+		panic(err)
+	}
+	if ar == nil {
+		panic("artist not found after SetStar")
+	}
 	artistBeatles.Starred = true
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
@@ -229,6 +245,9 @@ var _ = BeforeSuite(func() {
 	al, err := alr.Get(albumRadioactivity.ID)
 	if err != nil {
 		panic(err)
+	}
+	if al == nil {
+		panic("album not found after SetStar")
 	}
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt
