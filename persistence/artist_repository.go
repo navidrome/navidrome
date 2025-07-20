@@ -156,7 +156,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
 		if _, ok := model.AllRoles[role]; ok {
-			return Expr("EXISTS (SELECT 1 FROM library_artist WHERE library_artist.artist_id = artist.id AND JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL)")
+			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
 		}
 	}
 	return Eq{"1": 2}
@@ -170,11 +170,14 @@ func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
 // applyLibraryFilterToArtistQuery applies library filtering to artist queries through the library_artist junction table
 func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
+	// Join with library_artist first to ensure only artists with content in libraries are included
+	// Exclude artists with empty stats (no actual content in the library)
+	query = query.Join("library_artist on library_artist.artist_id = artist.id AND library_artist.stats != '{}'")
+
 	if user.ID != invalidUserId {
 		// Apply library filtering by joining only with accessible libraries
 		query = query.Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
 	}
-	query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id")
 
 	return query
 }
