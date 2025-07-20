@@ -68,9 +68,17 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 
 	// Create query options for library filtering
 	var options []model.QueryOptions
+	var artistOptions []model.QueryOptions
 	if len(musicFolderIds) > 0 {
+		// For MediaFiles and Albums, use direct library_id filter
 		options = append(options, model.QueryOptions{
 			Filters: Eq{"library_id": musicFolderIds},
+		})
+		// For Artists, use the repository's built-in library filtering mechanism
+		// which properly handles the library_artist table joins
+		// TODO Revisit library filtering in sql_base_repository.go
+		artistOptions = append(artistOptions, model.QueryOptions{
+			Filters: Eq{"library_artist.library_id": musicFolderIds},
 		})
 	}
 
@@ -78,7 +86,7 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles, options...))
 	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums, options...))
-	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists, options...))
+	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists, artistOptions...))
 	err := g.Wait()
 	if err == nil {
 		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",

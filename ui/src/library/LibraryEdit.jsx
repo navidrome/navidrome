@@ -11,7 +11,6 @@ import {
   useMutation,
   useNotify,
   useRedirect,
-  NumberInput,
   Toolbar,
 } from 'react-admin'
 import { Typography, Box } from '@material-ui/core'
@@ -128,7 +127,7 @@ const LibraryEdit = (props) => {
 
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
-                      <NumberInput
+                      <TextInput
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalSongs'}
@@ -138,7 +137,7 @@ const LibraryEdit = (props) => {
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
-                      <NumberInput
+                      <TextInput
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalAlbums'}
@@ -153,7 +152,7 @@ const LibraryEdit = (props) => {
 
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
-                      <NumberInput
+                      <TextInput
                         InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalArtists'}
