@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("ArtistRepository", func() {
@@ -293,13 +292,12 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				AfterEach(func() {
-					// Restore original stats for library_artist table - tests expect non-empty stats
-					defaultStats := `{"albumartist":{"albumCount":1,"songCount":1}}`
+					// Clean up stats from library_artist table
 					_, _ = raw.executeSQL(squirrel.Update("library_artist").
-						Set("stats", defaultStats).
+						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistBeatles.ID, "library_id": 1}))
 					_, _ = raw.executeSQL(squirrel.Update("library_artist").
-						Set("stats", defaultStats).
+						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistKraftwerk.ID, "library_id": 1}))
 				})
 
@@ -596,12 +594,6 @@ var _ = Describe("ArtistRepository", func() {
 				err = lr.AddArtist(1, missing.ID)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Populate stats for the missing artist so it can be found by library filtering
-				_, err = raw.executeSQL(squirrel.Update("library_artist").
-					Set("stats", `{"albumartist":{"albumCount":1,"songCount":1}}`).
-					Where(squirrel.Eq{"library_id": 1, "artist_id": missing.ID}))
-				Expect(err).ToNot(HaveOccurred())
-
 				// Ensure the test user exists and has library access
 				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
 				currentUser, ok := request.UserFrom(repo.(*artistRepository).ctx)
@@ -891,14 +883,8 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("should allow headless processes to apply explicit library_id filters", func() {
-					// Add artists to different libraries with stats
+					// Add artists to different libraries
 					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
-					Expect(err).ToNot(HaveOccurred())
-
-					// Populate stats for the new library association so artist is visible with filtering
-					conn := GetDBXBuilder()
-					_, err = conn.NewQuery("UPDATE library_artist SET stats = '{\"albumartist\":{\"albumCount\":1,\"songCount\":1}}' WHERE artist_id = {:artist_id} AND library_id = {:library_id}").
-						Bind(dbx.Params{"artist_id": artistBeatles.ID, "library_id": lib2.ID}).Execute()
 					Expect(err).ToNot(HaveOccurred())
 
 					// Filter by specific library
@@ -917,14 +903,8 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("should get individual artists when no user is in context", func() {
-					// Add artist to a library with stats
+					// Add artist to a library
 					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
-					Expect(err).ToNot(HaveOccurred())
-
-					// Populate stats for the new library association so artist is visible with filtering
-					conn := GetDBXBuilder()
-					_, err = conn.NewQuery("UPDATE library_artist SET stats = '{\"albumartist\":{\"albumCount\":1,\"songCount\":1}}' WHERE artist_id = {:artist_id} AND library_id = {:library_id}").
-						Bind(dbx.Params{"artist_id": artistBeatles.ID, "library_id": lib2.ID}).Execute()
 					Expect(err).ToNot(HaveOccurred())
 
 					// Headless process should be able to get the artist
@@ -947,15 +927,5 @@ func createArtistWithLibrary(repo model.ArtistRepository, artist *model.Artist, 
 
 	// Add the artist to the specified library
 	lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-	err = lr.AddArtist(libraryID, artist.ID)
-	if err != nil {
-		return err
-	}
-
-	// Populate stats for the artist to make it visible with new filtering logic
-	// The new filtering requires stats to be non-empty
-	conn := GetDBXBuilder()
-	_, err = conn.NewQuery("UPDATE library_artist SET stats = '{\"albumartist\":{\"albumCount\":1,\"songCount\":1}}' WHERE artist_id = {:artist_id} AND library_id = {:library_id}").
-		Bind(dbx.Params{"artist_id": artist.ID, "library_id": libraryID}).Execute()
-	return err
+	return lr.AddArtist(libraryID, artist.ID)
 }

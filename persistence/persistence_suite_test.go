@@ -176,16 +176,6 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	// Populate stats for library_artist to make artists visible with new filtering
-	// The new filtering logic requires stats to be non-empty
-	for i := range testArtists {
-		_, err := conn.NewQuery("UPDATE library_artist SET stats = '{\"albumartist\":{\"albumCount\":1,\"songCount\":1}}' WHERE artist_id = {:artist_id} AND library_id = 1").
-			Bind(dbx.Params{"artist_id": testArtists[i].ID}).Execute()
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	mr := NewMediaFileRepository(ctx, conn)
 	for i := range testSongs {
 		err := mr.Put(&testSongs[i])

@@ -172,7 +172,8 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 	user := loggedUser(r.ctx)
 	// Join with library_artist first to ensure only artists with content in libraries are included
 	// Exclude artists with empty stats (no actual content in the library)
-	query = query.Join("library_artist on library_artist.artist_id = artist.id AND library_artist.stats != '{}'")
+	query = query.Join("library_artist on library_artist.artist_id = artist.id")
+	//query = query.Join("library_artist on library_artist.artist_id = artist.id AND library_artist.stats != '{}'")
 
 	// Admin users see all artists from all libraries, no additional filtering needed
 	if user.ID != invalidUserId && !user.IsAdmin {
@@ -502,6 +503,15 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchCounter, err)
 		}
 		totalRowsAffected += rowsAffected
+	}
+
+	// // Remove library_artist entries for artists that no longer have any content in any library
+	cleanupSQL := Delete("library_artist").Where("stats = '{}'")
+	cleanupRows, err := r.executeSQL(cleanupSQL)
+	if err != nil {
+		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
+	} else if cleanupRows > 0 {
+		log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
 	}
 
 	log.Debug(r.ctx, "RefreshStats: Successfully updated stats.", "totalArtistsProcessed", len(allTouchedArtistIDs), "totalDBRowsAffected", totalRowsAffected)
