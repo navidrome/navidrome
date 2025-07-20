@@ -31,6 +31,16 @@ var _ = Describe("Plugin Manager", func() {
 		ctx = GinkgoT().Context()
 		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
+
+		// Wait for all plugins to compile to avoid race conditions
+		err := mgr.EnsureCompiled("fake_artist_agent")
+		Expect(err).NotTo(HaveOccurred(), "fake_artist_agent should compile successfully")
+		err = mgr.EnsureCompiled("fake_album_agent")
+		Expect(err).NotTo(HaveOccurred(), "fake_album_agent should compile successfully")
+		err = mgr.EnsureCompiled("multi_plugin")
+		Expect(err).NotTo(HaveOccurred(), "multi_plugin should compile successfully")
+		err = mgr.EnsureCompiled("unauthorized_plugin")
+		Expect(err).NotTo(HaveOccurred(), "unauthorized_plugin should compile successfully")
 	})
 
 	It("should scan and discover plugins from the testdata folder", func() {
