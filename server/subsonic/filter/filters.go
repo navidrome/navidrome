@@ -163,7 +163,7 @@ func ByGenre(genre string) Options {
 }
 
 func filterByGenre(genre string) Sqlizer {
-	return persistence.Exists("json_tree(tags)", And{
+	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
 		Like{"value": genre},
 		NotEq{"atom": nil},
 	})
