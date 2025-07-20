@@ -12,11 +12,11 @@ import (
 )
 
 type Tag struct {
-	ID             string  `json:"id,omitempty"`
-	TagName        TagName `json:"tagName,omitempty"`
-	TagValue       string  `json:"tagValue,omitempty"`
-	AlbumCount     int     `json:"albumCount,omitempty"`
-	MediaFileCount int     `json:"songCount,omitempty"`
+	ID         string  `json:"id,omitempty"`
+	TagName    TagName `json:"tagName,omitempty"`
+	TagValue   string  `json:"tagValue,omitempty"`
+	AlbumCount int     `json:"albumCount,omitempty"`
+	SongCount  int     `json:"songCount,omitempty"`
 }
 
 type TagList []Tag

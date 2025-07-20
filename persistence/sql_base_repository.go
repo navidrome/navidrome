@@ -205,16 +205,9 @@ func libraryIdFilter(_ string, value interface{}) Sqlizer {
 func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
 	user := loggedUser(r.ctx)
 
-	// Admin users see all content
-	if user.IsAdmin {
+	// If the user is an admin, or the user ID is invalid (e.g., when no user is logged in), skip the library filter
+	if user.IsAdmin || user.ID == invalidUserId {
 		return sq
-	}
-
-	// Get user's accessible library IDs
-	userID := loggedUser(r.ctx).ID
-	if userID == invalidUserId {
-		// No user context - return empty result set
-		return sq.Where(Eq{"1": "0"})
 	}
 
 	table := r.tableName
@@ -222,10 +215,10 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 		table = tableName[0]
 	}
 
+	// Get user's accessible library IDs
 	// Use subquery to filter by user's library access
-	// This approach doesn't require DataStore in context
 	return sq.Where(Expr(table+".library_id IN ("+
-		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", userID))
+		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
 }
 
 func (r sqlRepository) seedKey() string {

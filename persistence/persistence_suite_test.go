@@ -218,7 +218,13 @@ var _ = BeforeSuite(func() {
 	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
 		panic(err)
 	}
-	ar, _ := arr.Get(artistBeatles.ID)
+	ar, err := arr.Get(artistBeatles.ID)
+	if err != nil {
+		panic(err)
+	}
+	if ar == nil {
+		panic("artist not found after SetStar")
+	}
 	artistBeatles.Starred = true
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
@@ -229,6 +235,9 @@ var _ = BeforeSuite(func() {
 	al, err := alr.Get(albumRadioactivity.ID)
 	if err != nil {
 		panic(err)
+	}
+	if al == nil {
+		panic("album not found after SetStar")
 	}
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt

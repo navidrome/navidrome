@@ -156,7 +156,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
 		if _, ok := model.AllRoles[role]; ok {
-			return Expr("EXISTS (SELECT 1 FROM library_artist WHERE library_artist.artist_id = artist.id AND JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL)")
+			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
 		}
 	}
 	return Eq{"1": 2}
@@ -170,14 +170,16 @@ func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
 // applyLibraryFilterToArtistQuery applies library filtering to artist queries through the library_artist junction table
 func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId {
-		// No user context - return empty result set
-		return query.Where(Eq{"1": "0"})
-	}
+	// Join with library_artist first to ensure only artists with content in libraries are included
+	// Exclude artists with empty stats (no actual content in the library)
+	query = query.Join("library_artist on library_artist.artist_id = artist.id")
+	//query = query.Join("library_artist on library_artist.artist_id = artist.id AND library_artist.stats != '{}'")
 
-	// Apply library filtering by joining only with accessible libraries
-	query = query.LeftJoin("library_artist on library_artist.artist_id = artist.id").
-		Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+	// Admin users see all artists from all libraries, no additional filtering needed
+	if user.ID != invalidUserId && !user.IsAdmin {
+		// Apply library filtering only for non-admin users by joining with their accessible libraries
+		query = query.Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+	}
 
 	return query
 }
@@ -501,6 +503,15 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchCounter, err)
 		}
 		totalRowsAffected += rowsAffected
+	}
+
+	// // Remove library_artist entries for artists that no longer have any content in any library
+	cleanupSQL := Delete("library_artist").Where("stats = '{}'")
+	cleanupRows, err := r.executeSQL(cleanupSQL)
+	if err != nil {
+		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
+	} else if cleanupRows > 0 {
+		log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
 	}
 
 	log.Debug(r.ctx, "RefreshStats: Successfully updated stats.", "totalArtistsProcessed", len(allTouchedArtistIDs), "totalDBRowsAffected", totalRowsAffected)

@@ -91,61 +91,66 @@ func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.
 	return r
 }
 
+// applyLibraryFiltering adds the appropriate library joins based on user context
+func (r *baseTagRepository) applyLibraryFiltering(sq SelectBuilder) SelectBuilder {
+	// Add library_tag join
+	sq = sq.LeftJoin("library_tag on library_tag.tag_id = tag.id")
+
+	// For authenticated users, also join with user_library to filter by accessible libraries
+	user := loggedUser(r.ctx)
+	if user.ID != invalidUserId {
+		sq = sq.Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID)
+	}
+
+	return sq
+}
+
 // newSelect overrides the base implementation to apply tag name filtering and library filtering.
 func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
-	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId {
-		// No user context - return empty result set
-		return SelectBuilder{}.Where(Eq{"1": "0"})
-	}
 	sq := r.sqlRepository.newSelect(options...)
+
+	// Apply tag name filtering if specified
 	if r.tagFilter != nil {
 		sq = sq.Where(Eq{"tag.tag_name": *r.tagFilter})
 	}
-	sq = sq.Columns(
+
+	// Apply library filtering and set up aggregation columns
+	sq = r.applyLibraryFiltering(sq).Columns(
 		"tag.id",
-		"tag.tag_value as name",
+		"tag.tag_name",
+		"tag.tag_value",
 		"COALESCE(SUM(library_tag.album_count), 0) as album_count",
 		"COALESCE(SUM(library_tag.media_file_count), 0) as song_count",
-	).
-		LeftJoin("library_tag on library_tag.tag_id = tag.id").
-		// Apply library filtering by joining only with accessible libraries
-		Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID).
-		GroupBy("tag.id", "tag.tag_value")
+	).GroupBy("tag.id", "tag.tag_name", "tag.tag_value")
+
 	return sq
 }
 
 // ResourceRepository interface implementation
 
 func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	// Create a query that counts distinct tags without GROUP BY
-	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId {
-		return 0, nil
-	}
+	sq := Select("COUNT(DISTINCT tag.id)").From("tag")
 
-	// Build the same base query as newSelect but for counting
-	sq := Select()
+	// Apply tag name filtering if specified
 	if r.tagFilter != nil {
 		sq = sq.Where(Eq{"tag.tag_name": *r.tagFilter})
 	}
 
-	// Apply the same joins as newSelect
-	sq = sq.LeftJoin("library_tag on library_tag.tag_id = tag.id").
-		Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID)
+	// Apply library filtering
+	sq = r.applyLibraryFiltering(sq)
 
 	return r.count(sq, r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *baseTagRepository) Read(id string) (interface{}, error) {
-	query := r.newSelect().Columns("*").Where(Eq{"id": id})
+	query := r.newSelect().Where(Eq{"id": id})
 	var res model.Tag
 	err := r.queryOne(query, &res)
 	return &res, err
 }
 
 func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	query := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
+	query := r.newSelect(r.parseRestOptions(r.ctx, options...))
 	var res model.TagList
 	err := r.queryAll(query, &res)
 	return res, err
