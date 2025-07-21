@@ -185,7 +185,7 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	// Stats Format: {"1": {"albumartist": {"songCount": 10, "albumCount": 5, "size": 1024}, "artist": {...}}, "2": {...}}
+	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
 	query := r.newSelect(options...).Columns("artist.*",
 		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
 
