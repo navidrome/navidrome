@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("TagRepository", func() {
@@ -133,6 +134,67 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			err = repo.UpdateCounts()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should handle albums with non-existent tag IDs in JSON gracefully", func() {
+			// Regression test for foreign key constraint error
+			// Create an album with tag IDs in JSON that don't exist in tag table
+			db := GetDBXBuilder()
+
+			// First, create a non-existent tag ID (this simulates tags in JSON that aren't in tag table)
+			nonExistentTagID := id.NewTagID("genre", "nonexistent-genre")
+
+			// Create album with JSON containing the non-existent tag ID
+			albumWithBadTags := `{"genre":[{"id":"` + nonExistentTagID + `","value":"nonexistent-genre"}]}`
+
+			// Insert album directly into database with the problematic JSON
+			_, err := db.NewQuery("INSERT INTO album (id, name, library_id, tags) VALUES ({:id}, {:name}, {:lib}, {:tags})").
+				Bind(dbx.Params{
+					"id":   "test-album-bad-tags",
+					"name": "Album With Bad Tags",
+					"lib":  1,
+					"tags": albumWithBadTags,
+				}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			// This should not fail with foreign key constraint error
+			err = repo.UpdateCounts()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Cleanup
+			_, err = db.NewQuery("DELETE FROM album WHERE id = {:id}").
+				Bind(dbx.Params{"id": "test-album-bad-tags"}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should handle media files with non-existent tag IDs in JSON gracefully", func() {
+			// Regression test for foreign key constraint error with media files
+			db := GetDBXBuilder()
+
+			// Create a non-existent tag ID
+			nonExistentTagID := id.NewTagID("genre", "another-nonexistent-genre")
+
+			// Create media file with JSON containing the non-existent tag ID
+			mediaFileWithBadTags := `{"genre":[{"id":"` + nonExistentTagID + `","value":"another-nonexistent-genre"}]}`
+
+			// Insert media file directly into database with the problematic JSON
+			_, err := db.NewQuery("INSERT INTO media_file (id, title, library_id, tags) VALUES ({:id}, {:title}, {:lib}, {:tags})").
+				Bind(dbx.Params{
+					"id":    "test-media-bad-tags",
+					"title": "Media File With Bad Tags",
+					"lib":   1,
+					"tags":  mediaFileWithBadTags,
+				}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			// This should not fail with foreign key constraint error
+			err = repo.UpdateCounts()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Cleanup
+			_, err = db.NewQuery("DELETE FROM media_file WHERE id = {:id}").
+				Bind(dbx.Params{"id": "test-media-bad-tags"}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
