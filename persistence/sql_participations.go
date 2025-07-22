@@ -54,15 +54,15 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		return nil
 	}
 
-	// Use json_tree with INNER JOIN to artist table to automatically filter out non-existent artist IDs
 	participantsJSON, err := json.Marshal(participants)
 	if err != nil {
 		return fmt.Errorf("marshaling participants: %w", err)
 	}
 
-	// Build the INSERT query using json_tree and INNER JOIN
+	// Build the INSERT query using json_tree and INNER JOIN to artist table
+	// to automatically filter out non-existent artist IDs
 	query := fmt.Sprintf(`
-		INSERT INTO %s_artists (%s_id, artist_id, role, sub_role)
+		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
 		SELECT ?, 
 		       participant_data.value as artist_id,
 		       role_name.key as role,
@@ -73,8 +73,8 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		LEFT JOIN json_tree(participant_idx.value, '$.subRole') as sub_role_data ON sub_role_data.atom IS NOT NULL
 		JOIN artist ON artist.id = participant_data.value
 		WHERE role_name.type = 'array'
-		ON CONFLICT (artist_id, %s_id, role, sub_role) DO NOTHING
-	`, r.tableName, r.tableName, r.tableName)
+		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING
+	`, r.tableName)
 
 	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
 	return err
