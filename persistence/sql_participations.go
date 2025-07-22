@@ -53,6 +53,41 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 	if len(participants) == 0 {
 		return nil
 	}
+
+	// Filter out artist IDs that don't exist in the artist table to prevent foreign key constraint errors
+	if len(ids) > 0 {
+		var existingIDs []string
+		sq := Select("id").From("artist").Where(Eq{"id": ids})
+		err := r.queryAllSlice(sq, &existingIDs)
+		if err != nil && err != model.ErrNotFound {
+			return err
+		}
+
+		existingArtistIDs := make(map[string]bool)
+		for _, id := range existingIDs {
+			existingArtistIDs[id] = true
+		}
+
+		// Filter participants to only include existing artist IDs
+		filteredParticipants := make(model.Participants)
+		for role, artists := range participants {
+			var validArtists []model.Participant
+			for _, artist := range artists {
+				if existingArtistIDs[artist.ID] {
+					validArtists = append(validArtists, artist)
+				}
+			}
+			if len(validArtists) > 0 {
+				filteredParticipants[role] = validArtists
+			}
+		}
+		participants = filteredParticipants
+	}
+
+	if len(participants) == 0 {
+		return nil
+	}
+
 	sqi := Insert(r.tableName+"_artists").
 		Columns(r.tableName+"_id", "artist_id", "role", "sub_role").
 		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role, sub_role) do nothing", r.tableName))

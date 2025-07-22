@@ -283,6 +283,40 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	Describe("Foreign Key Constraint Regression Tests", func() {
+		It("should handle albums with non-existent artist IDs in participants without foreign key constraint error", func() {
+			// Regression test for foreign key constraint error when album participants
+			// contain artist IDs that don't exist in the artist table
+
+			// Create an album with participants that reference non-existent artist IDs
+			album := &model.Album{
+				LibraryID:     1,
+				ID:            "test-album-fk-constraints",
+				Name:          "Test Album with Invalid Artist References",
+				AlbumArtistID: "non-existent-artist-1",
+				AlbumArtist:   "Non Existent Album Artist",
+				Participants: model.Participants{
+					model.RoleArtist: {
+						{Artist: model.Artist{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"}},
+						{Artist: model.Artist{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"}},
+					},
+					model.RoleComposer: {
+						{Artist: model.Artist{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"}},
+						{Artist: model.Artist{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"}},
+					},
+					model.RoleAlbumArtist: {
+						{Artist: model.Artist{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"}},
+					},
+				},
+			}
+
+			// This should not fail with foreign key constraint error
+			// The updateParticipants method should handle non-existent artist IDs gracefully
+			err := repo.Put(album)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
 })
 
 func _p(id, name string, sortName ...string) model.Participant {
