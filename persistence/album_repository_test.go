@@ -1,14 +1,12 @@
 package persistence
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
@@ -27,7 +25,7 @@ var _ = Describe("AlbumRepository", func() {
 	var repo model.AlbumRepository
 
 	BeforeEach(func() {
-		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
+		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
 		repo = NewAlbumRepository(ctx, GetDBXBuilder())
 	})
 
@@ -293,6 +291,13 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("Participant Foreign Key Handling", func() {
+		var artistRepo model.ArtistRepository
+
+		BeforeEach(func() {
+			ctx := request.WithUser(GinkgoT().Context(), adminUser)
+			artistRepo = NewArtistRepository(ctx, GetDBXBuilder())
+		})
+
 		// Helper to verify album_artists records
 		verifyAlbumArtists := func(albumID string, expected []AlbumArtistRecord) {
 			GinkgoHelper()
@@ -317,8 +322,6 @@ var _ = Describe("AlbumRepository", func() {
 				OrderArtistName: "real artist",
 				SortArtistName:  "Artist, Real",
 			}
-			ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-			artistRepo := NewArtistRepository(ctx, GetDBXBuilder())
 			err := createArtistWithLibrary(artistRepo, artist, 1)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -349,6 +352,16 @@ var _ = Describe("AlbumRepository", func() {
 				{ArtistID: "real-artist-1", Role: "composer", SubRole: "primary"},
 			}
 			verifyAlbumArtists(album.ID, expected)
+
+			// Clean up the test artist and album created for this test
+			if raw, ok := artistRepo.(*artistRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": artist.ID}))
+			}
+			if raw, ok := repo.(*albumRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"album_id": album.ID}))
+			}
 		})
 
 		It("filters out invalid artist IDs leaving only valid participants in database", func() {
@@ -363,8 +376,6 @@ var _ = Describe("AlbumRepository", func() {
 				Name:            "Real Artist 2",
 				OrderArtistName: "real artist 2",
 			}
-			ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-			artistRepo := NewArtistRepository(ctx, GetDBXBuilder())
 			err := createArtistWithLibrary(artistRepo, artist1, 1)
 			Expect(err).ToNot(HaveOccurred())
 			err = createArtistWithLibrary(artistRepo, artist2, 1)
@@ -402,6 +413,18 @@ var _ = Describe("AlbumRepository", func() {
 				{ArtistID: "real-artist-mix-1", Role: "composer", SubRole: ""},
 			}
 			verifyAlbumArtists(album.ID, expected)
+
+			// Clean up the test artists and album created for this test
+			if raw, ok := artistRepo.(*artistRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist1.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": artist1.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist2.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": artist2.ID}))
+			}
+			if raw, ok := repo.(*albumRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"album_id": album.ID}))
+			}
 		})
 
 		It("handles complex nested JSON with multiple roles and sub-roles", func() {
@@ -413,8 +436,6 @@ var _ = Describe("AlbumRepository", func() {
 				{ID: "complex-artist-4", Name: "Engineer", OrderArtistName: "engineer"},
 			}
 
-			ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-			artistRepo := NewArtistRepository(ctx, GetDBXBuilder())
 			for _, artist := range artists {
 				err := createArtistWithLibrary(artistRepo, artist, 1)
 				Expect(err).ToNot(HaveOccurred())
@@ -456,6 +477,18 @@ var _ = Describe("AlbumRepository", func() {
 				{ArtistID: "complex-artist-3", Role: "producer", SubRole: "executive"},
 			}
 			verifyAlbumArtists(album.ID, expected)
+
+			// Clean up the test artists and album created for this test
+			if raw, ok := artistRepo.(*artistRepository); ok {
+				for _, artist := range artists {
+					_, _ = raw.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+					_, _ = raw.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": artist.ID}))
+				}
+			}
+			if raw, ok := repo.(*albumRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"album_id": album.ID}))
+			}
 		})
 
 		It("handles albums with non-existent artist IDs without constraint errors", func() {
@@ -488,6 +521,16 @@ var _ = Describe("AlbumRepository", func() {
 			// The updateParticipants method should handle non-existent artist IDs gracefully
 			err := repo.Put(album)
 			Expect(err).ToNot(HaveOccurred())
+
+			// Verify that no participant records were inserted since all artist IDs were invalid
+			// The INNER JOIN with the artist table should filter out all non-existent artists
+			verifyAlbumArtists(album.ID, []AlbumArtistRecord{})
+
+			// Clean up the test album created for this test
+			if raw, ok := repo.(*albumRepository); ok {
+				_, _ = raw.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+				_, _ = raw.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"album_id": album.ID}))
+			}
 		})
 	})
 })
