@@ -54,26 +54,43 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		return nil
 	}
 
-	participantsJSON, err := json.Marshal(participants)
+	// Create flat array structure for simpler SQL processing
+	type flatParticipant struct {
+		ArtistID string `json:"artist_id"`
+		Role     string `json:"role"`
+		SubRole  string `json:"sub_role,omitempty"`
+	}
+
+	var flatParticipants []flatParticipant
+	for role, artists := range participants {
+		for _, artist := range artists {
+			flatParticipants = append(flatParticipants, flatParticipant{
+				ArtistID: artist.ID,
+				Role:     role.String(),
+				SubRole:  artist.SubRole,
+			})
+		}
+	}
+
+	participantsJSON, err := json.Marshal(flatParticipants)
 	if err != nil {
 		return fmt.Errorf("marshaling participants: %w", err)
 	}
 
-	// Build the INSERT query using json_tree and INNER JOIN to artist table
+	// Build the INSERT query using json_each and INNER JOIN to artist table
 	// to automatically filter out non-existent artist IDs
 	query := fmt.Sprintf(`
 		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
 		SELECT ?, 
-		       participant_data.value as artist_id,
-		       role_name.key as role,
-		       COALESCE(sub_role_data.value, '') as sub_role
-		FROM json_tree(?, '$') as role_name
-		JOIN json_tree(role_name.value, '$') as participant_idx ON participant_idx.type = 'object'
-		JOIN json_tree(participant_idx.value, '$.id') as participant_data ON participant_data.atom IS NOT NULL
-		LEFT JOIN json_tree(participant_idx.value, '$.subRole') as sub_role_data ON sub_role_data.atom IS NOT NULL
-		JOIN artist ON artist.id = participant_data.value
-		WHERE role_name.type = 'array'
-		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING
+		       json_extract(value, '$.artist_id') as artist_id,
+		       json_extract(value, '$.role') as role,
+		       COALESCE(json_extract(value, '$.sub_role'), '') as sub_role
+		-- Parse the flat JSON array: [{"artist_id": "id", "role": "role", "sub_role": "subRole"}]
+		FROM json_each(?)                                        -- Iterate through each array element
+		-- CRITICAL: Only insert records for artists that actually exist in the database
+		JOIN artist ON artist.id = json_extract(value, '$.artist_id')  -- Filter out non-existent artist IDs via INNER JOIN
+		-- Handle duplicate insertions gracefully (e.g., if called multiple times)
+		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
 	`, r.tableName)
 
 	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
