@@ -37,7 +37,7 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 .PHONY: watch
 
 PKG ?= ./...
-test: ##@Development Run Go tests
+test: ##@Development Run Go tests. Use PKG variable to specify packages to test, e.g. make test PKG=./server
 	go test -tags netgo $(PKG)
 .PHONY: test
 

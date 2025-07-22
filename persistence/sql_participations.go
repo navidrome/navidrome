@@ -15,6 +15,13 @@ type participant struct {
 	SubRole string `json:"subRole,omitempty"`
 }
 
+// flatParticipant represents a flattened participant structure for SQL processing
+type flatParticipant struct {
+	ArtistID string `json:"artist_id"`
+	Role     string `json:"role"`
+	SubRole  string `json:"sub_role,omitempty"`
+}
+
 func marshalParticipants(participants model.Participants) string {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {
@@ -53,15 +60,40 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 	if len(participants) == 0 {
 		return nil
 	}
-	sqi := Insert(r.tableName+"_artists").
-		Columns(r.tableName+"_id", "artist_id", "role", "sub_role").
-		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role, sub_role) do nothing", r.tableName))
+
+	var flatParticipants []flatParticipant
 	for role, artists := range participants {
 		for _, artist := range artists {
-			sqi = sqi.Values(itemID, artist.ID, role.String(), artist.SubRole)
+			flatParticipants = append(flatParticipants, flatParticipant{
+				ArtistID: artist.ID,
+				Role:     role.String(),
+				SubRole:  artist.SubRole,
+			})
 		}
 	}
-	_, err = r.executeSQL(sqi)
+
+	participantsJSON, err := json.Marshal(flatParticipants)
+	if err != nil {
+		return fmt.Errorf("marshaling participants: %w", err)
+	}
+
+	// Build the INSERT query using json_each and INNER JOIN to artist table
+	// to automatically filter out non-existent artist IDs
+	query := fmt.Sprintf(`
+		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
+		SELECT ?, 
+		       json_extract(value, '$.artist_id') as artist_id,
+		       json_extract(value, '$.role') as role,
+		       COALESCE(json_extract(value, '$.sub_role'), '') as sub_role
+		-- Parse the flat JSON array: [{"artist_id": "id", "role": "role", "sub_role": "subRole"}]
+		FROM json_each(?)                                        -- Iterate through each array element
+		-- CRITICAL: Only insert records for artists that actually exist in the database
+		JOIN artist ON artist.id = json_extract(value, '$.artist_id')  -- Filter out non-existent artist IDs via INNER JOIN
+		-- Handle duplicate insertions gracefully (e.g., if called multiple times)
+		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
+	`, r.tableName)
+
+	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
 	return err
 }
 
