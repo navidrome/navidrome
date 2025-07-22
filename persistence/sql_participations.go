@@ -54,49 +54,29 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		return nil
 	}
 
-	// Filter out artist IDs that don't exist in the artist table to prevent foreign key constraint errors
-	if len(ids) > 0 {
-		var existingIDs []string
-		sq := Select("id").From("artist").Where(Eq{"id": ids})
-		err := r.queryAllSlice(sq, &existingIDs)
-		if err != nil && err != model.ErrNotFound {
-			return err
-		}
-
-		existingArtistIDs := make(map[string]bool)
-		for _, id := range existingIDs {
-			existingArtistIDs[id] = true
-		}
-
-		// Filter participants to only include existing artist IDs
-		filteredParticipants := make(model.Participants)
-		for role, artists := range participants {
-			var validArtists []model.Participant
-			for _, artist := range artists {
-				if existingArtistIDs[artist.ID] {
-					validArtists = append(validArtists, artist)
-				}
-			}
-			if len(validArtists) > 0 {
-				filteredParticipants[role] = validArtists
-			}
-		}
-		participants = filteredParticipants
+	// Use json_tree with INNER JOIN to artist table to automatically filter out non-existent artist IDs
+	participantsJSON, err := json.Marshal(participants)
+	if err != nil {
+		return fmt.Errorf("marshaling participants: %w", err)
 	}
 
-	if len(participants) == 0 {
-		return nil
-	}
+	// Build the INSERT query using json_tree and INNER JOIN
+	query := fmt.Sprintf(`
+		INSERT INTO %s_artists (%s_id, artist_id, role, sub_role)
+		SELECT ?, 
+		       participant_data.value as artist_id,
+		       role_name.key as role,
+		       COALESCE(sub_role_data.value, '') as sub_role
+		FROM json_tree(?, '$') as role_name
+		JOIN json_tree(role_name.value, '$') as participant_idx ON participant_idx.type = 'object'
+		JOIN json_tree(participant_idx.value, '$.id') as participant_data ON participant_data.atom IS NOT NULL
+		LEFT JOIN json_tree(participant_idx.value, '$.subRole') as sub_role_data ON sub_role_data.atom IS NOT NULL
+		JOIN artist ON artist.id = participant_data.value
+		WHERE role_name.type = 'array'
+		ON CONFLICT (artist_id, %s_id, role, sub_role) DO NOTHING
+	`, r.tableName, r.tableName, r.tableName)
 
-	sqi := Insert(r.tableName+"_artists").
-		Columns(r.tableName+"_id", "artist_id", "role", "sub_role").
-		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role, sub_role) do nothing", r.tableName))
-	for role, artists := range participants {
-		for _, artist := range artists {
-			sqi = sqi.Values(itemID, artist.ID, role.String(), artist.SubRole)
-		}
-	}
-	_, err = r.executeSQL(sqi)
+	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
 	return err
 }
 
