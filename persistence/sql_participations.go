@@ -15,6 +15,13 @@ type participant struct {
 	SubRole string `json:"subRole,omitempty"`
 }
 
+// flatParticipant represents a flattened participant structure for SQL processing
+type flatParticipant struct {
+	ArtistID string `json:"artist_id"`
+	Role     string `json:"role"`
+	SubRole  string `json:"sub_role,omitempty"`
+}
+
 func marshalParticipants(participants model.Participants) string {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {
@@ -52,13 +59,6 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 	}
 	if len(participants) == 0 {
 		return nil
-	}
-
-	// Create flat array structure for simpler SQL processing
-	type flatParticipant struct {
-		ArtistID string `json:"artist_id"`
-		Role     string `json:"role"`
-		SubRole  string `json:"sub_role,omitempty"`
 	}
 
 	var flatParticipants []flatParticipant
