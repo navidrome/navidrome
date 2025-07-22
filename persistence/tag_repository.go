@@ -56,6 +56,7 @@ INSERT INTO library_tag (tag_id, library_id, %[1]s_count)
 SELECT jt.value as tag_id, %[1]s.library_id, count(distinct %[1]s.id) as %[1]s_count
 FROM %[1]s
 JOIN json_tree(%[1]s.tags, '$.genre') as jt ON jt.atom IS NOT NULL AND jt.key = 'id'
+JOIN tag ON tag.id = jt.value
 GROUP BY jt.value, %[1]s.library_id
 ON CONFLICT (tag_id, library_id) 
 DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
