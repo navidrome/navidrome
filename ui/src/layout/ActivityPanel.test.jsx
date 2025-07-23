@@ -13,7 +13,12 @@ vi.mock('../subsonic', () => ({
   default: {
     getScanStatus: vi.fn(() =>
       Promise.resolve({
-        json: { 'subsonic-response': { status: 'ok', scanStatus: {} } },
+        json: {
+          'subsonic-response': {
+            status: 'ok',
+            scanStatus: { error: 'Scan failed' },
+          },
+        },
       }),
     ),
     startScan: vi.fn(),
