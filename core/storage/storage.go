@@ -44,7 +44,12 @@ func For(uri string) (Storage, error) {
 				escapedParts = append(escapedParts, url.PathEscape(part))
 			}
 		}
-		uri = LocalSchemaID + ":///" + strings.Join(escapedParts, "/")
+		// Preserve leading slash for absolute paths
+		if strings.HasPrefix(uri, "/") {
+			uri = LocalSchemaID + ":///" + strings.Join(escapedParts, "/")
+		} else {
+			uri = LocalSchemaID + "://" + strings.Join(escapedParts, "/")
+		}
 	}
 
 	u, err := url.Parse(uri)

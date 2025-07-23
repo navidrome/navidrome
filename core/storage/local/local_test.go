@@ -53,7 +53,7 @@ var _ = Describe("LocalStorage", func() {
 
 				Expect(localStorage.u.Scheme).To(Equal("file"))
 				// Check that the path is set correctly (could be resolved to real path on macOS)
-				Expect(localStorage.decodedPath).To(ContainSubstring("navidrome-local-storage-test"))
+				Expect(localStorage.u.Path).To(ContainSubstring("navidrome-local-storage-test"))
 				Expect(localStorage.resolvedPath).To(ContainSubstring("navidrome-local-storage-test"))
 				Expect(localStorage.extractor).ToNot(BeNil())
 			})
@@ -74,7 +74,7 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.decodedPath).To(Equal(spacedDir))
+				Expect(localStorage.u.Path).To(Equal(spacedDir))
 			})
 
 			It("should resolve symlinks when possible", func() {
@@ -95,12 +95,12 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.decodedPath).To(Equal(linkDir))
+				Expect(localStorage.u.Path).To(Equal(linkDir))
 				// Check that the resolved path contains the real directory name
 				Expect(localStorage.resolvedPath).To(ContainSubstring("real"))
 			})
 
-			It("should use decodedPath as resolvedPath when symlink resolution fails", func() {
+			It("should use u.Path as resolvedPath when symlink resolution fails", func() {
 				// Use a non-existent path to trigger symlink resolution failure
 				nonExistentPath := filepath.Join(tempDir, "non-existent")
 
@@ -111,7 +111,7 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.decodedPath).To(Equal(nonExistentPath))
+				Expect(localStorage.u.Path).To(Equal(nonExistentPath))
 				Expect(localStorage.resolvedPath).To(Equal(nonExistentPath))
 			})
 		})
@@ -131,7 +131,7 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.decodedPath).To(Equal("C:/music"))
+				Expect(localStorage.u.Path).To(Equal("C:/music"))
 			})
 		})
 
