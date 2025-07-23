@@ -12,6 +12,7 @@
         "artist": "Előadó",
         "album": "Album",
         "path": "Elérési út",
+        "libraryName": "Könyvtár",
         "genre": "Műfaj",
         "compilation": "Válogatásalbum",
         "year": "Év",
@@ -57,6 +58,7 @@
         "songCount": "Számok",
         "playCount": "Lejátszások",
         "name": "Név",
+        "libraryName": "Könyvtár",
         "genre": "Stílus",
         "compilation": "Válogatásalbum",
         "year": "Év",
@@ -147,19 +149,26 @@
         "currentPassword": "Jelenlegi jelszó",
         "newPassword": "Új jelszó",
         "token": "Token",
-        "lastAccessAt": "Utolsó elérés"
+        "lastAccessAt": "Utolsó elérés",
+        "libraries": "Könyvtárak"
       },
       "helperTexts": {
-        "name": "A névváltoztatások csak a következő bejelentkezéskor jelennek meg"
+        "name": "A névváltoztatások csak a következő bejelentkezéskor jelennek meg",
+        "libraries": "Válassz könyvtárakat ehhez a felhasználóhoz vagy ne jelölj be egyet sem, az alapértelmezett könyvtárak használatához"
       },
       "notifications": {
         "created": "Felhasználó létrehozva",
         "updated": "Felhasználó frissítve",
         "deleted": "Felhasználó törölve"
       },
+      "validation": {
+        "librariesRequired": "Legalább egy könyvtárat ki kell választani nem admin felhasználókhoz"
+      },
       "message": {
         "listenBrainzToken": "Add meg a ListenBrainz felhasználó tokened.",
-        "clickHereForToken": "Kattints ide, hogy megszerezd a tokened"
+        "clickHereForToken": "Kattints ide, hogy megszerezd a tokened",
+        "selectAllLibraries": "Minden könyvtár kiválasztása",
+        "adminAutoLibraries": "Minden admin felhasználó hozzáfér bármely könyvtárhoz"
       }
     },
     "player": {
@@ -252,6 +261,7 @@
       "fields": {
         "path": "Útvonal",
         "size": "Méret",
+        "libraryName": "Könyvtár",
         "updatedAt": "Eltűnt ekkor:"
       },
       "actions": {
@@ -260,6 +270,58 @@
       },
       "notifications": {
         "removed": "Hiányzó fájl(ok) eltávolítva"
+      }
+    },
+    "library": {
+      "name": "Könyvtár |||| Könyvtárak",
+      "fields": {
+        "name": "Név",
+        "path": "Elérési út",
+        "remotePath": "Távoli elérési út",
+        "lastScanAt": "Legutóbbi szkennelés",
+        "songCount": "Számok",
+        "albumCount": "Albumok",
+        "artistCount": "Előadók",
+        "totalSongs": "Számok",
+        "totalAlbums": "Albumok",
+        "totalArtists": "Előadók",
+        "totalFolders": "Mappák",
+        "totalFiles": "Fájlok",
+        "totalMissingFiles": "Hiányzó fájlok",
+        "totalSize": "Teljes méret",
+        "totalDuration": "Hossz",
+        "defaultNewUsers": "Alapértelmezett könyvtár új felhasználóknak",
+        "createdAt": "Létrehozva",
+        "updatedAt": "Frissítve"
+      },
+      "sections": {
+        "basic": "Alapinformációk",
+        "statistics": "Statisztikák"
+      },
+      "actions": {
+        "scan": "Könyvtár szkennelése",
+        "manageUsers": "Elérés kezelése",
+        "viewDetails": "Részletek"
+      },
+      "notifications": {
+        "created": "Könyvtár létrehozva",
+        "updated": "Könyvtár frissítve",
+        "deleted": "Könyvtár törölve",
+        "scanStarted": "Szkennelés folyamatban",
+        "scanCompleted": "Könyvtár szkennelés befelyezve"
+      },
+      "validation": {
+        "nameRequired": "Adj meg egy könyvtárnevet",
+        "pathRequired": "Adj meg egy útvonalat",
+        "pathNotDirectory": "A könyvtárútvonalnak egy mappának kell lennie",
+        "pathNotFound": "A könyvtár útvonala nem található",
+        "pathNotAccessible": "A könyvtár útvonala nem elérhető",
+        "pathInvalid": "Helytelen könyvtár útvonal"
+      },
+      "messages": {
+        "deleteConfirm": "Biztosan törlöd ezt a könyvtárt? Minden adata törlődni fog és elérhetetlenné válik.",
+        "scanInProgress": "Szkennelés folyamatban...",
+        "noLibrariesAssigned": "Ehhez a felhasználóhoz nincsenek könyvtárak adva"
       }
     }
   },
@@ -448,6 +510,12 @@
   },
   "menu": {
     "library": "Könyvtár",
+    "librarySelector": {
+      "allLibraries": "Minden %{count} könyvtár",
+      "multipleLibraries": "%{selected} kiválasztva %{total} könyvtárból",
+      "selectLibraries": "Kiválasztott kőnyvtárak",
+      "none": "Semmi"
+    },
     "settings": "Beállítások",
     "version": "Verzió",
     "theme": "Téma",
@@ -530,8 +598,8 @@
   "activity": {
     "title": "Aktivitás",
     "totalScanned": "Összes beolvasott mappa:",
-    "quickScan": "Gyors beolvasás",
-    "fullScan": "Teljes beolvasás",
+    "quickScan": "Gyors szkennelés",
+    "fullScan": "Teljes szkennelés",
     "serverUptime": "Szerver üzemidő",
     "serverDown": "OFFLINE",
     "scanType": "Típus",
