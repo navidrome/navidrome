@@ -492,14 +492,37 @@
             }
         }
     },
+    "tabs": {
+           "about": "关于",
+           "config": "配置"
+     },
+    "config": {
+            "configName": "配置名称",
+            "environmentVariable": "环境变量",
+            "currentValue": "当前值",
+            "configurationFile": "配置文件",
+            "exportToml": "导出配置 (TOML)",
+            "exportSuccess": "以TOML格式导出到剪贴板的配置",
+            "exportFailed": "无法复制配置",
+            "devFlagsHeader": "开发标志（可能会更改/删除）",
+            "devFlagsComment": "这些是实验设置，在未来的版本中可能会被删除"
+    },
     "activity": {
         "title": "运行情况",
         "totalScanned": "已完成扫描的目录",
         "quickScan": "快速扫描",
         "fullScan": "完全扫描",
         "serverUptime": "服务器已运行",
-        "serverDown": "服务器已离线"
+        "serverDown": "服务器已离线",
+        "scanType": "扫描类型",
+        "status": "扫描错误",
+        "elapsedTime": "运行时长"
     },
+    "nowPlaying": {
+       "title": "正在播放",
+       "empty": "无播放",
+       "minutesAgo": "%{smart_count} 分钟前 |||| %{smart_count} 分钟前"
+   },
     "help": {
         "title": "Navidrome 快捷键",
         "hotkeys": {
