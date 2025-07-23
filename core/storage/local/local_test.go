@@ -185,7 +185,7 @@ var _ = Describe("LocalStorage", func() {
 		BeforeEach(func() {
 			// Create a test file
 			testFile = filepath.Join(tempDir, "test.mp3")
-			err := os.WriteFile(testFile, []byte("test data"), 0644)
+			err := os.WriteFile(testFile, []byte("test data"), 0600)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Reset extractor state
@@ -293,7 +293,7 @@ var _ = Describe("LocalStorage", func() {
 			It("should process all files correctly", func() {
 				// Create another test file
 				testFile2 := filepath.Join(tempDir, "test2.mp3")
-				err := os.WriteFile(testFile2, []byte("test data 2"), 0644)
+				err := os.WriteFile(testFile2, []byte("test data 2"), 0600)
 				Expect(err).ToNot(HaveOccurred())
 
 				info1 := metadata.Info{
@@ -331,7 +331,7 @@ var _ = Describe("LocalStorage", func() {
 
 		BeforeEach(func() {
 			testFile = filepath.Join(tempDir, "test.mp3")
-			err := os.WriteFile(testFile, []byte("test data"), 0644)
+			err := os.WriteFile(testFile, []byte("test data"), 0600)
 			Expect(err).ToNot(HaveOccurred())
 
 			fileInfo, err = os.Stat(testFile)
