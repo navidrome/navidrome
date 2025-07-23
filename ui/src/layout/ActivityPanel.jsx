@@ -75,14 +75,28 @@ const ActivityPanel = () => {
     scanStatus.scanning,
     scanStatus.elapsedTime,
   )
-  const classes = useStyles({ up: up && !scanStatus.error })
+  const [errorAcknowledged, setErrorAcknowledged] = useState(false)
+  const classes = useStyles({
+    up: up && (!scanStatus.error || errorAcknowledged),
+  })
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   useInitialScanStatus()
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
+  const handleMenuOpen = (event) => {
+    if (scanStatus.error) {
+      setErrorAcknowledged(true)
+    }
+    setAnchorEl(event.currentTarget)
+  }
+
+  useEffect(() => {
+    if (scanStatus.error) {
+      setErrorAcknowledged(false)
+    }
+  }, [scanStatus.error])
   const handleMenuClose = () => setAnchorEl(null)
   const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
 
@@ -111,10 +125,10 @@ const ActivityPanel = () => {
     <div className={classes.wrapper}>
       <Tooltip title={tooltipTitle}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          {!up || scanStatus.error ? (
-            <BiError size={'20'} />
+          {!up || (scanStatus.error && !errorAcknowledged) ? (
+            <BiError data-testid="activity-error-icon" size={'20'} />
           ) : (
-            <FiActivity size={'20'} />
+            <FiActivity data-testid="activity-ok-icon" size={'20'} />
           )}
         </IconButton>
       </Tooltip>
