@@ -348,18 +348,6 @@ var _ = Describe("LocalStorage", func() {
 				// Should be around the current time (within last few minutes)
 				Expect(birthTime).To(BeTemporally("~", time.Now(), 5*time.Minute))
 			})
-
-			It("should return current time when birth time is not available", func() {
-				// Test with a real file where birth time extraction might fail
-				// Note: This is testing the fallback behavior when times.Get fails
-				lfi := localFileInfo{FileInfo: fileInfo}
-				birthTime := lfi.BirthTime()
-
-				// Birth time should be a valid time (not zero value)
-				Expect(birthTime).ToNot(BeZero())
-				// Should be around the current time (within last few minutes)
-				Expect(birthTime).To(BeTemporally("~", time.Now(), 5*time.Minute))
-			})
 		})
 
 		It("should delegate all other FileInfo methods", func() {
