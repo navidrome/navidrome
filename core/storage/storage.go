@@ -36,7 +36,15 @@ func For(uri string) (Storage, error) {
 	if len(parts) < 2 {
 		uri, _ = filepath.Abs(uri)
 		uri = filepath.ToSlash(uri)
-		uri = LocalSchemaID + "://" + uri
+		// Properly escape each path component using URL standards
+		pathParts := strings.Split(strings.Trim(uri, "/"), "/")
+		var escapedParts []string
+		for _, part := range pathParts {
+			if part != "" {
+				escapedParts = append(escapedParts, url.PathEscape(part))
+			}
+		}
+		uri = LocalSchemaID + ":///" + strings.Join(escapedParts, "/")
 	}
 
 	u, err := url.Parse(uri)

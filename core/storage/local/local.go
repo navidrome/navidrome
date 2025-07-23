@@ -21,6 +21,7 @@ import (
 type localStorage struct {
 	u            url.URL
 	extractor    Extractor
+	decodedPath  string
 	resolvedPath string
 	watching     atomic.Bool
 }
@@ -30,20 +31,24 @@ func newLocalStorage(u url.URL) storage.Storage {
 	if !ok || newExtractor == nil {
 		log.Fatal("Extractor not found", "path", conf.Server.Scanner.Extractor)
 	}
+
+	// u.Path is already URL-decoded by url.Parse()
+	decodedPath := u.Path
+
 	isWindowsPath := filepath.VolumeName(u.Host) != ""
 	if u.Scheme == storage.LocalSchemaID && isWindowsPath {
-		u.Path = filepath.Join(u.Host, u.Path)
+		decodedPath = filepath.Join(u.Host, decodedPath)
 	}
-	resolvedPath, err := filepath.EvalSymlinks(u.Path)
+	resolvedPath, err := filepath.EvalSymlinks(decodedPath)
 	if err != nil {
-		log.Warn("Error resolving path", "path", u.Path, "err", err)
-		resolvedPath = u.Path
+		log.Warn("Error resolving path", "path", decodedPath, "err", err)
+		resolvedPath = decodedPath
 	}
-	return &localStorage{u: u, extractor: newExtractor(os.DirFS(u.Path), u.Path), resolvedPath: resolvedPath}
+	return &localStorage{u: u, extractor: newExtractor(os.DirFS(decodedPath), decodedPath), decodedPath: decodedPath, resolvedPath: resolvedPath}
 }
 
 func (s *localStorage) FS() (storage.MusicFS, error) {
-	path := s.u.Path
+	path := s.decodedPath
 	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
