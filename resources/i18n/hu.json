@@ -271,58 +271,58 @@
       "notifications": {
         "removed": "Hiányzó fájl(ok) eltávolítva"
       }
-    }
-  },
-  "library": {
-    "name": "Könyvtár |||| Könyvtárak",
-    "fields": {
-      "name": "Név",
-      "path": "Elérési út",
-      "remotePath": "Távoli elérési út",
-      "lastScanAt": "Legutóbbi szkennelés",
-      "songCount": "Számok",
-      "albumCount": "Albumok",
-      "artistCount": "Előadók",
-      "totalSongs": "Számok",
-      "totalAlbums": "Albumok",
-      "totalArtists": "Előadók",
-      "totalFolders": "Mappák",
-      "totalFiles": "Fájlok",
-      "totalMissingFiles": "Hiányzó fájlok",
-      "totalSize": "Teljes méret",
-      "totalDuration": "Hossz",
-      "defaultNewUsers": "Alapértelmezett könyvtár új felhasználóknak",
-      "createdAt": "Létrehozva",
-      "updatedAt": "Frissítve"
     },
-    "sections": {
-      "basic": "Alapinformációk",
-      "statistics": "Statisztikák"
-    },
-    "actions": {
-      "scan": "Könyvtár szkennelése",
-      "manageUsers": "Elérés kezelése",
-      "viewDetails": "Részletek"
-    },
-    "notifications": {
-      "created": "Könyvtár létrehozva",
-      "updated": "Könyvtár frissítve",
-      "deleted": "Könyvtár törölve",
-      "scanStarted": "Szkennelés folyamatban",
-      "scanCompleted": "Könyvtár szkennelés befelyezve"
-    },
-    "validation": {
-      "nameRequired": "Adj meg egy könyvtárnevet",
-      "pathRequired": "Adj meg egy útvonalat",
-      "pathNotDirectory": "A könyvtárútvonalnak egy mappának kell lennie",
-      "pathNotFound": "A könyvtár útvonala nem található",
-      "pathNotAccessible": "A könyvtár útvonala nem elérhető",
-      "pathInvalid": "Helytelen könyvtár útvonal"
-    },
-    "messages": {
-      "deleteConfirm": "Biztosan törlöd ezt a könyvtárt? Minden adata törlődni fog és elérhetetlenné válik.",
-      "scanInProgress": "Szkennelés folyamatban...",
-      "noLibrariesAssigned": "Ehhez a felhasználóhoz nincsenek könyvtárak adva"
+    "library": {
+      "name": "Könyvtár |||| Könyvtárak",
+      "fields": {
+        "name": "Név",
+        "path": "Elérési út",
+        "remotePath": "Távoli elérési út",
+        "lastScanAt": "Legutóbbi szkennelés",
+        "songCount": "Számok",
+        "albumCount": "Albumok",
+        "artistCount": "Előadók",
+        "totalSongs": "Számok",
+        "totalAlbums": "Albumok",
+        "totalArtists": "Előadók",
+        "totalFolders": "Mappák",
+        "totalFiles": "Fájlok",
+        "totalMissingFiles": "Hiányzó fájlok",
+        "totalSize": "Teljes méret",
+        "totalDuration": "Hossz",
+        "defaultNewUsers": "Alapértelmezett könyvtár új felhasználóknak",
+        "createdAt": "Létrehozva",
+        "updatedAt": "Frissítve"
+      },
+      "sections": {
+        "basic": "Alapinformációk",
+        "statistics": "Statisztikák"
+      },
+      "actions": {
+        "scan": "Könyvtár szkennelése",
+        "manageUsers": "Elérés kezelése",
+        "viewDetails": "Részletek"
+      },
+      "notifications": {
+        "created": "Könyvtár létrehozva",
+        "updated": "Könyvtár frissítve",
+        "deleted": "Könyvtár törölve",
+        "scanStarted": "Szkennelés folyamatban",
+        "scanCompleted": "Könyvtár szkennelés befelyezve"
+      },
+      "validation": {
+        "nameRequired": "Adj meg egy könyvtárnevet",
+        "pathRequired": "Adj meg egy útvonalat",
+        "pathNotDirectory": "A könyvtárútvonalnak egy mappának kell lennie",
+        "pathNotFound": "A könyvtár útvonala nem található",
+        "pathNotAccessible": "A könyvtár útvonala nem elérhető",
+        "pathInvalid": "Helytelen könyvtár útvonal"
+      },
+      "messages": {
+        "deleteConfirm": "Biztosan törlöd ezt a könyvtárt? Minden adata törlődni fog és elérhetetlenné válik.",
+        "scanInProgress": "Szkennelés folyamatban...",
+        "noLibrariesAssigned": "Ehhez a felhasználóhoz nincsenek könyvtárak adva"
+      }
     }
   },
   "ra": {
