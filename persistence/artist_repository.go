@@ -518,15 +518,15 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
+func (r *artistRepository) Search(q string, offset int, size int, options ...model.QueryOptions) (model.Artists, error) {
 	var res dbArtists
 	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectArtist(options...), q, []string{"mbz_artist_id"}, includeMissing, &res)
+		err := r.searchByMBID(r.selectArtist(options...), q, []string{"mbz_artist_id"}, &res)
 		if err != nil {
 			return nil, fmt.Errorf("searching artist by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectArtist(options...), q, offset, size, includeMissing, &res,
+		err := r.doSearch(r.selectArtist(options...), q, offset, size, &res,
 			"sum(json_extract(stats, '$.total.m')) desc", "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching artist by query %q: %w", q, err)
