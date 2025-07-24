@@ -27,9 +27,9 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, in
 		sq = sq.Where(filter)
 		sq = sq.OrderBy(orderBys...)
 	} else {
-		// If the filter is empty, we sort by rowid.
+		// If the filter is empty, we sort by id.
 		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
-		sq = sq.OrderBy(r.tableName + ".rowid")
+		sq = sq.OrderBy(r.tableName + ".id")
 	}
 	if !includeMissing {
 		sq = sq.Where(Eq{r.tableName + ".missing": false})
