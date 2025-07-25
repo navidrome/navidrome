@@ -138,7 +138,7 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 		escaped = append(escaped, regexp.QuoteMeta(s))
 	}
 	// If no valid separators remain, return the original value.
-	if len(escaped) == 0 {
+	if len(split) > 0 && len(escaped) == 0 {
 		log.Warn("No valid separators found in split list", "split", split, "tag", tagName)
 		return nil
 	}
@@ -147,7 +147,7 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 	pattern := "(?i)(" + strings.Join(escaped, "|") + ")"
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		log.Error("Error compiling regexp", "pattern", pattern, "tag", tagName, "err", err)
+		log.Warn("Error compiling regexp for split list", "pattern", pattern, "tag", tagName, "split", split, err)
 		return nil
 	}
 	return re
