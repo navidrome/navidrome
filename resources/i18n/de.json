@@ -35,7 +35,8 @@
         "rawTags": "Tag Rohdaten",
         "bitDepth": "Bittiefe",
         "sampleRate": "Samplerate",
-        "missing": "Fehlend"
+        "missing": "Fehlend",
+        "libraryName": "Bibliothek"
       },
       "actions": {
         "addToQueue": "Später abspielen",
@@ -76,7 +77,8 @@
         "media": "Medium",
         "mood": "Stimmung",
         "date": "Aufnahmedatum",
-        "missing": "Fehlend"
+        "missing": "Fehlend",
+        "libraryName": "Bibliothek"
       },
       "actions": {
         "playAll": "Abspielen",
@@ -147,10 +149,12 @@
         "currentPassword": "Aktuelles Passwort",
         "newPassword": "Neues Passwort",
         "token": "Token",
-        "lastAccessAt": "Letzter Zugriff am"
+        "lastAccessAt": "Letzter Zugriff am",
+        "libraries": "Bibliotheken"
       },
       "helperTexts": {
-        "name": "Die Änderung wird erst nach dem nächsten Login gültig"
+        "name": "Die Änderung wird erst nach dem nächsten Login gültig",
+        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken"
       },
       "notifications": {
         "created": "Benutzer erstellt",
@@ -159,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Gib deinen ListenBrainz Benutzer Token ein",
-        "clickHereForToken": "Hier klicken um deinen Token abzurufen"
+        "clickHereForToken": "Hier klicken um deinen Token abzurufen",
+        "selectAllLibraries": "Wähle alle Bibliotheken",
+        "adminAutoLibraries": "Administrator-Benutzer haben automatisch Zugriff auf alle Bibliotheken"
+      },
+      "validation": {
+        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein"
       }
     },
     "player": {
@@ -251,7 +260,8 @@
       "fields": {
         "path": "Pfad",
         "size": "Größe",
-        "updatedAt": "Fehlt seit"
+        "updatedAt": "Fehlt seit",
+        "libraryName": "Bibliothek"
       },
       "actions": {
         "remove": "Entfernen",
@@ -261,6 +271,58 @@
         "removed": "Fehlende Datei(en) entfernt"
       },
       "empty": "keine fehlenden Dateien"
+    },
+    "library": {
+      "name": "Bibliothek ||| Bibliotheken",
+      "fields": {
+        "name": "Name",
+        "path": "Pfad",
+        "remotePath": "Remote Pfad",
+        "lastScanAt": "Letzter Scan",
+        "songCount": "Lieder",
+        "albumCount": "Alben",
+        "artistCount": "Interpreten",
+        "totalSongs": "Lieder",
+        "totalAlbums": "Alben",
+        "totalArtists": "Interpreten",
+        "totalFolders": "Ordner",
+        "totalFiles": "Dateien",
+        "totalMissingFiles": "Fehlende Dateien",
+        "totalSize": "Größe",
+        "totalDuration": "Dauer",
+        "defaultNewUsers": "Standard für neue Benutzer",
+        "createdAt": "Erstellt",
+        "updatedAt": "Geändert"
+      },
+      "sections": {
+        "basic": "Basis Informationen",
+        "statistics": "Statistik"
+      },
+      "actions": {
+        "scan": "Bibliothek scannen",
+        "manageUsers": "Zugriff verwalten",
+        "viewDetails": "Details ansehen"
+      },
+      "notifications": {
+        "created": "Bibliothek erfolgreich erstellt",
+        "updated": "Bibliothek erfolgreich geändert",
+        "deleted": "Bibliothek erfolgreich gelöscht",
+        "scanStarted": "Bibliothek Scan gestartet",
+        "scanCompleted": "Bibliothek Scan vollständig"
+      },
+      "validation": {
+        "nameRequired": "Bibliotheksname ist Pflichtfeld",
+        "pathRequired": "Bibliothekspfad ist Pflichtfeld",
+        "pathNotDirectory": "Bibliothekspfad muss ein Ordner sein",
+        "pathNotFound": "Bibliothekspfad nicht gefunden",
+        "pathNotAccessible": "Bibliothekspfad nicht zugänglich",
+        "pathInvalid": "Bibliothekspfad ungültig"
+      },
+      "messages": {
+        "deleteConfirm": "Möchtest du diese Bibliothek wirklich löschen? Zugriffsrechte und Daten werden entfernt. ",
+        "scanInProgress": "Bibliothek Scan läuft...",
+        "noLibrariesAssigned": "Keine Bibliotheken zugeordnet"
+      }
     }
   },
   "ra": {
@@ -473,7 +535,13 @@
     "albumList": "Alben",
     "about": "Über",
     "playlists": "Wiedergabelisten",
-    "sharedPlaylists": "Geteilte Wiedergabelisten"
+    "sharedPlaylists": "Geteilte Wiedergabelisten",
+    "librarySelector": {
+      "allLibraries": "Alle Bibliotheken (%{count})",
+      "multipleLibraries": "%{selected} von %{total} Bibliotheken",
+      "selectLibraries": "Bibliotheken auswählen",
+      "none": "Keine"
+    }
   },
   "player": {
     "playListsText": "Warteschlange abspielen",

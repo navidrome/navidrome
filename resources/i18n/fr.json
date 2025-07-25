@@ -11,7 +11,7 @@
         "title": "Titre",
         "artist": "Artiste",
         "album": "Album",
-        "path": "Chemin",
+        "path": "Chemin d'accès",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Année",
@@ -35,7 +35,8 @@
         "rawTags": "Étiquettes brutes",
         "bitDepth": "Profondeur de bits",
         "sampleRate": "Fréquence d'échantillonnage",
-        "missing": "Manquant"
+        "missing": "Manquant",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -76,7 +77,8 @@
         "media": "Média",
         "mood": "Humeur",
         "date": "Date d'enregistrement",
-        "missing": "Manquant"
+        "missing": "Manquant",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "playAll": "Lire",
@@ -147,10 +149,12 @@
         "currentPassword": "Mot de passe actuel",
         "newPassword": "Nouveau mot de passe",
         "token": "Token",
-        "lastAccessAt": "Dernier accès"
+        "lastAccessAt": "Dernier accès",
+        "libraries": "Bibliothèques"
       },
       "helperTexts": {
-        "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
+        "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion",
+        "libraries": "Sélectionner une bibliothèque pour cet utilisateur ou laisser vide pour utiliser la bibliothèque par défaut"
       },
       "notifications": {
         "created": "Utilisateur créé",
@@ -159,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Entrez votre token ListenBrainz.",
-        "clickHereForToken": "Cliquez ici pour recevoir votre token"
+        "clickHereForToken": "Cliquez ici pour recevoir votre token",
+        "selectAllLibraries": "Sélectionner toutes les bibliothèques",
+        "adminAutoLibraries": "Les utilisateurs admin ont automatiquement accès à l'ensemble des bibliothèques"
+      },
+      "validation": {
+        "librariesRequired": "Au moins une bibliothèque doit être sélectionnée pour les utilisateurs non administrateurs"
       }
     },
     "player": {
@@ -171,7 +180,7 @@
         "client": "Client",
         "userName": "Nom d'utilisateur",
         "lastSeen": "Vu pour la dernière fois",
-        "reportRealPath": "Rapporter le chemin absolu",
+        "reportRealPath": "Rapporter le chemin d'accès absolu",
         "scrobbleEnabled": "Scrobbler vers des services externes"
       }
     },
@@ -249,9 +258,10 @@
     "missing": {
       "name": "Fichier manquant|||| Fichiers manquants",
       "fields": {
-        "path": "Chemin",
+        "path": "Chemin d'accès",
         "size": "Taille",
-        "updatedAt": "A disparu le"
+        "updatedAt": "A disparu le",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "remove": "Supprimer",
@@ -261,6 +271,58 @@
         "removed": "Fichier(s) manquant(s) supprimé(s)"
       },
       "empty": "Aucun fichier manquant"
+    },
+    "library": {
+      "name": "Bibliothèque |||| Bibliothèques",
+      "fields": {
+        "name": "Nom",
+        "path": "Chemin d'accès",
+        "remotePath": "Chemin d'accès distant",
+        "lastScanAt": "Dernier scan",
+        "songCount": "Titres",
+        "albumCount": "Albums",
+        "artistCount": "Artistes",
+        "totalSongs": "Titres",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artistes",
+        "totalFolders": "Dossiers",
+        "totalFiles": "Fichiers",
+        "totalMissingFiles": "Fichiers manquants",
+        "totalSize": "Taille totale",
+        "totalDuration": "Durée",
+        "defaultNewUsers": "Défaut pour les nouveaux utilisateurs",
+        "createdAt": "Crée",
+        "updatedAt": "Mise à jour"
+      },
+      "sections": {
+        "basic": "Informations",
+        "statistics": "Statistiques"
+      },
+      "actions": {
+        "scan": "Scanner la bibliothèque",
+        "manageUsers": "Gérer les accès utilisateurs",
+        "viewDetails": "Voir les détails"
+      },
+      "notifications": {
+        "created": "Bibliothèque créée avec succès",
+        "updated": "Bibliothèque mise à jour avec succès",
+        "deleted": "Bibliothèque supprimée avec succès",
+        "scanStarted": "Le scan de la bibliothèque a commencé",
+        "scanCompleted": "Le scan de la bibliothèque est terminé"
+      },
+      "validation": {
+        "nameRequired": "La bibliothèque doit obligatoirement avoir un nom",
+        "pathRequired": "La bibliothèque doit obligatoirement avoir un chemin d'accès",
+        "pathNotDirectory": "Le chemin d'accès de la bibliothèque doit pointer sur un dossier",
+        "pathNotFound": "Impossible de trouver ce chemin d'accès",
+        "pathNotAccessible": "Impossible d'accéder à ce chemin d'accès",
+        "pathInvalid": "Ce chemin d'accès n'est pas valide"
+      },
+      "messages": {
+        "deleteConfirm": "Êtes-vous sûr(e) de vouloir supprimer cette bibliothèque ? Cela supprimera toutes les données associées ainsi que les accès utilisateurs.",
+        "scanInProgress": "Scan en cours...",
+        "noLibrariesAssigned": "Aucune bibliothèque pour cet utilisateur"
+      }
     }
   },
   "ra": {
@@ -473,7 +535,13 @@
     "albumList": "Albums",
     "about": "À propos",
     "playlists": "Playlists",
-    "sharedPlaylists": "Playlists partagées"
+    "sharedPlaylists": "Playlists partagées",
+    "librarySelector": {
+      "allLibraries": "Toutes les bibliothèques (%{count})",
+      "multipleLibraries": "%{selected} bibliothèque(s) sélectionnée(s) sur %{total}",
+      "selectLibraries": "Sélectionner les bibliothèques",
+      "none": "Aucune"
+    }
   },
   "player": {
     "playListsText": "File de lecture",

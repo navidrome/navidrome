@@ -35,7 +35,8 @@
         "rawTags": "Tag raw",
         "bitDepth": "Bit depth",
         "sampleRate": "Sample rate",
-        "missing": "Hilang"
+        "missing": "Hilang",
+        "libraryName": "Pustaka"
       },
       "actions": {
         "addToQueue": "Tambah ke antrean",
@@ -76,7 +77,8 @@
         "media": "Media",
         "mood": "Mood",
         "date": "Tanggal Perekaman",
-        "missing": "Hilang"
+        "missing": "Hilang",
+        "libraryName": "Pustaka"
       },
       "actions": {
         "playAll": "Putar",
@@ -125,12 +127,12 @@
         "remixer": "Remixer |||| Remixer",
         "djmixer": "DJ Mixer |||| Dj Mixer",
         "performer": "Performer |||| Performer",
-        "maincredit": ""
+        "maincredit": "Artis Album atau Artis |||| Artis Album or Artis"
       },
       "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "shuffle": "Acak",
+        "radio": "Radio",
+        "topSongs": "Lagu Teratas"
       }
     },
     "user": {
@@ -147,10 +149,12 @@
         "currentPassword": "Kata Sandi Sebelumnya",
         "newPassword": "Kata Sandi Baru",
         "token": "Token",
-        "lastAccessAt": "Terakhir Diakses"
+        "lastAccessAt": "Terakhir Diakses",
+        "libraries": "Perpustakaan"
       },
       "helperTexts": {
-        "name": "Perubahan pada nama Kamu akan terlihat pada login berikutnya"
+        "name": "Perubahan pada nama Kamu akan terlihat pada login berikutnya",
+        "libraries": "Pilih pustaka yang ditentukan untuk pengguna ini, atau biarkan kosong untuk menggunakan pustaka default"
       },
       "notifications": {
         "created": "Pengguna dibuat",
@@ -159,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Masukkan token pengguna ListenBrainz Kamu.",
-        "clickHereForToken": "Klik di sini untuk mendapatkan token baru anda"
+        "clickHereForToken": "Klik di sini untuk mendapatkan token baru anda",
+        "selectAllLibraries": "Pilih semua pustaka",
+        "adminAutoLibraries": "Pengguna admin otomatis langsung memiliki akses ke semua perpustakaan"
+      },
+      "validation": {
+        "librariesRequired": "Setidaknya satu pustaka harus dipilih untuk pengguna non-admin"
       }
     },
     "player": {
@@ -251,7 +260,8 @@
       "fields": {
         "path": "Jalur",
         "size": "Ukuran",
-        "updatedAt": "Tidak muncul di"
+        "updatedAt": "Tidak muncul di",
+        "libraryName": "Pustaka"
       },
       "actions": {
         "remove": "Hapus",
@@ -261,6 +271,58 @@
         "removed": "File yang hilang dihapus"
       },
       "empty": "Tidak ada File yang Hilang"
+    },
+    "library": {
+      "name": "Pustaka |||| Perpustakaan",
+      "fields": {
+        "name": "Nama",
+        "path": "Jalur",
+        "remotePath": "Jalur Remote",
+        "lastScanAt": "Terakhir Dipindai",
+        "songCount": "Lagu",
+        "albumCount": "Album",
+        "artistCount": "Artis",
+        "totalSongs": "Lagu",
+        "totalAlbums": "Album",
+        "totalArtists": "Artis",
+        "totalFolders": "Folder",
+        "totalFiles": "File",
+        "totalMissingFiles": "File hilang",
+        "totalSize": "Ukuran Total",
+        "totalDuration": "Durasi",
+        "defaultNewUsers": "Default untuk Pengguna Baru",
+        "createdAt": "Dibuat",
+        "updatedAt": "Diperbarui"
+      },
+      "sections": {
+        "basic": "Informasi Dasar",
+        "statistics": "Statistik"
+      },
+      "actions": {
+        "scan": "Pindai Pustaka",
+        "manageUsers": "Kelola Akses Pengguna",
+        "viewDetails": "Lihat Detail"
+      },
+      "notifications": {
+        "created": "Pustaka berhasil dibuat",
+        "updated": "Pustaka berhasil dibuat",
+        "deleted": "Berhasil menghapus pustaka",
+        "scanStarted": "Memindai pustaka dimulai",
+        "scanCompleted": "Memindai pustaka selesai"
+      },
+      "validation": {
+        "nameRequired": "Nama pustaka diperlukan",
+        "pathRequired": "Lokasi pustaka diperlukan",
+        "pathNotDirectory": "Lokasi pustaka harus ada di direktori",
+        "pathNotFound": "Lokasi pustaka tidak ditemukan",
+        "pathNotAccessible": "Lokasi pustaka tidak dapat diakses",
+        "pathInvalid": "Lokasi pustaka tidak valid"
+      },
+      "messages": {
+        "deleteConfirm": "Kamu yakin ingin menghapus pustaka ini? Ini akan menghapus semua data yang terkait dan akses pengguna.",
+        "scanInProgress": "Pemindaian sedang berlangsung...",
+        "noLibrariesAssigned": "Tidak ada pustaka yang ditugaskan ke pengguna ini"
+      }
     }
   },
   "ra": {
@@ -443,8 +505,8 @@
     "remove_missing_content": "Apakah Anda yakin ingin menghapus file-file yang hilang dari basis data? Tindakan ini akan menghapus secara permanen semua referensi ke file-file tersebut, termasuk jumlah pemutaran dan peringkatnya.",
     "remove_all_missing_title": "Hapus semua file yang hilang",
     "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka.",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "noSimilarSongsFound": "Tidak ada lagu yang serupa ditemukan",
+    "noTopSongsFound": "Tidak ada lagu teratas ditemukan"
   },
   "menu": {
     "library": "Pustaka",
@@ -473,7 +535,13 @@
     "albumList": "Album",
     "about": "Tentang",
     "playlists": "Playlist",
-    "sharedPlaylists": "Playlist yang Dibagikan"
+    "sharedPlaylists": "Playlist yang Dibagikan",
+    "librarySelector": {
+      "allLibraries": "Semua Pustaka (%{count})",
+      "multipleLibraries": "Pustaka %{selected} dari %{total}",
+      "selectLibraries": "Pilih Perpustakaan",
+      "none": "Tidak ada"
+    }
   },
   "player": {
     "playListsText": "Putar Antrean",
@@ -517,7 +585,7 @@
     },
     "config": {
       "configName": "Nama Konfigurasi",
-      "environmentVariable": "",
+      "environmentVariable": "Variabel Environment",
       "currentValue": "Value Saat Ini",
       "configurationFile": "File Konfigurasi",
       "exportToml": "Ekspor Konfigurasi (TOML)",
@@ -553,8 +621,8 @@
     }
   },
   "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
+    "title": "Sedang Diputar",
+    "empty": "Tidak ada yang diputar",
+    "minutesAgo": "%{smart_count} menit yang lalu |||| %{smart_count} menit yang lalu"
   }
 }
