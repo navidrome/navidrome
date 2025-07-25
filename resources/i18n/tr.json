@@ -35,7 +35,8 @@
         "rawTags": "Ham etiketler",
         "bitDepth": "Bit derinliği",
         "sampleRate": "Örnekleme Oranı",
-        "missing": "Eksik"
+        "missing": "Eksik",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -76,7 +77,8 @@
         "media": "Medya",
         "mood": "Mod",
         "date": "Kayıt Tarihi",
-        "missing": "Eksik"
+        "missing": "Eksik",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "playAll": "Oynat",
@@ -147,10 +149,12 @@
         "currentPassword": "Mevcut Şifre",
         "newPassword": "Yeni Şifre",
         "token": "Token",
-        "lastAccessAt": "Son Erişim Tarihi"
+        "lastAccessAt": "Son Erişim Tarihi",
+        "libraries": "Kütüphaneler"
       },
       "helperTexts": {
-        "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir"
+        "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir",
+        "libraries": "Bu kullanıcı için belirli kütüphaneleri seçin veya varsayılan kütüphaneleri kullanmak için boş bırakın"
       },
       "notifications": {
         "created": "Kullanıcı oluşturuldu",
@@ -159,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "ListenBrainz kullanıcı Token'ınızı girin.",
-        "clickHereForToken": "Token almak için buraya tıklayın"
+        "clickHereForToken": "Token almak için buraya tıklayın",
+        "selectAllLibraries": "Tüm kütüphaneleri seç",
+        "adminAutoLibraries": "Yönetici yetkili kullanıcılar tüm kütüphanelere otomatik olarak erişebilir"
+      },
+      "validation": {
+        "librariesRequired": "Yönetici olmayan kullanıcılar için en az bir kütüphane seçilmelidir"
       }
     },
     "player": {
@@ -251,7 +260,8 @@
       "fields": {
         "path": "Yol",
         "size": "Boyut",
-        "updatedAt": "Kaybolma"
+        "updatedAt": "Kaybolma",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "remove": "Kaldır",
@@ -261,6 +271,58 @@
         "removed": "Eksik dosya(lar) kaldırıldı"
       },
       "empty": "Eksik Dosya Yok"
+    },
+    "library": {
+      "name": "Kütüphane |||| Kütüphaneler",
+      "fields": {
+        "name": "İsim",
+        "path": "Yol",
+        "remotePath": "Uzak Yol",
+        "lastScanAt": "Son Tarama",
+        "songCount": "Şarkılar",
+        "albumCount": "Albümler",
+        "artistCount": "Sanatçılar",
+        "totalSongs": "Şarkılar",
+        "totalAlbums": "Albümler",
+        "totalArtists": "Sanatçılar",
+        "totalFolders": "Klasörler",
+        "totalFiles": "Dosyalar",
+        "totalMissingFiles": "Eksik Dosyalar",
+        "totalSize": "Toplam Boyut",
+        "totalDuration": "Süre",
+        "defaultNewUsers": "Yeni Kullanıcılar için Varsayılan",
+        "createdAt": "Oluşturuldu",
+        "updatedAt": "Güncellendi"
+      },
+      "sections": {
+        "basic": "Temel Bilgiler",
+        "statistics": "İstatistikler"
+      },
+      "actions": {
+        "scan": "Kütüphaneyi Tara",
+        "manageUsers": "Kullanıcı Erişimini Yönet",
+        "viewDetails": "Ayrıntıları Görüntüle"
+      },
+      "notifications": {
+        "created": "Kütüphane başarıyla oluşturuldu",
+        "updated": "Kütüphane başarıyla güncellendi",
+        "deleted": "Kütüphane başarıyla silindi",
+        "scanStarted": "Kütüphane taraması başladı",
+        "scanCompleted": "Kütüphane taraması tamamlandı"
+      },
+      "validation": {
+        "nameRequired": "Kütüphane adı gereklidir",
+        "pathRequired": "Kütüphane yolu gereklidir",
+        "pathNotDirectory": "Kütüphane yolu bir dizin olmalıdır",
+        "pathNotFound": "Kütüphane yolu bulunamadı",
+        "pathNotAccessible": "Kütüphane yoluna erişim sağlanamıyor",
+        "pathInvalid": "Geçersiz kütüphane yolu"
+      },
+      "messages": {
+        "deleteConfirm": "Bu kütüphaneyi silmek istediğinizden emin misiniz? Bu işlem, ilgili tüm verileri ve kullanıcı erişimini kaldıracaktır.",
+        "scanInProgress": "Tarama devam ediyor...",
+        "noLibrariesAssigned": "Bu kullanıcıya hiçbir kütüphane atanmadı"
+      }
     }
   },
   "ra": {
@@ -473,7 +535,13 @@
     "albumList": "Albümler",
     "about": "Hakkında",
     "playlists": "Çalma Listeleri",
-    "sharedPlaylists": "Paylaşılan Çalma Listeleri"
+    "sharedPlaylists": "Paylaşılan Çalma Listeleri",
+    "librarySelector": {
+      "allLibraries": "Tüm Kitaplıklar (%{count})",
+      "multipleLibraries": "%{total} kütüphaneden %{selected} tanesi seçildi",
+      "selectLibraries": "Seçili Kütüphaneler",
+      "none": "Hiçbiri"
+    }
   },
   "player": {
     "playListsText": "Oynatma Sırası",
