@@ -15,7 +15,11 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
-func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, results any, orderBys ...string) error {
+// doSearch performs a full-text search with the specified parameters.
+// The naturalOrder is used to sort results when no full-text filter is applied. It is useful for cases like
+// OpenSubsonic, where an empty search query should return all results in a natural order. Normally the parameter
+// should be `tableName + ".rowid"`, but some repositories (ex: artist) may use a different natural order.
+func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, results any, naturalOrder string, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 	if len(q) < 2 {
@@ -27,9 +31,9 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		sq = sq.Where(filter)
 		sq = sq.OrderBy(orderBys...)
 	} else {
-		// If the filter is empty, we sort by id.
 		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
-		sq = sq.OrderBy(r.tableName + ".id")
+		// If the filter is empty, we sort by the specified natural order.
+		sq = sq.OrderBy(naturalOrder)
 	}
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
