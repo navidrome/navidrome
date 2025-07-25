@@ -42,7 +42,7 @@ func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	return sp, nil
 }
 
-type searchFunc[T any] func(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (T, error)
+type searchFunc[T any] func(q string, offset int, size int, options ...model.QueryOptions) (T, error)
 
 func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, size int, result *T, options ...model.QueryOptions) func() error {
 	return func() error {
@@ -52,7 +52,7 @@ func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, s
 		typ := strings.TrimPrefix(reflect.TypeOf(*result).String(), "model.")
 		var err error
 		start := time.Now()
-		*result, err = s(q, offset, size, false, options...)
+		*result, err = s(q, offset, size, options...)
 		if err != nil {
 			log.Error(ctx, "Error searching "+typ, "query", q, "elapsed", time.Since(start), err)
 		} else {

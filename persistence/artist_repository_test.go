@@ -439,7 +439,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Test the search
-					results, err := (*testRepo).Search("550e8400-e29b-41d4-a716-446655440010", 0, 10, false)
+					results, err := (*testRepo).Search("550e8400-e29b-41d4-a716-446655440010", 0, 10)
 					Expect(err).ToNot(HaveOccurred())
 
 					if shouldFind {
@@ -470,12 +470,12 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Restricted user should not find this artist
-				results, err := restrictedRepo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10, false)
+				results, err := restrictedRepo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
 				// But admin should find it
-				results, err = repo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10, false)
+				results, err = repo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 
@@ -485,40 +485,9 @@ var _ = Describe("ArtistRepository", func() {
 				}
 			})
 
-			It("handles includeMissing parameter for MBID search", func() {
-				// Create a missing artist with MBID
-				missingArtist := createTestArtistWithMBID("test-missing-mbid-artist", "Test Missing MBID Artist", "550e8400-e29b-41d4-a716-446655440012")
-				missingArtist.Missing = true
-
-				err := createArtistWithLibrary(repo, &missingArtist, 1)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Mark as missing
-				if raw, ok := repo.(*artistRepository); ok {
-					_, err = raw.executeSQL(squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missingArtist.ID}))
-					Expect(err).ToNot(HaveOccurred())
-				}
-
-				// Should not find missing artist when includeMissing is false
-				results, err := repo.Search("550e8400-e29b-41d4-a716-446655440012", 0, 10, false)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(BeEmpty())
-
-				// Should find missing artist when includeMissing is true
-				results, err = repo.Search("550e8400-e29b-41d4-a716-446655440012", 0, 10, true)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(HaveLen(1))
-				Expect(results[0].ID).To(Equal("test-missing-mbid-artist"))
-
-				// Clean up
-				if raw, ok := repo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
-				}
-			})
-
 			Context("Text Search", func() {
 				It("allows admin to find artists by name regardless of library", func() {
-					results, err := repo.Search("Beatles", 0, 10, false)
+					results, err := repo.Search("Beatles", 0, 10)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(HaveLen(1))
 					Expect(results[0].Name).To(Equal("The Beatles"))
@@ -538,7 +507,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Restricted user should not find this artist
-					results, err := restrictedRepo.Search("Unique Search Name", 0, 10, false)
+					results, err := restrictedRepo.Search("Unique Search Name", 0, 10)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "Text search should respect library filtering")
 
@@ -639,20 +608,14 @@ var _ = Describe("ArtistRepository", func() {
 				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
 			})
 
-			It("admin can see missing artists when explicitly included", func() {
+			It("missing artists are never returned by search", func() {
 				// Should see missing artist in GetAll by default for admin users
 				artists, err := repo.GetAll()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artists).To(HaveLen(3)) // Including the missing artist
 
-				// Should see missing artist when searching with includeMissing=true
-				results, err := repo.Search("Missing Artist", 0, 10, true)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(HaveLen(1))
-				Expect(results[0].ID).To(Equal("missing_test"))
-
-				// Should not see missing artist when searching with includeMissing=false
-				results, err = repo.Search("Missing Artist", 0, 10, false)
+				// Search never returns missing artists (hardcoded behavior)
+				results, err := repo.Search("Missing Artist", 0, 10)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -706,11 +669,11 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("Search returns empty results for users without library access", func() {
-				results, err := restrictedRepo.Search("Beatles", 0, 10, false)
+				results, err := restrictedRepo.Search("Beatles", 0, 10)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
-				results, err = restrictedRepo.Search("Kraftwerk", 0, 10, false)
+				results, err = restrictedRepo.Search("Kraftwerk", 0, 10)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
