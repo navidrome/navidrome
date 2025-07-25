@@ -145,7 +145,7 @@ func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles .
 	return result, nil
 }
 
-func (m *MockArtistRepo) Search(q string, offset int, size int, includeMissing bool, options ...model.QueryOptions) (model.Artists, error) {
+func (m *MockArtistRepo) Search(q string, offset int, size int, options ...model.QueryOptions) (model.Artists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
