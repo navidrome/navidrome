@@ -223,6 +223,9 @@ var _ = Describe("Playlists", func() {
 			nfcPath := "Michèle" // This might be in NFC form
 			normalizedNfc := normalizePathForComparison(nfcPath)
 
+			// Ensure the two paths are not equal in their original forms
+			Expect(nfdPath).ToNot(Equal(nfcPath))
+
 			// Both should normalize to the same result
 			Expect(normalized).To(Equal(normalizedNfc))
 		})
