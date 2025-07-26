@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/text/unicode/norm"
 )
 
 type Playlists interface {
@@ -203,10 +204,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		}
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			existing[strings.ToLower(found[idx].Path)] = idx
+			existing[normalizePathForComparison(found[idx].Path)] = idx
 		}
 		for _, path := range paths {
-			idx, ok := existing[strings.ToLower(path)]
+			idx, ok := existing[normalizePathForComparison(path)]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
@@ -221,6 +222,13 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.AddMediaFiles(mfs)
 
 	return nil
+}
+
+// normalizePathForComparison normalizes a file path to NFC form and converts to lowercase
+// for consistent comparison. This fixes Unicode normalization issues on macOS where
+// Apple Music creates playlists with NFC-encoded paths but the filesystem uses NFD.
+func normalizePathForComparison(path string) string {
+	return strings.ToLower(norm.NFC.String(path))
 }
 
 // TODO This won't work for multiple libraries
