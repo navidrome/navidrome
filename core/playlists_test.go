@@ -192,12 +192,14 @@ var _ = Describe("Playlists", func() {
 			// Test case for Apple Music playlists that use NFC encoding vs macOS filesystem NFD
 			// The character "è" can be represented as NFC (single codepoint) or NFD (e + combining accent)
 
+			const pathWithAccents = "artist/Michèle Desrosiers/album/Noël.m4a"
+
 			// Simulate a database entry with NFD encoding (as stored by macOS filesystem)
-			nfdPath := "artist/Michèle Desrosiers/album/Noël.m4a" // NFD form
+			nfdPath := norm.NFD.String(pathWithAccents)
 			repo.data = []string{nfdPath}
 
 			// Simulate an Apple Music M3U playlist entry with NFC encoding
-			nfcPath := "/music/artist/Michèle Desrosiers/album/Noël.m4a" // NFC form
+			nfcPath := norm.NFC.String("/music/" + pathWithAccents)
 			m3u := strings.Join([]string{
 				nfcPath,
 			}, "\n")
