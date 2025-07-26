@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
+FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:15.5-debian AS osxcross
 
 ########################################################################################################################
 ### Build xx (original image: tonistiigi/xx)
