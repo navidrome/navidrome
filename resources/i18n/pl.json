@@ -33,7 +33,10 @@
         "tags": "Dodatkowe Tagi",
         "mappedTags": "Zmapowane tagi",
         "rawTags": "Surowe tagi",
-        "bitDepth": "Głębokość próbkowania"
+        "bitDepth": "Głębokość próbkowania",
+        "sampleRate": "Częstotliwość próbkowania",
+        "missing": "Brak",
+        "libraryName": "Biblioteka"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -42,7 +45,8 @@
         "shuffleAll": "Losuj Wszystkie",
         "download": "Pobierz",
         "playNext": "Odtwarzaj Następny",
-        "info": "Zdobądź Informacje"
+        "info": "Zdobądź Informacje",
+        "showInPlaylist": "Pokaż w Liście Odtwarzania"
       }
     },
     "album": {
@@ -72,7 +76,9 @@
         "grouping": "Grupowanie",
         "media": "Media",
         "mood": "Nastrój",
-        "date": ""
+        "date": "Data Nagrania",
+        "missing": "Brak",
+        "libraryName": "Biblioteka"
       },
       "actions": {
         "playAll": "Odtwarzaj",
@@ -104,7 +110,8 @@
         "rating": "Ocena",
         "genre": "Gatunek",
         "size": "Rozmiar",
-        "role": "Rola"
+        "role": "Rola",
+        "missing": "Brak"
       },
       "roles": {
         "albumartist": "Wykonawca Albumu |||| Wykonawcy Albumu",
@@ -119,7 +126,13 @@
         "mixer": "Mikser |||| Mikserzy",
         "remixer": "Remixer |||| Remixerzy",
         "djmixer": "Didżej |||| Didżerzy",
-        "performer": "Wykonawca |||| Wykonawcy"
+        "performer": "Wykonawca |||| Wykonawcy",
+        "maincredit": "Artysta albumu lub Artysta |||| Artyści albumu lub Artyści"
+      },
+      "actions": {
+        "shuffle": "Losuj",
+        "radio": "Radio",
+        "topSongs": "Najlepsze Utwory"
       }
     },
     "user": {
@@ -136,10 +149,12 @@
         "currentPassword": "Obecne hasło",
         "newPassword": "Nowe hasło",
         "token": "Token",
-        "lastAccessAt": "Ostatnia Aktywność"
+        "lastAccessAt": "Ostatnia Aktywność",
+        "libraries": "Biblioteki"
       },
       "helperTexts": {
-        "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu"
+        "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu",
+        "libraries": "Wybierz biblioteki dla użytkownika lub pozostaw pustę, aby użyć domyślnej biblioteki"
       },
       "notifications": {
         "created": "Dodano użytkownika",
@@ -148,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Wprowadź swój token ListenBrainz.",
-        "clickHereForToken": "Kliknij tutaj, aby uzyskać token"
+        "clickHereForToken": "Kliknij tutaj, aby uzyskać token",
+        "selectAllLibraries": "Wybierz wszystkie biblioteki",
+        "adminAutoLibraries": "Administratorzy automatycznie mają dostęp do wszystkich bibliotek"
+      },
+      "validation": {
+        "librariesRequired": "Przynajmniej jedna biblioteka musi być wybrana dla zwykłego użytkownika"
       }
     },
     "player": {
@@ -192,11 +212,17 @@
         "addNewPlaylist": "Stwórz \"%{name}\"",
         "export": "Wyeksportuj",
         "makePublic": "Zmień na Publiczną",
-        "makePrivate": "Zmień na Prywatną"
+        "makePrivate": "Zmień na Prywatną",
+        "saveQueue": "Zapisz Kolejkę do Playlisty",
+        "searchOrCreate": "Szukaj list odtwarzania lub zacznij pisać, aby stworzyć nową...",
+        "pressEnterToCreate": "Wciśnij Enter, aby stworzyć nową listę odtwarzania",
+        "removeFromSelection": "Usuń z zaznaczenia"
       },
       "message": {
         "duplicate_song": "Dodaj zduplikowane utwory",
-        "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
+        "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?",
+        "noPlaylistsFound": "Brak list odtwarzania",
+        "noPlaylists": "Brak dostępnych list odtwarzania"
       }
     },
     "radio": {
@@ -234,15 +260,69 @@
       "fields": {
         "path": "Ścieżka",
         "size": "Rozmiar",
-        "updatedAt": "Zniknął na"
+        "updatedAt": "Zniknął na",
+        "libraryName": "Biblioteka"
       },
       "actions": {
-        "remove": "Usuń"
+        "remove": "Usuń",
+        "remove_all": "Usuń Wszystko"
       },
       "notifications": {
         "removed": "Usunięto brakujące pliki"
       },
-      "empty": "Bez Brakujących Plików"
+      "empty": "Brak Brakujących Plików"
+    },
+    "library": {
+      "name": "Biblioteka |||| Biblioteki",
+      "fields": {
+        "name": "Nazwa",
+        "path": "Ścieżka",
+        "remotePath": "Zdalna Ścieżka",
+        "lastScanAt": "Ostatni Skan",
+        "songCount": "Utwory",
+        "albumCount": "Albumy",
+        "artistCount": "Artyści",
+        "totalSongs": "Utwory",
+        "totalAlbums": "Albumy",
+        "totalArtists": "Artyści",
+        "totalFolders": "Foldery",
+        "totalFiles": "Pliki",
+        "totalMissingFiles": "Brakujące Pliki",
+        "totalSize": "Całkowity Rozmiar",
+        "totalDuration": "Czas Trwania",
+        "defaultNewUsers": "Domyślne dla Nowych Użytkowników",
+        "createdAt": "Stworzona",
+        "updatedAt": "Zaktualizowana"
+      },
+      "sections": {
+        "basic": "Podstawowe Informacje",
+        "statistics": "Statystyki"
+      },
+      "actions": {
+        "scan": "Skanuj Bibliotekę",
+        "manageUsers": "Zarządzaj Dostępami Użytkownika",
+        "viewDetails": "Zobacz Szczegóły"
+      },
+      "notifications": {
+        "created": "Biblioteka utworzona prawidłowo",
+        "updated": "Biblioteka zaktualizowana prawidłowo",
+        "deleted": "Biblioteka usunięta prawidłowo",
+        "scanStarted": "Rozpoczęto skan biblioteki",
+        "scanCompleted": "Zakończono skan biblioteki"
+      },
+      "validation": {
+        "nameRequired": "Nazwa biblioteki jest wymagana",
+        "pathRequired": "Ścieżka biblioteki jest wymagana",
+        "pathNotDirectory": "Ścieżka biblioteki musi być katalogiem",
+        "pathNotFound": "Brak ścieżki biblioteki",
+        "pathNotAccessible": "Ścieżka biblioteki niedostępna",
+        "pathInvalid": "Niepoprawna ścieżka biblioteki"
+      },
+      "messages": {
+        "deleteConfirm": "Czy chcesz usunąć tę bibliotekę? Spowoduje to usunięcie wszystkich powiązanych danych i dostępów użytkowników.",
+        "scanInProgress": "Skanowanie w trakcie...",
+        "noLibrariesAssigned": "Brak bibliotek przypisanych do tego użytkownika"
+      }
     }
   },
   "ra": {
@@ -422,7 +502,11 @@
     "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter",
     "remove_missing_title": "Usuń brakujące dane",
-    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny."
+    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny.",
+    "remove_all_missing_title": "Usuń wszystkie brakujące pliki",
+    "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
+    "noSimilarSongsFound": "Brak podobnych utworów",
+    "noTopSongsFound": "Brak najlepszych utworów"
   },
   "menu": {
     "library": "Biblioteka",
@@ -451,7 +535,13 @@
     "albumList": "Albumy",
     "about": "O aplikacji",
     "playlists": "Playlisty",
-    "sharedPlaylists": "Udostępnione Playlisty"
+    "sharedPlaylists": "Udostępnione Playlisty",
+    "librarySelector": {
+      "allLibraries": "Wszystkie Biblioteki (%{count})",
+      "multipleLibraries": "%{selected} z %{total} Bibliotek",
+      "selectLibraries": "Wybierz Biblioteki",
+      "none": "Żadna"
+    }
   },
   "player": {
     "playListsText": "Kolejka Odtwarzania",
@@ -488,6 +578,21 @@
         "disabled": "Wyłączone",
         "waiting": "Oczekujące"
       }
+    },
+    "tabs": {
+      "about": "O",
+      "config": "Konfiguracja"
+    },
+    "config": {
+      "configName": "Nazwa Konfiguracji",
+      "environmentVariable": "Zmienna Środowiskowa",
+      "currentValue": "Obecna Wartość",
+      "configurationFile": "Plik Konfiguracyjny",
+      "exportToml": "Eksportuj Konfigurację (TOML)",
+      "exportSuccess": "Konfiguracja wyeksportowana do schowka w formacie TOML",
+      "exportFailed": "Błąd kopiowania konfiguracji",
+      "devFlagsHeader": "Flagi Rozwojowe (mogą ulec zmianie/usunięciu)",
+      "devFlagsComment": "To są ustawienia eksperymentalne i mogą zostać usunięte w przyszłych wydaniach"
     }
   },
   "activity": {
@@ -496,7 +601,10 @@
     "quickScan": "Szybkie Skanowanie",
     "fullScan": "Pełne Skanowanie",
     "serverUptime": "Czas Działania Serwera",
-    "serverDown": "NIEDOSTĘPNY"
+    "serverDown": "NIEDOSTĘPNY",
+    "scanType": "Typ",
+    "status": "Błąd Skanowania",
+    "elapsedTime": "Upłynięty Czas"
   },
   "help": {
     "title": "Skróty Klawiszowe Navidrome",
@@ -511,5 +619,10 @@
       "toggle_love": "Dodaj ten utwór do ulubionych",
       "current_song": "Przejdź do Bieżącego Utworu"
     }
+  },
+  "nowPlaying": {
+    "title": "Teraz Odtwarzane",
+    "empty": "Nic nie jest odtwarzane",
+    "minutesAgo": "%{smart_count} minutę temu |||| %{smart_count} minut temu"
   }
 }
