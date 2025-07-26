@@ -2,6 +2,7 @@ package tests
 
 import (
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"strings"
 )
 
@@ -24,12 +25,14 @@ func (m *MockedAPIKeyRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockedAPIKeyRepo) Put(apiKey *model.APIKey) error {
+func (m *MockedAPIKeyRepo) Save(entity interface{}) (string, error) {
 	if m.Error != nil {
-		return m.Error
+		return "", m.Error
 	}
+	apiKey := entity.(*model.APIKey)
+	apiKey.Key = "nav_" + id.NewRandom()
 	m.Data[strings.ToLower(apiKey.Key)] = apiKey
-	return nil
+	return apiKey.ID, nil
 }
 
 func (m *MockedAPIKeyRepo) FindByKey(key string) (*model.APIKey, error) {

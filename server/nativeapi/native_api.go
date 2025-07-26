@@ -3,6 +3,8 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/navidrome/navidrome/utils/req"
 	"html"
 	"net/http"
 	"strconv"
@@ -74,6 +76,7 @@ func (n *Router) routes() http.Handler {
 			n.addUserLibraryRoute(r)
 			n.RX(r, "/library", n.libs.NewRepository, true)
 		})
+		n.addRefreshApiKeyRoute(r)
 	})
 
 	return r
@@ -245,5 +248,39 @@ func adminOnlyMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (n *Router) addRefreshApiKeyRoute(r chi.Router) {
+	r.With(server.URLParamsMiddleware).Post("/apikey/{id}/refresh", func(w http.ResponseWriter, r *http.Request) {
+		p := req.Params(r)
+		id, err := p.String(":id")
+		if err != nil {
+			msg := fmt.Sprintf("api key id could not be parsed: %s", id)
+			log.Warn(msg)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		repo := n.ds.APIKey(r.Context())
+		_, err = repo.RefreshKey(id)
+		if err != nil {
+			log.Error(r.Context(), "error refreshing api key", "id", id, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		updatedKey, err := repo.Get(id)
+		if err != nil {
+			log.Error(r.Context(), "error retrieving refreshed api key", "id", id, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = rest.RespondWithJSON(w, http.StatusOK, updatedKey)
+		if err != nil {
+			log.Error(r.Context(), "error marshaling refreshed api key", "id", id, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 }

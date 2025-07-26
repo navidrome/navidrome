@@ -15,18 +15,18 @@ func upAddApiKeyTable(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
 		create table if not exists api_key (
 			id text not null primary key,
-			user_id text not null,
+			player_id text not null,
 			name text not null,
 			key text not null unique,
 			created_at datetime not null,
 
-			foreign key (user_id) 
-		    	references user(id)
+			foreign key (player_id) 
+				references player(id)
 		    	on delete cascade
 		);
 
 		create index if not exists api_key_key on api_key(key);
-		create index if not exists api_key_user_id on api_key(user_id);
+		create index if not exists api_key_player_id on api_key(player_id);
 `)
 	return err
 }

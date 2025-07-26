@@ -212,7 +212,7 @@ var _ = Describe("UserRepository", func() {
 		var existingUser *model.User
 		BeforeEach(func() {
 			existingUser = &model.User{ID: "1", UserName: "johndoe"}
-			repo = tests.CreateMockUserRepo()
+			repo = tests.CreateMockUserRepo(nil, nil)
 			err := repo.Put(existingUser)
 			Expect(err).ToNot(HaveOccurred())
 		})

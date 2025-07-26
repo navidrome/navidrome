@@ -308,6 +308,8 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		When("using api key authentication", func() {
+			var apiKey *model.APIKey
+
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
 
@@ -318,18 +320,35 @@ var _ = Describe("Middlewares", func() {
 				}
 				_ = ur.Put(user)
 
-				ar := ds.APIKey(context.TODO())
-				apiKey := &model.APIKey{
-					ID:     "api-key-id",
-					UserID: user.ID,
-					Name:   "API Key",
-					Key:    "api-key",
+				pr := ds.Player(context.TODO())
+				player := &model.Player{
+					ID:              "player1",
+					Name:            "Test Player",
+					UserAgent:       "Test/1.0",
+					UserId:          user.ID,
+					Client:          "test-client",
+					IP:              "127.0.0.1",
+					LastSeen:        time.Now(),
+					TranscodingId:   "",
+					MaxBitRate:      320,
+					ReportRealPath:  false,
+					ScrobbleEnabled: true,
 				}
-				_ = ar.Put(apiKey)
+				_ = pr.Put(player)
+
+				ar := ds.APIKey(context.TODO())
+				newApiKey := &model.APIKey{
+					ID:       "api-key-id",
+					Name:     "API Key",
+					PlayerID: player.ID,
+				}
+				apiKeyId, _ := ar.Save(newApiKey)
+				newApiKey, _ = ar.Get(apiKeyId)
+				apiKey = newApiKey
 			})
 
 			It("passes authentication with correct api key", func() {
-				r := newGetRequest("apiKey=api-key")
+				r := newGetRequest("apiKey=" + apiKey.Key)
 				cp := authenticate(ds)(next)
 				cp.ServeHTTP(w, r)
 

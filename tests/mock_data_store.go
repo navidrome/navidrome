@@ -170,8 +170,9 @@ func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
 		if db.RealDS != nil {
 			db.MockedUser = db.RealDS.User(ctx)
 		} else {
+			playerRepo := db.Player(ctx).(*MockedPlayerRepo)
 			apiKeyRepo := db.APIKey(ctx).(*MockedAPIKeyRepo)
-			db.MockedUser = CreateMockUserRepo(apiKeyRepo)
+			db.MockedUser = CreateMockUserRepo(playerRepo, apiKeyRepo)
 		}
 	}
 	return db.MockedUser
@@ -193,7 +194,7 @@ func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
 		if db.RealDS != nil {
 			db.MockedPlayer = db.RealDS.Player(ctx)
 		} else {
-			db.MockedPlayer = struct{ model.PlayerRepository }{}
+			db.MockedPlayer = CreateMockPlayerRepo()
 		}
 	}
 	return db.MockedPlayer

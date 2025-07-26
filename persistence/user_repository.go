@@ -195,14 +195,17 @@ func (r *userRepository) FindByUsernameWithPassword(username string) (*model.Use
 
 func (r *userRepository) FindByAPIKey(key string) (*model.User, error) {
 	// find the API key in the database
+	playerRepo := NewPlayerRepository(r.ctx, r.db)
 	apiKeyRepo := NewAPIKeyRepository(r.ctx, r.db)
 	apiKey, err := apiKeyRepo.FindByKey(key)
 	if err != nil {
 		return nil, err
 	}
-
-	// Then get the user associated with this API key
-	return r.Get(apiKey.UserID)
+	player, err := playerRepo.Get(apiKey.PlayerID)
+	if err != nil {
+		return nil, err
+	}
+	return r.Get(player.UserId)
 }
 
 func (r *userRepository) UpdateLastLoginAt(id string) error {

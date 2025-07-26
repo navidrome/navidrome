@@ -6,10 +6,10 @@ import (
 )
 
 type APIKey struct {
-	ID        string    `structs:"id" json:"id"`
-	UserID    string    `structs:"user_id" json:"userId"`
-	Name      string    `structs:"name" json:"name"`
-	Key       string    `structs:"key" json:"key"`
+	ID        string    `structs:"id"         json:"id"`
+	PlayerID  string    `structs:"player_id"  json:"playerId"`
+	Name      string    `structs:"name"       json:"name"`
+	Key       string    `structs:"key"        json:"key"`
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
 }
 
@@ -21,6 +21,6 @@ type APIKeyRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Get(id string) (*APIKey, error)
 	GetAll(options ...QueryOptions) (APIKeys, error)
-	Put(*APIKey) error
 	FindByKey(key string) (*APIKey, error)
+	RefreshKey(id string) (string, error)
 }

@@ -30,6 +30,7 @@ type MockedUserRepo struct {
 	Data          map[string]*model.User
 	UserLibraries map[string][]int // userID -> libraryIDs
 	APIKeyRepo *MockedAPIKeyRepo
+	PlayerRepo *MockedPlayerRepo
 }
 
 func (u *MockedUserRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
@@ -142,8 +143,13 @@ func (u *MockedUserRepo) FindByAPIKey(key string) (*model.User, error) {
 		return nil, err
 	}
 
+	player, err := u.PlayerRepo.Get(apiKey.PlayerID)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, usr := range u.Data {
-		if usr.ID == apiKey.UserID {
+		if usr.ID == player.UserId {
 			return usr, nil
 		}
 	}
