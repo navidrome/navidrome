@@ -138,8 +138,10 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 		escaped = append(escaped, regexp.QuoteMeta(s))
 	}
 	// If no valid separators remain, return the original value.
-	if len(split) > 0 && len(escaped) == 0 {
-		log.Warn("No valid separators found in split list", "split", split, "tag", tagName)
+	if len(escaped) == 0 {
+		if len(split) > 0 {
+			log.Warn("No valid separators found in split list", "split", split, "tag", tagName)
+		}
 		return nil
 	}
 
