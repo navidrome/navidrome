@@ -91,10 +91,19 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			var usr *model.User
 			var err error
 
-			internalAuth := server.InternalAuth(r)
-			proxyAuth := server.UsernameFromReverseProxyHeader(r)
-			if username := cmp.Or(internalAuth, proxyAuth); username != "" {
-				authType := If(internalAuth != "", "internal", "reverse-proxy")
+			isInternalAuth := false
+
+			username := server.InternalAuth(r)
+			// If the username comes from internal auth, do not also do reverse proxy auth, as
+			// the request will have no reverse proxy IP
+			if username == "" {
+				username = server.UsernameFromReverseProxyHeader(r)
+			} else {
+				isInternalAuth = true
+			}
+
+			if username != "" {
+				authType := If(isInternalAuth, "internal", "reverse-proxy")
 				usr, err = ds.User(ctx).FindByUsername(username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
