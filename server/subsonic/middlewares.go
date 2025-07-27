@@ -47,17 +47,23 @@ func postFormToQueryParams(next http.Handler) http.Handler {
 	})
 }
 
+func fromInternalOrProxyAuth(r *http.Request) (string, bool) {
+	username := server.InternalAuth(r)
+
+	// If the username comes from internal auth, do not also do reverse proxy auth, as
+	// the request will have no reverse proxy IP
+	if username != "" {
+		return username, true
+	}
+
+	return server.UsernameFromReverseProxyHeader(r), false
+}
+
 func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var requiredParameters []string
 
-		username := server.InternalAuth(r)
-		// If the username comes from internal auth, do not also do reverse proxy auth, as
-		// the request will have no reverse proxy IP
-		if username == "" {
-			username = server.UsernameFromReverseProxyHeader(r)
-		}
-
+		username, _ := fromInternalOrProxyAuth(r)
 		if username != "" {
 			requiredParameters = []string{"v", "c"}
 		} else {
@@ -97,17 +103,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			var usr *model.User
 			var err error
 
-			isInternalAuth := false
-
-			username := server.InternalAuth(r)
-			// If the username comes from internal auth, do not also do reverse proxy auth, as
-			// the request will have no reverse proxy IP
-			if username == "" {
-				username = server.UsernameFromReverseProxyHeader(r)
-			} else {
-				isInternalAuth = true
-			}
-
+			username, isInternalAuth := fromInternalOrProxyAuth(r)
 			if username != "" {
 				authType := If(isInternalAuth, "internal", "reverse-proxy")
 				usr, err = ds.User(ctx).FindByUsername(username)
