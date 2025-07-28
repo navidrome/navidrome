@@ -410,7 +410,7 @@ func (n noopManager) EnsureCompiled(name string) error { return nil }
 
 func (n noopManager) PluginList() map[string]schema.PluginManifest { return nil }
 
-func (n noopManager) PluginNames(serviceName string) []string { return nil }
+func (n noopManager) PluginNames(capability string) []string { return nil }
 
 func (n noopManager) LoadPlugin(name string, capability string) WasmPlugin { return nil }
 
