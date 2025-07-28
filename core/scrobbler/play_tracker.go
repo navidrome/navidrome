@@ -40,7 +40,7 @@ type PlayTracker interface {
 // PluginLoader is a minimal interface for plugin manager usage in PlayTracker
 // (avoids import cycles)
 type PluginLoader interface {
-	PluginNames(service string) []string
+	PluginNames(capability string) []string
 	LoadScrobbler(name string) (Scrobbler, bool)
 }
 

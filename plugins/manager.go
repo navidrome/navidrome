@@ -87,7 +87,8 @@ type SubsonicRouter http.Handler
 type Manager interface {
 	SetSubsonicRouter(router SubsonicRouter)
 	EnsureCompiled(name string) error
-	PluginNames(serviceName string) []string
+	PluginList() map[string]schema.PluginManifest
+	PluginNames(capability string) []string
 	LoadPlugin(name string, capability string) WasmPlugin
 	LoadMediaAgent(name string) (agents.Interface, bool)
 	LoadScrobbler(name string) (scrobbler.Scrobbler, bool)
@@ -97,7 +98,7 @@ type Manager interface {
 // managerImpl is a singleton that manages plugins
 type managerImpl struct {
 	plugins          map[string]*plugin             // Map of plugin folder name to plugin info
-	mu               sync.RWMutex                   // Protects plugins map
+	pluginsMu        sync.RWMutex                   // Protects plugins map
 	subsonicRouter   atomic.Pointer[SubsonicRouter] // Subsonic API router
 	schedulerService *schedulerService              // Service for handling scheduled tasks
 	websocketService *websocketService              // Service for handling WebSocket connections
@@ -166,7 +167,7 @@ func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manif
 	}
 
 	// Register the plugin first
-	m.mu.Lock()
+	m.pluginsMu.Lock()
 	m.plugins[pluginID] = p
 
 	// Register one plugin adapter for each capability
@@ -187,7 +188,7 @@ func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manif
 		}
 		m.adapters[pluginID+"_"+capabilityStr] = adapter
 	}
-	m.mu.Unlock()
+	m.pluginsMu.Unlock()
 
 	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[pluginID]
@@ -210,8 +211,8 @@ func (m *managerImpl) initializePluginIfNeeded(plugin *plugin) {
 
 // unregisterPlugin removes a plugin from the manager
 func (m *managerImpl) unregisterPlugin(pluginID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.pluginsMu.Lock()
+	defer m.pluginsMu.Unlock()
 
 	plugin, ok := m.plugins[pluginID]
 	if !ok {
@@ -234,10 +235,10 @@ func (m *managerImpl) unregisterPlugin(pluginID string) {
 // ScanPlugins scans the plugins directory, discovers all valid plugins, and registers them for use.
 func (m *managerImpl) ScanPlugins() {
 	// Clear existing plugins
-	m.mu.Lock()
+	m.pluginsMu.Lock()
 	m.plugins = make(map[string]*plugin)
 	m.adapters = make(map[string]WasmPlugin)
-	m.mu.Unlock()
+	m.pluginsMu.Unlock()
 
 	// Get plugins directory from config
 	root := conf.Server.Plugins.Folder
@@ -297,10 +298,24 @@ func (m *managerImpl) ScanPlugins() {
 	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
 }
 
+// PluginList returns a map of all registered plugins with their manifests
+func (m *managerImpl) PluginList() map[string]schema.PluginManifest {
+	m.pluginsMu.RLock()
+	defer m.pluginsMu.RUnlock()
+
+	// Create a map to hold the plugin manifests
+	pluginList := make(map[string]schema.PluginManifest, len(m.plugins))
+	for name, plugin := range m.plugins {
+		// Use the plugin ID as the key and the manifest as the value
+		pluginList[name] = *plugin.Manifest
+	}
+	return pluginList
+}
+
 // PluginNames returns the folder names of all plugins that implement the specified capability
 func (m *managerImpl) PluginNames(capability string) []string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.pluginsMu.RLock()
+	defer m.pluginsMu.RUnlock()
 
 	var names []string
 	for name, plugin := range m.plugins {
@@ -315,8 +330,8 @@ func (m *managerImpl) PluginNames(capability string) []string {
 }
 
 func (m *managerImpl) getPlugin(name string, capability string) (*plugin, WasmPlugin, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.pluginsMu.RLock()
+	defer m.pluginsMu.RUnlock()
 	info, infoOk := m.plugins[name]
 	adapter, adapterOk := m.adapters[name+"_"+capability]
 
@@ -356,9 +371,9 @@ func (m *managerImpl) LoadPlugin(name string, capability string) WasmPlugin {
 // This is useful when you need to wait for compilation without loading a specific capability,
 // such as during plugin refresh operations or health checks.
 func (m *managerImpl) EnsureCompiled(name string) error {
-	m.mu.RLock()
+	m.pluginsMu.RLock()
 	plugin, ok := m.plugins[name]
-	m.mu.RUnlock()
+	m.pluginsMu.RUnlock()
 
 	if !ok {
 		return fmt.Errorf("plugin not found: %s", name)
@@ -393,7 +408,9 @@ func (n noopManager) SetSubsonicRouter(router SubsonicRouter) {}
 
 func (n noopManager) EnsureCompiled(name string) error { return nil }
 
-func (n noopManager) PluginNames(serviceName string) []string { return nil }
+func (n noopManager) PluginList() map[string]schema.PluginManifest { return nil }
+
+func (n noopManager) PluginNames(capability string) []string { return nil }
 
 func (n noopManager) LoadPlugin(name string, capability string) WasmPlugin { return nil }
 

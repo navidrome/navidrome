@@ -44,6 +44,7 @@ var allProviders = wire.NewSet(
 	db.Db,
 	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(metrics.PluginLoader), new(plugins.Manager)),
 	wire.Bind(new(core.Scanner), new(scanner.Scanner)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )

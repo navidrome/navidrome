@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -34,12 +35,18 @@ var (
 )
 
 type insightsCollector struct {
-	ds         model.DataStore
-	lastRun    atomic.Int64
-	lastStatus atomic.Bool
+	ds           model.DataStore
+	pluginLoader PluginLoader
+	lastRun      atomic.Int64
+	lastStatus   atomic.Bool
 }
 
-func GetInstance(ds model.DataStore) Insights {
+// PluginLoader defines an interface for loading plugins
+type PluginLoader interface {
+	PluginList() map[string]schema.PluginManifest
+}
+
+func GetInstance(ds model.DataStore, pluginLoader PluginLoader) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
 		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
 		if err != nil {
@@ -51,7 +58,7 @@ func GetInstance(ds model.DataStore) Insights {
 			}
 		}
 		insightsID = id
-		return &insightsCollector{ds: ds}
+		return &insightsCollector{ds: ds, pluginLoader: pluginLoader}
 	})
 }
 
@@ -180,10 +187,11 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
 	data.Config.EnableSharing = conf.Server.EnableSharing
 	data.Config.EnableStarRating = conf.Server.EnableStarRating
-	data.Config.EnableLastFM = conf.Server.LastFM.Enabled
+	data.Config.EnableLastFM = conf.Server.LastFM.Enabled && conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != ""
+	data.Config.EnableSpotify = conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != ""
 	data.Config.EnableListenBrainz = conf.Server.ListenBrainz.Enabled
+	data.Config.EnableDeezer = conf.Server.Deezer.Enabled
 	data.Config.EnableMediaFileCoverArt = conf.Server.EnableMediaFileCoverArt
-	data.Config.EnableSpotify = conf.Server.Spotify.ID != ""
 	data.Config.EnableJukebox = conf.Server.Jukebox.Enabled
 	data.Config.EnablePrometheus = conf.Server.Prometheus.Enabled
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
@@ -199,6 +207,9 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
 	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
+	data.Config.ReverseProxyConfigured = conf.Server.ReverseProxyWhitelist != ""
+	data.Config.HasCustomPID = conf.Server.PID.Track != "" || conf.Server.PID.Album != ""
+	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
 	return data
 })
@@ -233,12 +244,29 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
+	data.Library.Libraries, err = c.ds.Library(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading libraries count", err)
+	}
 	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
+
+	// Check for smart playlists
+	data.Config.HasSmartPlaylists, err = c.hasSmartPlaylists(ctx)
+	if err != nil {
+		log.Trace(ctx, "Error checking for smart playlists", err)
+	}
+
+	// Collect plugins if permitted and enabled
+	if conf.Server.DevEnablePluginsInsights && conf.Server.Plugins.Enabled {
+		data.Plugins = c.collectPlugins(ctx)
+	}
+
+	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
 		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
@@ -263,4 +291,24 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 		return nil
 	}
 	return resp
+}
+
+// hasSmartPlaylists checks if there are any smart playlists (playlists with rules)
+func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error) {
+	count, err := c.ds.Playlist(ctx).CountAll(model.QueryOptions{
+		Filters: squirrel.And{squirrel.NotEq{"rules": ""}, squirrel.NotEq{"rules": nil}},
+	})
+	return count > 0, err
+}
+
+// collectPlugins collects information about installed plugins
+func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
+	plugins := make(map[string]insights.PluginInfo)
+	for id, manifest := range c.pluginLoader.PluginList() {
+		plugins[id] = insights.PluginInfo{
+			Name:    manifest.Name,
+			Version: manifest.Version,
+		}
+	}
+	return plugins
 }
