@@ -56,7 +56,15 @@ type auxAlbum struct {
 
 type auxArtist struct {
 	model.Artist
-	Name string
+}
+
+// Name returns the appropriate artist name for external API calls
+// based on the DevPreserveUnicodeInExternalCalls configuration option
+func (a *auxArtist) Name() string {
+	if conf.Server.DevPreserveUnicodeInExternalCalls {
+		return a.Artist.Name
+	}
+	return str.Clear(a.Artist.Name)
 }
 
 type Agents interface {
@@ -181,7 +189,6 @@ func (e *provider) getArtist(ctx context.Context, id string) (auxArtist, error) 
 	switch v := entity.(type) {
 	case *model.Artist:
 		artist.Artist = *v
-		artist.Name = str.Clear(v.Name)
 	case *model.MediaFile:
 		return e.getArtist(ctx, v.ArtistID)
 	case *model.Album:
@@ -210,8 +217,9 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 
 	// If we don't have any info, retrieves it now
 	updatedAt := V(artist.ExternalInfoUpdatedAt)
+	artistName := artist.Name()
 	if updatedAt.IsZero() {
-		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artist.Name)
+		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artistName)
 		artist, err = e.populateArtistInfo(ctx, artist)
 		if err != nil {
 			return auxArtist{}, err
@@ -220,7 +228,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 
 	// If info is expired, trigger a populateArtistInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
-		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artist.Name)
+		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artistName)
 		e.artistQueue.enqueue(&artist)
 	}
 	return artist, nil
@@ -229,8 +237,9 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (auxArtist, error) {
 	start := time.Now()
 	// Get MBID first, if it is not yet available
+	artistName := artist.Name()
 	if artist.MbzArtistID == "" {
-		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artist.Name)
+		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artistName)
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 		}
@@ -246,14 +255,14 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "ArtistInfo update canceled", "elapsed", "id", artist.ID, "name", artist.Name, time.Since(start), ctx.Err())
+		log.Warn(ctx, "ArtistInfo update canceled", "id", artist.ID, "name", artistName, "elapsed", time.Since(start), ctx.Err())
 		return artist, ctx.Err()
 	}
 
 	artist.ExternalInfoUpdatedAt = P(time.Now())
 	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
-		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name,
+		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
@@ -281,7 +290,7 @@ func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model
 		}
 
 		topCount := max(count, 20)
-		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
+		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
 			return nil
@@ -401,9 +410,10 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 }
 
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
-	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	artistName := artist.Name()
+	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artistName, artist.MbzArtistID, count)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artist.Name, err)
+		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artistName, err)
 	}
 
 	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
@@ -415,13 +425,13 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
 	}
 
-	log.Trace(ctx, "Top Songs loaded", "name", artist.Name, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
+	log.Trace(ctx, "Top Songs loaded", "name", artistName, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
 	mfs := e.selectTopSongs(songs, mbidMatches, titleMatches, count)
 
 	if len(mfs) == 0 {
-		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
+		log.Debug(ctx, "No matching top songs found", "name", artistName)
 	} else {
-		log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
+		log.Debug(ctx, "Found matching top songs", "name", artistName, "numSongs", len(mfs))
 	}
 
 	return mfs, nil
@@ -518,7 +528,7 @@ func (e *provider) selectTopSongs(songs []agents.Song, byMBID, byTitle map[strin
 }
 
 func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
-	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
+	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
 		return
 	}
@@ -526,7 +536,7 @@ func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriev
 }
 
 func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
-	bio, err := agent.GetArtistBiography(ctx, artist.ID, str.Clear(artist.Name), artist.MbzArtistID)
+	bio, err := agent.GetArtistBiography(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
 		return
 	}
@@ -536,7 +546,7 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 }
 
 func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
-	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
+	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
 		return
 	}
@@ -555,13 +565,14 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 
 func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
-	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artist.Name, artist.MbzArtistID, limit)
+	artistName := artist.Name()
+	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artistName, artist.MbzArtistID, limit)
 	if len(similar) == 0 || err != nil {
 		return
 	}
 	start := time.Now()
 	sa, err := e.mapSimilarArtists(ctx, similar, limit, includeNotPresent)
-	log.Debug(ctx, "Mapped Similar Artists", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
+	log.Debug(ctx, "Mapped Similar Artists", "artist", artistName, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
 		return
 	}
@@ -635,11 +646,7 @@ func (e *provider) findArtistByName(ctx context.Context, artistName string) (*au
 	if len(artists) == 0 {
 		return nil, model.ErrNotFound
 	}
-	artist := &auxArtist{
-		Artist: artists[0],
-		Name:   str.Clear(artists[0].Name),
-	}
-	return artist, nil
+	return &auxArtist{Artist: artists[0]}, nil
 }
 
 func (e *provider) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
@@ -655,7 +662,7 @@ func (e *provider) loadSimilar(ctx context.Context, artist *auxArtist, count int
 		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {
-		log.Error("Error loading similar artists", "id", artist.ID, "name", artist.Name, err)
+		log.Error("Error loading similar artists", "id", artist.ID, "name", artist.Name(), err)
 		return err
 	}
 
