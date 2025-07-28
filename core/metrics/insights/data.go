@@ -80,7 +80,8 @@ type Data struct {
 }
 
 type PluginInfo struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 type FSInfo struct {

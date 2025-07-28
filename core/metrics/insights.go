@@ -261,11 +261,12 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 		log.Trace(ctx, "Error checking for smart playlists", err)
 	}
 
-	// Collect plugins if enabled
-	if conf.Server.Plugins.Enabled {
+	// Collect plugins if permitted and enabled
+	if conf.Server.DevEnablePluginsInsights && conf.Server.Plugins.Enabled {
 		data.Plugins = c.collectPlugins(ctx)
 	}
 
+	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
 		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
@@ -305,7 +306,8 @@ func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insight
 	plugins := make(map[string]insights.PluginInfo)
 	for id, manifest := range c.pluginLoader.PluginList() {
 		plugins[id] = insights.PluginInfo{
-			Name: manifest.Name,
+			Name:    manifest.Name,
+			Version: manifest.Version,
 		}
 	}
 	return plugins
