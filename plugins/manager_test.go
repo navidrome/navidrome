@@ -69,7 +69,7 @@ var _ = Describe("Plugin Manager", func() {
 		all := mgr.PluginList()
 		Expect(all).To(HaveLen(6))
 		Expect(all["fake_artist_agent"].Name).To(Equal("fake_artist_agent"))
-		Expect(all["unauthorized_plugin"].Capabilities).To(HaveExactElements("MetadataAgent"))
+		Expect(all["unauthorized_plugin"].Capabilities).To(HaveExactElements(schema.PluginManifestCapabilitiesElem("MetadataAgent")))
 	})
 
 	It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
