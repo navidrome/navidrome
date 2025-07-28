@@ -209,7 +209,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
 	data.Config.ReverseProxyConfigured = conf.Server.ReverseProxyWhitelist != ""
 	data.Config.HasCustomPID = conf.Server.PID.Track != "" || conf.Server.PID.Album != ""
-	data.Config.HasCustomTags = false // Will be set to true if any custom tags exist (this is basic detection)
+	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
 	return data
 })
@@ -260,13 +260,6 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error checking for smart playlists", err)
 	}
-
-	// Configuration checks
-	data.Config.ReverseProxyConfigured = conf.Server.ReverseProxyWhitelist != ""
-	data.Config.HasCustomPID = conf.Server.PID.Track != "" || conf.Server.PID.Album != ""
-
-	// Check for custom tags
-	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
 	// Collect plugins if enabled
 	if conf.Server.Plugins.Enabled {
