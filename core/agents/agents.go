@@ -17,7 +17,7 @@ import (
 // PluginLoader defines an interface for loading plugins
 type PluginLoader interface {
 	// PluginNames returns the names of all plugins that implement a particular service
-	PluginNames(serviceName string) []string
+	PluginNames(capability string) []string
 	// LoadMediaAgent loads and returns a media agent plugin
 	LoadMediaAgent(name string) (Interface, bool)
 }

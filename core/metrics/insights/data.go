@@ -36,6 +36,7 @@ type Data struct {
 		Playlists     int64            `json:"playlists"`
 		Shares        int64            `json:"shares"`
 		Radios        int64            `json:"radios"`
+		Libraries     int64            `json:"libraries"`
 		ActiveUsers   int64            `json:"activeUsers"`
 		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
 	} `json:"library"`
@@ -55,6 +56,7 @@ type Data struct {
 		EnableStarRating        bool   `json:"enableStarRating,omitempty"`
 		EnableLastFM            bool   `json:"enableLastFM,omitempty"`
 		EnableListenBrainz      bool   `json:"enableListenBrainz,omitempty"`
+		EnableDeezer            bool   `json:"enableDeezer,omitempty"`
 		EnableMediaFileCoverArt bool   `json:"enableMediaFileCoverArt,omitempty"`
 		EnableSpotify           bool   `json:"enableSpotify,omitempty"`
 		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
@@ -69,7 +71,17 @@ type Data struct {
 		BackupCount             int    `json:"backupCount,omitempty"`
 		DevActivityPanel        bool   `json:"devActivityPanel,omitempty"`
 		DefaultBackgroundURLSet bool   `json:"defaultBackgroundURL,omitempty"`
+		HasSmartPlaylists       bool   `json:"hasSmartPlaylists,omitempty"`
+		ReverseProxyConfigured  bool   `json:"reverseProxyConfigured,omitempty"`
+		HasCustomPID            bool   `json:"hasCustomPID,omitempty"`
+		HasCustomTags           bool   `json:"hasCustomTags,omitempty"`
 	} `json:"config"`
+	Plugins map[string]PluginInfo `json:"plugins,omitempty"`
+}
+
+type PluginInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 type FSInfo struct {
