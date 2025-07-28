@@ -298,6 +298,7 @@ func (m *managerImpl) ScanPlugins() {
 	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
 }
 
+// PluginList returns a map of all registered plugins with their manifests
 func (m *managerImpl) PluginList() map[string]schema.PluginManifest {
 	m.pluginsMu.RLock()
 	defer m.pluginsMu.RUnlock()
