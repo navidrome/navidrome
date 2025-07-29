@@ -36,6 +36,12 @@ var _ = Describe("Users", func() {
 			conf.Server.EnableSharing = true
 			conf.Server.Jukebox.Enabled = false
 
+			// Set up user with libraries
+			testUser.Libraries = model.Libraries{
+				{ID: 10, Name: "Music"},
+				{ID: 20, Name: "Podcasts"},
+			}
+
 			// Create request with user in context
 			req := httptest.NewRequest("GET", "/rest/getUser", nil)
 			ctx := request.WithUser(context.Background(), testUser)
@@ -57,6 +63,7 @@ var _ = Describe("Users", func() {
 			Expect(userResponse.User.ScrobblingEnabled).To(BeTrue())
 			Expect(userResponse.User.DownloadRole).To(BeTrue())
 			Expect(userResponse.User.ShareRole).To(BeTrue())
+			Expect(userResponse.User.Folder).To(ContainElements(int32(10), int32(20)))
 
 			// Verify GetUsers response structure
 			Expect(usersResponse.Status).To(Equal(responses.StatusOK))
@@ -75,6 +82,7 @@ var _ = Describe("Users", func() {
 			Expect(singleUser.DownloadRole).To(Equal(userFromList.DownloadRole))
 			Expect(singleUser.ShareRole).To(Equal(userFromList.ShareRole))
 			Expect(singleUser.JukeboxRole).To(Equal(userFromList.JukeboxRole))
+			Expect(singleUser.Folder).To(Equal(userFromList.Folder))
 		})
 	})
 
@@ -93,4 +101,19 @@ var _ = Describe("Users", func() {
 		Entry("jukebox enabled, admin-only, regular user", true, true, false, false),
 		Entry("jukebox enabled, admin-only, admin user", true, true, true, true),
 	)
+
+	Describe("Folder list population", func() {
+		It("should populate Folder field with user's accessible library IDs", func() {
+			testUser.Libraries = model.Libraries{
+				{ID: 1, Name: "Music"},
+				{ID: 2, Name: "Podcasts"},
+				{ID: 5, Name: "Audiobooks"},
+			}
+
+			response := buildUserResponse(testUser)
+
+			Expect(response.Folder).To(HaveLen(3))
+			Expect(response.Folder).To(ContainElements(int32(1), int32(2), int32(5)))
+		})
+	})
 })
