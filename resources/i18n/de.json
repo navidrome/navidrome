@@ -273,7 +273,7 @@
       "empty": "keine fehlenden Dateien"
     },
     "library": {
-      "name": "Bibliothek ||| Bibliotheken",
+      "name": "Bibliothek |||| Bibliotheken",
       "fields": {
         "name": "Name",
         "path": "Pfad",
