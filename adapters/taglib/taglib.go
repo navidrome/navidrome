@@ -43,15 +43,12 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 
 	// Parse audio properties
 	ap := metadata.AudioProperties{}
-	parseProp(tags, "_bitrate", &ap.BitRate)
-	parseProp(tags, "_channels", &ap.Channels)
-	parseProp(tags, "_samplerate", &ap.SampleRate)
-	parseProp(tags, "_bitspersample", &ap.BitDepth)
-	var millis int
-	parseProp(tags, "_lengthinmilliseconds", &millis)
-	if millis > 0 {
-		ap.Duration = (time.Millisecond * time.Duration(millis)).Round(time.Millisecond * 10)
-	}
+	ap.BitRate = parseProp(tags, "__bitrate")
+	ap.Channels = parseProp(tags, "__channels")
+	ap.SampleRate = parseProp(tags, "__samplerate")
+	ap.BitDepth = parseProp(tags, "__bitspersample")
+	length := parseProp(tags, "__lengthinmilliseconds")
+	ap.Duration = (time.Millisecond * time.Duration(length)).Round(time.Millisecond * 10)
 
 	// Extract basic tags
 	parseBasicTag(tags, "__title", "title")
@@ -110,11 +107,13 @@ var tiplMapping = map[string]string{
 
 // parseProp parses a property from the tags map and sets it to the target integer.
 // It also deletes the property from the tags map after parsing.
-func parseProp(tags map[string][]string, prop string, target *int) {
+func parseProp(tags map[string][]string, prop string) int {
 	if value, ok := tags[prop]; ok && len(value) > 0 {
-		*target, _ = strconv.Atoi(value[0])
+		v, _ := strconv.Atoi(value[0])
 		delete(tags, prop)
+		return v
 	}
+	return 0
 }
 
 // parseBasicTag checks if a basic tag (like __title, __artist, etc.) exists in the tags map.
