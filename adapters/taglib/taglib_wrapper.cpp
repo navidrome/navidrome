@@ -70,6 +70,32 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
 
+  // Make sure at least the basic properties are extracted
+  TagLib::Tag *basic = f.file()->tag();
+  if (!basic->isEmpty()) {
+    if (!basic->title().isEmpty()) {
+      tags.insert("__title", basic->title());
+    }
+    if (!basic->artist().isEmpty()) {
+      tags.insert("__artist", basic->artist());
+    }
+    if (!basic->album().isEmpty()) {
+      tags.insert("__album", basic->album());
+    }
+    if (!basic->comment().isEmpty()) {
+      tags.insert("__comment", basic->comment());
+    }
+    if (!basic->genre().isEmpty()) {
+      tags.insert("__genre", basic->genre());
+    }
+    if (basic->year() > 0) {
+      tags.insert("__year", TagLib::String::number(basic->year()));
+    }
+    if (basic->track() > 0) {
+      tags.insert("__track", TagLib::String::number(basic->track()));
+    }
+  }
+
   TagLib::ID3v2::Tag *id3Tags = NULL;
 
   // Get some extended/non-standard ID3-only tags (ex: iTunes extended frames)
