@@ -596,7 +596,7 @@
             "devFlagsHeader": "开发标志（可能会更改/删除）",
             "devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
         }
-	},
+    },
     "activity": {
         "title": "运行情况",
         "totalScanned": "已完成扫描的目录",
