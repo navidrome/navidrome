@@ -516,7 +516,7 @@
             "allLibraries": "全部媒体库 (%{count})",
             "multipleLibraries": "已选 %{selected} 共 %{total} 媒体库",
             "selectLibraries": "选择媒体库",
-            "none": "None"
+            "none": "无"
         },
         "settings": "设置",
         "version": "版本",
