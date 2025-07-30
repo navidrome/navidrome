@@ -580,22 +580,22 @@
                 "disabled": "禁用",
                 "waiting": "等待"
             }
-		},
-		"tabs": {
-			"about": "关于",
-			"config": "配置"
-		},
-		"config": {
-			"configName": "配置名称",
-			"environmentVariable": "环境变量",
-			"currentValue": "当前值",
-			"configurationFile": "配置文件",
-			"exportToml": "导出配置（TOML）",
-			"exportSuccess": "配置以 TOML 格式导出到剪贴板",
-			"exportFailed": "复制配置失败",
-			"devFlagsHeader": "开发标志（可能会更改/删除）",
-			"devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
-		}
+        },
+        "tabs": {
+            "about": "关于",
+            "config": "配置"
+        },
+        "config": {
+            "configName": "配置名称",
+            "environmentVariable": "环境变量",
+            "currentValue": "当前值",
+            "configurationFile": "配置文件",
+            "exportToml": "导出配置（TOML）",
+            "exportSuccess": "配置以 TOML 格式导出到剪贴板",
+            "exportFailed": "复制配置失败",
+            "devFlagsHeader": "开发标志（可能会更改/删除）",
+            "devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
+        }
 	},
     "activity": {
         "title": "运行情况",
