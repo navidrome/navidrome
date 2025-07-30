@@ -604,9 +604,9 @@
         "fullScan": "完全扫描",
         "serverUptime": "服务器已运行",
         "serverDown": "服务器已离线",
-		"scanType": "扫描类型",
-		"status": "扫描状态",
-		"elapsedTime": "用时"
+        "scanType": "扫描类型",
+        "status": "扫描状态",
+        "elapsedTime": "用时"
     },
 	"nowPlaying": {
 		"title": "正在播放",
