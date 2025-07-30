@@ -32,6 +32,14 @@ server: check_go_env buildjs ##@Development Start the backend in development mod
 	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
 .PHONY: server
 
+stop: ##@Development Stop development servers (UI and backend)
+	@echo "Stopping development servers..."
+	@-pkill -f "vite"
+	@-pkill -f "go tool reflex.*reflex.conf"
+	@-pkill -f "go run.*netgo"
+	@echo "Development servers stopped."
+.PHONY: stop
+
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
