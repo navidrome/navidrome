@@ -608,11 +608,11 @@
         "status": "扫描状态",
         "elapsedTime": "用时"
     },
-	"nowPlaying": {
-		"title": "正在播放",
-		"empty": "无播放内容",
-		"minutesAgo": "%{smart_count} 分钟前"
-	},
+    "nowPlaying": {
+        "title": "正在播放",
+        "empty": "无播放内容",
+        "minutesAgo": "%{smart_count} 分钟前"
+    },
     "help": {
         "title": "Navidrome 快捷键",
         "hotkeys": {
