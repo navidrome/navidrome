@@ -187,6 +187,29 @@ var (
 	instanceTranscodingCache TranscodingCache
 )
 
+var transcodeTaskMap = make(map[string]io.Closer)
+
+// wrap ReadCloser，auto clean transcodeTaskMap
+type tokenReadCloser struct {
+	token string
+	inner io.ReadCloser
+}
+
+func (t *tokenReadCloser) Read(p []byte) (int, error) {
+	return t.inner.Read(p)
+}
+
+func (t *tokenReadCloser) Close() error {
+	transcodeTaskLock.Lock()
+	if cur, ok := transcodeTaskMap[t.token]; ok && cur == t {
+		delete(transcodeTaskMap, t.token)
+	}
+	transcodeTaskLock.Unlock()
+	return t.inner.Close()
+}
+
+var transcodeTaskLock sync.Mutex
+
 func GetTranscodingCache() TranscodingCache {
 	onceTranscodingCache.Do(func() {
 		instanceTranscodingCache = NewTranscodingCache()
@@ -199,6 +222,18 @@ func NewTranscodingCache() TranscodingCache {
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
+			// Get the token from ctx
+			token, _ := ctx.Value("token").(string)
+			if token != "" {
+				transcodeTaskLock.Lock()
+				// If there is an old task, stop it first.
+				if oldTask, ok := transcodeTaskMap[token]; ok {
+					oldTask.Close()
+					delete(transcodeTaskMap, token)
+				}
+				transcodeTaskLock.Unlock()
+			}
+
 			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
 			if err != nil {
 				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
@@ -208,6 +243,17 @@ func NewTranscodingCache() TranscodingCache {
 			if err != nil {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid
+			}
+
+			// Save to the transcoding task map，并用包装器自动清理
+			if token != "" {
+				if closer, ok := out.(io.ReadCloser); ok {
+					wrapped := &tokenReadCloser{token: token, inner: closer}
+					transcodeTaskLock.Lock()
+					transcodeTaskMap[token] = wrapped
+					transcodeTaskLock.Unlock()
+					return wrapped, nil
+				}
 			}
 			return out, nil
 		})

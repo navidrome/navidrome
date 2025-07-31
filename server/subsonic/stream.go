@@ -56,6 +56,10 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	if err != nil {
 		return nil, err
 	}
+	// Save the token to the context, which will be used later to limit the concurrency of transcoding for a single token.
+	token, _ := p.String("t")
+	ctx = context.WithValue(ctx, "token", token)
+
 	maxBitRate := p.IntOr("maxBitRate", 0)
 	format, _ := p.String("format")
 	timeOffset := p.IntOr("timeOffset", 0)
