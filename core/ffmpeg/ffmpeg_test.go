@@ -2,7 +2,6 @@ package ffmpeg
 
 import (
 	"context"
-	"io"
 	"os/exec"
 	"testing"
 	"time"
@@ -70,7 +69,7 @@ var _ = Describe("ffmpeg", func() {
 		})
 	})
 
-	Describe("Context Cancellation", func() {
+	Describe("FFmpeg", func() {
 		Context("when FFmpeg is available", func() {
 			var ff FFmpeg
 
@@ -83,51 +82,34 @@ var _ = Describe("ffmpeg", func() {
 			})
 
 			It("should interrupt transcoding when context is cancelled", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithTimeout(GinkgoT().Context(), 5*time.Second)
 				defer cancel()
 
-				// Start a long-running FFmpeg process (slow transcode to give time for cancellation)
-				// Use a command that will take some time to complete
-				command := "ffmpeg -f lavfi -i sine=frequency=1000:duration=30 -acodec pcm_s16le -"
+				// Use a command that generates audio indefinitely
+				// -f lavfi uses FFmpeg's built-in audio source
+				// -t 0 means no time limit (runs forever)
+				command := "ffmpeg -f lavfi -i sine=frequency=1000:duration=0 -f mp3 -"
 
-				errChan := make(chan error, 1)
-				var stream io.ReadCloser
+				// The input file is not used here, but we need to provide a valid path to the Transcode function
+				stream, err := ff.Transcode(ctx, command, "tests/fixtures/test.mp3", 128, 0)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
 
-				go func() {
-					var err error
-					// The input file is not used here, but we need to provide a valid path to the Transcode function
-					stream, err = ff.Transcode(ctx, command, "tests/fixtures/test.mp3", 128, 0)
-					errChan <- err
-				}()
-
-				// Give FFmpeg a moment to start
-				time.Sleep(100 * time.Millisecond)
+				// Read some data first to ensure FFmpeg is running
+				buf := make([]byte, 1024)
+				_, err = stream.Read(buf)
+				Expect(err).ToNot(HaveOccurred())
 
 				// Cancel the context
 				cancel()
 
-				// The operation should fail due to cancellation
-				select {
-				case err := <-errChan:
-					if err == nil {
-						// If no error during start, the stream should be cancelled when we try to read
-						if stream != nil {
-							defer stream.Close()
-							buf := make([]byte, 1024)
-							_, readErr := stream.Read(buf)
-							Expect(readErr).To(HaveOccurred(), "Expected read to fail due to cancelled context")
-						}
-					} else {
-						// Starting should fail due to cancelled context
-						Expect(err).To(HaveOccurred())
-					}
-				case <-time.After(5 * time.Second):
-					Fail("Expected FFmpeg to be cancelled within 5 seconds")
-				}
+				// Next read should fail due to cancelled context
+				_, err = stream.Read(buf)
+				Expect(err).To(HaveOccurred())
 			})
 
 			It("should handle immediate context cancellation", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(GinkgoT().Context())
 				cancel() // Cancel immediately
 
 				// This should fail immediately
@@ -151,7 +133,7 @@ var _ = Describe("ffmpeg", func() {
 
 			It("should terminate the underlying process when context is cancelled", func() {
 				ff := New()
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithTimeout(GinkgoT().Context(), 5*time.Second)
 
 				// Start a process that will run for a while
 				stream, err := ff.Transcode(ctx, "sleep 10", "tests/fixtures/test.mp3", 0, 0)
