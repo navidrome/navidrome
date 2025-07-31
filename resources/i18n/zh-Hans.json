@@ -42,7 +42,7 @@
                 "addToQueue": "加入播放列表",
                 "playNow": "立即播放",
                 "addToPlaylist": "加入歌单",
-                "showInPlaylist": "定位到播放列表",
+                "showInPlaylist": "定位到歌单",
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
                 "playNext": "下一首播放",
@@ -289,10 +289,10 @@
                 "totalArtists": "艺术家",
                 "totalFolders": "目录",
                 "totalFiles": "文件",
-                "totalMissingFiles": "缺失的文件",
-                "totalSize": "总大小",
+                "totalMissingFiles": "缺失文件",
+                "totalSize": "大小",
                 "totalDuration": "时长",
-                "defaultNewUsers": "新用户默认",
+                "defaultNewUsers": "新用户默认选择此媒体库",
                 "createdAt": "创建于",
                 "updatedAt": "更新于"
             },
@@ -514,7 +514,7 @@
         "library": "曲库",
         "librarySelector": {
             "allLibraries": "全部媒体库 (%{count})",
-            "multipleLibraries": "已选 %{selected} 共 %{total} 媒体库",
+            "multipleLibraries": "已选 (%{selected}) 个媒体库",
             "selectLibraries": "选择媒体库",
             "none": "无"
         },
@@ -606,7 +606,7 @@
         "serverDown": "服务器已离线",
         "scanType": "扫描类型",
         "status": "扫描状态",
-        "elapsedTime": "用时"
+        "elapsedTime": "扫描用时"
     },
     "nowPlaying": {
         "title": "正在播放",
