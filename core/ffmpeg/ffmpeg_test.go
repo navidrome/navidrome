@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"context"
 	"os/exec"
+	sync "sync"
 	"testing"
 	"time"
 
@@ -74,6 +75,7 @@ var _ = Describe("ffmpeg", func() {
 			var ff FFmpeg
 
 			BeforeEach(func() {
+				ffOnce = sync.Once{}
 				ff = New()
 				// Skip if FFmpeg is not available
 				if !ff.IsAvailable() {
