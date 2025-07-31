@@ -168,7 +168,7 @@
                 "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
                 "clickHereForToken": "点击这里来获得你的 ListenBrainz 令牌",
                 "selectAllLibraries": "选择全部媒体库",
-                "adminAutoLibraries": "管理员默认拥有所有媒体库访问权限"
+                "adminAutoLibraries": "管理员默认可访问所有媒体库"
             }
         },
         "player": {
