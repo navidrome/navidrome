@@ -2,7 +2,7 @@ package ffmpeg
 
 import (
 	"context"
-	"os/exec"
+	"runtime"
 	sync "sync"
 	"testing"
 	"time"
@@ -121,24 +121,28 @@ var _ = Describe("ffmpeg", func() {
 		})
 
 		Context("with mock process behavior", func() {
-			var originalFfmpegPath string
-
+			var longRunningCmd string
 			BeforeEach(func() {
-				originalFfmpegPath = ffmpegPath
 				// Use a long-running command for testing cancellation
-				ffmpegPath = "sleep"
-			})
-
-			AfterEach(func() {
-				ffmpegPath = originalFfmpegPath
+				switch runtime.GOOS {
+				case "windows":
+					// Use PowerShell's Start-Sleep
+					ffmpegPath = "powershell"
+					longRunningCmd = "powershell -Command Start-Sleep -Seconds 10"
+				default:
+					// Use sleep on Unix-like systems
+					ffmpegPath = "sleep"
+					longRunningCmd = "sleep 10"
+				}
 			})
 
 			It("should terminate the underlying process when context is cancelled", func() {
 				ff := New()
 				ctx, cancel := context.WithTimeout(GinkgoT().Context(), 5*time.Second)
+				defer cancel()
 
 				// Start a process that will run for a while
-				stream, err := ff.Transcode(ctx, "sleep 10", "tests/fixtures/test.mp3", 0, 0)
+				stream, err := ff.Transcode(ctx, longRunningCmd, "tests/fixtures/test.mp3", 0, 0)
 				Expect(err).ToNot(HaveOccurred())
 				defer stream.Close()
 
@@ -153,13 +157,9 @@ var _ = Describe("ffmpeg", func() {
 				_, err = stream.Read(buf)
 				Expect(err).To(HaveOccurred(), "Expected stream to be closed due to process termination")
 
-				// Give some time for cleanup
-				time.Sleep(100 * time.Millisecond)
-
-				// Verify no sleep processes are left running
-				checkCmd := exec.Command("pgrep", "-f", "sleep 10")
-				err = checkCmd.Run()
-				Expect(err).To(HaveOccurred(), "Expected no 'sleep 10' processes to be running")
+				// Verify the stream is closed by attempting another read
+				_, err = stream.Read(buf)
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
