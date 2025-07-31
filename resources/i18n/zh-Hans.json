@@ -292,7 +292,7 @@
                 "totalMissingFiles": "缺失文件",
                 "totalSize": "大小",
                 "totalDuration": "时长",
-                "defaultNewUsers": "新用户默认选择此媒体库",
+                "defaultNewUsers": "设为默认",
                 "createdAt": "创建于",
                 "updatedAt": "更新于"
             },
