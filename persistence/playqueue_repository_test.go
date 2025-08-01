@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -78,7 +79,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			update := &model.PlayQueue{
 				ID:        existing.ID, // Use existing ID for partial update
 				UserID:    "userid",
-				Current:   1,
+				Current:   gg.P(1),
 				ChangedBy: "test-update",
 			}
 			Expect(repo.Store(update, "current")).To(Succeed())
@@ -86,7 +87,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			By("Verifying only current was updated")
 			actual, err := repo.Retrieve("userid")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual.Current).To(Equal(1))
+			Expect(actual.Current).To(Equal(gg.P(1)))
 			Expect(actual.Position).To(Equal(int64(100))) // Should remain unchanged
 			Expect(actual.Items).To(HaveLen(2))           // Should remain unchanged
 		})
@@ -113,8 +114,8 @@ var _ = Describe("PlayQueueRepository", func() {
 			actual, err := repo.Retrieve("userid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Position).To(Equal(int64(500)))
-			Expect(actual.Current).To(Equal(1)) // Should remain unchanged
-			Expect(actual.Items).To(HaveLen(2)) // Should remain unchanged
+			Expect(actual.Current).To(Equal(gg.P(1))) // Should remain unchanged
+			Expect(actual.Items).To(HaveLen(2))       // Should remain unchanged
 		})
 
 		It("updates multiple specified fields", func() {
@@ -130,7 +131,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			update := &model.PlayQueue{
 				ID:        existing.ID, // Use existing ID for partial update
 				UserID:    "userid",
-				Current:   1,
+				Current:   gg.P(1),
 				Position:  300,
 				ChangedBy: "test-update",
 			}
@@ -139,7 +140,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			By("Verifying both fields were updated")
 			actual, err := repo.Retrieve("userid")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual.Current).To(Equal(1))
+			Expect(actual.Current).To(Equal(gg.P(1)))
 			Expect(actual.Position).To(Equal(int64(300)))
 			Expect(actual.Items).To(HaveLen(1)) // Should remain unchanged
 		})
@@ -189,7 +190,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			By("Verifying the record was updated, not duplicated")
 			actual, err := repo.Retrieve("userid")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual.Current).To(Equal(1))           // Should be updated value
+			Expect(actual.Current).To(Equal(gg.P(1)))     // Should be updated value
 			Expect(actual.Position).To(Equal(int64(200))) // Should be updated value
 			Expect(actual.Items).To(HaveLen(1))           // Should be new items
 			Expect(actual.Items[0].ID).To(Equal(songDayInALife.ID))
@@ -206,7 +207,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			partialUpdate := &model.PlayQueue{
 				ID:        "completely-different-id", // Use a completely different ID
 				UserID:    "userid",
-				Current:   1,
+				Current:   gg.P(1),
 				ChangedBy: "test-partial",
 			}
 			Expect(repo.Store(partialUpdate, "current")).To(Succeed())
@@ -218,7 +219,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			By("Verifying the existing record was updated with new current value")
 			actual, err := repo.Retrieve("userid")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actual.Current).To(Equal(1))           // Should be updated value
+			Expect(actual.Current).To(Equal(gg.P(1)))     // Should be updated value
 			Expect(actual.Position).To(Equal(int64(100))) // Should remain unchanged
 			Expect(actual.Items).To(HaveLen(2))           // Should remain unchanged
 		})
@@ -392,7 +393,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			actual, err := repo.Retrieve("user2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.UserID).To(Equal("user2"))
-			Expect(actual.Current).To(Equal(1))
+			Expect(actual.Current).To(Equal(gg.P(1)))
 			Expect(actual.Position).To(Equal(int64(200)))
 		})
 	})
@@ -425,7 +426,7 @@ func aPlayQueue(userId string, current int, position int64, items ...model.Media
 	return &model.PlayQueue{
 		ID:        id.NewRandom(),
 		UserID:    userId,
-		Current:   current,
+		Current:   &current,
 		Position:  position,
 		ChangedBy: "test",
 		Items:     items,
