@@ -189,14 +189,14 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     if (m4afile->hasMP4Tag()) {
       goPutTagType(id, MP4_TAG);
       has_tag = true;
-    }
 
-    const auto itemListMap = m4afile->tag()->itemMap();
-    for (const auto item: itemListMap) {
-      char *key = const_cast<char*>(item.first.toCString(true));
-      for (const auto value: item.second.toStringList()) {
-        char *val = const_cast<char*>(value.toCString(true));
-        goPutM4AStr(id, key, val);
+      const auto itemListMap = m4afile->tag()->itemMap();
+      for (const auto item: itemListMap) {
+        char *key = const_cast<char*>(item.first.toCString(true));
+        for (const auto value: item.second.toStringList()) {
+          char *val = const_cast<char*>(value.toCString(true));
+          goPutM4AStr(id, key, val);
+        }
       }
     }
   }
@@ -204,19 +204,22 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // WMA/ASF files may have additional tags not captured by the PropertyMap interface
   TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
   if (asfFile != NULL) {
-    goPutTagType(id, ASF_TAG);
-    has_tag = true;
-
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
-    const auto itemListMap = asfTags->attributeListMap();
-    for (const auto item : itemListMap) {
-      char *key = const_cast<char*>(item.first.toCString(true));
 
-      for (auto j = item.second.begin();
-           j != item.second.end(); ++j) {
+    if (asfTags != NULL) {
+      goPutTagType(id, ASF_TAG);
+      has_tag = true;
 
-        char *val = const_cast<char*>(j->toString().toCString(true));
-        goPutStr(id, key, val);
+      const auto itemListMap = asfTags->attributeListMap();
+      for (const auto item : itemListMap) {
+        char *key = const_cast<char*>(item.first.toCString(true));
+
+        for (auto j = item.second.begin();
+            j != item.second.end(); ++j) {
+
+          char *val = const_cast<char*>(j->toString().toCString(true));
+          goPutStr(id, key, val);
+        }
       }
     }
   }
@@ -303,7 +306,7 @@ char has_cover(const TagLib::FileRef f) {
       hasCover = !frameListMap["APIC"].isEmpty();
     }
   }
-  // ----- AIFF 
+  // ----- AIFF
   else if (TagLib::RIFF::AIFF::File * aiffFile{ dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file())}) {
     if (aiffFile->hasID3v2Tag()) {
       const auto& frameListMap{ aiffFile->tag()->frameListMap() };

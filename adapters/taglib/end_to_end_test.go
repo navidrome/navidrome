@@ -279,11 +279,7 @@ var _ = Describe("Extractor", func() {
 	Describe("tags", func() {
 		DescribeTable("test metadata tags across files, and special cases", func(file string, tags ...string) {
 			mf := parseTestFile("tests/fixtures/" + file)
-			metadataTags := mf.Tags[model.TagMetadataTag]
-			Expect(metadataTags).To(HaveLen(len(tags)))
-			for _, tag := range tags {
-				Expect(mf.Tags[model.TagMetadataTag]).To(ContainElement(tag))
-			}
+			Expect(mf.Tags[model.TagMetadataTag]).To(ConsistOf(tags))
 		},
 			// weirder cases
 			Entry("file with multiple tags", "ape-v1-v2.mp3", "ape", "id3v1", "id3v2"),
