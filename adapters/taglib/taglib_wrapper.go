@@ -155,3 +155,8 @@ func goPutLyricLine(id C.ulong, lang *C.char, text *C.char, time C.int) {
 		m[k] = []string{formattedLine}
 	}
 }
+
+//export goPutTagType
+func goPutTagType(id C.ulong, tag *C.char) {
+	doPutTag(id, "__tags", tag)
+}
