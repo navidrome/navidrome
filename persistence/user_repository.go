@@ -193,21 +193,6 @@ func (r *userRepository) FindByUsernameWithPassword(username string) (*model.Use
 	return usr, nil
 }
 
-func (r *userRepository) FindByAPIKey(key string) (*model.User, error) {
-	// find the API key in the database
-	playerRepo := NewPlayerRepository(r.ctx, r.db)
-	apiKeyRepo := NewAPIKeyRepository(r.ctx, r.db)
-	apiKey, err := apiKeyRepo.FindByKey(key)
-	if err != nil {
-		return nil, err
-	}
-	player, err := playerRepo.Get(apiKey.PlayerID)
-	if err != nil {
-		return nil, err
-	}
-	return r.Get(player.UserId)
-}
-
 func (r *userRepository) UpdateLastLoginAt(id string) error {
 	upd := Update(r.tableName).Where(Eq{"id": id}).Set("last_login_at", time.Now())
 	_, err := r.executeSQL(upd)

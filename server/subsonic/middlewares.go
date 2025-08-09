@@ -63,6 +63,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var requiredParameters []string
 
+		p := req.Params(r)
 		username, _ := fromInternalOrProxyAuth(r)
 		if username != "" {
 			requiredParameters = []string{"v", "c"}
@@ -154,15 +155,22 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				}
 
 				if apiKey != "" {
-					usr, err = ds.User(ctx).FindByAPIKey(apiKey)
+					var player *model.Player
+					player, err = ds.Player(ctx).FindByAPIKey(apiKey)
 					if errors.Is(err, context.Canceled) {
-						log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic-apikey", "remoteAddr", r.RemoteAddr, err)
+						log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "remoteAddr", r.RemoteAddr, err)
 						return
 					}
-					if errors.Is(err, model.ErrNotFound) {
-						log.Warn(ctx, "API: Invalid login - API key not found", "auth", "subsonic-apikey", "remoteAddr", r.RemoteAddr)
-					} else if err != nil {
-						log.Error(ctx, "API: Error authenticating with API key", "auth", "subsonic-apikey", "remoteAddr", r.RemoteAddr, err)
+					switch {
+					case errors.Is(err, model.ErrNotFound):
+						log.Warn(ctx, "API: Invalid login - API key not found", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+					case err != nil:
+						log.Error(ctx, "API: Error authenticating with API key", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+					default:
+						usr, err = ds.User(ctx).Get(player.UserId)
+						if err != nil {
+							log.Error(ctx, "API: Error retrieving user from API key", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+						}
 					}
 				} else {
 					usr, err = ds.User(ctx).FindByUsernameWithPassword(username)

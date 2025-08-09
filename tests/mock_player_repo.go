@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/base64"
+
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -71,4 +72,17 @@ func (m *MockedPlayerRepo) CountByClient(_ ...model.QueryOptions) (map[string]in
 		result[player.Client]++
 	}
 	return result, nil
+}
+
+func (m *MockedPlayerRepo) FindByAPIKey(key string) (*model.Player, error) {
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	for _, player := range m.Data {
+		if player.APIKey == key {
+			return player, nil
+		}
+	}
+	return nil, model.ErrNotFound
 }

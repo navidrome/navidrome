@@ -3,8 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/navidrome/navidrome/utils/req"
+	"errors"
 	"html"
 	"net/http"
 	"strconv"
@@ -53,11 +52,10 @@ func (n *Router) routes() http.Handler {
 		n.R(r, "/album", model.Album{}, false)
 		n.R(r, "/artist", model.Artist{}, false)
 		n.R(r, "/genre", model.Genre{}, false)
-		n.R(r, "/player", model.Player{}, true)
+		n.addPlayerRoute(r)
 		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		n.R(r, "/radio", model.Radio{}, true)
 		n.R(r, "/tag", model.Tag{}, true)
-		n.R(r, "/apikey", model.APIKey{}, true)
 		if conf.Server.EnableSharing {
 			n.RX(r, "/share", n.share.NewRepository, true)
 		}
@@ -76,7 +74,6 @@ func (n *Router) routes() http.Handler {
 			n.addUserLibraryRoute(r)
 			n.RX(r, "/library", n.libs.NewRepository, true)
 		})
-		n.addRefreshApiKeyRoute(r)
 	})
 
 	return r
@@ -102,6 +99,25 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 				r.Put("/", rest.Put(constructor))
 				r.Delete("/", rest.Delete(constructor))
 			}
+		})
+	})
+}
+
+func (n *Router) addPlayerRoute(r chi.Router) {
+	constructor := func(ctx context.Context) rest.Repository {
+		return n.ds.Resource(ctx, model.Player{})
+	}
+
+	r.Route("/player", func(r chi.Router) {
+		r.Get("/", rest.GetAll(constructor))
+		r.Post("/", rest.Post(constructor))
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(server.URLParamsMiddleware)
+			r.Get("/", rest.Get(constructor))
+			r.Put("/", rest.Put(constructor))
+			r.Delete("/", rest.Delete(constructor))
+			r.Post("/apiKey", generatePlayerApiKey(n.ds))
 		})
 	})
 }
@@ -202,6 +218,28 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 	}
 }
 
+func generatePlayerApiKey(ds model.DataStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		playerId := chi.URLParam(r, "id")
+		err := ds.WithTxImmediate(func(tx model.DataStore) error {
+			repo := tx.Player(ctx)
+			apiKey, err := repo.GenerateAPIKey(playerId)
+			if err == nil {
+				resp := []byte(`{"apiKey":"` + html.EscapeString(apiKey) + `"}`)
+				_, err = w.Write(resp)
+			}
+			return err
+		})
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else if err != nil {
+			log.Error(ctx, "Error retrieving player from DB", "id", playerId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
 func (n *Router) addInspectRoute(r chi.Router) {
 	if conf.Server.Inspect.Enabled {
 		r.Group(func(r chi.Router) {
@@ -248,39 +286,5 @@ func adminOnlyMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
-	})
-}
-
-func (n *Router) addRefreshApiKeyRoute(r chi.Router) {
-	r.With(server.URLParamsMiddleware).Post("/apikey/{id}/refresh", func(w http.ResponseWriter, r *http.Request) {
-		p := req.Params(r)
-		id, err := p.String(":id")
-		if err != nil {
-			msg := fmt.Sprintf("api key id could not be parsed: %s", id)
-			log.Warn(msg)
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-
-		repo := n.ds.APIKey(r.Context())
-		_, err = repo.RefreshKey(id)
-		if err != nil {
-			log.Error(r.Context(), "error refreshing api key", "id", id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		updatedKey, err := repo.Get(id)
-		if err != nil {
-			log.Error(r.Context(), "error retrieving refreshed api key", "id", id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		err = rest.RespondWithJSON(w, http.StatusOK, updatedKey)
-		if err != nil {
-			log.Error(r.Context(), "error marshaling refreshed api key", "id", id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	})
 }

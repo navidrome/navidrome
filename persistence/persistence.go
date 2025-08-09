@@ -89,10 +89,6 @@ func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepos
 	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) APIKey(ctx context.Context) model.APIKeyRepository {
-	return NewAPIKeyRepository(ctx, s.getDBXBuilder())
-}
-
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -117,8 +113,6 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Share(ctx).(model.ResourceRepository)
 	case model.Tag:
 		return s.Tag(ctx).(model.ResourceRepository)
-	case model.APIKey:
-		return s.APIKey(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
