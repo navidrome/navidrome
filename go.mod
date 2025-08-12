@@ -64,7 +64,7 @@ require (
 	golang.org/x/image v0.29.0
 	golang.org/x/net v0.42.0
 	golang.org/x/sync v0.16.0
-	golang.org/x/sys v0.34.0
+	golang.org/x/sys v0.35.0
 	golang.org/x/text v0.27.0
 	golang.org/x/time v0.12.0
 	google.golang.org/protobuf v1.36.6
