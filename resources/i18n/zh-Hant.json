@@ -82,11 +82,11 @@
       },
       "actions": {
         "playAll": "播放全部",
-        "playNext": "下首播放",
+        "playNext": "下一首播放",
         "addToQueue": "加入至播放佇列",
         "share": "分享",
         "shuffle": "隨機播放",
-        "addToPlaylist": "加入播放清單",
+        "addToPlaylist": "加入至播放清單",
         "download": "下載",
         "info": "取得資訊"
       },
@@ -248,7 +248,7 @@
         "contents": "內容",
         "expiresAt": "過期時間",
         "lastVisitedAt": "上次造訪時間",
-        "visitCount": "訪問次數",
+        "visitCount": "造訪次數",
         "format": "格式",
         "maxBitRate": "最大位元率",
         "updatedAt": "更新於",
@@ -432,7 +432,7 @@
       "delete_content": "您確定要刪除該項目？",
       "delete_title": "刪除 %{name} #%{id}",
       "details": "詳細資訊",
-      "error": "發生一個客戶端錯誤，您的請求無法完成",
+      "error": "發生客戶端錯誤，您的請求無法完成",
       "invalid_form": "提交內容無效，請檢查錯誤",
       "loading": "正在載入頁面，請稍候",
       "no": "否",
@@ -475,7 +475,7 @@
   "message": {
     "note": "注意",
     "transcodingDisabled": "出於安全原因，已停用了從 Web 介面更改參數。要更改（編輯或新增）轉碼選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
-    "transcodingEnabled": "Navidrome 目前與 %{config} 一起使用，因此可以透過 Web 介面從轉碼配置中執行系統命令。出於安全考慮，我們建議停用此功能，並僅在配置轉碼選項時啟用。",
+    "transcodingEnabled": "Navidrome 目前與 %{config} 一起使用，因此可以透過 Web 介面從轉碼設定中執行系統命令。出於安全考慮，我們建議停用此功能，並僅在設定轉碼選項時啟用。",
     "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已新增 %{smart_count} 首歌到播放清單",
     "noSimilarSongsFound": "找不到相似歌曲",
     "noTopSongsFound": "找不到熱門歌曲",
@@ -528,7 +528,7 @@
         "language": "語言",
         "defaultView": "預設畫面",
         "desktop_notifications": "桌面通知",
-        "lastfmNotConfigured": "Last.fm API 金鑰未配置",
+        "lastfmNotConfigured": "Last.fm API 金鑰未設定",
         "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
         "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
         "replaygain": "重播增益模式",
@@ -547,7 +547,7 @@
   },
   "player": {
     "playListsText": "播放佇列",
-    "openText": "打開",
+    "openText": "開啟",
     "closeText": "關閉",
     "notContentText": "沒有音樂",
     "clickToPlayText": "點擊播放",
@@ -572,7 +572,7 @@
   },
   "about": {
     "links": {
-      "homepage": "主頁",
+      "homepage": "首頁",
       "source": "原始碼",
       "featureRequests": "功能請求",
       "lastInsightsCollection": "最近一次洞察資料收集",
@@ -583,16 +583,16 @@
     },
     "tabs": {
       "about": "關於",
-      "config": "配置"
+      "config": "設定"
     },
     "config": {
-      "configName": "配置名稱",
+      "configName": "設定名稱",
       "environmentVariable": "環境變數",
       "currentValue": "目前值",
-      "configurationFile": "配置檔案",
-      "exportToml": "匯出配置（TOML 格式）",
-      "exportSuccess": "配置已以 TOML 格式匯出至剪貼簿",
-      "exportFailed": "配置複製失敗",
+      "configurationFile": "設定檔案",
+      "exportToml": "匯出設定（TOML 格式）",
+      "exportSuccess": "設定已以 TOML 格式匯出至剪貼簿",
+      "exportFailed": "設定複製失敗",
       "devFlagsHeader": "開發旗標（可能會更改/刪除）",
       "devFlagsComment": "這些是實驗性設定，可能會在未來版本中刪除"
     }
