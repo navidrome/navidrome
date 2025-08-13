@@ -306,6 +306,74 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeFalse())
 			})
 		})
+
+		When("using api key authentication", func() {
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+
+				ur := ds.User(context.TODO())
+				user := &model.User{
+					UserName:    "user-api",
+					NewPassword: "wordpass-api",
+				}
+				_ = ur.Put(user)
+
+				pr := ds.Player(context.TODO())
+				player := &model.Player{
+					ID:              "player1",
+					Name:            "Test Player",
+					UserAgent:       "Test/1.0",
+					UserId:          user.ID,
+					Client:          "test-client",
+					IP:              "127.0.0.1",
+					LastSeen:        time.Now(),
+					TranscodingId:   "",
+					MaxBitRate:      320,
+					ReportRealPath:  false,
+					ScrobbleEnabled: true,
+					APIKey:          "nav_12345",
+				}
+				_ = pr.Put(player)
+			})
+
+			It("passes authentication with correct api key", func() {
+				r := newGetRequest("apiKey=nav_12345")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("user-api"))
+			})
+
+			It("fails authentication with invalid api key", func() {
+				r := newGetRequest("apiKey=invalid-api-key")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("fails authentication with empty api key", func() {
+				r := newGetRequest("apiKey=")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("fails authentication if both api key and username are provided", func() {
+				r := newGetRequest("apiKey=api-key", "u=user-api")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="43"`))
+				Expect(next.called).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("GetPlayer", func() {

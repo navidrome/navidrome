@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"html"
 	"net/http"
 	"strconv"
@@ -51,7 +52,7 @@ func (n *Router) routes() http.Handler {
 		n.R(r, "/album", model.Album{}, false)
 		n.R(r, "/artist", model.Artist{}, false)
 		n.R(r, "/genre", model.Genre{}, false)
-		n.R(r, "/player", model.Player{}, true)
+		n.addPlayerRoute(r)
 		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		n.R(r, "/radio", model.Radio{}, true)
 		n.R(r, "/tag", model.Tag{}, true)
@@ -98,6 +99,25 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 				r.Put("/", rest.Put(constructor))
 				r.Delete("/", rest.Delete(constructor))
 			}
+		})
+	})
+}
+
+func (n *Router) addPlayerRoute(r chi.Router) {
+	constructor := func(ctx context.Context) rest.Repository {
+		return n.ds.Resource(ctx, model.Player{})
+	}
+
+	r.Route("/player", func(r chi.Router) {
+		r.Get("/", rest.GetAll(constructor))
+		r.Post("/", rest.Post(constructor))
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(server.URLParamsMiddleware)
+			r.Get("/", rest.Get(constructor))
+			r.Put("/", rest.Put(constructor))
+			r.Delete("/", rest.Delete(constructor))
+			r.Post("/apiKey", generatePlayerApiKey(n.ds))
 		})
 	})
 }
@@ -195,6 +215,28 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 	_, err = w.Write(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func generatePlayerApiKey(ds model.DataStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		playerId := chi.URLParam(r, "id")
+		err := ds.WithTxImmediate(func(tx model.DataStore) error {
+			repo := tx.Player(ctx)
+			apiKey, err := repo.GenerateAPIKey(playerId)
+			if err == nil {
+				resp := []byte(`{"apiKey":"` + html.EscapeString(apiKey) + `"}`)
+				_, err = w.Write(resp)
+			}
+			return err
+		})
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else if err != nil {
+			log.Error(ctx, "Error retrieving player from DB", "id", playerId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

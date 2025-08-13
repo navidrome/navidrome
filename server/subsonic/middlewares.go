@@ -63,14 +63,16 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var requiredParameters []string
 
+		p := req.Params(r)
 		username, _ := fromInternalOrProxyAuth(r)
 		if username != "" {
+			requiredParameters = []string{"v", "c"}
+		} else if apiKey, _ := p.String("apiKey"); apiKey != "" {
 			requiredParameters = []string{"v", "c"}
 		} else {
 			requiredParameters = []string{"u", "v", "c"}
 		}
 
-		p := req.Params(r)
 		for _, param := range requiredParameters {
 			if _, err := p.String(param); err != nil {
 				log.Warn(r, err)
@@ -123,21 +125,69 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				token, _ := p.String("t")
 				salt, _ := p.String("s")
 				jwt, _ := p.String("jwt")
+				apiKey, _ := p.String("apiKey")
 
-				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
-				if errors.Is(err, context.Canceled) {
-					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+				// When an API key is provided, username should not be provided
+				if apiKey != "" && username != "" {
+					log.Warn(ctx, "API: Invalid login - username provided with API key", "auth", "subsonic", "remoteAddr", r.RemoteAddr)
+					sendError(w, r, newError(responses.ErrorMultipleAuthMechanismsProvided))
 					return
 				}
-				switch {
-				case errors.Is(err, model.ErrNotFound):
-					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-				case err != nil:
-					log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-				default:
-					err = validateCredentials(usr, pass, token, salt, jwt)
-					if err != nil {
+
+				// Check for conflicting authentication mechanisms
+				authMechanismsCount := 0
+				if apiKey != "" {
+					authMechanismsCount++
+				}
+				if pass != "" {
+					authMechanismsCount++
+				}
+				if token != "" && salt != "" {
+					authMechanismsCount++
+				}
+				if jwt != "" {
+					authMechanismsCount++
+				}
+				if authMechanismsCount > 1 {
+					log.Warn(ctx, "API: Invalid login - multiple authentication mechanisms", "auth", "subsonic", "remoteAddr", r.RemoteAddr)
+					sendError(w, r, newError(responses.ErrorMultipleAuthMechanismsProvided))
+					return
+				}
+
+				if apiKey != "" {
+					var player *model.Player
+					player, err = ds.Player(ctx).FindByAPIKey(apiKey)
+					if errors.Is(err, context.Canceled) {
+						log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "remoteAddr", r.RemoteAddr, err)
+						return
+					}
+					switch {
+					case errors.Is(err, model.ErrNotFound):
+						log.Warn(ctx, "API: Invalid login - API key not found", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+					case err != nil:
+						log.Error(ctx, "API: Error authenticating with API key", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+					default:
+						usr, err = ds.User(ctx).Get(player.UserId)
+						if err != nil {
+							log.Error(ctx, "API: Error retrieving user from API key", "auth", "subsonic", "apikey", apiKey, "remoteAddr", r.RemoteAddr, err)
+						}
+					}
+				} else {
+					usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
+					if errors.Is(err, context.Canceled) {
+						log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+						return
+					}
+					switch {
+					case errors.Is(err, model.ErrNotFound):
 						log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					case err != nil:
+						log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					default:
+						err = validateCredentials(usr, pass, token, salt, jwt)
+						if err != nil {
+							log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+						}
 					}
 				}
 			}
