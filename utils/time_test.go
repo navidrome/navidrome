@@ -10,13 +10,13 @@ import (
 
 var _ = Describe("TimeNewest", func() {
 	var (
-		t1, t2, t3 time.Time
+		newestTime, middleTime, oldestTime time.Time
 	)
 
 	BeforeEach(func() {
-		t1 = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-		t2 = time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
-		t3 = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+		newestTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		middleTime = time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+		oldestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	})
 
 	It("returns zero time when no times are provided", func() {
@@ -24,18 +24,18 @@ var _ = Describe("TimeNewest", func() {
 	})
 
 	It("returns the same time when only one time is provided", func() {
-		Expect(utils.TimeNewest(t1)).To(Equal(t1))
+		Expect(utils.TimeNewest(newestTime)).To(Equal(newestTime))
 	})
 
 	It("returns the newest time when multiple times are provided", func() {
-		Expect(utils.TimeNewest(t1, t2, t3)).To(Equal(t2))
+		Expect(utils.TimeNewest(newestTime, middleTime, oldestTime)).To(Equal(middleTime))
 	})
 
 	It("returns the newest time even if the newest is first", func() {
-		Expect(utils.TimeNewest(t2, t1, t3)).To(Equal(t2))
+		Expect(utils.TimeNewest(middleTime, newestTime, oldestTime)).To(Equal(middleTime))
 	})
 
 	It("returns the newest time even if there are duplicates", func() {
-		Expect(utils.TimeNewest(t1, t2, t2, t3)).To(Equal(t2))
+		Expect(utils.TimeNewest(newestTime, middleTime, middleTime, oldestTime)).To(Equal(middleTime))
 	})
 })
