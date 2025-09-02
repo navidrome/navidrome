@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
+  "name": "wikimedia",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Artist information and images from Wikimedia Commons",
+  "website": "https://commons.wikimedia.org",
+  "capabilities": ["MetadataAgent"],
+  "permissions": {
+    "http": {
+      "reason": "To fetch artist information and images from Wikimedia Commons API",
+      "allowedUrls": {
+        "https://*.wikimedia.org": ["GET"],
+        "https://*.wikipedia.org": ["GET"],
+        "https://commons.wikimedia.org": ["GET"]
+      },
+      "allowLocalNetwork": false
+    }
+  }
+}

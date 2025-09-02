@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.1.0-1"
+  CROSS_TAGLIB_VERSION: "2.1.1-1"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
@@ -78,7 +78,7 @@ jobs:
           args: --timeout 2m
 
       - name: Run go goimports
-        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$'`
+        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`
       - run: go mod tidy
       - name: Verify no changes from goimports and go mod tidy
         run: |
@@ -157,6 +157,8 @@ jobs:
               exit 1
             fi
           done
+      - run: ./.github/workflows/validate-translations.sh -v
+
 
   check-push-enabled:
     name: Check Docker configuration

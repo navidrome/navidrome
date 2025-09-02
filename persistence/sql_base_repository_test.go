@@ -136,6 +136,10 @@ var _ = Describe("sqlRepository", func() {
 	})
 
 	Describe("buildSortOrder", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{}
+		})
+
 		Context("single field", func() {
 			It("sorts by specified field", func() {
 				sql := r.buildSortOrder("name", "desc")
@@ -163,6 +167,14 @@ var _ = Describe("sqlRepository", func() {
 				sql := r.buildSortOrder("name desc, age, status asc", "desc")
 				Expect(sql).To(Equal("name asc, age desc, status desc"))
 			})
+			It("handles spaces in mapped field", func() {
+				r.sortMappings = map[string]string{
+					"has_lyrics": "(lyrics != '[]'), updated_at",
+				}
+				sql := r.buildSortOrder("has_lyrics", "desc")
+				Expect(sql).To(Equal("(lyrics != '[]') desc, updated_at desc"))
+			})
+
 		})
 		Context("function fields", func() {
 			It("handles functions with multiple params", func() {
@@ -209,6 +221,64 @@ var _ = Describe("sqlRepository", func() {
 			options = []model.QueryOptions{{Sort: "random", Offset: 1}}
 			r.resetSeededRandom(options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
+		})
+	})
+
+	Describe("applyLibraryFilter", func() {
+		var sq squirrel.SelectBuilder
+
+		BeforeEach(func() {
+			sq = squirrel.Select("*").From("test_table")
+		})
+
+		Context("Admin User", func() {
+			BeforeEach(func() {
+				r.ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
+			})
+
+			It("should not apply library filter for admin users", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
+		})
+
+		Context("Regular User", func() {
+			BeforeEach(func() {
+				r.ctx = request.WithUser(context.Background(), model.User{ID: "user123", IsAdmin: false})
+			})
+
+			It("should apply library filter for regular users", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, args, _ := result.ToSql()
+				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
+				Expect(args).To(ContainElement("user123"))
+			})
+
+			It("should use custom table name when provided", func() {
+				result := r.applyLibraryFilter(sq, "custom_table")
+				sql, args, _ := result.ToSql()
+				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
+				Expect(args).To(ContainElement("user123"))
+			})
+		})
+
+		Context("Headless Process (No User Context)", func() {
+			BeforeEach(func() {
+				r.ctx = context.Background() // No user context
+			})
+
+			It("should not apply library filter for headless processes", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
+
+			It("should not apply library filter even with custom table name", func() {
+				result := r.applyLibraryFilter(sq, "custom_table")
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
 		})
 	})
 })

@@ -59,13 +59,13 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		expectedInfo := &agents.AlbumInfo{
 			URL:         "http://example.com/album",
 			Description: "Album Description",
-			Images: []agents.ExternalImage{
-				{URL: "http://example.com/large.jpg", Size: 300},
-				{URL: "http://example.com/medium.jpg", Size: 200},
-				{URL: "http://example.com/small.jpg", Size: 100},
-			},
 		}
 		ag.On("GetAlbumInfo", ctx, "Test Album", "Test Artist", "mbid-album").Return(expectedInfo, nil)
+		ag.On("GetAlbumImages", ctx, "Test Album", "Test Artist", "mbid-album").Return([]agents.ExternalImage{
+			{URL: "http://example.com/large.jpg", Size: 300},
+			{URL: "http://example.com/medium.jpg", Size: 200},
+			{URL: "http://example.com/small.jpg", Size: 100},
+		}, nil)
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-existing")
 
@@ -74,9 +74,6 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		Expect(updatedAlbum.ID).To(Equal("al-existing"))
 		Expect(updatedAlbum.ExternalUrl).To(Equal("http://example.com/album"))
 		Expect(updatedAlbum.Description).To(Equal("Album Description"))
-		Expect(updatedAlbum.LargeImageUrl).To(Equal("http://example.com/large.jpg"))
-		Expect(updatedAlbum.MediumImageUrl).To(Equal("http://example.com/medium.jpg"))
-		Expect(updatedAlbum.SmallImageUrl).To(Equal("http://example.com/small.jpg"))
 		Expect(updatedAlbum.ExternalInfoUpdatedAt).NotTo(BeNil())
 		Expect(*updatedAlbum.ExternalInfoUpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 

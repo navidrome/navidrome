@@ -12,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -213,7 +214,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				response.Directory = &Directory{Id: "1", Name: "N"}
-				child := make([]Child, 1)
+				child := make([]Child, 2)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				child[0] = Child{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
@@ -227,7 +228,7 @@ var _ = Describe("Responses", func() {
 					Isrc: []string{"ISRC-1", "ISRC-2"},
 					BPM:  127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:         []string{"happy", "sad"},
-					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					ReplayGain:    ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
 					DisplayArtist: "artist 1 & artist 2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
@@ -246,6 +247,9 @@ var _ = Describe("Responses", func() {
 						{Role: "composer", Artist: ArtistID3Ref{Id: "4", Name: "composer2"}},
 					},
 					ExplicitStatus: "clean",
+				}
+				child[1].OpenSubsonicChild = &OpenSubsonicChild{
+					ReplayGain: ReplayGain{TrackGain: gg.P(0.0), AlbumGain: gg.P(0.0), TrackPeak: gg.P(0.0), AlbumPeak: gg.P(0.0), BaseGain: gg.P(0.0), FallbackGain: gg.P(0.0)},
 				}
 				response.Directory.Child = child
 			})
@@ -309,13 +313,18 @@ var _ = Describe("Responses", func() {
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t,
+				}, {
+					Id: "2", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
+					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
+					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
+					Duration: 146, BitRate: 320, Starred: &t,
 				}}
 				songs[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
 					Isrc:       []string{"ISRC-1"},
 					Moods:      []string{"happy", "sad"},
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					ReplayGain: ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
 					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					DisplayArtist: "artist1 & artist2",
 					Artists: []ArtistID3Ref{
@@ -333,6 +342,9 @@ var _ = Describe("Responses", func() {
 					},
 					DisplayComposer: "composer 1 & composer 2",
 					ExplicitStatus:  "clean",
+				}
+				songs[1].OpenSubsonicChild = &OpenSubsonicChild{
+					ReplayGain: ReplayGain{TrackGain: gg.P(0.0), AlbumGain: gg.P(0.0), TrackPeak: gg.P(0.0), AlbumPeak: gg.P(0.0), BaseGain: gg.P(0.0), FallbackGain: gg.P(0.0)},
 				}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs

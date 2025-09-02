@@ -1,0 +1,9 @@
+{
+  "name": "fake_init_service",
+  "version": "1.0.0",
+  "capabilities": ["LifecycleManagement"],
+  "author": "Test Author",
+  "description": "Test LifecycleManagement Callback",
+  "website": "https://test.navidrome.org/fake-init-service",
+  "permissions": {}
+}

@@ -11,17 +11,21 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	ua "github.com/mileusna/useragent"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -43,12 +47,24 @@ func postFormToQueryParams(next http.Handler) http.Handler {
 	})
 }
 
+func fromInternalOrProxyAuth(r *http.Request) (string, bool) {
+	username := server.InternalAuth(r)
+
+	// If the username comes from internal auth, do not also do reverse proxy auth, as
+	// the request will have no reverse proxy IP
+	if username != "" {
+		return username, true
+	}
+
+	return server.UsernameFromReverseProxyHeader(r), false
+}
+
 func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var requiredParameters []string
-		var username string
 
-		if username = server.UsernameFromReverseProxyHeader(r); username != "" {
+		username, _ := fromInternalOrProxyAuth(r)
+		if username != "" {
 			requiredParameters = []string{"v", "c"}
 		} else {
 			requiredParameters = []string{"u", "v", "c"}
@@ -87,16 +103,18 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			var usr *model.User
 			var err error
 
-			if username := server.UsernameFromReverseProxyHeader(r); username != "" {
+			username, isInternalAuth := fromInternalOrProxyAuth(r)
+			if username != "" {
+				authType := If(isInternalAuth, "internal", "reverse-proxy")
 				usr, err = ds.User(ctx).FindByUsername(username)
 				if errors.Is(err, context.Canceled) {
-					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "reverse-proxy", "username", username, "remoteAddr", r.RemoteAddr, err)
+					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 					return
 				}
 				if errors.Is(err, model.ErrNotFound) {
-					log.Warn(ctx, "API: Invalid login", "auth", "reverse-proxy", "username", username, "remoteAddr", r.RemoteAddr, err)
+					log.Warn(ctx, "API: Invalid login", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 				} else if err != nil {
-					log.Error(ctx, "API: Error authenticating username", "auth", "reverse-proxy", "username", username, "remoteAddr", r.RemoteAddr, err)
+					log.Error(ctx, "API: Error authenticating username", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 				}
 			} else {
 				p := req.Params(r)
@@ -217,4 +235,38 @@ func playerIDFromCookie(r *http.Request, userName string) string {
 func playerIDCookieName(userName string) string {
 	cookieName := fmt.Sprintf("nd-player-%x", userName)
 	return cookieName
+}
+
+const subsonicErrorPointer = "subsonicErrorPointer"
+
+func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			status := int32(-1)
+			contextWithStatus := context.WithValue(r.Context(), subsonicErrorPointer, &status)
+
+			start := time.Now()
+			defer func() {
+				elapsed := time.Since(start).Milliseconds()
+
+				// We want to get the client name (even if not present for certain endpoints)
+				p := req.Params(r)
+				client, _ := p.String("c")
+
+				// If there is no Subsonic status (e.g., HTTP 501 not implemented), fallback to HTTP
+				if status == -1 {
+					status = int32(ww.Status())
+				}
+
+				shortPath := strings.Replace(r.URL.Path, ".view", "", 1)
+
+				metrics.RecordRequest(r.Context(), shortPath, r.Method, client, status, elapsed)
+			}()
+
+			next.ServeHTTP(ww, r.WithContext(contextWithStatus))
+		}
+		return http.HandlerFunc(fn)
+	}
 }

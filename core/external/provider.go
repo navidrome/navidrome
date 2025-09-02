@@ -12,6 +12,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	_ "github.com/navidrome/navidrome/core/agents/deezer"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
@@ -35,7 +36,7 @@ const (
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
-	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -60,6 +61,7 @@ type auxArtist struct {
 
 type Agents interface {
 	agents.AlbumInfoRetriever
+	agents.AlbumImageRetriever
 	agents.ArtistBiographyRetriever
 	agents.ArtistMBIDRetriever
 	agents.ArtistImageRetriever
@@ -140,19 +142,20 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		album.Description = info.Description
 	}
 
-	if len(info.Images) > 0 {
-		sort.Slice(info.Images, func(i, j int) bool {
-			return info.Images[i].Size > info.Images[j].Size
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if err == nil && len(images) > 0 {
+		sort.Slice(images, func(i, j int) bool {
+			return images[i].Size > images[j].Size
 		})
 
-		album.LargeImageUrl = info.Images[0].URL
+		album.LargeImageUrl = images[0].URL
 
-		if len(info.Images) >= 2 {
-			album.MediumImageUrl = info.Images[1].URL
+		if len(images) >= 2 {
+			album.MediumImageUrl = images[1].URL
 		}
 
-		if len(info.Images) >= 3 {
-			album.SmallImageUrl = info.Images[2].URL
+		if len(images) >= 3 {
+			album.SmallImageUrl = images[2].URL
 		}
 	}
 
@@ -258,7 +261,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -266,14 +269,14 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 
 	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+		log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 		return nil, ctx.Err()
 	}
 
 	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
 	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
+			log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
 			return ctx.Err()
 		}
 
@@ -341,29 +344,28 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		return nil, err
 	}
 
-	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
 	if err != nil {
 		switch {
 		case errors.Is(err, agents.ErrNotFound):
 			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumInfo call canceled", err)
+			log.Debug(ctx, "GetAlbumImages call canceled", err)
 		default:
-			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
 		}
-
 		return nil, err
 	}
 
-	if info == nil {
-		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+	if len(images) == 0 {
+		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 		return nil, model.ErrNotFound
 	}
 
 	// Return the biggest image
 	var img agents.ExternalImage
-	for _, i := range info.Images {
+	for _, i := range images {
 		if img.Size <= i.Size {
 			img = i
 		}
@@ -558,7 +560,7 @@ func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimila
 		return
 	}
 	start := time.Now()
-	sa, err := e.mapSimilarArtists(ctx, similar, includeNotPresent)
+	sa, err := e.mapSimilarArtists(ctx, similar, limit, includeNotPresent)
 	log.Debug(ctx, "Mapped Similar Artists", "artist", artist.Name, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
 		return
@@ -566,7 +568,7 @@ func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimila
 	artist.SimilarArtists = sa
 }
 
-func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
+func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, limit int, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string
 
@@ -589,21 +591,33 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 		artistMap[artist.Name] = artist
 	}
 
+	count := 0
+
 	// Process the similar artists
 	for _, s := range similar {
 		if artist, found := artistMap[s.Name]; found {
 			result = append(result, artist)
+			count++
+
+			if count >= limit {
+				break
+			}
 		} else {
 			notPresent = append(notPresent, s.Name)
 		}
 	}
 
 	// Then fill up with non-present artists
-	if includeNotPresent {
+	if includeNotPresent && count < limit {
 		for _, s := range notPresent {
 			// Let the ID empty to indicate that the artist is not present in the DB
 			sa := model.Artist{Name: s}
 			result = append(result, sa)
+
+			count++
+			if count >= limit {
+				break
+			}
 		}
 	}
 

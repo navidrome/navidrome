@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
 
 ########################################################################################################################
-### Build xx (orignal image: tonistiigi/xx)
+### Build xx (original image: tonistiigi/xx)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.19 AS xx-build
 
 # v1.5.0
@@ -28,7 +28,7 @@ COPY --from=xx-build /out/ /usr/bin/
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.19 AS taglib-build
 ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.1.0-1
+ARG CROSS_TAGLIB_VERSION=2.1.1-1
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
 RUN <<EOT

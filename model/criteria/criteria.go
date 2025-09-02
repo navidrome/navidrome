@@ -25,13 +25,39 @@ func (c Criteria) OrderBy() string {
 	if c.Sort == "" {
 		c.Sort = "title"
 	}
-	sortField := strings.ToLower(c.Sort)
-	f := fieldMap[sortField]
-	var mapped string
-	if f == nil {
-		log.Error("Invalid field in 'sort' field. Using 'title'", "sort", c.Sort)
-		mapped = fieldMap["title"].field
-	} else {
+
+	order := strings.ToLower(strings.TrimSpace(c.Order))
+	if order != "" && order != "asc" && order != "desc" {
+		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.Order)
+		order = ""
+	}
+
+	parts := strings.Split(c.Sort, ",")
+	fields := make([]string, 0, len(parts))
+
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+
+		dir := "asc"
+		if strings.HasPrefix(p, "+") || strings.HasPrefix(p, "-") {
+			if strings.HasPrefix(p, "-") {
+				dir = "desc"
+			}
+			p = strings.TrimSpace(p[1:])
+		}
+
+		sortField := strings.ToLower(p)
+		f := fieldMap[sortField]
+		if f == nil {
+			log.Error("Invalid field in 'sort' field", "sort", sortField)
+			continue
+		}
+
+		var mapped string
+
 		if f.order != "" {
 			mapped = f.order
 		} else if f.isTag {
@@ -44,15 +70,20 @@ func (c Criteria) OrderBy() string {
 		if f.numeric {
 			mapped = fmt.Sprintf("CAST(%s AS REAL)", mapped)
 		}
-	}
-	if c.Order != "" {
-		if strings.EqualFold(c.Order, "asc") || strings.EqualFold(c.Order, "desc") {
-			mapped = mapped + " " + c.Order
-		} else {
-			log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.Order)
+		// If the global 'order' field is set to 'desc', reverse the default or field-specific sort direction.
+		// This ensures that the global order applies consistently across all fields.
+		if order == "desc" {
+			if dir == "asc" {
+				dir = "desc"
+			} else {
+				dir = "asc"
+			}
 		}
+
+		fields = append(fields, mapped+" "+dir)
 	}
-	return mapped
+
+	return strings.Join(fields, ", ")
 }
 
 func (c Criteria) ToSql() (sql string, args []any, err error) {

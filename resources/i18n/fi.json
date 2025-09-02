@@ -35,7 +35,8 @@
         "rawTags": "Raakatunnisteet",
         "bitDepth": "Bittisyvyys",
         "sampleRate": "Näytteenottotaajuus",
-        "missing": ""
+        "missing": "Puuttuva",
+        "libraryName": "Kirjasto"
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
@@ -44,7 +45,8 @@
         "shuffleAll": "Sekoita kaikki",
         "download": "Lataa",
         "playNext": "Soita seuraavaksi",
-        "info": "Info"
+        "info": "Info",
+        "showInPlaylist": "Näytä soittolistassa"
       }
     },
     "album": {
@@ -75,7 +77,8 @@
         "media": "Media",
         "mood": "Tunnelma",
         "date": "Tallennuspäivä",
-        "missing": ""
+        "missing": "Puuttuva",
+        "libraryName": "Kirjasto"
       },
       "actions": {
         "playAll": "Soita",
@@ -108,7 +111,7 @@
         "genre": "Tyylilaji",
         "size": "Koko",
         "role": "Rooli",
-        "missing": ""
+        "missing": "Puuttuva"
       },
       "roles": {
         "albumartist": "Albumitaiteilija |||| Albumitaiteilijat",
@@ -123,7 +126,13 @@
         "mixer": "Miksaaja |||| Miksaajat",
         "remixer": "Remiksaaja |||| Remiksaajat",
         "djmixer": "DJ-miksaaja |||| DJ-miksaajat",
-        "performer": "Esiintyjä |||| Esiintyjät"
+        "performer": "Esiintyjä |||| Esiintyjät",
+        "maincredit": "Albumin artisti tai artisti |||| Albumin artistit tai artistit"
+      },
+      "actions": {
+        "shuffle": "Sekoita",
+        "radio": "Radio",
+        "topSongs": "Suosituimmat kappaleet"
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Nykyinen salasana",
         "newPassword": "Uusi salasana",
         "token": "Avain",
-        "lastAccessAt": "Viimeisin käyttö"
+        "lastAccessAt": "Viimeisin käyttö",
+        "libraries": "Kirjastot"
       },
       "helperTexts": {
-        "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään"
+        "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään",
+        "libraries": "Valitse tietyt kirjastot tälle käyttäjälle tai jätä tyhjäksi käyttääksesi oletuskirjastoja"
       },
       "notifications": {
         "created": "Käyttäjä luotu",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Syötä ListenBrainz avain.",
-        "clickHereForToken": "Paina tästä saadaksesi avaimen"
+        "clickHereForToken": "Paina tästä saadaksesi avaimen",
+        "selectAllLibraries": "Valitse kaikki kirjastot",
+        "adminAutoLibraries": "Admin-käyttäjillä on automaattisesti pääsy kaikkiin kirjastoihin"
+      },
+      "validation": {
+        "librariesRequired": "Vähintään yksi kirjasto on valittava ei-admin käyttäjille"
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Vie",
         "makePublic": "Tee julkinen",
         "makePrivate": "Tee yksityinen",
-        "saveQueue": ""
+        "saveQueue": "Tallenna jono soittolistaan",
+        "searchOrCreate": "Etsi soittolistoja tai kirjoita luodaksesi uuden...",
+        "pressEnterToCreate": "Paina Enter luodaksesi uuden soittolistan",
+        "removeFromSelection": "Poista valinnasta"
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
-        "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?"
+        "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?",
+        "noPlaylistsFound": "Soittolistoja ei löytynyt",
+        "noPlaylists": "Soittolistoja ei ole saatavilla"
       }
     },
     "radio": {
@@ -239,16 +260,69 @@
       "fields": {
         "path": "Polku",
         "size": "Koko",
-        "updatedAt": "Katosi"
+        "updatedAt": "Katosi",
+        "libraryName": "Kirjasto"
       },
       "actions": {
         "remove": "Poista",
-        "remove_all": ""
+        "remove_all": "Poista kaikki"
       },
       "notifications": {
         "removed": "Puuttuvat tiedostot poistettu"
       },
       "empty": "Ei puuttuvia tiedostoja"
+    },
+    "library": {
+      "name": "Kirjasto |||| Kirjastot",
+      "fields": {
+        "name": "Nimi",
+        "path": "Polku",
+        "remotePath": "Etäpolku",
+        "lastScanAt": "Viimeisin skannaus",
+        "songCount": "Kappaleet",
+        "albumCount": "Albumit",
+        "artistCount": "Artistit",
+        "totalSongs": "Kappaleet",
+        "totalAlbums": "Albumit",
+        "totalArtists": "Artistit",
+        "totalFolders": "Kansiot",
+        "totalFiles": "Tiedostot",
+        "totalMissingFiles": "Puuttuvat tiedostot",
+        "totalSize": "Kokonaiskoko",
+        "totalDuration": "Kesto",
+        "defaultNewUsers": "Oletus uusille käyttäjille",
+        "createdAt": "Luotu",
+        "updatedAt": "Päivitetty"
+      },
+      "sections": {
+        "basic": "Perustiedot",
+        "statistics": "Tilastot"
+      },
+      "actions": {
+        "scan": "Skannaa kirjasto",
+        "manageUsers": "Hallitse käyttäjien pääsyä",
+        "viewDetails": "Näytä tiedot"
+      },
+      "notifications": {
+        "created": "Kirjasto luotu onnistuneesti",
+        "updated": "Kirjasto päivitetty onnistuneesti",
+        "deleted": "Kirjasto poistettu onnistuneesti",
+        "scanStarted": "Kirjaston skannaus aloitettu",
+        "scanCompleted": "Kirjaston skannaus valmistunut"
+      },
+      "validation": {
+        "nameRequired": "Kirjaston nimi vaaditaan",
+        "pathRequired": "Kirjaston polku vaaditaan",
+        "pathNotDirectory": "Kirjaston polun tulee olla hakemisto",
+        "pathNotFound": "Kirjaston polkua ei löytynyt",
+        "pathNotAccessible": "Kirjaston polku ei ole käytettävissä",
+        "pathInvalid": "Virheellinen kirjaston polku"
+      },
+      "messages": {
+        "deleteConfirm": "Oletko varma, että haluat poistaa tämän kirjaston? Tämä poistaa kaikki liittyvät tiedot ja käyttäjien pääsyn.",
+        "scanInProgress": "Skannaus käynnissä...",
+        "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja"
+      }
     }
   },
   "ra": {
@@ -429,8 +503,10 @@
     "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter",
     "remove_missing_title": "Poista puuttuvat tiedostot",
     "remove_missing_content": "Oletko varma, että haluat poistaa valitut puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien niiden soittojen määrät ja arvostelut.",
-    "remove_all_missing_title": "",
-    "remove_all_missing_content": ""
+    "remove_all_missing_title": "Poista kaikki puuttuvat tiedostot",
+    "remove_all_missing_content": "Haluatko varmasti poistaa kaikki puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien toistomäärät ja arvostelut.",
+    "noSimilarSongsFound": "Samankaltaisia kappaleita ei löytynyt",
+    "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt"
   },
   "menu": {
     "library": "Kirjasto",
@@ -459,7 +535,13 @@
     "albumList": "Albumit",
     "about": "Tietoa",
     "playlists": "Soittolista",
-    "sharedPlaylists": "Jaettu soittolista"
+    "sharedPlaylists": "Jaettu soittolista",
+    "librarySelector": {
+      "allLibraries": "Kaikki kirjastot (%{count})",
+      "multipleLibraries": "%{selected} / %{total} kirjastoa",
+      "selectLibraries": "Valitse kirjastot",
+      "none": "Ei mitään"
+    }
   },
   "player": {
     "playListsText": "Jono",
@@ -496,6 +578,21 @@
         "disabled": "Ei käytössä",
         "waiting": "Odottaa"
       }
+    },
+    "tabs": {
+      "about": "Tietoja",
+      "config": "Kokoonpano"
+    },
+    "config": {
+      "configName": "Konfiguraation nimi",
+      "environmentVariable": "Ympäristömuuttuja",
+      "currentValue": "Nykyinen arvo",
+      "configurationFile": "Konfiguraatiotiedosto",
+      "exportToml": "Vie konfiguraatio (TOML)",
+      "exportSuccess": "Konfiguraatio viety leikepöydälle TOML-muodossa",
+      "exportFailed": "Konfiguraation kopiointi epäonnistui",
+      "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
+      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
     }
   },
   "activity": {
@@ -505,9 +602,9 @@
     "fullScan": "Täysi tarkistus",
     "serverUptime": "Palvelun käyttöaika",
     "serverDown": "SAMMUTETTU",
-    "scanType": "",
-    "status": "",
-    "elapsedTime": ""
+    "scanType": "Tyyppi",
+    "status": "Skannausvirhe",
+    "elapsedTime": "Kulunut aika"
   },
   "help": {
     "title": "Navidrome pikapainikkeet",
@@ -522,5 +619,10 @@
       "toggle_love": "Lisää kappale suosikkeihin",
       "current_song": "Siirry nykyiseen kappaleeseen"
     }
+  },
+  "nowPlaying": {
+    "title": "Nyt soi",
+    "empty": "Ei soita mitään",
+    "minutesAgo": "%{smart_count} minuutti sitten |||| %{smart_count} minuuttia sitten"
   }
 }

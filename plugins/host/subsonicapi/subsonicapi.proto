@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package subsonicapi;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/subsonicapi;subsonicapi";
+
+// go:plugin type=host version=1
+service SubsonicAPIService {
+    rpc Call(CallRequest) returns (CallResponse);
+}
+
+message CallRequest {
+    string url = 1;
+}
+
+message CallResponse {
+    string json = 1;
+    string error = 2; // Non-empty if operation failed
+} 

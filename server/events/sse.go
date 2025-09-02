@@ -19,6 +19,7 @@ import (
 type Broker interface {
 	http.Handler
 	SendMessage(ctx context.Context, event Event)
+	SendBroadcastMessage(ctx context.Context, event Event)
 }
 
 const (
@@ -75,6 +76,11 @@ func GetBroker() Broker {
 		go broker.listen()
 		return broker
 	})
+}
+
+func (b *broker) SendBroadcastMessage(ctx context.Context, evt Event) {
+	ctx = broadcastToAll(ctx)
+	b.SendMessage(ctx, evt)
 }
 
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
@@ -279,5 +285,7 @@ func NoopBroker() Broker {
 type noopBroker struct {
 	http.Handler
 }
+
+func (b noopBroker) SendBroadcastMessage(context.Context, Event) {}
 
 func (noopBroker) SendMessage(context.Context, Event) {}

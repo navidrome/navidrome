@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 )
 
@@ -25,10 +26,11 @@ type Router struct {
 	share     core.Share
 	playlists core.Playlists
 	insights  metrics.Insights
+	libs      core.Library
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService}
 	r.Handler = r.routes()
 	return r
 }
@@ -60,11 +62,17 @@ func (n *Router) routes() http.Handler {
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
 		n.addSongPlaylistsRoute(r)
+		n.addQueueRoute(r)
 		n.addMissingFilesRoute(r)
-		n.addInspectRoute(r)
-		n.addConfigRoute(r)
 		n.addKeepAliveRoute(r)
 		n.addInsightsRoute(r)
+
+		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
+			n.addInspectRoute(r)
+			n.addConfigRoute(r)
+			n.addUserLibraryRoute(r)
+			n.RX(r, "/library", n.libs.NewRepository, true)
+		})
 	})
 
 	return r
@@ -152,6 +160,15 @@ func (n *Router) addSongPlaylistsRoute(r chi.Router) {
 	})
 }
 
+func (n *Router) addQueueRoute(r chi.Router) {
+	r.Route("/queue", func(r chi.Router) {
+		r.Get("/", getQueue(n.ds))
+		r.Post("/", saveQueue(n.ds))
+		r.Put("/", updateQueue(n.ds))
+		r.Delete("/", clearQueue(n.ds))
+	})
+}
+
 func (n *Router) addMissingFilesRoute(r chi.Router) {
 	r.Route("/missing", func(r chi.Router) {
 		n.RX(r, "/", newMissingRepository(n.ds), false)
@@ -215,5 +232,17 @@ func (n *Router) addInsightsRoute(r chi.Router) {
 		} else {
 			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
 		}
+	})
+}
+
+// Middleware to ensure only admin users can access endpoints
+func adminOnlyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := request.UserFrom(r.Context())
+		if !ok || !user.IsAdmin {
+			http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }

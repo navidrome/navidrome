@@ -28,6 +28,7 @@ import (
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library) *phaseFolders {
 	var jobs []*scanJob
+	var updatedLibs []model.Library
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
 			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
@@ -54,7 +55,12 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			continue
 		}
 		jobs = append(jobs, job)
+		updatedLibs = append(updatedLibs, lib)
 	}
+
+	// Update the state with the libraries that have been processed and have their scan timestamps set
+	state.libraries = updatedLibs
+
 	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }
 
@@ -62,7 +68,7 @@ type scanJob struct {
 	lib         model.Library
 	fs          storage.MusicFS
 	cw          artwork.CacheWarmer
-	lastUpdates map[string]time.Time
+	lastUpdates map[string]model.FolderUpdateInfo
 	lock        sync.Mutex
 	numFolders  atomic.Int64
 }
@@ -91,7 +97,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	}, nil
 }
 
-func (j *scanJob) popLastUpdate(folderID string) time.Time {
+func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -164,7 +170,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
-						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
+						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
 					}
 					totalChanged++
 					folder.elapsed.Stop()
@@ -336,7 +342,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.tags...)
+		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err
@@ -345,7 +351,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
 			err = artistRepo.Put(&entry.artists[i], "name",
-				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text")
+				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "updated_at")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
@@ -418,12 +424,14 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if prevID == "" {
 		return nil
 	}
+
 	// Reassign annotation from previous album to new album
 	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
+
 	// Keep created_at field from previous instance of the album
 	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
 		// Silently ignore when the previous album is not found
@@ -439,7 +447,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	logCall := log.Info
-	if entry.hasNoFiles() {
+	if entry.isEmpty() {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
