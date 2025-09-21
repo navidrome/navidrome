@@ -316,15 +316,6 @@ export default {
         backgroundColor: 'white',
       },
     },
-    RaSearchInput: {
-      input: {
-        '& :after': {
-          display: 'block',
-          content: "''",
-          backgroundColor: 'red',
-        },
-      },
-    },
     RaFilterButton: {
       root: {
         textWrap: 'nowrap',
@@ -451,9 +442,8 @@ export default {
           outline: '1px solid black',
         },
         '& a:hover > div:nth-of-type(2)': {
-          borderLeft: 'none',
-          borderRight: 'none',
-          borderBottom: 'none',
+          border: 'none',
+          outline: '1px solid black'
         },
       },
       albumLink: {
@@ -482,6 +472,9 @@ export default {
       },
       titleWrap: {
         marginLeft: '0px',
+      },
+      titlePositionBottom: {
+        bottom: '0'
       },
       subtitle: {
         '& button': {
@@ -663,15 +656,8 @@ export default {
     },
     MuiCssBaseline: {
       '@global': {
-        body: {
-          display: 'none',
-        },
         '*::-webkit-scrollbar': {
           display: 'none',
-        },
-        '*::-webkit-scrollbar-track': {
-          background: 'red',
-          backgroundColor: 'red',
         },
       },
     },
