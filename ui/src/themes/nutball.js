@@ -154,6 +154,14 @@ export default {
     MuiSwitch: {
       thumb: {
         color: '#eaeaea',
+        boxShadow: 'none',
+        borderRadius: '0',
+      },
+      track: {
+        borderRadius: '0',
+      },
+      switchBase: {
+        color: '#eaeaea',
       },
     },
     MuiCheckbox: {
@@ -428,18 +436,6 @@ export default {
         '& img': {
           borderRadius: '5px',
         },
-      },
-    },
-    MuiSwitch: {
-      thumb: {
-        boxShadow: 'none',
-        borderRadius: '0',
-      },
-      track: {
-        borderRadius: '0',
-      },
-      switchBase: {
-        color: '#eaeaea',
       },
     },
     NDAlbumGridView: {
