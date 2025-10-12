@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/adapters/lastfm"
 	"github.com/navidrome/navidrome/adapters/listenbrainz"
@@ -20,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/plugins"
@@ -37,7 +39,6 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
 	_ "github.com/navidrome/navidrome/adapters/spotify"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 // Injectors from wire_injectors.go:
@@ -55,6 +56,14 @@ func CreateServer() *server.Server {
 	insights := metrics.GetInstance(dataStore)
 	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
+	broker := events.GetBroker()
+	dlnaServer := dlna.New(dataStore, broker)
+	return dlnaServer
 }
 
 func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
