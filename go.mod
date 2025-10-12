@@ -45,12 +45,8 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.23.4
-<<<<<<< HEAD
 	github.com/onsi/gomega v1.38.0
-=======
-	github.com/onsi/gomega v1.37.0
 	github.com/oriser/regroup v0.0.0-20240925165441-f6bb0e08289e
->>>>>>> 1ab2bf6c (Formatting)
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pressly/goose/v3 v3.24.3
@@ -78,14 +74,10 @@ require (
 )
 
 require (
-<<<<<<< HEAD
 	dario.cat/mergo v1.0.2 // indirect
-	github.com/atombender/go-jsonschema v0.20.0 // indirect
-	github.com/anacrolix/dms v1.7.1 // indirect
-=======
->>>>>>> 1ab2bf6c (Formatting)
 	github.com/anacrolix/generics v0.0.1 // indirect
 	github.com/anacrolix/log v0.15.2 // indirect
+	github.com/atombender/go-jsonschema v0.20.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/reflex v0.3.1 // indirect
@@ -119,7 +111,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/oriser/regroup v0.0.0-20240925165441-f6bb0e08289e // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
