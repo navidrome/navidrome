@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
@@ -20,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/plugins"
@@ -29,9 +31,7 @@ import (
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
-)
 
-import (
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
@@ -52,6 +52,14 @@ func CreateServer() *server.Server {
 	insights := metrics.GetInstance(dataStore, manager)
 	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
+	broker := events.GetBroker()
+	dlnaServer := dlna.New(dataStore, broker)
+	return dlnaServer
 }
 
 func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
