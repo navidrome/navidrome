@@ -104,6 +104,7 @@ type configOptions struct {
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
 	Tags                            map[string]TagConf  `json:",omitempty"`
 	Agents                          string
+	DLNAServer                      dlnaServerOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogLevels                     map[string]string `json:",omitempty"`
@@ -224,6 +225,10 @@ type pluginsOptions struct {
 	Enabled   bool
 	Folder    string
 	CacheSize string
+}
+
+type dlnaServerOptions struct {
+	Enabled bool
 }
 
 var (
@@ -580,6 +585,8 @@ func setViperDefaults() {
 	viper.SetDefault("plugins.folder", "")
 	viper.SetDefault("plugins.enabled", false)
 	viper.SetDefault("plugins.cachesize", "100MB")
+
+	viper.SetDefault("dlnaserver.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
