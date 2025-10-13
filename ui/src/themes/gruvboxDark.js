@@ -41,7 +41,7 @@ export default {
       },
     },
     MuiIconButton: {
-      label: {
+      root: {
         color: '#ebdbb2',
       },
     },
