@@ -1,88 +1,269 @@
-<a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
+# Navidrome Jukebox Web Player
 
-# Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
+A modern, beautiful web interface for controlling [Navidrome](https://www.navidrome.org/)'s Jukebox mode. Control music playback on your server from any device with a sleek, responsive UI.
 
-[![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
-[![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
-[![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
-[![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
-[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Navidrome%20Guru-006BFF?style=flat-square)](https://gurubase.io/g/navidrome)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18.2-61dafb.svg)
+![Vite](https://img.shields.io/badge/Vite-5.2-646cff.svg)
 
-Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
-music collection from any browser or mobile device. It's like your personal Spotify!
+## 🎵 Features
 
+- **🎛️ Full Jukebox Control** - Play, pause, skip, shuffle, and manage your music queue
+- **🔍 Real-time Search** - Search your entire music library and add songs instantly
+- **🎨 Modern UI** - Beautiful glassmorphic design with smooth animations
+- **📱 Responsive** - Works seamlessly on desktop, tablet, and mobile devices
+- **🎚️ Volume Control** - Adjust playback volume remotely
+- **🔁 Repeat Modes** - Repeat off, repeat all, or repeat one track
+- **🎲 Random Song** - Add random songs to your queue with one click
+- **⏱️ Live Progress** - Real-time playback position and duration tracking
+- **🖼️ Album Art** - High-quality cover art display
+- **🐳 Docker Ready** - Easy deployment with Docker Compose
 
-**Note**: The `master` branch may be in an unstable or even broken state during development. 
-Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
-the `master` branch in order to get a stable set of binaries.
+## 📋 Prerequisites
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
+- **Navidrome** server with Jukebox mode enabled
+- **Docker** and **Docker Compose** (for deployment)
+- **Node.js** 18+ (for development)
+- **MPV** player installed on the server (for audio playback)
 
-__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
-[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
-([ui/backend dev](https://www.navidrome.org/docs/developers/), 
-[translations](https://www.navidrome.org/docs/developers/translations/), 
-[themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
-[Discord server](https://discord.gg/xh7j7yF). 
+## 🚀 Quick Start
 
-## Installation
+### 1. Clone the Repository
 
-See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
+```bash
+git clone <your-repo-url>
+cd navidrome-jukebox-web
+```
 
-## Cloud Hosting
+### 2. Configure Navidrome
 
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
-A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+Ensure your `navidrome.toml` has Jukebox enabled:
 
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
+```toml
+# Jukebox Configuration
+Jukebox.Enabled = true
+Jukebox.AdminOnly = false
 
-## Features
- 
- - Handles very **large music collections**
- - Streams virtually **any audio format** available
- - Reads and uses all your beautifully curated **metadata**
- - Great support for **compilations** (Various Artists albums) and **box sets** (multi-disc albums)
- - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
- - Very **low resource usage**
- - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
- - Ready to use binaries for all major platforms, including **Raspberry Pi**
- - Automatically **monitors your library** for changes, importing new files and reloading new metadata 
- - **Themeable**, modern and responsive **Web interface** based on [Material UI](https://material-ui.com)
- - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
- - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
- - Translated to **various languages**
+# Audio Devices
+Jukebox.Devices = [
+  ["U24XL", "alsa/sysdefault:CARD=U24XL"]
+]
+Jukebox.Default = "U24XL"
 
-## Translations
+# MPV Configuration
+MPVPath = "/usr/bin/mpv"
+MPVCmdTemplate = "mpv --no-video --audio-device=%d --input-ipc-server=%s %f"
 
-Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
-for [more contributors](https://www.navidrome.org/docs/developers/translations/)
+# Session Settings
+SessionTimeout = "48h"
+```
 
-<a href="https://poeditor.com/"> 
-<img height="32" src="https://github.com/user-attachments/assets/c19b1d2b-01e1-4682-a007-12356c42147c">
-</a>
+### 3. Deploy with Docker Compose
 
-## Documentation
-All documentation can be found in the project's website: https://www.navidrome.org/docs. 
-Here are some useful direct links:
+```bash
+# Build the frontend
+npm install
+npm run build
 
-- [Overview](https://www.navidrome.org/docs/overview/)
-- [Installation](https://www.navidrome.org/docs/installation/)
-  - [Docker](https://www.navidrome.org/docs/installation/docker/)
-  - [Binaries](https://www.navidrome.org/docs/installation/pre-built-binaries/)
-  - [Build from source](https://www.navidrome.org/docs/installation/build-from-source/)
-- [Development](https://www.navidrome.org/docs/developers/)
-- [Subsonic API Compatibility](https://www.navidrome.org/docs/developers/subsonic-api/)
+# Start services
+docker-compose up -d
+```
 
-## Screenshots
+### 4. Access the Web Player
 
-<p align="left">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-login.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-player.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img width="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-desktop-player.png">
-</p>
+Open your browser and navigate to:
+```
+http://localhost:8080
+```
+
+## ⚙️ Configuration
+
+### First-Time Setup
+
+1. Open the web player
+2. Scroll to the configuration section at the bottom
+3. Enter your credentials:
+   - **Server URL**: `http://your-server:4533`
+   - **Username**: Your Navidrome username
+   - **Token** & **Salt**: Get these from Navidrome's web interface
+4. Click **Save & Connect**
+
+### Getting Token and Salt
+
+1. Log into Navidrome's web interface
+2. Open browser DevTools (F12) → Network tab
+3. Play any song or make any API request
+4. Look at the request URL and copy the `t=` and `s=` values
+5. Paste these into the Token and Salt fields
+
+**Note**: Token/salt credentials are valid for the duration specified in `SessionTimeout` (default 48 hours).
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────┐
+│   Docker Compose Stack              │
+│                                     │
+│  ┌────────────────────────────────┐│
+│  │  Nginx (Port 8080)             ││
+│  │  Serves: React Frontend        ││
+│  └────────────┬───────────────────┘│
+│               │                     │
+│  ┌────────────▼───────────────────┐│
+│  │  Navidrome (Port 4533)         ││
+│  │  - Jukebox API                 ││
+│  │  - Music Library               ││
+│  │  - MPV Integration             ││
+│  └────────────┬───────────────────┘│
+│               │                     │
+│  ┌────────────▼───────────────────┐│
+│  │  MPV Player                    ││
+│  │  - Audio Output via ALSA       ││
+│  │  - Plays on Server Hardware    ││
+│  └────────────────────────────────┘│
+└─────────────────────────────────────┘
+```
+
+## 🛠️ Development
+
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Access at http://localhost:5173
+```
+
+### Building
+
+```bash
+# Production build
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+### Project Structure
+
+```
+navidrome-jukebox-web/
+├── src/
+│   ├── App.jsx              # Main application component
+│   ├── App.css              # Styles
+│   ├── jukeboxApi.js        # Navidrome API client
+│   └── main.jsx             # Entry point
+├── dist/                    # Production build output
+├── docker-compose.yml       # Docker services configuration
+├── nginx.default.conf       # Nginx configuration
+└── package.json             # Dependencies and scripts
+```
+
+## 🔧 Troubleshooting
+
+### "Wrong username or password" Error
+
+- Verify your token and salt are correct
+- Check if the token has expired (regenerate from Navidrome)
+- Ensure the server URL is correct and accessible
+
+### No Audio Playing
+
+- Check MPV is installed on the server: `which mpv`
+- Verify audio device configuration in `navidrome.toml`
+- Check Navidrome logs: `docker-compose logs navidrome`
+- Ensure ALSA/audio group permissions are correct
+
+### Firefox HTTPS-Only Mode Issues
+
+If using Firefox, you may need to disable HTTPS-Only Mode:
+1. Click the 🔒 lock icon in the address bar
+2. Select "Turn off HTTPS-Only Mode"
+3. Reload the page
+
+### Connection Refused
+
+- Verify Navidrome is running: `docker-compose ps`
+- Check firewall rules allow port 4533
+- Ensure `serverUrl` in config matches your setup
+
+## 🎨 Features in Detail
+
+### Queue Management
+- Drag and drop to reorder (coming soon)
+- Click track number to jump to that song
+- Remove individual tracks
+- Clear entire queue
+- View current playing track highlighted
+
+### Search
+- Real-time search as you type
+- Search across title, artist, and album
+- Click any result to add to queue
+- Automatically starts playback if queue is empty
+
+### Playback Controls
+- **Play/Pause**: Toggle playback
+- **Previous**: Go to previous track (or restart if >3s into song)
+- **Next**: Skip to next track
+- **Shuffle**: Randomize queue order
+- **Repeat**: Off → All → One
+- **Stop**: Stop playback and reset
+- **Clear**: Remove all tracks from queue
+- **Random**: Add a random song from your library
+
+### Volume Control
+- Smooth volume slider
+- Real-time volume adjustment
+- Persists between sessions
+
+## 🔐 Security Notes
+
+- Credentials are stored in browser's `localStorage`
+- Token/salt authentication follows Subsonic API standard
+- No password storage - only pre-generated tokens
+- HTTPS recommended for production use
+
+## 📝 Environment Variables
+
+Configure via Docker Compose environment:
+
+```yaml
+environment:
+  ND_MUSICFOLDER: /music
+  ND_DATAFOLDER: /data
+  ND_LOGLEVEL: info
+  ND_JUKEBOX_ENABLED: "true"
+  ND_JUKEBOX_ADMINONLY: "false"
+  ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${INPUT}"
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Acknowledgments
+
+- [Navidrome](https://www.navidrome.org/) - The excellent music server
+- [React](https://react.dev/) - UI framework
+- [Vite](https://vitejs.dev/) - Build tool
+- [MPV](https://mpv.io/) - Media player
+
+## 📧 Support
+
+For issues and questions:
+- Check the [Troubleshooting](#-troubleshooting) section
+- Review [Navidrome documentation](https://www.navidrome.org/docs/)
+- Open an issue on GitHub
+
+---
+
+**Made with ❤️ for music lovers who want a better jukebox experience**
