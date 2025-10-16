@@ -167,7 +167,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 12px;
       align-items: center;
       justify-items: center;
@@ -520,6 +520,7 @@
           <button id="btnRepeat" class="btn" title="Repeat" aria-label="Repeat">🔁</button>
           <button id="btnStop" class="btn warn" title="Stop" aria-label="Stop">⏹️</button>
           <button id="btnClear" class="btn danger" title="Clear queue" aria-label="Clear">🗑️</button>
+          <button id="btnAddRandom" class="btn" title="Add Random Song to Queue" aria-label="Add Random">🎲</button>
         </div>
         <div class="vol">
           <div class="vol-row">
@@ -612,6 +613,7 @@
     const btnShuffle = $('#btnShuffle');
     const btnStop = $('#btnStop');
     const btnClear = $('#btnClear');
+    const btnAddRandom = $('#btnAddRandom');
     const serverUrlEl = $('#serverUrl');
     const usernameEl = $('#username');
     const passwordEl = $('#password');
@@ -1016,10 +1018,21 @@
         config = { serverUrl, username, token: data.subsonicToken, salt: data.subsonicSalt };
         localStorage.setItem('jukeboxConfig', JSON.stringify(config));
         await refreshAll();
-        // Add a random song on initial connection
-        await addRandomSong();
+        // Add multiple random songs on initial connection
+        for (let i = 0; i < 3; i++) {
+          await addRandomSong();
+        }
       } catch (e) {
         alert('Login failed. Check URL/credentials.');
+        console.error(e);
+      }
+    });
+
+    // Add Random Song Button
+    btnAddRandom.addEventListener('click', async () => {
+      try {
+        await addRandomSong();
+      } catch (e) {
         console.error(e);
       }
     });
