@@ -2,6 +2,9 @@
 
 const API_VERSION = '1.16.1';
 
+// Set to true in browser console to enable debug logging: window.JUKEBOX_DEBUG = true
+const DEBUG = () => typeof window !== 'undefined' && window.JUKEBOX_DEBUG === true;
+
 // Global configuration state, initialized from localStorage
 let config = JSON.parse(localStorage.getItem('jukeboxConfig')) || {
     serverUrl: 'http://localhost:4533',
@@ -36,17 +39,13 @@ export async function callJukebox(action, extra = '') {
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const data = await res.json();
     
-    console.log(`API ${action} response:`, data); // DEBUG
+    if (DEBUG()) console.log(`API ${action} response:`, data);
     
     const resp = data?.['subsonic-response'];
     if (resp?.status !== 'ok') {
         const errorMsg = resp?.error?.message || 'Unknown API error';
         throw new Error(`API failed: ${errorMsg}`);
     }
-    
-    // Log what we're actually getting
-    console.log('jukeboxStatus:', resp.jukeboxStatus);
-    console.log('jukeboxPlaylist:', resp.jukeboxPlaylist);
     
     // Navidrome API is inconsistent:
     // - 'get' returns status fields in jukeboxPlaylist
@@ -67,8 +66,10 @@ export async function callJukebox(action, extra = '') {
         entry: playlistObj.entry || []
     };
     
-    console.log('Parsed status:', status);
-    console.log('Parsed playlist entries:', playlist.entry?.length || 0);
+    if (DEBUG()) {
+        console.log('Parsed status:', status);
+        console.log('Parsed playlist:', playlist.entry?.length || 0, 'tracks');
+    }
     
     // Return structured data for React component to process
     return { status, playlist };
