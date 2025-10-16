@@ -424,10 +424,9 @@ body {
 
 .config .row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   align-items: stretch;
-  margin-bottom: 8px;
 }
 
 .config input {
@@ -461,7 +460,7 @@ body {
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
-  grid-column: 1 / -1;
+  margin-top: 4px;
   transition: transform 0.08s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
 }
