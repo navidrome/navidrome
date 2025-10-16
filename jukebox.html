@@ -632,7 +632,7 @@
     // API Utilities
     function buildJukeboxUrl(action, extra = '') {
       if (!config.token || !config.salt) {
-        console.error('Authentication missing');
+        console.error('Authentication missing. Please connect to the server.');
         return '';
       }
       const base = `${config.serverUrl}/rest/jukeboxControl?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json`;
@@ -646,19 +646,25 @@
 
     async function callJukebox(action, extra = '') {
       const url = buildJukeboxUrl(action, extra);
-      if (!url) return;
+      if (!url) {
+        statusText.textContent = 'Error: Missing authentication. Configure and connect.';
+        return;
+      }
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data?.['subsonic-response']?.status !== 'ok') throw new Error('API failed: ' + (data?.['subsonic-response']?.error?.message || 'Unknown error'));
+        if (data?.['subsonic-response']?.status !== 'ok') {
+          const errorMsg = data?.['subsonic-response']?.error?.message || 'Unknown API error';
+          throw new Error(`API failed: ${errorMsg}`);
+        }
         const resp = data['subsonic-response'];
         if (resp.jukeboxStatus) updateFromStatus(resp.jukeboxStatus);
         if (resp.jukeboxPlaylist) updateFromPlaylist(resp.jukeboxPlaylist);
         return resp;
       } catch (e) {
         console.error('API call failed:', e);
-        statusText.textContent = `Error: ${e.message}. Check connection or config.`;
+        statusText.textContent = `Error: ${e.message}. Check server or config.`;
         throw e;
       }
     }
@@ -752,8 +758,14 @@
       return `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    function setVolFill() {
+      const pct = Number(volume.value);
+      volume.style.setProperty('--vol-fill', `${pct}%`);
+      volPct.textContent = `${pct}%`;
+    }
+
     // Control Handlers
-    function setupEventListeners() {
+    document.addEventListener('DOMContentLoaded', () => {
       btnPlay.addEventListener('click', async () => {
         try {
           if (state.playing) {
@@ -825,7 +837,7 @@
           statusText.textContent = 'Random song added!';
           setTimeout(() => statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused', 2000);
         } catch (e) {
-          statusText.textContent = `Failed to add song: ${e.message}. Check config.`;
+          statusText.textContent = `Failed to add song: ${e.message}. Check server or config.`;
           console.error('Add Random failed:', e);
         }
       });
@@ -867,12 +879,6 @@
       }
 
       // Volume Control
-      function setVolFill() {
-        const pct = Number(volume.value);
-        volume.style.setProperty('--vol-fill', `${pct}%`);
-        volPct.textContent = `${pct}%`;
-      }
-
       setVolFill();
       volume.addEventListener('input', setVolFill);
       volume.addEventListener('change', async () => {
@@ -1022,7 +1028,7 @@
           throw e;
         }
       }
-    }
+    });
 
     // Config & Auth
     btnConnect.addEventListener('click', async () => {
@@ -1055,29 +1061,26 @@
     });
 
     // Initialization
-    document.addEventListener('DOMContentLoaded', () => {
-      setupEventListeners();
-      (async function init() {
-        try {
-          const saved = localStorage.getItem('jukeboxConfig');
-          if (saved) {
-            config = JSON.parse(saved);
-            serverUrlEl.value = config.serverUrl || '';
-            usernameEl.value = config.username || '';
-            statusText.textContent = 'Reconnecting…';
-            await refreshAll();
-            if (state.playlist.length === 0) {
-              for (let i = 0; i < 3; i++) {
-                await addRandomSong();
-              }
+    (async function init() {
+      try {
+        const saved = localStorage.getItem('jukeboxConfig');
+        if (saved) {
+          config = JSON.parse(saved);
+          serverUrlEl.value = config.serverUrl || '';
+          usernameEl.value = config.username || '';
+          statusText.textContent = 'Reconnecting…';
+          await refreshAll();
+          if (state.playlist.length === 0) {
+            for (let i = 0; i < 3; i++) {
+              await addRandomSong();
             }
           }
-        } catch (e) {
-          console.error(e);
-          statusText.textContent = 'Error connecting. Configure server.';
         }
-      })();
-    });
+      } catch (e) {
+        console.error(e);
+        statusText.textContent = 'Error connecting. Configure server.';
+      }
+    })();
 
     // Helpers
     function escapeHtml(s) {
