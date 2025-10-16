@@ -1,0 +1,10 @@
+# src-tauri/Cargo.toml (Partial Snippet)
+[dependencies]
+tauri = { version = "1.x", features = ["system-tray", "notification", "window-start-dragging", "shell-open"] }
+# ... other standard dependencies
+
+# --- Tauri Features Configuration ---
+[features]
+default = [ "custom-protocol" ]
+# Enable the features required for macOS system integration
+custom-protocol = [ ]
