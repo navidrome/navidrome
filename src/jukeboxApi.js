@@ -48,11 +48,30 @@ export async function callJukebox(action, extra = '') {
     console.log('jukeboxStatus:', resp.jukeboxStatus);
     console.log('jukeboxPlaylist:', resp.jukeboxPlaylist);
     
-    // Return structured data for React component to process
-    return {
-        status: resp.jukeboxStatus || null,
-        playlist: resp.jukeboxPlaylist || { entry: [] }
+    // Navidrome API is inconsistent:
+    // - 'get' returns status fields in jukeboxPlaylist
+    // - 'add'/'skip'/etc return status in jukeboxStatus
+    const playlistObj = resp.jukeboxPlaylist || {};
+    const statusObj = resp.jukeboxStatus || playlistObj;
+    
+    // Extract status fields from the correct object
+    const status = {
+        currentIndex: statusObj.currentIndex ?? 0,
+        playing: statusObj.playing ?? false,
+        gain: statusObj.gain ?? 1,
+        position: statusObj.position ?? 0,
     };
+    
+    // Extract playlist entries (only in jukeboxPlaylist)
+    const playlist = {
+        entry: playlistObj.entry || []
+    };
+    
+    console.log('Parsed status:', status);
+    console.log('Parsed playlist entries:', playlist.entry?.length || 0);
+    
+    // Return structured data for React component to process
+    return { status, playlist };
 }
 
 // --- Random Song & Search ---

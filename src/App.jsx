@@ -80,23 +80,11 @@ export default function App() {
         
         try {
             const result = await callJukebox('get');
-            console.log('API Response:', result); // DEBUG
-            
             const { status, playlist } = result;
             
             const newPlaylist = Array.isArray(playlist?.entry) 
                 ? playlist.entry 
                 : (playlist?.entry ? [playlist.entry] : []);
-            
-            // If status is missing, still update playlist but keep existing state
-            if (!status) {
-                console.warn('API returned no status object, updating playlist only');
-                setState(prevState => ({
-                    ...prevState,
-                    playlist: newPlaylist.length > 0 ? newPlaylist : prevState.playlist,
-                }));
-                return;
-            }
             
             setState(prevState => {
                 // Check if track changed to reset repeat state
@@ -105,13 +93,13 @@ export default function App() {
                 
                 return {
                     ...prevState,
-                    playing: status.playing ?? prevState.playing,
-                    currentIndex: status.currentIndex ?? prevState.currentIndex,
-                    position: status.position ?? prevState.position,
-                    gain: status.gain ?? prevState.gain,
+                    playing: status.playing,
+                    currentIndex: status.currentIndex,
+                    position: status.position,
+                    gain: status.gain,
                     playlist: newPlaylist,
                     lastStatusTs: Date.now(),
-                    localTickStart: status.position ?? prevState.position,
+                    localTickStart: status.position,
                     endHandledForId: currentTrack?.id !== prevTrack?.id ? null : prevState.endHandledForId,
                 };
             });
@@ -151,13 +139,18 @@ export default function App() {
                 // Immediately update local state for better UX
                 setState(prev => ({ ...prev, playing: !prev.playing }));
             } else if (action === 'next') {
-                const nextIndex = Math.min(currentState.currentIndex + 1, currentState.playlist.length - 1);
-                await callJukebox('skip', `&index=${nextIndex}&offset=0`);
+                // Don't specify index, let the server handle it
+                await callJukebox('skip', `&index=${currentState.currentIndex + 1}&offset=0`);
             } else if (action === 'previous') {
                 // Restart song if pos > 3s, otherwise skip back
                 const restart = (currentState.position || 0) > 3;
-                const target = restart ? currentState.currentIndex : Math.max(0, currentState.currentIndex - 1);
-                await callJukebox('skip', `&index=${target}&offset=0`);
+                if (restart) {
+                    // Restart current track
+                    await callJukebox('skip', `&index=${currentState.currentIndex}&offset=0`);
+                } else {
+                    // Go to previous track
+                    await callJukebox('skip', `&index=${Math.max(0, currentState.currentIndex - 1)}&offset=0`);
+                }
             } else if (action === 'clear') {
                 if (!confirm('Clear the whole queue?')) {
                     commandInProgress.current = false;
@@ -180,6 +173,7 @@ export default function App() {
             
             // Force refresh after command completes
             await refreshState(true);
+            setStatusText(stateRef.current.playing ? '▶️ Playing' : '⏸️ Paused');
         } catch (e) {
             setStatusText(`Action failed: ${e.message}`);
             console.error('Transport action failed:', e);
