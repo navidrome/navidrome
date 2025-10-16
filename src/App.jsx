@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     callJukebox, 
     coverArtUrl, 
@@ -60,193 +60,259 @@ export default function App() {
     const [statusText, setStatusText] = useState('Initializing...');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
-    const [configForm, setConfigForm] = useState(getConfig()); 
+    const [configForm, setConfigForm] = useState(getConfig());
+    
+    // Use ref to track if we're currently executing a command to prevent race conditions
+    const commandInProgress = useRef(false);
+    const stateRef = useRef(state);
+    
+    // Keep stateRef in sync with state
+    useEffect(() => {
+        stateRef.current = state;
+    }, [state]);
 
     // --- Core State Refresh Logic (Polls the server) ---
-    const refreshState = useCallback(async () => {
+    const refreshState = useCallback(async (forceUpdate = false) => {
+        // Don't refresh while a command is in progress unless forced
+        if (!forceUpdate && commandInProgress.current) {
+            return;
+        }
+        
         try {
             const { status, playlist } = await callJukebox('get');
             
             const newPlaylist = Array.isArray(playlist.entry) ? playlist.entry : (playlist.entry ? [playlist.entry] : []);
             
-            const newState = {
-                ...state, 
-                ...status, 
-                playlist: newPlaylist,
-            };
+            setState(prevState => {
+                // Check if track changed to reset repeat state
+                const currentTrack = newPlaylist[status.currentIndex];
+                const prevTrack = prevState.playlist[prevState.currentIndex];
+                
+                return {
+                    ...prevState,
+                    ...status,
+                    playlist: newPlaylist,
+                    endHandledForId: currentTrack?.id !== prevTrack?.id ? null : prevState.endHandledForId,
+                };
+            });
             
-            // Check if track changed to reset repeat state
-            const currentTrack = newState.playlist[newState.currentIndex];
-            if (currentTrack?.id !== state.playlist[state.currentIndex]?.id) {
-                newState.endHandledForId = null; 
-            }
-            
-            setState(newState);
-            setStatusText(newState.playing ? '▶️ Playing' : '⏸️ Paused');
+            setStatusText(status.playing ? '▶️ Playing' : '⏸️ Paused');
         } catch (e) {
             setStatusText(`Error: ${e.message}. Check server or config.`);
             console.error('Refresh failed:', e);
         }
-    }, [state]);
+    }, []);
 
     // Handles skipping to a specific index/offset
     const skipTo = useCallback(async (index, offsetSec = 0) => {
-        index = Math.max(0, Math.min(index, state.playlist.length - 1));
+        const currentState = stateRef.current;
+        index = Math.max(0, Math.min(index, currentState.playlist.length - 1));
+        
+        commandInProgress.current = true;
         try {
             await callJukebox('skip', `&index=${index}&offset=${Math.max(0, Math.floor(offsetSec))}`);
-            await refreshState();
+            await refreshState(true); // Force refresh after command
         } catch (e) {
             console.error(e);
+        } finally {
+            commandInProgress.current = false;
         }
-    }, [state.playlist.length, refreshState]);
+    }, [refreshState]);
 
     // Handles all transport button clicks
     const handleTransport = useCallback(async (action) => {
+        const currentState = stateRef.current;
+        
+        commandInProgress.current = true;
         try {
             if (action === 'play-pause') {
-                await callJukebox(state.playing ? 'stop' : 'start');
+                const cmd = currentState.playing ? 'stop' : 'start';
+                await callJukebox(cmd);
+                // Immediately update local state for better UX
+                setState(prev => ({ ...prev, playing: !prev.playing }));
             } else if (action === 'next') {
-                await callJukebox('skip', `&index=${state.currentIndex + 1}`);
+                const nextIndex = Math.min(currentState.currentIndex + 1, currentState.playlist.length - 1);
+                await callJukebox('skip', `&index=${nextIndex}&offset=0`);
             } else if (action === 'previous') {
-                // Implements the original logic: restart song if pos > 3s, otherwise skip back
-                const restart = (state.position || 0) > 3;
-                const target = restart ? state.currentIndex : Math.max(0, state.currentIndex - 1);
+                // Restart song if pos > 3s, otherwise skip back
+                const restart = (currentState.position || 0) > 3;
+                const target = restart ? currentState.currentIndex : Math.max(0, currentState.currentIndex - 1);
                 await callJukebox('skip', `&index=${target}&offset=0`);
             } else if (action === 'clear') {
-                if (!confirm('Clear the whole queue?')) return;
+                if (!confirm('Clear the whole queue?')) {
+                    commandInProgress.current = false;
+                    return;
+                }
                 await callJukebox('clear');
             } else if (action === 'shuffle') {
                 await callJukebox('shuffle');
             } else if (action === 'stop') {
                 await callJukebox('stop');
+                setState(prev => ({ ...prev, playing: false }));
             } else if (action === 'addRandom') {
                 setStatusText('Adding random song…');
                 const { randomSong } = await addRandomSong();
-                if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+                if (!currentState.playing && currentState.playlist.length === 0) {
+                    await callJukebox('start');
+                }
                 setStatusText(`Random song added: ${randomSong.title}!`);
             }
-            await refreshState();
+            
+            // Force refresh after command completes
+            await refreshState(true);
         } catch (e) {
             setStatusText(`Action failed: ${e.message}`);
             console.error('Transport action failed:', e);
-            setTimeout(() => refreshState(), 2000);
+        } finally {
+            commandInProgress.current = false;
         }
-    }, [state.playing, state.currentIndex, state.playlist, state.position, refreshState]);
+    }, [refreshState]);
 
     // Handles actions from a queue item row
-    const handleQueueAction = async (action, index) => {
+    const handleQueueAction = useCallback(async (action, index) => {
+        commandInProgress.current = true;
         try {
             if (action === 'play') {
                 await skipTo(index, 0);
             } else if (action === 'remove') {
                 await callJukebox('remove', `&index=${index}`);
+                await refreshState(true);
             }
-            await refreshState();
         } catch(e) {
             console.error(e);
+        } finally {
+            commandInProgress.current = false;
         }
-    };
+    }, [skipTo, refreshState]);
     
     // --- Effects & Listeners ---
 
     // Initialization - runs ONCE on mount
     useEffect(() => {
+        let mounted = true;
+        
         (async function init() {
             try {
                 const saved = localStorage.getItem('jukeboxConfig');
                 if (saved) {
                     setConfigForm(getConfig());
                     setStatusText('Reconnecting…');
-                    await refreshState();
+                    await refreshState(true);
+                    
+                    if (!mounted) return;
+                    
                     // Check current state after refresh
                     const { playlist } = await callJukebox('get');
                     const currentPlaylist = Array.isArray(playlist.entry) ? playlist.entry : (playlist.entry ? [playlist.entry] : []);
                     
-                    if (currentPlaylist.length === 0) {
+                    if (mounted && currentPlaylist.length === 0) {
                         for (let i = 0; i < 3; i++) {
+                            if (!mounted) break;
                             await addRandomSong();
                         }
-                        await refreshState();
+                        if (mounted) {
+                            await refreshState(true);
+                        }
                     }
-                    setStatusText('Ready');
+                    
+                    if (mounted) {
+                        setStatusText('Ready');
+                    }
                 }
             } catch (e) {
                 console.error(e);
-                setStatusText('Error connecting. Configure server.');
+                if (mounted) {
+                    setStatusText('Error connecting. Configure server.');
+                }
             }
         })();
+        
+        return () => { mounted = false; };
     }, []); // Empty deps - run once on mount
 
     // Polling loop - runs ONCE on mount
     useEffect(() => {
-        const pollInterval = setInterval(refreshState, 2000);
+        const pollInterval = setInterval(() => {
+            refreshState(false); // Don't force during polling
+        }, 2000);
+        
         return () => clearInterval(pollInterval);
     }, [refreshState]);
 
-    // Position ticker and auto-repeat - runs on state changes for logic
+    // Position ticker and auto-repeat
     useEffect(() => {
         const tickInterval = setInterval(() => {
-            if (state.playing && !state.seeking) {
-                const tr = state.playlist[state.currentIndex];
+            setState(prevState => {
+                if (!prevState.playing || prevState.seeking) {
+                    return prevState;
+                }
+                
+                const tr = prevState.playlist[prevState.currentIndex];
                 const dur = Math.max(0, tr?.duration || 0);
-                const dt = (Date.now() - state.lastStatusTs) / 1000;
-                let pos = Math.min(dur, state.localTickStart + dt);
+                const dt = (Date.now() - prevState.lastStatusTs) / 1000;
+                let pos = Math.min(dur, prevState.localTickStart + dt);
                 
                 // End-of-song/Auto-Repeat Logic
-                if (dur > 3 && (dur - pos) <= 0.8 && state.endHandledForId !== tr?.id) {
+                if (dur > 3 && (dur - pos) <= 0.8 && prevState.endHandledForId !== tr?.id) {
                     const currentId = tr?.id;
-                    if (state.repeatMode === 'one') {
-                        setState(s => ({ ...s, endHandledForId: currentId }));
-                        skipTo(state.currentIndex, 0); 
-                    } else if (state.repeatMode === 'all' && state.currentIndex === state.playlist.length - 1) {
-                        setState(s => ({ ...s, endHandledForId: currentId }));
-                        skipTo(0, 0); 
+                    if (prevState.repeatMode === 'one') {
+                        // Schedule skip on next tick
+                        setTimeout(() => skipTo(prevState.currentIndex, 0), 0);
+                        return { ...prevState, position: pos, endHandledForId: currentId };
+                    } else if (prevState.repeatMode === 'all' && prevState.currentIndex === prevState.playlist.length - 1) {
+                        setTimeout(() => skipTo(0, 0), 0);
+                        return { ...prevState, position: pos, endHandledForId: currentId };
                     }
                 }
-                setState(s => ({ ...s, position: pos }));
-            }
+                
+                return { ...prevState, position: pos };
+            });
         }, 500);
 
         return () => clearInterval(tickInterval);
-    }, [state.playing, state.seeking, state.currentIndex, state.playlist, state.lastStatusTs, 
-        state.localTickStart, state.repeatMode, state.endHandledForId, skipTo]);
+    }, [skipTo]);
 
     // Volume Change Handler
-    const handleVolumeChange = async (e) => {
+    const handleVolumeChange = useCallback(async (e) => {
         const volumeValue = Number(e.target.value);
         const gain = Math.max(0, Math.min(1, volumeValue / 100));
-        setState(s => ({ ...s, gain }));
+        
+        setState(prev => ({ ...prev, gain }));
+        
         try {
             await callJukebox('setGain', `&gain=${gain}`);
         } catch (e) {
             console.error(e);
         }
-    };
+    }, []);
 
     // Seek Logic
-    const handleSeekInput = (e) => {
-        const tr = state.playlist[state.currentIndex];
-        const dur = Math.max(0, tr?.duration || 0);
-        const fill = Number(e.target.value);
-        const pos = (fill / 1000) * dur;
-        
-        setState(s => ({ 
-            ...s, 
-            seeking: true, 
-            position: pos,
-            localTickStart: pos,
-            lastStatusTs: Date.now(),
-        }));
-    };
+    const handleSeekInput = useCallback((e) => {
+        setState(prevState => {
+            const tr = prevState.playlist[prevState.currentIndex];
+            const dur = Math.max(0, tr?.duration || 0);
+            const fill = Number(e.target.value);
+            const pos = (fill / 1000) * dur;
+            
+            return { 
+                ...prevState, 
+                seeking: true, 
+                position: pos,
+                localTickStart: pos,
+                lastStatusTs: Date.now(),
+            };
+        });
+    }, []);
     
-    const handleSeekChange = async (e) => {
-        const tr = state.playlist[state.currentIndex];
+    const handleSeekChange = useCallback(async (e) => {
+        const currentState = stateRef.current;
+        const tr = currentState.playlist[currentState.currentIndex];
         const dur = Math.max(0, tr?.duration || 0);
         const pos = (Number(e.target.value) / 1000) * dur;
         
-        setState(s => ({ ...s, seeking: false }));
-        await skipTo(state.currentIndex, pos);
-    };
+        setState(prev => ({ ...prev, seeking: false }));
+        await skipTo(currentState.currentIndex, pos);
+    }, [skipTo]);
     
     // Search Logic (Uses useEffect debounce logic)
     useEffect(() => {
@@ -268,40 +334,48 @@ export default function App() {
         return () => clearTimeout(searchTimer);
     }, [searchQuery]);
 
-    const addSongFromSearch = async (id) => {
+    const addSongFromSearch = useCallback(async (id) => {
+        const currentState = stateRef.current;
+        commandInProgress.current = true;
+        
         try {
             await callJukebox('add', `&id=${encodeURIComponent(id)}`);
-            if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+            if (!currentState.playing && currentState.playlist.length === 0) {
+                await callJukebox('start');
+            }
             setSearchQuery('');
-            await refreshState();
+            await refreshState(true);
         } catch (e) {
             console.error(e);
+        } finally {
+            commandInProgress.current = false;
         }
-    };
+    }, [refreshState]);
     
     // Config Logic
-    const handleConfigChange = (e) => {
+    const handleConfigChange = useCallback((e) => {
         setConfigForm(f => ({ ...f, [e.target.id]: e.target.value }));
-    };
+    }, []);
     
-    const handleConnect = async () => {
+    const handleConnect = useCallback(async () => {
         try {
             saveConfig({ ...configForm });
             
             setStatusText('Configuration Saved. Reconnecting…');
-            await refreshState();
+            await refreshState(true);
             
+            const currentState = stateRef.current;
             // Add initial song if queue is empty
-            if (state.playlist.length === 0) {
+            if (currentState.playlist.length === 0) {
               await handleTransport('addRandom'); 
             }
-            setStatusText(state.playing ? '▶️ Playing' : 'Ready');
+            setStatusText(currentState.playing ? '▶️ Playing' : 'Ready');
             
         } catch (e) {
             setStatusText(`Login failed: ${e.message}. Check URL/credentials.`);
             console.error(e);
         }
-    };
+    }, [configForm, refreshState, handleTransport]);
 
     // --- Derived State (Memoization) ---
     const currentTrack = state.playlist[state.currentIndex];
@@ -363,19 +437,22 @@ export default function App() {
                             className="btn" 
                             title="Shuffle queue" 
                             aria-label="Shuffle"
-                            onClick={() => handleTransport('shuffle')}>🔀</button>
+                            onClick={() => handleTransport('shuffle')}
+                            disabled={commandInProgress.current}>🔀</button>
                         <button 
                             id="btnPrev" 
                             className="btn" 
                             title="Previous" 
                             aria-label="Previous"
-                            onClick={() => handleTransport('previous')}>⏮️</button>
+                            onClick={() => handleTransport('previous')}
+                            disabled={commandInProgress.current}>⏮️</button>
                         <button 
                             id="btnPlay" 
                             className={`btn primary ${state.playing ? 'paused' : ''}`}
                             title="Play/Pause" 
                             aria-label="Play/Pause"
-                            onClick={() => handleTransport('play-pause')}>
+                            onClick={() => handleTransport('play-pause')}
+                            disabled={commandInProgress.current}>
                             {state.playing ? '⏸️' : '▶️'}
                         </button>
                         <button 
@@ -383,7 +460,8 @@ export default function App() {
                             className="btn" 
                             title="Next" 
                             aria-label="Next"
-                            onClick={() => handleTransport('next')}>⏭️</button>
+                            onClick={() => handleTransport('next')}
+                            disabled={commandInProgress.current}>⏭️</button>
                         <button 
                             id="btnRepeat" 
                             className={`btn ${state.repeatMode !== 'off' ? 'active' : ''}`}
@@ -400,19 +478,22 @@ export default function App() {
                             className="btn warn" 
                             title="Stop" 
                             aria-label="Stop"
-                            onClick={() => handleTransport('stop')}>⏹️</button>
+                            onClick={() => handleTransport('stop')}
+                            disabled={commandInProgress.current}>⏹️</button>
                         <button 
                             id="btnClear" 
                             className="btn danger" 
                             title="Clear queue" 
                             aria-label="Clear"
-                            onClick={() => handleTransport('clear')}>🗑️</button>
+                            onClick={() => handleTransport('clear')}
+                            disabled={commandInProgress.current}>🗑️</button>
                         <button 
                             id="btnAddRandom" 
                             className="btn" 
                             title="Add Random Song to Queue" 
                             aria-label="Add Random"
-                            onClick={() => handleTransport('addRandom')}>🎲</button>
+                            onClick={() => handleTransport('addRandom')}
+                            disabled={commandInProgress.current}>🎲</button>
                     </div>
                     
                     <div className="vol">
