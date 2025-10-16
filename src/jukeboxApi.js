@@ -165,8 +165,15 @@ function generateAuth(password) {
 }
 
 // --- Utilities ---
+export function decodeHtml(html) {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
+}
+
+// Keep escapeHtml for backward compatibility but not needed in React
 export function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
+    return String(s);
 }
 
 function ensureAuth() {
