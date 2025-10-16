@@ -79,7 +79,8 @@ export default function App() {
                     title: track.title,
                     artist: track.artist,
                     playing: playing,
-                    position: position
+                    position: position,
+                    duration: track.duration
                 });
 
                 // Update metadata
@@ -99,17 +100,37 @@ export default function App() {
                 navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
                 console.log('Media Session playback state set to:', navigator.mediaSession.playbackState);
 
-                // Update position state (with validation)
-                if ('setPositionState' in navigator.mediaSession && track.duration > 0) {
-                    const validDuration = Math.max(0, track.duration);
-                    const validPosition = Math.max(0, Math.min(position || 0, validDuration));
-                    
-                    navigator.mediaSession.setPositionState({
-                        duration: validDuration,
-                        playbackRate: playing ? 1.0 : 0.0,
-                        position: validPosition
-                    });
+                // Update position state (with strict validation)
+                try {
+                    if ('setPositionState' in navigator.mediaSession) {
+                        const duration = parseFloat(track.duration);
+                        const pos = parseFloat(position);
+                        
+                        // Only set if we have valid numbers
+                        if (!isNaN(duration) && !isNaN(pos) && duration > 0) {
+                            const validDuration = Math.max(0, duration);
+                            const validPosition = Math.max(0, Math.min(pos, validDuration));
+                            const validRate = playing ? 1.0 : 0.0;
+                            
+                            console.log('Setting position state:', {
+                                duration: validDuration,
+                                position: validPosition,
+                                playbackRate: validRate
+                            });
+                            
+                            navigator.mediaSession.setPositionState({
+                                duration: validDuration,
+                                playbackRate: validRate,
+                                position: validPosition
+                            });
+                        } else {
+                            console.log('Skipping setPositionState - invalid values:', { duration, pos });
+                        }
+                    }
+                } catch (posError) {
+                    console.warn('setPositionState failed (non-critical):', posError.message);
                 }
+                
                 console.log('Media Session updated successfully');
             } catch (error) {
                 console.error('Media Session API error:', error);
@@ -121,6 +142,7 @@ export default function App() {
 
     const setupMediaSessionHandlers = useCallback((handleTransport) => {
         if ('mediaSession' in navigator) {
+            console.log('Setting up Media Session action handlers...');
             try {
                 navigator.mediaSession.setActionHandler('play', () => {
                     console.log('Media Session: Play');
@@ -146,6 +168,8 @@ export default function App() {
                     console.log('Media Session: Stop');
                     handleTransport('stop');
                 });
+
+                console.log('Media Session handlers registered successfully');
 
                 // Seek handlers (optional, may not be supported in all browsers)
                 try {
@@ -181,8 +205,10 @@ export default function App() {
                     console.debug('seekforward not supported');
                 }
             } catch (error) {
-                console.warn('Error setting up Media Session handlers:', error);
+                console.error('Error setting up Media Session handlers:', error);
             }
+        } else {
+            console.warn('Media Session API not available in this browser');
         }
     }, []);
 
