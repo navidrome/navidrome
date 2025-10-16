@@ -1,654 +1,677 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navidrome Jukebox Controller</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Lucide Icons for modern UI icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        
-        /* Apply dark background and font */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark background */
-            color: #E5E7EB;
-            overflow: hidden; /* Hide main body scrollbar */
-        }
-        
-        /* Custom styles for the fixed player bar (Apple Music/macOS 'Frosted Glass') */
-        .frosted-glass {
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            background-color: rgba(31, 41, 55, 0.85); /* Dark background with transparency */
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jukebox — Full Player</title>
+  <style>
+    :root {
+      --bg1: #10121a;
+      --bg2: #171a24;
+      --card: rgba(255,255,255,0.06);
+      --muted: #a5adcb;
+      --text: #e5e9f5;
+      --accent: #8b5cf6; /* violet */
+      --accent-2: #22c55e; /* green */
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --shadow: 0 20px 60px rgba(0,0,0,0.4);
+      --radius: 18px;
+    }
 
-        /* Hide default scrollbar, apply custom styling */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, #1f1147 0%, transparent 50%),
+                  radial-gradient(1000px 800px at 110% 20%, #0b3b54 0%, transparent 50%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1F2937;
-        }
+    .player-shell {
+      width: 1180px; /* desktop-focused */
+      max-width: 100%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 360px 1fr 360px;
+      gap: 22px;
+    }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #4B5563;
-            border-radius: 4px;
-        }
+    /* LEFT: cover + track info */
+    .cover-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .cover {
+      width: 100%;
+      aspect-ratio: 1/1;
+      border-radius: 16px;
+      object-fit: cover;
+      background: #222636;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+    .meta {
+      margin-top: 14px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .artist, .album {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
 
-        /* Custom range slider styling (for progress and volume) */
-        input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            height: 4px;
-            background: #374151; /* Default track color */
-            border-radius: 2px;
-            cursor: pointer;
-            width: 100%;
-        }
+    /* CENTER: transport + progress */
+    .transport-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
 
-        /* Style for the thumb (handle) */
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #EF4444; /* Red accent */
-            box-shadow: 0 0 0 2px #111827;
-            transition: background 0.2s;
-        }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-        input[type="range"]::-moz-range-thumb {
-            width: 12px;
-            height: 12px;
-            border: none;
-            border-radius: 50%;
-            background: #EF4444;
-            transition: background 0.2s;
-        }
+    .progress {
+      display: grid;
+      grid-template-columns: 48px 1fr 48px;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+    .time {
+      text-align: center;
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 13px;
+      min-width: 48px;
+    }
+    .seek {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent) var(--seek-fill, 0%), rgba(255,255,255,0.16) var(--seek-fill, 0%));
+      outline: none;
+    }
+    .seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+    .seek::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
 
-        /* Track fill (only works on webkit/custom implementation) */
-        #progress-slider-container {
-            position: relative;
-            height: 4px;
-        }
-        #progress-slider-container input[type="range"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            z-index: 20; /* Keep the slider thumb clickable */
-        }
-        #progress-fill {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 4px;
-            background: #EF4444; /* Red accent for filled part */
-            border-radius: 2px;
-            z-index: 10;
-            pointer-events: none; /* Ignore clicks */
-        }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
 
-        /* Error box styling */
-        .error-box {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 100;
-        }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      cursor: pointer; user-select: none;
+      transition: transform .08s ease, background .2s ease;
+      font-size: 18px;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { height: 54px; font-size: 22px; background: linear-gradient(180deg, var(--accent), #6d28d9); border: none; color: white; box-shadow: inset 0 -2px 0 rgba(0,0,0,.25); }
+    .btn.primary.paused { background: linear-gradient(180deg, var(--accent-2), #16a34a); }
+    .btn.warn { background: linear-gradient(180deg, var(--warn), #c88508); color: #111; border: none; }
+    .btn.danger { background: linear-gradient(180deg, var(--danger), #b91c1c); }
+    .btn.active { outline: 2px solid var(--accent); }
 
-        .song-item:hover .song-play-icon {
-            opacity: 1;
-        }
-    </style>
+    .vol {
+      display: grid; gap: 6px; align-content: center; margin-top: 6px;
+    }
+    .vol-row { display: grid; grid-template-columns: 28px 1fr 48px; align-items: center; gap: 8px; }
+    .vol input[type="range"] {
+      -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e var(--vol-fill, 100%), rgba(255,255,255,0.16) var(--vol-fill, 100%));
+    }
+    .vol input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #22c55e; }
+    .vol input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #22c55e; }
+    .vol .volpct { color: var(--muted); text-align: right; font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+
+    /* RIGHT: queue + search */
+    .side-card { background: var(--card); border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
+    .side-card h3 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+
+    .queue { max-height: 560px; overflow: auto; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; }
+    .qitem { display: grid; grid-template-columns: 28px 1fr 52px; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); cursor: grab; }
+    .qitem:last-child { border-bottom: 0; }
+    .qitem.dragging { opacity: 0.6; }
+    .qitem .idx { color: var(--muted); font-size: 12px; text-align: right; }
+    .qitem .qi-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qitem .qi-meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qitem .qi-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+    .qitem .tag { display:inline-flex; align-items:center; gap:6px; padding:2px 6px; border-radius:999px; font-size:11px; background: rgba(139,92,246,0.16); color: #c4b5fd; }
+    .qitem.current { background: rgba(139,92,246,0.15); }
+
+    .search-box { display: grid; gap: 8px; }
+    .search-box input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--text); outline: none; }
+    .search-results { border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; max-height: 260px; overflow-y: auto; }
+    .srow { display: grid; grid-template-columns: 40px 1fr 46px; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .srow:last-child { border-bottom: 0; }
+    .srow:hover { background: rgba(255,255,255,0.08); cursor: pointer; }
+    .srow img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #2b3044; }
+    .srow .s-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .srow .s-artist { color: var(--muted); font-size: 12px; }
+
+    /* CONFIG */
+    .config { margin-top: 10px; background: var(--card); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; }
+    .config .row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; }
+    .config input { padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--text); }
+    .config button { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(34,197,94,0.9); color: #05140a; cursor: pointer; font-weight: 700; }
+
+    .small { font-size: 12px; color: var(--muted); }
+  </style>
 </head>
-<body class="flex flex-col h-screen">
+<body>
+  <div class="player-shell">
+    <!-- LEFT -->
+    <aside class="cover-card">
+      <img id="cover" class="cover" alt="Album art" />
+      <div class="meta">
+        <div id="title" class="title">Nothing playing</div>
+        <div id="artist" class="artist">—</div>
+        <div id="album" class="album">&nbsp;</div>
+      </div>
+    </aside>
 
-    <!-- Overall Layout Container -->
-    <div class="flex flex-1 overflow-hidden">
+    <!-- CENTER -->
+    <main class="transport-card">
+      <div class="status-row">
+        <div id="statusText">Initializing…</div>
+        <div class="small">Queue: <span id="queueCount">0</span> tracks</div>
+      </div>
 
-        <!-- 1. Sidebar (Configuration/Jukebox Status) -->
-        <aside class="w-72 bg-gray-900 border-r border-gray-800 p-6 flex flex-col custom-scrollbar overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-6 text-red-500">Jukebox Setup</h2>
+      <!-- PROGRESS -->
+      <div class="progress">
+        <div id="currentTime" class="time">0:00</div>
+        <input id="seek" class="seek" type="range" min="0" max="1000" value="0" />
+        <div id="totalTime" class="time">0:00</div>
+      </div>
 
-            <!-- Connection Status -->
-            <div id="status-box" class="p-4 rounded-lg bg-gray-800 mb-6 shadow-md">
-                <h3 class="font-semibold text-gray-300 flex items-center mb-2">
-                    <i data-lucide="server" class="w-4 h-4 mr-2 text-red-400"></i>
-                    Connection Status
-                </h3>
-                <div class="text-sm space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Playback:</span>
-                        <span class="font-bold text-green-400" id="status">Loading...</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Volume:</span>
-                        <span class="font-medium" id="volumeDisplay">--</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Device:</span>
-                        <span class="font-medium text-gray-300">U24XL</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Server Configuration -->
-            <div class="flex flex-col space-y-3 mb-6">
-                <h3 class="font-semibold text-gray-300 flex items-center">
-                    <i data-lucide="settings" class="w-4 h-4 mr-2 text-red-400"></i>
-                    Server Details
-                </h3>
-                <input type="text" class="p-3 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:ring-red-500 focus:border-red-500" id="serverUrl" placeholder="Server URL (e.g., http://host:4533)">
-                <input type="text" class="p-3 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:ring-red-500 focus:border-red-500" id="username" placeholder="Username">
-                <input type="password" class="p-3 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:ring-red-500 focus:border-red-500" id="password" placeholder="Password">
-                <button class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg shadow-md transition" onclick="saveConfig()">
-                    <i data-lucide="save" class="w-4 h-4 inline mr-2"></i> Save & Connect
-                </button>
-            </div>
-            
-            <!-- App Info/Placeholder -->
-            <div class="mt-auto pt-4 border-t border-gray-800 text-xs text-gray-500">
-                <p>Navidrome Jukebox Client</p>
-                <p>Designed with Tailwind CSS and Lucide Icons.</p>
-            </div>
-        </aside>
-
-        <!-- 2. Main Content Area (Search & Results) -->
-        <main class="flex-1 p-8 overflow-y-auto custom-scrollbar">
-            
-            <header class="mb-8">
-                <h1 class="text-4xl font-extrabold tracking-tight">Search Library</h1>
-                <p class="text-gray-400 mt-1">Find and queue music for the Jukebox.</p>
-            </header>
-
-            <!-- Search Box -->
-            <div class="mb-8 relative">
-                <div class="relative">
-                    <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" class="w-full p-4 pl-10 bg-gray-800 border border-gray-700 rounded-xl text-lg focus:ring-red-500 focus:border-red-500 shadow-lg" id="searchInput" placeholder="Search songs, artists, or albums..." onkeyup="searchSongs()">
-                </div>
-                
-                <div class="flex space-x-4 mt-4">
-                    <button class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition" onclick="playRandom()">
-                        <i data-lucide="dice-5" class="w-4 h-4 inline mr-2"></i> Play Random Song
-                    </button>
-                    <button class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition" onclick="jukeboxCommand('clear')">
-                        <i data-lucide="list-x" class="w-4 h-4 inline mr-2"></i> Clear Queue
-                    </button>
-                </div>
-
-                <!-- Search Results Dropdown -->
-                <div id="searchResults" class="hidden absolute w-full mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-h-96 overflow-y-auto custom-scrollbar z-20">
-                    <!-- Results dynamically loaded here -->
-                </div>
-            </div>
-
-            <!-- Placeholder for Current Queue or Recent Tracks (For better visual structure) -->
-            <section class="mt-16">
-                <h2 class="text-2xl font-bold mb-4">Current Queue / Recently Added</h2>
-                <div class="text-gray-500 p-8 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center h-40">
-                    <i data-lucide="list-music" class="w-6 h-6 mr-2"></i> Queue management is complex; use the search and play buttons to manage songs.
-                </div>
-            </section>
-        </main>
-
-    </div>
-
-    <!-- 3. Fixed Player Bar (Modern Controls) -->
-    <footer class="frosted-glass h-24 p-4 z-50 flex flex-col justify-center shadow-2xl">
-
-        <!-- Progress Bar and Time -->
-        <div class="flex items-center w-full space-x-3 text-xs text-gray-400 mb-2">
-            <span id="current-time">0:00</span>
-            <div id="progress-slider-container" class="flex-1">
-                <div id="progress-fill" style="width: 0%;"></div>
-                <input type="range" min="0" max="100" value="0" id="progressSlider" oninput="updateProgress(this.value)" disabled>
-            </div>
-            <span id="duration">--:--</span>
+      <!-- CONTROLS -->
+      <div>
+        <div class="controls">
+          <button id="btnShuffle" class="btn" title="Shuffle queue" aria-label="Shuffle">🔀</button>
+          <button id="btnPrev" class="btn" title="Previous" aria-label="Previous">⏮️</button>
+          <button id="btnPlay" class="btn primary" title="Play/Pause" aria-label="Play/Pause">▶️</button>
+          <button id="btnNext" class="btn" title="Next" aria-label="Next">⏭️</button>
+          <button id="btnRepeat" class="btn" title="Repeat" aria-label="Repeat">🔁</button>
+          <button id="btnStop" class="btn warn" title="Stop" aria-label="Stop">⏹️</button>
+          <button id="btnClear" class="btn danger" title="Clear queue" aria-label="Clear">🗑️</button>
         </div>
-
-        <div class="flex items-center justify-between">
-            <!-- Left: Track Info & Album Art -->
-            <div class="flex items-center space-x-4 w-1/4 min-w-0">
-                <div class="relative w-14 h-14 flex-shrink-0">
-                    <img id="nowPlayingArt" class="w-full h-full rounded-md object-cover shadow-lg" src="" alt="Album Art" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="w-full h-full rounded-md flex items-center justify-center text-2xl bg-gray-700" id="placeholderArt">💿</div>
-                </div>
-                <div class="min-w-0 hidden sm:block">
-                    <p class="text-sm font-semibold truncate" id="trackTitle">No track playing</p>
-                    <p class="text-xs text-gray-400 truncate" id="trackArtist">Select a song to start</p>
-                </div>
-            </div>
-
-            <!-- Center: Playback Controls -->
-            <div class="flex items-center space-x-6 justify-center w-2/4 max-w-md">
-                <button class="text-gray-400 hover:text-red-400 transition" onclick="jukeboxCommand('skipPrevious')">
-                    <i data-lucide="skip-back" class="w-5 h-5"></i>
-                </button>
-                <button class="text-gray-400 hover:text-red-400 transition" onclick="jukeboxCommand('skip')">
-                    <i data-lucide="skip-forward" class="w-5 h-5"></i>
-                </button>
-                <button id="play-pause-btn" class="bg-red-600 text-white p-3 rounded-full hover:bg-red-700 transition shadow-lg transform hover:scale-105" onclick="togglePlayPause()">
-                    <i id="play-pause-icon" data-lucide="play" class="w-6 h-6 fill-current ml-0.5"></i>
-                </button>
-                <button class="text-gray-400 hover:text-red-400 transition" onclick="jukeboxCommand('setGain', '&gain=0.1')">
-                    <i data-lucide="repeat" class="w-5 h-5"></i>
-                </button>
-                <button class="text-gray-400 hover:text-red-400 transition" onclick="jukeboxCommand('setGain', '&gain=0.1')">
-                    <i data-lucide="shuffle" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <!-- Right: Volume Control & Extra (hidden on mobile) -->
-            <div class="flex items-center justify-end space-x-4 w-1/4">
-                <div class="flex items-center space-x-2 w-28 hidden md:flex">
-                    <i data-lucide="volume-2" class="w-5 h-5 text-gray-400"></i>
-                    <input type="range" min="0" max="100" value="100" class="volume-slider" id="volumeSlider" oninput="updateVolume(this.value)">
-                </div>
-            </div>
+        <div class="vol">
+          <div class="vol-row">
+            <div title="Volume">🔊</div>
+            <input id="volume" type="range" min="0" max="100" value="100" />
+            <div id="volPct" class="volpct">100%</div>
+          </div>
         </div>
-    </footer>
+      </div>
+    </main>
 
-    <!-- Error/Confirmation Message Box (Replacing alert()) -->
-    <div id="message-box" class="error-box transition-all duration-300 transform translate-x-full opacity-0">
-        <!-- Message content here -->
-    </div>
+    <!-- RIGHT -->
+    <aside class="side-card">
+      <h3>Queue</h3>
+      <div id="queue" class="queue" aria-label="Playlist queue"></div>
 
-    <script>
-        // Use a different placeholder art icon for the player bar
-        document.getElementById('placeholderArt').style.display = 'flex';
+      <div class="search-box">
+        <input id="search" placeholder="Search songs to add…" />
+        <div id="sresults" class="search-results" hidden></div>
+      </div>
 
-        // --- Configuration & State ---
-        let config = {
-            serverUrl: 'http://localhost:4533',
-            username: '',
-            token: '',
-            salt: ''
-        };
-        
-        let currentTrackId = null;
-        let isPlaying = false;
-        let playInterval = null; // To handle progress bar updates
-        let totalDuration = 0; // Duration in seconds
+      <div class="config">
+        <div class="row">
+          <input id="serverUrl" placeholder="Server URL (e.g., http://localhost:4533)" />
+          <input id="username" placeholder="Username" />
+          <input id="password" placeholder="Password" type="password" />
+          <button id="btnConnect">Save & Connect</button>
+        </div>
+        <div class="small">Auth is stored in <code>localStorage</code> as token + salt. Uses Subsonic-compatible Jukebox mode.</div>
+      </div>
+    </aside>
+  </div>
 
-        // Load saved config from localStorage
-        const savedConfig = localStorage.getItem('jukeboxConfig');
-        if (savedConfig) {
-            config = JSON.parse(savedConfig);
-            document.getElementById('serverUrl').value = config.serverUrl || '';
-            document.getElementById('username').value = config.username || '';
-            // Note: password field is intentionally left blank for security
+  <script>
+    // =====================
+    // Subsonic/ Navidrome Jukebox Player (desktop-focused)
+    // Features: Play/Pause/Next/Prev, Seek, Volume, Shuffle, Repeat (off/all/one), Queue view, Add/Remove/Reorder
+    // =====================
+
+    const API_VERSION = '1.16.1';
+
+    let config = {
+      serverUrl: 'http://localhost:4533',
+      username: 'bgpntx',
+      token: '',
+      salt: ''
+    };
+
+    let state = {
+      playlist: [], // entries
+      currentIndex: 0,
+      playing: false,
+      gain: 1,
+      position: 0, // seconds
+      lastStatusTs: 0,
+      localTickStart: 0,
+      repeatMode: 'off', // 'off' | 'all' | 'one'
+      shuffleArmed: false,
+      seeking: false,
+      endHandledForId: null
+    };
+
+    // UI refs
+    const $ = (sel) => document.querySelector(sel);
+    const cover = $('#cover');
+    const titleEl = $('#title');
+    const artistEl = $('#artist');
+    const albumEl = $('#album');
+    const statusText = $('#statusText');
+    const queueCount = $('#queueCount');
+    const seek = $('#seek');
+    const curTime = $('#currentTime');
+    const totTime = $('#totalTime');
+    const volume = $('#volume');
+    const volPct = $('#volPct');
+    const qcontainer = $('#queue');
+    const sInput = $('#search');
+    const sResults = $('#sresults');
+
+    const btnPlay = $('#btnPlay');
+    const btnPrev = $('#btnPrev');
+    const btnNext = $('#btnNext');
+    const btnRepeat = $('#btnRepeat');
+    const btnShuffle = $('#btnShuffle');
+    const btnStop = $('#btnStop');
+    const btnClear = $('#btnClear');
+
+    const serverUrlEl = $('#serverUrl');
+    const usernameEl = $('#username');
+    const passwordEl = $('#password');
+    const btnConnect = $('#btnConnect');
+
+    // Load saved config
+    const saved = localStorage.getItem('jukeboxConfig');
+    if (saved) {
+      try { config = JSON.parse(saved); } catch {}
+    }
+    serverUrlEl.value = config.serverUrl || '';
+    usernameEl.value = config.username || '';
+
+    function buildJukeboxUrl(action, extra='') {
+      const base = `${config.serverUrl}/rest/jukeboxControl?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json`;
+      return `${base}&action=${action}${extra}`;
+    }
+    function coverArtUrl(id, size=512) {
+      if (!id) return '';
+      return `${config.serverUrl}/rest/getCoverArt?id=${encodeURIComponent(id)}&size=${size}&u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox`;
+    }
+    async function callJukebox(action, extra='') {
+      const url = buildJukeboxUrl(action, extra);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.['subsonic-response']?.status !== 'ok') throw new Error('API failed');
+      const resp = data['subsonic-response'];
+      if (resp.jukeboxStatus) updateFromStatus(resp.jukeboxStatus);
+      if (resp.jukeboxPlaylist) updateFromPlaylist(resp.jukeboxPlaylist);
+      return resp;
+    }
+
+    // Status & Playlist Updaters
+    function updateFromStatus(st) {
+      if (!st) return;
+      const changedIndex = st.currentIndex !== undefined && st.currentIndex !== state.currentIndex;
+      state.currentIndex = st.currentIndex ?? state.currentIndex;
+      state.playing = !!st.playing;
+      state.gain = st.gain ?? state.gain;
+      state.position = st.position ?? state.position; // seconds
+      state.lastStatusTs = Date.now();
+      state.localTickStart = state.position;
+
+      // UI updates
+      statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused';
+      seekUpdateVisual();
+      volume.value = Math.round(state.gain * 100);
+      setVolFill();
+
+      if (changedIndex) {
+        // refresh playlist visuals
+        renderQueue();
+        updateNowPlayingCard();
+        state.endHandledForId = null;
+      }
+    }
+
+    function updateFromPlaylist(pl) {
+      if (!pl) return;
+      state.currentIndex = pl.currentIndex ?? state.currentIndex;
+      state.playing = !!pl.playing;
+      state.gain = pl.gain ?? state.gain;
+      state.position = pl.position ?? state.position;
+      state.playlist = Array.isArray(pl.entry) ? pl.entry.slice() : (pl.entry ? [pl.entry] : []);
+      queueCount.textContent = state.playlist.length;
+      updateNowPlayingCard();
+      renderQueue();
+      seekUpdateVisual();
+      volume.value = Math.round(state.gain * 100);
+      setVolFill();
+    }
+
+    function updateNowPlayingCard() {
+      const track = state.playlist[state.currentIndex];
+      if (track) {
+        titleEl.textContent = track.title || 'Unknown';
+        artistEl.textContent = track.artist || 'Unknown artist';
+        albumEl.textContent = track.album || '';
+        const art = coverArtUrl(track.coverArt, 900);
+        if (art) cover.src = art; else cover.removeAttribute('src');
+        totTime.textContent = fmtTime(track.duration || 0);
+      } else {
+        titleEl.textContent = 'Nothing playing';
+        artistEl.textContent = '—';
+        albumEl.textContent = '';
+        cover.removeAttribute('src');
+        totTime.textContent = '0:00';
+      }
+    }
+
+    function seekUpdateVisual() {
+      const tr = state.playlist[state.currentIndex];
+      const dur = Math.max(0, tr?.duration || 0);
+      let pos = Math.max(0, Math.min(dur, state.position));
+      // Local smoothing if playing
+      if (state.playing && !state.seeking) {
+        const dt = (Date.now() - state.lastStatusTs) / 1000;
+        pos = Math.min(dur, state.localTickStart + dt);
+      }
+      curTime.textContent = fmtTime(pos);
+      totTime.textContent = fmtTime(dur);
+      const fill = dur ? Math.round((pos / dur) * 1000) : 0;
+      seek.value = String(fill);
+      seek.style.setProperty('--seek-fill', `${(fill/10).toFixed(1)}%`);
+
+      // End of track handlers for repeat
+      const currentId = tr?.id;
+      if (tr && state.playing && dur > 3 && (dur - pos) <= 0.8) {
+        if (state.repeatMode === 'one' && state.endHandledForId !== currentId) {
+          state.endHandledForId = currentId;
+          // restart same track
+          skipTo(state.currentIndex, 0);
+        } else if (state.repeatMode === 'all' && state.endHandledForId !== currentId && state.currentIndex === state.playlist.length - 1) {
+          state.endHandledForId = currentId;
+          skipTo(0, 0);
         }
+      }
+    }
 
-        // --- Utility Functions ---
+    function fmtTime(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      const m = Math.floor(sec / 60); const s = sec % 60;
+      return `${m}:${String(s).padStart(2,'0')}`;
+    }
 
-        /** Shows a temporary message instead of alert() */
-        function showMessage(msg, type = 'success', duration = 4000) {
-            const box = document.getElementById('message-box');
-            let bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
-            
-            box.className = `error-box transition-all duration-300 p-4 rounded-lg shadow-xl text-white ${bgColor}`;
-            box.innerHTML = `<span class="font-semibold">${type === 'success' ? 'Success' : 'Error'}!</span> ${msg}`;
-            
-            // Show
-            box.classList.remove('translate-x-full', 'opacity-0');
-            box.classList.add('translate-x-0', 'opacity-100');
+    // Controls
+    btnPlay.addEventListener('click', async () => {
+      try {
+        if (state.playing) { await callJukebox('stop'); btnPlay.textContent = '▶️'; btnPlay.classList.remove('paused'); }
+        else { await callJukebox('start'); btnPlay.textContent = '⏸️'; btnPlay.classList.add('paused'); }
+      } catch (e) { console.error(e); }
+    });
 
-            // Hide after duration
-            setTimeout(() => {
-                box.classList.remove('translate-x-0', 'opacity-100');
-                box.classList.add('translate-x-full', 'opacity-0');
-            }, duration);
-        }
+    btnPrev.addEventListener('click', async () => {
+      const tr = state.playlist[state.currentIndex];
+      const restart = (state.position || 0) > 3;
+      const target = restart ? state.currentIndex : Math.max(0, state.currentIndex - 1);
+      await skipTo(target, 0);
+    });
 
-        /** Formats time from seconds to MM:SS */
-        function formatTime(seconds) {
-            if (isNaN(seconds) || seconds < 0) return '--:--';
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        }
-        
-        /** Builds the Subsonic API URL */
-        function buildUrl(action, extraParams = '') {
-            if (!config.serverUrl || !config.token) {
-                 console.error("Configuration incomplete for API call.");
-                 return null;
-            }
-            return `${config.serverUrl}/rest/jukeboxControl?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&action=${action}${extraParams}`;
-        }
-        
-        /** Builds the Cover Art URL */
-        function getCoverArtUrl(coverArtId, size = 120) {
-            if (!config.serverUrl || !config.token) return '';
-            if (!coverArtId) return '';
-            return `${config.serverUrl}/rest/getCoverArt?id=${coverArtId}&size=${size}&u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox`;
-        }
+    btnNext.addEventListener('click', async () => {
+      const target = Math.min(state.playlist.length - 1, state.currentIndex + 1);
+      await skipTo(target, 0);
+    });
 
-        // --- Jukebox Controls ---
+    btnStop.addEventListener('click', async () => {
+      try { await callJukebox('stop'); } catch (e) { console.error(e); }
+    });
 
-        /** Sends command to Jukebox */
-        async function jukeboxCommand(action, extraParams = '') {
-            const url = buildUrl(action, extraParams);
-            if (!url) return;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                updateStatus(data['subsonic-response'].jukeboxStatus);
-                
-                // Fetch playlist to get current track info
-                if (action === 'get' || action === 'start' || action === 'add' || action === 'skip' || action === 'skipPrevious') {
-                    await updateNowPlaying();
-                }
-            } catch (error) {
-                console.error('Jukebox Command Error:', error);
-                document.getElementById('status').textContent = 'Error';
-            }
-        }
-        
-        /** Toggles play/pause and updates local state/UI */
-        async function togglePlayPause() {
-            if (!config.token) {
-                showMessage('Please save your server configuration first.', 'error');
-                return;
-            }
-            if (isPlaying) {
-                await jukeboxCommand('stop');
-            } else {
-                await jukeboxCommand('start');
-            }
-        }
+    btnClear.addEventListener('click', async () => {
+      if (!confirm('Clear the whole queue?')) return;
+      try { await callJukebox('clear'); await refreshAll(); } catch (e) { console.error(e); }
+    });
 
-        /** Updates the Now Playing area with current track info */
-        async function updateNowPlaying() {
-            if (!config.token) return;
+    btnShuffle.addEventListener('click', async () => {
+      try { await callJukebox('shuffle'); await refreshAll(); btnShuffle.classList.add('active'); setTimeout(()=>btnShuffle.classList.remove('active'), 600); } catch(e){ console.error(e); }
+    });
 
-            try {
-                const response = await fetch(`${config.serverUrl}/rest/getPlayQueue?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json`);
-                const data = await response.json();
-                const playQueue = data['subsonic-response'].playQueue;
-                
-                if (playQueue && playQueue.entry && playQueue.entry.length > 0) {
-                    const currentIndex = playQueue.currentIndex || 0;
-                    const track = playQueue.entry[currentIndex];
-                    
-                    if (track) {
-                        currentTrackId = track.id;
-                        document.getElementById('trackTitle').textContent = track.title || 'Unknown Track';
-                        document.getElementById('trackArtist').textContent = track.artist || 'Unknown Artist';
-                        
-                        // Update player art
-                        const artUrl = getCoverArtUrl(track.coverArt);
-                        const artImg = document.getElementById('nowPlayingArt');
-                        const placeholder = document.getElementById('placeholderArt');
-                        
-                        if (artUrl) {
-                            artImg.src = artUrl;
-                            artImg.style.display = 'block';
-                            placeholder.style.display = 'none';
-                        } else {
-                            artImg.style.display = 'none';
-                            placeholder.style.display = 'flex';
-                        }
-                        
-                        // Update duration for progress bar
-                        totalDuration = track.duration || 0; // duration in seconds
-                        document.getElementById('duration').textContent = formatTime(totalDuration);
-                        
-                    } else {
-                         // Clear display if queue is somehow broken
-                        document.getElementById('trackTitle').textContent = 'Queue Empty';
-                        document.getElementById('trackArtist').textContent = '';
-                        document.getElementById('duration').textContent = '--:--';
-                    }
-                }
-            } catch (error) {
-                console.error('PlayQueue retrieval error:', error);
-            }
-        }
+    btnRepeat.addEventListener('click', () => {
+      state.repeatMode = state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off';
+      const map = { off:'🔁', all:'🔂', one:'🔂1' };
+      btnRepeat.textContent = map[state.repeatMode];
+      btnRepeat.classList.toggle('active', state.repeatMode !== 'off');
+    });
 
-        /** Updates status variables (playing state, volume, position) */
-        function updateStatus(status) {
-            if (!status) return;
-            
-            // 1. Play/Pause State
-            isPlaying = status.playing;
-            document.getElementById('status').textContent = isPlaying ? 'Playing' : 'Paused';
-            document.getElementById('play-pause-icon').setAttribute('data-lucide', isPlaying ? 'pause' : 'play');
+    async function skipTo(index, offsetSec=0) {
+      index = Math.max(0, Math.min(index, state.playlist.length - 1));
+      try {
+        await callJukebox('skip', `&index=${index}&offset=${Math.max(0, Math.floor(offsetSec))}`);
+        await callJukebox('status');
+        await callJukebox('get');
+      } catch(e){ console.error(e); }
+    }
 
-            // 2. Volume
-            const volumePercent = Math.round(status.gain * 100);
-            document.getElementById('volumeDisplay').textContent = volumePercent + '%';
-            // Only update slider if the user is not actively dragging it
-            if (document.activeElement.id !== 'volumeSlider') {
-                 document.getElementById('volumeSlider').value = volumePercent;
-            }
+    // Seek bar interactions (debounced commit)
+    let seekCommitTimer = null;
+    seek.addEventListener('input', () => {
+      state.seeking = true;
+      const tr = state.playlist[state.currentIndex];
+      const dur = Math.max(0, tr?.duration || 0);
+      const pos = (Number(seek.value) / 1000) * dur;
+      state.position = pos;
+      state.localTickStart = pos;
+      state.lastStatusTs = Date.now();
+      seekUpdateVisual();
+      if (seekCommitTimer) clearTimeout(seekCommitTimer);
+      seekCommitTimer = setTimeout(() => commitSeek(), 250);
+    });
+    seek.addEventListener('change', commitSeek);
+    async function commitSeek(){
+      state.seeking = false;
+      const tr = state.playlist[state.currentIndex];
+      const dur = Math.max(0, tr?.duration || 0);
+      const pos = (Number(seek.value)/1000) * dur;
+      await skipTo(state.currentIndex, pos);
+    }
 
-            // 3. Progress Bar (If Playing)
-            if (isPlaying) {
-                // If this is the first time we see the song, set duration
-                if (totalDuration === 0 || status.id !== currentTrackId) {
-                    updateNowPlaying(); 
-                }
-                
-                const position = status.position || 0; // position in seconds
-                const percentage = totalDuration > 0 ? (position / totalDuration) * 100 : 0;
-                
-                document.getElementById('current-time').textContent = formatTime(position);
-                document.getElementById('progressSlider').value = percentage;
-                document.getElementById('progress-fill').style.width = `${percentage}%`;
-            } else {
-                // Stop interval updates if paused
-                document.getElementById('current-time').textContent = formatTime(status.position || 0);
-            }
-            
-            // Re-render icons
-            lucide.createIcons();
-        }
+    // Volume
+    function setVolFill(){
+      const pct = Number(volume.value);
+      volume.style.setProperty('--vol-fill', `${pct}%`);
+      volPct.textContent = `${pct}%`;
+    }
+    setVolFill();
+    volume.addEventListener('input', setVolFill);
+    volume.addEventListener('change', async () => {
+      const gain = Math.max(0, Math.min(1, Number(volume.value)/100));
+      try { await callJukebox('setGain', `&gain=${gain}`); } catch(e){ console.error(e); }
+    });
 
-        /** Manual volume update handler */
-        async function updateVolume(value) {
-            const gain = value / 100;
-            // Immediate UI feedback
-            document.getElementById('volumeDisplay').textContent = value + '%'; 
-            
-            // Throttled command to server
-            if (this.volumeTimeout) clearTimeout(this.volumeTimeout);
-            this.volumeTimeout = setTimeout(async () => {
-                await jukeboxCommand('setGain', `&gain=${gain}`);
-            }, 100); 
-        }
+    // Queue rendering + DnD
+    function renderQueue(){
+      qcontainer.innerHTML = '';
+      state.playlist.forEach((song, i) => {
+        const row = document.createElement('div');
+        row.className = 'qitem' + (i === state.currentIndex ? ' current' : '');
+        row.draggable = true;
+        row.dataset.index = String(i);
+        row.innerHTML = `
+          <div class="idx">${i+1}</div>
+          <div>
+            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+            <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
+          </div>
+          <div class="qi-actions">
+            <button title="Play here" class="btn" data-act="play">▶️</button>
+            <button title="Remove" class="btn" data-act="rm">✖️</button>
+          </div>`;
 
-        /** Progress bar handler (Disabled, as Navidrome jukebox uses direct control) */
-        function updateProgress(value) {
-            // Note: In the Navidrome Jukebox API, the server dictates the position. 
-            // Setting position via the API is unreliable/unsupported for this endpoint.
-            // We just update the visual here but don't send a command.
-            const newTime = (value / 100) * totalDuration;
-            document.getElementById('current-time').textContent = formatTime(newTime);
-            document.getElementById('progress-fill').style.width = `${value}%`;
-            
-            // For a real player, we would send a 'seek' command here:
-            // jukeboxCommand('setPosition', `&position=${newTime}`); 
-        }
-
-        /** Plays a random song */
-        async function playRandom() {
-            if (!config.token) {
-                showMessage('Please save your server configuration first.', 'error');
-                return;
-            }
-
-            try {
-                // 1. Get a random song
-                const response = await fetch(`${config.serverUrl}/rest/getRandomSongs?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&size=1`);
-                const data = await response.json();
-                const song = data['subsonic-response'].randomSongs.song[0];
-                
-                // 2. Clear queue, add song, and start playback
-                await jukeboxCommand('clear');
-                await jukeboxCommand('add', `&id=${song.id}`);
-                await jukeboxCommand('start');
-                
-                showMessage(`Playing random track: ${song.title}`, 'success');
-            } catch (error) {
-                console.error('Error playing random song:', error);
-                showMessage('Failed to play random song. Check server URL.', 'error');
-            }
-        }
-
-
-        // --- Search Functionality ---
-
-        let searchTimeout;
-        async function searchSongs() {
-            clearTimeout(searchTimeout);
-            const query = document.getElementById('searchInput').value.trim();
-            const resultsDiv = document.getElementById('searchResults');
-            
-            if (query.length < 2) {
-                resultsDiv.classList.add('hidden');
-                return;
-            }
-
-            if (!config.token) {
-                 resultsDiv.innerHTML = '<div class="p-4 text-center text-red-400">Please connect to the server first.</div>';
-                 resultsDiv.classList.remove('hidden');
-                 return;
-            }
-            
-            resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400 flex items-center justify-center"><i data-lucide="loader-circle" class="w-5 h-5 mr-2 animate-spin"></i> Searching...</div>';
-            resultsDiv.classList.remove('hidden');
-
-            searchTimeout = setTimeout(async () => {
-                try {
-                    const response = await fetch(`${config.serverUrl}/rest/search3?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&query=${encodeURIComponent(query)}`);
-                    const data = await response.json();
-                    displaySearchResults(data['subsonic-response'].searchResult3);
-                } catch (error) {
-                    console.error('Search error:', error);
-                    resultsDiv.innerHTML = '<div class="p-4 text-center text-red-400">Search failed. Check network/URL.</div>';
-                }
-            }, 300);
-        }
-
-        /** Renders search results as a modern track list */
-        function displaySearchResults(results) {
-            const resultsDiv = document.getElementById('searchResults');
-            
-            if (!results.song || results.song.length === 0) {
-                resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400">No tracks found.</div>';
-                return;
-            }
-            
-            resultsDiv.innerHTML = results.song.slice(0, 15).map(song => {
-                const artUrl = getCoverArtUrl(song.coverArt, 40);
-                return `
-                    <div class="song-item flex items-center p-3 border-b border-gray-700 hover:bg-gray-700/50 transition cursor-pointer" onclick="playSong('${song.id}', '${song.title.replace(/'/g, "\\'")}')">
-                        <img class="w-10 h-10 rounded-md object-cover flex-shrink-0" src="${artUrl}" alt="Art" onerror="this.src='https://placehold.co/40x40/374151/ffffff?text=CD'">
-                        <div class="song-info flex-1 min-w-0 ml-4">
-                            <div class="font-semibold text-sm truncate">${song.title}</div>
-                            <div class="text-xs text-gray-400 truncate">${song.artist} — ${song.album}</div>
-                        </div>
-                        <div class="song-play-icon text-red-400 opacity-0 transition duration-300 ml-4 flex-shrink-0">
-                            <i data-lucide="play-circle" class="w-5 h-5 fill-current"></i>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            lucide.createIcons(); // Re-render icons
-        }
-
-        /** Adds and plays a specific song */
-        async function playSong(songId, title) {
-            await jukeboxCommand('clear');
-            await jukeboxCommand('add', `&id=${songId}`);
-            await jukeboxCommand('start');
-            document.getElementById('searchInput').value = '';
-            document.getElementById('searchResults').classList.add('hidden');
-            showMessage(`Queued and playing: ${title}`, 'success');
-        }
-
-        // --- Configuration Save/Connect ---
-
-        async function saveConfig() {
-            const serverUrl = document.getElementById('serverUrl').value.trim();
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            
-            if (!serverUrl || !username || !password) {
-                showMessage('Please fill in Server URL, Username, and Password.', 'error');
-                return;
-            }
-            
-            try {
-                // Attempt to login using a standard Subsonic/Navidrome login endpoint (if available)
-                // Note: The original logic here assumes a custom auth/login endpoint which might not be standard. 
-                // We use a simplified Subsonic token generation approach for demonstration purposes, 
-                // as the Subsonic API standard typically uses a one-way hash (MD5(password + salt))
-                
-                // For demonstration: Assume a fixed token/salt structure if using a proxy, or prompt user to fill in if they know it.
-                // Since this is client-side, we can't MD5 the password safely, so we need a token/salt if required.
-                
-                // Simulating a successful connection and generating a dummy token/salt based on the original structure.
-                // **WARNING:** The actual Navidrome API requires proper MD5 hashing of password + salt. 
-                // This section is simplified for the HTML demo environment.
-                
-                // To connect successfully, the user must provide a valid API token and salt in a real-world scenario.
-                // We'll proceed by setting dummy data and relying on the user to input correct credentials in the fields.
-                
-                config = {
-                    serverUrl,
-                    username,
-                    // Use a placeholder token and salt. The user should ideally use the one Navidrome provides or configure.
-                    token: '6337b8aa97f1054321d35af386a7ad98', 
-                    salt: '2e7b21'
-                };
-                
-                localStorage.setItem('jukeboxConfig', JSON.stringify(config));
-                showMessage('✅ Configuration saved! Attempting status check.', 'success');
-                
-                // Refresh status
-                await jukeboxCommand('get');
-                await updateNowPlaying();
-            } catch (error) {
-                showMessage('❌ Configuration saved, but failed to connect. Check your server URL.', 'error');
-                console.error('Config save/connection error:', error);
-            }
-        }
-
-        // --- Initialization ---
-
-        // Auto-refresh status every 5 seconds
-        setInterval(async () => {
-            if (config.token) {
-                await jukeboxCommand('get');
-            }
-        }, 5000);
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initial status check if config is loaded
-            if (config.token) {
-                jukeboxCommand('get');
-                updateNowPlaying();
-            } else {
-                 document.getElementById('status').textContent = 'Disconnected';
-            }
-            
-            // Initial Lucide icon rendering
-            lucide.createIcons();
+        row.addEventListener('dragstart', (e)=>{ row.classList.add('dragging'); e.dataTransfer.setData('text/plain', String(i)); });
+        row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
+        row.addEventListener('dragover', (e)=>{ e.preventDefault(); const after = getDragAfterElement(qcontainer, e.clientY); qcontainer.insertBefore(row, after); });
+        row.addEventListener('drop', async (e)=>{
+          e.preventDefault();
+          await commitReorderFromDOM();
         });
-    </script>
+
+        row.addEventListener('click', async (e) => {
+          const act = e.target.closest('button')?.dataset?.act;
+          if (act === 'play') { await skipTo(i, 0); }
+          if (act === 'rm') { await removeIndex(i); }
+        });
+
+        qcontainer.appendChild(row);
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
+      return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight/2) || null;
+    }
+
+    async function commitReorderFromDOM(){
+      // Read new order from DOM
+      const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
+      const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
+      if (!ids.length) return;
+      const qs = ids.map(id => `&id=${encodeURIComponent(id)}`).join('');
+      await callJukebox('set', qs);
+      await refreshAll();
+    }
+
+    async function removeIndex(i){
+      try { await callJukebox('remove', `&index=${i}`); await refreshAll(); } catch(e){ console.error(e); }
+    }
+
+    // Search & Add
+    let sTimer = null;
+    sInput.addEventListener('input', () => {
+      const q = sInput.value.trim();
+      if (sTimer) clearTimeout(sTimer);
+      if (q.length < 2) { sResults.hidden = true; sResults.innerHTML=''; return; }
+      sTimer = setTimeout(()=> doSearch(q), 250);
+    });
+
+    async function doSearch(q){
+      try {
+        const url = `${config.serverUrl}/rest/search3?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json&query=${encodeURIComponent(q)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const results = data?.['subsonic-response']?.searchResult3?.song || [];
+        renderSearch(results);
+      } catch(e){ console.error(e); }
+    }
+
+    function renderSearch(songs){
+      sResults.innerHTML = '';
+      songs.slice(0, 20).forEach(song => {
+        const row = document.createElement('div');
+        row.className = 'srow';
+        row.innerHTML = `
+          <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'"/>
+          <div class="s-meta">
+            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+            <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
+          </div>
+          <div style="text-align:right">➕</div>`;
+        row.addEventListener('click', async ()=>{
+          await addSong(song.id);
+          sInput.value = '';
+          sResults.hidden = true;
+          sResults.innerHTML = '';
+        });
+        sResults.appendChild(row);
+      });
+      sResults.hidden = songs.length === 0;
+    }
+
+    async function addSong(id){
+      try {
+        await callJukebox('add', `&id=${encodeURIComponent(id)}`);
+        // If nothing is playing, start playback
+        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+        await refreshAll();
+      } catch(e){ console.error(e); }
+    }
+
+    // Config & Auth
+    btnConnect.addEventListener('click', async () => {
+      const serverUrl = serverUrlEl.value.trim();
+      const username = usernameEl.value.trim();
+      const password = passwordEl.value;
+      if (!serverUrl || !username || !password) { alert('Fill server, username and password'); return; }
+      try {
+        const resp = await fetch(`${serverUrl}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+        const data = await resp.json();
+        config = { serverUrl, username, token: data.subsonicToken, salt: data.subsonicSalt };
+        localStorage.setItem('jukeboxConfig', JSON.stringify(config));
+        await refreshAll();
+        alert('Connected!');
+      } catch (e) {
+        alert('Login failed. Check URL/credentials.');
+        console.error(e);
+      }
+    });
+
+    // Helpers
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+    async function refreshAll(){
+      try { await callJukebox('get'); } catch(e){ console.error(e); }
+    }
+
+    // Polling (status every 1s)
+    setInterval(async () => {
+      try { await callJukebox('status'); } catch(e){ /* ignore */ }
+      // local paint (smooth progress) between polls
+      seekUpdateVisual();
+    }, 1000);
+
+    // Initial load
+    (async function init(){
+      try {
+        await refreshAll();
+      } catch (e) { console.error(e); statusText.textContent = 'Error connecting. Configure server.'; }
+    })();
+  </script>
 </body>
 </html>
