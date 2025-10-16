@@ -1,7 +1,39 @@
-# Увімкнути jukebox
-Jukebox = true
-MPVCmdTemplate = "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' --quiet ${INPUT}"
-LogLevel = 'DEBUG'
+# navidrome.toml — приклад конфігурації
 
-# Якщо хочеш явно вказати команду mpv
-# MPVCmdTemplate = "mpv --no-video --audio-device=alsa/your_card_name --quiet ${INPUT}"
+# Базові налаштування
+MusicFolder = "/music"
+DataFolder = "/data"
+LogLevel = "DEBUG"
+
+# Jukebox / офіційний режим відтворення через серверну машину
+Jukebox.Enabled = true
+Jukebox.AdminOnly = false
+
+# Список доступних аудіо пристроїв (для UI / вибору)
+Jukebox.Devices = [
+  # ["symbolic name", "mpv audio-device string"]
+  [ "U24XL", "alsa/sysdefault:CARD=U24XL" ]
+]
+Jukebox.Default = "U24XL"
+
+# Шлях до mpv (якщо не в PATH)
+# Якщо не вказаний — Navidrome має спробувати знайти mpv автоматично
+MPVPath = "/usr/bin/mpv"
+
+# Командний шаблон MPV — як саме Navidrome викликатиме mpv
+# %d — аудіо пристрій, %f — файл (шлях), %s — IPC сервер (sockets)
+MPVCmdTemplate = "mpv --no-video --audio-device=%d --input-ipc-server=%s %f"
+
+# Інші опції
+SessionTimeout = "48h"
+EnableDownloads = true
+EnableExternalServices = true
+
+# Налаштування сканера бібліотек
+Scanner.Schedule = "@every 24h"
+# або якщо хочеш реальний інтервал:
+# Scanner.Schedule = "@every 1h"
+
+# Кеші
+ImageCacheSize = "100MiB"
+TranscodingCacheSize = "100MiB"
