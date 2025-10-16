@@ -6,14 +6,12 @@ const API_VERSION = '1.16.1';
 let config = JSON.parse(localStorage.getItem('jukeboxConfig')) || {
     serverUrl: 'http://localhost:4533',
     username: '',
-    // NOTE: token and salt are omitted from default to force user setup/entry
     token: '',
     salt: ''
 };
 
 // --- Utilities ---
 export function escapeHtml(s) {
-    // Replaced the simple check with the robust one from the original file
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
 }
 
@@ -38,22 +36,27 @@ export async function callJukebox(action, extra = '') {
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const data = await res.json();
     
+    console.log(`API ${action} response:`, data); // DEBUG
+    
     const resp = data?.['subsonic-response'];
     if (resp?.status !== 'ok') {
         const errorMsg = resp?.error?.message || 'Unknown API error';
         throw new Error(`API failed: ${errorMsg}`);
     }
     
+    // Log what we're actually getting
+    console.log('jukeboxStatus:', resp.jukeboxStatus);
+    console.log('jukeboxPlaylist:', resp.jukeboxPlaylist);
+    
     // Return structured data for React component to process
     return {
-        status: resp.jukeboxStatus,
-        playlist: resp.jukeboxPlaylist
+        status: resp.jukeboxStatus || null,
+        playlist: resp.jukeboxPlaylist || { entry: [] }
     };
 }
 
 // --- Random Song & Search ---
 async function getRandomSongFromServer() {
-    // Uses the dedicated getRandomSongs API as implemented in the original file
     const url = `${config.serverUrl}/rest/getRandomSongs?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json&size=1`;
     
     const res = await fetch(url);
@@ -77,8 +80,6 @@ async function getRandomSongFromServer() {
 
 export async function addRandomSong() {
     const randomSong = await getRandomSongFromServer();
-
-    // Use the ID from the song returned by the server to add to the Jukebox queue
     const resp = await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
     
     return { randomSong, resp };

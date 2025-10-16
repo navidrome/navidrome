@@ -79,17 +79,24 @@ export default function App() {
         }
         
         try {
-            const { status, playlist } = await callJukebox('get');
+            const result = await callJukebox('get');
+            console.log('API Response:', result); // DEBUG
             
-            // Defensive checks - API might not return status
-            if (!status) {
-                console.warn('API returned no status object');
-                return;
-            }
+            const { status, playlist } = result;
             
             const newPlaylist = Array.isArray(playlist?.entry) 
                 ? playlist.entry 
                 : (playlist?.entry ? [playlist.entry] : []);
+            
+            // If status is missing, still update playlist but keep existing state
+            if (!status) {
+                console.warn('API returned no status object, updating playlist only');
+                setState(prevState => ({
+                    ...prevState,
+                    playlist: newPlaylist.length > 0 ? newPlaylist : prevState.playlist,
+                }));
+                return;
+            }
             
             setState(prevState => {
                 // Check if track changed to reset repeat state
