@@ -1,9 +1,8 @@
 services:
   navidrome:
-    build: .
-    image: navidrome-jukebox
+    image: deluan/navidrome:latest
     container_name: navidrome
-    user: 1000:1000   # або UID:GID, до власника музики/даних
+    user: 1000:1000  # встанови свій UID:GID, якщо потрібно
     ports:
       - "4533:4533"
     restart: unless-stopped
@@ -11,14 +10,18 @@ services:
       ND_MUSICFOLDER: /music
       ND_DATAFOLDER: /data
       ND_LOGLEVEL: debug
-      # Додаткові налаштування - нафіга??
-      # Наприклад, шаблон mpv запуску, якщо хочеш ручне налаштування
-      # ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device=<твоє_пристрій> ${MPV_OPTS} ${INPUT}"
+      ND_JUKEBOX_ENABLED: "true"
+      ND_JUKEBOX_ADMINONLY: "false"
+      ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${MPV_OPTS} ${INPUT}"
+      # Якщо маєш навидроме.toml, можна вказати:
+      # ND_CONFIGFILE: /data/navidrome.toml
     volumes:
       - /big/Muz:/music:ro
       - /nvme1/navidrome:/data
+      # Якщо маєш власний toml:
+      # - ./navidrome.toml:/data/navidrome.toml:ro
     devices:
-      - /dev/snd:/dev/snd   # дає контейнеру доступ до звукового пристрою
+      - /dev/snd:/dev/snd
     cap_add:
       - SYS_ADMIN
       - SYS_RAWIO
