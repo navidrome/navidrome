@@ -40,8 +40,8 @@
     }
 
     .player-shell {
-      width: 1180px; /* Desktop-focused */
-      max-width: 100%;
+      width: 100%;
+      max-width: 1200px;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 24px;
@@ -49,7 +49,7 @@
       box-shadow: var(--shadow);
       padding: 22px;
       display: grid;
-      grid-template-columns: 360px 1fr 360px;
+      grid-template-columns: minmax(300px, 360px) 1fr minmax(300px, 360px);
       gap: 22px;
     }
 
@@ -58,6 +58,9 @@
       background: var(--card);
       border-radius: var(--radius);
       padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
     .cover {
@@ -70,7 +73,10 @@
     }
 
     .meta {
-      margin-top: 14px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .title {
@@ -97,7 +103,7 @@
       padding: 18px 22px;
       display: grid;
       grid-template-rows: auto auto 1fr;
-      gap: 12px;
+      gap: 16px;
       align-items: start;
     }
 
@@ -131,10 +137,11 @@
       -webkit-appearance: none;
       appearance: none;
       width: 100%;
-      height: 8px;
+      height: 10px;
       border-radius: 999px;
       background: linear-gradient(90deg, var(--accent) var(--seek-fill, 0%), rgba(255, 255, 255, 0.16) var(--seek-fill, 0%));
       outline: none;
+      cursor: pointer;
     }
 
     .seek::-webkit-slider-thumb {
@@ -146,6 +153,7 @@
       background: #fff;
       border: 3px solid var(--accent);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      cursor: grab;
     }
 
     .seek::-moz-range-thumb {
@@ -154,13 +162,15 @@
       border-radius: 50%;
       background: #fff;
       border: 3px solid var(--accent);
+      cursor: grab;
     }
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 12px;
       align-items: center;
+      justify-items: center;
     }
 
     .btn {
@@ -168,6 +178,7 @@
       align-items: center;
       justify-content: center;
       height: 44px;
+      width: 44px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(255, 255, 255, 0.06);
@@ -187,6 +198,7 @@
 
     .btn.primary {
       height: 54px;
+      width: 54px;
       font-size: 22px;
       background: linear-gradient(180deg, var(--accent), #6d28d9);
       border: none;
@@ -216,22 +228,23 @@
       display: grid;
       gap: 6px;
       align-content: center;
-      margin-top: 6px;
+      margin-top: 12px;
     }
 
     .vol-row {
       display: grid;
       grid-template-columns: 28px 1fr 48px;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .vol input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
-      height: 8px;
+      height: 10px;
       border-radius: 999px;
       background: linear-gradient(90deg, #22c55e var(--vol-fill, 100%), rgba(255, 255, 255, 0.16) var(--vol-fill, 100%));
+      cursor: pointer;
     }
 
     .vol input[type="range"]::-webkit-slider-thumb {
@@ -242,6 +255,7 @@
       border-radius: 50%;
       background: #fff;
       border: 2px solid #22c55e;
+      cursor: grab;
     }
 
     .vol input[type="range"]::-moz-range-thumb {
@@ -265,7 +279,7 @@
       border-radius: var(--radius);
       padding: 18px;
       display: grid;
-      gap: 12px;
+      gap: 16px;
     }
 
     .side-card h3 {
@@ -285,7 +299,7 @@
 
     .qitem {
       display: grid;
-      grid-template-columns: 28px 1fr 52px;
+      grid-template-columns: 28px 1fr 60px;
       gap: 10px;
       align-items: center;
       padding: 10px 12px;
@@ -324,7 +338,7 @@
 
     .qitem .qi-actions {
       display: inline-flex;
-      gap: 6px;
+      gap: 8px;
       justify-content: flex-end;
     }
 
@@ -345,7 +359,7 @@
 
     .search-box {
       display: grid;
-      gap: 8px;
+      gap: 12px;
     }
 
     .search-box input {
@@ -406,18 +420,19 @@
 
     /* Config */
     .config {
-      margin-top: 10px;
+      margin-top: 12px;
       background: var(--card);
       border-radius: var(--radius);
-      padding: 12px;
+      padding: 16px;
       display: grid;
-      gap: 8px;
+      gap: 12px;
     }
 
     .config .row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr auto;
-      gap: 8px;
+      gap: 12px;
+      align-items: center;
     }
 
     .config input {
@@ -426,6 +441,7 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
       background: rgba(255, 255, 255, 0.06);
       color: var(--text);
+      width: 100%;
     }
 
     .config button {
@@ -436,11 +452,39 @@
       color: #05140a;
       cursor: pointer;
       font-weight: 700;
+      width: 100%;
     }
 
     .small {
       font-size: 12px;
       color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .player-shell {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .cover-card, .transport-card, .side-card {
+        width: 100%;
+      }
+
+      .controls {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .btn {
+        width: 100%;
+        height: 40px;
+        font-size: 16px;
+      }
+
+      .btn.primary {
+        height: 50px;
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -737,7 +781,7 @@
       try {
         await callJukebox('shuffle');
         await refreshAll();
-        btnShuffle.classList.add('active Juno');
+        btnShuffle.classList.add('active');
         setTimeout(() => btnShuffle.classList.remove('active'), 600);
       } catch (e) {
         console.error(e);
