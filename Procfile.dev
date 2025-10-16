@@ -1,2 +1,0 @@
-JS: sh -c "cd ./ui && npm start"
-GO: go tool reflex -d none -c reflex.conf

@@ -1,7 +1,0 @@
-User = "deluan"
-Password = "wordpass"
-DbPath = "file::memory:?cache=shared"
-DataFolder = "tmp/tests"
-ScanSchedule="0"
-Plugins.Enabled = true
-Plugins.Folder = "plugins/testdata"

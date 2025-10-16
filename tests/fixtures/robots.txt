@@ -1,4 +1,0 @@
-User-agent: bingbot
-Disallow: /manifest.webmanifest
-
-User-agent: *

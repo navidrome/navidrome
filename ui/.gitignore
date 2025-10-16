@@ -1,7 +1,0 @@
-node_modules
-.eslintcache
-
-build/*
-!build/.gitkeep
-/coverage/
-public/3rdparty/workbox

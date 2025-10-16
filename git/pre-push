@@ -1,4 +1,0 @@
-#!/bin/sh
-set -e
-
-make pre-push
