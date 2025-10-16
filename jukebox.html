@@ -631,25 +631,36 @@
 
     // API Utilities
     function buildJukeboxUrl(action, extra = '') {
+      if (!config.token || !config.salt) {
+        console.error('Authentication missing');
+        return '';
+      }
       const base = `${config.serverUrl}/rest/jukeboxControl?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json`;
       return `${base}&action=${action}${extra}`;
     }
 
     function coverArtUrl(id, size = 512) {
-      if (!id) return '';
+      if (!id || !config.token || !config.salt) return '';
       return `${config.serverUrl}/rest/getCoverArt?id=${encodeURIComponent(id)}&size=${size}&u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox`;
     }
 
     async function callJukebox(action, extra = '') {
       const url = buildJukeboxUrl(action, extra);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data?.['subsonic-response']?.status !== 'ok') throw new Error('API failed');
-      const resp = data['subsonic-response'];
-      if (resp.jukeboxStatus) updateFromStatus(resp.jukeboxStatus);
-      if (resp.jukeboxPlaylist) updateFromPlaylist(resp.jukeboxPlaylist);
-      return resp;
+      if (!url) return;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data?.['subsonic-response']?.status !== 'ok') throw new Error('API failed: ' + (data?.['subsonic-response']?.error?.message || 'Unknown error'));
+        const resp = data['subsonic-response'];
+        if (resp.jukeboxStatus) updateFromStatus(resp.jukeboxStatus);
+        if (resp.jukeboxPlaylist) updateFromPlaylist(resp.jukeboxPlaylist);
+        return resp;
+      } catch (e) {
+        console.error('API call failed:', e);
+        statusText.textContent = `Error: ${e.message}. Check connection or config.`;
+        throw e;
+      }
     }
 
     // Status & Playlist Updates
@@ -742,262 +753,274 @@
     }
 
     // Control Handlers
-    btnPlay.addEventListener('click', async () => {
-      try {
-        if (state.playing) {
-          await callJukebox('stop');
-          btnPlay.textContent = '▶️';
-          btnPlay.classList.remove('paused');
-        } else {
-          await callJukebox('start');
-          btnPlay.textContent = '⏸️';
-          btnPlay.classList.add('paused');
+    function setupEventListeners() {
+      btnPlay.addEventListener('click', async () => {
+        try {
+          if (state.playing) {
+            await callJukebox('stop');
+            btnPlay.textContent = '▶️';
+            btnPlay.classList.remove('paused');
+          } else {
+            await callJukebox('start');
+            btnPlay.textContent = '⏸️';
+            btnPlay.classList.add('paused');
+          }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    btnPrev.addEventListener('click', async () => {
-      const tr = state.playlist[state.currentIndex];
-      const restart = (state.position || 0) > 3;
-      const target = restart ? state.currentIndex : Math.max(0, state.currentIndex - 1);
-      await skipTo(target, 0);
-    });
-
-    btnNext.addEventListener('click', async () => {
-      const target = Math.min(state.playlist.length - 1, state.currentIndex + 1);
-      await skipTo(target, 0);
-    });
-
-    btnStop.addEventListener('click', async () => {
-      try {
-        await callJukebox('stop');
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    btnClear.addEventListener('click', async () => {
-      if (!confirm('Clear the whole queue?')) return;
-      try {
-        await callJukebox('clear');
-        await refreshAll();
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    btnShuffle.addEventListener('click', async () => {
-      try {
-        await callJukebox('shuffle');
-        await refreshAll();
-        btnShuffle.classList.add('active');
-        setTimeout(() => btnShuffle.classList.remove('active'), 600);
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    btnRepeat.addEventListener('click', () => {
-      state.repeatMode = state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off';
-      const map = { off: '🔁', all: '🔂', one: '🔂1' };
-      btnRepeat.textContent = map[state.repeatMode];
-      btnRepeat.classList.toggle('active', state.repeatMode !== 'off');
-    });
-
-    async function skipTo(index, offsetSec = 0) {
-      index = Math.max(0, Math.min(index, state.playlist.length - 1));
-      try {
-        await callJukebox('skip', `&index=${index}&offset=${Math.max(0, Math.floor(offsetSec))}`);
-        await callJukebox('status');
-        await callJukebox('get');
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    // Seek Bar
-    let seekCommitTimer = null;
-    seek.addEventListener('input', () => {
-      state.seeking = true;
-      const tr = state.playlist[state.currentIndex];
-      const dur = Math.max(0, tr?.duration || 0);
-      const pos = (Number(seek.value) / 1000) * dur;
-      state.position = pos;
-      state.localTickStart = pos;
-      state.lastStatusTs = Date.now();
-      seekUpdateVisual();
-      if (seekCommitTimer) clearTimeout(seekCommitTimer);
-      seekCommitTimer = setTimeout(() => commitSeek(), 250);
-    });
-
-    seek.addEventListener('change', commitSeek);
-
-    async function commitSeek() {
-      state.seeking = false;
-      const tr = state.playlist[state.currentIndex];
-      const dur = Math.max(0, tr?.duration || 0);
-      const pos = (Number(seek.value) / 1000) * dur;
-      await skipTo(state.currentIndex, pos);
-    }
-
-    // Volume Control
-    function setVolFill() {
-      const pct = Number(volume.value);
-      volume.style.setProperty('--vol-fill', `${pct}%`);
-      volPct.textContent = `${pct}%`;
-    }
-
-    setVolFill();
-    volume.addEventListener('input', setVolFill);
-    volume.addEventListener('change', async () => {
-      const gain = Math.max(0, Math.min(1, Number(volume.value) / 100));
-      try {
-        await callJukebox('setGain', `&gain=${gain}`);
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    // Queue Rendering & Drag-and-Drop
-    function renderQueue() {
-      qcontainer.innerHTML = '';
-      state.playlist.forEach((song, i) => {
-        const row = document.createElement('div');
-        row.className = 'qitem' + (i === state.currentIndex ? ' current' : '');
-        row.draggable = true;
-        row.dataset.index = String(i);
-        row.innerHTML = `
-          <div class="idx">${i + 1}</div>
-          <div>
-            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
-            <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
-          </div>
-          <div class="qi-actions">
-            <button title="Play here" class="btn" data-act="play">▶️</button>
-            <button title="Remove" class="btn" data-act="rm">✖️</button>
-          </div>`;
-        row.addEventListener('dragstart', (e) => {
-          row.classList.add('dragging');
-          e.dataTransfer.setData('text/plain', String(i));
-        });
-        row.addEventListener('dragend', () => row.classList.remove('dragging'));
-        row.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          const after = getDragAfterElement(qcontainer, e.clientY);
-          qcontainer.insertBefore(row, after);
-        });
-        row.addEventListener('drop', async (e) => {
-          e.preventDefault();
-          await commitReorderFromDOM();
-        });
-        row.addEventListener('click', async (e) => {
-          const act = e.target.closest('button')?.dataset?.act;
-          if (act === 'play') await skipTo(i, 0);
-          if (act === 'rm') await removeIndex(i);
-        });
-        qcontainer.appendChild(row);
       });
-    }
 
-    function getDragAfterElement(container, y) {
-      const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
-      return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
-    }
+      btnPrev.addEventListener('click', async () => {
+        const tr = state.playlist[state.currentIndex];
+        const restart = (state.position || 0) > 3;
+        const target = restart ? state.currentIndex : Math.max(0, state.currentIndex - 1);
+        await skipTo(target, 0);
+      });
 
-    async function commitReorderFromDOM() {
-      const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
-      const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
-      if (!ids.length) return;
-      const qs = ids.map(id => `&id=${encodeURIComponent(id)}`).join('');
-      await callJukebox('set', qs);
-      await refreshAll();
-    }
+      btnNext.addEventListener('click', async () => {
+        const target = Math.min(state.playlist.length - 1, state.currentIndex + 1);
+        await skipTo(target, 0);
+      });
 
-    async function removeIndex(i) {
-      try {
-        await callJukebox('remove', `&index=${i}`);
+      btnStop.addEventListener('click', async () => {
+        try {
+          await callJukebox('stop');
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      btnClear.addEventListener('click', async () => {
+        if (!confirm('Clear the whole queue?')) return;
+        try {
+          await callJukebox('clear');
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      btnShuffle.addEventListener('click', async () => {
+        try {
+          await callJukebox('shuffle');
+          await refreshAll();
+          btnShuffle.classList.add('active');
+          setTimeout(() => btnShuffle.classList.remove('active'), 600);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      btnRepeat.addEventListener('click', () => {
+        state.repeatMode = state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off';
+        const map = { off: '🔁', all: '🔂', one: '🔂1' };
+        btnRepeat.textContent = map[state.repeatMode];
+        btnRepeat.classList.toggle('active', state.repeatMode !== 'off');
+      });
+
+      btnAddRandom.addEventListener('click', async () => {
+        statusText.textContent = 'Adding random song…';
+        try {
+          await addRandomSong();
+          statusText.textContent = 'Random song added!';
+          setTimeout(() => statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused', 2000);
+        } catch (e) {
+          statusText.textContent = `Failed to add song: ${e.message}. Check config.`;
+          console.error('Add Random failed:', e);
+        }
+      });
+
+      async function skipTo(index, offsetSec = 0) {
+        index = Math.max(0, Math.min(index, state.playlist.length - 1));
+        try {
+          await callJukebox('skip', `&index=${index}&offset=${Math.max(0, Math.floor(offsetSec))}`);
+          await callJukebox('status');
+          await callJukebox('get');
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Seek Bar
+      let seekCommitTimer = null;
+      seek.addEventListener('input', () => {
+        state.seeking = true;
+        const tr = state.playlist[state.currentIndex];
+        const dur = Math.max(0, tr?.duration || 0);
+        const pos = (Number(seek.value) / 1000) * dur;
+        state.position = pos;
+        state.localTickStart = pos;
+        state.lastStatusTs = Date.now();
+        seekUpdateVisual();
+        if (seekCommitTimer) clearTimeout(seekCommitTimer);
+        seekCommitTimer = setTimeout(() => commitSeek(), 250);
+      });
+
+      seek.addEventListener('change', commitSeek);
+
+      async function commitSeek() {
+        state.seeking = false;
+        const tr = state.playlist[state.currentIndex];
+        const dur = Math.max(0, tr?.duration || 0);
+        const pos = (Number(seek.value) / 1000) * dur;
+        await skipTo(state.currentIndex, pos);
+      }
+
+      // Volume Control
+      function setVolFill() {
+        const pct = Number(volume.value);
+        volume.style.setProperty('--vol-fill', `${pct}%`);
+        volPct.textContent = `${pct}%`;
+      }
+
+      setVolFill();
+      volume.addEventListener('input', setVolFill);
+      volume.addEventListener('change', async () => {
+        const gain = Math.max(0, Math.min(1, Number(volume.value) / 100));
+        try {
+          await callJukebox('setGain', `&gain=${gain}`);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      // Queue Rendering & Drag-and-Drop
+      function renderQueue() {
+        qcontainer.innerHTML = '';
+        state.playlist.forEach((song, i) => {
+          const row = document.createElement('div');
+          row.className = 'qitem' + (i === state.currentIndex ? ' current' : '');
+          row.draggable = true;
+          row.dataset.index = String(i);
+          row.innerHTML = `
+            <div class="idx">${i + 1}</div>
+            <div>
+              <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+              <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
+            </div>
+            <div class="qi-actions">
+              <button title="Play here" class="btn" data-act="play">▶️</button>
+              <button title="Remove" class="btn" data-act="rm">✖️</button>
+            </div>`;
+          row.addEventListener('dragstart', (e) => {
+            row.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', String(i));
+          });
+          row.addEventListener('dragend', () => row.classList.remove('dragging'));
+          row.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const after = getDragAfterElement(qcontainer, e.clientY);
+            qcontainer.insertBefore(row, after);
+          });
+          row.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            await commitReorderFromDOM();
+          });
+          row.addEventListener('click', async (e) => {
+            const act = e.target.closest('button')?.dataset?.act;
+            if (act === 'play') await skipTo(i, 0);
+            if (act === 'rm') await removeIndex(i);
+          });
+          qcontainer.appendChild(row);
+        });
+      }
+
+      function getDragAfterElement(container, y) {
+        const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
+        return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
+      }
+
+      async function commitReorderFromDOM() {
+        const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
+        const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
+        if (!ids.length) return;
+        const qs = ids.map(id => `&id=${encodeURIComponent(id)}`).join('');
+        await callJukebox('set', qs);
         await refreshAll();
-      } catch (e) {
-        console.error(e);
       }
-    }
 
-    // Search Functionality
-    let sTimer = null;
-    sInput.addEventListener('input', () => {
-      const q = sInput.value.trim();
-      if (sTimer) clearTimeout(sTimer);
-      if (q.length < 2) {
-        sResults.hidden = true;
-        sResults.innerHTML = '';
-        return;
+      async function removeIndex(i) {
+        try {
+          await callJukebox('remove', `&index=${i}`);
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+        }
       }
-      sTimer = setTimeout(() => doSearch(q), 250);
-    });
 
-    async function doSearch(q) {
-      try {
-        const url = `${config.serverUrl}/rest/search3?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json&query=${encodeURIComponent(q)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const results = data?.['subsonic-response']?.searchResult3?.song || [];
-        renderSearch(results);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    function renderSearch(songs) {
-      sResults.innerHTML = '';
-      songs.slice(0, 20).forEach(song => {
-        const row = document.createElement('div');
-        row.className = 'srow';
-        row.innerHTML = `
-          <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'">
-          <div class="s-meta">
-            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
-            <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
-          </div>
-          <div style="text-align:right">➕</div>`;
-        row.addEventListener('click', async () => {
-          await addSong(song.id);
-          sInput.value = '';
+      // Search Functionality
+      let sTimer = null;
+      sInput.addEventListener('input', () => {
+        const q = sInput.value.trim();
+        if (sTimer) clearTimeout(sTimer);
+        if (q.length < 2) {
           sResults.hidden = true;
           sResults.innerHTML = '';
-        });
-        sResults.appendChild(row);
+          return;
+        }
+        sTimer = setTimeout(() => doSearch(q), 250);
       });
-      sResults.hidden = songs.length === 0;
-    }
 
-    async function addSong(id) {
-      try {
-        await callJukebox('add', `&id=${encodeURIComponent(id)}`);
-        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
-        await refreshAll();
-      } catch (e) {
-        console.error(e);
+      async function doSearch(q) {
+        try {
+          const url = `${config.serverUrl}/rest/search3?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json&query=${encodeURIComponent(q)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          const results = data?.['subsonic-response']?.searchResult3?.song || [];
+          renderSearch(results);
+        } catch (e) {
+          console.error(e);
+        }
       }
-    }
 
-    // Random Song Addition
-    function getRandomSong() {
-      const randomIndex = Math.floor(Math.random() * sampleSongs.length);
-      return sampleSongs[randomIndex];
-    }
+      function renderSearch(songs) {
+        sResults.innerHTML = '';
+        songs.slice(0, 20).forEach(song => {
+          const row = document.createElement('div');
+          row.className = 'srow';
+          row.innerHTML = `
+            <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'">
+            <div class="s-meta">
+              <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+              <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
+            </div>
+            <div style="text-align:right">➕</div>`;
+          row.addEventListener('click', async () => {
+            await addSong(song.id);
+            sInput.value = '';
+            sResults.hidden = true;
+            sResults.innerHTML = '';
+          });
+          sResults.appendChild(row);
+        });
+        sResults.hidden = songs.length === 0;
+      }
 
-    async function addRandomSong() {
-      const randomSong = getRandomSong();
-      try {
-        console.log('Attempting to add random song:', randomSong.title);
-        await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
-        console.log('Song added successfully, refreshing queue');
-        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
-        await refreshAll();
-      } catch (e) {
-        console.error('Error adding random song:', e);
+      async function addSong(id) {
+        try {
+          await callJukebox('add', `&id=${encodeURIComponent(id)}`);
+          if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Random Song Addition
+      function getRandomSong() {
+        const randomIndex = Math.floor(Math.random() * sampleSongs.length);
+        return sampleSongs[randomIndex];
+      }
+
+      async function addRandomSong() {
+        const randomSong = getRandomSong();
+        try {
+          await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
+          if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+          await refreshAll();
+        } catch (e) {
+          throw e;
+        }
       }
     }
 
@@ -1019,26 +1042,41 @@
         const data = await resp.json();
         config = { serverUrl, username, token: data.subsonicToken, salt: data.subsonicSalt };
         localStorage.setItem('jukeboxConfig', JSON.stringify(config));
+        statusText.textContent = 'Connected! Adding initial songs…';
         await refreshAll();
-        // Add multiple random songs on initial connection
         for (let i = 0; i < 3; i++) {
           await addRandomSong();
         }
+        statusText.textContent = 'Ready';
       } catch (e) {
-        alert('Login failed. Check URL/credentials.');
+        statusText.textContent = `Login failed: ${e.message}. Check URL/credentials.`;
         console.error(e);
       }
     });
 
-    // Add Random Song Button
-    btnAddRandom.addEventListener('click', async () => {
-      console.log('Add Random button clicked');
-      try {
-        await addRandomSong();
-        console.log('Random song addition completed');
-      } catch (e) {
-        console.error('Failed to add random song:', e);
-      }
+    // Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      setupEventListeners();
+      (async function init() {
+        try {
+          const saved = localStorage.getItem('jukeboxConfig');
+          if (saved) {
+            config = JSON.parse(saved);
+            serverUrlEl.value = config.serverUrl || '';
+            usernameEl.value = config.username || '';
+            statusText.textContent = 'Reconnecting…';
+            await refreshAll();
+            if (state.playlist.length === 0) {
+              for (let i = 0; i < 3; i++) {
+                await addRandomSong();
+              }
+            }
+          }
+        } catch (e) {
+          console.error(e);
+          statusText.textContent = 'Error connecting. Configure server.';
+        }
+      })();
     });
 
     // Helpers
@@ -1048,9 +1086,8 @@
 
     async function refreshAll() {
       try {
-        console.log('Refreshing queue');
         await callJukebox('get');
-        console.log('Queue refreshed, playlist length:', state.playlist.length);
+        statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused';
       } catch (e) {
         console.error('Error refreshing queue:', e);
         statusText.textContent = 'Error connecting. Configure server.';
@@ -1066,16 +1103,6 @@
       }
       seekUpdateVisual();
     }, 1000);
-
-    // Initialization
-    (async function init() {
-      try {
-        await refreshAll();
-      } catch (e) {
-        console.error(e);
-        statusText.textContent = 'Error connecting. Configure server.';
-      }
-    })();
   </script>
 </body>
 </html>
