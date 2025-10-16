@@ -12,9 +12,8 @@ services:
       ND_LOGLEVEL: debug
       ND_JUKEBOX_ENABLED: "true"
       ND_JUKEBOX_ADMINONLY: "false"
-      ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${MPV_OPTS} ${INPUT}"
-      # Якщо маєш навидроме.toml, можна вказати:
-      # ND_CONFIGFILE: /data/navidrome.toml
+      ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${INPUT}"      
+      
     volumes:
       - /big/Muz:/music:ro
       - /nvme1/navidrome:/data
