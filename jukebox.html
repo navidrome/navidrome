@@ -565,6 +565,15 @@
       salt: ''
     };
 
+    // Sample song list for random selection
+    const sampleSongs = [
+      { id: '1', title: 'Risingson', artist: 'Massive Attack', album: 'Mezzanine', duration: 298, coverArt: '1' },
+      { id: '2', title: 'Teardrop', artist: 'Massive Attack', album: 'Mezzanine', duration: 324, coverArt: '2' },
+      { id: '3', title: 'Karmacoma', artist: 'Massive Attack', album: 'Protection', duration: 305, coverArt: '3' },
+      { id: '4', title: 'Unfinished Sympathy', artist: 'Massive Attack', album: 'Blue Lines', duration: 300, coverArt: '4' },
+      { id: '5', title: 'Safe from Harm', artist: 'Massive Attack', album: 'Blue Lines', duration: 312, coverArt: '5' }
+    ];
+
     // State Management
     let state = {
       playlist: [],
@@ -971,6 +980,23 @@
       }
     }
 
+    // Random Song Addition
+    function getRandomSong() {
+      const randomIndex = Math.floor(Math.random() * sampleSongs.length);
+      return sampleSongs[randomIndex];
+    }
+
+    async function addRandomSong() {
+      const randomSong = getRandomSong();
+      try {
+        await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
+        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+        await refreshAll();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     // Config & Auth
     btnConnect.addEventListener('click', async () => {
       const serverUrl = serverUrlEl.value.trim();
@@ -990,7 +1016,8 @@
         config = { serverUrl, username, token: data.subsonicToken, salt: data.subsonicSalt };
         localStorage.setItem('jukeboxConfig', JSON.stringify(config));
         await refreshAll();
-        alert('Connected!');
+        // Add a random song on initial connection
+        await addRandomSong();
       } catch (e) {
         alert('Login failed. Check URL/credentials.');
         console.error(e);
