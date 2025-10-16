@@ -991,11 +991,13 @@
     async function addRandomSong() {
       const randomSong = getRandomSong();
       try {
+        console.log('Attempting to add random song:', randomSong.title);
         await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
+        console.log('Song added successfully, refreshing queue');
         if (!state.playing && state.playlist.length === 0) await callJukebox('start');
         await refreshAll();
       } catch (e) {
-        console.error(e);
+        console.error('Error adding random song:', e);
       }
     }
 
@@ -1030,10 +1032,12 @@
 
     // Add Random Song Button
     btnAddRandom.addEventListener('click', async () => {
+      console.log('Add Random button clicked');
       try {
         await addRandomSong();
+        console.log('Random song addition completed');
       } catch (e) {
-        console.error(e);
+        console.error('Failed to add random song:', e);
       }
     });
 
@@ -1044,9 +1048,11 @@
 
     async function refreshAll() {
       try {
+        console.log('Refreshing queue');
         await callJukebox('get');
+        console.log('Queue refreshed, playlist length:', state.playlist.length);
       } catch (e) {
-        console.error(e);
+        console.error('Error refreshing queue:', e);
         statusText.textContent = 'Error connecting. Configure server.';
       }
     }
