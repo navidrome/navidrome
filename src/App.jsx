@@ -75,6 +75,13 @@ export default function App() {
     const updateMediaSession = useCallback((track, position, playing) => {
         if ('mediaSession' in navigator && track) {
             try {
+                console.log('Updating Media Session:', {
+                    title: track.title,
+                    artist: track.artist,
+                    playing: playing,
+                    position: position
+                });
+
                 // Update metadata
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: track.title || 'Unknown',
@@ -90,6 +97,7 @@ export default function App() {
 
                 // Update playback state
                 navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+                console.log('Media Session playback state set to:', navigator.mediaSession.playbackState);
 
                 // Update position state (with validation)
                 if ('setPositionState' in navigator.mediaSession && track.duration > 0) {
@@ -102,10 +110,12 @@ export default function App() {
                         position: validPosition
                     });
                 }
+                console.log('Media Session updated successfully');
             } catch (error) {
-                // Silently handle errors - some browsers have incomplete Media Session support
-                console.debug('Media Session API error (non-critical):', error.message);
+                console.error('Media Session API error:', error);
             }
+        } else {
+            console.warn('Media Session not available or no track loaded');
         }
     }, []);
 
