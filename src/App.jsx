@@ -11,6 +11,20 @@ import {
 } from './jukeboxApi';
 import './App.css'; 
 
+// Tauri imports - check if running in Tauri environment
+const isTauri = typeof window !== 'undefined' && window.__TAURI__;
+let invoke, listen;
+
+if (isTauri) {
+    // Dynamic import for Tauri API
+    import('@tauri-apps/api/tauri').then(module => {
+        invoke = module.invoke;
+    });
+    import('@tauri-apps/api/event').then(module => {
+        listen = module.listen;
+    });
+}
+
 // --- UTILITY FUNCTIONS ---
 function fmtTime(sec) {
     sec = Math.max(0, Math.floor(sec));
@@ -70,6 +84,33 @@ export default function App() {
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
+
+    // --- Tauri Media Control Integration ---
+    const updateTauriMediaInfo = useCallback((track, position, playing) => {
+        if (isTauri && invoke && track) {
+            invoke('update_media_info', {
+                title: track.title || 'Unknown',
+                artist: track.artist || 'Unknown',
+                album: track.album || '',
+                duration: track.duration || 0,
+                elapsed: position || 0,
+            }).catch(err => console.error('Failed to update media info:', err));
+        }
+    }, []);
+
+    const updateTauriPlaybackState = useCallback((playing) => {
+        if (isTauri && invoke) {
+            invoke('update_playback_state', {
+                isPlaying: playing
+            }).catch(err => console.error('Failed to update playback state:', err));
+        }
+    }, []);
+
+    const clearTauriMediaInfo = useCallback(() => {
+        if (isTauri && invoke) {
+            invoke('clear_media_info').catch(err => console.error('Failed to clear media info:', err));
+        }
+    }, []);
 
     // --- Core State Refresh Logic (Polls the server) ---
     const refreshState = useCallback(async (forceUpdate = false) => {
@@ -151,12 +192,24 @@ export default function App() {
                     // Go to previous track
                     await callJukebox('skip', `&index=${Math.max(0, currentState.currentIndex - 1)}&offset=0`);
                 }
+            } else if (action === 'next-track') {
+                // Alias for media key compatibility
+                await callJukebox('skip', `&index=${currentState.currentIndex + 1}&offset=0`);
+            } else if (action === 'prev-track') {
+                // Alias for media key compatibility
+                const restart = (currentState.position || 0) > 3;
+                if (restart) {
+                    await callJukebox('skip', `&index=${currentState.currentIndex}&offset=0`);
+                } else {
+                    await callJukebox('skip', `&index=${Math.max(0, currentState.currentIndex - 1)}&offset=0`);
+                }
             } else if (action === 'clear') {
                 if (!confirm('Clear the whole queue?')) {
                     commandInProgress.current = false;
                     return;
                 }
                 await callJukebox('clear');
+                clearTauriMediaInfo();
             } else if (action === 'shuffle') {
                 await callJukebox('shuffle');
             } else if (action === 'stop') {
@@ -180,7 +233,7 @@ export default function App() {
         } finally {
             commandInProgress.current = false;
         }
-    }, [refreshState]);
+    }, [refreshState, clearTauriMediaInfo]);
 
     // Handles actions from a queue item row
     const handleQueueAction = useCallback(async (action, index) => {
@@ -200,6 +253,38 @@ export default function App() {
     }, [skipTo, refreshState]);
     
     // --- Effects & Listeners ---
+
+    // Tauri media key event listener
+    useEffect(() => {
+        if (!isTauri || !listen) return;
+
+        let unlisten;
+        listen('media-key-event', (event) => {
+            console.log('Media key event received:', event.payload);
+            handleTransport(event.payload);
+        }).then(fn => {
+            unlisten = fn;
+        });
+
+        return () => {
+            if (unlisten) unlisten();
+        };
+    }, [handleTransport]);
+
+    // Update macOS Now Playing info when track or position changes
+    useEffect(() => {
+        const currentTrack = state.playlist[state.currentIndex];
+        if (currentTrack) {
+            updateTauriMediaInfo(currentTrack, state.position, state.playing);
+        } else {
+            clearTauriMediaInfo();
+        }
+    }, [state.currentIndex, state.playlist, state.position, state.playing, updateTauriMediaInfo, clearTauriMediaInfo]);
+
+    // Update macOS playback state when playing state changes
+    useEffect(() => {
+        updateTauriPlaybackState(state.playing);
+    }, [state.playing, updateTauriPlaybackState]);
 
     // Initialization - runs ONCE on mount
     useEffect(() => {
@@ -242,7 +327,7 @@ export default function App() {
         })();
         
         return () => { mounted = false; };
-    }, []); // Empty deps - run once on mount
+    }, [refreshState]);
 
     // Polling loop - runs ONCE on mount
     useEffect(() => {
@@ -425,7 +510,10 @@ export default function App() {
             <main className="transport-card">
                 <div className="status-row">
                     <div id="statusText">{statusText}</div>
-                    <div className="small">Queue: <span id="queueCount">{state.playlist.length}</span> tracks</div>
+                    <div className="small">
+                        Queue: <span id="queueCount">{state.playlist.length}</span> tracks
+                        {isTauri && <span> • 🍎 macOS Integration Active</span>}
+                    </div>
                 </div>
                 
                 <div className="progress">
