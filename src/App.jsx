@@ -81,17 +81,30 @@ export default function App() {
         try {
             const { status, playlist } = await callJukebox('get');
             
-            const newPlaylist = Array.isArray(playlist.entry) ? playlist.entry : (playlist.entry ? [playlist.entry] : []);
+            // Defensive checks - API might not return status
+            if (!status) {
+                console.warn('API returned no status object');
+                return;
+            }
+            
+            const newPlaylist = Array.isArray(playlist?.entry) 
+                ? playlist.entry 
+                : (playlist?.entry ? [playlist.entry] : []);
             
             setState(prevState => {
                 // Check if track changed to reset repeat state
-                const currentTrack = newPlaylist[status.currentIndex];
+                const currentTrack = newPlaylist[status.currentIndex || 0];
                 const prevTrack = prevState.playlist[prevState.currentIndex];
                 
                 return {
                     ...prevState,
-                    ...status,
+                    playing: status.playing ?? prevState.playing,
+                    currentIndex: status.currentIndex ?? prevState.currentIndex,
+                    position: status.position ?? prevState.position,
+                    gain: status.gain ?? prevState.gain,
                     playlist: newPlaylist,
+                    lastStatusTs: Date.now(),
+                    localTickStart: status.position ?? prevState.position,
                     endHandledForId: currentTrack?.id !== prevTrack?.id ? null : prevState.endHandledForId,
                 };
             });
