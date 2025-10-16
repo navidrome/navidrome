@@ -1,0 +1,5 @@
+# Увімкнути jukebox
+Jukebox = true
+
+# Якщо хочеш явно вказати команду mpv
+# MPVCmdTemplate = "mpv --no-video --audio-device=alsa/your_card_name --quiet ${INPUT}"

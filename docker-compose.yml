@@ -1,0 +1,24 @@
+services:
+  navidrome:
+    build: .
+    image: navidrome-jukebox
+    container_name: navidrome
+    user: 1000:1000   # або UID:GID, до власника музики/даних
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_LOGLEVEL: info
+      # Додаткові налаштування - нафіга??
+      # Наприклад, шаблон mpv запуску, якщо хочеш ручне налаштування
+      # ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device=<твоє_пристрій> ${MPV_OPTS} ${INPUT}"
+    volumes:
+      - /big/Muz:/music:ro
+      - /nvme1/navidrome:/data
+    devices:
+      - /dev/snd:/dev/snd   # дає контейнеру доступ до звукового пристрою
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RAWIO
