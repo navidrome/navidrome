@@ -488,9 +488,29 @@ export default function App() {
     
     const handleConnect = useCallback(async () => {
         try {
-            saveConfig({ ...configForm });
+            // Save config first
+            const savedConfig = saveConfig({ ...configForm });
             
-            setStatusText('Configuration Saved. Reconnecting…');
+            // If password was provided, show generated credentials for debugging
+            if (configForm.password && !configForm.token) {
+                console.log('Generated authentication:');
+                console.log('Token:', savedConfig.token);
+                console.log('Salt:', savedConfig.salt);
+            }
+            
+            setStatusText('Testing connection…');
+            
+            // Test the connection with a simple ping
+            const testUrl = `${savedConfig.serverUrl}/rest/ping?u=${encodeURIComponent(savedConfig.username)}&t=${savedConfig.token}&s=${savedConfig.salt}&v=1.16.1&c=ModernJukebox&f=json`;
+            
+            const pingRes = await fetch(testUrl);
+            const pingData = await pingRes.json();
+            
+            if (pingData?.['subsonic-response']?.status !== 'ok') {
+                throw new Error(pingData?.['subsonic-response']?.error?.message || 'Authentication failed');
+            }
+            
+            setStatusText('Connected! Loading player…');
             await refreshState(true);
             
             const currentState = stateRef.current;
@@ -501,8 +521,8 @@ export default function App() {
             setStatusText(currentState.playing ? '▶️ Playing' : 'Ready');
             
         } catch (e) {
-            setStatusText(`Login failed: ${e.message}. Check URL/credentials.`);
-            console.error(e);
+            setStatusText(`Connection failed: ${e.message}`);
+            console.error('Connection error:', e);
         }
     }, [configForm, refreshState, handleTransport]);
 
