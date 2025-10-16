@@ -414,44 +414,79 @@ body {
 
 /* Config */
 .config {
-  margin-top: 12px;
+  margin-top: 20px;
   background: var(--card);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 20px;
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .config .row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr auto; /* Added a 4th input column */
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 8px;
 }
 
 .config input {
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   width: 100%;
+  font-size: 14px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.config input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.config input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
 }
 
 .config button {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(34, 197, 94, 0.9);
-  color: #05140a;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: linear-gradient(180deg, var(--accent-2), #16a34a);
+  color: white;
   cursor: pointer;
   font-weight: 700;
-  width: 100%;
+  font-size: 14px;
+  grid-column: 1 / -1;
+  transition: transform 0.08s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+
+.config button:hover {
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.config button:active {
+  transform: translateY(1px);
 }
 
 .small {
   font-size: 12px;
   color: var(--muted);
+  line-height: 1.5;
+  padding: 0 2px;
+}
+
+.small code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
 }
 
 @media (max-width: 900px) {
@@ -480,7 +515,16 @@ body {
     font-size: 20px;
   }
   
+  .config {
+    padding: 18px;
+  }
+  
   .config .row {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .config input {
+    font-size: 16px; /* Prevents zoom on iOS */
   }
 }
