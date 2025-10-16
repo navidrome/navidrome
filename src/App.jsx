@@ -11,20 +11,6 @@ import {
 } from './jukeboxApi';
 import './App.css'; 
 
-// Tauri imports - check if running in Tauri environment
-const isTauri = typeof window !== 'undefined' && window.__TAURI__;
-let invoke, listen;
-
-if (isTauri) {
-    // Dynamic import for Tauri API
-    import('@tauri-apps/api/tauri').then(module => {
-        invoke = module.invoke;
-    });
-    import('@tauri-apps/api/event').then(module => {
-        listen = module.listen;
-    });
-}
-
 // --- UTILITY FUNCTIONS ---
 function fmtTime(sec) {
     sec = Math.max(0, Math.floor(sec));
@@ -85,30 +71,84 @@ export default function App() {
         stateRef.current = state;
     }, [state]);
 
-    // --- Tauri Media Control Integration ---
-    const updateTauriMediaInfo = useCallback((track, position, playing) => {
-        if (isTauri && invoke && track) {
-            invoke('update_media_info', {
+    // --- Media Session API Integration ---
+    const updateMediaSession = useCallback((track, position, playing) => {
+        if ('mediaSession' in navigator && track) {
+            // Update metadata
+            navigator.mediaSession.metadata = new MediaMetadata({
                 title: track.title || 'Unknown',
                 artist: track.artist || 'Unknown',
                 album: track.album || '',
-                duration: track.duration || 0,
-                elapsed: position || 0,
-            }).catch(err => console.error('Failed to update media info:', err));
+                artwork: [
+                    { src: coverArtUrl(track.coverArt, 96), sizes: '96x96', type: 'image/jpeg' },
+                    { src: coverArtUrl(track.coverArt, 128), sizes: '128x128', type: 'image/jpeg' },
+                    { src: coverArtUrl(track.coverArt, 256), sizes: '256x256', type: 'image/jpeg' },
+                    { src: coverArtUrl(track.coverArt, 512), sizes: '512x512', type: 'image/jpeg' },
+                ]
+            });
+
+            // Update playback state
+            navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+
+            // Update position state
+            if (track.duration) {
+                navigator.mediaSession.setPositionState({
+                    duration: track.duration,
+                    playbackRate: playing ? 1.0 : 0.0,
+                    position: position || 0
+                });
+            }
         }
     }, []);
 
-    const updateTauriPlaybackState = useCallback((playing) => {
-        if (isTauri && invoke) {
-            invoke('update_playback_state', {
-                isPlaying: playing
-            }).catch(err => console.error('Failed to update playback state:', err));
-        }
-    }, []);
+    const setupMediaSessionHandlers = useCallback((handleTransport) => {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => {
+                console.log('Media Session: Play');
+                handleTransport('play-pause');
+            });
 
-    const clearTauriMediaInfo = useCallback(() => {
-        if (isTauri && invoke) {
-            invoke('clear_media_info').catch(err => console.error('Failed to clear media info:', err));
+            navigator.mediaSession.setActionHandler('pause', () => {
+                console.log('Media Session: Pause');
+                handleTransport('play-pause');
+            });
+
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+                console.log('Media Session: Previous');
+                handleTransport('previous');
+            });
+
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+                console.log('Media Session: Next');
+                handleTransport('next');
+            });
+
+            navigator.mediaSession.setActionHandler('stop', () => {
+                console.log('Media Session: Stop');
+                handleTransport('stop');
+            });
+
+            // Seek handlers (optional but nice to have)
+            navigator.mediaSession.setActionHandler('seekto', (details) => {
+                if (details.seekTime !== undefined) {
+                    const currentState = stateRef.current;
+                    skipTo(currentState.currentIndex, details.seekTime);
+                }
+            });
+
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                const currentState = stateRef.current;
+                const newPos = Math.max(0, currentState.position - 10);
+                skipTo(currentState.currentIndex, newPos);
+            });
+
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                const currentState = stateRef.current;
+                const track = currentState.playlist[currentState.currentIndex];
+                const maxPos = track?.duration || 0;
+                const newPos = Math.min(maxPos, currentState.position + 10);
+                skipTo(currentState.currentIndex, newPos);
+            });
         }
     }, []);
 
@@ -180,23 +220,9 @@ export default function App() {
                 // Immediately update local state for better UX
                 setState(prev => ({ ...prev, playing: !prev.playing }));
             } else if (action === 'next') {
-                // Don't specify index, let the server handle it
                 await callJukebox('skip', `&index=${currentState.currentIndex + 1}&offset=0`);
             } else if (action === 'previous') {
                 // Restart song if pos > 3s, otherwise skip back
-                const restart = (currentState.position || 0) > 3;
-                if (restart) {
-                    // Restart current track
-                    await callJukebox('skip', `&index=${currentState.currentIndex}&offset=0`);
-                } else {
-                    // Go to previous track
-                    await callJukebox('skip', `&index=${Math.max(0, currentState.currentIndex - 1)}&offset=0`);
-                }
-            } else if (action === 'next-track') {
-                // Alias for media key compatibility
-                await callJukebox('skip', `&index=${currentState.currentIndex + 1}&offset=0`);
-            } else if (action === 'prev-track') {
-                // Alias for media key compatibility
                 const restart = (currentState.position || 0) > 3;
                 if (restart) {
                     await callJukebox('skip', `&index=${currentState.currentIndex}&offset=0`);
@@ -209,7 +235,6 @@ export default function App() {
                     return;
                 }
                 await callJukebox('clear');
-                clearTauriMediaInfo();
             } else if (action === 'shuffle') {
                 await callJukebox('shuffle');
             } else if (action === 'stop') {
@@ -233,7 +258,7 @@ export default function App() {
         } finally {
             commandInProgress.current = false;
         }
-    }, [refreshState, clearTauriMediaInfo]);
+    }, [refreshState]);
 
     // Handles actions from a queue item row
     const handleQueueAction = useCallback(async (action, index) => {
@@ -254,37 +279,18 @@ export default function App() {
     
     // --- Effects & Listeners ---
 
-    // Tauri media key event listener
+    // Setup Media Session handlers once
     useEffect(() => {
-        if (!isTauri || !listen) return;
+        setupMediaSessionHandlers(handleTransport);
+    }, [setupMediaSessionHandlers, handleTransport]);
 
-        let unlisten;
-        listen('media-key-event', (event) => {
-            console.log('Media key event received:', event.payload);
-            handleTransport(event.payload);
-        }).then(fn => {
-            unlisten = fn;
-        });
-
-        return () => {
-            if (unlisten) unlisten();
-        };
-    }, [handleTransport]);
-
-    // Update macOS Now Playing info when track or position changes
+    // Update Media Session when track or playback state changes
     useEffect(() => {
         const currentTrack = state.playlist[state.currentIndex];
         if (currentTrack) {
-            updateTauriMediaInfo(currentTrack, state.position, state.playing);
-        } else {
-            clearTauriMediaInfo();
+            updateMediaSession(currentTrack, state.position, state.playing);
         }
-    }, [state.currentIndex, state.playlist, state.position, state.playing, updateTauriMediaInfo, clearTauriMediaInfo]);
-
-    // Update macOS playback state when playing state changes
-    useEffect(() => {
-        updateTauriPlaybackState(state.playing);
-    }, [state.playing, updateTauriPlaybackState]);
+    }, [state.currentIndex, state.playlist, state.position, state.playing, updateMediaSession]);
 
     // Initialization - runs ONCE on mount
     useEffect(() => {
@@ -494,6 +500,8 @@ export default function App() {
         '--vol-fill': `${Math.round(state.gain * 100)}%`
     }), [state.gain]);
 
+    // Check if Media Session API is supported
+    const hasMediaSession = 'mediaSession' in navigator;
 
     // --- RENDER ---
     return (
@@ -512,7 +520,7 @@ export default function App() {
                     <div id="statusText">{statusText}</div>
                     <div className="small">
                         Queue: <span id="queueCount">{state.playlist.length}</span> tracks
-                        {isTauri && <span> • 🍎 macOS Integration Active</span>}
+                        {hasMediaSession && <span> • 🎵 Media Controls Active</span>}
                     </div>
                 </div>
                 
