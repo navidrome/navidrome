@@ -1,8 +1,11 @@
 services:
   navidrome:
-    image: deluan/navidrome:latest
+    build:
+      context: .
+      dockerfile: Dockerfile  # в тому ж каталозі
+    image: navidrome-mpv
     container_name: navidrome
-    user: 1000:1000  # встанови свій UID:GID, якщо потрібно
+    user: 1000:1000  # UID:GID твого користувача
     ports:
       - "4533:4533"
     restart: unless-stopped
@@ -12,7 +15,7 @@ services:
       ND_LOGLEVEL: debug
       ND_JUKEBOX_ENABLED: "true"
       ND_JUKEBOX_ADMINONLY: "false"
-      ND_CONFIGFILE: /data/navidrome.toml
+      # Цю змінну контролює navidrome для шаблону mpv
       ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${INPUT}"
     volumes:
       - /big/Muz:/music:ro
@@ -20,6 +23,5 @@ services:
       - ./navidrome.toml:/data/navidrome.toml:ro
     devices:
       - /dev/snd:/dev/snd
-    cap_add:
-      - SYS_ADMIN
-      - SYS_RAWIO
+    group_add:
+      - 29  # або GID аудіо групи на твоїй системі
