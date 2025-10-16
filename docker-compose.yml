@@ -12,13 +12,12 @@ services:
       ND_LOGLEVEL: debug
       ND_JUKEBOX_ENABLED: "true"
       ND_JUKEBOX_ADMINONLY: "false"
-      ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${INPUT}"      
-      
+      ND_CONFIGFILE: /data/navidrome.toml
+      ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device='alsa/sysdefault:CARD=U24XL' ${INPUT}"
     volumes:
       - /big/Muz:/music:ro
       - /nvme1/navidrome:/data
-      # Якщо маєш власний toml:
-      # - ./navidrome.toml:/data/navidrome.toml:ro
+      - ./navidrome.toml:/data/navidrome.toml:ro
     devices:
       - /dev/snd:/dev/snd
     cap_add:
