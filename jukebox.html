@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jukebox Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .status-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-play {
+            background: #10b981;
+        }
+        
+        .btn-play:hover {
+            background: #059669;
+        }
+        
+        .btn-pause {
+            background: #f59e0b;
+        }
+        
+        .btn-pause:hover {
+            background: #d97706;
+        }
+        
+        .btn-random {
+            background: #8b5cf6;
+            grid-column: span 2;
+        }
+        
+        .btn-random:hover {
+            background: #7c3aed;
+        }
+        
+        .volume-control {
+            margin-bottom: 25px;
+        }
+        
+        .volume-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .volume-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .volume-slider::-webkit-slider-thumb:hover {
+            background: #5568d3;
+            transform: scale(1.2);
+        }
+        
+        .volume-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .search-box {
+            margin-bottom: 25px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .song-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .song-item:hover {
+            background: #e5e7eb;
+        }
+        
+        .song-info {
+            flex: 1;
+        }
+        
+        .song-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .song-artist {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .play-icon {
+            color: #667eea;
+            font-size: 18px;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .config-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn-save {
+            background: #10b981;
+            width: 100%;
+        }
+        
+        .btn-save:hover {
+            background: #059669;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Jukebox Controller</h1>
+        
+        <div class="status-box">
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="status">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Volume:</span>
+                <span class="status-value" id="volumeDisplay">--</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Device:</span>
+                <span class="status-value">U24XL</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-play" onclick="playMusic()">▶️ Play</button>
+            <button class="btn btn-pause" onclick="pauseMusic()">⏸️ Pause</button>
+            <button class="btn btn-random" onclick="playRandom()">🎲 Random Song</button>
+        </div>
+        
+        <div class="volume-control">
+            <div class="volume-label">
+                <span>Volume</span>
+                <span id="volumePercent">100%</span>
+            </div>
+            <input type="range" min="0" max="100" value="100" class="volume-slider" id="volumeSlider" oninput="updateVolume(this.value)">
+        </div>
+        
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search songs..." onkeyup="searchSongs()">
+            <div class="search-results hidden" id="searchResults"></div>
+        </div>
+        
+        <div class="config-section">
+            <h3 style="margin-bottom: 15px; color: #333; font-size: 16px;">⚙️ Server Configuration</h3>
+            <input type="text" class="config-input" id="serverUrl" placeholder="Server URL (e.g., http://localhost:4533)" value="http://localhost:4533">
+            <input type="text" class="config-input" id="username" placeholder="Username" value="bgpntx">
+            <input type="password" class="config-input" id="password" placeholder="Password">
+            <button class="btn btn-save" onclick="saveConfig()">💾 Save & Connect</button>
+        </div>
+    </div>
+
+    <script>
+        let config = {
+            serverUrl: 'http://localhost:4533',
+            username: 'bgpntx',
+            token: '6337b8aa97f1054321d35af386a7ad98',
+            salt: '2e7b21'
+        };
+
+        // Load saved config from localStorage
+        const savedConfig = localStorage.getItem('jukeboxConfig');
+        if (savedConfig) {
+            config = JSON.parse(savedConfig);
+            document.getElementById('serverUrl').value = config.serverUrl;
+            document.getElementById('username').value = config.username;
+        }
+
+        function buildUrl(action, extraParams = '') {
+            return `${config.serverUrl}/rest/jukeboxControl?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&action=${action}${extraParams}`;
+        }
+
+        async function jukeboxCommand(action, extraParams = '') {
+            try {
+                const response = await fetch(buildUrl(action, extraParams));
+                const data = await response.json();
+                updateStatus(data['subsonic-response'].jukeboxStatus);
+                return data;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').textContent = 'Error';
+            }
+        }
+
+        function updateStatus(status) {
+            if (!status) return;
+            
+            document.getElementById('status').textContent = status.playing ? '▶️ Playing' : '⏸️ Paused';
+            const volumePercent = Math.round(status.gain * 100);
+            document.getElementById('volumeDisplay').textContent = volumePercent + '%';
+            document.getElementById('volumeSlider').value = volumePercent;
+            document.getElementById('volumePercent').textContent = volumePercent + '%';
+        }
+
+        async function playMusic() {
+            await jukeboxCommand('start');
+        }
+
+        async function pauseMusic() {
+            await jukeboxCommand('stop');
+        }
+
+        async function playRandom() {
+            try {
+                const response = await fetch(`${config.serverUrl}/rest/getRandomSongs?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&size=1`);
+                const data = await response.json();
+                const song = data['subsonic-response'].randomSongs.song[0];
+                
+                await jukeboxCommand('clear');
+                await jukeboxCommand('add', `&id=${song.id}`);
+                await jukeboxCommand('start');
+            } catch (error) {
+                console.error('Error playing random song:', error);
+            }
+        }
+
+        async function updateVolume(value) {
+            const volumePercent = value;
+            document.getElementById('volumePercent').textContent = volumePercent + '%';
+            const gain = value / 100;
+            await jukeboxCommand('setGain', `&gain=${gain}`);
+        }
+
+        let searchTimeout;
+        async function searchSongs() {
+            clearTimeout(searchTimeout);
+            const query = document.getElementById('searchInput').value.trim();
+            
+            if (query.length < 2) {
+                document.getElementById('searchResults').classList.add('hidden');
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${config.serverUrl}/rest/search3?u=${config.username}&t=${config.token}&s=${config.salt}&v=1.8.0&c=WebJukebox&f=json&query=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    displaySearchResults(data['subsonic-response'].searchResult3);
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300);
+        }
+
+        function displaySearchResults(results) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!results.song || results.song.length === 0) {
+                resultsDiv.innerHTML = '<div class="loading">No results found</div>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            
+            resultsDiv.innerHTML = results.song.slice(0, 10).map(song => `
+                <div class="song-item" onclick="playSong('${song.id}')">
+                    <div class="song-info">
+                        <div class="song-title">${song.title}</div>
+                        <div class="song-artist">${song.artist} - ${song.album}</div>
+                    </div>
+                    <div class="play-icon">▶️</div>
+                </div>
+            `).join('');
+            
+            resultsDiv.classList.remove('hidden');
+        }
+
+        async function playSong(songId) {
+            await jukeboxCommand('clear');
+            await jukeboxCommand('add', `&id=${songId}`);
+            await jukeboxCommand('start');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').classList.add('hidden');
+        }
+
+        async function saveConfig() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!serverUrl || !username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                // Login to get new token
+                const response = await fetch(`${serverUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                config = {
+                    serverUrl,
+                    username,
+                    token: data.subsonicToken,
+                    salt: data.subsonicSalt
+                };
+                
+                localStorage.setItem('jukeboxConfig', JSON.stringify(config));
+                alert('✅ Configuration saved!');
+                
+                // Refresh status
+                await jukeboxCommand('get');
+            } catch (error) {
+                alert('❌ Failed to connect. Check your credentials and server URL.');
+                console.error('Config save error:', error);
+            }
+        }
+
+        // Auto-refresh status every 5 seconds
+        setInterval(async () => {
+            await jukeboxCommand('get');
+        }, 5000);
+
+        // Initial status check
+        jukeboxCommand('get');
+    </script>
+</body>
+</html>
