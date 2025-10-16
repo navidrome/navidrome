@@ -296,8 +296,14 @@ export function getConfig() {
 export function saveConfig(newConfig) {
     config = { ...config, ...newConfig };
     
-    // If password changed, regenerate token/salt
-    if (newConfig.password && newConfig.password !== '') {
+    // Priority: Use manual token/salt if both are provided
+    // Otherwise, generate from password if provided
+    if (newConfig.token && newConfig.salt) {
+        // Manual token/salt provided - use them
+        config.token = newConfig.token;
+        config.salt = newConfig.salt;
+    } else if (newConfig.password && newConfig.password !== '') {
+        // Password provided - generate token/salt
         const auth = generateAuth(newConfig.password);
         config.token = auth.token;
         config.salt = auth.salt;
