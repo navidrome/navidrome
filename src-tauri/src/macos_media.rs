@@ -1,15 +1,14 @@
+// src-tauri/src/macos_media.rs
 #[cfg(target_os = "macos")]
 use cocoa::base::{id, nil};
 use objc::runtime::{Class, Object};
 use objc::{msg_send, sel, sel_impl};
-use objc_foundation::{INSDictionary, INSString, NSString, NSDictionary};
+use objc_foundation::{NSString};
 use objc_id::Id;
-use std::ffi::c_void;
 
 #[cfg(target_os = "macos")]
 pub struct MacOSMediaControl {
     now_playing_info_center: Id<Object>,
-    remote_command_center: Id<Object>,
 }
 
 #[cfg(target_os = "macos")]
@@ -19,19 +18,15 @@ impl MacOSMediaControl {
             let class = Class::get("MPNowPlayingInfoCenter").expect("MPNowPlayingInfoCenter class not found");
             let now_playing_info_center: *mut Object = msg_send![class, defaultCenter];
             
-            let remote_class = Class::get("MPRemoteCommandCenter").expect("MPRemoteCommandCenter class not found");
-            let remote_command_center: *mut Object = msg_send![remote_class, sharedCommandCenter];
-            
             MacOSMediaControl {
                 now_playing_info_center: Id::from_retained_ptr(now_playing_info_center),
-                remote_command_center: Id::from_retained_ptr(remote_command_center),
             }
         }
     }
     
-    pub fn update_now_playing(&self, title: &str, artist: &str, album: &str, duration: f64, elapsed: f64, artwork_url: Option<&str>) {
+    pub fn update_now_playing(&self, title: &str, artist: &str, album: &str, duration: f64, elapsed: f64, _artwork_url: Option<&str>) {
         unsafe {
-            let dict = NSMutableDictionary::new();
+            let dict = NSMutableDictionary();
             
             // Title
             let title_key = NSString::from_str("MPMediaItemPropertyTitle");
@@ -104,5 +99,25 @@ trait NSDictionaryExt {
 impl NSDictionaryExt for id {
     unsafe fn setObject_forKey_(self, object: id, key: id) {
         msg_send![self, setObject:object forKey:key]
+    }
+}
+
+#[cfg(target_os = "macos")]
+trait NSStringExt {
+    fn from_str(s: &str) -> id;
+}
+
+#[cfg(target_os = "macos")]
+impl NSStringExt for NSString {
+    fn from_str(s: &str) -> id {
+        unsafe {
+            let cls = class!(NSString);
+            let bytes = s.as_ptr() as *const std::os::raw::c_void;
+            let obj: id = msg_send![cls, alloc];
+            let obj: id = msg_send![obj, initWithBytes:bytes
+                                            length:s.len()
+                                          encoding:4]; // UTF8 encoding
+            obj
+        }
     }
 }
