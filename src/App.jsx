@@ -74,81 +74,105 @@ export default function App() {
     // --- Media Session API Integration ---
     const updateMediaSession = useCallback((track, position, playing) => {
         if ('mediaSession' in navigator && track) {
-            // Update metadata
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title || 'Unknown',
-                artist: track.artist || 'Unknown',
-                album: track.album || '',
-                artwork: [
-                    { src: coverArtUrl(track.coverArt, 96), sizes: '96x96', type: 'image/jpeg' },
-                    { src: coverArtUrl(track.coverArt, 128), sizes: '128x128', type: 'image/jpeg' },
-                    { src: coverArtUrl(track.coverArt, 256), sizes: '256x256', type: 'image/jpeg' },
-                    { src: coverArtUrl(track.coverArt, 512), sizes: '512x512', type: 'image/jpeg' },
-                ]
-            });
-
-            // Update playback state
-            navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
-
-            // Update position state
-            if (track.duration) {
-                navigator.mediaSession.setPositionState({
-                    duration: track.duration,
-                    playbackRate: playing ? 1.0 : 0.0,
-                    position: position || 0
+            try {
+                // Update metadata
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title || 'Unknown',
+                    artist: track.artist || 'Unknown',
+                    album: track.album || '',
+                    artwork: [
+                        { src: coverArtUrl(track.coverArt, 96), sizes: '96x96', type: 'image/jpeg' },
+                        { src: coverArtUrl(track.coverArt, 128), sizes: '128x128', type: 'image/jpeg' },
+                        { src: coverArtUrl(track.coverArt, 256), sizes: '256x256', type: 'image/jpeg' },
+                        { src: coverArtUrl(track.coverArt, 512), sizes: '512x512', type: 'image/jpeg' },
+                    ]
                 });
+
+                // Update playback state
+                navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+
+                // Update position state (with validation)
+                if ('setPositionState' in navigator.mediaSession && track.duration > 0) {
+                    const validDuration = Math.max(0, track.duration);
+                    const validPosition = Math.max(0, Math.min(position || 0, validDuration));
+                    
+                    navigator.mediaSession.setPositionState({
+                        duration: validDuration,
+                        playbackRate: playing ? 1.0 : 0.0,
+                        position: validPosition
+                    });
+                }
+            } catch (error) {
+                // Silently handle errors - some browsers have incomplete Media Session support
+                console.debug('Media Session API error (non-critical):', error.message);
             }
         }
     }, []);
 
     const setupMediaSessionHandlers = useCallback((handleTransport) => {
         if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', () => {
-                console.log('Media Session: Play');
-                handleTransport('play-pause');
-            });
+            try {
+                navigator.mediaSession.setActionHandler('play', () => {
+                    console.log('Media Session: Play');
+                    handleTransport('play-pause');
+                });
 
-            navigator.mediaSession.setActionHandler('pause', () => {
-                console.log('Media Session: Pause');
-                handleTransport('play-pause');
-            });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    console.log('Media Session: Pause');
+                    handleTransport('play-pause');
+                });
 
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                console.log('Media Session: Previous');
-                handleTransport('previous');
-            });
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    console.log('Media Session: Previous');
+                    handleTransport('previous');
+                });
 
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                console.log('Media Session: Next');
-                handleTransport('next');
-            });
+                navigator.mediaSession.setActionHandler('nexttrack', () => {
+                    console.log('Media Session: Next');
+                    handleTransport('next');
+                });
 
-            navigator.mediaSession.setActionHandler('stop', () => {
-                console.log('Media Session: Stop');
-                handleTransport('stop');
-            });
+                navigator.mediaSession.setActionHandler('stop', () => {
+                    console.log('Media Session: Stop');
+                    handleTransport('stop');
+                });
 
-            // Seek handlers (optional but nice to have)
-            navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.seekTime !== undefined) {
-                    const currentState = stateRef.current;
-                    skipTo(currentState.currentIndex, details.seekTime);
+                // Seek handlers (optional, may not be supported in all browsers)
+                try {
+                    navigator.mediaSession.setActionHandler('seekto', (details) => {
+                        if (details.seekTime !== undefined) {
+                            const currentState = stateRef.current;
+                            skipTo(currentState.currentIndex, details.seekTime);
+                        }
+                    });
+                } catch (e) {
+                    console.debug('seekto not supported');
                 }
-            });
 
-            navigator.mediaSession.setActionHandler('seekbackward', () => {
-                const currentState = stateRef.current;
-                const newPos = Math.max(0, currentState.position - 10);
-                skipTo(currentState.currentIndex, newPos);
-            });
+                try {
+                    navigator.mediaSession.setActionHandler('seekbackward', () => {
+                        const currentState = stateRef.current;
+                        const newPos = Math.max(0, currentState.position - 10);
+                        skipTo(currentState.currentIndex, newPos);
+                    });
+                } catch (e) {
+                    console.debug('seekbackward not supported');
+                }
 
-            navigator.mediaSession.setActionHandler('seekforward', () => {
-                const currentState = stateRef.current;
-                const track = currentState.playlist[currentState.currentIndex];
-                const maxPos = track?.duration || 0;
-                const newPos = Math.min(maxPos, currentState.position + 10);
-                skipTo(currentState.currentIndex, newPos);
-            });
+                try {
+                    navigator.mediaSession.setActionHandler('seekforward', () => {
+                        const currentState = stateRef.current;
+                        const track = currentState.playlist[currentState.currentIndex];
+                        const maxPos = track?.duration || 0;
+                        const newPos = Math.min(maxPos, currentState.position + 10);
+                        skipTo(currentState.currentIndex, newPos);
+                    });
+                } catch (e) {
+                    console.debug('seekforward not supported');
+                }
+            } catch (error) {
+                console.warn('Error setting up Media Session handlers:', error);
+            }
         }
     }, []);
 
