@@ -703,22 +703,29 @@ export default function App() {
                             onChange={handleConfigChange}
                         />
                         <input 
+                            id="password" 
+                            placeholder="Password" 
+                            type="password"
+                            value={configForm.password || ''}
+                            onChange={handleConfigChange}
+                        />
+                        <input 
                             id="token" 
-                            placeholder="Token (Advanced)" 
+                            placeholder="Token (Advanced - optional)" 
                             type="password"
                             value={configForm.token || ''}
                             onChange={handleConfigChange}
                         />
                          <input 
                             id="salt" 
-                            placeholder="Salt (Advanced)" 
+                            placeholder="Salt (Advanced - optional)" 
                             type="password"
                             value={configForm.salt || ''}
                             onChange={handleConfigChange}
                         />
                         <button id="btnConnect" onClick={handleConnect}>Save & Connect</button>
                     </div>
-                    <div className="small">Auth token/salt should be manually generated/entered for full functionality. Saved in <code>localStorage</code>.</div>
+                    <div className="small">Enter username/password for normal login, or use pre-generated token/salt for advanced authentication. Saved in <code>localStorage</code>.</div>
                 </div>
             </aside>
         </div>
