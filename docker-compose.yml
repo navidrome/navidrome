@@ -10,7 +10,7 @@ services:
     environment:
       ND_MUSICFOLDER: /music
       ND_DATAFOLDER: /data
-      ND_LOGLEVEL: info
+      ND_LOGLEVEL: debug
       # Додаткові налаштування - нафіга??
       # Наприклад, шаблон mpv запуску, якщо хочеш ручне налаштування
       # ND_MPV_CMD_TEMPLATE: "mpv --no-video --audio-device=<твоє_пристрій> ${MPV_OPTS} ${INPUT}"
