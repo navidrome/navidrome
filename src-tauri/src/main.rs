@@ -5,17 +5,14 @@
 )]
 
 use tauri::{AppHandle, Manager, Runtime, SystemTray, CustomMenuItem, SystemTrayMenu, SystemTrayEvent, Menu};
+use tauri::GlobalShortcutManager;
 
-// --- IMPORT MAC OS MEDIA CONTROL MODULE (Conceptual, requires external crate/plugin) ---
-// Note: Actual macOS media key and Now Playing support often requires using a library 
-// like `media-kit-rs` or integrating with MPRemoteCommandCenter, which is complex.
-// This provides the framework for dispatching events.
-
-// Placeholder function for native macOS media update
-// In a real app, this function would use a macOS-specific crate to talk to MPRemoteCommandCenter.
+// --- MAC OS MEDIA CONTROL MODULE (Conceptual Placeholder) ---
+// This function receives track info from JavaScript and calls the native macOS API.
 pub fn update_now_playing<R: Runtime>(app: &AppHandle<R>, title: String, artist: String, cover_url: String) {
-    println!("Native macOS Update: Title='{}', Artist='{}', Cover='{}'", title, artist, cover_url);
-    // 🚨 REAL IMPLEMENTATION HERE: Call macOS APIs 🚨
+    // 🚨 REAL IMPLEMENTATION HERE: This is where FFI calls or a specialized crate 
+    // would update the macOS MPRemoteCommandCenter (Control Center/Now Playing).
+    println!("Native macOS Update Called: Title='{}', Artist='{}', Cover='{}'", title, artist, cover_url);
 }
 
 // 1. Command callable from JavaScript to update Now Playing info
@@ -38,9 +35,10 @@ fn main() {
         .menu(Menu::new()) // Hides the default menu bar items
         .system_tray(SystemTray::new().with_menu(tray_menu))
         .on_system_tray_event(|app, event| {
-            // 2. Handle System Tray clicks (e.g., Play/Pause from Menu Bar)
+            // 2. Handle System Tray clicks (Menu Bar controls)
             match event {
                 SystemTrayEvent::MenuItemClick { id, .. } => {
+                    // Emit event back to the JavaScript frontend
                     match id.as_str() {
                         "play_pause" => { app.emit_all("media-key-event", "play-pause").unwrap(); }
                         "next_track" => { app.emit_all("media-key-event", "next-track").unwrap(); }
@@ -52,15 +50,28 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![update_media_info])
-        // 3. Setup global media key listeners
         .setup(|app| {
-            // Note: True global media key events require deeper native integration 
-            // than standard Tauri setup, often relying on specialized Rust crates 
-            // (like 'media_manager' or 'global_hotkey') which would dispatch the 
-            // "media-key-event" back to the frontend.
+            // 3. Setup global media key listeners
+            let mut manager = app.global_shortcut_manager();
+            let app_handle = app.handle();
+            
+            // Registering media keys. Note: Key names are system/library dependent.
+            // On macOS, these typically map to the F-keys on external keyboards or system-wide media controls.
+            // These lines enable the media key control functionality you requested.
+            manager.register("PlayPause", move |_| {
+                app_handle.emit_all("media-key-event", "play-pause").unwrap();
+            }).ok();
+            
+            let app_handle = app.handle();
+            manager.register("MediaNextTrack", move |_| {
+                app_handle.emit_all("media-key-event", "next-track").unwrap();
+            }).ok();
+            
+            let app_handle = app.handle();
+            manager.register("MediaPreviousTrack", move |_| {
+                app_handle.emit_all("media-key-event", "prev-track").unwrap();
+            }).ok();
 
-            // The System Tray handles the menu bar requirement, and the event dispatcher 
-            // handles the key/command requirement.
             Ok(())
         })
         .run(tauri::generate_context!())

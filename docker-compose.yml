@@ -35,7 +35,8 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./jukebox.html:/usr/share/nginx/html/index.html:ro
+      # --- FIXED: Mount the built 'dist' folder to the Nginx root ---
+      - ./dist:/usr/share/nginx/html:ro
       - ./nginx.default.conf:/etc/nginx/conf.d/default.conf:ro
     # command не обов'язковий — дефолт уже запускає nginx у foreground
     # command: ["nginx","-g","daemon off;"]
