@@ -1,6 +1,5 @@
 // src/App.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-// Tauri imports and listeners removed
 import { 
     callJukebox, 
     coverArtUrl, 
@@ -150,12 +149,42 @@ export default function App() {
     
     // --- Effects & Listeners ---
 
-    // Polling, Ticker, and Auto-Repeat Logic (Pure browser implementation)
+    // Initialization - runs ONCE on mount
     useEffect(() => {
-        // Polling loop
-        const pollInterval = setInterval(refreshState, 2000); 
+        (async function init() {
+            try {
+                const saved = localStorage.getItem('jukeboxConfig');
+                if (saved) {
+                    setConfigForm(getConfig());
+                    setStatusText('Reconnecting…');
+                    await refreshState();
+                    // Check current state after refresh
+                    const { playlist } = await callJukebox('get');
+                    const currentPlaylist = Array.isArray(playlist.entry) ? playlist.entry : (playlist.entry ? [playlist.entry] : []);
+                    
+                    if (currentPlaylist.length === 0) {
+                        for (let i = 0; i < 3; i++) {
+                            await addRandomSong();
+                        }
+                        await refreshState();
+                    }
+                    setStatusText('Ready');
+                }
+            } catch (e) {
+                console.error(e);
+                setStatusText('Error connecting. Configure server.');
+            }
+        })();
+    }, []); // Empty deps - run once on mount
 
-        // Local position ticker
+    // Polling loop - runs ONCE on mount
+    useEffect(() => {
+        const pollInterval = setInterval(refreshState, 2000);
+        return () => clearInterval(pollInterval);
+    }, [refreshState]);
+
+    // Position ticker and auto-repeat - runs on state changes for logic
+    useEffect(() => {
         const tickInterval = setInterval(() => {
             if (state.playing && !state.seeking) {
                 const tr = state.playlist[state.currentIndex];
@@ -178,33 +207,9 @@ export default function App() {
             }
         }, 500);
 
-        // Initialization: Load config and queue random songs if empty, mimicking original init()
-        (async function init() {
-            try {
-                const saved = localStorage.getItem('jukeboxConfig');
-                if (saved) {
-                    setConfigForm(getConfig());
-                    setStatusText('Reconnecting…');
-                    await refreshState();
-                    if (state.playlist.length === 0) {
-                        for (let i = 0; i < 3; i++) {
-                            await addRandomSong();
-                        }
-                    }
-                }
-                setStatusText(state.playing ? '▶️ Playing' : 'Ready');
-            } catch (e) {
-                console.error(e);
-                setStatusText('Error connecting. Configure server.');
-            }
-        })();
-
-        return () => {
-            clearInterval(pollInterval);
-            clearInterval(tickInterval);
-            // No Tauri cleanup needed
-        };
-    }, [refreshState, state, skipTo]);
+        return () => clearInterval(tickInterval);
+    }, [state.playing, state.seeking, state.currentIndex, state.playlist, state.lastStatusTs, 
+        state.localTickStart, state.repeatMode, state.endHandledForId, skipTo]);
 
     // Volume Change Handler
     const handleVolumeChange = async (e) => {
