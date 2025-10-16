@@ -764,8 +764,123 @@
       volPct.textContent = `${pct}%`;
     }
 
-    // Control Handlers
+    // Queue Rendering & Drag-and-Drop
+    function renderQueue() {
+      qcontainer.innerHTML = '';
+      state.playlist.forEach((song, i) => {
+        const row = document.createElement('div');
+        row.className = 'qitem' + (i === state.currentIndex ? ' current' : '');
+        row.draggable = true;
+        row.dataset.index = String(i);
+        row.innerHTML = `
+          <div class="idx">${i + 1}</div>
+          <div>
+            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+            <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
+          </div>
+          <div class="qi-actions">
+            <button title="Play here" class="btn" data-act="play">▶️</button>
+            <button title="Remove" class="btn" data-act="rm">✖️</button>
+          </div>`;
+        row.addEventListener('dragstart', (e) => {
+          row.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', String(i));
+        });
+        row.addEventListener('dragend', () => row.classList.remove('dragging'));
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const after = getDragAfterElement(qcontainer, e.clientY);
+          qcontainer.insertBefore(row, after);
+        });
+        row.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          await commitReorderFromDOM();
+        });
+        row.addEventListener('click', async (e) => {
+          const act = e.target.closest('button')?.dataset?.act;
+          if (act === 'play') await skipTo(i, 0);
+          if (act === 'rm') await removeIndex(i);
+        });
+        qcontainer.appendChild(row);
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
+      return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
+    }
+
+    async function commitReorderFromDOM() {
+      const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
+      const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
+      if (!ids.length) return;
+      const qs = ids.map(id => `&id=${encodeURIComponent(id)}`).join('');
+      await callJukebox('set', qs);
+      await refreshAll();
+    }
+
+    async function removeIndex(i) {
+      try {
+        await callJukebox('remove', `&index=${i}`);
+        await refreshAll();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Search Functionality
+    function renderSearch(songs) {
+      sResults.innerHTML = '';
+      songs.slice(0, 20).forEach(song => {
+        const row = document.createElement('div');
+        row.className = 'srow';
+        row.innerHTML = `
+          <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'">
+          <div class="s-meta">
+            <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
+            <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
+          </div>
+          <div style="text-align:right">➕</div>`;
+        row.addEventListener('click', async () => {
+          await addSong(song.id);
+          sInput.value = '';
+          sResults.hidden = true;
+          sResults.innerHTML = '';
+        });
+        sResults.appendChild(row);
+      });
+      sResults.hidden = songs.length === 0;
+    }
+
+    async function addSong(id) {
+      try {
+        await callJukebox('add', `&id=${encodeURIComponent(id)}`);
+        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+        await refreshAll();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Random Song Addition
+    function getRandomSong() {
+      const randomIndex = Math.floor(Math.random() * sampleSongs.length);
+      return sampleSongs[randomIndex];
+    }
+
+    async function addRandomSong() {
+      const randomSong = getRandomSong();
+      try {
+        await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
+        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+        await refreshAll();
+      } catch (e) {
+        throw e;
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      // Control Handlers
       btnPlay.addEventListener('click', async () => {
         try {
           if (state.playing) {
@@ -890,70 +1005,6 @@
         }
       });
 
-      // Queue Rendering & Drag-and-Drop
-      function renderQueue() {
-        qcontainer.innerHTML = '';
-        state.playlist.forEach((song, i) => {
-          const row = document.createElement('div');
-          row.className = 'qitem' + (i === state.currentIndex ? ' current' : '');
-          row.draggable = true;
-          row.dataset.index = String(i);
-          row.innerHTML = `
-            <div class="idx">${i + 1}</div>
-            <div>
-              <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
-              <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
-            </div>
-            <div class="qi-actions">
-              <button title="Play here" class="btn" data-act="play">▶️</button>
-              <button title="Remove" class="btn" data-act="rm">✖️</button>
-            </div>`;
-          row.addEventListener('dragstart', (e) => {
-            row.classList.add('dragging');
-            e.dataTransfer.setData('text/plain', String(i));
-          });
-          row.addEventListener('dragend', () => row.classList.remove('dragging'));
-          row.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            const after = getDragAfterElement(qcontainer, e.clientY);
-            qcontainer.insertBefore(row, after);
-          });
-          row.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            await commitReorderFromDOM();
-          });
-          row.addEventListener('click', async (e) => {
-            const act = e.target.closest('button')?.dataset?.act;
-            if (act === 'play') await skipTo(i, 0);
-            if (act === 'rm') await removeIndex(i);
-          });
-          qcontainer.appendChild(row);
-        });
-      }
-
-      function getDragAfterElement(container, y) {
-        const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
-        return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
-      }
-
-      async function commitReorderFromDOM() {
-        const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
-        const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
-        if (!ids.length) return;
-        const qs = ids.map(id => `&id=${encodeURIComponent(id)}`).join('');
-        await callJukebox('set', qs);
-        await refreshAll();
-      }
-
-      async function removeIndex(i) {
-        try {
-          await callJukebox('remove', `&index=${i}`);
-          await refreshAll();
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
       // Search Functionality
       let sTimer = null;
       sInput.addEventListener('input', () => {
@@ -976,56 +1027,6 @@
           renderSearch(results);
         } catch (e) {
           console.error(e);
-        }
-      }
-
-      function renderSearch(songs) {
-        sResults.innerHTML = '';
-        songs.slice(0, 20).forEach(song => {
-          const row = document.createElement('div');
-          row.className = 'srow';
-          row.innerHTML = `
-            <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'">
-            <div class="s-meta">
-              <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
-              <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
-            </div>
-            <div style="text-align:right">➕</div>`;
-          row.addEventListener('click', async () => {
-            await addSong(song.id);
-            sInput.value = '';
-            sResults.hidden = true;
-            sResults.innerHTML = '';
-          });
-          sResults.appendChild(row);
-        });
-        sResults.hidden = songs.length === 0;
-      }
-
-      async function addSong(id) {
-        try {
-          await callJukebox('add', `&id=${encodeURIComponent(id)}`);
-          if (!state.playing && state.playlist.length === 0) await callJukebox('start');
-          await refreshAll();
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      // Random Song Addition
-      function getRandomSong() {
-        const randomIndex = Math.floor(Math.random() * sampleSongs.length);
-        return sampleSongs[randomIndex];
-      }
-
-      async function addRandomSong() {
-        const randomSong = getRandomSong();
-        try {
-          await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
-          if (!state.playing && state.playlist.length === 0) await callJukebox('start');
-          await refreshAll();
-        } catch (e) {
-          throw e;
         }
       }
     });
