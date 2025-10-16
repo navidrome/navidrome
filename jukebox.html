@@ -1,26 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jukebox — Full Player</title>
   <style>
     :root {
       --bg1: #10121a;
       --bg2: #171a24;
-      --card: rgba(255,255,255,0.06);
+      --card: rgba(255, 255, 255, 0.06);
       --muted: #a5adcb;
       --text: #e5e9f5;
-      --accent: #8b5cf6; /* violet */
-      --accent-2: #22c55e; /* green */
+      --accent: #8b5cf6; /* Violet */
+      --accent-2: #22c55e; /* Green */
       --danger: #ef4444;
       --warn: #f59e0b;
-      --shadow: 0 20px 60px rgba(0,0,0,0.4);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
       --radius: 18px;
     }
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
@@ -34,10 +40,10 @@
     }
 
     .player-shell {
-      width: 1180px; /* desktop-focused */
+      width: 1180px; /* Desktop-focused */
       max-width: 100%;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 24px;
       backdrop-filter: blur(8px);
       box-shadow: var(--shadow);
@@ -47,36 +53,44 @@
       gap: 22px;
     }
 
-    /* LEFT: cover + track info */
+    /* Left: Cover + Track Info */
     .cover-card {
       background: var(--card);
       border-radius: var(--radius);
       padding: 18px;
     }
+
     .cover {
       width: 100%;
       aspect-ratio: 1/1;
       border-radius: 16px;
       object-fit: cover;
       background: #222636;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     }
+
     .meta {
       margin-top: 14px;
     }
+
     .title {
       font-size: 20px;
       font-weight: 700;
-      letter-spacing: .2px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
+
     .artist, .album {
       color: var(--muted);
       font-size: 14px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* CENTER: transport + progress */
+    /* Center: Transport + Progress */
     .transport-card {
       background: var(--card);
       border-radius: var(--radius);
@@ -103,6 +117,7 @@
       gap: 12px;
       user-select: none;
     }
+
     .time {
       text-align: center;
       font-feature-settings: "tnum" 1;
@@ -111,17 +126,35 @@
       font-size: 13px;
       min-width: 48px;
     }
+
     .seek {
       -webkit-appearance: none;
       appearance: none;
       width: 100%;
       height: 8px;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--accent) var(--seek-fill, 0%), rgba(255,255,255,0.16) var(--seek-fill, 0%));
+      background: linear-gradient(90deg, var(--accent) var(--seek-fill, 0%), rgba(255, 255, 255, 0.16) var(--seek-fill, 0%));
       outline: none;
     }
-    .seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
-    .seek::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+
+    .seek::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid var(--accent);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .seek::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid var(--accent);
+    }
 
     .controls {
       display: grid;
@@ -131,72 +164,291 @@
     }
 
     .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.06);
-      cursor: pointer; user-select: none;
-      transition: transform .08s ease, background .2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, background 0.2s ease;
       font-size: 18px;
     }
-    .btn:hover { background: rgba(255,255,255,0.12); }
-    .btn:active { transform: translateY(1px); }
-    .btn.primary { height: 54px; font-size: 22px; background: linear-gradient(180deg, var(--accent), #6d28d9); border: none; color: white; box-shadow: inset 0 -2px 0 rgba(0,0,0,.25); }
-    .btn.primary.paused { background: linear-gradient(180deg, var(--accent-2), #16a34a); }
-    .btn.warn { background: linear-gradient(180deg, var(--warn), #c88508); color: #111; border: none; }
-    .btn.danger { background: linear-gradient(180deg, var(--danger), #b91c1c); }
-    .btn.active { outline: 2px solid var(--accent); }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn.primary {
+      height: 54px;
+      font-size: 22px;
+      background: linear-gradient(180deg, var(--accent), #6d28d9);
+      border: none;
+      color: white;
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .btn.primary.paused {
+      background: linear-gradient(180deg, var(--accent-2), #16a34a);
+    }
+
+    .btn.warn {
+      background: linear-gradient(180deg, var(--warn), #c88508);
+      color: #111;
+      border: none;
+    }
+
+    .btn.danger {
+      background: linear-gradient(180deg, var(--danger), #b91c1c);
+    }
+
+    .btn.active {
+      outline: 2px solid var(--accent);
+    }
 
     .vol {
-      display: grid; gap: 6px; align-content: center; margin-top: 6px;
+      display: grid;
+      gap: 6px;
+      align-content: center;
+      margin-top: 6px;
     }
-    .vol-row { display: grid; grid-template-columns: 28px 1fr 48px; align-items: center; gap: 8px; }
+
+    .vol-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 48px;
+      align-items: center;
+      gap: 8px;
+    }
+
     .vol input[type="range"] {
-      -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px;
-      background: linear-gradient(90deg, #22c55e var(--vol-fill, 100%), rgba(255,255,255,0.16) var(--vol-fill, 100%));
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e var(--vol-fill, 100%), rgba(255, 255, 255, 0.16) var(--vol-fill, 100%));
     }
-    .vol input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #22c55e; }
-    .vol input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #22c55e; }
-    .vol .volpct { color: var(--muted); text-align: right; font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
 
-    /* RIGHT: queue + search */
-    .side-card { background: var(--card); border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
-    .side-card h3 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+    .vol input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #22c55e;
+    }
 
-    .queue { max-height: 560px; overflow: auto; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; }
-    .qitem { display: grid; grid-template-columns: 28px 1fr 52px; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); cursor: grab; }
-    .qitem:last-child { border-bottom: 0; }
-    .qitem.dragging { opacity: 0.6; }
-    .qitem .idx { color: var(--muted); font-size: 12px; text-align: right; }
-    .qitem .qi-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .qitem .qi-meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .qitem .qi-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
-    .qitem .tag { display:inline-flex; align-items:center; gap:6px; padding:2px 6px; border-radius:999px; font-size:11px; background: rgba(139,92,246,0.16); color: #c4b5fd; }
-    .qitem.current { background: rgba(139,92,246,0.15); }
+    .vol input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #22c55e;
+    }
 
-    .search-box { display: grid; gap: 8px; }
-    .search-box input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--text); outline: none; }
-    .search-results { border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; max-height: 260px; overflow-y: auto; }
-    .srow { display: grid; grid-template-columns: 40px 1fr 46px; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .srow:last-child { border-bottom: 0; }
-    .srow:hover { background: rgba(255,255,255,0.08); cursor: pointer; }
-    .srow img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #2b3044; }
-    .srow .s-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .srow .s-artist { color: var(--muted); font-size: 12px; }
+    .vol .volpct {
+      color: var(--muted);
+      text-align: right;
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+    }
 
-    /* CONFIG */
-    .config { margin-top: 10px; background: var(--card); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; }
-    .config .row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; }
-    .config input { padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--text); }
-    .config button { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(34,197,94,0.9); color: #05140a; cursor: pointer; font-weight: 700; }
+    /* Right: Queue + Search */
+    .side-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
 
-    .small { font-size: 12px; color: var(--muted); }
+    .side-card h3 {
+      margin: 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .queue {
+      max-height: 560px;
+      overflow: auto;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+    }
+
+    .qitem {
+      display: grid;
+      grid-template-columns: 28px 1fr 52px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: grab;
+    }
+
+    .qitem:last-child {
+      border-bottom: 0;
+    }
+
+    .qitem.dragging {
+      opacity: 0.6;
+    }
+
+    .qitem .idx {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .qitem .qi-title {
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .qitem .qi-meta {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .qitem .qi-actions {
+      display: inline-flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .qitem .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(139, 92, 246, 0.16);
+      color: #c4b5fd;
+    }
+
+    .qitem.current {
+      background: rgba(139, 92, 246, 0.15);
+    }
+
+    .search-box {
+      display: grid;
+      gap: 8px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      outline: none;
+    }
+
+    .search-results {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      overflow: hidden;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .srow {
+      display: grid;
+      grid-template-columns: 40px 1fr 46px;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .srow:last-child {
+      border-bottom: 0;
+    }
+
+    .srow:hover {
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+
+    .srow img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #2b3044;
+    }
+
+    .srow .s-meta {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .srow .s-artist {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Config */
+    .config {
+      margin-top: 10px;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .config .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 8px;
+    }
+
+    .config input {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+    }
+
+    .config button {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(34, 197, 94, 0.9);
+      color: #05140a;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
   <div class="player-shell">
-    <!-- LEFT -->
+    <!-- Left: Cover + Track Info -->
     <aside class="cover-card">
-      <img id="cover" class="cover" alt="Album art" />
+      <img id="cover" class="cover" alt="Album art">
       <div class="meta">
         <div id="title" class="title">Nothing playing</div>
         <div id="artist" class="artist">—</div>
@@ -204,21 +456,17 @@
       </div>
     </aside>
 
-    <!-- CENTER -->
+    <!-- Center: Transport + Progress -->
     <main class="transport-card">
       <div class="status-row">
         <div id="statusText">Initializing…</div>
         <div class="small">Queue: <span id="queueCount">0</span> tracks</div>
       </div>
-
-      <!-- PROGRESS -->
       <div class="progress">
         <div id="currentTime" class="time">0:00</div>
-        <input id="seek" class="seek" type="range" min="0" max="1000" value="0" />
+        <input id="seek" class="seek" type="range" min="0" max="1000" value="0">
         <div id="totalTime" class="time">0:00</div>
       </div>
-
-      <!-- CONTROLS -->
       <div>
         <div class="controls">
           <button id="btnShuffle" class="btn" title="Shuffle queue" aria-label="Shuffle">🔀</button>
@@ -232,28 +480,26 @@
         <div class="vol">
           <div class="vol-row">
             <div title="Volume">🔊</div>
-            <input id="volume" type="range" min="0" max="100" value="100" />
+            <input id="volume" type="range" min="0" max="100" value="100">
             <div id="volPct" class="volpct">100%</div>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- RIGHT -->
+    <!-- Right: Queue + Search -->
     <aside class="side-card">
       <h3>Queue</h3>
       <div id="queue" class="queue" aria-label="Playlist queue"></div>
-
       <div class="search-box">
-        <input id="search" placeholder="Search songs to add…" />
+        <input id="search" placeholder="Search songs to add…">
         <div id="sresults" class="search-results" hidden></div>
       </div>
-
       <div class="config">
         <div class="row">
-          <input id="serverUrl" placeholder="Server URL (e.g., http://localhost:4533)" />
-          <input id="username" placeholder="Username" />
-          <input id="password" placeholder="Password" type="password" />
+          <input id="serverUrl" placeholder="Server URL (e.g., http://localhost:4533)">
+          <input id="username" placeholder="Username">
+          <input id="password" placeholder="Password" type="password">
           <button id="btnConnect">Save & Connect</button>
         </div>
         <div class="small">Auth is stored in <code>localStorage</code> as token + salt. Uses Subsonic-compatible Jukebox mode.</div>
@@ -262,13 +508,12 @@
   </div>
 
   <script>
-    // =====================
-    // Subsonic/ Navidrome Jukebox Player (desktop-focused)
+    // Subsonic/Navidrome Jukebox Player
     // Features: Play/Pause/Next/Prev, Seek, Volume, Shuffle, Repeat (off/all/one), Queue view, Add/Remove/Reorder
-    // =====================
 
     const API_VERSION = '1.16.1';
 
+    // Configuration
     let config = {
       serverUrl: 'http://localhost:4533',
       username: 'bgpntx',
@@ -276,12 +521,13 @@
       salt: ''
     };
 
+    // State Management
     let state = {
-      playlist: [], // entries
+      playlist: [],
       currentIndex: 0,
       playing: false,
       gain: 1,
-      position: 0, // seconds
+      position: 0,
       lastStatusTs: 0,
       localTickStart: 0,
       repeatMode: 'off', // 'off' | 'all' | 'one'
@@ -290,7 +536,7 @@
       endHandledForId: null
     };
 
-    // UI refs
+    // UI References
     const $ = (sel) => document.querySelector(sel);
     const cover = $('#cover');
     const titleEl = $('#title');
@@ -306,7 +552,6 @@
     const qcontainer = $('#queue');
     const sInput = $('#search');
     const sResults = $('#sresults');
-
     const btnPlay = $('#btnPlay');
     const btnPrev = $('#btnPrev');
     const btnNext = $('#btnNext');
@@ -314,29 +559,33 @@
     const btnShuffle = $('#btnShuffle');
     const btnStop = $('#btnStop');
     const btnClear = $('#btnClear');
-
     const serverUrlEl = $('#serverUrl');
     const usernameEl = $('#username');
     const passwordEl = $('#password');
     const btnConnect = $('#btnConnect');
 
-    // Load saved config
+    // Load Saved Config
     const saved = localStorage.getItem('jukeboxConfig');
     if (saved) {
-      try { config = JSON.parse(saved); } catch {}
+      try {
+        config = JSON.parse(saved);
+      } catch {}
     }
     serverUrlEl.value = config.serverUrl || '';
     usernameEl.value = config.username || '';
 
-    function buildJukeboxUrl(action, extra='') {
+    // API Utilities
+    function buildJukeboxUrl(action, extra = '') {
       const base = `${config.serverUrl}/rest/jukeboxControl?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json`;
       return `${base}&action=${action}${extra}`;
     }
-    function coverArtUrl(id, size=512) {
+
+    function coverArtUrl(id, size = 512) {
       if (!id) return '';
       return `${config.serverUrl}/rest/getCoverArt?id=${encodeURIComponent(id)}&size=${size}&u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox`;
     }
-    async function callJukebox(action, extra='') {
+
+    async function callJukebox(action, extra = '') {
       const url = buildJukeboxUrl(action, extra);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -348,25 +597,23 @@
       return resp;
     }
 
-    // Status & Playlist Updaters
+    // Status & Playlist Updates
     function updateFromStatus(st) {
       if (!st) return;
       const changedIndex = st.currentIndex !== undefined && st.currentIndex !== state.currentIndex;
       state.currentIndex = st.currentIndex ?? state.currentIndex;
       state.playing = !!st.playing;
       state.gain = st.gain ?? state.gain;
-      state.position = st.position ?? state.position; // seconds
+      state.position = st.position ?? state.position;
       state.lastStatusTs = Date.now();
       state.localTickStart = state.position;
 
-      // UI updates
       statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused';
       seekUpdateVisual();
       volume.value = Math.round(state.gain * 100);
       setVolFill();
 
       if (changedIndex) {
-        // refresh playlist visuals
         renderQueue();
         updateNowPlayingCard();
         state.endHandledForId = null;
@@ -410,7 +657,6 @@
       const tr = state.playlist[state.currentIndex];
       const dur = Math.max(0, tr?.duration || 0);
       let pos = Math.max(0, Math.min(dur, state.position));
-      // Local smoothing if playing
       if (state.playing && !state.seeking) {
         const dt = (Date.now() - state.lastStatusTs) / 1000;
         pos = Math.min(dur, state.localTickStart + dt);
@@ -419,14 +665,12 @@
       totTime.textContent = fmtTime(dur);
       const fill = dur ? Math.round((pos / dur) * 1000) : 0;
       seek.value = String(fill);
-      seek.style.setProperty('--seek-fill', `${(fill/10).toFixed(1)}%`);
+      seek.style.setProperty('--seek-fill', `${(fill / 10).toFixed(1)}%`);
 
-      // End of track handlers for repeat
       const currentId = tr?.id;
       if (tr && state.playing && dur > 3 && (dur - pos) <= 0.8) {
         if (state.repeatMode === 'one' && state.endHandledForId !== currentId) {
           state.endHandledForId = currentId;
-          // restart same track
           skipTo(state.currentIndex, 0);
         } else if (state.repeatMode === 'all' && state.endHandledForId !== currentId && state.currentIndex === state.playlist.length - 1) {
           state.endHandledForId = currentId;
@@ -437,16 +681,26 @@
 
     function fmtTime(sec) {
       sec = Math.max(0, Math.floor(sec));
-      const m = Math.floor(sec / 60); const s = sec % 60;
-      return `${m}:${String(s).padStart(2,'0')}`;
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
     }
 
-    // Controls
+    // Control Handlers
     btnPlay.addEventListener('click', async () => {
       try {
-        if (state.playing) { await callJukebox('stop'); btnPlay.textContent = '▶️'; btnPlay.classList.remove('paused'); }
-        else { await callJukebox('start'); btnPlay.textContent = '⏸️'; btnPlay.classList.add('paused'); }
-      } catch (e) { console.error(e); }
+        if (state.playing) {
+          await callJukebox('stop');
+          btnPlay.textContent = '▶️';
+          btnPlay.classList.remove('paused');
+        } else {
+          await callJukebox('start');
+          btnPlay.textContent = '⏸️';
+          btnPlay.classList.add('paused');
+        }
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     btnPrev.addEventListener('click', async () => {
@@ -462,35 +716,53 @@
     });
 
     btnStop.addEventListener('click', async () => {
-      try { await callJukebox('stop'); } catch (e) { console.error(e); }
+      try {
+        await callJukebox('stop');
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     btnClear.addEventListener('click', async () => {
       if (!confirm('Clear the whole queue?')) return;
-      try { await callJukebox('clear'); await refreshAll(); } catch (e) { console.error(e); }
+      try {
+        await callJukebox('clear');
+        await refreshAll();
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     btnShuffle.addEventListener('click', async () => {
-      try { await callJukebox('shuffle'); await refreshAll(); btnShuffle.classList.add('active'); setTimeout(()=>btnShuffle.classList.remove('active'), 600); } catch(e){ console.error(e); }
+      try {
+        await callJukebox('shuffle');
+        await refreshAll();
+        btnShuffle.classList.add('active Juno');
+        setTimeout(() => btnShuffle.classList.remove('active'), 600);
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     btnRepeat.addEventListener('click', () => {
       state.repeatMode = state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off';
-      const map = { off:'🔁', all:'🔂', one:'🔂1' };
+      const map = { off: '🔁', all: '🔂', one: '🔂1' };
       btnRepeat.textContent = map[state.repeatMode];
       btnRepeat.classList.toggle('active', state.repeatMode !== 'off');
     });
 
-    async function skipTo(index, offsetSec=0) {
+    async function skipTo(index, offsetSec = 0) {
       index = Math.max(0, Math.min(index, state.playlist.length - 1));
       try {
         await callJukebox('skip', `&index=${index}&offset=${Math.max(0, Math.floor(offsetSec))}`);
         await callJukebox('status');
         await callJukebox('get');
-      } catch(e){ console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    // Seek bar interactions (debounced commit)
+    // Seek Bar
     let seekCommitTimer = null;
     seek.addEventListener('input', () => {
       state.seeking = true;
@@ -504,30 +776,37 @@
       if (seekCommitTimer) clearTimeout(seekCommitTimer);
       seekCommitTimer = setTimeout(() => commitSeek(), 250);
     });
+
     seek.addEventListener('change', commitSeek);
-    async function commitSeek(){
+
+    async function commitSeek() {
       state.seeking = false;
       const tr = state.playlist[state.currentIndex];
       const dur = Math.max(0, tr?.duration || 0);
-      const pos = (Number(seek.value)/1000) * dur;
+      const pos = (Number(seek.value) / 1000) * dur;
       await skipTo(state.currentIndex, pos);
     }
 
-    // Volume
-    function setVolFill(){
+    // Volume Control
+    function setVolFill() {
       const pct = Number(volume.value);
       volume.style.setProperty('--vol-fill', `${pct}%`);
       volPct.textContent = `${pct}%`;
     }
+
     setVolFill();
     volume.addEventListener('input', setVolFill);
     volume.addEventListener('change', async () => {
-      const gain = Math.max(0, Math.min(1, Number(volume.value)/100));
-      try { await callJukebox('setGain', `&gain=${gain}`); } catch(e){ console.error(e); }
+      const gain = Math.max(0, Math.min(1, Number(volume.value) / 100));
+      try {
+        await callJukebox('setGain', `&gain=${gain}`);
+      } catch (e) {
+        console.error(e);
+      }
     });
 
-    // Queue rendering + DnD
-    function renderQueue(){
+    // Queue Rendering & Drag-and-Drop
+    function renderQueue() {
       qcontainer.innerHTML = '';
       state.playlist.forEach((song, i) => {
         const row = document.createElement('div');
@@ -535,7 +814,7 @@
         row.draggable = true;
         row.dataset.index = String(i);
         row.innerHTML = `
-          <div class="idx">${i+1}</div>
+          <div class="idx">${i + 1}</div>
           <div>
             <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
             <div class="qi-meta">${escapeHtml(song.artist || 'Unknown')} • ${escapeHtml(song.album || '')}</div>
@@ -544,32 +823,35 @@
             <button title="Play here" class="btn" data-act="play">▶️</button>
             <button title="Remove" class="btn" data-act="rm">✖️</button>
           </div>`;
-
-        row.addEventListener('dragstart', (e)=>{ row.classList.add('dragging'); e.dataTransfer.setData('text/plain', String(i)); });
-        row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
-        row.addEventListener('dragover', (e)=>{ e.preventDefault(); const after = getDragAfterElement(qcontainer, e.clientY); qcontainer.insertBefore(row, after); });
-        row.addEventListener('drop', async (e)=>{
+        row.addEventListener('dragstart', (e) => {
+          row.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', String(i));
+        });
+        row.addEventListener('dragend', () => row.classList.remove('dragging'));
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const after = getDragAfterElement(qcontainer, e.clientY);
+          qcontainer.insertBefore(row, after);
+        });
+        row.addEventListener('drop', async (e) => {
           e.preventDefault();
           await commitReorderFromDOM();
         });
-
         row.addEventListener('click', async (e) => {
           const act = e.target.closest('button')?.dataset?.act;
-          if (act === 'play') { await skipTo(i, 0); }
-          if (act === 'rm') { await removeIndex(i); }
+          if (act === 'play') await skipTo(i, 0);
+          if (act === 'rm') await removeIndex(i);
         });
-
         qcontainer.appendChild(row);
       });
     }
 
     function getDragAfterElement(container, y) {
       const els = [...container.querySelectorAll('.qitem:not(.dragging)')];
-      return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight/2) || null;
+      return els.find(el => y <= el.getBoundingClientRect().top + el.offsetHeight / 2) || null;
     }
 
-    async function commitReorderFromDOM(){
-      // Read new order from DOM
+    async function commitReorderFromDOM() {
       const newOrderIdx = [...qcontainer.querySelectorAll('.qitem')].map(el => Number(el.dataset.index));
       const ids = newOrderIdx.map(i => state.playlist[i]?.id).filter(Boolean);
       if (!ids.length) return;
@@ -578,42 +860,53 @@
       await refreshAll();
     }
 
-    async function removeIndex(i){
-      try { await callJukebox('remove', `&index=${i}`); await refreshAll(); } catch(e){ console.error(e); }
+    async function removeIndex(i) {
+      try {
+        await callJukebox('remove', `&index=${i}`);
+        await refreshAll();
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    // Search & Add
+    // Search Functionality
     let sTimer = null;
     sInput.addEventListener('input', () => {
       const q = sInput.value.trim();
       if (sTimer) clearTimeout(sTimer);
-      if (q.length < 2) { sResults.hidden = true; sResults.innerHTML=''; return; }
-      sTimer = setTimeout(()=> doSearch(q), 250);
+      if (q.length < 2) {
+        sResults.hidden = true;
+        sResults.innerHTML = '';
+        return;
+      }
+      sTimer = setTimeout(() => doSearch(q), 250);
     });
 
-    async function doSearch(q){
+    async function doSearch(q) {
       try {
         const url = `${config.serverUrl}/rest/search3?u=${encodeURIComponent(config.username)}&t=${config.token}&s=${config.salt}&v=${API_VERSION}&c=ModernJukebox&f=json&query=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         const data = await res.json();
         const results = data?.['subsonic-response']?.searchResult3?.song || [];
         renderSearch(results);
-      } catch(e){ console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    function renderSearch(songs){
+    function renderSearch(songs) {
       sResults.innerHTML = '';
       songs.slice(0, 20).forEach(song => {
         const row = document.createElement('div');
         row.className = 'srow';
         row.innerHTML = `
-          <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'"/>
+          <img src="${coverArtUrl(song.coverArt, 80)}" alt="" onerror="this.style.visibility='hidden'">
           <div class="s-meta">
             <div class="qi-title">${escapeHtml(song.title || 'Unknown')}</div>
             <div class="s-artist">${escapeHtml(song.artist || '')} • ${escapeHtml(song.album || '')}</div>
           </div>
           <div style="text-align:right">➕</div>`;
-        row.addEventListener('click', async ()=>{
+        row.addEventListener('click', async () => {
           await addSong(song.id);
           sInput.value = '';
           sResults.hidden = true;
@@ -624,13 +917,14 @@
       sResults.hidden = songs.length === 0;
     }
 
-    async function addSong(id){
+    async function addSong(id) {
       try {
         await callJukebox('add', `&id=${encodeURIComponent(id)}`);
-        // If nothing is playing, start playback
         if (!state.playing && state.playlist.length === 0) await callJukebox('start');
         await refreshAll();
-      } catch(e){ console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     // Config & Auth
@@ -638,9 +932,16 @@
       const serverUrl = serverUrlEl.value.trim();
       const username = usernameEl.value.trim();
       const password = passwordEl.value;
-      if (!serverUrl || !username || !password) { alert('Fill server, username and password'); return; }
+      if (!serverUrl || !username || !password) {
+        alert('Fill server, username, and password');
+        return;
+      }
       try {
-        const resp = await fetch(`${serverUrl}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+        const resp = await fetch(`${serverUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
         const data = await resp.json();
         config = { serverUrl, username, token: data.subsonicToken, salt: data.subsonicSalt };
         localStorage.setItem('jukeboxConfig', JSON.stringify(config));
@@ -653,24 +954,37 @@
     });
 
     // Helpers
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
-
-    async function refreshAll(){
-      try { await callJukebox('get'); } catch(e){ console.error(e); }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
     }
 
-    // Polling (status every 1s)
+    async function refreshAll() {
+      try {
+        await callJukebox('get');
+      } catch (e) {
+        console.error(e);
+        statusText.textContent = 'Error connecting. Configure server.';
+      }
+    }
+
+    // Polling
     setInterval(async () => {
-      try { await callJukebox('status'); } catch(e){ /* ignore */ }
-      // local paint (smooth progress) between polls
+      try {
+        await callJukebox('status');
+      } catch (e) {
+        /* Ignore */
+      }
       seekUpdateVisual();
     }, 1000);
 
-    // Initial load
-    (async function init(){
+    // Initialization
+    (async function init() {
       try {
         await refreshAll();
-      } catch (e) { console.error(e); statusText.textContent = 'Error connecting. Configure server.'; }
+      } catch (e) {
+        console.error(e);
+        statusText.textContent = 'Error connecting. Configure server.';
+      }
     })();
   </script>
 </body>
