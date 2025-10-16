@@ -652,7 +652,7 @@
       }
       try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         const data = await res.json();
         if (data?.['subsonic-response']?.status !== 'ok') {
           const errorMsg = data?.['subsonic-response']?.error?.message || 'Unknown API error';
@@ -663,7 +663,7 @@
         if (resp.jukeboxPlaylist) updateFromPlaylist(resp.jukeboxPlaylist);
         return resp;
       } catch (e) {
-        console.error('API call failed:', e);
+        console.error('API call failed:', e.message, 'URL:', url);
         statusText.textContent = `Error: ${e.message}. Check server or config.`;
         throw e;
       }
@@ -871,11 +871,11 @@
     async function addRandomSong() {
       const randomSong = getRandomSong();
       try {
-        await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
-        if (!state.playing && state.playlist.length === 0) await callJukebox('start');
+        const resp = await callJukebox('add', `&id=${encodeURIComponent(randomSong.id)}`);
+        if (resp && !state.playing && state.playlist.length === 0) await callJukebox('start');
         await refreshAll();
       } catch (e) {
-        throw e;
+        throw new Error(`Failed to add ${randomSong.title}: ${e.message}`);
       }
     }
 
@@ -952,7 +952,7 @@
           statusText.textContent = 'Random song added!';
           setTimeout(() => statusText.textContent = state.playing ? '▶️ Playing' : '⏸️ Paused', 2000);
         } catch (e) {
-          statusText.textContent = `Failed to add song: ${e.message}. Check server or config.`;
+          statusText.textContent = `Failed to add song: ${e.message}`;
           console.error('Add Random failed:', e);
         }
       });
