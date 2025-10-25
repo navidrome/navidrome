@@ -25,7 +25,7 @@ jobs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
       git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -63,7 +63,7 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
@@ -106,7 +106,7 @@ jobs:
       - name: Test
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo -race -cover ./... -v
+          go test -shuffle=on -tags netgo -race ./... -v
 
   js:
     name: Test JS code
@@ -114,10 +114,10 @@ jobs:
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: "npm"
           cache-dependency-path: "**/package-lock.json"
 
@@ -145,7 +145,7 @@ jobs:
     name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           set -e
           for file in resources/i18n/*.json; do
@@ -191,7 +191,7 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -264,10 +264,10 @@ jobs:
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -318,9 +318,9 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: ./binaries
           pattern: navidrome-windows*
@@ -352,12 +352,12 @@ jobs:
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: ./binaries
           pattern: navidrome-*
@@ -406,7 +406,7 @@ jobs:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
     steps:
       - name: Download all-packages artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: packages
           path: ./dist

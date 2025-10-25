@@ -65,7 +65,7 @@ test-i18n: ##@Development Validate all translations files
 .PHONY: test-i18n
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.5.0)
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
