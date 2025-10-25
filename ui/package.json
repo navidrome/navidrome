@@ -60,8 +60,8 @@
     "@types/react-dom": "^17.0.26",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vitejs/plugin-react": "^4.5.0",
-    "@vitest/coverage-v8": "^3.1.4",
+    "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/coverage-v8": "^4.0.3",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -73,9 +73,9 @@
     "prettier": "^3.5.3",
     "ra-test": "^3.19.12",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-pwa": "^0.21.2",
-    "vitest": "^3.1.4"
+    "vite": "^7.1.12",
+    "vite-plugin-pwa": "^1.1.0",
+    "vitest": "^4.0.3"
   },
   "overrides": {
     "vite": {
