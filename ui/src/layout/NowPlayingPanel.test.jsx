@@ -55,6 +55,21 @@ vi.mock('@material-ui/core/styles/useTheme', () => ({
 }))
 
 describe('<NowPlayingPanel />', () => {
+  const createMockStore = (overrides = {}) => {
+    const defaultState = {
+      activity: {
+        nowPlayingCount: 1,
+        serverStart: { startTime: Date.now() }, // Server is up by default
+        streamReconnected: 0,
+        ...overrides,
+      },
+    }
+    return createStore(
+      combineReducers({ activity: activityReducer }),
+      defaultState,
+    )
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseMediaQuery.mockReturnValue(false) // Default to large screen
@@ -83,9 +98,7 @@ describe('<NowPlayingPanel />', () => {
   })
 
   it('fetches and displays entries when opened', async () => {
-    const store = createStore(combineReducers({ activity: activityReducer }), {
-      activity: { nowPlayingCount: 1 },
-    })
+    const store = createMockStore()
     render(
       <Provider store={store}>
         <NowPlayingPanel />
@@ -108,9 +121,7 @@ describe('<NowPlayingPanel />', () => {
   })
 
   it('displays player name after username', async () => {
-    const store = createStore(combineReducers({ activity: activityReducer }), {
-      activity: { nowPlayingCount: 1 },
-    })
+    const store = createMockStore()
     render(
       <Provider store={store}>
         <NowPlayingPanel />
@@ -152,9 +163,7 @@ describe('<NowPlayingPanel />', () => {
       },
     })
 
-    const store = createStore(combineReducers({ activity: activityReducer }), {
-      activity: { nowPlayingCount: 1 },
-    })
+    const store = createMockStore()
     render(
       <Provider store={store}>
         <NowPlayingPanel />
@@ -178,9 +187,7 @@ describe('<NowPlayingPanel />', () => {
         'subsonic-response': { status: 'ok', nowPlaying: { entry: [] } },
       },
     })
-    const store = createStore(combineReducers({ activity: activityReducer }), {
-      activity: { nowPlayingCount: 0 },
-    })
+    const store = createMockStore({ nowPlayingCount: 0 })
     render(
       <Provider store={store}>
         <NowPlayingPanel />
@@ -201,9 +208,7 @@ describe('<NowPlayingPanel />', () => {
   it('does not close panel when artist link is clicked on large screens', async () => {
     mockUseMediaQuery.mockReturnValue(false) // Simulate large screen
 
-    const store = createStore(combineReducers({ activity: activityReducer }), {
-      activity: { nowPlayingCount: 1 },
-    })
+    const store = createMockStore()
     render(
       <Provider store={store}>
         <NowPlayingPanel />
@@ -230,5 +235,133 @@ describe('<NowPlayingPanel />', () => {
     // Panel should remain open (popover should still be in document)
     expect(screen.getByRole('presentation')).toBeInTheDocument()
     expect(screen.getByText('Artist')).toBeInTheDocument()
+  })
+
+  it('does not fetch on mount when server is down', () => {
+    const store = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: null }, // Server is down
+    })
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Should not have made initial fetch request due to server being down
+    expect(subsonic.getNowPlaying).not.toHaveBeenCalled()
+  })
+
+  it('does not fetch on stream reconnection when server is down', () => {
+    const store = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: null }, // Server is down
+      streamReconnected: Date.now(), // Stream reconnected
+    })
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Should not have made fetch request due to server being down
+    expect(subsonic.getNowPlaying).not.toHaveBeenCalled()
+  })
+
+  it('does not double-fetch on server reconnection', () => {
+    const initialStore = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: null }, // Server initially down
+      streamReconnected: 0,
+    })
+    const { rerender } = render(
+      <Provider store={initialStore}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Clear initial (empty) calls
+    vi.clearAllMocks()
+
+    // Simulate server coming back up with stream reconnection (both state changes happen)
+    const reconnectedStore = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: Date.now() }, // Server back up
+      streamReconnected: Date.now(), // Stream reconnected
+    })
+    rerender(
+      <Provider store={reconnectedStore}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Should only make one call despite both serverUp and streamReconnected changing
+    expect(subsonic.getNowPlaying).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips polling when server is down', () => {
+    vi.useFakeTimers()
+
+    const store = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: null }, // Server is down
+    })
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Clear initial mount fetch
+    vi.clearAllMocks()
+
+    // Advance time by 70 seconds to trigger polling interval
+    vi.advanceTimersByTime(70000)
+
+    // Should not have made any additional requests due to server being down
+    expect(subsonic.getNowPlaying).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it('resumes polling when server comes back up', () => {
+    vi.useFakeTimers()
+
+    const store = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: null }, // Server is down
+    })
+    const { rerender } = render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Clear initial mount fetch
+    vi.clearAllMocks()
+
+    // Advance time - should not poll when server is down
+    vi.advanceTimersByTime(70000)
+    expect(subsonic.getNowPlaying).not.toHaveBeenCalled()
+
+    // Update state to indicate server is back up
+    const updatedStore = createMockStore({
+      nowPlayingCount: 1,
+      serverStart: { startTime: Date.now() }, // Server is back up
+    })
+    rerender(
+      <Provider store={updatedStore}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    // Clear the fetch that happens due to initial mount of rerender
+    vi.clearAllMocks()
+
+    // Advance time again - should now poll since server is up
+    vi.advanceTimersByTime(70000)
+    expect(subsonic.getNowPlaying).toHaveBeenCalled()
+
+    vi.useRealTimers()
   })
 })

@@ -42,7 +42,7 @@ var _ = Describe("walk_dir_tree", func() {
 					"root/d/f2.mp3":          {},
 					"root/d/f3.mp3":          {},
 					"root/e/original/f1.mp3": {},
-					"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("root/e/original")},
+					"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("original")},
 				},
 			}
 			job = &scanJob{

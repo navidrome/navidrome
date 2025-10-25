@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -25,6 +26,8 @@ type MockDataStore struct {
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedRadio          model.RadioRepository
+	scrobbleBufferMu     sync.Mutex
+	repoMu               sync.Mutex
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
@@ -83,6 +86,8 @@ func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
 }
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedMediaFile == nil {
 		if db.RealDS != nil {
 			db.MockedMediaFile = db.RealDS.MediaFile(ctx)
@@ -193,6 +198,8 @@ func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
 }
 
 func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	db.scrobbleBufferMu.Lock()
+	defer db.scrobbleBufferMu.Unlock()
 	if db.MockedScrobbleBuffer == nil {
 		if db.RealDS != nil {
 			db.MockedScrobbleBuffer = db.RealDS.ScrobbleBuffer(ctx)

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
+  "name": "subsonicapi-demo",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
+  "description": "Example plugin demonstrating SubsonicAPI host service usage",
+  "website": "https://github.com/navidrome/navidrome",
+  "capabilities": ["LifecycleManagement"],
+  "permissions": {
+    "subsonicapi": {
+      "reason": "Demonstrate accessing Navidrome's Subsonic API from within plugins",
+      "allowAdmins": true,
+      "allowedUsernames": ["admin"]
+    }
+  }
+}

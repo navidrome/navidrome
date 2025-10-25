@@ -169,6 +169,59 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(actual.Position).To(Equal(int64(200)))
 			Expect(actual.Items).To(HaveLen(2)) // Should remain unchanged
 		})
+
+		It("ensures only one record per user by reusing existing record ID", func() {
+			By("Storing initial playqueue")
+			initial := aPlayQueue("userid", 0, 100, songComeTogether)
+			Expect(repo.Store(initial)).To(Succeed())
+			initialCount := countPlayQueues(repo, "userid")
+			Expect(initialCount).To(Equal(1))
+
+			By("Storing another playqueue with different ID but same user")
+			different := aPlayQueue("userid", 1, 200, songDayInALife)
+			different.ID = "different-id" // Force a different ID
+			Expect(repo.Store(different)).To(Succeed())
+
+			By("Verifying only one record exists for the user")
+			finalCount := countPlayQueues(repo, "userid")
+			Expect(finalCount).To(Equal(1))
+
+			By("Verifying the record was updated, not duplicated")
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Current).To(Equal(1))           // Should be updated value
+			Expect(actual.Position).To(Equal(int64(200))) // Should be updated value
+			Expect(actual.Items).To(HaveLen(1))           // Should be new items
+			Expect(actual.Items[0].ID).To(Equal(songDayInALife.ID))
+		})
+
+		It("ensures only one record per user even with partial updates", func() {
+			By("Storing initial playqueue")
+			initial := aPlayQueue("userid", 0, 100, songComeTogether, songDayInALife)
+			Expect(repo.Store(initial)).To(Succeed())
+			initialCount := countPlayQueues(repo, "userid")
+			Expect(initialCount).To(Equal(1))
+
+			By("Storing partial update with different ID but same user")
+			partialUpdate := &model.PlayQueue{
+				ID:        "completely-different-id", // Use a completely different ID
+				UserID:    "userid",
+				Current:   1,
+				ChangedBy: "test-partial",
+			}
+			Expect(repo.Store(partialUpdate, "current")).To(Succeed())
+
+			By("Verifying only one record still exists for the user")
+			finalCount := countPlayQueues(repo, "userid")
+			Expect(finalCount).To(Equal(1))
+
+			By("Verifying the existing record was updated with new current value")
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Current).To(Equal(1))           // Should be updated value
+			Expect(actual.Position).To(Equal(int64(100))) // Should remain unchanged
+			Expect(actual.Items).To(HaveLen(2))           // Should remain unchanged
+		})
 	})
 
 	Describe("Retrieve", func() {

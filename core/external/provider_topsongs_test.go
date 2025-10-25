@@ -42,10 +42,6 @@ var _ = Describe("Provider - TopSongs", func() {
 		p = NewProvider(ds, ag)
 	})
 
-	BeforeEach(func() {
-		// Setup expectations in individual tests
-	})
-
 	It("returns top songs for a known artist", func() {
 		// Mock finding the artist
 		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
@@ -244,6 +240,33 @@ var _ = Describe("Provider - TopSongs", func() {
 		Expect(songs).To(HaveLen(2))
 		Expect(songs[0].ID).To(Equal("song-1")) // Found by MBID
 		Expect(songs[1].ID).To(Equal("song-2")) // Found by title
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	It("only returns requested count when provider returns additional items", func() {
+		// Mock finding the artist
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		// Mock agent response
+		agentSongs := []agents.Song{
+			{Name: "Song One", MBID: "mbid-song-1"},
+			{Name: "Song Two", MBID: "mbid-song-2"},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
+
+		// Mock finding matching tracks (both returned in a single query)
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-song-2"}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(1))
+		Expect(songs[0].ID).To(Equal("song-1"))
 		artistRepo.AssertExpectations(GinkgoT())
 		ag.AssertExpectations(GinkgoT())
 		mediaFileRepo.AssertExpectations(GinkgoT())

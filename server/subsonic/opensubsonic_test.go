@@ -19,7 +19,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 	)
 
 	BeforeEach(func() {
-		router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 		r = httptest.NewRequest("GET", "/getOpenSubsonicExtensions?f=json", nil)
 	})

@@ -232,7 +232,7 @@
             "add_filter": "Aggiungi un filtro",
             "add": "Aggiungi",
             "back": "Indietro",
-            "bulk_actions": "Un elemento selezionato ||| %{smart_count} elementi selezionati",
+            "bulk_actions": "Un elemento selezionato |||| %{smart_count} elementi selezionati",
             "cancel": "Annulla",
             "clear_input_value": "Cancella",
             "clone": "Duplica",

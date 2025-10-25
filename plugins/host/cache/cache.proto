@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package cache;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/cache;cache";
+
+// go:plugin type=host version=1
+service CacheService {
+    // Set a string value in the cache
+    rpc SetString(SetStringRequest) returns (SetResponse);
+    
+    // Get a string value from the cache
+    rpc GetString(GetRequest) returns (GetStringResponse);
+    
+    // Set an integer value in the cache
+    rpc SetInt(SetIntRequest) returns (SetResponse);
+    
+    // Get an integer value from the cache
+    rpc GetInt(GetRequest) returns (GetIntResponse);
+    
+    // Set a float value in the cache
+    rpc SetFloat(SetFloatRequest) returns (SetResponse);
+    
+    // Get a float value from the cache
+    rpc GetFloat(GetRequest) returns (GetFloatResponse);
+    
+    // Set a byte slice value in the cache
+    rpc SetBytes(SetBytesRequest) returns (SetResponse);
+    
+    // Get a byte slice value from the cache
+    rpc GetBytes(GetRequest) returns (GetBytesResponse);
+    
+    // Remove a value from the cache
+    rpc Remove(RemoveRequest) returns (RemoveResponse);
+    
+    // Check if a key exists in the cache
+    rpc Has(HasRequest) returns (HasResponse);
+}
+
+// Request to store a string value
+message SetStringRequest {
+    string key = 1;            // Cache key
+    string value = 2;          // String value to store
+    int64 ttl_seconds = 3;     // TTL in seconds, 0 means use default
+}
+
+// Request to store an integer value
+message SetIntRequest {
+    string key = 1;            // Cache key
+    int64 value = 2;           // Integer value to store
+    int64 ttl_seconds = 3;     // TTL in seconds, 0 means use default
+}
+
+// Request to store a float value
+message SetFloatRequest {
+    string key = 1;            // Cache key
+    double value = 2;          // Float value to store
+    int64 ttl_seconds = 3;     // TTL in seconds, 0 means use default
+}
+
+// Request to store a byte slice value
+message SetBytesRequest {
+    string key = 1;            // Cache key
+    bytes value = 2;           // Byte slice value to store
+    int64 ttl_seconds = 3;     // TTL in seconds, 0 means use default
+}
+
+// Response after setting a value
+message SetResponse {
+    bool success = 1;          // Whether the operation was successful
+}
+
+// Request to get a value
+message GetRequest {
+    string key = 1;            // Cache key
+}
+
+// Response containing a string value
+message GetStringResponse {
+    bool exists = 1;           // Whether the key exists
+    string value = 2;          // The string value (if exists is true)
+}
+
+// Response containing an integer value
+message GetIntResponse {
+    bool exists = 1;           // Whether the key exists
+    int64 value = 2;           // The integer value (if exists is true)
+}
+
+// Response containing a float value
+message GetFloatResponse {
+    bool exists = 1;           // Whether the key exists
+    double value = 2;          // The float value (if exists is true)
+}
+
+// Response containing a byte slice value
+message GetBytesResponse {
+    bool exists = 1;           // Whether the key exists
+    bytes value = 2;           // The byte slice value (if exists is true)
+}
+
+// Request to remove a value
+message RemoveRequest {
+    string key = 1;            // Cache key
+}
+
+// Response after removing a value
+message RemoveResponse {
+    bool success = 1;          // Whether the operation was successful
+}
+
+// Request to check if a key exists
+message HasRequest {
+    string key = 1;            // Cache key
+}
+
+// Response indicating if a key exists
+message HasResponse {
+    bool exists = 1;           // Whether the key exists
+} 

@@ -13,7 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/pressly/goose/v3"
 )
 
@@ -25,7 +25,7 @@ func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 	execute := createExecuteFunc(ctx, tx)
 	addColumn := createAddColumnFunc(ctx, tx)
 
-	return chain.RunSequentially(
+	return run.Sequentially(
 		upSupportNewScanner_CreateTableFolder(ctx, execute),
 		upSupportNewScanner_PopulateTableFolder(ctx, tx),
 		upSupportNewScanner_UpdateTableMediaFile(ctx, execute, addColumn),
@@ -213,7 +213,7 @@ update media_file set path = replace(substr(path, %d), '\', '/');`, libPathLen+2
 
 func upSupportNewScanner_UpdateTableMediaFile(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
-		return chain.RunSequentially(
+		return run.Sequentially(
 			execute(`	
 alter table media_file 
     add column folder_id varchar default '' not null;
@@ -288,7 +288,7 @@ create index if not exists album_mbz_release_group_id
 
 func upSupportNewScanner_UpdateTableArtist(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
-		return chain.RunSequentially(
+		return run.Sequentially(
 			execute(`
 alter table artist
 	drop column album_count;

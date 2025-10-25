@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
+  "name": "coverartarchive",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Album cover art from the Cover Art Archive",
+  "website": "https://coverartarchive.org",
+  "capabilities": ["MetadataAgent"],
+  "permissions": {
+    "http": {
+      "reason": "To fetch album cover art from the Cover Art Archive API",
+      "allowedUrls": {
+        "https://coverartarchive.org": ["GET"],
+        "https://*.archive.org": ["GET"]
+      },
+      "allowLocalNetwork": false
+    }
+  }
+}

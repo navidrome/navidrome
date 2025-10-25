@@ -27,7 +27,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil)
 	})
 
 	Describe("Scrobble", func() {
@@ -104,7 +104,7 @@ type fakePlayTracker struct {
 	Error       error
 }
 
-func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string) error {
+func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string, position int) error {
 	if f.Error != nil {
 		return f.Error
 	}
@@ -135,6 +135,10 @@ type fakeEventBroker struct {
 }
 
 func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
+	f.Events = append(f.Events, event)
+}
+
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
 	f.Events = append(f.Events, event)
 }
 
