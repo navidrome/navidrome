@@ -105,6 +105,22 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(sql).To(gomega.BeEmpty())
 			gomega.Expect(args).To(gomega.BeEmpty())
 		})
+		It("supports releasetype as multi-valued tag", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Contains{"releasetype": "soundtrack"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%soundtrack%"))
+		})
+		It("supports albumtype as alias for releasetype", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Contains{"albumtype": "live"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
+		})
 	})
 
 	Describe("Custom Roles", func() {

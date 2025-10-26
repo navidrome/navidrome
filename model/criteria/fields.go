@@ -32,7 +32,6 @@ var fieldMap = map[string]*mappedField{
 	"sortalbum":            {field: "media_file.sort_album_name"},
 	"sortartist":           {field: "media_file.sort_artist_name"},
 	"sortalbumartist":      {field: "media_file.sort_album_artist_name"},
-	"albumtype":            {field: "media_file.mbz_album_type", alias: "releasetype"},
 	"albumcomment":         {field: "media_file.mbz_album_comment"},
 	"catalognumber":        {field: "media_file.catalog_num"},
 	"filepath":             {field: "media_file.path"},
@@ -54,6 +53,9 @@ var fieldMap = map[string]*mappedField{
 	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
 	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
 	"library_id":           {field: "media_file.library_id", numeric: true},
+
+	// Backward compatibility: albumtype is an alias for releasetype tag
+	"albumtype": {field: "releasetype", isTag: true},
 
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
