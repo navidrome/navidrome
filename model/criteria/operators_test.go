@@ -121,6 +121,24 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
 		})
+		It("supports albumtype alias with Is operator", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Is{"albumtype": "album"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			// Should query $.releasetype, not $.albumtype
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("album"))
+		})
+		It("supports albumtype alias with IsNot operator", func() {
+			AddTagNames([]string{"releasetype"})
+			op := IsNot{"albumtype": "compilation"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			// Should query $.releasetype, not $.albumtype
+			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("compilation"))
+		})
 	})
 
 	Describe("Custom Roles", func() {

@@ -156,13 +156,19 @@ type tagCond struct {
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
 
-	// Check if this tag is marked as numeric in the fieldMap
-	if fm, ok := fieldMap[e.tag]; ok && fm.numeric {
-		cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+	// Resolve the actual tag name (handles aliases like albumtype -> releasetype)
+	tagName := e.tag
+	if fm, ok := fieldMap[e.tag]; ok {
+		if fm.field != "" {
+			tagName = fm.field
+		}
+		if fm.numeric {
+			cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+		}
 	}
 
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
-		e.tag, cond)
+		tagName, cond)
 	if e.not {
 		cond = "not " + cond
 	}
