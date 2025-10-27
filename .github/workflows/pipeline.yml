@@ -217,7 +217,7 @@ jobs:
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome-${{ env.PLATFORM }}
           path: ./output
@@ -248,7 +248,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"          
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
@@ -339,7 +339,7 @@ jobs:
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome-windows-installers
           path: binaries/msi/*.msi
@@ -383,7 +383,7 @@ jobs:
           rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: packages
           path: dist/navidrome_0*
@@ -412,7 +412,7 @@ jobs:
           path: ./dist
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome_linux_${{ matrix.item }}
           path: dist/navidrome_0*_linux_${{ matrix.item }}
