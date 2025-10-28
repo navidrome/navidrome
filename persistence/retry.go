@@ -59,6 +59,7 @@ func RetryWithBackoff(ctx context.Context, operation string, op func() error, ma
 
 		select {
 		case <-time.After(jitter):
+			metrics.ObserveSQLiteLockWait(operation, jitter.Seconds())
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -66,8 +67,6 @@ func RetryWithBackoff(ctx context.Context, operation string, op func() error, ma
 		delay *= 2
 	}
 
-	// Record final wait duration for the operation
-	metrics.ObserveSQLiteLockWait(operation, time.Since(startTime).Seconds())
 	return lastErr
 }
 
