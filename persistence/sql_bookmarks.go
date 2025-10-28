@@ -23,6 +23,7 @@ func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectB
 		LeftJoin("bookmark on (" +
 			"bookmark.item_id = " + idField +
 			" AND bookmark.user_id = '" + userID + "')").
+		GroupBy("bookmark.position").
 		Columns("coalesce(position, 0) as bookmark_position")
 }
 

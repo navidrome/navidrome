@@ -16,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
 	"github.com/spf13/cobra"
@@ -81,7 +80,6 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
-	g.Go(scheduleDBOptimizer(ctx))
 	g.Go(startPluginManager(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
@@ -236,51 +234,37 @@ func startScanWatcher(ctx context.Context) func() error {
 
 func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.Backup.Schedule
-		if schedule == "" {
-			log.Info(ctx, "Periodic backup is DISABLED")
-			return nil
-		}
-
-		schedulerInstance := scheduler.GetInstance()
-
-		log.Info("Scheduling periodic backup", "schedule", schedule)
-		_, err := schedulerInstance.Add(schedule, func() {
-			start := time.Now()
-			path, err := db.Backup(ctx)
-			elapsed := time.Since(start)
-			if err != nil {
-				log.Error(ctx, "Error backing up database", "elapsed", elapsed, err)
-				return
-			}
-			log.Info(ctx, "Backup complete", "elapsed", elapsed, "path", path)
-
-			count, err := db.Prune(ctx)
-			if err != nil {
-				log.Error(ctx, "Error pruning database", "error", err)
-			} else if count > 0 {
-				log.Info(ctx, "Successfully pruned old files", "count", count)
-			} else {
-				log.Info(ctx, "No backups pruned")
-			}
-		})
-
-		return err
-	}
-}
-
-func scheduleDBOptimizer(ctx context.Context) func() error {
-	return func() error {
-		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
-		schedulerInstance := scheduler.GetInstance()
-		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
-			if scanner.IsScanning() {
-				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
-				return
-			}
-			db.Optimize(ctx)
-		})
-		return err
+		//schedule := conf.Server.Backup.Schedule
+		//if schedule == "" {
+		//	log.Info(ctx, "Periodic backup is DISABLED")
+		//	return nil
+		//}
+		//
+		//schedulerInstance := scheduler.GetInstance()
+		//
+		//log.Info("Scheduling periodic backup", "schedule", schedule)
+		//_, err := schedulerInstance.Add(schedule, func() {
+		//	start := time.Now()
+		//	path, err := db.Backup(ctx)
+		//	elapsed := time.Since(start)
+		//	if err != nil {
+		//		log.Error(ctx, "Error backing up database", "elapsed", elapsed, err)
+		//		return
+		//	}
+		//	log.Info(ctx, "Backup complete", "elapsed", elapsed, "path", path)
+		//
+		//	count, err := db.Prune(ctx)
+		//	if err != nil {
+		//		log.Error(ctx, "Error pruning database", "error", err)
+		//	} else if count > 0 {
+		//		log.Info(ctx, "Successfully pruned old files", "count", count)
+		//	} else {
+		//		log.Info(ctx, "No backups pruned")
+		//	}
+		//})
+		//
+		//return err
+		return nil
 	}
 }
 

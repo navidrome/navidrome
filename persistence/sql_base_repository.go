@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/lann/builder"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -386,12 +387,20 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
+		GroupBy(r.tableName + ".id").
 		From(r.tableName)
+	// To remove any ORDER BY clause that could slow down the query
+	countQuery = builder.Delete(countQuery, "OrderByParts").(SelectBuilder)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
-	return res.Count, err
+	if errors.Is(err, model.ErrNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return res.Count, nil
 }
 
 func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, colsToUpdate ...string) (string, error) {

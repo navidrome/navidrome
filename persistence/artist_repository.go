@@ -187,8 +187,7 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
 	query := r.newSelect(options...).Columns("artist.*",
-		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
-
+		"JSON_OBJECT_AGG(library_artist.library_id, library_artist.stats::jsonb) as library_stats_json")
 	query = r.applyLibraryFilterToArtistQuery(query)
 	query = query.GroupBy("artist.id")
 	return r.withAnnotation(query, "artist.id")
@@ -348,12 +347,15 @@ set missing = (artist.id not in (select artist_id from artists_with_non_missing_
 func (r *artistRepository) RefreshPlayCounts() (int64, error) {
 	query := Expr(`
 with play_counts as (
-    select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    select user_id, 
+           (elem->>'id')::text as artist_id, 
+           sum(play_count) as total_play_count, 
+           max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
-    left join json_tree(participants, '$.artist') as jt
-    where atom is not null and key = 'id'
-    group by user_id, atom
+    cross join jsonb_array_elements(participants->'artist') as elem
+    where elem->>'id' is not null
+    group by user_id, elem->>'id'
 )
 insert into annotation (user_id, item_id, item_type, play_count, play_date)
 select user_id, artist_id, 'artist', total_play_count, last_play_date
@@ -361,7 +363,7 @@ from play_counts
 where total_play_count > 0
 on conflict (user_id, item_id, item_type) do update
     set play_count = excluded.play_count,
-        play_date  = excluded.play_date;
+        play_date  = excluded.play_date
 `)
 	return r.executeSQL(query)
 }
