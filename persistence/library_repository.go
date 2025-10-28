@@ -207,17 +207,17 @@ func (r *libraryRepository) RefreshStats(id int) error {
 				}), &foldersRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
+			return r.queryOne(Select("coalesce(sum(num_audio_files + num_playlists + jsonb_array_length(image_files)),0) as count").
 				From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
 		},
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
+			return r.queryOne(Select("coalesce(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
+			return r.queryOne(Select("coalesce(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
 		},
 	)()
 	if err != nil {

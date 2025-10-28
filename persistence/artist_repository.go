@@ -448,9 +448,9 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     library_artist_counters AS (
         SELECT artist_id,
                library_id,
-               json_group_object(
+               jsonb_object_agg(
                        role,
-                       json_object('a', album_count, 'm', count, 's', size)
+                       jsonb_build_object('a', album_count, 'm', count, 's', size)
                ) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
@@ -458,7 +458,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     UPDATE library_artist
     SET stats = coalesce((SELECT counters FROM library_artist_counters lac
                          WHERE lac.artist_id = library_artist.artist_id
-                         AND lac.library_id = library_artist.library_id), '{}')
+                         AND lac.library_id = library_artist.library_id), '{}'::jsonb)
     WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
 
 	var totalRowsAffected int64 = 0
