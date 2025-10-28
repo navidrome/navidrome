@@ -24,10 +24,17 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			"annotation.item_id = "+idField+
 			" AND annotation.user_id = '"+userID+"')").
 		Columns(
-			"coalesce(starred, 0) as starred",
+			"coalesce(starred, false) as starred",
 			"coalesce(rating, 0) as rating",
 			"starred_at",
-			"play_date",
+			"play_date").
+		GroupBy(
+			idField,
+			"annotation.starred",
+			"annotation.rating",
+			"annotation.starred_at",
+			"annotation.play_date",
+			"annotation.play_count",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(

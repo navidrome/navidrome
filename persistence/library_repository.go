@@ -117,7 +117,7 @@ func (r *libraryRepository) Put(l *model.Library) error {
 	sql := Expr(`
 INSERT INTO user_library (user_id, library_id)
 SELECT u.id, l.id
-FROM user u
+FROM "user" u
 CROSS JOIN library l
 WHERE u.is_admin = true
 ON CONFLICT (user_id, library_id) DO NOTHING;`,
@@ -173,11 +173,6 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		Set("last_scan_started_at", time.Time{}).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
-	if err != nil {
-		return err
-	}
-	// https://www.sqlite.org/pragma.html#pragma_optimize
-	_, err = r.executeSQL(Expr("PRAGMA optimize=0x10012;"))
 	return err
 }
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/djherbis/times"
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"

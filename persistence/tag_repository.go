@@ -76,16 +76,20 @@ DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 
 func (r *tagRepository) purgeUnused() error {
 	del := Delete(r.tableName).Where(`	
-	id not in (select jt.value
-	from album left join json_tree(album.tags, '$') as jt
-	where atom is not null
-	  and key = 'id'
-	UNION 
-	select jt.value
-	from media_file left join json_tree(media_file.tags, '$') as jt
-	where atom is not null
-	  and key = 'id')
-`)
+	id not in (
+    	select DISTINCT elem->>'id'
+		from album
+		cross join lateral jsonb_each(album.tags) as tag_type(key, value)
+		cross join lateral jsonb_array_elements(tag_type.value) as elem
+		where elem->>'id' is not null
+    UNION 
+		select DISTINCT elem->>'id'
+		from media_file
+		cross join lateral jsonb_each(media_file.tags) as tag_type(key, value)
+		cross join lateral jsonb_array_elements(tag_type.value) as elem
+		where elem->>'id' is not null
+	)
+	`)
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("error purging unused tags: %w", err)

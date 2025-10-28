@@ -116,8 +116,9 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(options...).Columns("distinct mf.album_id").
+	query := r.newSelect(options...).Columns("mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
+		GroupBy("mf.album_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var ids []string
 	err := r.queryAllSlice(query, &ids)

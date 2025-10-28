@@ -87,6 +87,6 @@ var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 // It finds order column names anywhere in the substring
 func mapSortOrder(tableName, order string) string {
 	order = strings.ToLower(order)
-	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
+	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1)::citext)", tableName)
 	return sortOrderRegex.ReplaceAllString(order, repl)
 }

@@ -55,7 +55,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r := &userRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "user"
+	r.tableName = `"user"`
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"password": invalidFilter(ctx),
 		"name":     r.withTableName(startsWithFilter),
@@ -69,21 +69,26 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 // selectUserWithLibraries returns a SelectBuilder that includes library information
 func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
-		Columns(`user.*`,
-			`COALESCE(json_group_array(json_object(
-				'id', library.id,
-				'name', library.name,
-				'path', library.path,
-				'remote_path', library.remote_path,
-				'last_scan_at', library.last_scan_at,
-				'last_scan_started_at', library.last_scan_started_at,
-				'full_scan_in_progress', library.full_scan_in_progress,
-				'updated_at', library.updated_at,
-				'created_at', library.created_at
-			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin("user_library ul ON user.id = ul.user_id").
+		Columns(`"user".*`,
+			`COALESCE(
+				jsonb_agg(
+					jsonb_build_object(
+						'id', library.id,
+						'name', library.name,
+						'path', library.path,
+						'remote_path', library.remote_path,
+						'last_scan_at', library.last_scan_at,
+						'last_scan_started_at', library.last_scan_started_at,
+						'full_scan_in_progress', library.full_scan_in_progress,
+						'updated_at', library.updated_at,
+						'created_at', library.created_at
+					) 
+				) FILTER (WHERE library.id IS NOT NULL),
+				'[]'::jsonb
+			)::text AS libraries_json`).
+		LeftJoin(`user_library ul ON "user".id = ul.user_id`).
 		LeftJoin("library ON ul.library_id = library.id").
-		GroupBy("user.id")
+		GroupBy(`"user".id`)
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
@@ -91,7 +96,7 @@ func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Eq{"user.id": id})
+	sel := r.selectUserWithLibraries().Where(Eq{`"user".id`: id})
 	var res dbUser
 	err := r.queryOne(sel, &res)
 	if err != nil {
@@ -144,7 +149,7 @@ func (r *userRepository) Put(u *model.User) error {
 	// Auto-assign all libraries to admin users in a single SQL operation
 	if u.IsAdmin {
 		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library",
+			"INSERT INTO user_library (user_id, library_id) SELECT ?, id FROM library ON CONFLICT DO NOTHING",
 			u.ID,
 		)
 		if _, err := r.executeSQL(sql); err != nil {
@@ -153,7 +158,7 @@ func (r *userRepository) Put(u *model.User) error {
 	} else if isNewUser { // Only for new regular users
 		// Auto-assign default libraries to new regular users
 		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
+			"INSERT INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true ON CONFLICT DO NOTHING",
 			u.ID,
 		)
 		if _, err := r.executeSQL(sql); err != nil {
@@ -165,7 +170,7 @@ func (r *userRepository) Put(u *model.User) error {
 }
 
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
-	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
+	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{`"user".is_admin`: true})
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
@@ -175,7 +180,7 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Expr("user.user_name = ? COLLATE NOCASE", username))
+	sel := r.selectUserWithLibraries().Where(Expr(`"user".user_name = ?`, username))
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {

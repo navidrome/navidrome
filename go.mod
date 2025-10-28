@@ -22,6 +22,7 @@ require (
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/structs v1.1.0
+	github.com/fergusstrange/embedded-postgres v1.32.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httprate v0.15.0
@@ -33,6 +34,7 @@ require (
 	github.com/google/wire v0.7.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/jackc/pgx/v5 v5.7.6
 	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/kardianos/service v1.2.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -40,7 +42,6 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/matoous/go-nanoid/v2 v2.1.0
-	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.27.1
@@ -94,6 +95,9 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
@@ -103,6 +107,7 @@ require (
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -123,6 +128,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

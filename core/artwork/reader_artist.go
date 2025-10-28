@@ -44,7 +44,7 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"album_artist_id": artID.ID},
-			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
+			squirrel.Eq{"jsonb_array_length(participants->'albumartist')": 1},
 		},
 	})
 	if err != nil {

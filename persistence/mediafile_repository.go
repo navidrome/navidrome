@@ -137,7 +137,8 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
-		LeftJoin("library on media_file.library_id = library.id")
+		LeftJoin("library on media_file.library_id = library.id").
+		GroupBy("library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
 	return r.applyLibraryFilter(sql)
@@ -193,7 +194,7 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 }
 
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
+	sel := r.newSelect().Columns("*").Where(Eq{"path::citext": paths})
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
