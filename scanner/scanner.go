@@ -207,10 +207,11 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
-					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
-						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
-						return fmt.Errorf("refreshing library stats: %w", err)
-					}
+					// FIXME
+					// if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
+					// 	log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
+					// 	return fmt.Errorf("refreshing library stats: %w", err)
+					// }
 				} else {
 					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)
 				}

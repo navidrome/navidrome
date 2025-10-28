@@ -401,24 +401,50 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	// Template for the batch update with placeholder markers that we'll replace
 	// This now calculates per-library statistics and stores them in library_artist.stats
 	batchUpdateStatsSQL := `
-    WITH artist_role_counters AS (
-        SELECT jt.atom AS artist_id,
+    WITH RECURSIVE json_tree AS (
+        SELECT
+            mf.id,
+            mf.library_id,
+            mf.participants,
+            k.key AS key,
+            NULL::text AS value,
+            mf.participants->k.key AS value_json,
+            '$.' || k.key AS path,
+            0 AS depth
+        FROM media_file mf,
+            LATERAL jsonb_object_keys(mf.participants) AS k(key)
+        WHERE mf.participants IS NOT NULL
+        UNION ALL
+        SELECT
+            jt.id,
+            jt.library_id,
+            jt.participants,
+            elem_idx::text AS key,
+            elem->>'id' AS value,
+            NULL::jsonb AS value_json,
+            jt.path || '[' || (elem_idx - 1) || ']' AS path,
+            jt.depth + 1
+        FROM json_tree jt,
+            LATERAL jsonb_array_elements(jt.value_json) WITH ORDINALITY AS t(elem, elem_idx)
+        WHERE jt.value_json IS NOT NULL AND jsonb_typeof(jt.value_json) = 'array' AND jt.depth < 10
+    ),
+    artist_role_counters AS (
+        SELECT jt.value AS artist_id,
                mf.library_id,
-               substr(
-                       replace(jt.path, '$.', ''),
-                       1,
-                       CASE WHEN instr(replace(jt.path, '$.', ''), '[') > 0
-                                THEN instr(replace(jt.path, '$.', ''), '[') - 1
-                            ELSE length(replace(jt.path, '$.', ''))
-                           END
+               substring(jt.path FROM 3 FOR
+                   CASE
+                       WHEN position('[' IN jt.path) > 0
+                       THEN position('[' IN jt.path) - 3
+                       ELSE length(jt.path) - 2
+                   END
                ) AS role,
                count(DISTINCT mf.album_id) AS album_count,
                count(mf.id) AS count,
                sum(mf.size) AS size
         FROM media_file mf
-        JOIN json_tree(mf.participants) jt ON jt.key = 'id' AND jt.atom IS NOT NULL
-        WHERE jt.atom IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY jt.atom, mf.library_id, role
+        JOIN json_tree jt ON jt.id = mf.id AND jt.key = 'id' AND jt.value IS NOT NULL
+        WHERE jt.value IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY jt.value, mf.library_id, role
     ),
     artist_total_counters AS (
         SELECT mfa.artist_id,
@@ -455,17 +481,17 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     library_artist_counters AS (
         SELECT artist_id,
                library_id,
-               json_group_object(
+               jsonb_object_agg(
                        replace(role, '"', ''),
-                       json_object('a', album_count, 'm', count, 's', size)
+                       jsonb_build_object('a', album_count, 'm', count, 's', size)
                ) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
     )
     UPDATE library_artist
-    SET stats = coalesce((SELECT counters FROM library_artist_counters lac 
-                         WHERE lac.artist_id = library_artist.artist_id 
-                         AND lac.library_id = library_artist.library_id), '{}')
+    SET stats = coalesce((SELECT counters FROM library_artist_counters lac
+                         WHERE lac.artist_id = library_artist.artist_id
+                         AND lac.library_id = library_artist.library_id), '{}'::jsonb)
     WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
 
 	var totalRowsAffected int64 = 0
