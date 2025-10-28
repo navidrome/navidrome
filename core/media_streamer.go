@@ -208,7 +208,7 @@ func findTargetTranscodingOptions(ctx context.Context, mf *model.MediaFile, reqF
 		return targetFormat, targetBitRate
 	}
 
-	// Use the default downsamling format the server is configed to but
+	// Use the default downsampling format the server is configured to but
 	// only if the requested bitrate is reduced
 	isBitrateReduced := reqBitRate > 0 && reqBitRate < mf.BitRate
 	hasDefaultDownsamplingFormat := conf.Server.DefaultDownsamplingFormat != ""
