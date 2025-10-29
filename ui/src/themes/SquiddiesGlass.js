@@ -259,6 +259,8 @@ export default {
       content: {
         padding: '0 !important',
         background: `linear-gradient(${colors.dark}, ${colors.gray[500]})`,
+        borderTopRightRadius: '8px',
+        borderTopLeftRadius: '8px',
       },
       contentWithSidebar: {
         gap: '2px',
@@ -344,8 +346,6 @@ export default {
     // Navidrome Custom Components
     NDAlbumDetails: {
       root: {
-        borderTopRightRadius: '8px',
-        borderTopLeftRadius: '8px',
         boxShadow: 'none',
         background: `linear-gradient(45deg, ${colors.purple[500]}, ${colors.purple[400]}, ${colors.purple[600]})`,
         backgroundSize: '200% 200%',
@@ -375,8 +375,9 @@ export default {
         fontWeight: 900,
       },
       recordArtist: {
-        fontSize: '.875rem',
+        fontSize: '1.5rem',
         fontWeight: 700,
+        textShadow: '0 2px 16px rgba(0, 0, 0, 0.3)',
       },
       recordMeta: {
         fontSize: '.875rem',
@@ -385,6 +386,23 @@ export default {
       content: {
         paddingBottom: '0px !important',
         paddingTop: '0px',
+      },
+    },
+    RaSingleFieldList: {
+      root: {
+        '& a:first-of-type > .MuiChip-root': {
+          marginLeft: '0px',
+        },
+        '& a > .MuiChip-root': {
+          backgroundColor: colors.pink[500],
+          fontSize: '0.6rem',
+          height: '20px',
+          '& .MuiChip-label': {
+            color: colors.white,
+            paddingLeft: '5px',
+            paddingRight: '5px',
+          },
+        },
       },
     },
     NDAlbumGridView: {
