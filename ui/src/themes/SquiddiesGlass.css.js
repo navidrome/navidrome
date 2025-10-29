@@ -48,7 +48,6 @@ const stylesheet = `
   color: #c231ab;
 }
 
-
 @keyframes gradientFlow {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -72,10 +71,10 @@ a[aria-current="page"] .MuiListItemIcon-root {
   overflow: hidden;
   background: linear-gradient(90deg, #311f2f, #0a0912, #2f0c28);
   background-size: 300% 300%;
-  animation: backgroundFlow 10s ease-in-out infinite;
+  animation: gradientFlow 10s ease-in-out infinite;
 }
 
-/* Barras del "ecualizador" */
+/* Equalizer bars */
 .panel-content::before {
   content: "";
   position: absolute;
@@ -92,19 +91,7 @@ a[aria-current="page"] .MuiListItemIcon-root {
   opacity: 0.5;
 }
 
-@keyframes backgroundFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Movimiento vertical tipo ecualizador */
+/* Vertical movement, equalizer type */
 @keyframes equalizer {
   0%, 100% {
     transform: scaleY(1);
@@ -123,9 +110,6 @@ a[aria-current="page"] .MuiListItemIcon-root {
     opacity: 0.8;
   }
 }
-
-
-
 `
 
 export default stylesheet

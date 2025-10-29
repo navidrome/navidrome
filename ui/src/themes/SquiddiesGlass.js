@@ -1,6 +1,10 @@
 import stylesheet from './SquiddiesGlass.css.js'
 
-// Color constants
+/**
+ * Color constants used throughout the Squiddies Glass theme.
+ * Provides a consistent color palette with pink, gray, purple, and basic colors.
+ * @type {Object}
+ */
 const colors = {
   pink: {
     100: '#fbe3f4',
@@ -10,22 +14,32 @@ const colors = {
     500: '#c231ab', // base
     600: '#a31a92',
     700: '#8b0f7e',
-    800: '#670066',
-    900: '#7a006d',
+    800: '#7a006d',
+    900: '#670066',
   },
   gray: {
+    50: '#c2c1c2',
     100: '#b3b3b3', // light gray
     200: '#282828', // medium dark
     300: '#1d1d1d', // darker
     400: '#181818', // even darker
     500: '#171717', // darkest
   },
+  purple: {
+    400: '#524590',
+    500: '#4d3249',
+    600: '#6d1c5e',
+  },
   black: '#000',
   white: '#fff',
   dark: '#121212',
 }
 
-// Shared style objects
+/**
+ * Shared style object for music list action buttons.
+ * Defines common styling for buttons in music lists, including hover effects and responsive scaling.
+ * @type {Object}
+ */
 const musicListActions = {
   padding: '1rem 0',
   alignItems: 'center',
@@ -57,7 +71,7 @@ const musicListActions = {
       borderRadius: 500,
       border: 0,
       '&:hover': {
-        transform: 'scale(1.4)',
+        transform: 'scale(1.6)',
         backgroundColor: `${colors.pink[500]} !important`,
         border: 0,
       },
@@ -77,16 +91,35 @@ const musicListActions = {
   },
 }
 
+/**
+ * Squiddies Glass theme configuration object.
+ * Defines the complete theme structure including typography, palette, component overrides, and player settings.
+ * @type {Object}
+ */
 export default {
+  /**
+   * The name of the theme.
+   * @type {string}
+   */
   themeName: 'Squiddies Glass',
 
+  /**
+   * Typography settings for the theme.
+   * Specifies font family and heading sizes.
+   * @type {Object}
+   */
   typography: {
-    fontFamily: "system-ui, 'Helvetica Neue', Helvetica, Arial",
+    fontFamily: "system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif",
     h6: {
       fontSize: '1rem', // AppBar title
     },
   },
 
+  /**
+   * Color palette configuration.
+   * Defines primary, secondary, and background colors for the theme.
+   * @type {Object}
+   */
   palette: {
     primary: {
       light: colors.pink[300],
@@ -103,6 +136,11 @@ export default {
     type: 'dark',
   },
 
+  /**
+   * Component overrides for Material-UI and custom Navidrome components.
+   * Customizes the appearance and behavior of various UI components.
+   * @type {Object}
+   */
   overrides: {
     // Material-UI Components
     MuiAppBar: {
@@ -286,7 +324,7 @@ export default {
           },
           '& .MuiOutlinedInput-input:-webkit-autofill': {
             borderRadius: '20px 0px 0px 20px',
-            '-webkit-box-shadow': '0 0 0 100px #c2c1c2 inset',
+            '-webkit-box-shadow': `0 0 0 100px ${colors.gray[50]} inset`,
             '-webkit-text-fill-color': colors.black,
           },
         },
@@ -306,7 +344,7 @@ export default {
         borderTopRightRadius: '8px',
         borderTopLeftRadius: '8px',
         boxShadow: 'none',
-        background: 'linear-gradient(45deg, #4d3249, #524590, #6d1c5e)',
+        background: `linear-gradient(45deg, ${colors.purple[500]}, ${colors.purple[400]}, ${colors.purple[600]})`,
         backgroundSize: '200% 200%',
         animation: 'gradientFlow 8s ease-in-out infinite',
         position: 'relative',
@@ -339,7 +377,7 @@ export default {
       },
       recordMeta: {
         fontSize: '.875rem',
-        color: 'rgba(255,255,255, 0.8)',
+        color: `rgba(${colors.white}, 0.8)`,
       },
     },
     NDAlbumGridView: {
@@ -445,14 +483,11 @@ export default {
         fontSize: '0.675rem',
         color: colors.gray[100],
       },
-      player: {
-        border: '10px solid blue',
-      },
     },
     NDCollapsibleComment: {
       commentBlock: {
         fontSize: '.875rem',
-        color: 'rgba(255,255,255, 0.8)',
+        color: `rgba(${colors.white}, 0.8)`,
       },
     },
     NDLogin: {
@@ -483,7 +518,7 @@ export default {
       },
       details: {
         fontSize: '.875rem',
-        color: 'rgba(255,255,255, 0.8)',
+        color: `rgba(${colors.white}, 0.8)`,
       },
     },
     NDPlaylistShow: {
@@ -491,6 +526,11 @@ export default {
     },
   },
 
+  /**
+   * Player configuration settings.
+   * Specifies the player theme and associated stylesheet.
+   * @type {Object}
+   */
   player: {
     theme: 'dark',
     stylesheet,
