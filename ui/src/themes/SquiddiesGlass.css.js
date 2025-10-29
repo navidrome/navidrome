@@ -1,7 +1,7 @@
 const stylesheet = `
 
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle {
-    background: #c231ab
+  background: #c231ab
 }
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-track,
 .react-jinke-music-player-mobile-progress .rc-slider-track {
@@ -48,6 +48,13 @@ const stylesheet = `
   color: #c231ab;
 }
 
+@media screen and (max-width: 767px) {
+  .react-jinke-music-player-main svg {
+    font-size: 32px;
+  }
+}
+
+
 @keyframes gradientFlow {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -62,6 +69,7 @@ a[aria-current="page"] {
   color: #c231ab !important;
   font-weight: bold;
 }
+
 a[aria-current="page"] .MuiListItemIcon-root {
   color: #c231ab !important;
 }
@@ -89,6 +97,18 @@ a[aria-current="page"] .MuiListItemIcon-root {
   animation: equalizer 1.8s infinite ease-in-out;
   filter: blur(1px);
   opacity: 0.5;
+}
+
+@keyframes backgroundFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Vertical movement, equalizer type */

@@ -55,23 +55,23 @@ const musicListActions = {
     },
     'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
-        transform: 'scale(1.5)',
+        transform: 'scale(1.3)',
         margin: '1em',
         '&:hover': {
-          transform: 'scale(1.6) !important',
+          transform: 'scale(1.2) !important',
         },
       },
-      transform: 'scale(1.5)',
+      transform: 'scale(1.3)',
       margin: '1em',
       minWidth: 0,
       padding: 5,
       transition: 'transform .3s ease',
       background: colors.pink[500],
-      color: colors.black,
+      color: `${colors.black} !important`,
       borderRadius: 500,
       border: 0,
       '&:hover': {
-        transform: 'scale(1.6)',
+        transform: 'scale(1.2)',
         backgroundColor: `${colors.pink[500]} !important`,
         border: 0,
       },
@@ -81,6 +81,7 @@ const musicListActions = {
     },
     'button:first-child>span:first-child': {
       padding: 0,
+      color: `${colors.black} !important`,
     },
     'button:first-child>span:first-child>span': {
       display: 'none',
@@ -169,14 +170,14 @@ export default {
         },
       },
       label: {
-        color: '#fff',
+        color: colors.white,
         paddingRight: '1rem',
         paddingLeft: '0.7rem',
       },
     },
     MuiCardMedia: {
       root: {
-        boxShadow: '0 2px 32px rgba(0,0,0,0.6), 0px 1px 5px rgba(0,0,0,0.4)',
+        boxShadow: `0 2px 32px rgba(0,0,0,0.5), 0px 1px 5px rgba(0,0,0,0.1)`,
       },
     },
     MuiDivider: {
@@ -244,7 +245,7 @@ export default {
     RaFilter: {
       form: {
         '& .MuiOutlinedInput-input:-webkit-autofill': {
-          '-webkit-box-shadow': `0 0 0 100px #28282b inset`,
+          '-webkit-box-shadow': `0 0 0 100px ${colors.gray[50]} inset`,
           '-webkit-text-fill-color': colors.white,
         },
       },
@@ -361,7 +362,7 @@ export default {
         },
       },
       cardContents: {
-        alignItems: 'center',
+        alignItems: 'flex-start',
       },
       coverParent: {
         zIndex: '99999',
@@ -381,6 +382,10 @@ export default {
         fontSize: '.875rem',
         color: `rgba(${colors.white}, 0.8)`,
       },
+      content: {
+        paddingBottom: '0px !important',
+        paddingTop: '0px'
+      }
     },
     NDAlbumGridView: {
       albumName: {
@@ -463,6 +468,7 @@ export default {
           },
           'button:first-child>span:first-child': {
             padding: 0,
+            color: `${colors.black} !important`,
           },
           'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
             {
@@ -477,13 +483,16 @@ export default {
     NDAudioPlayer: {
       audioTitle: {
         color: colors.white,
-        fontSize: '0.875rem',
+        fontSize: '1.5rem',
+        '& span:nth-child(3)': {
+          fontSize: '0.8rem',
+        },
       },
       songTitle: {
-        fontWeight: 400,
+        fontWeight: 900,
       },
       songInfo: {
-        fontSize: '0.675rem',
+        fontSize: '0.9rem',
         color: colors.gray[100],
       },
     },
@@ -495,7 +504,7 @@ export default {
     },
     NDLogin: {
       main: {
-        boxShadow: 'inset 0 0 0 2000px rgba(0, 0, 0, .75)',
+        boxShadow: `inset 0 0 0 2000px rgba(${colors.black}, .75)`,
       },
       systemNameLink: {
         color: colors.white,
