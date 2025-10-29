@@ -384,8 +384,8 @@ export default {
       },
       content: {
         paddingBottom: '0px !important',
-        paddingTop: '0px'
-      }
+        paddingTop: '0px',
+      },
     },
     NDAlbumGridView: {
       albumName: {
