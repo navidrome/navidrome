@@ -42,6 +42,10 @@ func Db() *sql.DB {
 				//Password(password).
 				Logger(&logAdapter{ctx: context.Background()}).
 				DataPath(filepath.Join(conf.Server.DataFolder, "postgres")).
+				StartParameters(map[string]string{
+					"unix_socket_directories": "/tmp",
+					"unix_socket_permissions": "0700",
+				}).
 				BinariesPath(filepath.Join(conf.Server.CacheFolder, "postgres")),
 		)
 		if err := postgresInstance.Start(); err != nil {
@@ -55,7 +59,7 @@ func Db() *sql.DB {
 		}
 
 		// Create the navidrome database if it doesn't exist
-		adminPath := "postgresql://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable"
+		adminPath := "postgresql://postgres:postgres@/postgres?sslmode=disable&host=/tmp"
 		adminDB, err := sql.Open(Driver, adminPath)
 		if err != nil {
 			_ = postgresInstance.Stop()
@@ -88,7 +92,7 @@ func Db() *sql.DB {
 		//Path = conf.Server.DbPath
 		// Ensure client does not attempt TLS when connecting to the embedded Postgres
 		// and avoid shadowing the package-level Path variable.
-		Path = "postgresql://postgres:postgres@127.0.0.1:5432/navidrome?sslmode=disable"
+		Path = "postgresql://postgres:postgres@/navidrome?sslmode=disable&host=/tmp"
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
 		//db.SetMaxOpenConns(max(4, runtime.NumCPU()))
