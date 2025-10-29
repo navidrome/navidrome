@@ -85,9 +85,10 @@ const musicListActions = {
     'button:first-child>span:first-child>span': {
       display: 'none',
     },
-    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg': {
-      color: colors.gray[100],
-    },
+    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+      {
+        color: colors.gray[100],
+      },
   },
 }
 
@@ -205,7 +206,8 @@ export default {
         padding: '10px !important',
         color: `${colors.gray[100]} !important`,
         '& img': {
-          filter: 'brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(7463%) hue-rotate(289deg) brightness(95%) contrast(102%);',
+          filter:
+            'brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(7463%) hue-rotate(289deg) brightness(95%) contrast(102%);',
         },
         '& img + span': {
           color: colors.pink[500],
@@ -259,7 +261,7 @@ export default {
       },
       contentWithSidebar: {
         gap: '2px',
-      }
+      },
     },
     RaList: {
       content: {
@@ -462,9 +464,10 @@ export default {
           'button:first-child>span:first-child': {
             padding: 0,
           },
-          'button>span:first-child>span, button:not(:first-child)>span:first-child>svg': {
-            color: colors.gray[100],
-          },
+          'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+            {
+              color: colors.gray[100],
+            },
         },
       },
       actionsContainer: {
