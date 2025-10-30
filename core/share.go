@@ -121,8 +121,20 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", model.ErrNotFound
 	}
 
-	if utf8.RuneCountInString(s.Contents) > 30 {
-		s.Contents = string([]rune(s.Contents)[:26]) + "..."
+	const maxContentRunes = 30
+	const truncateToRunes = 26
+
+	var runeCount int
+	var truncateIndex int
+	for i := range s.Contents {
+		runeCount++
+		if runeCount == truncateToRunes+1 {
+			truncateIndex = i
+		}
+	}
+
+	if runeCount > maxContentRunes {
+		s.Contents = s.Contents[:truncateIndex] + "..."
 	}
 
 	id, err = r.Persistable.Save(s)
