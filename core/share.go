@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -119,8 +120,9 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
 		return "", model.ErrNotFound
 	}
-	if len(s.Contents) > 30 {
-		s.Contents = s.Contents[:26] + "..."
+
+	if utf8.RuneCountInString(s.Contents) > 30 {
+		s.Contents = string([]rune(s.Contents)[:26]) + "..."
 	}
 
 	id, err = r.Persistable.Save(s)
