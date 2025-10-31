@@ -7,6 +7,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -55,6 +56,19 @@ func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.P
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
+}
+
+func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
+	if key == "" {
+		return nil, model.ErrNotFound
+	}
+	sel := r.selectPlayer().Where(Eq{"api_key": key})
+	var res model.Player
+	err := r.queryOne(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
@@ -130,25 +144,37 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 	return u.IsAdmin || p.UserId == u.ID
 }
 
+func (r *playerRepository) preparePlayerForSave(p *model.Player) *model.Player {
+	playerCopy := *p
+	if playerCopy.UserId == "" {
+		user := loggedUser(r.ctx)
+		playerCopy.UserId = user.ID
+	}
+	playerCopy.APIKey = ""
+	return &playerCopy
+}
+
 func (r *playerRepository) Save(entity interface{}) (string, error) {
 	t := entity.(*model.Player)
-	if !r.isPermitted(t) {
+	playerToSave := r.preparePlayerForSave(t)
+	if !r.isPermitted(playerToSave) {
 		return "", rest.ErrPermissionDenied
 	}
-	id, err := r.put(t.ID, t)
+	playerId, err := r.put(playerToSave.ID, playerToSave)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
-	return id, err
+	return playerId, err
 }
 
 func (r *playerRepository) Update(id string, entity interface{}, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	if !r.isPermitted(t) {
+	playerToUpdate := r.preparePlayerForSave(t)
+	if !r.isPermitted(playerToUpdate) {
 		return rest.ErrPermissionDenied
 	}
-	_, err := r.put(id, t, cols...)
+	_, err := r.put(id, playerToUpdate, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
@@ -162,6 +188,33 @@ func (r *playerRepository) Delete(id string) error {
 		return rest.ErrNotFound
 	}
 	return err
+}
+
+// GenerateAPIKey generates a new API key for the specified player
+func (r *playerRepository) GenerateAPIKey(playerID string) (string, error) {
+	player, err := r.Get(playerID)
+	if errors.Is(err, model.ErrNotFound) {
+		return "", rest.ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if !r.isPermitted(player) {
+		return "", rest.ErrPermissionDenied
+	}
+
+	player.APIKey = generateAPIKey()
+	err = r.Put(player)
+	if err != nil {
+		return "", err
+	}
+	return player.APIKey, nil
+}
+
+// generateAPIKey creates a new random API key
+func generateAPIKey() string {
+	return "nav_" + id.NewRandom()
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

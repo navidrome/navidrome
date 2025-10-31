@@ -24,7 +24,7 @@ type MockedUserRepo struct {
 	UserLibraries map[string][]int // userID -> libraryIDs
 }
 
-func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (u *MockedUserRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
 	if u.Error != nil {
 		return 0, u.Error
 	}

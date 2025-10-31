@@ -181,7 +181,8 @@
         "userName": "Username",
         "lastSeen": "Last Seen At",
         "reportRealPath": "Report Real Path",
-        "scrobbleEnabled": "Send Scrobbles to external services"
+        "scrobbleEnabled": "Send Scrobbles to external services",
+        "apiKey": "API Key"
       }
     },
     "transcoding": {
@@ -508,7 +509,8 @@
     "shareSuccess": "URL copied to clipboard: %{url}",
     "shareFailure": "Error copying URL %{url} to clipboard",
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Download in original format"
+    "downloadOriginalFormat": "Download in original format",
+    "apiKeyGenerated": "API key generated successfully"
   },
   "menu": {
     "library": "Library",
