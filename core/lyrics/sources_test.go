@@ -125,5 +125,22 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(0))))
 			Expect(lyrics[0].Line[0].Value).To(ContainSubstring("作曲"))
 		})
+
+		It("should handle UTF-16 LE encoded LRC files", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-utf16-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).ToNot(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+
+			// UTF-16 should be properly converted to UTF-8
+			Expect(lyrics[0].Synced).To(BeTrue(), "UTF-16 encoded lyrics should be recognized as synced")
+			Expect(lyrics[0].Line).To(HaveLen(2))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(18800))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("We're no strangers to love"))
+			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
+		})
 	})
 })
