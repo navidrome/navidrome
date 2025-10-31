@@ -60,6 +60,7 @@ type Subsonic struct {
 	// OpenSubsonic extensions
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
+	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 }
 
 const (
@@ -445,6 +446,15 @@ type PlayQueue struct {
 	Username  string     `xml:"username,attr"           json:"username"`
 	Changed   *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
 	ChangedBy string     `xml:"changedBy,attr"          json:"changedBy"`
+}
+
+type PlayQueueByIndex struct {
+	Entry        []Child    `xml:"entry,omitempty"         json:"entry,omitempty"`
+	CurrentIndex *int       `xml:"currentIndex,attr,omitempty"  json:"currentIndex,omitempty"`
+	Position     int64      `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username     string     `xml:"username,attr"           json:"username"`
+	Changed      *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
+	ChangedBy    string     `xml:"changedBy,attr"          json:"changedBy"`
 }
 
 type Bookmark struct {

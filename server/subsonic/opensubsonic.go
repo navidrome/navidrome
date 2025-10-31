@@ -12,6 +12,7 @@ func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subson
 		{Name: "transcodeOffset", Versions: []int32{1}},
 		{Name: "formPost", Versions: []int32{1}},
 		{Name: "songLyrics", Versions: []int32{1}},
+		{Name: "indexBasedQueue", Versions: []int32{1}},
 	}
 	return response, nil
 }
