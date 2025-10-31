@@ -108,5 +108,22 @@ var _ = Describe("sources", func() {
 				},
 			}))
 		})
+
+		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
+			// The function looks for <basePath-without-ext><suffix>, so we need to pass
+			// a MediaFile with .mp3 path and look for .lrc suffix
+			mf := model.MediaFile{Path: "tests/fixtures/bom-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).ToNot(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+
+			// The critical assertion: even with BOM, synced should be true
+			Expect(lyrics[0].Synced).To(BeTrue(), "Lyrics with BOM marker should be recognized as synced")
+			Expect(lyrics[0].Line).To(HaveLen(1))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(0))))
+			Expect(lyrics[0].Line[0].Value).To(ContainSubstring("作曲"))
+		})
 	})
 })
