@@ -63,6 +63,8 @@ func trackScanAsSubprocess(ctx context.Context, progress <-chan *scanner.Progres
 }
 
 func runScanner(ctx context.Context) {
+	defer db.Init(ctx)()
+
 	sqlDB := db.Db()
 	defer db.Db().Close()
 	ds := persistence.New(sqlDB)

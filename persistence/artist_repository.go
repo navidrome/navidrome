@@ -399,7 +399,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	}
 
 	// Template for the batch update with placeholder markers that we'll replace
-	// This now calculates per-library statistics and stores them in library_artist.stats
+	// This calculates per-library statistics and stores them in library_artist.stats
 	batchUpdateStatsSQL := `
     WITH artist_role_counters AS (
         SELECT mfa.artist_id,
