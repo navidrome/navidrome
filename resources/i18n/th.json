@@ -26,7 +26,17 @@
         "bpm": "BPM",
         "playDate": "เล่นล่าสุด",
         "channels": "ช่อง",
-        "createdAt": "เพิ่มเมื่อ"
+        "createdAt": "เพิ่มเมื่อ",
+        "grouping": "จัดกลุ่ม",
+        "mood": "อารมณ์",
+        "participants": "ผู้มีส่วนร่วม",
+        "tags": "แทกเพิ่มเติม",
+        "mappedTags": "แมพแทก",
+        "rawTags": "แทกเริ่มต้น",
+        "bitDepth": "Bit depth",
+        "sampleRate": "แซมเปิ้ลเรต",
+        "missing": "หายไป",
+        "libraryName": "ห้องสมุด"
       },
       "actions": {
         "addToQueue": "เพิ่มในคิว",
@@ -35,7 +45,8 @@
         "shuffleAll": "สุ่มทั้งหมด",
         "download": "ดาวน์โหลด",
         "playNext": "เล่นถัดไป",
-        "info": "ดูรายละเอียด"
+        "info": "ดูรายละเอียด",
+        "showInPlaylist": "แสดงในเพลย์ลิสต์"
       }
     },
     "album": {
@@ -58,7 +69,16 @@
         "originalDate": "วันที่เริ่ม",
         "releaseDate": "เผยแพร่เมื่อ",
         "releases": "เผยแพร่ |||| เผยแพร่",
-        "released": "เผยแพร่เมื่อ"
+        "released": "เผยแพร่เมื่อ",
+        "recordLabel": "ป้าย",
+        "catalogNum": "หมายเลขแคตาล็อก",
+        "releaseType": "ประเภท",
+        "grouping": "จัดกลุ่ม",
+        "media": "มีเดีย",
+        "mood": "อารมณ์",
+        "date": "บันทึกเมื่อ",
+        "missing": "หายไป",
+        "libraryName": "ห้องสมุด"
       },
       "actions": {
         "playAll": "เล่นทั้งหมด",
@@ -89,7 +109,30 @@
         "playCount": "เล่นแล้ว",
         "rating": "ความนิยม",
         "genre": "ประเภท",
-        "size": "ขนาด"
+        "size": "ขนาด",
+        "role": "Role",
+        "missing": "หายไป"
+      },
+      "roles": {
+        "albumartist": "ศิลปินอัลบั้ม |||| ศิลปินอัลบั้ม",
+        "artist": "ศิลปิน |||| ศิลปิน",
+        "composer": "ผู้แต่ง |||| ผู้แต่ง",
+        "conductor": "คอนดักเตอร์ |||| คอนดักเตอร์",
+        "lyricist": "เนื้อเพลง |||| เนื้อเพลง",
+        "arranger": "ผู้ดำเนินการ |||| ผู้ดำเนินการ",
+        "producer": "ผู้จัด |||| ผู้จัด",
+        "director": "ไดเรกเตอร์ |||| ไดเรกเตอร์",
+        "engineer": "วิศวกร |||| วิศวกร",
+        "mixer": "มิกเซอร์ |||| มิกเซอร์",
+        "remixer": "รีมิกเซอร์ |||| รีมิกเซอร์",
+        "djmixer": "ดีเจมิกเซอร์ |||| ดีเจมิกเซอร์",
+        "performer": "ผู้เล่น |||| ผู้เล่น",
+        "maincredit": "ศิลปิน |||| ศิลปิน"
+      },
+      "actions": {
+        "shuffle": "เล่นสุ่ม",
+        "radio": "วิทยุ",
+        "topSongs": "เพลงยอดนิยม"
       }
     },
     "user": {
@@ -106,10 +149,12 @@
         "currentPassword": "รหัสผ่านปัจจุบัน",
         "newPassword": "รหัสผ่านใหม่",
         "token": "โทเคน",
-        "lastAccessAt": "เข้าใช้ล่าสุด"
+        "lastAccessAt": "เข้าใช้ล่าสุด",
+        "libraries": "ห้องสมุด"
       },
       "helperTexts": {
-        "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป"
+        "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป",
+        "libraries": "เลือกห้องสมุดสำหรับผู้ใช้นี้หรือปล่อยว่างเพื่อใช้ห้องสมุดเริ่มต้น"
       },
       "notifications": {
         "created": "สร้างชื่อผู้ใช้",
@@ -118,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "ใส่โทเคน ListenBrainz ของคุณ",
-        "clickHereForToken": "กดที่นี่เพื่อรับโทเคนของคุณ"
+        "clickHereForToken": "กดที่นี่เพื่อรับโทเคนของคุณ",
+        "selectAllLibraries": "เลือกห้องสมุดทั้งหมด",
+        "adminAutoLibraries": "ผู้ดูแลเข้าถึงห้องสมุดทั้งหมดโดยอัตโนมัติ"
+      },
+      "validation": {
+        "librariesRequired": "ต้องเลือกห้องสมุด 1 ห้อง สำหรับผู้ใช้ที่ไม่ใช่ผู้ดูแล"
       }
     },
     "player": {
@@ -162,11 +212,17 @@
         "addNewPlaylist": "สร้าง \"%{name}\"",
         "export": "ส่งออก",
         "makePublic": "ทำเป็นสาธารณะ",
-        "makePrivate": "ทำเป็นส่วนตัว"
+        "makePrivate": "ทำเป็นส่วนตัว",
+        "saveQueue": "บันทึกคิวลงเพลย์ลิสต์",
+        "searchOrCreate": "ค้นหาเพลย์ลิสต์หรือพิมพ์เพื่อสร้างใหม่",
+        "pressEnterToCreate": "กด Enter เพื่อสร้างเพลย์ลิสต์",
+        "removeFromSelection": "เอาออกจากที่เลือกไว้"
       },
       "message": {
         "duplicate_song": "เพิ่มเพลงซ้ำ",
-        "song_exist": "เพิ่มเพลงซ้ำกันในเพลย์ลิสต์ คุณจะเพิ่มเพลงต่อหรือข้าม"
+        "song_exist": "เพิ่มเพลงซ้ำกันในเพลย์ลิสต์ คุณจะเพิ่มเพลงต่อหรือข้าม",
+        "noPlaylistsFound": "ไม่พบเพลย์ลิสต์",
+        "noPlaylists": "ไม่มีเพลย์ลิสต์อยู่"
       }
     },
     "radio": {
@@ -197,6 +253,75 @@
         "updatedAt": "อัปเดตเมื่อ",
         "createdAt": "สร้างเมื่อ",
         "downloadable": "อนุญาตให้ดาวโหลด?"
+      }
+    },
+    "missing": {
+      "name": "ไฟล์ที่หายไป |||| ไฟล์ที่หายไป",
+      "fields": {
+        "path": "พาร์ท",
+        "size": "ขนาด",
+        "updatedAt": "หายไปจาก",
+        "libraryName": "ห้องสมุด"
+      },
+      "actions": {
+        "remove": "เอาออก",
+        "remove_all": "เอาออกทั้งหมด"
+      },
+      "notifications": {
+        "removed": "เอาไฟล์ที่หายไปออกแล้ว"
+      },
+      "empty": "ไม่มีไฟล์หาย"
+    },
+    "library": {
+      "name": "ห้องสมุด |||| ห้องสมุด",
+      "fields": {
+        "name": "ชื่อ",
+        "path": "พาร์ท",
+        "remotePath": "รีโมทพาร์ท",
+        "lastScanAt": "สแกนล่าสุด",
+        "songCount": "เพลง",
+        "albumCount": "อัลบัม",
+        "artistCount": "ศิลปิน",
+        "totalSongs": "เพลง",
+        "totalAlbums": "อัลบัม",
+        "totalArtists": "ศิลปิน",
+        "totalFolders": "แฟ้ม",
+        "totalFiles": "ไฟล์",
+        "totalMissingFiles": "ไฟล์ที่หายไป",
+        "totalSize": "ขนาดทั้งหมด",
+        "totalDuration": "ความยาว",
+        "defaultNewUsers": "ค่าเริ่มต้นผู้ใช้ใหม่",
+        "createdAt": "สร้าง",
+        "updatedAt": "อัพเดท"
+      },
+      "sections": {
+        "basic": "ข้อมูลเบื้องต้น",
+        "statistics": "สถิติ"
+      },
+      "actions": {
+        "scan": "สแกนห้องสมุด",
+        "manageUsers": "ตั้งค่าการเข้าถึง",
+        "viewDetails": "ดูรายละเอียด"
+      },
+      "notifications": {
+        "created": "สร้างห้องสมุดเรียบร้อย",
+        "updated": "อัพเดทห้องสมุดเรียบร้อย",
+        "deleted": "ลบห้องสมุดเพลงเรียบร้อยแล้ว",
+        "scanStarted": "เริ่มสแกนห้องสมุด",
+        "scanCompleted": "สแกนห้องสมุดเสร็จแล้ว"
+      },
+      "validation": {
+        "nameRequired": "ต้องใส่ชื่อห้องสมุดเพลง",
+        "pathRequired": "ต้องใส่พาร์ทของห้องสมุด",
+        "pathNotDirectory": "พาร์ทของห้องสมุดต้องเป็นแฟ้ม",
+        "pathNotFound": "ไม่เจอพาร์ทของห้องสมุด",
+        "pathNotAccessible": "ไม่สามารถเข้าพาร์ทของห้องสมุด",
+        "pathInvalid": "พาร์ทห้องสมุดไม่ถูก"
+      },
+      "messages": {
+        "deleteConfirm": "คุณแน่ใจว่าจะลบห้องสมุดนี้? นี่จะลบข้อมูลและการเข้าถึงของผู้ใช้ที่เกี่ยวข้องทั้งหมด",
+        "scanInProgress": "กำลังสแกน...",
+        "noLibrariesAssigned": "ไม่มีห้องสมุดสำหรับผู้ใช้นี้"
       }
     }
   },
@@ -375,7 +500,13 @@
     "shareSuccess": "คัดลอก URL ไปคลิปบอร์ด: %{url}",
     "shareFailure": "คัดลอก URL %{url} ไปคลิปบอร์ดผิดพลาด",
     "downloadDialogTitle": "ดาวโหลด %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "คัดลอกไปคลิปบอร์ด: Ctrl+C, Enter"
+    "shareCopyToClipboard": "คัดลอกไปคลิปบอร์ด: Ctrl+C, Enter",
+    "remove_missing_title": "ลบรายการไฟล์ที่หายไป",
+    "remove_missing_content": "คุณแน่ใจว่าจะเอารายการไฟล์ที่หายไปออกจากดาต้าเบส นี่จะเป็นการลบข้อมูลอ้างอิงทั้งหมดของไฟล์ออกอย่างถาวร",
+    "remove_all_missing_title": "เอารายการไฟล์ที่หายไปออกทั้งหมด",
+    "remove_all_missing_content": "คุณแน่ใจว่าจะเอารายการไฟล์ที่หายไปออกจากดาต้าเบส นี่จะเป็นการลบข้อมูลอ้างอิงทั้งหมดของไฟล์ออกอย่างถาวร",
+    "noSimilarSongsFound": "ไม่มีเพลงคล้ายกัน",
+    "noTopSongsFound": "ไม่พบเพลงยอดนิยม"
   },
   "menu": {
     "library": "ห้องสมุดเพลง",
@@ -404,7 +535,13 @@
     "albumList": "อัลบั้ม",
     "about": "เกี่ยวกับ",
     "playlists": "เพลย์ลิสต์",
-    "sharedPlaylists": "เพลย์ลิสต์ที่แบ่งปัน"
+    "sharedPlaylists": "เพลย์ลิสต์ที่แบ่งปัน",
+    "librarySelector": {
+      "allLibraries": "ห้องสมุด (%{count}) ห้อง",
+      "multipleLibraries": "%{selected} ของ %{total} ห้องสมุด",
+      "selectLibraries": "เลือกห้องสมุด",
+      "none": "ไม่มี"
+    }
   },
   "player": {
     "playListsText": "คิวเล่น",
@@ -441,6 +578,21 @@
         "disabled": "ปิดการทำงาน",
         "waiting": "รอ"
       }
+    },
+    "tabs": {
+      "about": "เกี่ยวกับ",
+      "config": "การตั้งค่า"
+    },
+    "config": {
+      "configName": "ชื่อการตั้งค่า",
+      "environmentVariable": "ค่าทั่วไป",
+      "currentValue": "ค่าปัจจุบัน",
+      "configurationFile": "ไฟล์การตั้งค่า",
+      "exportToml": "นำออกการตั้งค่า (TOML)",
+      "exportSuccess": "นำออกการตั้งค่าไปยังคลิปบอร์ดในรูปแบบ TOML แล้ว",
+      "exportFailed": "คัดลอกการตั้งค่าล้มเหลว",
+      "devFlagsHeader": "ปักธงการพัฒนา (อาจมีการเปลี่ยน/เอาออก)",
+      "devFlagsComment": "การตั้งค่านี้อยู่ในช่วงทดลองและอาจจะมีการเอาออกในเวอร์ชั่นหลัง"
     }
   },
   "activity": {
@@ -449,7 +601,10 @@
     "quickScan": "สแกนแบบเร็ว",
     "fullScan": "สแกนทั้งหมด",
     "serverUptime": "เซิร์ฟเวอร์ออนไลน์นาน",
-    "serverDown": "ออฟไลน์"
+    "serverDown": "ออฟไลน์",
+    "scanType": "ประเภท",
+    "status": "สแกนผิดพลาด",
+    "elapsedTime": "เวลาที่ใช้"
   },
   "help": {
     "title": "คีย์ลัด Navidrome",
@@ -464,5 +619,10 @@
       "toggle_love": "เพิ่มเพลงนี้ไปยังรายการโปรด",
       "current_song": "ไปยังเพลงปัจจุบัน"
     }
+  },
+  "nowPlaying": {
+    "title": "กำลังเล่น",
+    "empty": "ไม่มีเพลงเล่น",
+    "minutesAgo": "%{smart_count} นาทีที่แล้ว |||| %{smart_count} นาทีที่แล้ว"
   }
 }

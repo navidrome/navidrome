@@ -5,7 +5,7 @@
       "name": "Nummer |||| Nummers",
       "fields": {
         "albumArtist": "Album Artiest",
-        "duration": "Lengte",
+        "duration": "Afspeelduur",
         "trackNumber": "Nummer #",
         "playCount": "Aantal keren afgespeeld",
         "title": "Titel",
@@ -35,7 +35,8 @@
         "rawTags": "Onbewerkte tags",
         "bitDepth": "Bit diepte",
         "sampleRate": "Sample waarde",
-        "missing": "Ontbrekend"
+        "missing": "Ontbrekend",
+        "libraryName": "Bibliotheek"
       },
       "actions": {
         "addToQueue": "Voeg toe aan wachtrij",
@@ -44,7 +45,8 @@
         "shuffleAll": "Shuffle alles",
         "download": "Downloaden",
         "playNext": "Volgende",
-        "info": "Meer info"
+        "info": "Meer info",
+        "showInPlaylist": "Toon in afspeellijst"
       }
     },
     "album": {
@@ -55,7 +57,7 @@
         "duration": "Afspeelduur",
         "songCount": "Nummers",
         "playCount": "Aantal keren afgespeeld",
-        "name": "Naam",
+        "name": "Titel",
         "genre": "Genre",
         "compilation": "Compilatie",
         "year": "Jaar",
@@ -65,9 +67,9 @@
         "createdAt": "Datum toegevoegd",
         "size": "Grootte",
         "originalDate": "Origineel",
-        "releaseDate": "Uitgegeven",
+        "releaseDate": "Uitgave",
         "releases": "Uitgave |||| Uitgaven",
-        "released": "Uitgegeven",
+        "released": "Uitgave",
         "recordLabel": "Label",
         "catalogNum": "Catalogus nummer",
         "releaseType": "Type",
@@ -75,7 +77,8 @@
         "media": "Media",
         "mood": "Sfeer",
         "date": "Opnamedatum",
-        "missing": "Ontbrekend"
+        "missing": "Ontbrekend",
+        "libraryName": "Bibliotheek"
       },
       "actions": {
         "playAll": "Afspelen",
@@ -123,7 +126,13 @@
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Performer |||| Performers"
+        "performer": "Performer |||| Performers",
+        "maincredit": "Album Artiest of Artiest |||| Album Artiesten or Artiesten"
+      },
+      "actions": {
+        "shuffle": "Shuffle",
+        "radio": "Radio",
+        "topSongs": "Beste nummers"
       }
     },
     "user": {
@@ -132,7 +141,7 @@
         "userName": "Gebruikersnaam",
         "isAdmin": "Is beheerder",
         "lastLoginAt": "Laatst ingelogd op",
-        "updatedAt": "Laatst gewijzigd op",
+        "updatedAt": "Laatst bijgewerkt op",
         "name": "Naam",
         "password": "Wachtwoord",
         "createdAt": "Aangemaakt op",
@@ -140,19 +149,26 @@
         "currentPassword": "Huidig wachtwoord",
         "newPassword": "Nieuw wachtwoord",
         "token": "Token",
-        "lastAccessAt": "Meest recente toegang"
+        "lastAccessAt": "Meest recente toegang",
+        "libraries": "Bibliotheken"
       },
       "helperTexts": {
-        "name": "Naamswijziging wordt pas zichtbaar bij de volgende login"
+        "name": "Naamswijziging wordt pas zichtbaar bij de volgende login",
+        "libraries": "Selecteer specifieke bibliotheken voor deze gebruiker, of laat leeg om de standaardbiblliotheken te gebruiken"
       },
       "notifications": {
         "created": "Aangemaakt door gebruiker",
-        "updated": "Gewijzigd door gebruiker",
-        "deleted": "Gewist door gebruiker"
+        "updated": "Bijgewerkt door gebruiker",
+        "deleted": "Gebruiker verwijderd"
       },
       "message": {
         "listenBrainzToken": "Vul je ListenBrainz gebruikers-token in.",
-        "clickHereForToken": "Klik hier voor je token"
+        "clickHereForToken": "Klik hier voor je token",
+        "selectAllLibraries": "Selecteer alle bibliotheken",
+        "adminAutoLibraries": "Admin gebruikers hebben automatisch toegang tot alle bibliotheken"
+      },
+      "validation": {
+        "librariesRequired": "Minstens één bibliotheek moet geselecteerd worden voor niet-admin gebruikers"
       }
     },
     "player": {
@@ -181,10 +197,10 @@
       "name": "Afspeellijst |||| Afspeellijsten",
       "fields": {
         "name": "Titel",
-        "duration": "Lengte",
+        "duration": "Afspeelduur",
         "ownerName": "Eigenaar",
         "public": "Publiek",
-        "updatedAt": "Laatst gewijzigd op",
+        "updatedAt": "Laatst bijgewerkt op",
         "createdAt": "Aangemaakt op",
         "songCount": "Nummers",
         "comment": "Commentaar",
@@ -197,11 +213,16 @@
         "export": "Exporteer",
         "makePublic": "Openbaar maken",
         "makePrivate": "Privé maken",
-        "saveQueue": "Bewaar wachtrij als playlist"
+        "saveQueue": "Bewaar wachtrij als playlist",
+        "searchOrCreate": "Zoek afspeellijsten of typ om een nieuwe te starten...",
+        "pressEnterToCreate": "Druk Enter om nieuwe afspeellijst te maken",
+        "removeFromSelection": "Verwijder van selectie"
       },
       "message": {
         "duplicate_song": "Dubbele nummers toevoegen",
-        "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
+        "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?",
+        "noPlaylistsFound": "Geen playlists gevonden",
+        "noPlaylists": "Geen playlists beschikbaar"
       }
     },
     "radio": {
@@ -210,8 +231,8 @@
         "name": "Naam",
         "streamUrl": "Stream URL",
         "homePageUrl": "Hoofdpagina URL",
-        "updatedAt": "Geüpdate op",
-        "createdAt": "Gecreëerd op"
+        "updatedAt": "Bijgewerkt op",
+        "createdAt": "Aangemaakt op"
       },
       "actions": {
         "playNow": "Speel nu"
@@ -229,8 +250,8 @@
         "visitCount": "Bezocht",
         "format": "Formaat",
         "maxBitRate": "Max. bitrate",
-        "updatedAt": "Geüpdatet op",
-        "createdAt": "Gecreëerd op",
+        "updatedAt": "Bijgewerkt op",
+        "createdAt": "Aangemaakt op",
         "downloadable": "Downloads toestaan?"
       }
     },
@@ -239,7 +260,8 @@
       "fields": {
         "path": "Pad",
         "size": "Grootte",
-        "updatedAt": "Verdwenen op"
+        "updatedAt": "Verdwenen op",
+        "libraryName": "Bibliotheek"
       },
       "actions": {
         "remove": "Verwijder",
@@ -249,6 +271,58 @@
         "removed": "Ontbrekende bestanden verwijderd"
       },
       "empty": "Geen ontbrekende bestanden"
+    },
+    "library": {
+      "name": "Bibliotheek |||| Bibliotheken",
+      "fields": {
+        "name": "Naam",
+        "path": "Pad",
+        "remotePath": "Extern pad",
+        "lastScanAt": "Laatste scan",
+        "songCount": "Nummers",
+        "albumCount": "Albums",
+        "artistCount": "Artiesten",
+        "totalSongs": "Nummers",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artiesten",
+        "totalFolders": "Mappen",
+        "totalFiles": "Bestanden",
+        "totalMissingFiles": "Ontbrekende bestanden",
+        "totalSize": "Totale bestandsgrootte",
+        "totalDuration": "Afspeelduur",
+        "defaultNewUsers": "Standaard voor nieuwe gebruikers",
+        "createdAt": "Aangemaakt",
+        "updatedAt": "Bijgewerkt"
+      },
+      "sections": {
+        "basic": "Basisinformatie",
+        "statistics": "Statistieken"
+      },
+      "actions": {
+        "scan": "Scan bibliotheek",
+        "manageUsers": "Beheer gebruikerstoegang",
+        "viewDetails": "Bekijk details"
+      },
+      "notifications": {
+        "created": "Bibliotheek succesvol aangemaakt",
+        "updated": "Bibliotheek succesvol bijgewerkt",
+        "deleted": "Bibliotheek succesvol verwijderd",
+        "scanStarted": "Bibliotheekscan is gestart",
+        "scanCompleted": "Bibliotheekscan is voltooid"
+      },
+      "validation": {
+        "nameRequired": "Bibliotheek naam is vereist",
+        "pathRequired": "Pad naar bibliotheek is vereist",
+        "pathNotDirectory": "Pad naar bibliotheek moet een map zijn",
+        "pathNotFound": "Pad naar bibliotheek niet gevonden",
+        "pathNotAccessible": "Pad naar bibliotheek is niet toegankelijk",
+        "pathInvalid": "Ongeldig pad naar bibliotheek"
+      },
+      "messages": {
+        "deleteConfirm": "Weet je zeker dat je deze bibliotheek wil verwijderen? Dit verwijdert ook alle gerelateerde data en gebruikerstoegang.",
+        "scanInProgress": "Scan is bezig...",
+        "noLibrariesAssigned": "Geen bibliotheken aan deze gebruiker toegewezen"
+      }
     }
   },
   "ra": {
@@ -430,7 +504,9 @@
     "remove_missing_title": "Verwijder ontbrekende bestanden",
     "remove_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
     "remove_all_missing_title": "Verwijder alle ontbrekende bestanden",
-    "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen."
+    "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
+    "noSimilarSongsFound": "Geen vergelijkbare nummers gevonden",
+    "noTopSongsFound": "Geen beste nummers gevonden"
   },
   "menu": {
     "library": "Bibliotheek",
@@ -459,7 +535,13 @@
     "albumList": "Albums",
     "about": "Over",
     "playlists": "Afspeellijsten",
-    "sharedPlaylists": "Gedeelde afspeellijsten"
+    "sharedPlaylists": "Gedeelde afspeellijsten",
+    "librarySelector": {
+      "allLibraries": "Alle bibliotheken (%{count})",
+      "multipleLibraries": "%{selected} van %{total} bibliotheken",
+      "selectLibraries": "Selecteer bibliotheken",
+      "none": "Geen"
+    }
   },
   "player": {
     "playListsText": "Wachtrij",
@@ -468,7 +550,7 @@
     "notContentText": "Geen muziek",
     "clickToPlayText": "Klik om af te spelen",
     "clickToPauseText": "Klik om te pauzeren",
-    "nextTrackText": "Volgende",
+    "nextTrackText": "Volgend nummer",
     "previousTrackText": "Vorige",
     "reloadText": "Herladen",
     "volumeText": "Volume",
@@ -496,11 +578,26 @@
         "disabled": "Uitgeschakeld",
         "waiting": "Wachten"
       }
+    },
+    "tabs": {
+      "about": "Over",
+      "config": "Configuratie"
+    },
+    "config": {
+      "configName": "Config Naam",
+      "environmentVariable": "Omgevingsvariabele",
+      "currentValue": "Huidige waarde",
+      "configurationFile": "Configuratiebestand",
+      "exportToml": "Exporteer configuratie (TOML)",
+      "exportSuccess": "Configuratie geëxporteerd naar klembord in TOML formaat",
+      "exportFailed": "Kopiëren van configuratie mislukt",
+      "devFlagsHeader": "Ontwikkelaarsinstellingen (onder voorbehoud)",
+      "devFlagsComment": "Dit zijn experimentele instellingen en worden mogelijk in latere versies verwijderd"
     }
   },
   "activity": {
     "title": "Activiteit",
-    "totalScanned": "Totaal gescande folders",
+    "totalScanned": "Totaal gescande mappen",
     "quickScan": "Snelle scan",
     "fullScan": "Volledige scan",
     "serverUptime": "Server uptime",
@@ -522,5 +619,10 @@
       "toggle_love": "Voeg toe aan favorieten",
       "current_song": "Ga naar huidig nummer"
     }
+  },
+  "nowPlaying": {
+    "title": "Speelt nu",
+    "empty": "Er wordt niets afgespeed",
+    "minutesAgo": "%{smart_count} minuut geleden |||| %{smart_count} minuten geleden"
   }
 }
