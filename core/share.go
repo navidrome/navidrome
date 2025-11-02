@@ -120,18 +120,19 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", model.ErrNotFound
 	}
 
+	const maxContentRunes = 30
+	const truncateToRunes = 26
+
 	var runeCount int
 	var truncateIndex int
-
 	for i := range s.Contents {
 		runeCount++
-
-		if runeCount == 27 {
+		if runeCount == truncateToRunes+1 {
 			truncateIndex = i
 		}
 	}
 
-	if runeCount > 30 {
+	if runeCount > maxContentRunes {
 		s.Contents = s.Contents[:truncateIndex] + "..."
 	}
 
