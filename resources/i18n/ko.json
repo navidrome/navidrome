@@ -76,7 +76,7 @@
         "releaseType": "유형",
         "grouping": "그룹",
         "media": "미디어",
-        "mood": "분위기"
+        "mood": "분위기",
         "missing": "누락"
       },
       "actions": {
@@ -109,7 +109,7 @@
         "playCount": "재생 횟수",
         "rating": "평가",
         "genre": "장르",
-        "role": "역할"
+        "role": "역할",
         "missing": "누락"
       },
       "roles": {
@@ -125,7 +125,7 @@
         "mixer": "믹서 |||| 믹서들",
         "remixer": "리믹서 |||| 리믹서들",
         "djmixer": "DJ 믹서 |||| DJ 믹서들",
-        "performer": "공연자 |||| 공연자들"
+        "performer": "공연자 |||| 공연자들",
         "maincredit": "앨범 아티스트 또는 아티스트 |||| 앨범 아티스트들 또는 아티스트들"
       },
       "actions": {
@@ -148,7 +148,7 @@
         "changePassword": "비밀번호를 변경할까요?",
         "currentPassword": "현재 비밀번호",
         "newPassword": "새 비밀번호",
-        "token": "토큰"
+        "token": "토큰",
         "libraries": "라이브러리"
       },
       "helperTexts": {
@@ -266,7 +266,7 @@
         "updatedAt": "사라짐"
       },
       "actions": {
-        "remove": "제거"
+        "remove": "제거",
         "remove_all": "모두 제거"
       },
       "notifications": {
