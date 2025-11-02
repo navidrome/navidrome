@@ -35,7 +35,7 @@
         "participants": "추가 참가자",
         "tags": "추가 태그",
         "mappedTags": "매핑된 태그",
-        "rawTags": "원시 태그"
+        "rawTags": "원시 태그",
         "missing": "누락"
       },
       "actions": {
