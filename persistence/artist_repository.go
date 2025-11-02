@@ -400,23 +400,16 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	// This now calculates per-library statistics and stores them in library_artist.stats
 	batchUpdateStatsSQL := `
     WITH artist_role_counters AS (
-        SELECT jt.atom AS artist_id,
+        SELECT mfa.artist_id,
                mf.library_id,
-               substr(
-                       replace(jt.path, '$.', ''),
-                       1,
-                       CASE WHEN instr(replace(jt.path, '$.', ''), '[') > 0
-                                THEN instr(replace(jt.path, '$.', ''), '[') - 1
-                            ELSE length(replace(jt.path, '$.', ''))
-                           END
-               ) AS role,
+               mfa.role,
                count(DISTINCT mf.album_id) AS album_count,
-               count(mf.id) AS count,
+               count(DISTINCT mf.id) AS count,
                sum(mf.size) AS size
-        FROM media_file mf
-        JOIN json_tree(mf.participants) jt ON jt.key = 'id' AND jt.atom IS NOT NULL
-        WHERE jt.atom IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY jt.atom, mf.library_id, role
+        FROM media_file_artists mfa
+        JOIN media_file mf ON mfa.media_file_id = mf.id
+        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY mfa.artist_id, mf.library_id, mfa.role
     ),
     artist_total_counters AS (
         SELECT mfa.artist_id,
@@ -445,24 +438,24 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     ),
     combined_counters AS (
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_role_counters
-        UNION
+        UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_total_counters
-        UNION
+        UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_participant_counter
     ),
     library_artist_counters AS (
         SELECT artist_id,
                library_id,
                json_group_object(
-                       replace(role, '"', ''),
+                       role,
                        json_object('a', album_count, 'm', count, 's', size)
                ) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
     )
     UPDATE library_artist
-    SET stats = coalesce((SELECT counters FROM library_artist_counters lac 
-                         WHERE lac.artist_id = library_artist.artist_id 
+    SET stats = coalesce((SELECT counters FROM library_artist_counters lac
+                         WHERE lac.artist_id = library_artist.artist_id
                          AND lac.library_id = library_artist.library_id), '{}')
     WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
 
