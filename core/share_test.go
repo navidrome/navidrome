@@ -38,6 +38,22 @@ var _ = Describe("Share", func() {
 				Expect(id).ToNot(BeEmpty())
 				Expect(entity.ID).To(Equal(id))
 			})
+
+			It("does not truncate CJK labels shorter than 30 runes", func() {
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "青春コンプレックス"})
+				entity := &model.Share{Description: "test", ResourceIDs: "456"}
+				_, err := repo.Save(entity)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entity.Contents).To(Equal("青春コンプレックス"))
+			})
+
+			It("truncates CJK labels longer than 30 runes", func() {
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "789", Title: "私の中の幻想的世界観及びその顕現を想起させたある現実での出来事に関する一考察"})
+				entity := &model.Share{Description: "test", ResourceIDs: "789"}
+				_, err := repo.Save(entity)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実..."))
+			})
 		})
 
 		Describe("Update", func() {
