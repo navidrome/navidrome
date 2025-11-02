@@ -165,7 +165,7 @@
       },
       "message": {
         "listenBrainzToken": "ListenBrainz 사용자 토큰을 입력하세요.",
-        "clickHereForToken": "여기를 클릭하여 토큰을 얻으세요"
+        "clickHereForToken": "여기를 클릭하여 토큰을 얻으세요",
         "selectAllLibraries": "모든 라이브러리 선택",
         "adminAutoLibraries": "관리자 사용자는 자동으로 모든 라이브러리에 접속할 수 있음"
       }
@@ -212,14 +212,14 @@
         "export": "내보내기",
         "saveQueue": "재생목록에 대기열 저장",
         "makePublic": "공개 만들기",
-        "makePrivate": "비공개 만들기"
+        "makePrivate": "비공개 만들기",
         "searchOrCreate": "재생목록을 검색하거나 입력하여 새 재생목록을 만드세요...",
         "pressEnterToCreate": "새 재생목록을 만드려면 Enter 키를 누름",
         "removeFromSelection": "선택에서 제거"
       },
       "message": {
         "duplicate_song": "중복된 노래 추가",
-        "song_exist": "이미 재생목록에 존재하는 노래입니다. 중복을 추가할까요 아니면 건너뛸까요?"
+        "song_exist": "이미 재생목록에 존재하는 노래입니다. 중복을 추가할까요 아니면 건너뛸까요?",
         "noPlaylistsFound": "재생목록을 찾을 수 없음",
         "noPlaylists": "사용 가능한 재생 목록이 없음"
       }
