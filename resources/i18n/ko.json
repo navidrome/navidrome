@@ -602,7 +602,7 @@
     "quickScan": "빠른 스캔",
     "fullScan": "전체 스캔",
     "serverUptime": "서버 가동 시간",
-    "serverDown": "오프라인"
+    "serverDown": "오프라인",
     "scanType": "유형",
     "status": "스캔 오류",
     "elapsedTime": "경과 시간"
