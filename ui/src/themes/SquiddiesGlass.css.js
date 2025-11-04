@@ -48,6 +48,37 @@ const stylesheet = `
   color: #c231ab;
 }
 
+.react-jinke-music-player .music-player-controller {
+  color: #c231ab;
+  border: 1px solid #e14ac2;
+}
+
+.react-jinke-music-player .music-player-controller.music-player-playing:before {
+  border: 1px solid rgba(194, 49, 171, 0.3);
+}
+
+.react-jinke-music-player .music-player .destroy-btn {
+  background-color: #c2c1c2;
+  top: -7px;
+  border-radius: 50%;
+  display: flex;
+}
+
+.react-jinke-music-player .music-player .destroy-btn svg {
+  font-size: 20px;
+}
+
+@media screen and (max-width: 767px) {
+  .react-jinke-music-player .music-player .destroy-btn {
+    right: -12px;
+  }
+}
+
+.react-jinke-music-player-mobile-header-right {
+  right: 0;
+  top: 0;
+}
+
 @media screen and (max-width: 767px) {
   .react-jinke-music-player-main svg {
     font-size: 32px;
@@ -128,6 +159,16 @@ a[aria-current="page"] .MuiListItemIcon-root {
     transform: scaleY(1.2);
     opacity: 0.8;
   }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 `
 

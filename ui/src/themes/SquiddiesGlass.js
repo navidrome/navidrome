@@ -177,6 +177,8 @@ export default {
     },
     MuiCardMedia: {
       root: {
+        position: 'relative',
+        overflow: 'hidden',
         boxShadow: `0 2px 32px rgba(0,0,0,0.5), 0px 1px 5px rgba(0,0,0,0.1)`,
       },
     },
@@ -366,6 +368,29 @@ export default {
       },
       coverParent: {
         zIndex: '99999',
+        position: 'relative',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          animation: 'pulse 1.5s ease-in-out infinite alternate',
+          zIndex: -1,
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          inset: '0',
+          zIndex: '-1',
+          borderRadius: '50%',
+          background: 'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.08) 0deg, rgba(255,255,255,0.08) 0.5deg, rgba(0,0,0,1) 1deg)',
+          filter: 'contrast(999) sepia(1)',
+          boxShadow: 'inset 0 0 25px rgba(255,255,255,0.05), inset 0 0 95px rgba(0,0,0,0.9)',
+          animation: 'spin 6s linear infinite',
+        }
       },
       details: {
         zIndex: '99999',
@@ -405,7 +430,19 @@ export default {
         },
       },
     },
+    MuiGridListTile: {
+      tile: {
+        '&:hover': {
+          boxShadow: '0 2px 32px rgba(0,0,0,0.5), 0px 1px 5px rgba(0,0,0,0.1)',
+        },
+      },
+    },
     NDAlbumGridView: {
+      tileBar: {
+        background:
+          'linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%)',
+        marginBottom: '2px',
+      },
       albumName: {
         marginTop: '0.5rem',
         fontWeight: 700,
@@ -425,6 +462,7 @@ export default {
         },
       },
       albumPlayButton: {
+        color: colors.black,
         backgroundColor: colors.pink[500],
         borderRadius: '50%',
         boxShadow: '0 8px 8px rgb(0 0 0 / 30%)',
