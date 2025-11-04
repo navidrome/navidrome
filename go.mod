@@ -2,8 +2,12 @@ module github.com/navidrome/navidrome
 
 go 1.25.3
 
-// Fork to fix https://github.com/navidrome/navidrome/pull/3254
-replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
+replace (
+	// Fork to fix https://github.com/navidrome/navidrome/issues/3254
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
+	// Fork to fix https://github.com/navidrome/navidrome/issues/4396
+	github.com/tetratelabs/wazero v1.9.0 => github.com/deluan/wazero v0.0.0-20251104232153-65cd30a7449a
+)
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
