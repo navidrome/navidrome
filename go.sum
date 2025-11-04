@@ -41,8 +41,8 @@ github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55 h1:wSCnggTs2f2ji6n
 github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55/go.mod h1:ZNCLJfehvEf34B7BbLKjgpsL9lyW7q938w/GY1XgV4E=
 github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d h1:x/R3+oPEjnisl1zBx2f2v7Gf6f11l0N0JoD6BkwcJyA=
 github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d/go.mod h1:apkPC/CR3s48O2D7Y++n1XWEpgPNNCjXYga3PPbJe2E=
-github.com/deluan/wazero v0.0.0-20251104232153-65cd30a7449a h1:AA+20YMAvgIyErZUpTMWJPgyj2Mui9h8MmoabTYNOM8=
-github.com/deluan/wazero v0.0.0-20251104232153-65cd30a7449a/go.mod h1:DRm5twOQ5Gr1AoEdSi0CLjDQF1J9ZAuyqFIjl1KKfQU=
+github.com/deluan/wazero v0.0.0-20251104234515-af63c29a7b83 h1:Y5d+Pim7XtGPD+vWo8M+5YpUuLhvG4jqvlIseHQCk0g=
+github.com/deluan/wazero v0.0.0-20251104234515-af63c29a7b83/go.mod h1:DRm5twOQ5Gr1AoEdSi0CLjDQF1J9ZAuyqFIjl1KKfQU=
 github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933 h1:r4hxcT6GBIA/j8Ox4OXI5MNgMKfR+9plcAWYi1OnmOg=
 github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
