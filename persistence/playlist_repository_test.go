@@ -221,12 +221,22 @@ var _ = Describe("PlaylistRepository", func() {
 	})
 
 	Describe("Playlist Track Sorting", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
 		It("sorts tracks correctly by album (disc and track number)", func() {
 			By("creating a playlist with multi-disc album tracks in arbitrary order")
 			newPls := model.Playlist{Name: "Multi-Disc Test", OwnerID: "userid"}
 			// Add tracks in intentionally scrambled order
 			newPls.AddMediaFilesByID([]string{"2001", "2002", "2003", "2004"})
 			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
 
 			By("retrieving tracks sorted by album")
 			tracksRepo := repo.Tracks(newPls.ID, false)
