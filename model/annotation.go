@@ -6,6 +6,7 @@ type Annotations struct {
 	PlayCount int64      `structs:"play_count" json:"playCount,omitempty"`
 	PlayDate  *time.Time `structs:"play_date"  json:"playDate,omitempty" `
 	Rating    int        `structs:"rating"     json:"rating,omitempty"   `
+	RatedAt   *time.Time `structs:"rated_at"   json:"ratedAt,omitempty"  `
 	Starred   bool       `structs:"starred"    json:"starred,omitempty"  `
 	StarredAt *time.Time `structs:"starred_at" json:"starredAt,omitempty"`
 }

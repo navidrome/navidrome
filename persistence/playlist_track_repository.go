@@ -97,6 +97,7 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
+			"rated_at",
 			"f.*",
 			"playlist_tracks.*",
 		).

@@ -45,7 +45,12 @@ export const RatingField = ({
   )
 
   return (
-    <span onClick={(e) => stopPropagation(e)}>
+    <span
+      onClick={(e) => stopPropagation(e)}
+      title={
+        record.ratedAt ? new Date(record.ratedAt).toLocaleString() : undefined
+      }
+    >
       <Rating
         name={record.mediaFileId || record.id}
         className={clsx(
