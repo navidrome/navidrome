@@ -52,7 +52,7 @@ var _ = Describe("Share", func() {
 				entity := &model.Share{Description: "test", ResourceIDs: "789"}
 				_, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(entity.Contents).To(Equal("Example Media File But The..."))
+				Expect(entity.Contents).To(Equal("Example Media File But The ..."))
 			})
 
 			It("does not truncate CJK labels shorter than 30 runes", func() {
@@ -68,7 +68,7 @@ var _ = Describe("Share", func() {
 				entity := &model.Share{Description: "test", ResourceIDs: "789"}
 				_, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実..."))
+				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実で..."))
 			})
 		})
 
