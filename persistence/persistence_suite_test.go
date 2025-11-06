@@ -69,10 +69,12 @@ var (
 	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
 	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
 	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: p("/kraft/radio/radio.mp3"), SongCount: 2})
+	albumMultiDisc     = al(model.Album{ID: "104", Name: "Multi Disc Album", AlbumArtist: "Test Artist", OrderAlbumName: "multi disc album", AlbumArtistID: "1", EmbedArtPath: p("/test/multi/disc1/track1.mp3"), SongCount: 4})
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
 		albumRadioactivity,
+		albumMultiDisc,
 	}
 )
 
@@ -94,13 +96,22 @@ var (
 		Lyrics:   `[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`,
 	})
 	songAntenna2 = mf(model.MediaFile{ID: "1006", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103"})
-	testSongs    = model.MediaFiles{
+	// Multi-disc album tracks (intentionally out of order to test sorting)
+	songDisc2Track11 = mf(model.MediaFile{ID: "2001", Title: "Disc 2 Track 11", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 11, Path: p("/test/multi/disc2/track11.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track01 = mf(model.MediaFile{ID: "2002", Title: "Disc 1 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 1, Path: p("/test/multi/disc1/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc2Track01 = mf(model.MediaFile{ID: "2003", Title: "Disc 2 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 1, Path: p("/test/multi/disc2/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track02 = mf(model.MediaFile{ID: "2004", Title: "Disc 1 Track 2", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 2, Path: p("/test/multi/disc1/track2.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	testSongs        = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
 		songRadioactivity,
 		songAntenna,
 		songAntennaWithLyrics,
 		songAntenna2,
+		songDisc2Track11,
+		songDisc1Track01,
+		songDisc2Track01,
+		songDisc1Track02,
 	}
 )
 
