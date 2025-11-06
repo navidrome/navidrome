@@ -55,6 +55,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("returns all records sorted", func() {
 			Expect(GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
+				albumMultiDisc,
 				albumRadioactivity,
 				albumSgtPeppers,
 			}))
@@ -64,6 +65,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
 				albumSgtPeppers,
 				albumRadioactivity,
+				albumMultiDisc,
 				albumAbbeyRoad,
 			}))
 		})
