@@ -43,23 +43,21 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 
 	// Parse audio properties
 	ap := metadata.AudioProperties{}
-	if length, ok := tags["_lengthinmilliseconds"]; ok && len(length) > 0 {
-		millis, _ := strconv.Atoi(length[0])
-		if millis > 0 {
-			ap.Duration = (time.Millisecond * time.Duration(millis)).Round(time.Millisecond * 10)
-		}
-		delete(tags, "_lengthinmilliseconds")
-	}
-	parseProp := func(prop string, target *int) {
-		if value, ok := tags[prop]; ok && len(value) > 0 {
-			*target, _ = strconv.Atoi(value[0])
-			delete(tags, prop)
-		}
-	}
-	parseProp("_bitrate", &ap.BitRate)
-	parseProp("_channels", &ap.Channels)
-	parseProp("_samplerate", &ap.SampleRate)
-	parseProp("_bitspersample", &ap.BitDepth)
+	ap.BitRate = parseProp(tags, "__bitrate")
+	ap.Channels = parseProp(tags, "__channels")
+	ap.SampleRate = parseProp(tags, "__samplerate")
+	ap.BitDepth = parseProp(tags, "__bitspersample")
+	length := parseProp(tags, "__lengthinmilliseconds")
+	ap.Duration = (time.Millisecond * time.Duration(length)).Round(time.Millisecond * 10)
+
+	// Extract basic tags
+	parseBasicTag(tags, "__title", "title")
+	parseBasicTag(tags, "__artist", "artist")
+	parseBasicTag(tags, "__album", "album")
+	parseBasicTag(tags, "__comment", "comment")
+	parseBasicTag(tags, "__genre", "genre")
+	parseBasicTag(tags, "__year", "year")
+	parseBasicTag(tags, "__track", "tracknumber")
 
 	// Parse track/disc totals
 	parseTuple := func(prop string) {
@@ -105,6 +103,31 @@ var tiplMapping = map[string]string{
 	"producer": "producer",
 	"mix":      "mixer",
 	"DJ-mix":   "djmixer",
+}
+
+// parseProp parses a property from the tags map and sets it to the target integer.
+// It also deletes the property from the tags map after parsing.
+func parseProp(tags map[string][]string, prop string) int {
+	if value, ok := tags[prop]; ok && len(value) > 0 {
+		v, _ := strconv.Atoi(value[0])
+		delete(tags, prop)
+		return v
+	}
+	return 0
+}
+
+// parseBasicTag checks if a basic tag (like __title, __artist, etc.) exists in the tags map.
+// If it does, it moves the value to a more appropriate tag name (like title, artist, etc.),
+// and deletes the basic tag from the map. If the target tag already exists, it ignores the basic tag.
+func parseBasicTag(tags map[string][]string, basicName string, tagName string) {
+	basicValue := tags[basicName]
+	if len(basicValue) == 0 {
+		return
+	}
+	delete(tags, basicName)
+	if len(tags[tagName]) == 0 {
+		tags[tagName] = basicValue
+	}
 }
 
 // parseTIPL parses the ID3v2.4 TIPL frame string, which is received from TagLib in the format:
