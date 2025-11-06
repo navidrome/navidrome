@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type Share interface {
@@ -120,21 +121,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", model.ErrNotFound
 	}
 
-	const maxContentRunes = 30
-	const truncateToRunes = 26
-
-	var runeCount int
-	var truncateIndex int
-	for i := range s.Contents {
-		runeCount++
-		if runeCount == truncateToRunes+1 {
-			truncateIndex = i
-		}
-	}
-
-	if runeCount > maxContentRunes {
-		s.Contents = s.Contents[:truncateIndex] + "..."
-	}
+	s.Contents = str.TruncateRunes(s.Contents, 30, "...")
 
 	id, err = r.Persistable.Save(s)
 	return id, err
