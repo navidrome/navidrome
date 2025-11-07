@@ -35,7 +35,7 @@ describe('useScrobbling', () => {
 
   it('should initialize with default state', () => {
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     expect(result.current.startTime).toBeNull()
@@ -47,7 +47,7 @@ describe('useScrobbling', () => {
 
   it('should handle audio progress and scrobble when conditions are met', () => {
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     const mockInfo = {
@@ -68,7 +68,7 @@ describe('useScrobbling', () => {
 
   it('should not scrobble radio streams', () => {
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     const mockInfo = {
@@ -87,7 +87,7 @@ describe('useScrobbling', () => {
 
   it('should reset scrobbling state on track change', () => {
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     // Set initial state
@@ -114,7 +114,7 @@ describe('useScrobbling', () => {
 
   it('should handle audio ended and perform keepalive', async () => {
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     const mockInfo = { trackId: 'track1' }
@@ -125,7 +125,9 @@ describe('useScrobbling', () => {
 
     expect(result.current.scrobbled).toBe(false)
     expect(result.current.startTime).toBeNull()
-    expect(mockDataProvider.getOne).toHaveBeenCalledWith('keepalive', { id: 'track1' })
+    expect(mockDataProvider.getOne).toHaveBeenCalledWith('keepalive', {
+      id: 'track1',
+    })
   })
 
   it('should handle scrobbling errors gracefully', () => {
@@ -136,7 +138,7 @@ describe('useScrobbling', () => {
     })
 
     const { result } = renderHook(() =>
-      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider)
+      useScrobbling(mockPlayerState, mockDispatch, mockDataProvider),
     )
 
     const mockInfo = {
@@ -150,7 +152,10 @@ describe('useScrobbling', () => {
       result.current.onAudioProgress(mockInfo)
     })
 
-    expect(consoleSpy).toHaveBeenCalledWith('Scrobbling error:', expect.any(Error))
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Scrobbling error:',
+      expect.any(Error),
+    )
     expect(result.current.scrobbled).toBe(true) // Still sets to true despite error
 
     consoleSpy.mockRestore()

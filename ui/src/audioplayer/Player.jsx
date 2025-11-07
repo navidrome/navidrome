@@ -61,10 +61,16 @@ const Player = () => {
     dispatchClearQueue,
   } = usePlayerState()
 
-  const { startTime, scrobbled, onAudioProgress, onAudioPlayTrackChange, onAudioEnded } =
-    useScrobbling(playerState, dispatch, dataProvider)
+  const {
+    startTime,
+    scrobbled,
+    onAudioProgress,
+    onAudioPlayTrackChange,
+    onAudioEnded,
+  } = useScrobbling(playerState, dispatch, dataProvider)
 
-  const { preloaded, preloadNextSong, resetPreloading } = usePreloading(playerState)
+  const { preloaded, preloadNextSong, resetPreloading } =
+    usePreloading(playerState)
 
   const { audioInstance, setAudioInstance, onAudioPlay } = useAudioInstance(
     isMobilePlayer,
@@ -80,7 +86,6 @@ const Player = () => {
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
-
 
   const defaultOptions = useMemo(
     () => ({
@@ -134,12 +139,24 @@ const Player = () => {
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
-        <PlayerToolbar id={currentTrack.trackId} isRadio={currentTrack.isRadio} />
+        <PlayerToolbar
+          id={currentTrack.trackId}
+          isRadio={currentTrack.isRadio}
+        />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
       showMediaSession: !currentTrack.isRadio,
     }
-  }, [defaultOptions, audioLists, playerState.playIndex, playerState.clear, playerState.volume, isMobilePlayer, currentTrack.trackId, currentTrack.isRadio])
+  }, [
+    defaultOptions,
+    audioLists,
+    playerState.playIndex,
+    playerState.clear,
+    playerState.volume,
+    isMobilePlayer,
+    currentTrack.trackId,
+    currentTrack.isRadio,
+  ])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatchSyncQueue(audioInfo, audioLists),
@@ -202,14 +219,9 @@ const Player = () => {
     [audioInstance, playerState],
   )
 
-
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      <div
-        role="region"
-        aria-label="Audio Player"
-        aria-live="polite"
-      >
+      <div role="region" aria-label="Audio Player" aria-live="polite">
         <ReactJkMusicPlayer
           {...options}
           className={classes.player}

@@ -95,7 +95,11 @@ export const useAudioInstance = (isMobilePlayer, context) => {
 
         if (showNotifications) {
           try {
-            sendNotification(song.title, `${song.artist} - ${song.album}`, info.cover)
+            sendNotification(
+              song.title,
+              `${song.artist} - ${song.album}`,
+              info.cover,
+            )
           } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Notification error:', error)

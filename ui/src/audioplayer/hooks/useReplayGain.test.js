@@ -37,7 +37,7 @@ describe('useReplayGain', () => {
 
   it('should initialize with null context and gainNode', () => {
     const { result } = renderHook(() =>
-      useReplayGain(null, { current: {} }, { gainMode: 'track' })
+      useReplayGain(null, { current: {} }, { gainMode: 'track' }),
     )
 
     expect(result.current.context).toBeNull()
@@ -52,7 +52,7 @@ describe('useReplayGain', () => {
     const mockGainInfo = { gainMode: 'track' }
 
     const { result } = renderHook(() =>
-      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo)
+      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),
     )
 
     expect(global.AudioContext).toHaveBeenCalled()
@@ -69,11 +69,17 @@ describe('useReplayGain', () => {
     mockCalculateGain.mockReturnValue(0.8)
 
     const { result } = renderHook(() =>
-      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo)
+      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),
     )
 
-    expect(mockCalculateGain).toHaveBeenCalledWith(mockGainInfo, mockPlayerState.current.song)
-    expect(result.current.gainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.8, 0)
+    expect(mockCalculateGain).toHaveBeenCalledWith(
+      mockGainInfo,
+      mockPlayerState.current.song,
+    )
+    expect(result.current.gainNode.gain.setValueAtTime).toHaveBeenCalledWith(
+      0.8,
+      0,
+    )
   })
 
   it('should handle Web Audio API errors gracefully', () => {
@@ -89,12 +95,12 @@ describe('useReplayGain', () => {
     const mockGainInfo = { gainMode: 'track' }
 
     const { result } = renderHook(() =>
-      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo)
+      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),
     )
 
     expect(consoleSpy).toHaveBeenCalledWith(
       'Error initializing Web Audio API for replay gain:',
-      expect.any(Error)
+      expect.any(Error),
     )
     expect(result.current.context).toBeNull()
 
@@ -128,10 +134,13 @@ describe('useReplayGain', () => {
     }))
 
     const { result } = renderHook(() =>
-      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo)
+      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),
     )
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error applying replay gain:', expect.any(Error))
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error applying replay gain:',
+      expect.any(Error),
+    )
 
     consoleSpy.mockRestore()
   })
@@ -142,7 +151,7 @@ describe('useReplayGain', () => {
     const mockGainInfo = { gainMode: 'off' }
 
     const { result } = renderHook(() =>
-      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo)
+      useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),
     )
 
     expect(global.AudioContext).not.toHaveBeenCalled()

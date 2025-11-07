@@ -26,7 +26,9 @@ jest.mock('../config', () => ({
 
 jest.mock('./AudioTitle', () => ({
   __esModule: true,
-  default: ({ audioInfo }) => <div data-testid="audio-title">{audioInfo?.song?.title || 'No song'}</div>,
+  default: ({ audioInfo }) => (
+    <div data-testid="audio-title">{audioInfo?.song?.title || 'No song'}</div>
+  ),
 }))
 
 jest.mock('./PlayerToolbar', () => ({
@@ -101,9 +103,18 @@ describe('Player Component', () => {
     {
       player: {
         queue: [
-          { uuid: '1', musicSrc: 'song1.mp3', title: 'Song 1', artist: 'Artist 1' },
+          {
+            uuid: '1',
+            musicSrc: 'song1.mp3',
+            title: 'Song 1',
+            artist: 'Artist 1',
+          },
         ],
-        current: { uuid: '1', trackId: 'track1', song: { title: 'Song 1', artist: 'Artist 1' } },
+        current: {
+          uuid: '1',
+          trackId: 'track1',
+          song: { title: 'Song 1', artist: 'Artist 1' },
+        },
         playIndex: 0,
         mode: 'single',
         volume: 0.8,
@@ -115,7 +126,7 @@ describe('Player Component', () => {
       replayGain: {
         gainMode: 'track',
       },
-    }
+    },
   )
 
   const renderPlayer = () => {
@@ -124,7 +135,7 @@ describe('Player Component', () => {
         <ThemeProvider theme={createMuiTheme()}>
           <Player />
         </ThemeProvider>
-      </Provider>
+      </Provider>,
     )
   }
 
@@ -149,7 +160,8 @@ describe('Player Component', () => {
     expect(container.firstChild).toBeNull()
 
     // Reset mock
-    const { useAuthState: originalUseAuthState } = jest.requireMock('react-admin')
+    const { useAuthState: originalUseAuthState } =
+      jest.requireMock('react-admin')
     originalUseAuthState.mockReturnValue({ authenticated: true })
   })
 
@@ -164,7 +176,7 @@ describe('Player Component', () => {
         player: { queue: [] },
         settings: { notifications: true },
         replayGain: { gainMode: 'track' },
-      }
+      },
     )
 
     const { container } = render(
@@ -172,7 +184,7 @@ describe('Player Component', () => {
         <ThemeProvider theme={createMuiTheme()}>
           <Player />
         </ThemeProvider>
-      </Provider>
+      </Provider>,
     )
 
     expect(container.firstChild).toBeNull()
@@ -221,7 +233,7 @@ describe('Player Component', () => {
         player: { queue: [] },
         settings: { notifications: true },
         replayGain: { gainMode: 'track' },
-      }
+      },
     )
 
     render(
@@ -229,7 +241,7 @@ describe('Player Component', () => {
         <ThemeProvider theme={createMuiTheme()}>
           <Player />
         </ThemeProvider>
-      </Provider>
+      </Provider>,
     )
 
     // Document title should be reset when player is not visible
@@ -240,6 +252,8 @@ describe('Player Component', () => {
     renderPlayer()
 
     // ThemeProvider should wrap the component
-    expect(screen.getByTestId('react-jk-music-player').parentElement).toBeInTheDocument()
+    expect(
+      screen.getByTestId('react-jk-music-player').parentElement,
+    ).toBeInTheDocument()
   })
 })

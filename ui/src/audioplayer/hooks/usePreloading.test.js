@@ -108,7 +108,10 @@ describe('usePreloading', () => {
       result.current.preloadNextSong()
     })
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error during preloading:', expect.any(Error))
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error during preloading:',
+      expect.any(Error),
+    )
     expect(result.current.preloaded).toBe(false) // Should remain false on error
 
     consoleSpy.mockRestore()
@@ -134,7 +137,10 @@ describe('usePreloading', () => {
       result.current.preloadNextSong()
     })
 
-    expect(consoleSpy).toHaveBeenCalledWith('Preloading error:', expect.any(Event))
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Preloading error:',
+      expect.any(Event),
+    )
 
     consoleSpy.mockRestore()
   })
