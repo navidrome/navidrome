@@ -59,7 +59,7 @@ clientID, users, err := d.getConfig(ctx)
 Add the following to `navidrome.toml` and adjust for your tokens:
 
 ```toml
-[PluginSettings.discord-rich-presence]
+[PluginConfig.discord-rich-presence]
 ClientID = "123456789012345678"
 Users = "alice:token123,bob:token456"
 ```

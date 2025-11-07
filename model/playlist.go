@@ -40,6 +40,21 @@ func (pls Playlist) MediaFiles() MediaFiles {
 	return pls.Tracks.MediaFiles()
 }
 
+func (pls *Playlist) refreshStats() {
+	pls.SongCount = len(pls.Tracks)
+	pls.Duration = 0
+	pls.Size = 0
+	for _, t := range pls.Tracks {
+		pls.Duration += t.MediaFile.Duration
+		pls.Size += t.MediaFile.Size
+	}
+}
+
+func (pls *Playlist) SetTracks(tracks PlaylistTracks) {
+	pls.Tracks = tracks
+	pls.refreshStats()
+}
+
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
@@ -49,6 +64,7 @@ func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 		newTracks = append(newTracks, t)
 	}
 	pls.Tracks = newTracks
+	pls.refreshStats()
 }
 
 // ToM3U8 exports the playlist to the Extended M3U8 format
@@ -56,7 +72,7 @@ func (pls *Playlist) ToM3U8() string {
 	return pls.MediaFiles().ToM3U8(pls.Name, true)
 }
 
-func (pls *Playlist) AddTracks(mediaFileIds []string) {
+func (pls *Playlist) AddMediaFilesByID(mediaFileIds []string) {
 	pos := len(pls.Tracks)
 	for _, mfId := range mediaFileIds {
 		pos++
@@ -68,6 +84,7 @@ func (pls *Playlist) AddTracks(mediaFileIds []string) {
 		}
 		pls.Tracks = append(pls.Tracks, t)
 	}
+	pls.refreshStats()
 }
 
 func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
@@ -82,6 +99,7 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 		}
 		pls.Tracks = append(pls.Tracks, t)
 	}
+	pls.refreshStats()
 }
 
 func (pls Playlist) CoverArtID() ArtworkID {

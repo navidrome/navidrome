@@ -7,9 +7,9 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -77,7 +77,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 
 	// Persistent IDs
 	mf.PID = md.trackPID(mf)
-	mf.AlbumID = md.albumID(mf)
+	mf.AlbumID = md.albumID(mf, conf.Server.PID.Album)
 
 	// BFR These IDs will go away once the UI handle multiple participants.
 	// BFR For Legacy Subsonic compatibility, we will set them in the API handlers
@@ -104,8 +104,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 }
 
 func (md Metadata) AlbumID(mf model.MediaFile, pidConf string) string {
-	getPID := createGetPID(id.NewHash)
-	return getPID(mf, md, pidConf)
+	return md.albumID(mf, pidConf)
 }
 
 func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {

@@ -61,7 +61,12 @@ func (c Criteria) OrderBy() string {
 		if f.order != "" {
 			mapped = f.order
 		} else if f.isTag {
-			mapped = "COALESCE(json_extract(media_file.tags, '$." + sortField + "[0].value'), '')"
+			// Use the actual field name (handles aliases like albumtype -> releasetype)
+			tagName := sortField
+			if f.field != "" {
+				tagName = f.field
+			}
+			mapped = "COALESCE(json_extract(media_file.tags, '$." + tagName + "[0].value'), '')"
 		} else if f.isRole {
 			mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
 		} else {

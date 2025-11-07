@@ -31,6 +31,16 @@ var _ = Describe("Plugin Manager", func() {
 		ctx = GinkgoT().Context()
 		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
+
+		// Wait for all plugins to compile to avoid race conditions
+		err := mgr.EnsureCompiled("fake_artist_agent")
+		Expect(err).NotTo(HaveOccurred(), "fake_artist_agent should compile successfully")
+		err = mgr.EnsureCompiled("fake_album_agent")
+		Expect(err).NotTo(HaveOccurred(), "fake_album_agent should compile successfully")
+		err = mgr.EnsureCompiled("multi_plugin")
+		Expect(err).NotTo(HaveOccurred(), "multi_plugin should compile successfully")
+		err = mgr.EnsureCompiled("unauthorized_plugin")
+		Expect(err).NotTo(HaveOccurred(), "unauthorized_plugin should compile successfully")
 	})
 
 	It("should scan and discover plugins from the testdata folder", func() {
@@ -53,6 +63,13 @@ var _ = Describe("Plugin Manager", func() {
 
 		schedulerCallbackNames := mgr.PluginNames("SchedulerCallback")
 		Expect(schedulerCallbackNames).To(ContainElement("multi_plugin"))
+	})
+
+	It("should load all plugins from folder", func() {
+		all := mgr.PluginList()
+		Expect(all).To(HaveLen(6))
+		Expect(all["fake_artist_agent"].Name).To(Equal("fake_artist_agent"))
+		Expect(all["unauthorized_plugin"].Capabilities).To(HaveExactElements(schema.PluginManifestCapabilitiesElem("MetadataAgent")))
 	})
 
 	It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
@@ -322,9 +339,9 @@ var _ = Describe("Plugin Manager", func() {
 			}
 
 			// Register the plugin in the manager
-			mgr.mu.Lock()
+			mgr.pluginsMu.Lock()
 			mgr.plugins[plugin.ID] = plugin
-			mgr.mu.Unlock()
+			mgr.pluginsMu.Unlock()
 
 			// Mark the plugin as initialized in the lifecycle manager
 			mgr.lifecycle.markInitialized(plugin)
@@ -334,9 +351,9 @@ var _ = Describe("Plugin Manager", func() {
 			mgr.unregisterPlugin(plugin.ID)
 
 			// Verify that the plugin is no longer in the manager
-			mgr.mu.RLock()
+			mgr.pluginsMu.RLock()
 			_, exists := mgr.plugins[plugin.ID]
-			mgr.mu.RUnlock()
+			mgr.pluginsMu.RUnlock()
 			Expect(exists).To(BeFalse())
 
 			// Verify that the lifecycle state has been cleared

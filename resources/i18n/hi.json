@@ -1,0 +1,630 @@
+{
+  "languageName": "हिंदी",
+  "resources": {
+    "song": {
+      "name": "गाना |||| गाने",
+      "fields": {
+        "albumArtist": "एल्बम कलाकार",
+        "duration": "समय",
+        "trackNumber": "#",
+        "playCount": "प्ले संख्या",
+        "title": "शीर्षक",
+        "artist": "कलाकार",
+        "album": "एल्बम",
+        "path": "फ़ाइल पथ",
+        "libraryName": "लाइब्रेरी",
+        "genre": "शैली",
+        "compilation": "संकलन",
+        "year": "वर्ष",
+        "size": "फ़ाइल का आकार",
+        "updatedAt": "अपडेट किया गया",
+        "bitRate": "बिट रेट",
+        "bitDepth": "बिट गहराई",
+        "sampleRate": "सैंपल रेट",
+        "channels": "चैनल",
+        "discSubtitle": "डिस्क उपशीर्षक",
+        "starred": "पसंदीदा",
+        "comment": "टिप्पणी",
+        "rating": "रेटिंग",
+        "quality": "गुणवत्ता",
+        "bpm": "BPM",
+        "playDate": "अंतिम बार चलाया गया",
+        "createdAt": "जोड़ने की तारीख",
+        "grouping": "समूहीकरण",
+        "mood": "मूड",
+        "participants": "अतिरिक्त प्रतिभागी",
+        "tags": "अतिरिक्त टैग",
+        "mappedTags": "मैप किए गए टैग",
+        "rawTags": "रॉ टैग",
+        "missing": "गुम"
+      },
+      "actions": {
+        "addToQueue": "बाद में चलाएं",
+        "playNow": "अभी चलाएं",
+        "addToPlaylist": "प्लेलिस्ट में जोड़ें",
+        "showInPlaylist": "प्लेलिस्ट में दिखाएं",
+        "shuffleAll": "सभी को शफल करें",
+        "download": "डाउनलोड",
+        "playNext": "अगला चलाएं",
+        "info": "जानकारी प्राप्त करें"
+      }
+    },
+    "album": {
+      "name": "एल्बम |||| एल्बम",
+      "fields": {
+        "albumArtist": "एल्बम कलाकार",
+        "artist": "कलाकार",
+        "duration": "समय",
+        "songCount": "गाने",
+        "playCount": "प्ले संख्या",
+        "size": "आकार",
+        "name": "नाम",
+        "libraryName": "लाइब्रेरी",
+        "genre": "शैली",
+        "compilation": "संकलन",
+        "year": "वर्ष",
+        "date": "रिकॉर्डिंग की तारीख",
+        "originalDate": "मूल",
+        "releaseDate": "रिलीज़",
+        "releases": "रिलीज़ |||| रिलीज़",
+        "released": "रिलीज़ किया गया",
+        "updatedAt": "अपडेट किया गया",
+        "comment": "टिप्पणी",
+        "rating": "रेटिंग",
+        "createdAt": "जोड़ने की तारीख",
+        "recordLabel": "लेबल",
+        "catalogNum": "कैटलॉग नंबर",
+        "releaseType": "प्रकार",
+        "grouping": "समूहीकरण",
+        "media": "मीडिया",
+        "mood": "मूड",
+        "missing": "गुम"
+      },
+      "actions": {
+        "playAll": "चलाएं",
+        "playNext": "अगला चलाएं",
+        "addToQueue": "बाद में चलाएं",
+        "share": "साझा करें",
+        "shuffle": "शफल",
+        "addToPlaylist": "प्लेलिस्ट में जोड़ें",
+        "download": "डाउनलोड",
+        "info": "जानकारी प्राप्त करें"
+      },
+      "lists": {
+        "all": "सभी",
+        "random": "रैंडम",
+        "recentlyAdded": "हाल ही में जोड़े गए",
+        "recentlyPlayed": "हाल ही में चलाए गए",
+        "mostPlayed": "सबसे ज्यादा चलाए गए",
+        "starred": "पसंदीदा",
+        "topRated": "टॉप रेटेड"
+      }
+    },
+    "artist": {
+      "name": "कलाकार |||| कलाकार",
+      "fields": {
+        "name": "नाम",
+        "albumCount": "एल्बम की संख्या",
+        "songCount": "गानों की संख्या",
+        "size": "आकार",
+        "playCount": "प्ले संख्या",
+        "rating": "रेटिंग",
+        "genre": "शैली",
+        "role": "भूमिका",
+        "missing": "गुम"
+      },
+      "roles": {
+        "albumartist": "एल्बम कलाकार |||| एल्बम कलाकार",
+        "artist": "कलाकार |||| कलाकार",
+        "composer": "संगीतकार |||| संगीतकार",
+        "conductor": "संचालक |||| संचालक",
+        "lyricist": "गीतकार |||| गीतकार",
+        "arranger": "संयोजक |||| संयोजक",
+        "producer": "निर्माता |||| निर्माता",
+        "director": "निदेशक |||| निदेशक",
+        "engineer": "इंजीनियर |||| इंजीनियर",
+        "mixer": "मिक्सर |||| मिक्सर",
+        "remixer": "रीमिक्सर |||| रीमिक्सर",
+        "djmixer": "डीजे मिक्सर |||| डीजे मिक्सर",
+        "performer": "कलाकार |||| कलाकार",
+        "maincredit": "एल्बम कलाकार या कलाकार |||| एल्बम कलाकार या कलाकार"
+      },
+      "actions": {
+        "topSongs": "टॉप गाने",
+        "shuffle": "शफल",
+        "radio": "रेडियो"
+      }
+    },
+    "user": {
+      "name": "उपयोगकर्ता |||| उपयोगकर्ता",
+      "fields": {
+        "userName": "उपयोगकर्ता नाम",
+        "isAdmin": "एडमिन है",
+        "lastLoginAt": "अंतिम लॉगिन",
+        "lastAccessAt": "अंतिम पहुंच",
+        "updatedAt": "अपडेट किया गया",
+        "name": "नाम",
+        "password": "पासवर्ड",
+        "createdAt": "बनाया गया",
+        "changePassword": "पासवर्ड बदलें?",
+        "currentPassword": "वर्तमान पासवर्ड",
+        "newPassword": "नया पासवर्ड",
+        "token": "टोकन",
+        "libraries": "लाइब्रेरी"
+      },
+      "helperTexts": {
+        "name": "आपके नाम में परिवर्तन केवल अगली लॉगिन पर प्रभावी होगा",
+        "libraries": "इस उपयोगकर्ता के लिए विशिष्ट लाइब्रेरी चुनें, या डिफ़ॉल्ट लाइब्रेरी का उपयोग करने के लिए खाली छोड़ें"
+      },
+      "notifications": {
+        "created": "उपयोगकर्ता बनाया गया",
+        "updated": "उपयोगकर्ता अपडेट किया गया",
+        "deleted": "उपयोगकर्ता हटाया गया"
+      },
+      "validation": {
+        "librariesRequired": "गैर-एडमिन उपयोगकर्ताओं के लिए कम से कम एक लाइब्रेरी चुननी होगी"
+      },
+      "message": {
+        "listenBrainzToken": "अपना ListenBrainz उपयोगकर्ता टोकन दर्ज करें।",
+        "clickHereForToken": "अपना टोकन प्राप्त करने के लिए यहां क्लिक करें",
+        "selectAllLibraries": "सभी लाइब्रेरी चुनें",
+        "adminAutoLibraries": "एडमिन उपयोगकर्ताओं की सभी लाइब्रेरी तक स्वचालित पहुंच है"
+      }
+    },
+    "player": {
+      "name": "प्लेयर |||| प्लेयर",
+      "fields": {
+        "name": "नाम",
+        "transcodingId": "ट्रांसकोडिंग",
+        "maxBitRate": "अधिकतम बिट रेट",
+        "client": "क्लाइंट",
+        "userName": "उपयोगकर्ता नाम",
+        "lastSeen": "अंतिम बार देखा गया",
+        "reportRealPath": "वास्तविक पथ रिपोर्ट करें",
+        "scrobbleEnabled": "बाहरी सेवाओं को स्क्रॉबल भेजें"
+      }
+    },
+    "transcoding": {
+      "name": "ट्रांसकोडिंग |||| ट्रांसकोडिंग",
+      "fields": {
+        "name": "नाम",
+        "targetFormat": "लक्ष्य प्रारूप",
+        "defaultBitRate": "डिफ़ॉल्ट बिट रेट",
+        "command": "कमांड"
+      }
+    },
+    "playlist": {
+      "name": "प्लेलिस्ट |||| प्लेलिस्ट",
+      "fields": {
+        "name": "नाम",
+        "duration": "अवधि",
+        "ownerName": "मालिक",
+        "public": "सार्वजनिक",
+        "updatedAt": "अपडेट किया गया",
+        "createdAt": "बनाया गया",
+        "songCount": "गाने",
+        "comment": "टिप्पणी",
+        "sync": "ऑटो-इंपोर्ट",
+        "path": "से इंपोर्ट करें"
+      },
+      "actions": {
+        "selectPlaylist": "एक प्लेलिस्ट चुनें:",
+        "addNewPlaylist": "\"%{name}\" बनाएं",
+        "export": "निर्यात",
+        "saveQueue": "क्यू को प्लेलिस्ट में सेव करें",
+        "makePublic": "सार्वजनिक बनाएं",
+        "makePrivate": "निजी बनाएं",
+        "searchOrCreate": "प्लेलिस्ट खोजें या नई बनाने के लिए टाइप करें...",
+        "pressEnterToCreate": "नई प्लेलिस्ट बनाने के लिए Enter दबाएं",
+        "removeFromSelection": "चयन से हटाएं"
+      },
+      "message": {
+        "duplicate_song": "डुप्लिकेट गाने जोड़ें",
+        "song_exist": "प्लेलिस्ट में डुप्लिकेट जोड़े जा रहे हैं। क्या आप डुप्लिकेट जोड़ना चाहते हैं या उन्हें छोड़ना चाहते हैं?",
+        "noPlaylistsFound": "कोई प्लेलिस्ट नहीं मिली",
+        "noPlaylists": "कोई प्लेलिस्ट उपलब्ध नहीं"
+      }
+    },
+    "radio": {
+      "name": "रेडियो |||| रेडियो",
+      "fields": {
+        "name": "नाम",
+        "streamUrl": "स्ट्रीम URL",
+        "homePageUrl": "होम पेज URL",
+        "updatedAt": "अपडेट किया गया",
+        "createdAt": "बनाया गया"
+      },
+      "actions": {
+        "playNow": "अभी चलाएं"
+      }
+    },
+    "share": {
+      "name": "साझा |||| साझा",
+      "fields": {
+        "username": "द्वारा साझा किया गया",
+        "url": "URL",
+        "description": "विवरण",
+        "downloadable": "डाउनलोड की अनुमति दें?",
+        "contents": "सामग्री",
+        "expiresAt": "समाप्त होता है",
+        "lastVisitedAt": "अंतिम बार देखा गया",
+        "visitCount": "विज़िट",
+        "format": "प्रारूप",
+        "maxBitRate": "अधिकतम बिट रेट",
+        "updatedAt": "अपडेट किया गया",
+        "createdAt": "बनाया गया"
+      },
+      "notifications": {},
+      "actions": {}
+    },
+    "missing": {
+      "name": "गुम फ़ाइल |||| गुम फ़ाइलें",
+      "empty": "कोई गुम फ़ाइल नहीं",
+      "fields": {
+        "path": "पथ",
+        "size": "आकार",
+        "libraryName": "लाइब्रेरी",
+        "updatedAt": "गायब हुई"
+      },
+      "actions": {
+        "remove": "हटाएं",
+        "remove_all": "सभी हटाएं"
+      },
+      "notifications": {
+        "removed": "गुम फ़ाइल(एं) हटा दी गईं"
+      }
+    },
+    "library": {
+      "name": "लाइब्रेरी |||| लाइब्रेरी",
+      "fields": {
+        "name": "नाम",
+        "path": "पथ",
+        "remotePath": "रिमोट पथ",
+        "lastScanAt": "अंतिम स्कैन",
+        "songCount": "गाने",
+        "albumCount": "एल्बम",
+        "artistCount": "कलाकार",
+        "totalSongs": "गाने",
+        "totalAlbums": "एल्बम",
+        "totalArtists": "कलाकार",
+        "totalFolders": "फ़ोल्डर",
+        "totalFiles": "फ़ाइलें",
+        "totalMissingFiles": "गुम फ़ाइलें",
+        "totalSize": "कुल आकार",
+        "totalDuration": "अवधि",
+        "defaultNewUsers": "नए उपयोगकर्ताओं के लिए डिफ़ॉल्ट",
+        "createdAt": "बनाया गया",
+        "updatedAt": "अपडेट किया गया"
+      },
+      "sections": {
+        "basic": "बुनियादी जानकारी",
+        "statistics": "आंकड़े"
+      },
+      "actions": {
+        "scan": "लाइब्रेरी स्कैन करें",
+        "manageUsers": "उपयोगकर्ता पहुंच प्रबंधित करें",
+        "viewDetails": "विवरण देखें"
+      },
+      "notifications": {
+        "created": "लाइब्रेरी सफलतापूर्वक बनाई गई",
+        "updated": "लाइब्रेरी सफलतापूर्वक अपडेट की गई",
+        "deleted": "लाइब्रेरी सफलतापूर्वक हटाई गई",
+        "scanStarted": "लाइब्रेरी स्कैन शुरू किया गया",
+        "scanCompleted": "लाइब्रेरी स्कैन पूरा हुआ"
+      },
+      "validation": {
+        "nameRequired": "लाइब्रेरी का नाम आवश्यक है",
+        "pathRequired": "लाइब्रेरी पथ आवश्यक है",
+        "pathNotDirectory": "लाइब्रेरी पथ एक डायरेक्टरी होना चाहिए",
+        "pathNotFound": "लाइब्रेरी पथ नहीं मिला",
+        "pathNotAccessible": "लाइब्रेरी पथ पहुंच योग्य नहीं है",
+        "pathInvalid": "अमान्य लाइब्रेरी पथ"
+      },
+      "messages": {
+        "deleteConfirm": "क्या आप वाकई इस लाइब्रेरी को हटाना चाहते हैं? इससे सभी संबंधित डेटा और उपयोगकर्ता पहुंच हट जाएगी।",
+        "scanInProgress": "स्कैन चल रहा है...",
+        "noLibrariesAssigned": "इस उपयोगकर्ता को कोई लाइब्रेरी असाइन नहीं की गई"
+      }
+    }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Navidrome इंस्टॉल करने के लिए धन्यवाद!",
+      "welcome2": "शुरू करने के लिए, एक एडमिन उपयोगकर्ता बनाएं",
+      "confirmPassword": "पासवर्ड की पुष्टि करें",
+      "buttonCreateAdmin": "एडमिन बनाएं",
+      "auth_check_error": "जारी रखने के लिए कृपया लॉगिन करें",
+      "user_menu": "प्रोफ़ाइल",
+      "username": "उपयोगकर्ता नाम",
+      "password": "पासवर्ड",
+      "sign_in": "साइन इन",
+      "sign_in_error": "प्रमाणीकरण विफल, कृपया पुनः प्रयास करें",
+      "logout": "लॉगआउट",
+      "insightsCollectionNote": "Navidrome परियोजना को बेहतर बनाने में मदद के लिए\nअज्ञात उपयोग डेटा एकत्र करता है। अधिक जानने\nऔर चाहें तो ऑप्ट-आउट करने के लिए [यहां] क्लिक करें"
+    },
+    "validation": {
+      "invalidChars": "कृपया केवल अक्षर और संख्याओं का उपयोग करें।",
+      "passwordDoesNotMatch": "पासवर्ड मेल नहीं खाता।",
+      "required": "आवश्यक",
+      "minLength": "कम से कम %{min} अक्षर होने चाहिए",
+      "maxLength": "%{max} अक्षर या उससे कम होने चाहिए",
+      "minValue": "कम से कम %{min} होना चाहिए",
+      "maxValue": "%{max} या उससे कम होना चाहिए",
+      "number": "एक संख्या होनी चाहिए",
+      "email": "एक वैध ईमेल होना चाहिए",
+      "oneOf": "इनमें से एक होना चाहिए: %{options}",
+      "regex": "एक विशिष्ट प्रारूप से मेल खाना चाहिए (regexp): %{pattern}",
+      "unique": "अद्वितीय होना चाहिए",
+      "url": "एक वैध URL होना चाहिए"
+    },
+    "action": {
+      "add_filter": "फ़िल्टर जोड़ें",
+      "add": "जोड़ें",
+      "back": "वापस जाएं",
+      "bulk_actions": "1 आइटम चुना गया |||| %{smart_count} आइटम चुने गए",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "cancel": "रद्द करें",
+      "clear_input_value": "मान साफ़ करें",
+      "clone": "क्लोन",
+      "confirm": "पुष्टि करें",
+      "create": "बनाएं",
+      "delete": "हटाएं",
+      "edit": "संपादित करें",
+      "export": "निर्यात",
+      "list": "सूची",
+      "refresh": "रीफ्रेश",
+      "remove_filter": "इस फ़िल्टर को हटाएं",
+      "remove": "हटाएं",
+      "save": "सेव करें",
+      "search": "खोजें",
+      "show": "दिखाएं",
+      "sort": "क्रमबद्ध करें",
+      "undo": "पूर्ववत करें",
+      "expand": "विस्तार करें",
+      "close": "बंद करें",
+      "open_menu": "मेनू खोलें",
+      "close_menu": "मेनू बंद करें",
+      "unselect": "चयन हटाएं",
+      "skip": "छोड़ें",
+      "share": "साझा करें",
+      "download": "डाउनलोड"
+    },
+    "boolean": {
+      "true": "हां",
+      "false": "नहीं"
+    },
+    "page": {
+      "create": "%{name} बनाएं",
+      "dashboard": "डैशबोर्ड",
+      "edit": "%{name} #%{id}",
+      "error": "कुछ गलत हुआ",
+      "list": "%{name}",
+      "loading": "लोड हो रहा है",
+      "not_found": "नहीं मिला",
+      "show": "%{name} #%{id}",
+      "empty": "अभी तक कोई %{name} नहीं।",
+      "invite": "क्या आप एक जोड़ना चाहते हैं?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "अपलोड करने के लिए कुछ फ़ाइलें छोड़ें, या चुनने के लिए क्लिक करें।",
+        "upload_single": "अपलोड करने के लिए एक फ़ाइल छोड़ें, या इसे चुनने के लिए क्लिक करें।"
+      },
+      "image": {
+        "upload_several": "अपलोड करने के लिए कुछ तस्वीरें छोड़ें, या चुनने के लिए क्लिक करें।",
+        "upload_single": "अपलोड करने के लिए एक तस्वीर छोड़ें, या इसे चुनने के लिए क्लिक करें।"
+      },
+      "references": {
+        "all_missing": "संदर्भ डेटा खोजने में असमर्थ।",
+        "many_missing": "संबंधित संदर्भों में से कम से कम एक अब उपलब्ध नहीं लगता।",
+        "single_missing": "संबंधित संदर्भ अब उपलब्ध नहीं लगता।"
+      },
+      "password": {
+        "toggle_visible": "पासवर्ड छुपाएं",
+        "toggle_hidden": "पासवर्ड दिखाएं"
+      }
+    },
+    "message": {
+      "about": "के बारे में",
+      "are_you_sure": "क्या आप सुनिश्चित हैं?",
+      "bulk_delete_content": "क्या आप वाकई इस %{name} को हटाना चाहते हैं? |||| क्या आप वाकई इन %{smart_count} आइटमों को हटाना चाहते हैं?",
+      "bulk_delete_title": "%{name} हटाएं |||| %{smart_count} %{name} हटाएं",
+      "delete_content": "क्या आप वाकई इस आइटम को हटाना चाहते हैं?",
+      "delete_title": "%{name} #%{id} हटाएं",
+      "details": "विवरण",
+      "error": "एक क्लाइंट त्रुटि हुई और आपका अनुरोध पूरा नहीं हो सका।",
+      "invalid_form": "फॉर्म मान्य नहीं है। कृपया त्रुटियों की जांच करें।",
+      "loading": "पेज लोड हो रहा है, कृपया एक क्षण प्रतीक्षा करें",
+      "no": "नहीं",
+      "not_found": "या तो आपने गलत URL टाइप किया है, या आपने गलत लिंक फॉलो किया है।",
+      "yes": "हां",
+      "unsaved_changes": "आपके कुछ बदलाव सेव नहीं हुए। क्या आप वाकई उन्हें नज़रअंदाज़ करना चाहते हैं?"
+    },
+    "navigation": {
+      "no_results": "कोई परिणाम नहीं मिला",
+      "no_more_results": "पेज नंबर %{page} सीमा से बाहर है। पिछले पेज को आज़माएं।",
+      "page_out_of_boundaries": "पेज नंबर %{page} सीमा से बाहर",
+      "page_out_from_end": "अंतिम पेज के बाद नहीं जा सकते",
+      "page_out_from_begin": "पेज 1 से पहले नहीं जा सकते",
+      "page_range_info": "%{total} में से %{offsetBegin}-%{offsetEnd}",
+      "page_rows_per_page": "प्रति पेज आइटम:",
+      "next": "अगला",
+      "prev": "पिछला",
+      "skip_nav": "सामग्री पर जाएं"
+    },
+    "notification": {
+      "updated": "एलिमेंट अपडेट किया गया |||| %{smart_count} एलिमेंट अपडेट किए गए",
+      "created": "एलिमेंट बनाया गया",
+      "deleted": "एलिमेंट हटाया गया |||| %{smart_count} एलिमेंट हटाए गए",
+      "bad_item": "गलत एलिमेंट",
+      "item_doesnt_exist": "एलिमेंट मौजूद नहीं है",
+      "http_error": "सर्वर संचार त्रुटि",
+      "data_provider_error": "dataProvider त्रुटि। विवरण के लिए कंसोल जांचें।",
+      "i18n_error": "निर्दिष्ट भाषा के लिए अनुवाद लोड नहीं हो सकते",
+      "canceled": "कार्रवाई रद्द की गई",
+      "logged_out": "आपका सत्र समाप्त हो गया है, कृपया फिर से कनेक्ट करें।",
+      "new_version": "नया संस्करण उपलब्ध! कृपया इस विंडो को रीफ्रेश करें।"
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "प्रदर्शित करने वाले कॉलम",
+      "layout": "लेआउट",
+      "grid": "ग्रिड",
+      "table": "टेबल"
+    }
+  },
+  "message": {
+    "note": "नोट",
+    "transcodingDisabled": "सुरक्षा कारणों से वेब इंटरफेस के माध्यम से ट्रांसकोडिंग कॉन्फ़िगरेशन बदलना अक्षम है। यदि आप ट्रांसकोडिंग विकल्प बदलना (संपादित या जोड़ना) चाहते हैं, तो %{config} कॉन्फ़िगरेशन विकल्प के साथ सर्वर को पुनः आरंभ करें।",
+    "transcodingEnabled": "Navidrome वर्तमान में %{config} के साथ चल रहा है, जो वेब इंटरफेस का उपयोग करके ट्रांसकोडिंग सेटिंग्स से सिस्टम कमांड चलाना संभव बनाता है। हम सुरक्षा कारणों से इसे अक्षम करने और केवल ट्रांसकोडिंग विकल्प कॉन्फ़िगर करते समय इसे सक्षम करने की सलाह देते हैं।",
+    "songsAddedToPlaylist": "प्लेलिस्ट में 1 गाना जोड़ा गया |||| प्लेलिस्ट में %{smart_count} गाने जोड़े गए",
+    "noSimilarSongsFound": "कोई समान गाने नहीं मिले",
+    "noTopSongsFound": "कोई टॉप गाने नहीं मिले",
+    "noPlaylistsAvailable": "कोई उपलब्ध नहीं",
+    "delete_user_title": "उपयोगकर्ता '%{name}' को हटाएं",
+    "delete_user_content": "क्या आप वाकई इस उपयोगकर्ता और उनके सभी डेटा (प्लेलिस्ट और प्राथमिकताओं सहित) को हटाना चाहते हैं?",
+    "remove_missing_title": "गुम फ़ाइलें हटाएं",
+    "remove_missing_content": "क्या आप वाकई चयनित गुम फ़ाइलों को डेटाबेस से हटाना चाहते हैं? इससे उनके सभी संदर्भ स्थायी रूप से हट जाएंगे, जिसमें उनकी प्ले काउंट और रेटिंग शामिल है।",
+    "remove_all_missing_title": "सभी गुम फ़ाइलें हटाएं",
+    "remove_all_missing_content": "क्या आप वाकई सभी गुम फ़ाइलों को डेटाबेस से हटाना चाहते हैं? इससे उनके सभी संदर्भ स्थायी रूप से हट जाएंगे, जिसमें उनकी प्ले काउंट और रेटिंग शामिल है।",
+    "notifications_blocked": "आपने अपने ब्राउज़र की सेटिंग्स में इस साइट के लिए सूचनाएं ब्लॉक की हैं।",
+    "notifications_not_available": "यह ब्राउज़र डेस्कटॉप सूचनाओं का समर्थन नहीं करता या आप https पर Navidrome का उपयोग नहीं कर रहे।",
+    "lastfmLinkSuccess": "Last.fm सफलतापूर्वक लिंक किया गया और स्क्रॉबलिंग सक्षम की गई",
+    "lastfmLinkFailure": "Last.fm लिंक नहीं हो सका",
+    "lastfmUnlinkSuccess": "Last.fm अनलिंक किया गया और स्क्रॉबलिंग अक्षम की गई",
+    "lastfmUnlinkFailure": "Last.fm अनलिंक नहीं हो सका",
+    "listenBrainzLinkSuccess": "ListenBrainz सफलतापूर्वक लिंक किया गया और उपयोगकर्ता के रूप में स्क्रॉबलिंग सक्षम की गई: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz लिंक नहीं हो सका: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz अनलिंक किया गया और स्क्रॉबलिंग अक्षम की गई",
+    "listenBrainzUnlinkFailure": "ListenBrainz अनलिंक नहीं हो सका",
+    "openIn": {
+      "lastfm": "Last.fm में खोलें",
+      "musicbrainz": "MusicBrainz में खोलें"
+    },
+    "lastfmLink": "और पढ़ें...",
+    "shareOriginalFormat": "मूल प्रारूप में साझा करें",
+    "shareDialogTitle": "%{resource} '%{name}' साझा करें",
+    "shareBatchDialogTitle": "1 %{resource} साझा करें |||| %{smart_count} %{resource} साझा करें",
+    "shareCopyToClipboard": "क्लिपबोर्ड में कॉपी करें: Ctrl+C, Enter",
+    "shareSuccess": "URL क्लिपबोर्ड में कॉपी किया गया: %{url}",
+    "shareFailure": "URL %{url} को क्लिपबोर्ड में कॉपी करने में त्रुटि",
+    "downloadDialogTitle": "%{resource} '%{name}' (%{size}) डाउनलोड करें",
+    "downloadOriginalFormat": "मूल प्रारूप में डाउनलोड करें"
+  },
+  "menu": {
+    "library": "लाइब्रेरी",
+    "librarySelector": {
+      "allLibraries": "सभी लाइब्रेरी (%{count})",
+      "multipleLibraries": "%{total} में से %{selected} लाइब्रेरी",
+      "selectLibraries": "लाइब्रेरी चुनें",
+      "none": "कोई नहीं"
+    },
+    "settings": "सेटिंग्स",
+    "version": "संस्करण",
+    "theme": "थीम",
+    "personal": {
+      "name": "व्यक्तिगत",
+      "options": {
+        "theme": "थीम",
+        "language": "भाषा",
+        "defaultView": "डिफ़ॉल्ट दृश्य",
+        "desktop_notifications": "डेस्कटॉप सूचनाएं",
+        "lastfmNotConfigured": "Last.fm API-Key कॉन्फ़िगर नहीं है",
+        "lastfmScrobbling": "Last.fm में स्क्रॉबल करें",
+        "listenBrainzScrobbling": "ListenBrainz में स्क्रॉबल करें",
+        "replaygain": "ReplayGain मोड",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "अक्षम",
+          "album": "एल्बम गेन का उपयोग करें",
+          "track": "ट्रैक गेन का उपयोग करें"
+        }
+      }
+    },
+    "albumList": "एल्बम",
+    "playlists": "प्लेलिस्ट",
+    "sharedPlaylists": "साझा की गई प्लेलिस्ट",
+    "about": "के बारे में"
+  },
+  "player": {
+    "playListsText": "प्ले क्यू",
+    "openText": "खोलें",
+    "closeText": "बंद करें",
+    "notContentText": "कोई संगीत नहीं",
+    "clickToPlayText": "चलाने के लिए क्लिक करें",
+    "clickToPauseText": "रोकने के लिए क्लिक करें",
+    "nextTrackText": "अगला ट्रैक",
+    "previousTrackText": "पिछला ट्रैक",
+    "reloadText": "रीलोड",
+    "volumeText": "वॉल्यूम",
+    "toggleLyricText": "गीत टॉगल करें",
+    "toggleMiniModeText": "मिनिमाइज़ करें",
+    "destroyText": "नष्ट करें",
+    "downloadText": "डाउनलोड",
+    "removeAudioListsText": "ऑडियो सूची हटाएं",
+    "clickToDeleteText": "%{name} को हटाने के लिए क्लिक करें",
+    "emptyLyricText": "कोई गीत नहीं",
+    "playModeText": {
+      "order": "क्रम में",
+      "orderLoop": "दोहराएं",
+      "singleLoop": "एक दोहराएं",
+      "shufflePlay": "शफल"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "होम पेज",
+      "source": "सोर्स कोड",
+      "featureRequests": "फीचर अनुरोध",
+      "lastInsightsCollection": "अंतिम अंतर्दृष्टि संग्रह",
+      "insights": {
+        "disabled": "अक्षम",
+        "waiting": "प्रतीक्षा में"
+      }
+    },
+    "tabs": {
+      "about": "के बारे में",
+      "config": "कॉन्फ़िगरेशन"
+    },
+    "config": {
+      "configName": "कॉन्फ़िग नाम",
+      "environmentVariable": "पर्यावरण चर",
+      "currentValue": "वर्तमान मान",
+      "configurationFile": "कॉन्फ़िगरेशन फ़ाइल",
+      "exportToml": "कॉन्फ़िगरेशन निर्यात करें (TOML)",
+      "exportSuccess": "कॉन्फ़िगरेशन TOML प्रारूप में क्लिपबोर्ड में निर्यात किया गया",
+      "exportFailed": "कॉन्फ़िगरेशन कॉपी करने में विफल",
+      "devFlagsHeader": "विकास फ्लैग (परिवर्तन/हटाने के अधीन)",
+      "devFlagsComment": "ये प्रयोगात्मक सेटिंग्स हैं और भविष्य के संस्करणों में हटाई जा सकती हैं"
+    }
+  },
+  "activity": {
+    "title": "गतिविधि",
+    "totalScanned": "कुल स्कैन किए गए फ़ोल्डर",
+    "quickScan": "त्वरित स्कैन",
+    "fullScan": "पूर्ण स्कैन",
+    "serverUptime": "सर्वर अपटाइम",
+    "serverDown": "ऑफलाइन",
+    "scanType": "प्रकार",
+    "status": "स्कैन त्रुटि",
+    "elapsedTime": "बीता समय"
+  },
+  "nowPlaying": {
+    "title": "अभी चल रहा है",
+    "empty": "कुछ नहीं चल रहा",
+    "minutesAgo": "%{smart_count} मिनट पहले |||| %{smart_count} मिनट पहले"
+  },
+  "help": {
+    "title": "Navidrome हॉटकीज़",
+    "hotkeys": {
+      "show_help": "यह सहायता दिखाएं",
+      "toggle_menu": "मेनू साइड बार टॉगल करें",
+      "toggle_play": "चलाएं / रोकें",
+      "prev_song": "पिछला गाना",
+      "next_song": "अगला गाना",
+      "current_song": "वर्तमान गाने पर जाएं",
+      "vol_up": "वॉल्यूम बढ़ाएं",
+      "vol_down": "वॉल्यूम कम करें",
+      "toggle_love": "इस ट्रैक को पसंदीदा में जोड़ें"
+    }
+  }
+}

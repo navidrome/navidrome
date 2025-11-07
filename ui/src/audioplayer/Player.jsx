@@ -127,6 +127,7 @@ const Player = () => {
         />
       ),
       locale: locale(translate),
+      sortableOptions: { delay: 200, delayOnTouchOnly: true },
     }),
     [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
   )

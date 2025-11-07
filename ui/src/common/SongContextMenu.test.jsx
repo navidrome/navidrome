@@ -10,6 +10,8 @@ vi.mock('../dataProvider', () => ({
 
 vi.mock('react-redux', () => ({ useDispatch: () => vi.fn() }))
 
+const getPlaylistsMock = vi.fn()
+
 vi.mock('react-admin', async (importOriginal) => {
   const actual = await importOriginal()
   return {
@@ -18,9 +20,7 @@ vi.mock('react-admin', async (importOriginal) => {
       window.location.hash = `#${url}`
     },
     useDataProvider: () => ({
-      getPlaylists: vi.fn().mockResolvedValue({
-        data: [{ id: 'pl1', name: 'Pl 1' }],
-      }),
+      getPlaylists: getPlaylistsMock,
       inspect: vi.fn().mockResolvedValue({
         data: { rawTags: {} },
       }),
@@ -32,6 +32,9 @@ describe('SongContextMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.location.hash = ''
+    getPlaylistsMock.mockResolvedValue({
+      data: [{ id: 'pl1', name: 'Pl 1' }],
+    })
   })
 
   it('navigates to playlist when selected', async () => {
@@ -77,6 +80,28 @@ describe('SongContextMenu', () => {
     // Click outside the playlist submenu (should close it without triggering parent click)
     fireEvent.click(document.body)
 
+    expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when "Show in Playlist" is disabled', async () => {
+    getPlaylistsMock.mockResolvedValue({ data: [] })
+    const mockOnClick = vi.fn()
+    render(
+      <TestContext>
+        <div onClick={mockOnClick}>
+          <SongContextMenu record={{ id: 'song1', size: 1 }} resource="song" />
+        </div>
+      </TestContext>,
+    )
+
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() =>
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
+    )
+
+    fireEvent.click(
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
+    )
     expect(mockOnClick).not.toHaveBeenCalled()
   })
 })

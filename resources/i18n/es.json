@@ -35,7 +35,8 @@
         "rawTags": "Etiquetas sin procesar",
         "bitDepth": "Profundidad de bits",
         "sampleRate": "Frecuencia de muestreo",
-        "missing": "Faltante"
+        "missing": "Faltante",
+        "libraryName": ""
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -44,7 +45,8 @@
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
-        "info": "Obtener información"
+        "info": "Obtener información",
+        "showInPlaylist": "Mostrar en la lista de reproducción"
       }
     },
     "album": {
@@ -75,7 +77,8 @@
         "media": "Medios",
         "mood": "Estado de ánimo",
         "date": "Fecha de grabación",
-        "missing": "Faltante"
+        "missing": "Faltante",
+        "libraryName": ""
       },
       "actions": {
         "playAll": "Reproducir",
@@ -123,7 +126,13 @@
         "mixer": "Mezclador",
         "remixer": "Remixer",
         "djmixer": "DJ Mixer",
-        "performer": "Intérprete"
+        "performer": "Intérprete",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "Aleatorio",
+        "radio": "Radio",
+        "topSongs": ""
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Contraseña actual",
         "newPassword": "Nueva contraseña",
         "token": "Token",
-        "lastAccessAt": "Último acceso"
+        "lastAccessAt": "Último acceso",
+        "libraries": ""
       },
       "helperTexts": {
-        "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
+        "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
+        "libraries": ""
       },
       "notifications": {
         "created": "Usuario creado",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
-        "clickHereForToken": "Click aquí para obtener tu token"
+        "clickHereForToken": "Click aquí para obtener tu token",
+        "selectAllLibraries": "",
+        "adminAutoLibraries": ""
+      },
+      "validation": {
+        "librariesRequired": ""
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Exportar",
         "makePublic": "Hazla pública",
         "makePrivate": "Hazla privada",
-        "saveQueue": "Guardar la fila de reproducción en una playlist"
+        "saveQueue": "Guardar la fila de reproducción en una playlist",
+        "searchOrCreate": "Buscar listas de reproducción o escribe para crear una nueva…",
+        "pressEnterToCreate": "Pulsa Enter para crear una nueva lista de reproducción",
+        "removeFromSelection": "Quitar de la selección"
       },
       "message": {
         "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
-        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
+        "noPlaylistsFound": "No se encontraron listas de reproducción",
+        "noPlaylists": "No hay listas de reproducción disponibles"
       }
     },
     "radio": {
@@ -239,7 +260,8 @@
       "fields": {
         "path": "Ruta",
         "size": "Tamaño",
-        "updatedAt": "Actualizado el"
+        "updatedAt": "Actualizado el",
+        "libraryName": ""
       },
       "actions": {
         "remove": "Eliminar",
@@ -249,6 +271,58 @@
         "removed": "Eliminado"
       },
       "empty": "No hay archivos perdidos"
+    },
+    "library": {
+      "name": "",
+      "fields": {
+        "name": "",
+        "path": "",
+        "remotePath": "",
+        "lastScanAt": "",
+        "songCount": "",
+        "albumCount": "",
+        "artistCount": "",
+        "totalSongs": "",
+        "totalAlbums": "",
+        "totalArtists": "",
+        "totalFolders": "",
+        "totalFiles": "",
+        "totalMissingFiles": "",
+        "totalSize": "",
+        "totalDuration": "",
+        "defaultNewUsers": "",
+        "createdAt": "",
+        "updatedAt": ""
+      },
+      "sections": {
+        "basic": "",
+        "statistics": ""
+      },
+      "actions": {
+        "scan": "",
+        "manageUsers": "",
+        "viewDetails": ""
+      },
+      "notifications": {
+        "created": "",
+        "updated": "",
+        "deleted": "",
+        "scanStarted": "",
+        "scanCompleted": ""
+      },
+      "validation": {
+        "nameRequired": "",
+        "pathRequired": "",
+        "pathNotDirectory": "",
+        "pathNotFound": "",
+        "pathNotAccessible": "",
+        "pathInvalid": ""
+      },
+      "messages": {
+        "deleteConfirm": "",
+        "scanInProgress": "",
+        "noLibrariesAssigned": ""
+      }
     }
   },
   "ra": {
@@ -430,7 +504,9 @@
     "remove_missing_title": "Eliminar elemento faltante",
     "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "remove_all_missing_title": "Eliminar todos los archivos perdidos",
-    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones."
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "noSimilarSongsFound": "No se encontraron canciones similares",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Biblioteca",
@@ -459,7 +535,13 @@
     "albumList": "Álbumes",
     "about": "Acerca de",
     "playlists": "Playlists",
-    "sharedPlaylists": "Playlists Compartidas"
+    "sharedPlaylists": "Playlists Compartidas",
+    "librarySelector": {
+      "allLibraries": "",
+      "multipleLibraries": "",
+      "selectLibraries": "",
+      "none": ""
+    }
   },
   "player": {
     "playListsText": "Fila de reproducción",
@@ -496,6 +578,21 @@
         "disabled": "Deshabilitado",
         "waiting": "Esperando"
       }
+    },
+    "tabs": {
+      "about": "Acerca de",
+      "config": "Configuración"
+    },
+    "config": {
+      "configName": "Nombre de la configuración",
+      "environmentVariable": "Variables de entorno",
+      "currentValue": "Valor actual",
+      "configurationFile": "Archivo de configuración",
+      "exportToml": "Exportar configuración (TOML)",
+      "exportSuccess": "Configuración exportada al portapapeles en formato TOML",
+      "exportFailed": "Error al copiar la configuración",
+      "devFlagsHeader": "Indicadores de desarrollo (sujetos a cambios o eliminación)",
+      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras"
     }
   },
   "activity": {
@@ -522,5 +619,10 @@
       "toggle_love": "Marca esta canción como favorita",
       "current_song": "Canción actual"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }

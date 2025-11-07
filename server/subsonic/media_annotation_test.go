@@ -138,4 +138,8 @@ func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
 	f.Events = append(f.Events, event)
 }
 
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
+	f.Events = append(f.Events, event)
+}
+
 var _ events.Broker = (*fakeEventBroker)(nil)

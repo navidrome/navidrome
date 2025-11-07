@@ -28,6 +28,7 @@ import (
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library) *phaseFolders {
 	var jobs []*scanJob
+	var updatedLibs []model.Library
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
 			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
@@ -54,7 +55,12 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			continue
 		}
 		jobs = append(jobs, job)
+		updatedLibs = append(updatedLibs, lib)
 	}
+
+	// Update the state with the libraries that have been processed and have their scan timestamps set
+	state.libraries = updatedLibs
+
 	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }
 
@@ -336,7 +342,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.tags...)
+		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err
@@ -418,12 +424,14 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if prevID == "" {
 		return nil
 	}
+
 	// Reassign annotation from previous album to new album
 	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
+
 	// Keep created_at field from previous instance of the album
 	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
 		// Silently ignore when the previous album is not found

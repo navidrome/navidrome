@@ -20,7 +20,9 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/ioutils"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/text/unicode/norm"
 )
 
 type Playlists interface {
@@ -96,12 +98,13 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	}
 	defer file.Close()
 
+	reader := ioutils.UTF8Reader(file)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
-		err = s.parseNSP(ctx, pls, file)
+		err = s.parseNSP(ctx, pls, reader)
 	default:
-		err = s.parseM3U(ctx, pls, folder, file)
+		err = s.parseM3U(ctx, pls, folder, reader)
 	}
 	return pls, err
 }
@@ -203,10 +206,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		}
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			existing[strings.ToLower(found[idx].Path)] = idx
+			existing[normalizePathForComparison(found[idx].Path)] = idx
 		}
 		for _, path := range paths {
-			idx, ok := existing[strings.ToLower(path)]
+			idx, ok := existing[normalizePathForComparison(path)]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
@@ -221,6 +224,13 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.AddMediaFiles(mfs)
 
 	return nil
+}
+
+// normalizePathForComparison normalizes a file path to NFC form and converts to lowercase
+// for consistent comparison. This fixes Unicode normalization issues on macOS where
+// Apple Music creates playlists with NFC-encoded paths but the filesystem uses NFD.
+func normalizePathForComparison(path string) string {
+	return strings.ToLower(norm.NFC.String(path))
 }
 
 // TODO This won't work for multiple libraries
@@ -326,7 +336,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		if needsTrackRefresh {
 			pls, err = repo.GetWithTracks(playlistID, true, false)
 			pls.RemoveTracks(idxToRemove)
-			pls.AddTracks(idsToAdd)
+			pls.AddMediaFilesByID(idsToAdd)
 		} else {
 			if len(idsToAdd) > 0 {
 				_, err = tracks.Add(idsToAdd)

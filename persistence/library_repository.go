@@ -2,10 +2,13 @@ package persistence
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -68,41 +71,78 @@ func (r *libraryRepository) GetPath(id int) (string, error) {
 }
 
 func (r *libraryRepository) Put(l *model.Library) error {
-	cols := map[string]any{
-		"name":        l.Name,
-		"path":        l.Path,
-		"remote_path": l.RemotePath,
-		"updated_at":  time.Now(),
-	}
-	if l.ID != 0 {
-		cols["id"] = l.ID
+	if l.ID == model.DefaultLibraryID {
+		currentLib, err := r.Get(1)
+		// if we are creating it, it's ok.
+		if err == nil { // it exists, so we are updating it
+			if currentLib.Path != l.Path {
+				return fmt.Errorf("%w: path for library with ID 1 cannot be changed", model.ErrValidation)
+			}
+		}
 	}
 
-	sq := Insert(r.tableName).SetMap(cols).
-		Suffix(`on conflict(id) do update set name = excluded.name, path = excluded.path, 
-					remote_path = excluded.remote_path, updated_at = excluded.updated_at`)
-	_, err := r.executeSQL(sq)
+	var err error
+	l.UpdatedAt = time.Now()
+	if l.ID == 0 {
+		// Insert with autoassigned ID
+		l.CreatedAt = time.Now()
+		err = r.db.Model(l).Insert()
+	} else {
+		// Try to update first
+		cols := map[string]any{
+			"name":              l.Name,
+			"path":              l.Path,
+			"remote_path":       l.RemotePath,
+			"default_new_users": l.DefaultNewUsers,
+			"updated_at":        l.UpdatedAt,
+		}
+		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
+		rowsAffected, updateErr := r.executeSQL(sq)
+		if updateErr != nil {
+			return updateErr
+		}
+
+		// If no rows were affected, the record doesn't exist, so insert it
+		if rowsAffected == 0 {
+			l.CreatedAt = time.Now()
+			l.UpdatedAt = time.Now()
+			err = r.db.Model(l).Insert()
+		}
+	}
 	if err != nil {
-		libLock.Lock()
-		defer libLock.Unlock()
-		libCache[l.ID] = l.Path
+		return err
 	}
-	return err
-}
 
-const hardCodedMusicFolderID = 1
+	// Auto-assign all libraries to all admin users
+	sql := Expr(`
+INSERT INTO user_library (user_id, library_id)
+SELECT u.id, l.id
+FROM user u
+CROSS JOIN library l
+WHERE u.is_admin = true
+ON CONFLICT (user_id, library_id) DO NOTHING;`,
+	)
+	if _, err = r.executeSQL(sql); err != nil {
+		return fmt.Errorf("failed to assign library to admin users: %w", err)
+	}
+
+	libLock.Lock()
+	defer libLock.Unlock()
+	libCache[l.ID] = l.Path
+	return nil
+}
 
 // TODO Remove this method when we have a proper UI to add libraries
 // This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder() error {
 	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": hardCodedMusicFolderID})
+		Where(Eq{"id": model.DefaultLibraryID})
 	_, err := r.executeSQL(sq)
 	if err != nil {
 		libLock.Lock()
 		defer libLock.Unlock()
-		libCache[hardCodedMusicFolderID] = conf.Server.MusicFolder
+		libCache[model.DefaultLibraryID] = conf.Server.MusicFolder
 	}
 	return err
 }
@@ -150,6 +190,7 @@ func (r *libraryRepository) ScanInProgress() (bool, error) {
 func (r *libraryRepository) RefreshStats(id int) error {
 	var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
 	var sizeRes struct{ Sum int64 }
+	var durationRes struct{ Sum float64 }
 
 	err := run.Parallel(
 		func() error {
@@ -180,6 +221,9 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		func() error {
 			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
+		func() error {
+			return r.queryOne(Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
+		},
 	)()
 	if err != nil {
 		return err
@@ -193,10 +237,32 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		Set("total_files", filesRes.Count).
 		Set("total_missing_files", missingRes.Count).
 		Set("total_size", sizeRes.Sum).
+		Set("total_duration", durationRes.Sum).
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": id})
 	_, err = r.executeSQL(sq)
 	return err
+}
+
+func (r *libraryRepository) Delete(id int) error {
+	if !loggedUser(r.ctx).IsAdmin {
+		return model.ErrNotAuthorized
+	}
+	if id == 1 {
+		return fmt.Errorf("%w: library with ID 1 cannot be deleted", model.ErrValidation)
+	}
+
+	err := r.delete(Eq{"id": id})
+	if err != nil {
+		return err
+	}
+
+	// Clear cache entry for this library only if DB operation was successful
+	libLock.Lock()
+	defer libLock.Unlock()
+	delete(libCache, id)
+
+	return nil
 }
 
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {
@@ -206,4 +272,72 @@ func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, 
 	return res, err
 }
 
+func (r *libraryRepository) CountAll(ops ...model.QueryOptions) (int64, error) {
+	sq := r.newSelect(ops...)
+	return r.count(sq)
+}
+
+// User-library association methods
+
+func (r *libraryRepository) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
+	sel := Select("u.*").
+		From("user u").
+		Join("user_library ul ON u.id = ul.user_id").
+		Where(Eq{"ul.library_id": libraryID}).
+		OrderBy("u.name")
+
+	var res model.Users
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+// REST interface methods
+
+func (r *libraryRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+}
+
+func (r *libraryRepository) Read(id string) (interface{}, error) {
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		log.Trace(r.ctx, "invalid library id: %s", id, err)
+		return nil, rest.ErrNotFound
+	}
+	return r.Get(idInt)
+}
+
+func (r *libraryRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+}
+
+func (r *libraryRepository) EntityName() string {
+	return "library"
+}
+
+func (r *libraryRepository) NewInstance() interface{} {
+	return &model.Library{}
+}
+
+func (r *libraryRepository) Save(entity interface{}) (string, error) {
+	lib := entity.(*model.Library)
+	lib.ID = 0 // Reset ID to ensure we create a new library
+	err := r.Put(lib)
+	if err != nil {
+		return "", err
+	}
+	return strconv.Itoa(lib.ID), nil
+}
+
+func (r *libraryRepository) Update(id string, entity interface{}, cols ...string) error {
+	lib := entity.(*model.Library)
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return fmt.Errorf("invalid library ID: %s", id)
+	}
+
+	lib.ID = idInt
+	return r.Put(lib)
+}
+
 var _ model.LibraryRepository = (*libraryRepository)(nil)
+var _ rest.Repository = (*libraryRepository)(nil)

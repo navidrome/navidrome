@@ -40,7 +40,7 @@ type PlayTracker interface {
 // PluginLoader is a minimal interface for plugin manager usage in PlayTracker
 // (avoids import cycles)
 type PluginLoader interface {
-	PluginNames(service string) []string
+	PluginNames(capability string) []string
 	LoadScrobbler(name string) (Scrobbler, bool)
 }
 
@@ -74,8 +74,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
-			ctx := events.BroadcastToAll(context.Background())
-			broker.SendMessage(ctx, &events.NowPlayingCount{Count: m.Len()})
+			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		})
 	}
 
@@ -195,8 +194,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	if conf.Server.EnableNowPlaying {
-		ctx = events.BroadcastToAll(ctx)
-		p.broker.SendMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
+		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {

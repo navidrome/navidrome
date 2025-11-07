@@ -26,7 +26,8 @@ type MediaFile struct {
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
 	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`
-	LibraryPath string `structs:"-" json:"libraryPath" hash:"-"`
+	LibraryPath string `structs:"-" json:"libraryPath" hash:"ignore"`
+	LibraryName string `structs:"-" json:"libraryName" hash:"ignore"`
 	FolderID    string `structs:"folder_id" json:"folderId" hash:"ignore"`
 	Path        string `structs:"path" json:"path" hash:"ignore"`
 	Title       string `structs:"title" json:"title"`
@@ -367,6 +368,8 @@ type MediaFileRepository interface {
 	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int) (MediaFileCursor, error)
+	FindRecentFilesByMBZTrackID(missing MediaFile, since time.Time) (MediaFiles, error)
+	FindRecentFilesByProperties(missing MediaFile, since time.Time) (MediaFiles, error)
 
 	AnnotatedRepository
 	BookmarkableRepository

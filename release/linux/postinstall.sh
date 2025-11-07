@@ -4,7 +4,7 @@
 # the package manager (in particular, deb) thinks that the file exists, while it is 
 # no longer on disk. Specifically, doing a `rm /etc/navidrome/navidrome.toml` 
 # without something like `apt purge navidrome` will result in the system believing that
-# the file still exists. In this case, during isntall it will NOT extract the configuration 
+# the file still exists. In this case, during install it will NOT extract the configuration 
 # file (as to not override it). Since `navidrome service install` depends on this file existing,
 # we will create it with the defaults anyway.
 if [ ! -f /etc/navidrome/navidrome.toml ]; then

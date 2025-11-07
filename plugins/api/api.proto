@@ -194,7 +194,6 @@ service LifecycleManagement {
 }
 
 message InitRequest {
-  // Empty for now
   map<string, string> config = 1;  // Configuration specific to this plugin
 }
 
