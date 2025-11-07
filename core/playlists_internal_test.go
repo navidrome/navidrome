@@ -245,93 +245,95 @@ var _ = Describe("pathResolver", func() {
 		})
 	})
 
-	Describe("resolveAbsolutePath", func() {
-		It("resolves path within a library", func() {
-			resolution := resolver.resolveAbsolutePath("/music/track.mp3")
+	Describe("resolvePath", func() {
+		Context("With absolute paths", func() {
+			It("resolves path within a library", func() {
+				resolution := resolver.resolvePath("/music/track.mp3", nil)
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(1))
-			Expect(resolution.libraryPath).To(Equal("/music"))
-			Expect(resolution.absolutePath).To(Equal("/music/track.mp3"))
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(1))
+				Expect(resolution.libraryPath).To(Equal("/music"))
+				Expect(resolution.absolutePath).To(Equal("/music/track.mp3"))
+			})
+
+			It("resolves path to the longest matching library", func() {
+				resolution := resolver.resolvePath("/music-classical/track.mp3", nil)
+
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(2))
+				Expect(resolution.libraryPath).To(Equal("/music-classical"))
+			})
+
+			It("returns invalid resolution for path outside libraries", func() {
+				resolution := resolver.resolvePath("/videos/movie.mp4", nil)
+
+				Expect(resolution.valid).To(BeFalse())
+			})
+
+			It("cleans the path before matching", func() {
+				resolution := resolver.resolvePath("/music//artist/../artist/track.mp3", nil)
+
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.absolutePath).To(Equal("/music/artist/track.mp3"))
+			})
 		})
 
-		It("resolves path to the longest matching library", func() {
-			resolution := resolver.resolveAbsolutePath("/music-classical/track.mp3")
+		Context("With relative paths", func() {
+			It("resolves relative path within same library", func() {
+				folder := &model.Folder{
+					Path:        "playlists",
+					LibraryPath: "/music",
+					LibraryID:   1,
+				}
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(2))
-			Expect(resolution.libraryPath).To(Equal("/music-classical"))
-		})
+				resolution := resolver.resolvePath("../songs/track.mp3", folder)
 
-		It("returns invalid resolution for path outside libraries", func() {
-			resolution := resolver.resolveAbsolutePath("/videos/movie.mp4")
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(1))
+				Expect(resolution.absolutePath).To(Equal("/music/songs/track.mp3"))
+			})
 
-			Expect(resolution.valid).To(BeFalse())
-		})
+			It("resolves relative path to different library", func() {
+				folder := &model.Folder{
+					Path:        "playlists",
+					LibraryPath: "/music",
+					LibraryID:   1,
+				}
 
-		It("cleans the path before matching", func() {
-			resolution := resolver.resolveAbsolutePath("/music//artist/../artist/track.mp3")
+				// Path goes up and into a different library
+				resolution := resolver.resolvePath("../../podcasts/episode.mp3", folder)
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.absolutePath).To(Equal("/music/artist/track.mp3"))
-		})
-	})
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(3))
+				Expect(resolution.libraryPath).To(Equal("/podcasts"))
+			})
 
-	Describe("resolveRelativePath", func() {
-		It("resolves relative path within same library", func() {
-			folder := &model.Folder{
-				Path:        "playlists",
-				LibraryPath: "/music",
-				LibraryID:   1,
-			}
+			It("uses matcher to find correct library for resolved path", func() {
+				folder := &model.Folder{
+					Path:        "playlists",
+					LibraryPath: "/music",
+					LibraryID:   1,
+				}
 
-			resolution := resolver.resolveRelativePath("../songs/track.mp3", folder)
+				// This relative path resolves to music-classical library
+				resolution := resolver.resolvePath("../../music-classical/track.mp3", folder)
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(1))
-			Expect(resolution.absolutePath).To(Equal("/music/songs/track.mp3"))
-		})
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(2))
+				Expect(resolution.libraryPath).To(Equal("/music-classical"))
+			})
 
-		It("resolves relative path to different library", func() {
-			folder := &model.Folder{
-				Path:        "playlists",
-				LibraryPath: "/music",
-				LibraryID:   1,
-			}
+			It("returns invalid for relative paths escaping all libraries", func() {
+				folder := &model.Folder{
+					Path:        "playlists",
+					LibraryPath: "/music",
+					LibraryID:   1,
+				}
 
-			// Path goes up and into a different library
-			resolution := resolver.resolveRelativePath("../../podcasts/episode.mp3", folder)
+				resolution := resolver.resolvePath("../../../../etc/passwd", folder)
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(3))
-			Expect(resolution.libraryPath).To(Equal("/podcasts"))
-		})
-
-		It("uses matcher to find correct library for resolved path", func() {
-			folder := &model.Folder{
-				Path:        "playlists",
-				LibraryPath: "/music",
-				LibraryID:   1,
-			}
-
-			// This relative path resolves to music-classical library
-			resolution := resolver.resolveRelativePath("../../music-classical/track.mp3", folder)
-
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(2))
-			Expect(resolution.libraryPath).To(Equal("/music-classical"))
-		})
-
-		It("returns invalid for relative paths escaping all libraries", func() {
-			folder := &model.Folder{
-				Path:        "playlists",
-				LibraryPath: "/music",
-				LibraryID:   1,
-			}
-
-			resolution := resolver.resolveRelativePath("../../../../etc/passwd", folder)
-
-			Expect(resolution.valid).To(BeFalse())
+				Expect(resolution.valid).To(BeFalse())
+			})
 		})
 	})
 

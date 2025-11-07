@@ -324,46 +324,34 @@ func newPathResolver(ctx context.Context, ds model.DataStore) (*pathResolver, er
 }
 
 // resolvePath determines the absolute path and library path for a playlist entry.
+// For absolute paths, it uses them directly.
+// For relative paths, it resolves them relative to the playlist's folder location.
+// Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
+//
+//	resolves to /music/songs/abc.mp3
 func (r *pathResolver) resolvePath(line string, folder *model.Folder) pathResolution {
+	var absolutePath string
 	if folder != nil && !filepath.IsAbs(line) {
-		return r.resolveRelativePath(line, folder)
+		// Resolve relative path to absolute path based on playlist location
+		absolutePath = filepath.Clean(filepath.Join(folder.AbsolutePath(), line))
+	} else {
+		// Use absolute path directly after cleaning
+		absolutePath = filepath.Clean(line)
 	}
-	return r.resolveAbsolutePath(line)
+
+	return r.findInLibraries(absolutePath)
 }
 
-// resolveRelativePath handles relative paths by converting them to absolute paths
-// and finding their library location. This enables cross-library playlist references.
-func (r *pathResolver) resolveRelativePath(line string, folder *model.Folder) pathResolution {
-	// Step 1: Resolve relative path to absolute path based on playlist location
-	// Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
-	//          resolves to /music/songs/abc.mp3
-	absolutePath := filepath.Clean(filepath.Join(folder.AbsolutePath(), line))
-
-	// Step 2: Determine which library this absolute path belongs to
+// findInLibraries matches an absolute path against all known libraries and returns
+// a pathResolution with the library information. Returns an invalid resolution if
+// the path is not found in any library.
+func (r *pathResolver) findInLibraries(absolutePath string) pathResolution {
 	libID, libPath := r.matcher.findLibraryForPath(absolutePath)
 	if libID == 0 {
-		// Path not found in any library - this should not happen as the playlist's
-		// own library should have been matched above
 		return pathResolution{valid: false}
 	}
 	return pathResolution{
 		absolutePath: absolutePath,
-		libraryPath:  libPath,
-		libraryID:    libID,
-		valid:        true,
-	}
-}
-
-// resolveAbsolutePath handles absolute paths by matching them against library paths.
-func (r *pathResolver) resolveAbsolutePath(line string) pathResolution {
-	cleanPath := filepath.Clean(line)
-	libID, libPath := r.matcher.findLibraryForPath(cleanPath)
-
-	if libID == 0 {
-		return pathResolution{valid: false}
-	}
-	return pathResolution{
-		absolutePath: cleanPath,
 		libraryPath:  libPath,
 		libraryID:    libID,
 		valid:        true,
