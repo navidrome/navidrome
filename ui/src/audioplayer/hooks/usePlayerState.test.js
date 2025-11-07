@@ -1,22 +1,21 @@
-/* eslint-env jest */
-
 import { renderHook } from '@testing-library/react-hooks'
 import { usePlayerState } from './usePlayerState'
 import { useDispatch, useSelector } from 'react-redux'
+import { describe, it, beforeEach, vi, expect } from 'vitest'
 
 // Mock react-redux
-jest.mock('react-redux', () => ({
-  useDispatch: jest.fn(),
-  useSelector: jest.fn(),
+vi.mock('react-redux', () => ({
+  useDispatch: vi.fn(),
+  useSelector: vi.fn(),
 }))
 
 // Mock actions
-jest.mock('../../actions', () => ({
-  clearQueue: jest.fn(() => ({ type: 'CLEAR_QUEUE' })),
-  currentPlaying: jest.fn(() => ({ type: 'CURRENT_PLAYING' })),
-  setPlayMode: jest.fn(() => ({ type: 'SET_PLAY_MODE' })),
-  setVolume: jest.fn(() => ({ type: 'SET_VOLUME' })),
-  syncQueue: jest.fn(() => ({ type: 'SYNC_QUEUE' })),
+vi.mock('../../actions', () => ({
+  clearQueue: vi.fn(() => ({ type: 'CLEAR_QUEUE' })),
+  currentPlaying: vi.fn(() => ({ type: 'CURRENT_PLAYING' })),
+  setPlayMode: vi.fn(() => ({ type: 'SET_PLAY_MODE' })),
+  setVolume: vi.fn(() => ({ type: 'SET_VOLUME' })),
+  syncQueue: vi.fn(() => ({ type: 'SYNC_QUEUE' })),
 }))
 
 // Import the mocked actions
@@ -30,10 +29,10 @@ describe('usePlayerState', () => {
     volume: 0.8,
   }
 
-  const mockDispatch = jest.fn()
+  const mockDispatch = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     useDispatch.mockReturnValue(mockDispatch)
     useSelector.mockReturnValue(mockPlayerState)
   })

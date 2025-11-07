@@ -1,11 +1,10 @@
-/* eslint-env jest */
-
 import { renderHook, act } from '@testing-library/react-hooks'
 import { useReplayGain } from './useReplayGain'
+import { describe, it, beforeEach, afterEach, vi, expect } from 'vitest'
 
 // Mock calculateGain utility
-jest.mock('../../utils/calculateReplayGain', () => ({
-  calculateGain: jest.fn(),
+vi.mock('../../utils/calculateReplayGain', () => ({
+  calculateGain: vi.fn(),
 }))
 
 // Import the mocked module
@@ -15,17 +14,17 @@ describe('useReplayGain', () => {
   const mockCalculateGain = calculateReplayGain.calculateGain
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Mock Web Audio API
-    global.AudioContext = jest.fn().mockImplementation(() => ({
-      createMediaElementSource: jest.fn(() => ({
-        connect: jest.fn(),
+    global.AudioContext = vi.fn().mockImplementation(() => ({
+      createMediaElementSource: vi.fn(() => ({
+        connect: vi.fn(),
       })),
-      createGain: jest.fn(() => ({
+      createGain: vi.fn(() => ({
         gain: {
-          setValueAtTime: jest.fn(),
+          setValueAtTime: vi.fn(),
         },
-        connect: jest.fn(),
+        connect: vi.fn(),
       })),
       currentTime: 0,
     }))
@@ -83,10 +82,10 @@ describe('useReplayGain', () => {
   })
 
   it('should handle Web Audio API errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     // Mock AudioContext to throw error
-    global.AudioContext = jest.fn().mockImplementation(() => {
+    global.AudioContext = vi.fn().mockImplementation(() => {
       throw new Error('Web Audio API not supported')
     })
 
@@ -108,7 +107,7 @@ describe('useReplayGain', () => {
   })
 
   it('should handle gain application errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const mockAudioInstance = { crossOrigin: '' }
     const mockPlayerState = {
@@ -119,17 +118,17 @@ describe('useReplayGain', () => {
     // Mock gain.setValueAtTime to throw error
     const mockGainNode = {
       gain: {
-        setValueAtTime: jest.fn(() => {
+        setValueAtTime: vi.fn(() => {
           throw new Error('Gain application failed')
         }),
       },
     }
 
-    global.AudioContext = jest.fn().mockImplementation(() => ({
-      createMediaElementSource: jest.fn(() => ({
-        connect: jest.fn(),
+    global.AudioContext = vi.fn().mockImplementation(() => ({
+      createMediaElementSource: vi.fn(() => ({
+        connect: vi.fn(),
       })),
-      createGain: jest.fn(() => mockGainNode),
+      createGain: vi.fn(() => mockGainNode),
       currentTime: 0,
     }))
 

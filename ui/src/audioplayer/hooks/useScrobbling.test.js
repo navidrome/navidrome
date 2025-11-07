@@ -1,12 +1,12 @@
-/* eslint-env jest */
-
 import { renderHook, act } from '@testing-library/react-hooks'
 import { useScrobbling } from './useScrobbling'
+import { describe, it, beforeEach, vi, expect } from 'vitest'
 
 // Mock subsonic module
-jest.mock('../../subsonic', () => ({
-  scrobble: jest.fn(),
-  nowPlaying: jest.fn(),
+vi.mock('../../subsonic', () => ({
+  default: {},
+  scrobble: vi.fn(),
+  nowPlaying: vi.fn(),
 }))
 
 // Import the mocked module
@@ -14,7 +14,7 @@ import * as subsonic from '../../subsonic'
 
 // Mock dataProvider
 const mockDataProvider = {
-  getOne: jest.fn(),
+  getOne: vi.fn(),
 }
 
 describe('useScrobbling', () => {
@@ -26,10 +26,10 @@ describe('useScrobbling', () => {
     current: { uuid: '1', trackId: 'track1' },
   }
 
-  const mockDispatch = jest.fn()
+  const mockDispatch = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDataProvider.getOne.mockResolvedValue({ data: {} })
   })
 
@@ -131,7 +131,7 @@ describe('useScrobbling', () => {
   })
 
   it('should handle scrobbling errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     // const mockSubsonic = subsonic
     subsonic.scrobble.mockImplementation(() => {
       throw new Error('Scrobbling failed')

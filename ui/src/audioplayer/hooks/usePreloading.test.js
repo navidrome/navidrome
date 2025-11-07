@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
 import { renderHook, act } from '@testing-library/react-hooks'
 import { usePreloading } from './usePreloading'
+import { describe, it, beforeEach, afterEach, vi, expect } from 'vitest'
 
 describe('usePreloading', () => {
   const mockPlayerState = {
@@ -13,11 +12,11 @@ describe('usePreloading', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Mock Audio constructor
-    global.Audio = jest.fn().mockImplementation(() => ({
+    global.Audio = vi.fn().mockImplementation(() => ({
       src: '',
-      addEventListener: jest.fn(),
+      addEventListener: vi.fn(),
     }))
   })
 
@@ -96,9 +95,9 @@ describe('usePreloading', () => {
   })
 
   it('should handle Audio constructor errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    global.Audio = jest.fn().mockImplementation(() => {
+    global.Audio = vi.fn().mockImplementation(() => {
       throw new Error('Audio creation failed')
     })
 
@@ -118,18 +117,18 @@ describe('usePreloading', () => {
   })
 
   it('should handle audio load errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const mockAudioInstance = {
       src: '',
-      addEventListener: jest.fn((event, callback) => {
+      addEventListener: vi.fn((event, callback) => {
         if (event === 'error') {
           callback(new Event('error'))
         }
       }),
     }
 
-    global.Audio = jest.fn().mockImplementation(() => mockAudioInstance)
+    global.Audio = vi.fn().mockImplementation(() => mockAudioInstance)
 
     const { result } = renderHook(() => usePreloading(mockPlayerState))
 
