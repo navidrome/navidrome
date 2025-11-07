@@ -16,18 +16,18 @@ describe('useReplayGain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock Web Audio API
-    global.AudioContext = vi.fn().mockImplementation(() => ({
-      createMediaElementSource: vi.fn(() => ({
+    global.AudioContext = vi.fn().mockImplementation(function() {
+      this.createMediaElementSource = vi.fn(() => ({
         connect: vi.fn(),
-      })),
-      createGain: vi.fn(() => ({
+      }))
+      this.createGain = vi.fn(() => ({
         gain: {
           setValueAtTime: vi.fn(),
         },
         connect: vi.fn(),
-      })),
-      currentTime: 0,
-    }))
+      }))
+      this.currentTime = 0
+    })
   })
 
   afterEach(() => {
@@ -85,7 +85,7 @@ describe('useReplayGain', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     // Mock AudioContext to throw error
-    global.AudioContext = vi.fn().mockImplementation(() => {
+    global.AudioContext = vi.fn().mockImplementation(function() {
       throw new Error('Web Audio API not supported')
     })
 
@@ -122,15 +122,16 @@ describe('useReplayGain', () => {
           throw new Error('Gain application failed')
         }),
       },
+      connect: vi.fn(),
     }
 
-    global.AudioContext = vi.fn().mockImplementation(() => ({
-      createMediaElementSource: vi.fn(() => ({
+    global.AudioContext = vi.fn().mockImplementation(function() {
+      this.createMediaElementSource = vi.fn(() => ({
         connect: vi.fn(),
-      })),
-      createGain: vi.fn(() => mockGainNode),
-      currentTime: 0,
-    }))
+      }))
+      this.createGain = vi.fn(() => mockGainNode)
+      this.currentTime = 0
+    })
 
     const { result } = renderHook(() =>
       useReplayGain(mockAudioInstance, mockPlayerState, mockGainInfo),

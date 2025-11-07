@@ -4,7 +4,10 @@ import { describe, it, beforeEach, vi, expect } from 'vitest'
 
 // Mock subsonic module
 vi.mock('../../subsonic', () => ({
-  default: {},
+  default: {
+    scrobble: vi.fn(),
+    nowPlaying: vi.fn(),
+  },
   scrobble: vi.fn(),
   nowPlaying: vi.fn(),
 }))
@@ -62,7 +65,7 @@ describe('useScrobbling', () => {
     })
 
     // Should scrobble since progress > 50% and time > 4 minutes
-    expect(subsonic.scrobble).toHaveBeenCalledWith('track1', null)
+    expect(subsonic.default.scrobble).toHaveBeenCalledWith('track1', null)
     expect(result.current.scrobbled).toBe(true)
   })
 
@@ -133,7 +136,7 @@ describe('useScrobbling', () => {
   it('should handle scrobbling errors gracefully', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     // const mockSubsonic = subsonic
-    subsonic.scrobble.mockImplementation(() => {
+    subsonic.default.scrobble.mockImplementation(() => {
       throw new Error('Scrobbling failed')
     })
 
@@ -156,7 +159,7 @@ describe('useScrobbling', () => {
       'Scrobbling error:',
       expect.any(Error),
     )
-    expect(result.current.scrobbled).toBe(true) // Still sets to true despite error
+    expect(result.current.scrobbled).toBe(false) // Should not set to true on error
 
     consoleSpy.mockRestore()
   })
