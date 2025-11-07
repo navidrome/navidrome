@@ -335,34 +335,6 @@ var _ = Describe("pathResolver", func() {
 		})
 	})
 
-	Describe("validatePathInLibrary", func() {
-		It("validates path within library", func() {
-			resolution := resolver.validatePathInLibrary("/music/artist/track.mp3", "/music", 1)
-
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(1))
-			Expect(resolution.libraryPath).To(Equal("/music"))
-		})
-
-		It("rejects path that escapes library using ..", func() {
-			resolution := resolver.validatePathInLibrary("/music/../etc/passwd", "/music", 1)
-
-			Expect(resolution.valid).To(BeFalse())
-		})
-
-		It("rejects path outside library", func() {
-			resolution := resolver.validatePathInLibrary("/podcasts/track.mp3", "/music", 1)
-
-			Expect(resolution.valid).To(BeFalse())
-		})
-
-		It("accepts path exactly at library root", func() {
-			resolution := resolver.validatePathInLibrary("/music", "/music", 1)
-
-			Expect(resolution.valid).To(BeTrue())
-		})
-	})
-
 	Describe("Cross-library resolution scenarios", func() {
 		It("handles playlist in library A referencing file in library B", func() {
 			// Playlist is in /music/playlists

@@ -341,17 +341,17 @@ func (r *pathResolver) resolveRelativePath(line string, folder *model.Folder) pa
 
 	// Step 2: Determine which library this absolute path belongs to
 	libID, libPath := r.matcher.findLibraryForPath(absolutePath)
-	if libID != 0 {
-		return pathResolution{
-			absolutePath: absolutePath,
-			libraryPath:  libPath,
-			libraryID:    libID,
-			valid:        true,
-		}
+	if libID == 0 {
+		// Path not found in any library - this should not happen as the playlist's
+		// own library should have been matched above
+		return pathResolution{valid: false}
 	}
-
-	// Fallback: Check if it's in the playlist's own library
-	return r.validatePathInLibrary(absolutePath, folder.LibraryPath, folder.LibraryID)
+	return pathResolution{
+		absolutePath: absolutePath,
+		libraryPath:  libPath,
+		libraryID:    libID,
+		valid:        true,
+	}
 }
 
 // resolveAbsolutePath handles absolute paths by matching them against library paths.
@@ -366,22 +366,6 @@ func (r *pathResolver) resolveAbsolutePath(line string) pathResolution {
 		absolutePath: cleanPath,
 		libraryPath:  libPath,
 		libraryID:    libID,
-		valid:        true,
-	}
-}
-
-// validatePathInLibrary verifies that an absolute path belongs to the specified library.
-// It rejects paths that escape the library using ".." segments.
-func (r *pathResolver) validatePathInLibrary(absolutePath, libraryPath string, libraryID int) pathResolution {
-	rel, err := filepath.Rel(libraryPath, absolutePath)
-	if err != nil || strings.HasPrefix(rel, "..") {
-		return pathResolution{valid: false}
-	}
-
-	return pathResolution{
-		absolutePath: absolutePath,
-		libraryPath:  libraryPath,
-		libraryID:    libraryID,
 		valid:        true,
 	}
 }

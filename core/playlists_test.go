@@ -33,8 +33,6 @@ var _ = Describe("Playlists", func() {
 			MockedLibrary:  mockLibRepo,
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
-		// Path should be libPath, but we want to match the root folder referenced in the m3u, which is `/`
-		mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/"}})
 	})
 
 	Describe("ImportFile", func() {
@@ -43,6 +41,8 @@ var _ = Describe("Playlists", func() {
 			ps = core.NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
+			// Set up library with the actual library path that matches the folder
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: libPath}})
 			folder = &model.Folder{
 				ID:          "1",
 				LibraryID:   1,
