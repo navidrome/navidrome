@@ -112,6 +112,58 @@ var _ = Describe("Playlists", func() {
 				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
 		})
+
+		Describe("Cross-library relative paths", func() {
+			var tmpDir, plsDir, songsDir string
+
+			BeforeEach(func() {
+				// Create temp directory structure once
+				tmpDir = GinkgoT().TempDir()
+				plsDir = tmpDir + "/playlists"
+				songsDir = tmpDir + "/songs"
+				Expect(os.Mkdir(plsDir, 0755)).To(Succeed())
+				Expect(os.Mkdir(songsDir, 0755)).To(Succeed())
+
+				// Setup two different libraries with paths matching our temp structure
+				mockLibRepo.SetData([]model.Library{
+					{ID: 1, Path: songsDir},
+					{ID: 2, Path: plsDir},
+				})
+
+				// Create a mock media file repository that returns files for both libraries
+				// Note: The paths are relative to their respective library roots
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{
+					data: []string{
+						"abc.mp3", // This is songs/abc.mp3 relative to songsDir
+						"def.mp3", // This is playlists/def.mp3 relative to plsDir
+					},
+				}
+				ps = NewPlaylists(ds)
+			})
+
+			It("handles relative paths that reference files in other libraries", func() {
+				// Create a temporary playlist file with relative path
+				plsContent := "#PLAYLIST:Cross Library Test\n../songs/abc.mp3\ndef.mp3"
+				plsFile := plsDir + "/test.m3u"
+				Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+				// Playlist is in the Playlists library folder
+				// Important: Path should be relative to LibraryPath, and Name is the folder name
+				plsFolder := &model.Folder{
+					ID:          "2",
+					LibraryID:   2,
+					LibraryPath: plsDir,
+					Path:        "",
+					Name:        "",
+				}
+
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(2))
+				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3"))
+				Expect(pls.Tracks[1].Path).To(Equal("def.mp3"))
+			})
+		})
 	})
 
 	Describe("ImportM3U", func() {

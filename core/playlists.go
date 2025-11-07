@@ -246,8 +246,19 @@ func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, fol
 		var filePath string
 
 		if folder != nil && !filepath.IsAbs(line) {
-			libPath = folder.LibraryPath
+			// For relative paths, resolve them to absolute first
 			filePath = filepath.Join(folder.AbsolutePath(), line)
+			filePath = filepath.Clean(filePath)
+			// Try to find which library this resolved path belongs to
+			if libPath = libRegex.FindString(filePath); libPath == "" {
+				// If not found in regex, fallback to the playlist's library
+				libPath = folder.LibraryPath
+				// Verify the file is actually in a library by checking if we can get a relative path
+				if _, err := filepath.Rel(libPath, filePath); err != nil {
+					log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
+					continue
+				}
+			}
 		} else {
 			cleanLine := filepath.Clean(line)
 			if libPath = libRegex.FindString(cleanLine); libPath != "" {
