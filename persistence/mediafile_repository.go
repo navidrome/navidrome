@@ -194,9 +194,11 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	}, nil
 }
 
+// FindByPaths finds media files by their paths.
+// The paths can be library-qualified (format: "libraryID:path") or unqualified ("path").
+// Library-qualified paths search within the specified library, while unqualified paths
+// search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	// Parse library-qualified paths and build query
-	// Format: "libraryID:path" or just "path" (backward compatibility)
 	query := Or{}
 
 	for _, path := range paths {
