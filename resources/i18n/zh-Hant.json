@@ -1,463 +1,630 @@
 {
-    "languageName": "繁體中文",
-    "resources": {
-        "song": {
-            "name": "歌曲 |||| 歌曲",
-            "fields": {
-                "albumArtist": "專輯藝人",
-                "duration": "長度",
-                "trackNumber": "#",
-                "playCount": "播放次數",
-                "title": "標題",
-                "artist": "藝人",
-                "album": "專輯",
-                "path": "文件路徑",
-                "genre": "類型",
-                "compilation": "合輯",
-                "year": "發行年份",
-                "size": "檔案大小",
-                "updatedAt": "更新於",
-                "bitRate": "位元率",
-                "discSubtitle": "字幕",
-                "starred": "收藏",
-                "comment": "註解",
-                "rating": "評分",
-                "quality": "品質",
-                "bpm": "BPM",
-                "playDate": "上次播放",
-                "channels": "聲道",
-                "createdAt": "創建於"
-            },
-            "actions": {
-                "addToQueue": "加入至播放佇列",
-                "playNow": "立即播放",
-                "addToPlaylist": "加入至播放清單",
-                "shuffleAll": "全部隨機播放",
-                "download": "下載",
-                "playNext": "下一首播放",
-                "info": "取得資訊"
-            }
-        },
-        "album": {
-            "name": "專輯 |||| 專輯",
-            "fields": {
-                "albumArtist": "專輯藝人",
-                "artist": "藝人",
-                "duration": "長度",
-                "songCount": "歌曲數量",
-                "playCount": "播放次數",
-                "name": "名稱",
-                "genre": "類型",
-                "compilation": "合輯",
-                "year": "發行年份",
-                "updatedAt": "更新於",
-                "comment": "註解",
-                "rating": "評分",
-                "createdAt": "創建於",
-                "size": "檔案大小",
-                "originalDate": "原始日期",
-                "releaseDate": "發行日期",
-                "releases": "發行",
-                "released": "已發行"
-            },
-            "actions": {
-                "playAll": "立即播放",
-                "playNext": "下首播放",
-                "addToQueue": "加入至播放佇列",
-                "shuffle": "隨機播放",
-                "addToPlaylist": "加入播放清單",
-                "download": "下載",
-                "info": "取得資訊",
-                "share": "分享"
-            },
-            "lists": {
-                "all": "所有",
-                "random": "隨機",
-                "recentlyAdded": "最近加入",
-                "recentlyPlayed": "最近播放",
-                "mostPlayed": "最多播放的",
-                "starred": "收藏",
-                "topRated": "最高評分"
-            }
-        },
-        "artist": {
-            "name": "藝人 |||| 藝人",
-            "fields": {
-                "name": "名稱",
-                "albumCount": "專輯數",
-                "songCount": "歌曲數",
-                "playCount": "播放次數",
-                "rating": "評分",
-                "genre": "類型",
-                "size": "檔案大小"
-            }
-        },
-        "user": {
-            "name": "使用者 |||| 使用者",
-            "fields": {
-                "userName": "使用者名稱",
-                "isAdmin": "是否管理員",
-                "lastLoginAt": "上次登入",
-                "lastAccessAt": "上此訪問",
-                "updatedAt": "更新於",
-                "name": "名稱",
-                "password": "密碼",
-                "createdAt": "創建於",
-                "changePassword": "變更密碼？",
-                "currentPassword": "現在的密碼",
-                "newPassword": "新密碼",
-                "token": "權杖"
-            },
-            "helperTexts": {
-                "name": "你的名稱會在下次登入時生效"
-            },
-            "notifications": {
-                "created": "使用者已創建",
-                "updated": "使用者已更新",
-                "deleted": "使用者已刪除"
-            },
-            "message": {
-                "listenBrainzToken": "輸入您的 ListenBrainz 使用者權杖",
-                "clickHereForToken": "點擊此處來獲得你的 ListenBrainz 權杖"
-            }
-        },
-        "player": {
-            "name": "用戶端 |||| 用戶端",
-            "fields": {
-                "name": "名稱",
-                "transcodingId": "轉碼",
-                "maxBitRate": "最大位元率",
-                "client": "用戶端",
-                "userName": "使用者名稱",
-                "lastSeen": "上次瀏覽",
-                "reportRealPath": "回報實際路徑",
-                "scrobbleEnabled": "傳送音樂記錄至外部服務"
-            }
-        },
-        "transcoding": {
-            "name": "轉碼 |||| 轉碼",
-            "fields": {
-                "name": "名稱",
-                "targetFormat": "目標格式",
-                "defaultBitRate": "預設位元率",
-                "command": "命令"
-            }
-        },
-        "playlist": {
-            "name": "播放清單 |||| 播放清單",
-            "fields": {
-                "name": "名稱",
-                "duration": "長度",
-                "ownerName": "擁有者",
-                "public": "公開",
-                "updatedAt": "更新於",
-                "createdAt": "創建於",
-                "songCount": "歌曲數",
-                "comment": "註解",
-                "sync": "自動導入",
-                "path": "導入"
-            },
-            "actions": {
-                "selectPlaylist": "選擇播放清單",
-                "addNewPlaylist": "創建 %{name}",
-                "export": "導出",
-                "makePublic": "設為公開",
-                "makePrivate": "設為私人"
-            },
-            "message": {
-                "duplicate_song": "加入重複的歌曲",
-                "song_exist": "有重複歌曲正在播放清單裡，您要加入或略過重複歌曲？"
-            }
-        },
-        "radio": {
-            "name": "電台",
-            "fields": {
-                "name": "名稱",
-                "streamUrl": "串流網址",
-                "homePageUrl": "首頁網址",
-                "updatedAt": "更新於",
-                "createdAt": "創建於"
-            },
-            "actions": {
-                "playNow": "立即播放"
-            }
-        },
-        "share": {
-            "name": "分享",
-            "fields": {
-                "username": "使用者名稱",
-                "url": "網址",
-                "description": "描述",
-                "contents": "內容",
-                "expiresAt": "過期時間",
-                "lastVisitedAt": "上次訪問時間",
-                "visitCount": "訪問次數",
-                "format": "格式",
-                "maxBitRate": "最大位元率",
-                "updatedAt": "更新於",
-                "createdAt": "創建於",
-                "downloadable": "可下載"
-            },
-            "notifications": {},
-            "actions": {}
-        }
+  "languageName": "繁體中文",
+  "resources": {
+    "song": {
+      "name": "歌曲 |||| 歌曲",
+      "fields": {
+        "albumArtist": "專輯藝人",
+        "duration": "長度",
+        "trackNumber": "#",
+        "playCount": "播放次數",
+        "title": "標題",
+        "artist": "藝人",
+        "album": "專輯",
+        "path": "檔案路徑",
+        "libraryName": "媒體庫",
+        "genre": "曲風",
+        "compilation": "合輯",
+        "year": "發行年份",
+        "size": "檔案大小",
+        "updatedAt": "更新於",
+        "bitRate": "位元率",
+        "bitDepth": "位元深度",
+        "sampleRate": "取樣率",
+        "channels": "聲道",
+        "discSubtitle": "光碟副標題",
+        "starred": "收藏",
+        "comment": "註解",
+        "rating": "評分",
+        "quality": "品質",
+        "bpm": "BPM",
+        "playDate": "上次播放",
+        "createdAt": "建立於",
+        "grouping": "分組",
+        "mood": "情緒",
+        "participants": "其他參與人員",
+        "tags": "額外標籤",
+        "mappedTags": "分類後標籤",
+        "rawTags": "原始標籤",
+        "missing": "遺失"
+      },
+      "actions": {
+        "addToQueue": "加入至播放佇列",
+        "playNow": "立即播放",
+        "addToPlaylist": "加入至播放清單",
+        "showInPlaylist": "在播放清單中顯示",
+        "shuffleAll": "全部隨機播放",
+        "download": "下載",
+        "playNext": "下一首播放",
+        "info": "取得資訊"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "感謝您安裝 Navidrome！",
-            "welcome2": "開始前，請創建一個管理員帳戶",
-            "confirmPassword": "確認密碼",
-            "buttonCreateAdmin": "創建管理員",
-            "auth_check_error": "請登入以訪問更多內容",
-            "user_menu": "配置",
-            "username": "使用者名稱",
-            "password": "密碼",
-            "sign_in": "登入",
-            "sign_in_error": "驗證失敗，請重試",
-            "logout": "登出"
-        },
-        "validation": {
-            "invalidChars": "請使用字母和數字",
-            "passwordDoesNotMatch": "密碼不相符",
-            "required": "必填",
-            "minLength": "必須不少於 %{min} 個字元",
-            "maxLength": "必須不多於 %{max} 個字元",
-            "minValue": "必須不小於 %{min}",
-            "maxValue": "必須不大於 %{max}",
-            "number": "必須為數字",
-            "email": "必須是有效的電子郵件",
-            "oneOf": "必須為: %{options}其中一項",
-            "regex": "必須符合指定的格式（正規表達式）：%{pattern}",
-            "unique": "必須是唯一的",
-            "url": "網址"
-        },
-        "action": {
-            "add_filter": "加入篩選",
-            "add": "加入",
-            "back": "返回",
-            "bulk_actions": "選中 %{smart_count} 項",
-            "cancel": "取消",
-            "clear_input_value": "清除",
-            "clone": "複製",
-            "confirm": "確認",
-            "create": "創建",
-            "delete": "刪除",
-            "edit": "編輯",
-            "export": "匯出",
-            "list": "列表",
-            "refresh": "重新整理",
-            "remove_filter": "清除此條件",
-            "remove": "清除",
-            "save": "保存",
-            "search": "搜尋",
-            "show": "顯示",
-            "sort": "排序",
-            "undo": "撤銷",
-            "expand": "展開",
-            "close": "關閉",
-            "open_menu": "打開選單",
-            "close_menu": "關閉選單",
-            "unselect": "未選擇",
-            "skip": "略過",
-            "bulk_actions_mobile": "%{smart_count}",
-            "share": "分享",
-            "download": "下載"
-        },
-        "boolean": {
-            "true": "是",
-            "false": "否"
-        },
-        "page": {
-            "create": "創建 %{name}",
-            "dashboard": "儀表板",
-            "edit": "%{name} #%{id}",
-            "error": "發生錯誤",
-            "list": "%{name}",
-            "loading": "載入中",
-            "not_found": "未發現",
-            "show": "%{name} #%{id}",
-            "empty": "還沒有 %{name}。",
-            "invite": "你要創建一個嗎？"
-        },
-        "input": {
-            "file": {
-                "upload_several": "拖拽多個文件上傳或點擊選擇一個",
-                "upload_single": "拖拽單個文件上傳或點擊選擇一個"
-            },
-            "image": {
-                "upload_several": "拖拽多個圖片上傳或點擊選擇一個",
-                "upload_single": "拖拽單個圖片上傳或點擊選擇一個"
-            },
-            "references": {
-                "all_missing": "未找到參考數據",
-                "many_missing": "至少有一條參考數據不再可用",
-                "single_missing": "關聯的參考數據不再可用"
-            },
-            "password": {
-                "toggle_visible": "隱藏密碼",
-                "toggle_hidden": "顯示密碼"
-            }
-        },
-        "message": {
-            "about": "關於",
-            "are_you_sure": "確定進行此操作？",
-            "bulk_delete_content": "您確定要刪除 %{name}？ |||| 您確定要刪除 %{smart_count} 項？",
-            "bulk_delete_title": "刪除 %{name} |||| 刪除 %{smart_count} 項 %{name}",
-            "delete_content": "您確定要刪除該項目？",
-            "delete_title": "刪除 %{name} #%{id}",
-            "details": "詳細資訊",
-            "error": "發生一個用戶端錯誤，您的請求無法完成",
-            "invalid_form": "提交內容無效，請檢查錯誤",
-            "loading": "正在載入頁面，請稍候",
-            "no": "否",
-            "not_found": "您輸入的連結格式不對或連結遺失",
-            "yes": "是",
-            "unsaved_changes": "某些更改尚未保存，您確定要離開此頁面嗎？"
-        },
-        "navigation": {
-            "no_results": "無內容",
-            "no_more_results": "頁碼 %{page} 超出邊界，嘗試返回上一頁",
-            "page_out_of_boundaries": "頁碼 %{page} 超出邊界",
-            "page_out_from_end": "已經最後一頁",
-            "page_out_from_begin": "已經是第一頁",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "每頁行數：",
-            "next": "下一頁",
-            "prev": "上一頁",
-            "skip_nav": "跳過"
-        },
-        "notification": {
-            "updated": "項已更新 |||| %{smart_count} 項已更新",
-            "created": "項已創建",
-            "deleted": "項已刪除 |||| %{smart_count} 項已刪除",
-            "bad_item": "不確定的項",
-            "item_doesnt_exist": "項不存在",
-            "http_error": "伺服器通訊錯誤",
-            "data_provider_error": "資料來源錯誤，請檢查控制台的詳細資訊",
-            "i18n_error": "無法載入所選語言",
-            "canceled": "操作已取消",
-            "logged_out": "您的會話已結束，請重新登入",
-            "new_version": "發現新版本！請重新整理視窗"
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "顯示欄目",
-            "layout": "版面",
-            "grid": "框格",
-            "table": "表格"
-        }
+    "album": {
+      "name": "專輯 |||| 專輯",
+      "fields": {
+        "albumArtist": "專輯藝人",
+        "artist": "藝人",
+        "duration": "長度",
+        "songCount": "歌曲數",
+        "playCount": "播放次數",
+        "size": "檔案大小",
+        "name": "名稱",
+        "libraryName": "媒體庫",
+        "genre": "曲風",
+        "compilation": "合輯",
+        "year": "發行年份",
+        "date": "錄製日期",
+        "originalDate": "原始日期",
+        "releaseDate": "發行日期",
+        "releases": "發行",
+        "released": "已發行",
+        "updatedAt": "更新於",
+        "comment": "註解",
+        "rating": "評分",
+        "createdAt": "建立於",
+        "recordLabel": "唱片公司",
+        "catalogNum": "目錄編號",
+        "releaseType": "發行類型",
+        "grouping": "分組",
+        "media": "媒體類型",
+        "mood": "情緒",
+        "missing": "遺失"
+      },
+      "actions": {
+        "playAll": "播放全部",
+        "playNext": "下一首播放",
+        "addToQueue": "加入至播放佇列",
+        "share": "分享",
+        "shuffle": "隨機播放",
+        "addToPlaylist": "加入至播放清單",
+        "download": "下載",
+        "info": "取得資訊"
+      },
+      "lists": {
+        "all": "所有",
+        "random": "隨機",
+        "recentlyAdded": "最近加入",
+        "recentlyPlayed": "最近播放",
+        "mostPlayed": "最常播放",
+        "starred": "收藏",
+        "topRated": "最高評分"
+      }
     },
-    "message": {
-        "note": "註解",
-        "transcodingDisabled": "出於安全原因，禁用了從 Web 介面更改參數。要更改（編輯或新增）轉檔選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
-        "transcodingEnabled": "Navidrome 當前與 %{config} 一起使用，可以通過配置轉檔參數執行任意命令，建議僅在配置轉檔選項時啟用此功能。",
-        "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已添加 %{smart_count} 首歌到播放清單",
-        "noPlaylistsAvailable": "沒有可用的播放清單",
-        "delete_user_title": "刪除使用者 %{name}",
-        "delete_user_content": "您確定要刪除該使用者及其相關數據（包括播放清單和使用者配置）嗎？",
-        "notifications_blocked": "您已在瀏覽器的設置中封鎖了此網站的通知",
-        "notifications_not_available": "此瀏覽器不支援桌面通知",
-        "lastfmLinkSuccess": "Last.fm 成功連接並開啟音樂記錄",
-        "lastfmLinkFailure": "Last.fm 無法連接",
-        "lastfmUnlinkSuccess": "Last.fm 已無連接並停用音樂記錄",
-        "lastfmUnlinkFailure": "Last.fm 無法取消連接",
-        "openIn": {
-            "lastfm": "在 Last.fm 打開",
-            "musicbrainz": "在 MusicBrainz 打開"
-        },
-        "lastfmLink": "繼續閱讀…",
-        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
-        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
-        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
-        "downloadOriginalFormat": "下載原始格式",
-        "shareOriginalFormat": "分享原始格式",
-        "shareDialogTitle": "分享",
-        "shareBatchDialogTitle": "批次分享",
-        "shareSuccess": "分享成功",
-        "shareFailure": "分享失敗",
-        "downloadDialogTitle": "下載",
-        "shareCopyToClipboard": "複製到剪貼簿"
+    "artist": {
+      "name": "藝人 |||| 藝人",
+      "fields": {
+        "name": "名稱",
+        "albumCount": "專輯數",
+        "songCount": "歌曲數",
+        "size": "檔案大小",
+        "playCount": "播放次數",
+        "rating": "評分",
+        "genre": "曲風",
+        "role": "參與角色",
+        "missing": "遺失"
+      },
+      "roles": {
+        "albumartist": "專輯藝人 |||| 專輯藝人",
+        "artist": "藝人 |||| 藝人",
+        "composer": "作曲 |||| 作曲",
+        "conductor": "指揮 |||| 指揮",
+        "lyricist": "作詞 |||| 作詞",
+        "arranger": "編曲 |||| 編曲",
+        "producer": "製作人 |||| 製作人",
+        "director": "導演 |||| 導演",
+        "engineer": "工程師 |||| 工程師",
+        "mixer": "混音師 |||| 混音師",
+        "remixer": "重混師 |||| 重混師",
+        "djmixer": "DJ 混音師 |||| DJ 混音師",
+        "performer": "表演者 |||| 表演者",
+        "maincredit": "專輯藝人或藝人 |||| 專輯藝人或藝人"
+      },
+      "actions": {
+        "topSongs": "熱門歌曲",
+        "shuffle": "隨機播放",
+        "radio": "電台"
+      }
     },
-    "menu": {
-        "library": "音樂庫",
-        "settings": "設定",
-        "version": "版本",
-        "theme": "主題",
-        "personal": {
-            "name": "個人化",
-            "options": {
-                "theme": "主題",
-                "language": "語言",
-                "defaultView": "預設畫面",
-                "desktop_notifications": "桌面通知",
-                "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
-                "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
-                "replaygain": "重播增益",
-                "preAmp": "前置放大器 (dB)",
-                "gain": {
-                    "none": "無",
-                    "album": "專輯增益",
-                    "track": "曲目增益"
-                }
-            }
-        },
-        "albumList": "專輯",
-        "about": "關於",
-        "playlists": "播放清單",
-        "sharedPlaylists": "分享的播放清單"
+    "user": {
+      "name": "使用者 |||| 使用者",
+      "fields": {
+        "userName": "使用者名稱",
+        "isAdmin": "管理員",
+        "lastLoginAt": "上次登入",
+        "lastAccessAt": "上次存取",
+        "updatedAt": "更新於",
+        "name": "名稱",
+        "password": "密碼",
+        "createdAt": "建立於",
+        "changePassword": "變更密碼？",
+        "currentPassword": "目前密碼",
+        "newPassword": "新密碼",
+        "token": "權杖",
+        "libraries": "媒體庫"
+      },
+      "helperTexts": {
+        "name": "您的名稱會在下次登入時生效",
+        "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫"
+      },
+      "notifications": {
+        "created": "使用者已建立",
+        "updated": "使用者已更新",
+        "deleted": "使用者已刪除"
+      },
+      "validation": {
+        "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫"
+      },
+      "message": {
+        "listenBrainzToken": "輸入您的 ListenBrainz 使用者權杖",
+        "clickHereForToken": "點擊此處來獲得您的 ListenBrainz 權杖",
+        "selectAllLibraries": "選取全部媒體庫",
+        "adminAutoLibraries": "管理員預設可存取所有媒體庫"
+      }
     },
     "player": {
-        "playListsText": "播放佇列",
-        "openText": "打開",
-        "closeText": "關閉",
-        "notContentText": "沒有音樂",
-        "clickToPlayText": "點擊播放",
-        "clickToPauseText": "點擊暫停",
-        "nextTrackText": "下一首",
-        "previousTrackText": "上一首",
-        "reloadText": "重新播放",
-        "volumeText": "音量",
-        "toggleLyricText": "切換歌詞",
-        "toggleMiniModeText": "最小化",
-        "destroyText": "關閉",
-        "downloadText": "下載",
-        "removeAudioListsText": "清空播放佇列",
-        "clickToDeleteText": "點擊刪除 %{name}",
-        "emptyLyricText": "無歌詞",
-        "playModeText": {
-            "order": "順序播放",
-            "orderLoop": "列表循環",
-            "singleLoop": "單曲循環",
-            "shufflePlay": "隨機播放"
-        }
+      "name": "播放器 |||| 播放器",
+      "fields": {
+        "name": "名稱",
+        "transcodingId": "轉碼",
+        "maxBitRate": "最大位元率",
+        "client": "客戶端",
+        "userName": "使用者名稱",
+        "lastSeen": "上次上線",
+        "reportRealPath": "回報實際路徑",
+        "scrobbleEnabled": "傳送音樂記錄至外部服務"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "主頁",
-            "source": "原始碼",
-            "featureRequests": "功能請求"
-        }
+    "transcoding": {
+      "name": "轉碼 |||| 轉碼",
+      "fields": {
+        "name": "名稱",
+        "targetFormat": "目標格式",
+        "defaultBitRate": "預設位元率",
+        "command": "指令"
+      }
     },
-    "activity": {
-        "title": "運作狀況",
-        "totalScanned": "已完成掃描的目錄",
-        "quickScan": "快速掃描",
-        "fullScan": "完全掃描",
-        "serverUptime": "伺服器已運作時間",
-        "serverDown": "伺服器離線"
+    "playlist": {
+      "name": "播放清單 |||| 播放清單",
+      "fields": {
+        "name": "名稱",
+        "duration": "長度",
+        "ownerName": "擁有者",
+        "public": "公開",
+        "updatedAt": "更新於",
+        "createdAt": "建立於",
+        "songCount": "歌曲數",
+        "comment": "註解",
+        "sync": "自動匯入",
+        "path": "匯入來源"
+      },
+      "actions": {
+        "selectPlaylist": "選取播放清單：",
+        "addNewPlaylist": "建立「%{name}」",
+        "export": "匯出",
+        "saveQueue": "將播放佇列儲存到播放清單",
+        "makePublic": "設為公開",
+        "makePrivate": "設為私人",
+        "searchOrCreate": "搜尋播放清單，或輸入名稱來新建…",
+        "pressEnterToCreate": "按 Enter 鍵建立新的播放清單",
+        "removeFromSelection": "移除選取項目"
+      },
+      "message": {
+        "duplicate_song": "加入重複的歌曲",
+        "song_exist": "有重複歌曲正要加入播放清單，您要加入或略過重複歌曲？",
+        "noPlaylistsFound": "找不到播放清單",
+        "noPlaylists": "暫無播放清單"
+      }
     },
-    "help": {
-        "title": "Navidrome 快捷鍵",
-        "hotkeys": {
-            "show_help": "顯示此幫助",
-            "toggle_menu": "顯示/隱藏選單側欄",
-            "toggle_play": "播放/暫停",
-            "prev_song": "上一首歌",
-            "next_song": "下一首歌",
-            "vol_up": "提高音量",
-            "vol_down": "降低音量",
-            "toggle_love": "添加或移除星標",
-            "current_song": "目前歌曲"
-        }
+    "radio": {
+      "name": "電台 |||| 電台",
+      "fields": {
+        "name": "名稱",
+        "streamUrl": "串流網址",
+        "homePageUrl": "首頁網址",
+        "updatedAt": "更新於",
+        "createdAt": "建立於"
+      },
+      "actions": {
+        "playNow": "立即播放"
+      }
+    },
+    "share": {
+      "name": "分享 |||| 分享",
+      "fields": {
+        "username": "分享者",
+        "url": "網址",
+        "description": "描述",
+        "downloadable": "允許下載？",
+        "contents": "內容",
+        "expiresAt": "過期時間",
+        "lastVisitedAt": "上次造訪時間",
+        "visitCount": "造訪次數",
+        "format": "格式",
+        "maxBitRate": "最大位元率",
+        "updatedAt": "更新於",
+        "createdAt": "建立於"
+      },
+      "notifications": {},
+      "actions": {}
+    },
+    "missing": {
+      "name": "遺失檔案 |||| 遺失檔案",
+      "empty": "無遺失檔案",
+      "fields": {
+        "path": "路徑",
+        "size": "檔案大小",
+        "libraryName": "媒體庫",
+        "updatedAt": "遺失於"
+      },
+      "actions": {
+        "remove": "刪除",
+        "remove_all": "刪除所有"
+      },
+      "notifications": {
+        "removed": "遺失檔案已刪除"
+      }
+    },
+    "library": {
+      "name": "媒體庫 |||| 媒體庫",
+      "fields": {
+        "name": "名稱",
+        "path": "路徑",
+        "remotePath": "遠端路徑",
+        "lastScanAt": "上次掃描",
+        "songCount": "歌曲",
+        "albumCount": "專輯",
+        "artistCount": "藝人",
+        "totalSongs": "歌曲",
+        "totalAlbums": "專輯",
+        "totalArtists": "藝人",
+        "totalFolders": "資料夾",
+        "totalFiles": "檔案",
+        "totalMissingFiles": "遺失檔案",
+        "totalSize": "總大小",
+        "totalDuration": "時長",
+        "defaultNewUsers": "新使用者預設媒體庫",
+        "createdAt": "建立於",
+        "updatedAt": "更新於"
+      },
+      "sections": {
+        "basic": "基本資訊",
+        "statistics": "統計"
+      },
+      "actions": {
+        "scan": "掃描媒體庫",
+        "manageUsers": "管理使用者權限",
+        "viewDetails": "查看詳細資料"
+      },
+      "notifications": {
+        "created": "成功建立媒體庫",
+        "updated": "成功更新媒體庫",
+        "deleted": "成功刪除媒體庫",
+        "scanStarted": "開始掃描媒體庫",
+        "scanCompleted": "媒體庫掃描完成"
+      },
+      "validation": {
+        "nameRequired": "請輸入媒體庫名稱",
+        "pathRequired": "請提供媒體庫路徑",
+        "pathNotDirectory": "媒體庫路徑必須為目錄",
+        "pathNotFound": "媒體庫路徑不存在",
+        "pathNotAccessible": "無法存取媒體庫路徑",
+        "pathInvalid": "媒體庫路徑無效"
+      },
+      "messages": {
+        "deleteConfirm": "您確定要刪除此媒體庫嗎？這將刪除所有相關資料和使用者存取權限。",
+        "scanInProgress": "正在掃描...",
+        "noLibrariesAssigned": "沒有為該使用者指派任何媒體庫"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "感謝您安裝 Navidrome！",
+      "welcome2": "開始前，請先建立一個管理員帳號",
+      "confirmPassword": "確認密碼",
+      "buttonCreateAdmin": "建立管理員",
+      "auth_check_error": "請登入以繼續",
+      "user_menu": "個人檔案",
+      "username": "使用者名稱",
+      "password": "密碼",
+      "sign_in": "登入",
+      "sign_in_error": "驗證失敗，請重試",
+      "logout": "登出",
+      "insightsCollectionNote": "Navidrome 會收集匿名使用資料以協助改善項目。\n點擊[此處]了解更多資訊或選擇退出。"
+    },
+    "validation": {
+      "invalidChars": "請使用字母和數字",
+      "passwordDoesNotMatch": "密碼不相符",
+      "required": "必填",
+      "minLength": "必須不少於 %{min} 個字元",
+      "maxLength": "必須不多於 %{max} 個字元",
+      "minValue": "必須不小於 %{min}",
+      "maxValue": "必須不大於 %{max}",
+      "number": "必須為數字",
+      "email": "必須為有效的電子郵件",
+      "oneOf": "必須為以下其中一項：%{options}",
+      "regex": "必須符合指定的格式（正規表達式）：%{pattern}",
+      "unique": "必須是唯一的",
+      "url": "必須為有效的網址"
+    },
+    "action": {
+      "add_filter": "加入篩選",
+      "add": "加入",
+      "back": "返回",
+      "bulk_actions": "選中 1 項 |||| 選中 %{smart_count} 項",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "cancel": "取消",
+      "clear_input_value": "清除",
+      "clone": "複製",
+      "confirm": "確認",
+      "create": "建立",
+      "delete": "刪除",
+      "edit": "編輯",
+      "export": "匯出",
+      "list": "列表",
+      "refresh": "重新整理",
+      "remove_filter": "清除此條件",
+      "remove": "移除",
+      "save": "儲存",
+      "search": "搜尋",
+      "show": "顯示",
+      "sort": "排序",
+      "undo": "復原",
+      "expand": "展開",
+      "close": "關閉",
+      "open_menu": "開啟選單",
+      "close_menu": "關閉選單",
+      "unselect": "取消選取",
+      "skip": "略過",
+      "share": "分享",
+      "download": "下載"
+    },
+    "boolean": {
+      "true": "是",
+      "false": "否"
+    },
+    "page": {
+      "create": "建立 %{name}",
+      "dashboard": "儀表板",
+      "edit": "%{name} #%{id}",
+      "error": "發生錯誤",
+      "list": "%{name}",
+      "loading": "載入中",
+      "not_found": "找不到",
+      "show": "%{name} #%{id}",
+      "empty": "還沒有 %{name}。",
+      "invite": "您要建立一個嗎？"
+    },
+    "input": {
+      "file": {
+        "upload_several": "拖曳多個檔案上傳或點擊選擇一個",
+        "upload_single": "拖曳單個檔案上傳或點擊選擇一個"
+      },
+      "image": {
+        "upload_several": "拖曳多個圖片上傳或點擊選擇一個",
+        "upload_single": "拖曳單個圖片上傳或點擊選擇一個"
+      },
+      "references": {
+        "all_missing": "未找到參考數據",
+        "many_missing": "至少有一條參考數據不再可用",
+        "single_missing": "關聯的參考數據不再可用"
+      },
+      "password": {
+        "toggle_visible": "隱藏密碼",
+        "toggle_hidden": "顯示密碼"
+      }
+    },
+    "message": {
+      "about": "關於",
+      "are_you_sure": "您確定嗎？",
+      "bulk_delete_content": "您確定要刪除 %{name}？ |||| 您確定要刪除這 %{smart_count} 個項目嗎？",
+      "bulk_delete_title": "刪除 %{name} |||| 刪除 %{smart_count} 項 %{name}",
+      "delete_content": "您確定要刪除該項目？",
+      "delete_title": "刪除 %{name} #%{id}",
+      "details": "詳細資訊",
+      "error": "發生客戶端錯誤，您的請求無法完成",
+      "invalid_form": "提交內容無效，請檢查錯誤",
+      "loading": "正在載入頁面，請稍候",
+      "no": "否",
+      "not_found": "您輸入了錯誤的連結或連結遺失",
+      "yes": "是",
+      "unsaved_changes": "某些更改尚未儲存，您確定要離開此頁面嗎？"
+    },
+    "navigation": {
+      "no_results": "沒有找到結果",
+      "no_more_results": "頁碼 %{page} 超出邊界，嘗試返回上一頁",
+      "page_out_of_boundaries": "頁碼 %{page} 超出邊界",
+      "page_out_from_end": "已經是最後一頁",
+      "page_out_from_begin": "已經是第一頁",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
+      "page_rows_per_page": "每頁項目數：",
+      "next": "下一頁",
+      "prev": "上一頁",
+      "skip_nav": "跳至內容"
+    },
+    "notification": {
+      "updated": "項目已更新 |||| %{smart_count} 項已更新",
+      "created": "項目已建立",
+      "deleted": "項目已刪除 |||| %{smart_count} 項已刪除",
+      "bad_item": "項目不正確",
+      "item_doesnt_exist": "項目不存在",
+      "http_error": "伺服器通訊錯誤",
+      "data_provider_error": "資料來源錯誤，請檢查控制台的詳細資訊",
+      "i18n_error": "無法載入所選語言",
+      "canceled": "操作已取消",
+      "logged_out": "您的工作階段已結束，請重新登入",
+      "new_version": "發現新版本！請重新整理視窗"
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "顯示欄位",
+      "layout": "版面",
+      "grid": "網格",
+      "table": "表格"
+    }
+  },
+  "message": {
+    "note": "注意",
+    "transcodingDisabled": "出於安全原因，已停用了從 Web 介面更改參數。要更改（編輯或新增）轉碼選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
+    "transcodingEnabled": "Navidrome 目前與 %{config} 一起使用，因此可以透過 Web 介面從轉碼設定中執行系統命令。出於安全考慮，我們建議停用此功能，並僅在設定轉碼選項時啟用。",
+    "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已新增 %{smart_count} 首歌到播放清單",
+    "noSimilarSongsFound": "找不到相似歌曲",
+    "noTopSongsFound": "找不到熱門歌曲",
+    "noPlaylistsAvailable": "沒有可用的播放清單",
+    "delete_user_title": "刪除使用者「%{name}」",
+    "delete_user_content": "您確定要刪除此使用者及其所有資料（包括播放清單和偏好設定）嗎？",
+    "remove_missing_title": "刪除遺失檔案",
+    "remove_missing_content": "您確定要從媒體庫中刪除所選的遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括其播放次數和評分。",
+    "remove_all_missing_title": "刪除所有遺失檔案",
+    "remove_all_missing_content": "您確定要從媒體庫中刪除所有遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括它們的播放次數和評分。",
+    "notifications_blocked": "您已在瀏覽器設定中封鎖了此網站的通知",
+    "notifications_not_available": "此瀏覽器不支援桌面通知，或您並非透過 HTTPS 存取 Navidrome",
+    "lastfmLinkSuccess": "已成功連接 Last.fm 並開啟音樂記錄",
+    "lastfmLinkFailure": "無法連接 Last.fm",
+    "lastfmUnlinkSuccess": "已取消 Last.fm 的連接並停用音樂記錄",
+    "lastfmUnlinkFailure": "無法取消 Last.fm 的連接",
+    "listenBrainzLinkSuccess": "已成功以 %{user} 身份連接 ListenBrainz 並開啟音樂記錄",
+    "listenBrainzLinkFailure": "無法連接 ListenBrainz：%{error}",
+    "listenBrainzUnlinkSuccess": "已取消 ListenBrainz 的連接並停用音樂記錄",
+    "listenBrainzUnlinkFailure": "無法取消 ListenBrainz 的連接",
+    "openIn": {
+      "lastfm": "在 Last.fm 中開啟",
+      "musicbrainz": "在 MusicBrainz 中開啟"
+    },
+    "lastfmLink": "查看更多…",
+    "shareOriginalFormat": "分享原始格式",
+    "shareDialogTitle": "分享 %{resource} '%{name}'",
+    "shareBatchDialogTitle": "分享 1 個%{resource} |||| 分享 %{smart_count} 個%{resource}",
+    "shareCopyToClipboard": "複製到剪貼簿：Ctrl+C, Enter",
+    "shareSuccess": "分享成功，連結已複製到剪貼簿：%{url}",
+    "shareFailure": "分享連結複製失敗：%{url}",
+    "downloadDialogTitle": "下載 %{resource} '%{name}' (%{size})",
+    "downloadOriginalFormat": "下載原始格式"
+  },
+  "menu": {
+    "library": "媒體庫",
+    "librarySelector": {
+      "allLibraries": "所有媒體庫 (%{count})",
+      "multipleLibraries": "已選 %{selected} 共 %{total} 媒體庫",
+      "selectLibraries": "選取媒體庫",
+      "none": "無"
+    },
+    "settings": "設定",
+    "version": "版本",
+    "theme": "主題",
+    "personal": {
+      "name": "個人化",
+      "options": {
+        "theme": "主題",
+        "language": "語言",
+        "defaultView": "預設畫面",
+        "desktop_notifications": "桌面通知",
+        "lastfmNotConfigured": "Last.fm API 金鑰未設定",
+        "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
+        "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
+        "replaygain": "重播增益模式",
+        "preAmp": "重播增益前置放大器 (dB)",
+        "gain": {
+          "none": "無",
+          "album": "專輯增益",
+          "track": "曲目增益"
+        }
+      }
+    },
+    "albumList": "專輯",
+    "playlists": "播放清單",
+    "sharedPlaylists": "分享的播放清單",
+    "about": "關於"
+  },
+  "player": {
+    "playListsText": "播放佇列",
+    "openText": "開啟",
+    "closeText": "關閉",
+    "notContentText": "沒有音樂",
+    "clickToPlayText": "點擊播放",
+    "clickToPauseText": "點擊暫停",
+    "nextTrackText": "下一首",
+    "previousTrackText": "上一首",
+    "reloadText": "重新載入",
+    "volumeText": "音量",
+    "toggleLyricText": "切換歌詞",
+    "toggleMiniModeText": "最小化",
+    "destroyText": "關閉",
+    "downloadText": "下載",
+    "removeAudioListsText": "清空播放佇列",
+    "clickToDeleteText": "點擊刪除 %{name}",
+    "emptyLyricText": "無歌詞",
+    "playModeText": {
+      "order": "順序播放",
+      "orderLoop": "循環播放",
+      "singleLoop": "單曲循環",
+      "shufflePlay": "隨機播放"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "首頁",
+      "source": "原始碼",
+      "featureRequests": "功能請求",
+      "lastInsightsCollection": "最近一次洞察資料收集",
+      "insights": {
+        "disabled": "已停用",
+        "waiting": "等待中"
+      }
+    },
+    "tabs": {
+      "about": "關於",
+      "config": "設定"
+    },
+    "config": {
+      "configName": "設定名稱",
+      "environmentVariable": "環境變數",
+      "currentValue": "目前值",
+      "configurationFile": "設定檔案",
+      "exportToml": "匯出設定（TOML 格式）",
+      "exportSuccess": "設定已以 TOML 格式匯出至剪貼簿",
+      "exportFailed": "設定複製失敗",
+      "devFlagsHeader": "開發旗標（可能會更改/刪除）",
+      "devFlagsComment": "這些是實驗性設定，可能會在未來版本中刪除"
+    }
+  },
+  "activity": {
+    "title": "運作狀況",
+    "totalScanned": "已掃描的資料夾總數",
+    "quickScan": "快速掃描",
+    "fullScan": "完全掃描",
+    "serverUptime": "伺服器運作時間",
+    "serverDown": "伺服器已離線",
+    "scanType": "掃描類型",
+    "status": "掃描錯誤",
+    "elapsedTime": "經過時間"
+  },
+  "nowPlaying": {
+    "title": "正在播放",
+    "empty": "無播放內容",
+    "minutesAgo": "1 分鐘前 |||| %{smart_count} 分鐘前"
+  },
+  "help": {
+    "title": "Navidrome 快捷鍵",
+    "hotkeys": {
+      "show_help": "顯示此說明",
+      "toggle_menu": "顯示/隱藏選單側欄",
+      "toggle_play": "播放/暫停",
+      "prev_song": "上一首歌",
+      "next_song": "下一首歌",
+      "current_song": "前往目前歌曲",
+      "vol_up": "提高音量",
+      "vol_down": "降低音量",
+      "toggle_love": "新增此歌曲至收藏"
+    }
+  }
 }
