@@ -315,20 +315,12 @@ type pathResolver struct {
 
 // newPathResolver creates a pathResolver with libraries loaded from the datastore.
 func newPathResolver(ctx context.Context, ds model.DataStore) (*pathResolver, error) {
-	matcher, err := buildLibraryMatcher(ctx, ds)
-	if err != nil {
-		return nil, err
-	}
-	return &pathResolver{matcher: matcher}, nil
-}
-
-// buildLibraryMatcher creates a libraryMatcher with libraries sorted by path length (longest first).
-func buildLibraryMatcher(ctx context.Context, ds model.DataStore) (*libraryMatcher, error) {
 	libs, err := ds.Library(ctx).GetAll()
 	if err != nil {
 		return nil, err
 	}
-	return newLibraryMatcher(libs), nil
+	matcher := newLibraryMatcher(libs)
+	return &pathResolver{matcher: matcher}, nil
 }
 
 // resolvePath determines the absolute path and library path for a playlist entry.

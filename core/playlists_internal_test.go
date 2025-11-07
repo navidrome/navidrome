@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var _ = Describe("buildLibraryMatcher", func() {
+var _ = Describe("libraryMatcher", func() {
 	var ds *tests.MockDataStore
 	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
@@ -22,6 +22,13 @@ var _ = Describe("buildLibraryMatcher", func() {
 		}
 	})
 
+	// Helper function to create a libraryMatcher from the mock datastore
+	createMatcher := func(ds model.DataStore) *libraryMatcher {
+		libs, err := ds.Library(ctx).GetAll()
+		Expect(err).ToNot(HaveOccurred())
+		return newLibraryMatcher(libs)
+	}
+
 	Describe("Longest library path matching", func() {
 		It("matches the longest library path when multiple libraries share a prefix", func() {
 			// Setup libraries with prefix conflicts
@@ -31,8 +38,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 3, Path: "/music-classical/opera"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			// Test that longest path matches first and returns correct library ID
 			testCases := []struct {
@@ -59,8 +65,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/home/user/music-backup"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			// Test that music-backup library is matched correctly
 			libID, libPath := matcher.findLibraryForPath("/home/user/music-backup/track.mp3")
@@ -79,8 +84,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/music-classical"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			// Exact library path should match
 			libID, libPath := matcher.findLibraryForPath("/music-classical")
@@ -96,8 +100,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 4, Path: "/media/audio/classical/baroque"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			testCases := []struct {
 				path            string
@@ -122,8 +125,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 		It("handles empty library list", func() {
 			mockLibRepo.SetData([]model.Library{})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 			Expect(matcher).ToNot(BeNil())
 
 			// Should not match anything
@@ -137,8 +139,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 1, Path: "/music"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			libID, libPath := matcher.findLibraryForPath("/music/track.mp3")
 			Expect(libID).To(Equal(1))
@@ -151,8 +152,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/music(backup)"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 			Expect(matcher).ToNot(BeNil())
 
 			// Special characters should match literally
@@ -170,8 +170,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 3, Path: "/abc"},
 			})
 
-			matcher, err := buildLibraryMatcher(ctx, ds)
-			Expect(err).ToNot(HaveOccurred())
+			matcher := createMatcher(ds)
 
 			// Verify that longer paths match correctly (not cut off by shorter prefix)
 			testCases := []struct {
