@@ -117,7 +117,7 @@ var _ = Describe("Playlists", func() {
 			var tmpDir, plsDir, songsDir string
 
 			BeforeEach(func() {
-				// Create temp directory structure once
+				// Create temp directory structure
 				tmpDir = GinkgoT().TempDir()
 				plsDir = tmpDir + "/playlists"
 				songsDir = tmpDir + "/songs"
@@ -160,8 +160,66 @@ var _ = Describe("Playlists", func() {
 				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
+				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3")) // From songsDir library
+				Expect(pls.Tracks[1].Path).To(Equal("def.mp3")) // From plsDir library
+			})
+
+			It("ignores paths that point outside all libraries", func() {
+				// Create a temporary playlist file with path outside libraries
+				plsContent := "#PLAYLIST:Outside Test\n../../outside.mp3\nabc.mp3"
+				plsFile := plsDir + "/test.m3u"
+				Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+				plsFolder := &model.Folder{
+					ID:          "2",
+					LibraryID:   2,
+					LibraryPath: plsDir,
+					Path:        "",
+					Name:        "",
+				}
+
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				// Should only find abc.mp3, not outside.mp3
+				Expect(pls.Tracks).To(HaveLen(1))
 				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3"))
-				Expect(pls.Tracks[1].Path).To(Equal("def.mp3"))
+			})
+
+			It("handles relative paths with multiple '../' components", func() {
+				// Create a nested structure: tmpDir/playlists/subfolder/test.m3u
+				subFolder := plsDir + "/subfolder"
+				Expect(os.Mkdir(subFolder, 0755)).To(Succeed())
+
+				// Create the media file in the subfolder directory
+				// The mock will return it as "def.mp3" relative to plsDir
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{
+					data: []string{
+						"abc.mp3", // From songsDir library
+						"def.mp3", // From plsDir library root
+					},
+				}
+
+				// From subfolder, ../../songs/abc.mp3 should resolve to songs library
+				// ../def.mp3 should resolve to plsDir/def.mp3
+				plsContent := "#PLAYLIST:Nested Test\n../../songs/abc.mp3\n../def.mp3"
+				plsFile := subFolder + "/test.m3u"
+				Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+				// The folder: AbsolutePath = LibraryPath + Path + Name
+				// So for /playlists/subfolder: LibraryPath=/playlists, Path="", Name="subfolder"
+				plsFolder := &model.Folder{
+					ID:          "2",
+					LibraryID:   2,
+					LibraryPath: plsDir,
+					Path:        "",          // Empty because subfolder is directly under library root
+					Name:        "subfolder", // The folder name
+				}
+
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(2))
+				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3")) // From songsDir library
+				Expect(pls.Tracks[1].Path).To(Equal("def.mp3")) // From plsDir library root
 			})
 		})
 	})

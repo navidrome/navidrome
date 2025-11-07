@@ -233,7 +233,9 @@ func normalizePathForComparison(path string) string {
 	return strings.ToLower(norm.NFC.String(path))
 }
 
-// TODO This won't work for multiple libraries
+// normalizePaths converts playlist file paths to library-relative paths.
+// For relative paths, it resolves them to absolute paths first, then determines which
+// library they belong to. This allows playlists to reference files across library boundaries.
 func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, folder *model.Folder, lines []string) ([]string, error) {
 	libRegex, err := s.compileLibraryPaths(ctx)
 	if err != nil {
@@ -246,15 +248,21 @@ func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, fol
 		var filePath string
 
 		if folder != nil && !filepath.IsAbs(line) {
-			// For relative paths, resolve them to absolute first
+			// Two-step resolution for relative paths:
+			// 1. Resolve relative path to absolute path based on playlist location
+			//    Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
+			//             resolves to /music/songs/abc.mp3
 			filePath = filepath.Join(folder.AbsolutePath(), line)
 			filePath = filepath.Clean(filePath)
-			// Try to find which library this resolved path belongs to
+
+			// 2. Determine which library this absolute path belongs to using regex matching
+			//    This allows playlists to reference files in different libraries
 			if libPath = libRegex.FindString(filePath); libPath == "" {
-				// If not found in regex, fallback to the playlist's library
+				// If regex doesn't match any library, check if it's in the playlist's library
 				libPath = folder.LibraryPath
-				// Verify the file is actually in a library by checking if we can get a relative path
-				if _, err := filepath.Rel(libPath, filePath); err != nil {
+				// Verify the file is actually in this library (reject paths with ..)
+				rel, err := filepath.Rel(libPath, filePath)
+				if err != nil || strings.HasPrefix(rel, "..") {
 					log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
 					continue
 				}
