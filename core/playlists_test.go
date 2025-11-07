@@ -265,6 +265,71 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Tracks[0].Path).To(Equal("rock.mp3")) // From music library
 				Expect(pls.Tracks[1].Path).To(Equal("bach.mp3")) // From music-classical library (not music!)
 			})
+
+			It("correctly handles identical relative paths from different libraries", func() {
+				// This tests the bug where two libraries have files at the same relative path
+				// and only one appears in the playlist
+				tmpDir := GinkgoT().TempDir()
+				musicDir := tmpDir + "/music"
+				classicalDir := tmpDir + "/classical"
+				Expect(os.Mkdir(musicDir, 0755)).To(Succeed())
+				Expect(os.Mkdir(classicalDir, 0755)).To(Succeed())
+				Expect(os.MkdirAll(musicDir+"/album", 0755)).To(Succeed())
+				Expect(os.MkdirAll(classicalDir+"/album", 0755)).To(Succeed())
+				// Create placeholder files so paths resolve correctly
+				Expect(os.WriteFile(musicDir+"/album/track.mp3", []byte{}, 0600)).To(Succeed())
+				Expect(os.WriteFile(classicalDir+"/album/track.mp3", []byte{}, 0600)).To(Succeed())
+
+				// Both libraries have a file at "album/track.mp3"
+				mockLibRepo.SetData([]model.Library{
+					{ID: 1, Path: musicDir},
+					{ID: 2, Path: classicalDir},
+				})
+
+				// Mock returns files with same relative path but different IDs and library IDs
+				// Keys use the library-qualified format: "libraryID:path"
+				ds.MockedMediaFile = &mockedMediaFileRepo{
+					data: map[string]model.MediaFile{
+						"1:album/track.mp3": {ID: "music-track", Path: "album/track.mp3", LibraryID: 1, Title: "Rock Song"},
+						"2:album/track.mp3": {ID: "classical-track", Path: "album/track.mp3", LibraryID: 2, Title: "Classical Piece"},
+					},
+				}
+				// Recreate playlists service to pick up new mock
+				ps = core.NewPlaylists(ds)
+
+				// Create playlist in music library that references both tracks
+				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
+				plsFile := musicDir + "/test.m3u"
+				Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+				plsFolder := &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: musicDir,
+					Path:        "",
+					Name:        "",
+				}
+
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should have BOTH tracks, not just one
+				Expect(pls.Tracks).To(HaveLen(2), "Playlist should contain both tracks with same relative path")
+
+				// Verify we got tracks from DIFFERENT libraries (the key fix!)
+				// Collect the library IDs
+				libIDs := make(map[int]bool)
+				for _, track := range pls.Tracks {
+					libIDs[track.LibraryID] = true
+				}
+				Expect(libIDs).To(HaveLen(2), "Tracks should come from two different libraries")
+				Expect(libIDs[1]).To(BeTrue(), "Should have track from library 1")
+				Expect(libIDs[2]).To(BeTrue(), "Should have track from library 2")
+
+				// Both tracks should have the same relative path
+				Expect(pls.Tracks[0].Path).To(Equal("album/track.mp3"))
+				Expect(pls.Tracks[1].Path).To(Equal("album/track.mp3"))
+			})
 		})
 	})
 
@@ -431,17 +496,43 @@ var _ = Describe("Playlists", func() {
 	})
 })
 
-// mockedMediaFileRepo's FindByPaths method returns a list of MediaFiles with the same paths as the input
+// mockedMediaFileRepo's FindByPaths method mimics the real implementation.
+// If data map is provided, it looks up files using the path as the key.
+// Otherwise, it creates MediaFile entries from the input paths.
 type mockedMediaFileRepo struct {
 	model.MediaFileRepository
+	data map[string]model.MediaFile
 }
 
 func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
+
+	// If data map is provided, use it to look up files
+	if r.data != nil {
+		for _, path := range paths {
+			// Look up by the path key (test should use "path:libraryID" format for keys)
+			if mf, ok := r.data[path]; ok {
+				mfs = append(mfs, mf)
+			}
+		}
+		return mfs, nil
+	}
+
+	// Fallback: create MediaFile entries from paths
+	// Parse library-qualified format: "libraryID:path"
 	for idx, path := range paths {
+		libraryID := 1 // Default library ID
+		actualPath := path
+		if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
+			if libID, err := strconv.Atoi(parts[0]); err == nil {
+				libraryID = libID
+				actualPath = parts[1]
+			}
+		}
 		mfs = append(mfs, model.MediaFile{
-			ID:   strconv.Itoa(idx),
-			Path: path,
+			ID:        strconv.Itoa(idx),
+			Path:      actualPath,
+			LibraryID: libraryID,
 		})
 	}
 	return mfs, nil
@@ -453,13 +544,46 @@ type mockedMediaFileFromListRepo struct {
 	data []string
 }
 
-func (r *mockedMediaFileFromListRepo) FindByPaths([]string) (model.MediaFiles, error) {
+func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
+
+	// Build a map of requested paths with their library IDs (handle both qualified and unqualified)
+	type pathRequest struct {
+		path      string
+		libraryID int
+		qualified bool
+	}
+	requests := make([]pathRequest, 0, len(paths))
+	for _, path := range paths {
+		req := pathRequest{path: path, libraryID: 1, qualified: false}
+		if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
+			if libID, err := strconv.Atoi(parts[0]); err == nil {
+				req.libraryID = libID
+				req.path = parts[1]
+				req.qualified = true
+			}
+		}
+		requests = append(requests, req)
+	}
+
+	// Return files that match the requests
+	// Need to use normalized comparison to handle Unicode normalization differences
+	normalizeForComparison := func(s string) string {
+		return strings.ToLower(norm.NFC.String(s))
+	}
+
 	for idx, path := range r.data {
-		mfs = append(mfs, model.MediaFile{
-			ID:   strconv.Itoa(idx),
-			Path: path,
-		})
+		normalizedPath := normalizeForComparison(path)
+		for _, req := range requests {
+			if normalizeForComparison(req.path) == normalizedPath {
+				mfs = append(mfs, model.MediaFile{
+					ID:        strconv.Itoa(idx),
+					Path:      path,
+					LibraryID: req.libraryID,
+				})
+				break
+			}
+		}
 	}
 	return mfs, nil
 }

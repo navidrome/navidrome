@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var _ = Describe("compileLibraryPaths", func() {
+var _ = Describe("buildLibraryMatcher", func() {
 	var ds *tests.MockDataStore
 	var mockLibRepo *tests.MockLibraryRepo
 	var ps *playlists
@@ -33,25 +33,25 @@ var _ = Describe("compileLibraryPaths", func() {
 				{ID: 3, Path: "/music-classical/opera"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Test that longest path matches first
-			// Note: The regex pattern ^path(?:/|$) will match the path plus the trailing /
+			// Test that longest path matches first and returns correct library ID
 			testCases := []struct {
-				path     string
-				expected string
+				path            string
+				expectedLibID   int
+				expectedLibPath string
 			}{
-				{"/music-classical/opera/track.mp3", "/music-classical/opera/"},
-				{"/music-classical/track.mp3", "/music-classical/"},
-				{"/music/track.mp3", "/music/"},
-				{"/music-classical/opera/", "/music-classical/opera/"}, // Trailing slash
-				{"/music-classical/opera", "/music-classical/opera"},   // Exact match (no trailing /)
+				{"/music-classical/opera/track.mp3", 3, "/music-classical/opera"},
+				{"/music-classical/track.mp3", 2, "/music-classical"},
+				{"/music/track.mp3", 1, "/music"},
+				{"/music-classical/opera/subdir/file.mp3", 3, "/music-classical/opera"},
 			}
 
 			for _, tc := range testCases {
-				matched := libRegex.FindString(tc.path)
-				Expect(matched).To(Equal(tc.expected), "Path %s should match %s, but got %s", tc.path, tc.expected, matched)
+				libID, libPath := matcher.findLibraryForPath(tc.path)
+				Expect(libID).To(Equal(tc.expectedLibID), "Path %s should match library ID %d, but got %d", tc.path, tc.expectedLibID, libID)
+				Expect(libPath).To(Equal(tc.expectedLibPath), "Path %s should match library path %s, but got %s", tc.path, tc.expectedLibPath, libPath)
 			}
 		})
 
@@ -61,16 +61,18 @@ var _ = Describe("compileLibraryPaths", func() {
 				{ID: 2, Path: "/home/user/music-backup"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Test that music-backup library is matched correctly
-			matched := libRegex.FindString("/home/user/music-backup/track.mp3")
-			Expect(matched).To(Equal("/home/user/music-backup/"))
+			libID, libPath := matcher.findLibraryForPath("/home/user/music-backup/track.mp3")
+			Expect(libID).To(Equal(2))
+			Expect(libPath).To(Equal("/home/user/music-backup"))
 
 			// Test that music library is still matched correctly
-			matched = libRegex.FindString("/home/user/music/track.mp3")
-			Expect(matched).To(Equal("/home/user/music/"))
+			libID, libPath = matcher.findLibraryForPath("/home/user/music/track.mp3")
+			Expect(libID).To(Equal(1))
+			Expect(libPath).To(Equal("/home/user/music"))
 		})
 
 		It("matches path that is exactly the library root", func() {
@@ -79,12 +81,13 @@ var _ = Describe("compileLibraryPaths", func() {
 				{ID: 2, Path: "/music-classical"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Exact library path should match (no trailing /)
-			matched := libRegex.FindString("/music-classical")
-			Expect(matched).To(Equal("/music-classical"))
+			// Exact library path should match
+			libID, libPath := matcher.findLibraryForPath("/music-classical")
+			Expect(libID).To(Equal(2))
+			Expect(libPath).To(Equal("/music-classical"))
 		})
 
 		It("handles complex nested library structures", func() {
@@ -95,22 +98,24 @@ var _ = Describe("compileLibraryPaths", func() {
 				{ID: 4, Path: "/media/audio/classical/baroque"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			testCases := []struct {
-				path     string
-				expected string
+				path            string
+				expectedLibID   int
+				expectedLibPath string
 			}{
-				{"/media/audio/classical/baroque/bach/track.mp3", "/media/audio/classical/baroque/"},
-				{"/media/audio/classical/mozart/track.mp3", "/media/audio/classical/"},
-				{"/media/audio/rock/track.mp3", "/media/audio/"},
-				{"/media/video/movie.mp4", "/media/"},
+				{"/media/audio/classical/baroque/bach/track.mp3", 4, "/media/audio/classical/baroque"},
+				{"/media/audio/classical/mozart/track.mp3", 3, "/media/audio/classical"},
+				{"/media/audio/rock/track.mp3", 2, "/media/audio"},
+				{"/media/video/movie.mp4", 1, "/media"},
 			}
 
 			for _, tc := range testCases {
-				matched := libRegex.FindString(tc.path)
-				Expect(matched).To(Equal(tc.expected), "Path %s should match %s, but got %s", tc.path, tc.expected, matched)
+				libID, libPath := matcher.findLibraryForPath(tc.path)
+				Expect(libID).To(Equal(tc.expectedLibID), "Path %s should match library ID %d", tc.path, tc.expectedLibID)
+				Expect(libPath).To(Equal(tc.expectedLibPath), "Path %s should match library path %s", tc.path, tc.expectedLibPath)
 			}
 		})
 	})
@@ -119,13 +124,14 @@ var _ = Describe("compileLibraryPaths", func() {
 		It("handles empty library list", func() {
 			mockLibRepo.SetData([]model.Library{})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(libRegex).ToNot(BeNil())
+			Expect(matcher).ToNot(BeNil())
 
 			// Should not match anything
-			matched := libRegex.FindString("/music/track.mp3")
-			Expect(matched).To(BeEmpty())
+			libID, libPath := matcher.findLibraryForPath("/music/track.mp3")
+			Expect(libID).To(Equal(0))
+			Expect(libPath).To(BeEmpty())
 		})
 
 		It("handles single library", func() {
@@ -133,54 +139,55 @@ var _ = Describe("compileLibraryPaths", func() {
 				{ID: 1, Path: "/music"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			matched := libRegex.FindString("/music/track.mp3")
-			Expect(matched).To(Equal("/music/"))
+			libID, libPath := matcher.findLibraryForPath("/music/track.mp3")
+			Expect(libID).To(Equal(1))
+			Expect(libPath).To(Equal("/music"))
 		})
 
-		It("handles libraries with special regex characters", func() {
+		It("handles libraries with special characters in paths", func() {
 			mockLibRepo.SetData([]model.Library{
 				{ID: 1, Path: "/music[test]"},
 				{ID: 2, Path: "/music(backup)"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(libRegex).ToNot(BeNil())
+			Expect(matcher).ToNot(BeNil())
 
-			// Special characters should be escaped and match literally
-			matched := libRegex.FindString("/music[test]/track.mp3")
-			Expect(matched).To(Equal("/music[test]/"))
+			// Special characters should match literally
+			libID, libPath := matcher.findLibraryForPath("/music[test]/track.mp3")
+			Expect(libID).To(Equal(1))
+			Expect(libPath).To(Equal("/music[test]"))
 		})
 	})
 
-	Describe("Regex pattern validation", func() {
-		It("ensures regex alternation respects order by testing actual matching behavior", func() {
+	Describe("Path matching order", func() {
+		It("ensures longest paths match first", func() {
 			mockLibRepo.SetData([]model.Library{
 				{ID: 1, Path: "/a"},
 				{ID: 2, Path: "/ab"},
 				{ID: 3, Path: "/abc"},
 			})
 
-			libRegex, err := ps.compileLibraryPaths(ctx)
+			matcher, err := ps.buildLibraryMatcher(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that longer paths match correctly (not cut off by shorter prefix)
-			// If ordering is wrong, /ab would match before /abc for path "/abc/file"
 			testCases := []struct {
-				path     string
-				expected string
+				path          string
+				expectedLibID int
 			}{
-				{"/abc/file.mp3", "/abc/"},
-				{"/ab/file.mp3", "/ab/"},
-				{"/a/file.mp3", "/a/"},
+				{"/abc/file.mp3", 3},
+				{"/ab/file.mp3", 2},
+				{"/a/file.mp3", 1},
 			}
 
 			for _, tc := range testCases {
-				matched := libRegex.FindString(tc.path)
-				Expect(matched).To(Equal(tc.expected), "Path %s should match %s", tc.path, tc.expected)
+				libID, _ := matcher.findLibraryForPath(tc.path)
+				Expect(libID).To(Equal(tc.expectedLibID), "Path %s should match library ID %d", tc.path, tc.expectedLibID)
 			}
 		})
 	})

@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -206,12 +205,25 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
+		// Build lookup map with library-qualified keys
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			existing[normalizePathForComparison(found[idx].Path)] = idx
+			// Key format: "libraryID:path" (normalized)
+			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, normalizePathForComparison(found[idx].Path))
+			existing[key] = idx
 		}
 		for _, path := range paths {
-			idx, ok := existing[normalizePathForComparison(path)]
+			// Parse the library-qualified path
+			normalizedPath := path
+			if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
+				// Path is already qualified: "libraryID:path"
+				normalizedPath = parts[0] + ":" + normalizePathForComparison(parts[1])
+			} else {
+				// Unqualified path (backward compatibility)
+				normalizedPath = normalizePathForComparison(path)
+			}
+
+			idx, ok := existing[normalizedPath]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
@@ -239,131 +251,168 @@ func normalizePathForComparison(path string) string {
 type pathResolution struct {
 	absolutePath string
 	libraryPath  string
+	libraryID    int
 	valid        bool
 }
 
-// toRelativePath converts the absolute path to a library-relative path.
-func (r pathResolution) toRelativePath() (string, error) {
+// toLibraryQualifiedPath converts the absolute path to a library-qualified path format: "libraryID:relativePath".
+func (r pathResolution) toLibraryQualifiedPath() (string, error) {
 	if !r.valid {
 		return "", fmt.Errorf("invalid path resolution")
 	}
-	return filepath.Rel(r.libraryPath, r.absolutePath)
+	relativePath, err := filepath.Rel(r.libraryPath, r.absolutePath)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d:%s", r.libraryID, relativePath), nil
 }
 
 // newValidResolution creates a valid path resolution.
-func newValidResolution(absolutePath, libraryPath string) pathResolution {
+func newValidResolution(absolutePath, libraryPath string, libraryID int) pathResolution {
 	return pathResolution{
 		absolutePath: absolutePath,
 		libraryPath:  libraryPath,
+		libraryID:    libraryID,
 		valid:        true,
 	}
 }
 
-// normalizePaths converts playlist file paths to library-relative paths.
+// libraryMatcher holds sorted libraries with cleaned paths for efficient path matching.
+type libraryMatcher struct {
+	libraries    model.Libraries
+	cleanedPaths []string
+}
+
+// findLibraryForPath finds which library contains the given absolute path.
+// Returns library ID and path, or 0 and empty string if not found.
+func (lm *libraryMatcher) findLibraryForPath(absolutePath string) (int, string) {
+	// Check sorted libraries (longest path first) to find the best match
+	for i, cleanLibPath := range lm.cleanedPaths {
+		// Check if absolutePath is under this library path
+		if strings.HasPrefix(absolutePath, cleanLibPath) {
+			// Ensure it's a proper path boundary (not just a prefix)
+			if len(absolutePath) == len(cleanLibPath) || absolutePath[len(cleanLibPath)] == filepath.Separator {
+				return lm.libraries[i].ID, cleanLibPath
+			}
+		}
+	}
+	return 0, ""
+}
+
+// newLibraryMatcher creates a libraryMatcher with libraries sorted by path length (longest first).
+// This ensures correct matching when library paths are prefixes of each other.
+// Example: /music-classical must be checked before /music
+// Otherwise, /music-classical/track.mp3 would match /music instead of /music-classical
+func newLibraryMatcher(libs model.Libraries) *libraryMatcher {
+	// Sort libraries by path length (descending) to ensure longest paths match first.
+	slices.SortFunc(libs, func(i, j model.Library) int {
+		return cmp.Compare(len(j.Path), len(i.Path)) // Reverse order for descending
+	})
+
+	// Pre-clean all library paths once for efficient matching
+	cleanedPaths := make([]string, len(libs))
+	for i, lib := range libs {
+		cleanedPaths[i] = filepath.Clean(lib.Path)
+	}
+	return &libraryMatcher{
+		libraries:    libs,
+		cleanedPaths: cleanedPaths,
+	}
+}
+
+// normalizePaths converts playlist file paths to library-qualified paths (format: "libraryID:relativePath").
 // For relative paths, it resolves them to absolute paths first, then determines which
 // library they belong to. This allows playlists to reference files across library boundaries.
 func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, folder *model.Folder, lines []string) ([]string, error) {
-	libRegex, err := s.compileLibraryPaths(ctx)
+	matcher, err := s.buildLibraryMatcher(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	res := make([]string, 0, len(lines))
 	for idx, line := range lines {
-		resolution := s.resolvePath(line, folder, libRegex)
+		resolution := s.resolvePath(line, folder, matcher)
 
 		if !resolution.valid {
 			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
 			continue
 		}
 
-		relativePath, err := resolution.toRelativePath()
+		qualifiedPath, err := resolution.toLibraryQualifiedPath()
 		if err != nil {
-			log.Debug(ctx, "Error getting relative path", "playlist", pls.Name, "path", line,
+			log.Debug(ctx, "Error getting library-qualified path", "playlist", pls.Name, "path", line,
 				"libPath", resolution.libraryPath, "filePath", resolution.absolutePath, err)
 			continue
 		}
 
-		res = append(res, relativePath)
+		res = append(res, qualifiedPath)
 	}
-	return slice.Map(res, filepath.ToSlash), nil
+	// Convert path separators to forward slashes (only the path part, not the library ID prefix)
+	return slice.Map(res, func(qp string) string {
+		parts := strings.SplitN(qp, ":", 2)
+		if len(parts) == 2 {
+			return parts[0] + ":" + filepath.ToSlash(parts[1])
+		}
+		return filepath.ToSlash(qp)
+	}), nil
 }
 
 // resolvePath determines the absolute path and library path for a playlist entry.
-func (s *playlists) resolvePath(line string, folder *model.Folder, libRegex *regexp.Regexp) pathResolution {
+func (s *playlists) resolvePath(line string, folder *model.Folder, matcher *libraryMatcher) pathResolution {
 	if folder != nil && !filepath.IsAbs(line) {
-		return s.resolveRelativePath(line, folder, libRegex)
+		return s.resolveRelativePath(line, folder, matcher)
 	}
-	return s.resolveAbsolutePath(line, libRegex)
+	return s.resolveAbsolutePath(line, matcher)
 }
 
 // resolveRelativePath handles relative paths by converting them to absolute paths
 // and finding their library location. This enables cross-library playlist references.
-func (s *playlists) resolveRelativePath(line string, folder *model.Folder, libRegex *regexp.Regexp) pathResolution {
+func (s *playlists) resolveRelativePath(line string, folder *model.Folder, matcher *libraryMatcher) pathResolution {
 	// Step 1: Resolve relative path to absolute path based on playlist location
 	// Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
 	//          resolves to /music/songs/abc.mp3
 	absolutePath := filepath.Clean(filepath.Join(folder.AbsolutePath(), line))
 
-	// Step 2: Determine which library this absolute path belongs to using regex matching
-	if libPath := libRegex.FindString(absolutePath); libPath != "" {
-		return newValidResolution(absolutePath, libPath)
+	// Step 2: Determine which library this absolute path belongs to
+	libID, libPath := matcher.findLibraryForPath(absolutePath)
+	if libID != 0 {
+		return newValidResolution(absolutePath, libPath, libID)
 	}
 
 	// Fallback: Check if it's in the playlist's own library
-	return s.validatePathInLibrary(absolutePath, folder.LibraryPath)
+	return s.validatePathInLibrary(absolutePath, folder.LibraryPath, folder.LibraryID)
 }
 
 // resolveAbsolutePath handles absolute paths by matching them against library paths.
-func (s *playlists) resolveAbsolutePath(line string, libRegex *regexp.Regexp) pathResolution {
+func (s *playlists) resolveAbsolutePath(line string, matcher *libraryMatcher) pathResolution {
 	cleanPath := filepath.Clean(line)
-	libPath := libRegex.FindString(cleanPath)
+	libID, libPath := matcher.findLibraryForPath(cleanPath)
 
-	if libPath == "" {
+	if libID == 0 {
 		return pathResolution{valid: false}
 	}
-	return newValidResolution(cleanPath, libPath)
+	return newValidResolution(cleanPath, libPath, libID)
 }
 
 // validatePathInLibrary verifies that an absolute path belongs to the specified library.
 // It rejects paths that escape the library using ".." segments.
-func (s *playlists) validatePathInLibrary(absolutePath, libraryPath string) pathResolution {
+func (s *playlists) validatePathInLibrary(absolutePath, libraryPath string, libraryID int) pathResolution {
 	rel, err := filepath.Rel(libraryPath, absolutePath)
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return pathResolution{valid: false}
 	}
 
-	return newValidResolution(absolutePath, libraryPath)
+	return newValidResolution(absolutePath, libraryPath, libraryID)
 }
 
-func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, error) {
+// buildLibraryMatcher creates a libraryMatcher with libraries sorted by path length (longest first).
+func (s *playlists) buildLibraryMatcher(ctx context.Context) (*libraryMatcher, error) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
 		return nil, err
 	}
 
-	// Sort libraries by path length (descending) to ensure longest paths match first.
-	// This prevents shorter paths that are prefixes from incorrectly matching.
-	// Example: /music-classical must be checked before /music
-	// Otherwise, /music-classical/track.mp3 would match /music instead of /music-classical
-	slices.SortFunc(libs, func(i, j model.Library) int {
-		return cmp.Compare(len(j.Path), len(i.Path)) // Reverse order for descending
-	})
-
-	// Create regex patterns for each library path
-	patterns := make([]string, len(libs))
-	for i, lib := range libs {
-		cleanPath := filepath.Clean(lib.Path)
-		escapedPath := regexp.QuoteMeta(cleanPath)
-		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
-	}
-	// Combine all patterns into a single regex - order matters due to alternation
-	combinedPattern := strings.Join(patterns, "|")
-	re, err := regexp.Compile(combinedPattern)
-	if err != nil {
-		return nil, fmt.Errorf("compiling library paths `%s`: %w", combinedPattern, err)
-	}
-	return re, nil
+	return newLibraryMatcher(libs), nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
