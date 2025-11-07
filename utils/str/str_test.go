@@ -31,6 +31,72 @@ var _ = Describe("String Utils", func() {
 			Expect(str.LongestCommonPrefix(albums)).To(Equal("/artist/album"))
 		})
 	})
+
+	Describe("TruncateRunes", func() {
+		It("returns string unchanged if under max runes", func() {
+			Expect(str.TruncateRunes("hello", 10, "...")).To(Equal("hello"))
+		})
+
+		It("returns string unchanged if exactly at max runes", func() {
+			Expect(str.TruncateRunes("hello", 5, "...")).To(Equal("hello"))
+		})
+
+		It("truncates and adds suffix when over max runes", func() {
+			Expect(str.TruncateRunes("hello world", 8, "...")).To(Equal("hello..."))
+		})
+
+		It("handles unicode characters correctly", func() {
+			// 6 emoji characters, maxRunes=5, suffix="..." (3 runes)
+			// So content gets 5-3=2 runes
+			Expect(str.TruncateRunes("😀😁😂😃😄😅", 5, "...")).To(Equal("😀😁..."))
+		})
+
+		It("handles multi-byte UTF-8 characters", func() {
+			// Characters like é are single runes
+			Expect(str.TruncateRunes("Café au Lait", 5, "...")).To(Equal("Ca..."))
+		})
+
+		It("works with empty suffix", func() {
+			Expect(str.TruncateRunes("hello world", 5, "")).To(Equal("hello"))
+		})
+
+		It("accounts for suffix length in truncation", func() {
+			// maxRunes=10, suffix="..." (3 runes) -> leaves 7 runes for content
+			result := str.TruncateRunes("hello world this is long", 10, "...")
+			Expect(result).To(Equal("hello w..."))
+			// Verify total rune count is <= maxRunes
+			runeCount := len([]rune(result))
+			Expect(runeCount).To(BeNumerically("<=", 10))
+		})
+
+		It("handles very long suffix gracefully", func() {
+			// If suffix is longer than maxRunes, we still add it
+			// but the content will be truncated to 0
+			result := str.TruncateRunes("hello world", 5, "... (truncated)")
+			// Result will be just the suffix (since truncateAt=0)
+			Expect(result).To(Equal("... (truncated)"))
+		})
+
+		It("handles empty string", func() {
+			Expect(str.TruncateRunes("", 10, "...")).To(Equal(""))
+		})
+
+		It("uses custom suffix", func() {
+			// maxRunes=11, suffix=" [...]" (6 runes) -> content gets 5 runes
+			// "hello world" is 11 runes exactly, so we need a longer string
+			Expect(str.TruncateRunes("hello world extra", 11, " [...]")).To(Equal("hello [...]"))
+		})
+
+		DescribeTable("truncates at rune boundaries (not byte boundaries)",
+			func(input string, maxRunes int, suffix string, expected string) {
+				Expect(str.TruncateRunes(input, maxRunes, suffix)).To(Equal(expected))
+			},
+			Entry("ASCII", "abcdefghij", 5, "...", "ab..."),
+			Entry("Mixed ASCII and Unicode", "ab😀cd", 4, ".", "ab😀."),
+			Entry("All emoji", "😀😁😂😃😄", 3, "…", "😀😁…"),
+			Entry("Japanese", "こんにちは世界", 3, "…", "こん…"),
+		)
+	})
 })
 
 var testPaths = []string{

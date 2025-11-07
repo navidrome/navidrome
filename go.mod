@@ -1,9 +1,13 @@
 module github.com/navidrome/navidrome
 
-go 1.25.3
+go 1.25.4
 
-// Fork to fix https://github.com/navidrome/navidrome/pull/3254
-replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
+replace (
+	// Fork to fix https://github.com/navidrome/navidrome/issues/3254
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
+	// Using version from main that fixes https://github.com/navidrome/navidrome/issues/4396
+	github.com/tetratelabs/wazero v1.9.0 => github.com/tetratelabs/wazero v0.0.0-20251106165119-514cdb337684
+)
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -43,7 +47,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
-	github.com/onsi/ginkgo/v2 v2.27.1
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/pocketbase/dbx v1.11.0
@@ -124,7 +128,6 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
