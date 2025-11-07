@@ -16,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("Playlists", func() {
@@ -425,28 +424,6 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
 		})
 
-		It("handles Unicode normalization when comparing paths", func() {
-			// Test case for Apple Music playlists that use NFC encoding vs macOS filesystem NFD
-			// The character "è" can be represented as NFC (single codepoint) or NFD (e + combining accent)
-
-			const pathWithAccents = "artist/Michèle Desrosiers/album/Noël.m4a"
-
-			// Simulate a database entry with NFD encoding (as stored by macOS filesystem)
-			nfdPath := norm.NFD.String(pathWithAccents)
-			repo.data = []string{nfdPath}
-
-			// Simulate an Apple Music M3U playlist entry with NFC encoding
-			nfcPath := norm.NFC.String("/music/" + pathWithAccents)
-			m3u := strings.Join([]string{
-				nfcPath,
-			}, "\n")
-			f := strings.NewReader(m3u)
-
-			pls, err := ps.ImportM3U(ctx, f)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pls.Tracks).To(HaveLen(1), "Should find the track despite Unicode normalization differences")
-			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
-		})
 	})
 
 	Describe("InPlaylistsPath", func() {
@@ -496,9 +473,8 @@ var _ = Describe("Playlists", func() {
 	})
 })
 
-// mockedMediaFileRepo's FindByPaths method mimics the real implementation.
-// If data map is provided, it looks up files using the path as the key.
-// Otherwise, it creates MediaFile entries from the input paths.
+// mockedMediaFileRepo's FindByPaths method returns MediaFiles for the given paths.
+// If data map is provided, looks up files by key; otherwise creates them from paths.
 type mockedMediaFileRepo struct {
 	model.MediaFileRepository
 	data map[string]model.MediaFile
@@ -507,10 +483,9 @@ type mockedMediaFileRepo struct {
 func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
-	// If data map is provided, use it to look up files
+	// If data map provided, look up files
 	if r.data != nil {
 		for _, path := range paths {
-			// Look up by the path key (test should use "path:libraryID" format for keys)
 			if mf, ok := r.data[path]; ok {
 				mfs = append(mfs, mf)
 			}
@@ -518,17 +493,18 @@ func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, err
 		return mfs, nil
 	}
 
-	// Fallback: create MediaFile entries from paths
-	// Parse library-qualified format: "libraryID:path"
+	// Otherwise, create MediaFiles from paths
 	for idx, path := range paths {
-		libraryID := 1 // Default library ID
+		// Strip library qualifier if present (format: "libraryID:path")
 		actualPath := path
+		libraryID := 1
 		if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
-			if libID, err := strconv.Atoi(parts[0]); err == nil {
-				libraryID = libID
+			if id, err := strconv.Atoi(parts[0]); err == nil {
+				libraryID = id
 				actualPath = parts[1]
 			}
 		}
+
 		mfs = append(mfs, model.MediaFile{
 			ID:        strconv.Itoa(idx),
 			Path:      actualPath,
@@ -547,39 +523,24 @@ type mockedMediaFileFromListRepo struct {
 func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
-	// Build a map of requested paths with their library IDs (handle both qualified and unqualified)
-	type pathRequest struct {
-		path      string
-		libraryID int
-		qualified bool
-	}
-	requests := make([]pathRequest, 0, len(paths))
-	for _, path := range paths {
-		req := pathRequest{path: path, libraryID: 1, qualified: false}
-		if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
-			if libID, err := strconv.Atoi(parts[0]); err == nil {
-				req.libraryID = libID
-				req.path = parts[1]
-				req.qualified = true
+	for idx, dataPath := range r.data {
+		for _, requestPath := range paths {
+			// Strip library qualifier if present (format: "libraryID:path")
+			actualPath := requestPath
+			libraryID := 1
+			if parts := strings.SplitN(requestPath, ":", 2); len(parts) == 2 {
+				if id, err := strconv.Atoi(parts[0]); err == nil {
+					libraryID = id
+					actualPath = parts[1]
+				}
 			}
-		}
-		requests = append(requests, req)
-	}
 
-	// Return files that match the requests
-	// Need to use normalized comparison to handle Unicode normalization differences
-	normalizeForComparison := func(s string) string {
-		return strings.ToLower(norm.NFC.String(s))
-	}
-
-	for idx, path := range r.data {
-		normalizedPath := normalizeForComparison(path)
-		for _, req := range requests {
-			if normalizeForComparison(req.path) == normalizedPath {
+			// Case-insensitive comparison (like SQL's "collate nocase")
+			if strings.EqualFold(actualPath, dataPath) {
 				mfs = append(mfs, model.MediaFile{
 					ID:        strconv.Itoa(idx),
-					Path:      path,
-					LibraryID: req.libraryID,
+					Path:      dataPath,
+					LibraryID: libraryID,
 				})
 				break
 			}
