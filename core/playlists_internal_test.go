@@ -13,7 +13,6 @@ import (
 var _ = Describe("buildLibraryMatcher", func() {
 	var ds *tests.MockDataStore
 	var mockLibRepo *tests.MockLibraryRepo
-	var ps *playlists
 	ctx := context.Background()
 
 	BeforeEach(func() {
@@ -21,7 +20,6 @@ var _ = Describe("buildLibraryMatcher", func() {
 		ds = &tests.MockDataStore{
 			MockedLibrary: mockLibRepo,
 		}
-		ps = &playlists{ds: ds}
 	})
 
 	Describe("Longest library path matching", func() {
@@ -33,7 +31,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 3, Path: "/music-classical/opera"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Test that longest path matches first and returns correct library ID
@@ -61,7 +59,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/home/user/music-backup"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Test that music-backup library is matched correctly
@@ -81,7 +79,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/music-classical"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Exact library path should match
@@ -98,7 +96,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 4, Path: "/media/audio/classical/baroque"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			testCases := []struct {
@@ -124,7 +122,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 		It("handles empty library list", func() {
 			mockLibRepo.SetData([]model.Library{})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(matcher).ToNot(BeNil())
 
@@ -139,7 +137,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 1, Path: "/music"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			libID, libPath := matcher.findLibraryForPath("/music/track.mp3")
@@ -153,7 +151,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 2, Path: "/music(backup)"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(matcher).ToNot(BeNil())
 
@@ -172,7 +170,7 @@ var _ = Describe("buildLibraryMatcher", func() {
 				{ID: 3, Path: "/abc"},
 			})
 
-			matcher, err := ps.buildLibraryMatcher(ctx)
+			matcher, err := buildLibraryMatcher(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that longer paths match correctly (not cut off by shorter prefix)
@@ -189,6 +187,248 @@ var _ = Describe("buildLibraryMatcher", func() {
 				libID, _ := matcher.findLibraryForPath(tc.path)
 				Expect(libID).To(Equal(tc.expectedLibID), "Path %s should match library ID %d", tc.path, tc.expectedLibID)
 			}
+		})
+	})
+})
+
+var _ = Describe("pathResolver", func() {
+	var ds *tests.MockDataStore
+	var mockLibRepo *tests.MockLibraryRepo
+	var resolver *pathResolver
+	ctx := context.Background()
+
+	BeforeEach(func() {
+		mockLibRepo = &tests.MockLibraryRepo{}
+		ds = &tests.MockDataStore{
+			MockedLibrary: mockLibRepo,
+		}
+
+		// Setup test libraries
+		mockLibRepo.SetData([]model.Library{
+			{ID: 1, Path: "/music"},
+			{ID: 2, Path: "/music-classical"},
+			{ID: 3, Path: "/podcasts"},
+		})
+
+		var err error
+		resolver, err = newPathResolver(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	Describe("resolvePath", func() {
+		It("resolves absolute paths", func() {
+			resolution := resolver.resolvePath("/music/artist/album/track.mp3", nil)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(1))
+			Expect(resolution.libraryPath).To(Equal("/music"))
+			Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+		})
+
+		It("resolves relative paths when folder is provided", func() {
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			resolution := resolver.resolvePath("../artist/album/track.mp3", folder)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(1))
+			Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+		})
+
+		It("returns invalid resolution for paths outside any library", func() {
+			resolution := resolver.resolvePath("/outside/library/track.mp3", nil)
+
+			Expect(resolution.valid).To(BeFalse())
+		})
+	})
+
+	Describe("resolveAbsolutePath", func() {
+		It("resolves path within a library", func() {
+			resolution := resolver.resolveAbsolutePath("/music/track.mp3")
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(1))
+			Expect(resolution.libraryPath).To(Equal("/music"))
+			Expect(resolution.absolutePath).To(Equal("/music/track.mp3"))
+		})
+
+		It("resolves path to the longest matching library", func() {
+			resolution := resolver.resolveAbsolutePath("/music-classical/track.mp3")
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(2))
+			Expect(resolution.libraryPath).To(Equal("/music-classical"))
+		})
+
+		It("returns invalid resolution for path outside libraries", func() {
+			resolution := resolver.resolveAbsolutePath("/videos/movie.mp4")
+
+			Expect(resolution.valid).To(BeFalse())
+		})
+
+		It("cleans the path before matching", func() {
+			resolution := resolver.resolveAbsolutePath("/music//artist/../artist/track.mp3")
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.absolutePath).To(Equal("/music/artist/track.mp3"))
+		})
+	})
+
+	Describe("resolveRelativePath", func() {
+		It("resolves relative path within same library", func() {
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			resolution := resolver.resolveRelativePath("../songs/track.mp3", folder)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(1))
+			Expect(resolution.absolutePath).To(Equal("/music/songs/track.mp3"))
+		})
+
+		It("resolves relative path to different library", func() {
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			// Path goes up and into a different library
+			resolution := resolver.resolveRelativePath("../../podcasts/episode.mp3", folder)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(3))
+			Expect(resolution.libraryPath).To(Equal("/podcasts"))
+		})
+
+		It("uses matcher to find correct library for resolved path", func() {
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			// This relative path resolves to music-classical library
+			resolution := resolver.resolveRelativePath("../../music-classical/track.mp3", folder)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(2))
+			Expect(resolution.libraryPath).To(Equal("/music-classical"))
+		})
+
+		It("returns invalid for relative paths escaping all libraries", func() {
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			resolution := resolver.resolveRelativePath("../../../../etc/passwd", folder)
+
+			Expect(resolution.valid).To(BeFalse())
+		})
+	})
+
+	Describe("validatePathInLibrary", func() {
+		It("validates path within library", func() {
+			resolution := resolver.validatePathInLibrary("/music/artist/track.mp3", "/music", 1)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(1))
+			Expect(resolution.libraryPath).To(Equal("/music"))
+		})
+
+		It("rejects path that escapes library using ..", func() {
+			resolution := resolver.validatePathInLibrary("/music/../etc/passwd", "/music", 1)
+
+			Expect(resolution.valid).To(BeFalse())
+		})
+
+		It("rejects path outside library", func() {
+			resolution := resolver.validatePathInLibrary("/podcasts/track.mp3", "/music", 1)
+
+			Expect(resolution.valid).To(BeFalse())
+		})
+
+		It("accepts path exactly at library root", func() {
+			resolution := resolver.validatePathInLibrary("/music", "/music", 1)
+
+			Expect(resolution.valid).To(BeTrue())
+		})
+	})
+
+	Describe("Cross-library resolution scenarios", func() {
+		It("handles playlist in library A referencing file in library B", func() {
+			// Playlist is in /music/playlists
+			folder := &model.Folder{
+				Path:        "playlists",
+				LibraryPath: "/music",
+				LibraryID:   1,
+			}
+
+			// Relative path that goes to /podcasts library
+			resolution := resolver.resolvePath("../../podcasts/show/episode.mp3", folder)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(3), "Should resolve to podcasts library")
+			Expect(resolution.libraryPath).To(Equal("/podcasts"))
+		})
+
+		It("prefers longer library paths when resolving", func() {
+			// Ensure /music-classical is matched instead of /music
+			resolution := resolver.resolvePath("/music-classical/baroque/track.mp3", nil)
+
+			Expect(resolution.valid).To(BeTrue())
+			Expect(resolution.libraryID).To(Equal(2), "Should match /music-classical, not /music")
+		})
+	})
+})
+
+var _ = Describe("pathResolution", func() {
+	Describe("ToQualifiedString", func() {
+		It("converts valid resolution to qualified string with forward slashes", func() {
+			resolution := pathResolution{
+				absolutePath: "/music/artist/album/track.mp3",
+				libraryPath:  "/music",
+				libraryID:    1,
+				valid:        true,
+			}
+
+			qualifiedStr, err := resolution.ToQualifiedString()
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(qualifiedStr).To(Equal("1:artist/album/track.mp3"))
+		})
+
+		It("handles Windows-style paths by converting to forward slashes", func() {
+			resolution := pathResolution{
+				absolutePath: "/music/artist/album/track.mp3",
+				libraryPath:  "/music",
+				libraryID:    2,
+				valid:        true,
+			}
+
+			qualifiedStr, err := resolution.ToQualifiedString()
+
+			Expect(err).ToNot(HaveOccurred())
+			// Should always use forward slashes regardless of OS
+			Expect(qualifiedStr).To(ContainSubstring("2:"))
+			Expect(qualifiedStr).ToNot(ContainSubstring("\\"))
+		})
+
+		It("returns error for invalid resolution", func() {
+			resolution := pathResolution{valid: false}
+
+			_, err := resolution.ToQualifiedString()
+
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
