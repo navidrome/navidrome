@@ -195,12 +195,12 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			}
 			filteredLines = append(filteredLines, line)
 		}
-		paths, err := s.normalizePaths(ctx, pls, folder, filteredLines)
+		pathsWithLibrary, err := s.normalizePaths(ctx, pls, folder, filteredLines)
 		if err != nil {
 			log.Warn(ctx, "Error normalizing paths in playlist", "playlist", pls.Name, err)
 			continue
 		}
-		found, err := mediaFileRepository.FindByPaths(paths)
+		found, err := mediaFileRepository.FindByPaths(pathsWithLibrary)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -212,16 +212,11 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, normalizePathForComparison(found[idx].Path))
 			existing[key] = idx
 		}
-		for _, path := range paths {
+		for _, path := range pathsWithLibrary {
 			// Parse the library-qualified path
-			normalizedPath := path
-			if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
-				// Path is already qualified: "libraryID:path"
-				normalizedPath = parts[0] + ":" + normalizePathForComparison(parts[1])
-			} else {
-				// Unqualified path (backward compatibility)
-				normalizedPath = normalizePathForComparison(path)
-			}
+			parts := strings.SplitN(path, ":", 2)
+			// Path is already qualified: "libraryID:path"
+			normalizedPath := parts[0] + ":" + normalizePathForComparison(parts[1])
 
 			idx, ok := existing[normalizedPath]
 			if ok {
