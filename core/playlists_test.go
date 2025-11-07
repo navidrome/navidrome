@@ -1,4 +1,4 @@
-package core
+package core_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +21,7 @@ import (
 
 var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
-	var ps Playlists
+	var ps core.Playlists
 	var mockPlsRepo mockedPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
@@ -40,7 +41,7 @@ var _ = Describe("Playlists", func() {
 	Describe("ImportFile", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			ps = NewPlaylists(ds)
+			ps = core.NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			folder = &model.Folder{
@@ -138,7 +139,7 @@ var _ = Describe("Playlists", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = NewPlaylists(ds)
+				ps = core.NewPlaylists(ds)
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -272,7 +273,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = NewPlaylists(ds)
+			ps = core.NewPlaylists(ds)
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
@@ -383,31 +384,6 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
-	Describe("normalizePathForComparison", func() {
-		It("normalizes Unicode characters to NFC form and converts to lowercase", func() {
-			// Test with NFD (decomposed) input - as would come from macOS filesystem
-			nfdPath := norm.NFD.String("Michèle") // Explicitly convert to NFD form
-			normalized := normalizePathForComparison(nfdPath)
-			Expect(normalized).To(Equal("michèle"))
-
-			// Test with NFC (composed) input - as would come from Apple Music M3U
-			nfcPath := "Michèle" // This might be in NFC form
-			normalizedNfc := normalizePathForComparison(nfcPath)
-
-			// Ensure the two paths are not equal in their original forms
-			Expect(nfdPath).ToNot(Equal(nfcPath))
-
-			// Both should normalize to the same result
-			Expect(normalized).To(Equal(normalizedNfc))
-		})
-
-		It("handles paths with mixed case and Unicode characters", func() {
-			path := "Artist/Noël Coward/Album/Song.mp3"
-			normalized := normalizePathForComparison(path)
-			Expect(normalized).To(Equal("artist/noël coward/album/song.mp3"))
-		})
-	})
-
 	Describe("InPlaylistsPath", func() {
 		var folder model.Folder
 
@@ -422,27 +398,27 @@ var _ = Describe("Playlists", func() {
 
 		It("returns true if PlaylistsPath is empty", func() {
 			conf.Server.PlaylistsPath = ""
-			Expect(InPlaylistsPath(folder)).To(BeTrue())
+			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
 			conf.Server.PlaylistsPath = "**/**"
-			Expect(InPlaylistsPath(folder)).To(BeTrue())
+			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other/**:playlists/**"
-			Expect(InPlaylistsPath(folder)).To(BeTrue())
+			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other"
-			Expect(InPlaylistsPath(folder)).To(BeFalse())
+			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
 			conf.Server.PlaylistsPath = "."
-			Expect(InPlaylistsPath(folder)).To(BeFalse())
+			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{
 				LibraryPath: "/music",
@@ -450,7 +426,7 @@ var _ = Describe("Playlists", func() {
 				Name:        ".",
 			}
 
-			Expect(InPlaylistsPath(folder2)).To(BeTrue())
+			Expect(core.InPlaylistsPath(folder2)).To(BeTrue())
 		})
 	})
 })

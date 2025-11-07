@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("compileLibraryPaths", func() {
@@ -182,5 +183,30 @@ var _ = Describe("compileLibraryPaths", func() {
 				Expect(matched).To(Equal(tc.expected), "Path %s should match %s", tc.path, tc.expected)
 			}
 		})
+	})
+})
+
+var _ = Describe("normalizePathForComparison", func() {
+	It("normalizes Unicode characters to NFC form and converts to lowercase", func() {
+		// Test with NFD (decomposed) input - as would come from macOS filesystem
+		nfdPath := norm.NFD.String("Michèle") // Explicitly convert to NFD form
+		normalized := normalizePathForComparison(nfdPath)
+		Expect(normalized).To(Equal("michèle"))
+
+		// Test with NFC (composed) input - as would come from Apple Music M3U
+		nfcPath := "Michèle" // This might be in NFC form
+		normalizedNfc := normalizePathForComparison(nfcPath)
+
+		// Ensure the two paths are not equal in their original forms
+		Expect(nfdPath).ToNot(Equal(nfcPath))
+
+		// Both should normalize to the same result
+		Expect(normalized).To(Equal(normalizedNfc))
+	})
+
+	It("handles paths with mixed case and Unicode characters", func() {
+		path := "Artist/Noël Coward/Album/Song.mp3"
+		normalized := normalizePathForComparison(path)
+		Expect(normalized).To(Equal("artist/noël coward/album/song.mp3"))
 	})
 })
