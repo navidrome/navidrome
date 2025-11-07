@@ -233,6 +233,30 @@ func normalizePathForComparison(path string) string {
 	return strings.ToLower(norm.NFC.String(path))
 }
 
+// pathResolution holds the result of resolving a playlist path to a library-relative path.
+type pathResolution struct {
+	absolutePath string
+	libraryPath  string
+	valid        bool
+}
+
+// toRelativePath converts the absolute path to a library-relative path.
+func (r pathResolution) toRelativePath() (string, error) {
+	if !r.valid {
+		return "", fmt.Errorf("invalid path resolution")
+	}
+	return filepath.Rel(r.libraryPath, r.absolutePath)
+}
+
+// newValidResolution creates a valid path resolution.
+func newValidResolution(absolutePath, libraryPath string) pathResolution {
+	return pathResolution{
+		absolutePath: absolutePath,
+		libraryPath:  libraryPath,
+		valid:        true,
+	}
+}
+
 // normalizePaths converts playlist file paths to library-relative paths.
 // For relative paths, it resolves them to absolute paths first, then determines which
 // library they belong to. This allows playlists to reference files across library boundaries.
@@ -244,48 +268,70 @@ func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, fol
 
 	res := make([]string, 0, len(lines))
 	for idx, line := range lines {
-		var libPath string
-		var filePath string
+		resolution := s.resolvePath(line, folder, libRegex)
 
-		if folder != nil && !filepath.IsAbs(line) {
-			// Two-step resolution for relative paths:
-			// 1. Resolve relative path to absolute path based on playlist location
-			//    Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
-			//             resolves to /music/songs/abc.mp3
-			filePath = filepath.Join(folder.AbsolutePath(), line)
-			filePath = filepath.Clean(filePath)
-
-			// 2. Determine which library this absolute path belongs to using regex matching
-			//    This allows playlists to reference files in different libraries
-			if libPath = libRegex.FindString(filePath); libPath == "" {
-				// If regex doesn't match any library, check if it's in the playlist's library
-				libPath = folder.LibraryPath
-				// Verify the file is actually in this library (reject paths with ..)
-				rel, err := filepath.Rel(libPath, filePath)
-				if err != nil || strings.HasPrefix(rel, "..") {
-					log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
-					continue
-				}
-			}
-		} else {
-			cleanLine := filepath.Clean(line)
-			if libPath = libRegex.FindString(cleanLine); libPath != "" {
-				filePath = cleanLine
-			}
-		}
-
-		if libPath != "" {
-			if rel, err := filepath.Rel(libPath, filePath); err == nil {
-				res = append(res, rel)
-			} else {
-				log.Debug(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "libPath", libPath,
-					"filePath", filePath, err)
-			}
-		} else {
+		if !resolution.valid {
 			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
+			continue
 		}
+
+		relativePath, err := resolution.toRelativePath()
+		if err != nil {
+			log.Debug(ctx, "Error getting relative path", "playlist", pls.Name, "path", line,
+				"libPath", resolution.libraryPath, "filePath", resolution.absolutePath, err)
+			continue
+		}
+
+		res = append(res, relativePath)
 	}
 	return slice.Map(res, filepath.ToSlash), nil
+}
+
+// resolvePath determines the absolute path and library path for a playlist entry.
+func (s *playlists) resolvePath(line string, folder *model.Folder, libRegex *regexp.Regexp) pathResolution {
+	if folder != nil && !filepath.IsAbs(line) {
+		return s.resolveRelativePath(line, folder, libRegex)
+	}
+	return s.resolveAbsolutePath(line, libRegex)
+}
+
+// resolveRelativePath handles relative paths by converting them to absolute paths
+// and finding their library location. This enables cross-library playlist references.
+func (s *playlists) resolveRelativePath(line string, folder *model.Folder, libRegex *regexp.Regexp) pathResolution {
+	// Step 1: Resolve relative path to absolute path based on playlist location
+	// Example: playlist at /music/playlists/test.m3u with line "../songs/abc.mp3"
+	//          resolves to /music/songs/abc.mp3
+	absolutePath := filepath.Clean(filepath.Join(folder.AbsolutePath(), line))
+
+	// Step 2: Determine which library this absolute path belongs to using regex matching
+	if libPath := libRegex.FindString(absolutePath); libPath != "" {
+		return newValidResolution(absolutePath, libPath)
+	}
+
+	// Fallback: Check if it's in the playlist's own library
+	return s.validatePathInLibrary(absolutePath, folder.LibraryPath)
+}
+
+// resolveAbsolutePath handles absolute paths by matching them against library paths.
+func (s *playlists) resolveAbsolutePath(line string, libRegex *regexp.Regexp) pathResolution {
+	cleanPath := filepath.Clean(line)
+	libPath := libRegex.FindString(cleanPath)
+
+	if libPath == "" {
+		return pathResolution{valid: false}
+	}
+	return newValidResolution(cleanPath, libPath)
+}
+
+// validatePathInLibrary verifies that an absolute path belongs to the specified library.
+// It rejects paths that escape the library using ".." segments.
+func (s *playlists) validatePathInLibrary(absolutePath, libraryPath string) pathResolution {
+	rel, err := filepath.Rel(libraryPath, absolutePath)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return pathResolution{valid: false}
+	}
+
+	return newValidResolution(absolutePath, libraryPath)
 }
 
 func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, error) {
