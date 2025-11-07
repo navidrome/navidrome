@@ -73,9 +73,8 @@ const Player = () => {
   const { preloaded, preloadNextSong, resetPreloading } =
     usePreloading(playerState)
 
-  const { audioInstance, setAudioInstance, onAudioPlay } = useAudioInstance(
-    isMobilePlayer,
-  )
+  const { audioInstance, setAudioInstance, onAudioPlay } =
+    useAudioInstance(isMobilePlayer)
 
   const { context } = useReplayGain(audioInstance, playerState, gainInfo)
 
