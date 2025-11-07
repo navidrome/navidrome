@@ -110,6 +110,7 @@ export const useScrobbling = (playerState, dispatch, dataProvider) => {
 
   return {
     startTime,
+    setStartTime,
     scrobbled,
     onAudioProgress,
     onAudioPlayTrackChange,

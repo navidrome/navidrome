@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
+import subsonic from '../../subsonic'
 
 /**
  * Custom hook for managing the audio instance and related effects.
- * Handles audio element setup, mobile volume adjustments, and context resumption.
+ * Handles audio element setup and mobile volume adjustments.
  *
  * @param {boolean} isMobilePlayer - Whether the player is running on a mobile device.
- * @param {AudioContext|null} context - Web Audio API context from replay gain hook.
  * @returns {Object} Audio instance-related state and handlers.
  * @returns {HTMLAudioElement|null} audioInstance - The audio element instance.
  * @returns {Function} setAudioInstance - Setter for the audio instance.
  * @returns {Function} onAudioPlay - Handler for audio play events.
  *
  * @example
- * const { audioInstance, setAudioInstance, onAudioPlay } = useAudioInstance(isMobilePlayer, context);
+ * const { audioInstance, setAudioInstance, onAudioPlay } = useAudioInstance(isMobilePlayer);
  */
-export const useAudioInstance = (isMobilePlayer, context) => {
+export const useAudioInstance = (isMobilePlayer) => {
   const [audioInstance, setAudioInstance] = useState(null)
 
   /**
    * Handles audio play events, resuming context if needed and updating document title.
    *
+   * @param {AudioContext|null} audioContext - Web Audio API context from replay gain hook.
    * @param {Object} info - Audio play information.
    * @param {Object} info.song - Song metadata.
    * @param {number} info.duration - Track duration.
@@ -37,6 +38,7 @@ export const useAudioInstance = (isMobilePlayer, context) => {
    */
   const onAudioPlay = useCallback(
     (
+      audioContext,
       info,
       dispatchCurrentPlaying,
       showNotifications,
@@ -48,9 +50,9 @@ export const useAudioInstance = (isMobilePlayer, context) => {
       ReactGA,
     ) => {
       // Resume audio context if suspended
-      if (context && context.state !== 'running') {
+      if (audioContext && audioContext.state !== 'running') {
         try {
-          context.resume()
+          audioContext.resume()
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Error resuming audio context:', error)
@@ -69,9 +71,8 @@ export const useAudioInstance = (isMobilePlayer, context) => {
 
         if (!info.isRadio) {
           const pos = startTime === null ? null : Math.floor(info.currentTime)
-          // Assuming subsonic.nowPlaying is imported or passed
           try {
-            // subsonic.nowPlaying(info.trackId, pos) // Uncomment if subsonic is available
+            subsonic.nowPlaying(info.trackId, pos)
           } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Error updating now playing:', error)
@@ -107,7 +108,7 @@ export const useAudioInstance = (isMobilePlayer, context) => {
         }
       }
     },
-    [context],
+    [],
   )
 
   // Mobile volume adjustment effect

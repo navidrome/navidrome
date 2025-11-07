@@ -63,6 +63,7 @@ const Player = () => {
 
   const {
     startTime,
+    setStartTime,
     scrobbled,
     onAudioProgress,
     onAudioPlayTrackChange,
@@ -74,7 +75,6 @@ const Player = () => {
 
   const { audioInstance, setAudioInstance, onAudioPlay } = useAudioInstance(
     isMobilePlayer,
-    null, // context will be managed separately
   )
 
   const { context } = useReplayGain(audioInstance, playerState, gainInfo)
@@ -172,12 +172,13 @@ const Player = () => {
   const handleAudioPlay = useCallback(
     (info) => {
       onAudioPlay(
+        context,
         info,
         (info) => dispatchCurrentPlaying(info),
         showNotifications,
         sendNotification,
         startTime,
-        (time) => {}, // setStartTime is handled in hook
+        setStartTime,
         resetPreloading,
         config,
         ReactGA,
@@ -185,9 +186,11 @@ const Player = () => {
     },
     [
       onAudioPlay,
+      context,
       dispatchCurrentPlaying,
       showNotifications,
       startTime,
+      setStartTime,
       resetPreloading,
     ],
   )
