@@ -16,7 +16,7 @@ describe('useReplayGain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock Web Audio API
-    global.AudioContext = vi.fn().mockImplementation(function() {
+    global.AudioContext = vi.fn().mockImplementation(function () {
       this.createMediaElementSource = vi.fn(() => ({
         connect: vi.fn(),
       }))
@@ -85,7 +85,7 @@ describe('useReplayGain', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     // Mock AudioContext to throw error
-    global.AudioContext = vi.fn().mockImplementation(function() {
+    global.AudioContext = vi.fn().mockImplementation(function () {
       throw new Error('Web Audio API not supported')
     })
 
@@ -125,7 +125,7 @@ describe('useReplayGain', () => {
       connect: vi.fn(),
     }
 
-    global.AudioContext = vi.fn().mockImplementation(function() {
+    global.AudioContext = vi.fn().mockImplementation(function () {
       this.createMediaElementSource = vi.fn(() => ({
         connect: vi.fn(),
       }))

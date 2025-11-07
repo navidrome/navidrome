@@ -14,7 +14,7 @@ describe('usePreloading', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock Audio constructor
-    global.Audio = vi.fn().mockImplementation(function() {
+    global.Audio = vi.fn().mockImplementation(function () {
       this.src = ''
       this.addEventListener = vi.fn()
     })
@@ -119,7 +119,7 @@ describe('usePreloading', () => {
   it('should handle audio load errors gracefully', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    global.Audio = vi.fn().mockImplementation(function() {
+    global.Audio = vi.fn().mockImplementation(function () {
       this.src = ''
       this.addEventListener = vi.fn((event, callback) => {
         if (event === 'error') {
