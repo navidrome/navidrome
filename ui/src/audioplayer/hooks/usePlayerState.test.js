@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 import { renderHook } from '@testing-library/react-hooks'
 import { usePlayerState } from './usePlayerState'
 import { useDispatch, useSelector } from 'react-redux'
@@ -32,6 +34,7 @@ describe('usePlayerState', () => {
   const mockDispatch = vi.fn()
 
   beforeEach(() => {
+    vi.resetModules()
     vi.clearAllMocks()
     useDispatch.mockReturnValue(mockDispatch)
     useSelector.mockReturnValue(mockPlayerState)
