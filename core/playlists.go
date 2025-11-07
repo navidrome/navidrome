@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -340,6 +342,14 @@ func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, er
 		return nil, err
 	}
 
+	// Sort libraries by path length (descending) to ensure longest paths match first.
+	// This prevents shorter paths that are prefixes from incorrectly matching.
+	// Example: /music-classical must be checked before /music
+	// Otherwise, /music-classical/track.mp3 would match /music instead of /music-classical
+	slices.SortFunc(libs, func(i, j model.Library) int {
+		return cmp.Compare(len(j.Path), len(i.Path)) // Reverse order for descending
+	})
+
 	// Create regex patterns for each library path
 	patterns := make([]string, len(libs))
 	for i, lib := range libs {
@@ -347,7 +357,7 @@ func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, er
 		escapedPath := regexp.QuoteMeta(cleanPath)
 		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
 	}
-	// Combine all patterns into a single regex
+	// Combine all patterns into a single regex - order matters due to alternation
 	combinedPattern := strings.Join(patterns, "|")
 	re, err := regexp.Compile(combinedPattern)
 	if err != nil {

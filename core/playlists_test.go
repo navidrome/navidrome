@@ -221,6 +221,49 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3")) // From songsDir library
 				Expect(pls.Tracks[1].Path).To(Equal("def.mp3")) // From plsDir library root
 			})
+
+			It("correctly resolves libraries when one path is a prefix of another", func() {
+				// This tests the bug where /music would match before /music-classical
+				// Create temp directory structure with prefix conflict
+				tmpDir := GinkgoT().TempDir()
+				musicDir := tmpDir + "/music"
+				musicClassicalDir := tmpDir + "/music-classical"
+				Expect(os.Mkdir(musicDir, 0755)).To(Succeed())
+				Expect(os.Mkdir(musicClassicalDir, 0755)).To(Succeed())
+
+				// Setup two libraries where one is a prefix of the other
+				mockLibRepo.SetData([]model.Library{
+					{ID: 1, Path: musicDir},          // /tmp/xxx/music
+					{ID: 2, Path: musicClassicalDir}, // /tmp/xxx/music-classical
+				})
+
+				// Mock will return tracks from both libraries
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{
+					data: []string{
+						"rock.mp3", // From music library
+						"bach.mp3", // From music-classical library
+					},
+				}
+
+				// Create playlist in music library that references music-classical
+				plsContent := "#PLAYLIST:Cross Prefix Test\nrock.mp3\n../music-classical/bach.mp3"
+				plsFile := musicDir + "/test.m3u"
+				Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+				plsFolder := &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: musicDir,
+					Path:        "",
+					Name:        "",
+				}
+
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(2))
+				Expect(pls.Tracks[0].Path).To(Equal("rock.mp3")) // From music library
+				Expect(pls.Tracks[1].Path).To(Equal("bach.mp3")) // From music-classical library (not music!)
+			})
 		})
 	})
 
