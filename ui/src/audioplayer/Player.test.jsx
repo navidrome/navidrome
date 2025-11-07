@@ -7,9 +7,9 @@ import { createStore, combineReducers } from 'redux'
 import { ThemeProvider } from '@material-ui/core/styles'
 import { createMuiTheme } from '@material-ui/core/styles'
 import { Player } from './Player'
-import { playerReducer } from '../../reducers/player'
-import { settingsReducer } from '../../reducers/settings'
-import { replayGainReducer } from '../../reducers/replayGain'
+import { playerReducer } from '../../reducers/playerReducer'
+import { settingsReducer } from '../../reducers/settingsReducer'
+import { replayGainReducer } from '../../reducers/replayGainReducer'
 
 // Mock dependencies
 jest.mock('../themes/useCurrentTheme', () => ({

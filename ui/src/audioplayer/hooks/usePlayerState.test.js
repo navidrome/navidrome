@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { renderHook } from '@testing-library/react'
+import { renderHook } from '@testing-library/react-hooks'
 import { usePlayerState } from './usePlayerState'
 import { useDispatch, useSelector } from 'react-redux'
 

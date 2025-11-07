@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react-hooks'
 import { useScrobbling } from './useScrobbling'
 
 // Mock subsonic module

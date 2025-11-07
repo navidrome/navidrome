@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react-hooks'
 import { usePreloading } from './usePreloading'
 
 describe('usePreloading', () => {
