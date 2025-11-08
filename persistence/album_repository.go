@@ -337,6 +337,94 @@ on conflict (user_id, item_id, item_type) do update
 	return r.executeSQL(query)
 }
 
+// RefreshAlbums recalculates album attributes (size, duration, song count, etc.) from media files.
+// It uses batch queries to minimize database round-trips for efficiency.
+func (r *albumRepository) RefreshAlbums(albumIDs []string) error {
+	if len(albumIDs) == 0 {
+		return nil
+	}
+
+	log.Debug(r.ctx, "Refreshing albums", "count", len(albumIDs))
+
+	// Process in chunks to avoid query size limits
+	const chunkSize = 100
+	for i := 0; i < len(albumIDs); i += chunkSize {
+		end := i + chunkSize
+		if end > len(albumIDs) {
+			end = len(albumIDs)
+		}
+		chunk := albumIDs[i:end]
+
+		if err := r.refreshAlbumChunk(chunk); err != nil {
+			return fmt.Errorf("refreshing album chunk: %w", err)
+		}
+	}
+
+	log.Debug(r.ctx, "Successfully refreshed albums", "count", len(albumIDs))
+	return nil
+}
+
+// refreshAlbumChunk processes a single chunk of album IDs
+func (r *albumRepository) refreshAlbumChunk(albumIDs []string) error {
+	// Batch load existing albums
+	albums, err := r.GetAll(model.QueryOptions{Filters: Eq{"album.id": albumIDs}})
+	if err != nil {
+		return fmt.Errorf("loading albums: %w", err)
+	}
+
+	// Create a map for quick lookup
+	albumMap := make(map[string]*model.Album, len(albums))
+	for i := range albums {
+		albumMap[albums[i].ID] = &albums[i]
+	}
+
+	// Batch load all media files for these albums using MediaFile repository
+	mfRepo := NewMediaFileRepository(r.ctx, r.db)
+	mediaFiles, err := mfRepo.GetAll(model.QueryOptions{
+		Filters: Eq{"album_id": albumIDs},
+		Sort:    "album_id, path",
+	})
+	if err != nil {
+		return fmt.Errorf("loading media files: %w", err)
+	}
+
+	// Group media files by album ID
+	filesByAlbum := make(map[string]model.MediaFiles)
+	for i := range mediaFiles {
+		albumID := mediaFiles[i].AlbumID
+		filesByAlbum[albumID] = append(filesByAlbum[albumID], mediaFiles[i])
+	}
+
+	// Recalculate each album from its media files
+	for albumID, oldAlbum := range albumMap {
+		mfs, hasTracks := filesByAlbum[albumID]
+		if !hasTracks {
+			// Album has no tracks anymore, skip (will be cleaned up by GC)
+			log.Debug(r.ctx, "Skipping album with no tracks", "albumID", albumID)
+			continue
+		}
+
+		// Recalculate album from media files
+		newAlbum := mfs.ToAlbum()
+
+		// Only update if something changed (avoid unnecessary writes)
+		if !oldAlbum.Equals(newAlbum) {
+			// Preserve original timestamps
+			newAlbum.UpdatedAt = time.Now()
+			newAlbum.CreatedAt = oldAlbum.CreatedAt
+
+			if err := r.Put(&newAlbum); err != nil {
+				log.Error(r.ctx, "Error updating album during refresh", "albumID", albumID, err)
+				// Continue with other albums instead of failing entirely
+				continue
+			}
+			log.Trace(r.ctx, "Refreshed album", "albumID", albumID, "name", newAlbum.Name)
+		}
+	}
+
+	return nil
+}
+
 func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)

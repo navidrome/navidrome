@@ -67,6 +67,22 @@ func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	p := req.Params(r)
 	ids, _ := p.Strings("id")
+
+	// Track affected album IDs before deletion for refresh
+	var affectedAlbumIDs []string
+	var trackErr error
+	if len(ids) == 0 {
+		// Get all album IDs from missing files
+		affectedAlbumIDs, trackErr = getAlbumIDsFromMissing(ctx, ds, nil)
+	} else {
+		// Get album IDs from specific missing file IDs
+		affectedAlbumIDs, trackErr = getAlbumIDsFromMissing(ctx, ds, ids)
+	}
+	if trackErr != nil {
+		log.Warn(ctx, "Error tracking affected albums for refresh", trackErr)
+		// Don't fail the operation, just log the warning
+	}
+
 	err := ds.WithTx(func(tx model.DataStore) error {
 		if len(ids) == 0 {
 			_, err := tx.MediaFile(ctx).DeleteAllMissing()
@@ -101,7 +117,53 @@ func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Reque
 		}
 	}()
 
+	// Refresh album stats in background after deleting missing files
+	if len(affectedAlbumIDs) > 0 {
+		go func() {
+			bgCtx := request.AddValues(context.Background(), r.Context())
+			if err := ds.Album(bgCtx).RefreshAlbums(affectedAlbumIDs); err != nil {
+				log.Error(bgCtx, "Error refreshing album stats after deleting missing files", err)
+			} else {
+				log.Debug(bgCtx, "Successfully refreshed album stats after deleting missing files", "count", len(affectedAlbumIDs))
+			}
+		}()
+	}
+
 	writeDeleteManyResponse(w, r, ids)
+}
+
+// getAlbumIDsFromMissing returns distinct album IDs from missing media files
+// Uses batch query for efficiency
+func getAlbumIDsFromMissing(ctx context.Context, ds model.DataStore, ids []string) ([]string, error) {
+	var filters squirrel.Sqlizer = squirrel.Eq{"missing": true}
+	if len(ids) > 0 {
+		filters = squirrel.And{
+			squirrel.Eq{"missing": true},
+			squirrel.Eq{"id": ids},
+		}
+	}
+
+	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: filters,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract unique album IDs
+	albumIDMap := make(map[string]struct{}, len(mfs))
+	for _, mf := range mfs {
+		if mf.AlbumID != "" {
+			albumIDMap[mf.AlbumID] = struct{}{}
+		}
+	}
+
+	albumIDs := make([]string, 0, len(albumIDMap))
+	for id := range albumIDMap {
+		albumIDs = append(albumIDs, id)
+	}
+
+	return albumIDs, nil
 }
 
 var _ model.ResourceRepository = &missingRepository{}

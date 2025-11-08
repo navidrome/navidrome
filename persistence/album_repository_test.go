@@ -513,6 +513,123 @@ var _ = Describe("AlbumRepository", func() {
 			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 	})
+
+	Describe("RefreshAlbums", func() {
+		var mfRepo *mediaFileRepository
+
+		BeforeEach(func() {
+			ctx := request.WithUser(GinkgoT().Context(), adminUser)
+			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder()).(*mediaFileRepository)
+		})
+
+		It("recalculates size and duration after files are modified", func() {
+			// Get the initial album
+			album, err := albumRepo.Get("103") // Radioactivity album
+			Expect(err).ToNot(HaveOccurred())
+			initialSize := album.Size
+			initialDuration := album.Duration
+
+			// Modify the size and duration of one of the media files
+			mf, err := mfRepo.Get("1003") // Radioactivity song
+			Expect(err).ToNot(HaveOccurred())
+			mf.Size = 5000000   // 5MB
+			mf.Duration = 300.5 // 5 minutes
+			Expect(mfRepo.Put(mf)).To(Succeed())
+
+			// Refresh the album
+			err = albumRepo.RefreshAlbums([]string{"103"})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify the album was refreshed with new values
+			refreshedAlbum, err := albumRepo.Get("103")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(refreshedAlbum.Size).ToNot(Equal(initialSize))
+			Expect(refreshedAlbum.Duration).ToNot(Equal(initialDuration))
+		})
+
+		It("handles multiple albums in a single call", func() {
+			// Modify files in two different albums
+			mf1, err := mfRepo.Get("1001") // Sgt Peppers song
+			Expect(err).ToNot(HaveOccurred())
+			mf1.Size = 3000000
+			Expect(mfRepo.Put(mf1)).To(Succeed())
+
+			mf2, err := mfRepo.Get("1002") // Abbey Road song
+			Expect(err).ToNot(HaveOccurred())
+			mf2.Size = 4000000
+			Expect(mfRepo.Put(mf2)).To(Succeed())
+
+			// Refresh both albums in one call
+			err = albumRepo.RefreshAlbums([]string{"101", "102"})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify both were refreshed
+			album1, err := albumRepo.Get("101")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album1.Size).To(Equal(int64(3000000)))
+
+			album2, err := albumRepo.Get("102")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album2.Size).To(Equal(int64(4000000)))
+		})
+
+		It("handles empty album ID list gracefully", func() {
+			err := albumRepo.RefreshAlbums([]string{})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("handles non-existent album IDs gracefully", func() {
+			err := albumRepo.RefreshAlbums([]string{"non-existent-id"})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("recalculates song count correctly", func() {
+			album, err := albumRepo.Get("103") // Radioactivity album
+			Expect(err).ToNot(HaveOccurred())
+			initialSongCount := album.SongCount
+
+			// Add a new media file to this album
+			newSong := mf(model.MediaFile{
+				ID:       "1099",
+				Title:    "New Song",
+				ArtistID: "2",
+				Artist:   "Kraftwerk",
+				AlbumID:  "103",
+				Album:    "Radioactivity",
+				Path:     p("/kraft/radio/new-song.mp3"),
+				Size:     1000000,
+				Duration: 180,
+			})
+			Expect(mfRepo.Put(&newSong)).To(Succeed())
+
+			// Refresh the album
+			err = albumRepo.RefreshAlbums([]string{"103"})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify song count increased
+			refreshedAlbum, err := albumRepo.Get("103")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(refreshedAlbum.SongCount).To(Equal(initialSongCount + 1))
+
+			// Clean up
+			_, _ = mfRepo.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": "1099"}))
+		})
+
+		It("processes large batches efficiently", func() {
+			// Test with all existing albums
+			allAlbums := []string{"101", "102", "103", "104"}
+			err := albumRepo.RefreshAlbums(allAlbums)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify all albums still exist and have correct data
+			for _, albumID := range allAlbums {
+				album, err := albumRepo.Get(albumID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(album.ID).To(Equal(albumID))
+			}
+		})
+	})
 })
 
 func _p(id, name string, sortName ...string) model.Participant {
