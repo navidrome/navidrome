@@ -16,8 +16,6 @@ type Maintenance interface {
 	DeleteMissingFiles(ctx context.Context, ids []string) error
 	// DeleteAllMissingFiles deletes all files marked as missing
 	DeleteAllMissingFiles(ctx context.Context) error
-	// RefreshAlbums recalculates album attributes from media files
-	RefreshAlbums(ctx context.Context, albumIDs []string) error
 }
 
 type maintenanceService struct {
@@ -72,9 +70,9 @@ func (s *maintenanceService) deleteMissing(ctx context.Context, ids []string) er
 	return nil
 }
 
-// RefreshAlbums recalculates album attributes (size, duration, song count, etc.) from media files.
+// refreshAlbums recalculates album attributes (size, duration, song count, etc.) from media files.
 // It uses batch queries to minimize database round-trips for efficiency.
-func (s *maintenanceService) RefreshAlbums(ctx context.Context, albumIDs []string) error {
+func (s *maintenanceService) refreshAlbums(ctx context.Context, albumIDs []string) error {
 	if len(albumIDs) == 0 {
 		return nil
 	}
@@ -210,7 +208,7 @@ func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbu
 
 		// Refresh album stats in background if we have affected albums
 		if len(affectedAlbumIDs) > 0 {
-			if err := s.RefreshAlbums(bgCtx, affectedAlbumIDs); err != nil {
+			if err := s.refreshAlbums(bgCtx, affectedAlbumIDs); err != nil {
 				log.Error(bgCtx, "Error refreshing album stats after deleting missing files", err)
 			} else {
 				log.Debug(bgCtx, "Successfully refreshed album stats after deleting missing files", "count", len(affectedAlbumIDs))
