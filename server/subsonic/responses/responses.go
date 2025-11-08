@@ -440,21 +440,21 @@ type TopSongs struct {
 }
 
 type PlayQueue struct {
-	Entry     []Child    `xml:"entry,omitempty"         json:"entry,omitempty"`
-	Current   string     `xml:"current,attr,omitempty"  json:"current,omitempty"`
-	Position  int64      `xml:"position,attr,omitempty" json:"position,omitempty"`
-	Username  string     `xml:"username,attr"           json:"username"`
-	Changed   *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
-	ChangedBy string     `xml:"changedBy,attr"          json:"changedBy"`
+	Entry     []Child   `xml:"entry,omitempty"         json:"entry,omitempty"`
+	Current   string    `xml:"current,attr,omitempty"  json:"current,omitempty"`
+	Position  int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username  string    `xml:"username,attr"           json:"username"`
+	Changed   time.Time `xml:"changed,attr"            json:"changed"`
+	ChangedBy string    `xml:"changedBy,attr"          json:"changedBy"`
 }
 
 type PlayQueueByIndex struct {
-	Entry        []Child    `xml:"entry,omitempty"         json:"entry,omitempty"`
-	CurrentIndex *int       `xml:"currentIndex,attr,omitempty"  json:"currentIndex,omitempty"`
-	Position     int64      `xml:"position,attr,omitempty" json:"position,omitempty"`
-	Username     string     `xml:"username,attr"           json:"username"`
-	Changed      *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
-	ChangedBy    string     `xml:"changedBy,attr"          json:"changedBy"`
+	Entry        []Child   `xml:"entry,omitempty"         json:"entry,omitempty"`
+	CurrentIndex *int      `xml:"currentIndex,attr,omitempty"  json:"currentIndex,omitempty"`
+	Position     int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username     string    `xml:"username,attr"           json:"username"`
+	Changed      time.Time `xml:"changed,attr"            json:"changed"`
+	ChangedBy    string    `xml:"changedBy,attr"          json:"changedBy"`
 }
 
 type Bookmark struct {

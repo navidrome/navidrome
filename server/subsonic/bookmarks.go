@@ -91,7 +91,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 		Current:   currentID,
 		Position:  pq.Position,
 		Username:  user.UserName,
-		Changed:   &pq.UpdatedAt,
+		Changed:   pq.UpdatedAt,
 		ChangedBy: pq.ChangedBy,
 	}
 	return response, nil
@@ -160,7 +160,7 @@ func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, er
 		CurrentIndex: index,
 		Position:     pq.Position,
 		Username:     user.UserName,
-		Changed:      &pq.UpdatedAt,
+		Changed:      pq.UpdatedAt,
 		ChangedBy:    pq.ChangedBy,
 	}
 	return response, nil
