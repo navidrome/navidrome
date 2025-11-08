@@ -13,8 +13,12 @@ import (
 )
 
 var _ = Describe("PlayerRepository", func() {
-	var adminRepo *playerRepository
-	var database *dbx.DB
+	var (
+		adminRepo  *playerRepository
+		database   *dbx.DB
+		adminCtx   context.Context
+		regularCtx context.Context
+	)
 
 	var (
 		adminPlayer1  = model.Player{ID: "1", Name: "NavidromeUI [Firefox/Linux]", UserAgent: "Firefox/Linux", UserId: adminUser.ID, Username: adminUser.UserName, Client: "NavidromeUI", IP: "127.0.0.1", ReportRealPath: true, ScrobbleEnabled: true}
@@ -25,11 +29,14 @@ var _ = Describe("PlayerRepository", func() {
 	)
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, adminUser)
+		adminCtx = log.NewContext(context.TODO())
+		adminCtx = request.WithUser(adminCtx, adminUser)
+
+		regularCtx = log.NewContext(context.TODO())
+		regularCtx = request.WithUser(regularCtx, regularUser)
 
 		database = GetDBXBuilder()
-		adminRepo = NewPlayerRepository(ctx, database).(*playerRepository)
+		adminRepo = NewPlayerRepository(adminCtx, database).(*playerRepository)
 
 		for idx := range players {
 			err := adminRepo.Put(&players[idx])
@@ -83,6 +90,28 @@ var _ = Describe("PlayerRepository", func() {
 		It("does not get nonexistent item", func() {
 			_, err := adminRepo.Get("i don't exist")
 			Expect(err).To(Equal(model.ErrNotFound))
+		})
+	})
+
+	Describe("Save", func() {
+		var repo *playerRepository
+		BeforeEach(func() {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, regularUser)
+			repo = NewPlayerRepository(ctx, database).(*playerRepository)
+		})
+		It("fails if different user id is set", func() {
+			newPlayer := model.Player{
+				Name:      "Test Player",
+				Client:    "TestClient",
+				UserAgent: "TestAgent",
+				UserId:    adminUser.ID,
+			}
+			id, err := repo.Save(&newPlayer)
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+
+			_, err = repo.Get(id)
+			Expect(err).To(Equal(rest.ErrNotFound))
 		})
 	})
 
@@ -171,41 +200,37 @@ var _ = Describe("PlayerRepository", func() {
 		})
 
 		Describe("Save", func() {
-			DescribeTable("item type", func(player model.Player) {
-				clone := player
-				clone.ID = ""
-				clone.IP = "192.168.1.1"
-				id, err := repo.Save(&clone)
-
-				if clone.UserId == "" {
-					Expect(err).To(HaveOccurred())
-				} else if !admin && player.Username == adminPlayer1.Username {
-					Expect(err).To(Equal(rest.ErrPermissionDenied))
-					clone.UserId = ""
-				} else {
-					Expect(err).To(BeNil())
-					Expect(id).ToNot(BeEmpty())
+			It("excludes API key from being saved", func() {
+				newPlayer := model.Player{
+					Name:      "Test Player",
+					Client:    "TestClient",
+					UserAgent: "TestAgent",
+					APIKey:    "should-not-be-saved",
 				}
 
-				count, err := repo.Count()
+				id, err := repo.Save(&newPlayer)
 				Expect(err).To(BeNil())
 
-				clone.ID = id
-				newItem, err := repo.Get(id)
+				savedPlayer, err := repo.Get(id)
+				Expect(err).To(BeNil())
+				Expect(savedPlayer.APIKey).To(BeEmpty())
+			})
 
-				if clone.UserId == "" {
-					Expect(count).To(Equal(baseCount))
-					Expect(err).To(Equal(model.ErrNotFound))
-				} else {
-					Expect(count).To(Equal(baseCount + 1))
-					Expect(err).To(BeNil())
-					Expect(*newItem).To(Equal(clone))
+			It("sets user ID from context", func() {
+				repo := NewPlayerRepository(regularCtx, database).(*playerRepository)
+				newPlayer := model.Player{
+					Name:      "Test Player",
+					Client:    "TestClient",
+					UserAgent: "TestAgent",
 				}
-			},
-				Entry("same user", userPlayer),
-				Entry("other item", otherPlayer),
-				Entry("fake item", model.Player{}),
-			)
+
+				id, err := repo.Save(&newPlayer)
+				Expect(err).To(BeNil())
+
+				savedPlayer, err := repo.Get(id)
+				Expect(err).To(BeNil())
+				Expect(savedPlayer.UserId).To(Equal(regularUser.ID))
+			})
 		})
 
 		Describe("Update", func() {
@@ -215,9 +240,7 @@ var _ = Describe("PlayerRepository", func() {
 				clone.MaxBitRate = 10000
 				err := repo.Update(clone.ID, &clone, "ip")
 
-				if clone.UserId == "" {
-					Expect(err).To(HaveOccurred())
-				} else if !admin && player.Username == adminPlayer1.Username {
+				if !admin && player.Username == adminPlayer1.Username {
 					Expect(err).To(Equal(rest.ErrPermissionDenied))
 					clone.IP = player.IP
 				} else {
