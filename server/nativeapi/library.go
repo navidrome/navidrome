@@ -13,11 +13,11 @@ import (
 )
 
 // User-library association endpoints (admin only)
-func (n *Router) addUserLibraryRoute(r chi.Router) {
+func (api *Router) addUserLibraryRoute(r chi.Router) {
 	r.Route("/user/{id}/library", func(r chi.Router) {
 		r.Use(parseUserIDMiddleware)
-		r.Get("/", getUserLibraries(n.libs))
-		r.Put("/", setUserLibraries(n.libs))
+		r.Get("/", getUserLibraries(api.libs))
+		r.Put("/", setUserLibraries(api.libs))
 	})
 }
 
