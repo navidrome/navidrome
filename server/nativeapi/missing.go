@@ -63,7 +63,7 @@ func (r *missingRepository) EntityName() string {
 	return "missing_files"
 }
 
-func deleteMissingFiles(missingFiles core.MissingFiles) http.HandlerFunc {
+func deleteMissingFiles(maintenance core.Maintenance) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -72,9 +72,9 @@ func deleteMissingFiles(missingFiles core.MissingFiles) http.HandlerFunc {
 
 		var err error
 		if len(ids) == 0 {
-			err = missingFiles.DeleteAllMissingFiles(ctx)
+			err = maintenance.DeleteAllMissingFiles(ctx)
 		} else {
-			err = missingFiles.DeleteMissingFiles(ctx, ids)
+			err = maintenance.DeleteMissingFiles(ctx, ids)
 		}
 
 		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {

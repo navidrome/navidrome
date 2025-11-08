@@ -139,9 +139,6 @@ type AlbumRepository interface {
 	RefreshPlayCounts() (int64, error)
 	CopyAttributes(fromID, toID string, columns ...string) error
 
-	// RefreshAlbums recalculates album attributes (size, duration, etc.) from media files
-	RefreshAlbums(albumIDs []string) error
-
 	AnnotatedRepository
 	SearchableRepository[Albums]
 }

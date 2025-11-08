@@ -22,16 +22,16 @@ import (
 
 type Router struct {
 	http.Handler
-	ds           model.DataStore
-	share        core.Share
-	playlists    core.Playlists
-	insights     metrics.Insights
-	libs         core.Library
-	missingFiles core.MissingFiles
+	ds          model.DataStore
+	share       core.Share
+	playlists   core.Playlists
+	insights    metrics.Insights
+	libs        core.Library
+	maintenance core.Maintenance
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, missingFiles core.MissingFiles) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, missingFiles: missingFiles}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, maintenance core.Maintenance) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, maintenance: maintenance}
 	r.Handler = r.routes()
 	return r
 }
@@ -173,7 +173,7 @@ func (api *Router) addQueueRoute(r chi.Router) {
 func (api *Router) addMissingFilesRoute(r chi.Router) {
 	r.Route("/missing", func(r chi.Router) {
 		api.RX(r, "/", newMissingRepository(api.ds), false)
-		r.Delete("/", deleteMissingFiles(api.missingFiles))
+		r.Delete("/", deleteMissingFiles(api.maintenance))
 	})
 }
 
