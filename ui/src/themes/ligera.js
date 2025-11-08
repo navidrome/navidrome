@@ -70,7 +70,7 @@ export default {
     },
     background: {
       default: '#f0f2f5',
-      paper: 'inherit',
+      paper: bLight['500'],
     },
     text: {
       secondary: '#232323',
