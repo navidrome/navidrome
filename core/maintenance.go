@@ -3,12 +3,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Maintenance interface {
@@ -81,13 +83,7 @@ func (s *maintenanceService) refreshAlbums(ctx context.Context, albumIDs []strin
 
 	// Process in chunks to avoid query size limits
 	const chunkSize = 100
-	for i := 0; i < len(albumIDs); i += chunkSize {
-		end := i + chunkSize
-		if end > len(albumIDs) {
-			end = len(albumIDs)
-		}
-		chunk := albumIDs[i:end]
-
+	for chunk := range slice.CollectChunks(slices.Values(albumIDs), chunkSize) {
 		if err := s.refreshAlbumChunk(ctx, chunk); err != nil {
 			return fmt.Errorf("refreshing album chunk: %w", err)
 		}

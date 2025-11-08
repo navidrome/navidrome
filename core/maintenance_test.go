@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Maintenance", func() {
@@ -66,7 +69,7 @@ var _ = Describe("Maintenance", func() {
 
 				// Album should be updated with new calculated values
 				Eventually(func() bool {
-					return albumRepo.putCalled
+					return albumRepo.putCallCount > 0
 				}).Should(BeTrue(), "Album.Put() should be called to refresh album data")
 			})
 
@@ -160,6 +163,95 @@ var _ = Describe("Maintenance", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Describe("Album refresh logic", func() {
+		var albumRepo *extendedAlbumRepo
+
+		BeforeEach(func() {
+			albumRepo = ds.MockedAlbum.(*extendedAlbumRepo)
+		})
+
+		Context("when album has no tracks after deletion", func() {
+			It("skips the album without updating it", func() {
+				// Setup album with no remaining tracks
+				albumRepo.SetData(model.Albums{
+					{ID: "album1", Name: "Empty Album", SongCount: 1},
+				})
+				mfRepo.SetData(model.MediaFiles{
+					{ID: "mf1", AlbumID: "album1", Missing: true},
+				})
+
+				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
+
+				Expect(err).ToNot(HaveOccurred())
+				// Album should NOT be updated because it has no tracks left
+				Eventually(func() bool {
+					return albumRepo.putCallCount > 0
+				}).Should(BeFalse(), "Album with no tracks should not be updated")
+			})
+		})
+
+		Context("when Put fails for one album", func() {
+			It("continues processing other albums", func() {
+				albumRepo.SetData(model.Albums{
+					{ID: "album1", Name: "Album 1"},
+					{ID: "album2", Name: "Album 2"},
+				})
+				mfRepo.SetData(model.MediaFiles{
+					{ID: "mf1", AlbumID: "album1", Missing: true},
+					{ID: "mf2", AlbumID: "album1", Missing: false, Size: 1000, Duration: 180},
+					{ID: "mf3", AlbumID: "album2", Missing: true},
+					{ID: "mf4", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200},
+				})
+
+				// Make Put fail on first call but succeed on subsequent calls
+				albumRepo.putError = errors.New("put failed")
+				albumRepo.failOnce = true
+
+				err := service.DeleteMissingFiles(ctx, []string{"mf1", "mf3"})
+
+				// Should not fail even if one album's Put fails
+				Expect(err).ToNot(HaveOccurred())
+				// Put should have been called multiple times
+				Eventually(func() int {
+					return albumRepo.putCallCount
+				}).Should(BeNumerically(">", 0), "Put should be attempted")
+			})
+		})
+
+		Context("when media file loading fails", func() {
+			It("logs warning but continues when tracking affected albums fails", func() {
+				// Set up log capturing
+				l, hook := test.NewNullLogger()
+				log.SetLevel(log.LevelWarn)
+				log.SetDefaultLogger(l)
+				DeferCleanup(func() {
+					// Restore default logger after test
+					log.SetDefaultLogger(logrus.New())
+				})
+
+				albumRepo.SetData(model.Albums{
+					{ID: "album1", Name: "Album 1"},
+				})
+				mfRepo.SetData(model.MediaFiles{
+					{ID: "mf1", AlbumID: "album1", Missing: true},
+				})
+				// Make GetAll fail when loading media files
+				mfRepo.SetError(true)
+
+				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
+
+				// Deletion should succeed despite the tracking error
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfRepo.deleteMissingCalled).To(BeTrue())
+
+				// Verify the warning was logged
+				Expect(hook.LastEntry()).ToNot(BeNil())
+				Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
+				Expect(hook.LastEntry().Message).To(Equal("Error tracking affected albums for refresh"))
+			})
+		})
+	})
 })
 
 // Test helper to create a mock DataStore with controllable behavior
@@ -214,13 +306,26 @@ func (m *extendedMediaFileRepo) DeleteMissing(ids []string) error {
 // Extension of MockAlbumRepo to track Put calls
 type extendedAlbumRepo struct {
 	*tests.MockAlbumRepo
-	putCalled   bool
-	lastPutData *model.Album
+	putCallCount int
+	lastPutData  *model.Album
+	putError     error
+	failOnce     bool
 }
 
 func (m *extendedAlbumRepo) Put(album *model.Album) error {
-	m.putCalled = true
+	m.putCallCount++
 	m.lastPutData = album
+
+	// Handle failOnce behavior
+	if m.putError != nil {
+		if m.failOnce {
+			err := m.putError
+			m.putError = nil // Clear error after first failure
+			return err
+		}
+		return m.putError
+	}
+
 	return m.MockAlbumRepo.Put(album)
 }
 
