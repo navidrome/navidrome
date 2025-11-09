@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Maintenance", func() {
@@ -222,13 +220,8 @@ var _ = Describe("Maintenance", func() {
 		Context("when media file loading fails", func() {
 			It("logs warning but continues when tracking affected albums fails", func() {
 				// Set up log capturing
-				l, hook := test.NewNullLogger()
-				log.SetLevel(log.LevelWarn)
-				log.SetDefaultLogger(l)
-				DeferCleanup(func() {
-					// Restore default logger after test
-					log.SetDefaultLogger(logrus.New())
-				})
+				hook, cleanup := tests.LogHook()
+				defer cleanup()
 
 				albumRepo.SetData(model.Albums{
 					{ID: "album1", Name: "Album 1"},
