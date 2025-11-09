@@ -4,7 +4,7 @@
   "type": "navidrome",
   "serverVersion": "v0.55.0",
   "openSubsonic": true,
-  "playQueue": {
+  "playQueueByIndex": {
     "username": "",
     "changed": "0001-01-01T00:00:00Z",
     "changedBy": ""
