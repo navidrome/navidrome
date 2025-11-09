@@ -2,12 +2,8 @@ module github.com/navidrome/navidrome
 
 go 1.25.4
 
-replace (
-	// Fork to fix https://github.com/navidrome/navidrome/issues/3254
-	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
-	// Using version from main that fixes https://github.com/navidrome/navidrome/issues/4396
-	github.com/tetratelabs/wazero v1.9.0 => github.com/tetratelabs/wazero v0.0.0-20251106165119-514cdb337684
-)
+// Fork to fix https://github.com/navidrome/navidrome/issues/3254
+replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -60,15 +56,15 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tetratelabs/wazero v1.9.0
+	github.com/tetratelabs/wazero v1.10.0
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	go.uber.org/goleak v1.3.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/image v0.32.0
 	golang.org/x/net v0.46.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.37.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.30.0
 	golang.org/x/time v0.14.0
 	google.golang.org/protobuf v1.36.10
