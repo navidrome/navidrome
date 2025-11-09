@@ -14,11 +14,6 @@ if [ ! -f /etc/navidrome/navidrome.toml ]; then
 fi
 
 postinstall_flag="/var/lib/navidrome/.installed"
-package_file="/var/lib/navidrome/.package"
-
-if [ ! -f "$package_file" ]; then
-    echo "deb/rpm" > "$package_file";
-fi
 
 if [ ! -f "$postinstall_flag" ]; then
     # The primary reason why this would fail is if the service was already installed AND
