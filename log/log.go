@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -70,6 +71,7 @@ type levelPath struct {
 
 var (
 	currentLevel  Level
+	loggerMu      sync.RWMutex
 	defaultLogger = logrus.New()
 	logSourceLine = false
 	rootPath      string
@@ -79,7 +81,9 @@ var (
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l Level) {
 	currentLevel = l
+	loggerMu.Lock()
 	defaultLogger.Level = logrus.TraceLevel
+	loggerMu.Unlock()
 	logrus.SetLevel(logrus.Level(l))
 }
 
@@ -125,6 +129,8 @@ func SetLogSourceLine(enabled bool) {
 
 func SetRedacting(enabled bool) {
 	if enabled {
+		loggerMu.Lock()
+		defer loggerMu.Unlock()
 		defaultLogger.AddHook(redacted)
 	}
 }
@@ -133,6 +139,8 @@ func SetOutput(w io.Writer) {
 	if runtime.GOOS == "windows" {
 		w = CRLFWriter(w)
 	}
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger.SetOutput(w)
 }
 
@@ -158,6 +166,8 @@ func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Conte
 }
 
 func SetDefaultLogger(l *logrus.Logger) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger = l
 }
 
@@ -204,6 +214,8 @@ func log(level Level, args ...interface{}) {
 }
 
 func Writer() io.Writer {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	return defaultLogger.Writer()
 }
 
@@ -314,6 +326,8 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 func createNewLogger() *logrus.Entry {
 	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
 	//l.Formatter = &logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true}
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	logger := logrus.NewEntry(defaultLogger)
 	return logger
 }
