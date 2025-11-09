@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -22,6 +23,7 @@ type Maintenance interface {
 
 type maintenanceService struct {
 	ds model.DataStore
+	wg sync.WaitGroup
 }
 
 func NewMaintenance(ds model.DataStore) Maintenance {
@@ -194,7 +196,9 @@ func (s *maintenanceService) getAffectedAlbumIDs(ctx context.Context, ids []stri
 // refreshStatsAsync refreshes artist and album statistics in background goroutines
 func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbumIDs []string) {
 	// Refresh artist stats in background
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		bgCtx := request.AddValues(context.Background(), ctx)
 		if _, err := s.ds.Artist(bgCtx).RefreshStats(true); err != nil {
 			log.Error(bgCtx, "Error refreshing artist stats after deleting missing files", err)
@@ -211,4 +215,12 @@ func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbu
 			}
 		}
 	}()
+}
+
+// Wait waits for all background goroutines to complete.
+// WARNING: This method is ONLY for testing. Never call this in production code.
+// Calling Wait() in production will block until ALL background operations complete
+// and may cause race conditions with new operations starting.
+func (s *maintenanceService) wait() {
+	s.wg.Wait()
 }

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -60,15 +61,15 @@ var _ = Describe("Maintenance", func() {
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
 				Expect(err).ToNot(HaveOccurred())
-				// RefreshStats should be called asynchronously
-				Eventually(func() bool {
-					return artistRepo.refreshStatsCalled
-				}).Should(BeTrue(), "Artist stats should be refreshed")
+
+				// Wait for background goroutines to complete
+				service.(*maintenanceService).wait()
+
+				// RefreshStats should be called
+				Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
 
 				// Album should be updated with new calculated values
-				Eventually(func() bool {
-					return albumRepo.putCallCount > 0
-				}).Should(BeTrue(), "Album.Put() should be called to refresh album data")
+				Expect(albumRepo.GetPutCallCount()).To(BeNumerically(">", 0), "Album.Put() should be called to refresh album data")
 			})
 
 			It("returns error if deletion fails", func() {
@@ -182,10 +183,12 @@ var _ = Describe("Maintenance", func() {
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
 				Expect(err).ToNot(HaveOccurred())
+
+				// Wait for background goroutines to complete
+				service.(*maintenanceService).wait()
+
 				// Album should NOT be updated because it has no tracks left
-				Eventually(func() bool {
-					return albumRepo.putCallCount > 0
-				}).Should(BeFalse(), "Album with no tracks should not be updated")
+				Expect(albumRepo.GetPutCallCount()).To(Equal(0), "Album with no tracks should not be updated")
 			})
 		})
 
@@ -210,10 +213,12 @@ var _ = Describe("Maintenance", func() {
 
 				// Should not fail even if one album's Put fails
 				Expect(err).ToNot(HaveOccurred())
+
+				// Wait for background goroutines to complete
+				service.(*maintenanceService).wait()
+
 				// Put should have been called multiple times
-				Eventually(func() int {
-					return albumRepo.putCallCount
-				}).Should(BeNumerically(">", 0), "Put should be attempted")
+				Expect(albumRepo.GetPutCallCount()).To(BeNumerically(">", 0), "Put should be attempted")
 			})
 		})
 
@@ -299,6 +304,7 @@ func (m *extendedMediaFileRepo) DeleteMissing(ids []string) error {
 // Extension of MockAlbumRepo to track Put calls
 type extendedAlbumRepo struct {
 	*tests.MockAlbumRepo
+	mu           sync.RWMutex
 	putCallCount int
 	lastPutData  *model.Album
 	putError     error
@@ -306,35 +312,58 @@ type extendedAlbumRepo struct {
 }
 
 func (m *extendedAlbumRepo) Put(album *model.Album) error {
+	m.mu.Lock()
 	m.putCallCount++
 	m.lastPutData = album
 
 	// Handle failOnce behavior
+	var err error
 	if m.putError != nil {
 		if m.failOnce {
-			err := m.putError
+			err = m.putError
 			m.putError = nil // Clear error after first failure
+			m.mu.Unlock()
 			return err
 		}
-		return m.putError
+		err = m.putError
+		m.mu.Unlock()
+		return err
 	}
+	m.mu.Unlock()
 
 	return m.MockAlbumRepo.Put(album)
+}
+
+func (m *extendedAlbumRepo) GetPutCallCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.putCallCount
 }
 
 // Extension of MockArtistRepo to track RefreshStats calls
 type extendedArtistRepo struct {
 	*tests.MockArtistRepo
+	mu                 sync.RWMutex
 	refreshStatsCalled bool
 	refreshStatsError  error
 }
 
 func (m *extendedArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+	m.mu.Lock()
 	m.refreshStatsCalled = true
-	if m.refreshStatsError != nil {
-		return 0, m.refreshStatsError
+	err := m.refreshStatsError
+	m.mu.Unlock()
+
+	if err != nil {
+		return 0, err
 	}
 	return m.MockArtistRepo.RefreshStats(allArtists)
+}
+
+func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.refreshStatsCalled
 }
 
 // Extension of MockDataStore to track GC calls
