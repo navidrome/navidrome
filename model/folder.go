@@ -83,10 +83,17 @@ type FolderUpdateInfo struct {
 type FolderRepository interface {
 	Get(id string) (*Folder, error)
 	GetByPath(lib Library, path string) (*Folder, error)
+	GetByPaths(targets []LibraryPath) (map[string]FolderUpdateInfo, error)
 	GetAll(...QueryOptions) ([]Folder, error)
 	CountAll(...QueryOptions) (int64, error)
 	GetLastUpdates(lib Library) (map[string]FolderUpdateInfo, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
+}
+
+// LibraryPath represents a folder path within a specific library
+type LibraryPath struct {
+	LibraryID  int
+	FolderPath string
 }

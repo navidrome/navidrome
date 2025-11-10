@@ -258,6 +258,6 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 	}
 }
 
-func (db *MockDataStore) GC(context.Context) error {
+func (db *MockDataStore) GC(context.Context, ...int) error {
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -35,6 +36,56 @@ func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress c
 		"--configfile", conf.Server.ConfigFile,
 		"--datafolder", conf.Server.DataFolder,
 		"--cachefolder", conf.Server.CacheFolder,
+		If(fullScan, "--full", ""))
+
+	in, out := io.Pipe()
+	defer in.Close()
+	defer out.Close()
+	cmd.Stdout = out
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		progress <- &ProgressInfo{Error: fmt.Sprintf("failed to start scanner process: %s", err)}
+		return
+	}
+	go s.wait(cmd, out)
+
+	decoder := gob.NewDecoder(in)
+	for {
+		var p ProgressInfo
+		if err := decoder.Decode(&p); err != nil {
+			if !errors.Is(err, io.EOF) {
+				progress <- &ProgressInfo{Error: fmt.Sprintf("failed to read status from scanner: %s", err)}
+			}
+			break
+		}
+		progress <- &p
+	}
+}
+
+func (s *scannerExternal) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
+	exe, err := os.Executable()
+	if err != nil {
+		progress <- &ProgressInfo{Error: fmt.Sprintf("failed to get executable path: %s", err)}
+		return
+	}
+
+	// Build targets string for CLI
+	var targetsStr string
+	for i, target := range targets {
+		if i > 0 {
+			targetsStr += ","
+		}
+		targetsStr += strconv.Itoa(target.LibraryID) + ":" + target.FolderPath
+	}
+
+	log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targetsStr)
+	cmd := exec.CommandContext(ctx, exe, "scan",
+		"--nobanner", "--subprocess",
+		"--configfile", conf.Server.ConfigFile,
+		"--datafolder", conf.Server.DataFolder,
+		"--cachefolder", conf.Server.CacheFolder,
+		"--targets", targetsStr,
 		If(fullScan, "--full", ""))
 
 	in, out := io.Pipe()

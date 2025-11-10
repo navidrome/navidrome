@@ -32,6 +32,64 @@ func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error)
 	return results, nil
 }
 
+// loadSpecificFolders loads only the specified folders without recursing into subdirectories
+func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []string) (<-chan *folderEntry, error) {
+	results := make(chan *folderEntry)
+	go func() {
+		defer close(results)
+		for _, folderPath := range targetFolders {
+			if utils.IsCtxDone(ctx) {
+				return
+			}
+
+			// Load ignore patterns from parent directories up to this folder
+			ignorePatterns := loadIgnorePatternsForPath(ctx, job.fs, folderPath)
+
+			// Load only this specific folder (no recursion)
+			folder, _, err := loadDir(ctx, job, folderPath, ignorePatterns)
+			if err != nil {
+				log.Warn(ctx, "Scanner: Error loading target folder. Skipping", "path", folderPath, err)
+				continue
+			}
+
+			folder.path = path.Clean(folderPath)
+			folder.elapsed.Start()
+			log.Trace(ctx, "Scanner: Found target directory", " path", folder.path, "audioFiles", maps.Keys(folder.audioFiles),
+				"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
+				"updTime", folder.updTime, "modTime", folder.modTime)
+
+			results <- folder
+		}
+		log.Debug(ctx, "Scanner: Finished reading target folders", "lib", job.lib.Name, "path", job.lib.Path, "numFolders", len(targetFolders))
+	}()
+	return results, nil
+}
+
+// loadIgnorePatternsForPath loads all .ndignore patterns from the root down to the specified path
+func loadIgnorePatternsForPath(ctx context.Context, fsys fs.FS, targetPath string) []string {
+	var patterns []string
+	currentPath := "."
+
+	// If target is root, just check root
+	if targetPath == "." {
+		return loadIgnoredPatterns(ctx, fsys, ".", nil)
+	}
+
+	// Walk from root to target, collecting ignore patterns
+	parts := strings.Split(path.Clean(targetPath), "/")
+	for _, part := range parts {
+		if part == "." {
+			continue
+		}
+		patterns = loadIgnoredPatterns(ctx, fsys, currentPath, patterns)
+		currentPath = path.Join(currentPath, part)
+	}
+	// Load patterns from the target folder itself
+	patterns = loadIgnoredPatterns(ctx, fsys, currentPath, patterns)
+
+	return patterns
+}
+
 func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignorePatterns []string, results chan<- *folderEntry) error {
 	ignorePatterns = loadIgnoredPatterns(ctx, job.fs, currentFolder, ignorePatterns)
 

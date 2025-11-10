@@ -26,9 +26,18 @@ var (
 	ErrAlreadyScanning = errors.New("already scanning")
 )
 
+// ScanTarget represents a specific folder within a library to be scanned.
+type ScanTarget struct {
+	LibraryID  int
+	FolderPath string // Relative path within the library, or "" for entire library
+}
+
 type Scanner interface {
 	// ScanAll starts a full scan of the music library. This is a blocking operation.
 	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
+	// ScanFolders scans specific library/folder pairs without recursing into subdirectories.
+	// This is a blocking operation.
+	ScanFolders(ctx context.Context, fullScan bool, targets []ScanTarget) (warnings []string, err error)
 	Status(context.Context) (*StatusInfo, error)
 }
 
@@ -68,6 +77,12 @@ func (s *controller) getScanner() scanner {
 // CallScan starts an in-process scan of the music library.
 // This is meant to be called from the command line (see cmd/scan.go).
 func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
+	return CallScanFolders(ctx, ds, pls, fullScan, nil)
+}
+
+// CallScanFolders starts an in-process scan of specific library/folder pairs.
+// If targets is nil, it scans all libraries. This is meant to be called from the command line.
+func CallScanFolders(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +94,11 @@ func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullS
 	go func() {
 		defer close(progress)
 		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
-		scanner.scanAll(ctx, fullScan, progress)
+		if targets == nil {
+			scanner.scanAll(ctx, fullScan, progress)
+		} else {
+			scanner.scanFolders(ctx, fullScan, targets, progress)
+		}
 	}()
 	return progress, nil
 }
@@ -101,6 +120,7 @@ type ProgressInfo struct {
 
 type scanner interface {
 	scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo)
+	scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo)
 }
 
 type controller struct {
@@ -208,6 +228,10 @@ func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
 }
 
 func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]string, error) {
+	return s.ScanFolders(requestCtx, fullScan, nil)
+}
+
+func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targets []ScanTarget) ([]string, error) {
 	release, err := lockScan(requestCtx)
 	if err != nil {
 		return nil, err
@@ -224,7 +248,11 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	go func() {
 		defer close(progress)
 		scanner := s.getScanner()
-		scanner.scanAll(ctx, fullScan, progress)
+		if targets == nil {
+			scanner.scanAll(ctx, fullScan, progress)
+		} else {
+			scanner.scanFolders(ctx, fullScan, targets, progress)
+		}
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients

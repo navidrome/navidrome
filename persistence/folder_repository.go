@@ -78,6 +78,67 @@ func (r folderRepository) GetByPath(lib model.Library, path string) (*model.Fold
 	return r.Get(id)
 }
 
+func (r folderRepository) GetByPaths(targets []model.LibraryPath) (map[string]model.FolderUpdateInfo, error) {
+	if len(targets) == 0 {
+		return make(map[string]model.FolderUpdateInfo), nil
+	}
+
+	// Group targets by library to build efficient queries
+	targetsByLib := make(map[int][]string)
+	folderIDs := make([]string, 0, len(targets))
+
+	// We need to resolve library paths to generate folder IDs
+	// Get all libraries first
+	libRepo := NewLibraryRepository(r.ctx, r.db)
+	allLibs, err := libRepo.GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("getting libraries: %w", err)
+	}
+	libMap := make(map[int]model.Library)
+	for _, lib := range allLibs {
+		libMap[lib.ID] = lib
+	}
+
+	// Generate folder IDs for all targets
+	for _, target := range targets {
+		lib, ok := libMap[target.LibraryID]
+		if !ok {
+			continue // Skip invalid library IDs
+		}
+		folderPath := target.FolderPath
+		if folderPath == "" {
+			folderPath = "."
+		}
+		folderID := model.FolderID(lib, folderPath)
+		folderIDs = append(folderIDs, folderID)
+		targetsByLib[target.LibraryID] = append(targetsByLib[target.LibraryID], folderPath)
+	}
+
+	if len(folderIDs) == 0 {
+		return make(map[string]model.FolderUpdateInfo), nil
+	}
+
+	// Query folders by IDs
+	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(And{
+		Eq{"id": folderIDs},
+		Eq{"missing": false},
+	})
+	var res []struct {
+		ID        string
+		UpdatedAt time.Time
+		Hash      string
+	}
+	err = r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]model.FolderUpdateInfo, len(res))
+	for _, f := range res {
+		m[f.ID] = model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash}
+	}
+	return m, nil
+}
+
 func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, error) {
 	sq := r.selectFolder(opt...)
 	var res dbFolders

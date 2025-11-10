@@ -717,6 +717,61 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
 		})
 	})
+
+	Describe("ScanFolders", func() {
+		It("scans only specified folders without recursion", func() {
+			rock := template(_t{"albumartist": "Rock Artist", "album": "Rock Album"})
+			jazz := template(_t{"albumartist": "Jazz Artist", "album": "Jazz Album"})
+			pop := template(_t{"albumartist": "Pop Artist", "album": "Pop Album"})
+			createFS(fstest.MapFS{
+				"rock/track1.mp3":        rock(track(1, "Rock Track 1")),
+				"rock/track2.mp3":        rock(track(2, "Rock Track 2")),
+				"rock/subdir/track3.mp3": rock(track(3, "Rock Track 3")),
+				"jazz/track4.mp3":        jazz(track(1, "Jazz Track 1")),
+				"jazz/subdir/track5.mp3": jazz(track(2, "Jazz Track 2")),
+				"pop/track6.mp3":         pop(track(1, "Pop Track 1")),
+			})
+
+			// Use the existing library from BeforeEach
+			// (lib is already created with the path "fake:///music")
+
+			// Scan only the "rock" and "jazz" folders (not their subdirectories or pop)
+			targets := []scanner.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "rock"},
+				{LibraryID: lib.ID, FolderPath: "jazz"},
+			}
+
+			warnings, err := s.ScanFolders(ctx, false, targets)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(warnings).To(BeEmpty())
+
+			// Verify only track1, track2, and track4 were imported (not track3, track5, or track6)
+			allFiles, err := ds.MediaFile(ctx).GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should have exactly 3 tracks (rock/track1, rock/track2, jazz/track4)
+			Expect(allFiles).To(HaveLen(3))
+
+			// Get the file paths
+			paths := slice.Map(allFiles, func(mf model.MediaFile) string {
+				return filepath.ToSlash(mf.Path)
+			})
+
+			// Verify the correct files were scanned
+			Expect(paths).To(ContainElements(
+				"rock/track1.mp3",
+				"rock/track2.mp3",
+				"jazz/track4.mp3",
+			))
+
+			// Verify files in subdirectories and pop folder were NOT scanned
+			Expect(paths).ToNot(ContainElements(
+				"rock/subdir/track3.mp3",
+				"jazz/subdir/track5.mp3",
+				"pop/track6.mp3",
+			))
+		})
+	})
 })
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {

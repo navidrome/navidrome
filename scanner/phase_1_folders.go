@@ -48,7 +48,14 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		} else {
 			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt, "fullScan", lib.FullScanInProgress)
 		}
-		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan)
+
+		// Get target folders for this library if selective scan
+		var targetFolders []string
+		if state.targets != nil {
+			targetFolders = state.targets[lib.ID]
+		}
+
+		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.sendWarning(err.Error())
@@ -65,19 +72,36 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 }
 
 type scanJob struct {
-	lib         model.Library
-	fs          storage.MusicFS
-	cw          artwork.CacheWarmer
-	lastUpdates map[string]model.FolderUpdateInfo
-	lock        sync.Mutex
-	numFolders  atomic.Int64
+	lib           model.Library
+	fs            storage.MusicFS
+	cw            artwork.CacheWarmer
+	lastUpdates   map[string]model.FolderUpdateInfo
+	targetFolders []string // Optional: specific folders to scan (non-recursive)
+	lock          sync.Mutex
+	numFolders    atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool) (*scanJob, error) {
-	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
+func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
+	var lastUpdates map[string]model.FolderUpdateInfo
+	var err error
+
+	// If we have target folders, get only those folder updates. Otherwise get all updates for the library
+	if len(targetFolders) > 0 {
+		var targets []model.LibraryPath
+		for _, folderPath := range targetFolders {
+			targets = append(targets, model.LibraryPath{
+				LibraryID:  lib.ID,
+				FolderPath: folderPath,
+			})
+		}
+		lastUpdates, err = ds.Folder(ctx).GetByPaths(targets)
+	} else {
+		lastUpdates, err = ds.Folder(ctx).GetLastUpdates(lib)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
+
 	fileStore, err := storage.For(lib.Path)
 	if err != nil {
 		log.Error(ctx, "Error getting storage for library", "library", lib.Name, "path", lib.Path, err)
@@ -90,10 +114,11 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	}
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 	return &scanJob{
-		lib:         lib,
-		fs:          fsys,
-		cw:          cw,
-		lastUpdates: lastUpdates,
+		lib:           lib,
+		fs:            fsys,
+		cw:            cw,
+		lastUpdates:   lastUpdates,
+		targetFolders: targetFolders,
 	}, nil
 }
 
@@ -144,7 +169,18 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			if utils.IsCtxDone(p.ctx) {
 				break
 			}
-			outputChan, err := walkDirTree(p.ctx, job)
+
+			var outputChan <-chan *folderEntry
+			var err error
+
+			// Use selective folder loading if target folders are specified
+			if len(job.targetFolders) > 0 {
+				log.Debug(p.ctx, "Scanner: Loading specific folders only (non-recursive)", "lib", job.lib.Name, "numTargets", len(job.targetFolders))
+				outputChan, err = loadSpecificFolders(p.ctx, job, job.targetFolders)
+			} else {
+				outputChan, err = walkDirTree(p.ctx, job)
+			}
+
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
 			}
