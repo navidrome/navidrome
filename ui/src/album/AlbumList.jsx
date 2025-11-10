@@ -42,6 +42,9 @@ const useStyles = makeStyles({
   },
 })
 
+const formatReleaseType = (record) =>
+  record?.tagValue ? humanize(record?.tagValue) : '-- None --'
+
 const AlbumFilter = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -142,9 +145,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput
           emptyText="-- None --"
-          optionText={(record) =>
-            record?.tagValue ? humanize(record?.tagValue) : '-- None --'
-          }
+          optionText={formatReleaseType}
         />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />

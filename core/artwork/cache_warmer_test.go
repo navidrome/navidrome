@@ -90,6 +90,7 @@ var _ = Describe("CacheWarmer", func() {
 		})
 
 		It("deduplicates items in buffer", func() {
+			fc.SetReady(false) // Make cache unavailable so items stay in buffer
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
 			cw.PreCache(model.MustParseArtworkID("al-1"))
 			cw.PreCache(model.MustParseArtworkID("al-1"))

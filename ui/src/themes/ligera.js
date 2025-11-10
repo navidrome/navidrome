@@ -70,7 +70,7 @@ export default {
     },
     background: {
       default: '#f0f2f5',
-      paper: 'inherit',
+      paper: bLight['500'],
     },
     text: {
       secondary: '#232323',
@@ -450,13 +450,21 @@ export default {
     },
     RaPaginationActions: {
       button: {
-        backgroundColor: 'inherit',
+        backgroundColor: '#fff',
+        color: '#000',
         minWidth: 48,
         margin: '0 4px',
-        border: '1px solid #282828',
+        border: '1px solid #cccccc',
         '@global': {
           '> .MuiButton-label': {
             padding: 0,
+            color: '#656565',
+            '&:hover': {
+              color: '#fff !important',
+            },
+          },
+          '> .MuiButton-label > svg': {
+            color: '#656565',
           },
         },
       },

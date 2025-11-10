@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/ioutils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
@@ -97,12 +98,13 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	}
 	defer file.Close()
 
+	reader := ioutils.UTF8Reader(file)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
-		err = s.parseNSP(ctx, pls, file)
+		err = s.parseNSP(ctx, pls, reader)
 	default:
-		err = s.parseM3U(ctx, pls, folder, file)
+		err = s.parseM3U(ctx, pls, folder, reader)
 	}
 	return pls, err
 }

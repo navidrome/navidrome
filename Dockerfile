@@ -31,7 +31,9 @@ ARG TARGETPLATFORM
 ARG CROSS_TAGLIB_VERSION=2.1.1-1
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
+# wget in busybox can't follow redirects
 RUN <<EOT
+    apk add --no-cache wget
     PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
     FILE=taglib-${PLATFORM}.tar.gz
 
@@ -61,7 +63,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.24-bookworm AS base
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace

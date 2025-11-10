@@ -74,6 +74,24 @@ var _ = Describe("Playlists", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
+
+			It("parses playlists with UTF-8 BOM marker", func() {
+				pls, err := ps.ImportFile(ctx, folder, "bom-test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.OwnerID).To(Equal("123"))
+				Expect(pls.Name).To(Equal("Test Playlist"))
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+			})
+
+			It("parses UTF-16 LE encoded playlists with BOM and converts to UTF-8", func() {
+				pls, err := ps.ImportFile(ctx, folder, "bom-test-utf16.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.OwnerID).To(Equal("123"))
+				Expect(pls.Name).To(Equal("UTF-16 Test Playlist"))
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+			})
 		})
 
 		Describe("NSP", func() {

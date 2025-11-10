@@ -219,4 +219,37 @@ var _ = Describe("PlaylistRepository", func() {
 			})
 		})
 	})
+
+	Describe("Playlist Track Sorting", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
+		It("sorts tracks correctly by album (disc and track number)", func() {
+			By("creating a playlist with multi-disc album tracks in arbitrary order")
+			newPls := model.Playlist{Name: "Multi-Disc Test", OwnerID: "userid"}
+			// Add tracks in intentionally scrambled order
+			newPls.AddMediaFilesByID([]string{"2001", "2002", "2003", "2004"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("retrieving tracks sorted by album")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			tracks, err := tracksRepo.GetAll(model.QueryOptions{Sort: "album", Order: "asc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying tracks are sorted by disc number then track number")
+			Expect(tracks).To(HaveLen(4))
+			// Expected order: Disc 1 Track 1, Disc 1 Track 2, Disc 2 Track 1, Disc 2 Track 11
+			Expect(tracks[0].MediaFileID).To(Equal("2002")) // Disc 1, Track 1
+			Expect(tracks[1].MediaFileID).To(Equal("2004")) // Disc 1, Track 2
+			Expect(tracks[2].MediaFileID).To(Equal("2003")) // Disc 2, Track 1
+			Expect(tracks[3].MediaFileID).To(Equal("2001")) // Disc 2, Track 11
+		})
+	})
 })
