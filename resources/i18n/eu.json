@@ -162,7 +162,7 @@
         "deleted": "Erabiltzailea ezabatu da"
       },
       "validation": {
-        "librariesRequired": "Gutxienez liburuegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat"
+        "librariesRequired": "Gutxienez liburutegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat"
       },
       "message": {
         "listenBrainzToken": "Idatzi zure ListenBrainz erabiltzailearen tokena",
