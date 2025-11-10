@@ -514,7 +514,7 @@
         "library": "曲库",
         "librarySelector": {
             "allLibraries": "全部媒体库 (%{count})",
-            "multipleLibraries": "已选 (%{selected}) 个媒体库",
+            "multipleLibraries": "已选 %{selected} 共 %{total} 媒体库",
             "selectLibraries": "选择媒体库",
             "none": "无"
         },
