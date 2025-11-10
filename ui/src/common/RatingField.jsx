@@ -48,7 +48,9 @@ export const RatingField = ({
     <span
       onClick={(e) => stopPropagation(e)}
       title={
-        record.ratedAt ? new Date(record.ratedAt).toLocaleString() : undefined
+        record.ratedAt && record.ratedAt !== '0001-01-01T00:00:00Z'
+          ? new Date(record.ratedAt).toLocaleString()
+          : undefined
       }
     >
       <Rating

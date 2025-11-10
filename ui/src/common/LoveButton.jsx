@@ -49,7 +49,7 @@ export const LoveButton = ({
       disabled={disabled || loading || record.missing}
       className={classes.love}
       title={
-        record.starredAt
+        record.starredAt && record.starredAt !== '0001-01-01T00:00:00Z'
           ? new Date(record.starredAt).toLocaleString()
           : undefined
       }
