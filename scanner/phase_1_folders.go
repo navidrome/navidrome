@@ -26,10 +26,10 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library) *phaseFolders {
+func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer) *phaseFolders {
 	var jobs []*scanJob
 	var updatedLibs []model.Library
-	for _, lib := range libs {
+	for _, lib := range state.libraries {
 		if lib.LastScanStartedAt.IsZero() {
 			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
 			if err != nil {
