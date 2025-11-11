@@ -75,17 +75,7 @@ type Scanner interface {
 	// ScanFolders scans specific library/folder pairs, recursing into subdirectories.
 	// If targets is nil, it scans all libraries. This is a blocking operation.
 	ScanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget) (warnings []string, err error)
-	Status(context.Context) (*StatusInfo, error)
-}
-
-type StatusInfo struct {
-	Scanning    bool
-	LastScan    time.Time
-	Count       uint32
-	FolderCount uint32
-	LastError   string
-	ScanType    string
-	ElapsedTime time.Duration
+	Status(context.Context) (*model.ScannerStatus, error)
 }
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
@@ -208,7 +198,7 @@ func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed 
 	return scanType, elapsed, lastErr
 }
 
-func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
+func (s *controller) Status(ctx context.Context) (*model.ScannerStatus, error) {
 	lastScanTime, err := s.getLastScanTime(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting last scan time: %w", err)
@@ -217,7 +207,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	scanType, elapsed, lastErr := s.getScanInfo(ctx)
 
 	if running.Load() {
-		status := &StatusInfo{
+		status := &model.ScannerStatus{
 			Scanning:    true,
 			LastScan:    lastScanTime,
 			Count:       s.count.Load(),
@@ -233,7 +223,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting library stats: %w", err)
 	}
-	return &StatusInfo{
+	return &model.ScannerStatus{
 		Scanning:    false,
 		LastScan:    lastScanTime,
 		Count:       uint32(count),

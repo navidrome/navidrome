@@ -2,23 +2,23 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"net/http/httptest"
-	"sync"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("LibraryScanning", func() {
 	var api *Router
-	var ms *mockScanner
+	var ms *tests.MockScanner
 
 	BeforeEach(func() {
-		ms = &mockScanner{}
+		ms = tests.NewMockScanner()
 		api = &Router{scanner: ms}
 	})
 
@@ -40,7 +40,8 @@ var _ = Describe("LibraryScanning", func() {
 			// Should return authorization error
 			Expect(err).To(HaveOccurred())
 			Expect(response).To(BeNil())
-			subErr, ok := err.(subError)
+			var subErr subError
+			ok := errors.As(err, &subErr)
 			Expect(ok).To(BeTrue())
 			Expect(subErr.code).To(Equal(responses.ErrorAuthorizationFail))
 		})
@@ -64,10 +65,12 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify ScanAll was called (eventually, since it's in a goroutine)
-			Eventually(func() bool {
-				return ms.getScanAllCalled()
-			}).Should(BeTrue())
-			Expect(ms.getScanAllFullScan()).To(BeFalse())
+			Eventually(func() int {
+				return ms.GetScanAllCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanAllCalls()
+			Expect(calls).To(HaveLen(1))
+			Expect(calls[0].FullScan).To(BeFalse())
 		})
 
 		It("triggers a full scan with fullScan=true", func() {
@@ -89,10 +92,12 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify ScanAll was called with fullScan=true
-			Eventually(func() bool {
-				return ms.getScanAllCalled()
-			}).Should(BeTrue())
-			Expect(ms.getScanAllFullScan()).To(BeTrue())
+			Eventually(func() int {
+				return ms.GetScanAllCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanAllCalls()
+			Expect(calls).To(HaveLen(1))
+			Expect(calls[0].FullScan).To(BeTrue())
 		})
 
 		It("triggers a selective scan with single path parameter", func() {
@@ -114,10 +119,12 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify ScanFolders was called with correct targets
-			Eventually(func() bool {
-				return ms.getScanFoldersCalled()
-			}).Should(BeTrue())
-			targets := ms.getScanFoldersTargets()
+			Eventually(func() int {
+				return ms.GetScanFoldersCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanFoldersCalls()
+			Expect(calls).To(HaveLen(1))
+			targets := calls[0].Targets
 			Expect(targets).To(HaveLen(1))
 			Expect(targets[0].LibraryID).To(Equal(1))
 			Expect(targets[0].FolderPath).To(Equal("Music/Rock"))
@@ -142,10 +149,12 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify ScanFolders was called with correct targets
-			Eventually(func() bool {
-				return ms.getScanFoldersCalled()
-			}).Should(BeTrue())
-			targets := ms.getScanFoldersTargets()
+			Eventually(func() int {
+				return ms.GetScanFoldersCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanFoldersCalls()
+			Expect(calls).To(HaveLen(1))
+			targets := calls[0].Targets
 			Expect(targets).To(HaveLen(2))
 			Expect(targets[0].LibraryID).To(Equal(1))
 			Expect(targets[0].FolderPath).To(Equal("Music/Reggae"))
@@ -172,11 +181,13 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify ScanFolders was called with fullScan=true
-			Eventually(func() bool {
-				return ms.getScanFoldersCalled()
-			}).Should(BeTrue())
-			Expect(ms.getScanFoldersFullScan()).To(BeTrue())
-			targets := ms.getScanFoldersTargets()
+			Eventually(func() int {
+				return ms.GetScanFoldersCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanFoldersCalls()
+			Expect(calls).To(HaveLen(1))
+			Expect(calls[0].FullScan).To(BeTrue())
+			targets := calls[0].Targets
 			Expect(targets).To(HaveLen(1))
 		})
 
@@ -197,7 +208,8 @@ var _ = Describe("LibraryScanning", func() {
 			// Should return error
 			Expect(err).To(HaveOccurred())
 			Expect(response).To(BeNil())
-			subErr, ok := err.(subError)
+			var subErr subError
+			ok := errors.As(err, &subErr)
 			Expect(ok).To(BeTrue())
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
@@ -219,7 +231,8 @@ var _ = Describe("LibraryScanning", func() {
 			// Should return error
 			Expect(err).To(HaveOccurred())
 			Expect(response).To(BeNil())
-			subErr, ok := err.(subError)
+			var subErr subError
+			ok := errors.As(err, &subErr)
 			Expect(ok).To(BeTrue())
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
@@ -243,10 +256,11 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(response).ToNot(BeNil())
 
 			// Verify path was decoded correctly
-			Eventually(func() bool {
-				return ms.getScanFoldersCalled()
-			}).Should(BeTrue())
-			targets := ms.getScanFoldersTargets()
+			Eventually(func() int {
+				return ms.GetScanFoldersCallCount()
+			}).Should(BeNumerically(">", 0))
+			calls := ms.GetScanFoldersCalls()
+			targets := calls[0].Targets
 			Expect(targets[0].FolderPath).To(Equal("The Beatles"))
 		})
 	})
@@ -254,11 +268,11 @@ var _ = Describe("LibraryScanning", func() {
 	Describe("GetScanStatus", func() {
 		It("returns scan status", func() {
 			// Setup mock scanner status
-			ms.statusResponse = &scanner.StatusInfo{
+			ms.SetStatusResponse(&model.ScannerStatus{
 				Scanning:    false,
 				Count:       100,
 				FolderCount: 10,
-			}
+			})
 
 			// Create request
 			ctx := context.Background()
@@ -278,90 +292,3 @@ var _ = Describe("LibraryScanning", func() {
 		})
 	})
 })
-
-// mockScanner is a test double for the scanner.Scanner interface with proper synchronization
-type mockScanner struct {
-	mu sync.Mutex
-
-	// ScanAll tracking
-	scanAllCalled   bool
-	scanAllFullScan bool
-	scanAllError    error
-	scanAllWarnings []string
-
-	// ScanFolders tracking
-	scanFoldersCalled   bool
-	scanFoldersFullScan bool
-	scanFoldersTargets  []model.ScanTarget
-	scanFoldersError    error
-	scanFoldersWarnings []string
-
-	// Status tracking
-	statusResponse *scanner.StatusInfo
-	statusError    error
-}
-
-func (m *mockScanner) ScanAll(ctx context.Context, fullScan bool) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.scanAllCalled = true
-	m.scanAllFullScan = fullScan
-	return m.scanAllWarnings, m.scanAllError
-}
-
-func (m *mockScanner) ScanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.scanFoldersCalled = true
-	m.scanFoldersFullScan = fullScan
-	// Make a copy of targets to avoid race conditions
-	m.scanFoldersTargets = make([]model.ScanTarget, len(targets))
-	copy(m.scanFoldersTargets, targets)
-	return m.scanFoldersWarnings, m.scanFoldersError
-}
-
-func (m *mockScanner) Status(ctx context.Context) (*scanner.StatusInfo, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.statusResponse == nil {
-		return &scanner.StatusInfo{}, m.statusError
-	}
-	return m.statusResponse, m.statusError
-}
-
-// Helper methods for safe read access in tests
-func (m *mockScanner) getScanAllCalled() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.scanAllCalled
-}
-
-func (m *mockScanner) getScanAllFullScan() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.scanAllFullScan
-}
-
-func (m *mockScanner) getScanFoldersCalled() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.scanFoldersCalled
-}
-
-func (m *mockScanner) getScanFoldersFullScan() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.scanFoldersFullScan
-}
-
-func (m *mockScanner) getScanFoldersTargets() []model.ScanTarget {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	// Return a copy to avoid race conditions
-	targets := make([]model.ScanTarget, len(m.scanFoldersTargets))
-	copy(targets, m.scanFoldersTargets)
-	return targets
-}

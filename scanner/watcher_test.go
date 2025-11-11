@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"io/fs"
-	"sync"
 	"testing/fstest"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 var _ = Describe("Watcher", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
-	var mockScanner *mockScanner
+	var mockScanner *tests.MockScanner
 	var mockDS *tests.MockDataStore
 	var w *watcher
 	var lib *model.Library
@@ -37,7 +36,7 @@ var _ = Describe("Watcher", func() {
 		}
 
 		// Set up mocks
-		mockScanner = NewMockScanner()
+		mockScanner = tests.NewMockScanner()
 		mockDS = &tests.MockDataStore{}
 		mockLibRepo := &tests.MockLibraryRepo{}
 		mockLibRepo.SetData(model.Libraries{*lib})
@@ -336,95 +335,3 @@ var _ = Describe("resolveFolderPath", func() {
 		Expect(result).To(Equal("artist2"))
 	})
 })
-
-// mockScanner implements scanner.Scanner for testing
-type mockScanner struct {
-	mu               sync.Mutex
-	scanAllCalls     []ScanAllCall
-	scanFoldersCalls []ScanFoldersCall
-	scanningStatus   bool
-}
-
-type ScanAllCall struct {
-	FullScan bool
-}
-
-type ScanFoldersCall struct {
-	FullScan bool
-	Targets  []model.ScanTarget
-}
-
-func NewMockScanner() *mockScanner {
-	return &mockScanner{
-		scanAllCalls:     make([]ScanAllCall, 0),
-		scanFoldersCalls: make([]ScanFoldersCall, 0),
-	}
-}
-
-func (m *mockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.scanAllCalls = append(m.scanAllCalls, ScanAllCall{FullScan: fullScan})
-
-	return nil, nil
-}
-
-func (m *mockScanner) ScanFolders(_ context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Make a copy of targets to avoid race conditions
-	targetsCopy := make([]model.ScanTarget, len(targets))
-	copy(targetsCopy, targets)
-
-	m.scanFoldersCalls = append(m.scanFoldersCalls, ScanFoldersCall{
-		FullScan: fullScan,
-		Targets:  targetsCopy,
-	})
-
-	return nil, nil
-}
-
-func (m *mockScanner) Status(_ context.Context) (*StatusInfo, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return &StatusInfo{
-		Scanning: m.scanningStatus,
-	}, nil
-}
-
-func (m *mockScanner) GetScanAllCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.scanAllCalls)
-}
-
-func (m *mockScanner) GetScanFoldersCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.scanFoldersCalls)
-}
-
-func (m *mockScanner) GetScanFoldersCalls() []ScanFoldersCall {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	// Return a copy to avoid race conditions
-	calls := make([]ScanFoldersCall, len(m.scanFoldersCalls))
-	copy(calls, m.scanFoldersCalls)
-	return calls
-}
-
-func (m *mockScanner) Reset() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.scanAllCalls = make([]ScanAllCall, 0)
-	m.scanFoldersCalls = make([]ScanFoldersCall, 0)
-}
-
-func (m *mockScanner) SetScanning(scanning bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.scanningStatus = scanning
-}
