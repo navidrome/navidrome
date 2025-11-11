@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/run"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type scannerImpl struct {
@@ -30,7 +31,6 @@ type scanState struct {
 	changesDetected atomic.Bool
 	libraries       model.Libraries  // Store libraries list for consistency across phases
 	targets         map[int][]string // Optional: map[libraryID][]folderPaths for selective scans
-	affectedLibIDs  []int            // IDs of libraries involved in the scan (for GC scoping)
 }
 
 func (s *scanState) sendProgress(info *ProgressInfo) {
@@ -74,7 +74,6 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	if isSelectiveScan {
 		// Selective scan: filter libraries and build targets map
 		state.targets = make(map[int][]string)
-		affectedLibIDSet := make(map[int]bool)
 
 		for _, target := range targets {
 			folderPath := target.FolderPath
@@ -82,15 +81,12 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 				folderPath = "."
 			}
 			state.targets[target.LibraryID] = append(state.targets[target.LibraryID], folderPath)
-			affectedLibIDSet[target.LibraryID] = true
 		}
 
-		for _, lib := range allLibs {
-			if affectedLibIDSet[lib.ID] {
-				libs = append(libs, lib)
-				state.affectedLibIDs = append(state.affectedLibIDs, lib.ID)
-			}
-		}
+		// Filter libraries to only those in targets
+		libs = slice.Filter(allLibs, func(lib model.Library) bool {
+			return len(state.targets[lib.ID]) > 0
+		})
 
 		log.Info(ctx, "Scanner: Starting selective scan", "fullScan", state.fullScan, "numLibraries", len(libs), "numTargets", len(targets))
 	} else {
