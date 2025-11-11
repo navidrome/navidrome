@@ -73,7 +73,6 @@ func (w *watcher) Run(ctx context.Context) error {
 	// Main scan triggering loop
 	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
-	waiting := false
 	targets := make(map[ScanTarget]struct{})
 	for {
 		select {
@@ -89,7 +88,6 @@ func (w *watcher) Run(ctx context.Context) error {
 				trigger.Reset(w.triggerWait * 3)
 				continue
 			}
-			waiting = false
 
 			// Convert targets map to slice
 			targetSlice := make([]ScanTarget, 0, len(targets))
@@ -122,15 +120,15 @@ func (w *watcher) Run(ctx context.Context) error {
 			lib := notification.Library
 			folderPath := notification.FolderPath
 
-			// Add target to the map (deduplicates automatically)
-			targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}] = struct{}{}
-
-			if !waiting {
-				log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
-					"libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "folderPath", folderPath)
-				waiting = true
+			// If already scheduled for scan, skip
+			if _, exists := targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}]; exists {
+				continue
 			}
+			targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}] = struct{}{}
 			trigger.Reset(w.triggerWait)
+
+			log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
+				"libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "folderPath", folderPath)
 		}
 	}
 }
@@ -241,27 +239,7 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", path, "absoluteLibPath", absLibPath)
 
 			// Find the folder to scan - validate path exists as directory, walk up if needed
-			folderPath := path
-			for {
-				info, err := fs.Stat(fsys, folderPath)
-				if err == nil && info.IsDir() {
-					// Found a valid directory
-					break
-				}
-				if folderPath == "." || folderPath == "" {
-					// Reached root, scan entire library
-					folderPath = ""
-					break
-				}
-				// Walk up the tree
-				dir, _ := filepath.Split(folderPath)
-				if dir == "" || dir == "." {
-					folderPath = ""
-					break
-				}
-				// Remove trailing slash
-				folderPath = filepath.Clean(dir)
-			}
+			folderPath := resolveFolderPath(fsys, path)
 
 			// Notify the main watcher of changes
 			select {
@@ -270,6 +248,36 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 				// Channel is full, notification already pending
 			}
 		}
+	}
+}
+
+// resolveFolderPath takes a path (which may be a file or directory) and returns
+// the folder path to scan. If the path is a file, it walks up to find the parent
+// directory. Returns empty string if the path should scan the library root.
+func resolveFolderPath(fsys fs.FS, path string) string {
+	// Handle root paths immediately
+	if path == "." || path == "" {
+		return ""
+	}
+
+	folderPath := path
+	for {
+		info, err := fs.Stat(fsys, folderPath)
+		if err == nil && info.IsDir() {
+			// Found a valid directory
+			return folderPath
+		}
+		if folderPath == "." || folderPath == "" {
+			// Reached root, scan entire library
+			return ""
+		}
+		// Walk up the tree
+		dir, _ := filepath.Split(folderPath)
+		if dir == "" || dir == "." {
+			return ""
+		}
+		// Remove trailing slash
+		folderPath = filepath.Clean(dir)
 	}
 }
 

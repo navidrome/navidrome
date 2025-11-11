@@ -2,7 +2,9 @@ package scanner
 
 import (
 	"context"
+	"io/fs"
 	"sync"
+	"testing/fstest"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -274,6 +276,64 @@ var _ = Describe("Watcher", func() {
 			Expect(libraryIDs).To(HaveKey(1))
 			Expect(libraryIDs).To(HaveKey(2))
 		})
+	})
+})
+
+var _ = Describe("resolveFolderPath", func() {
+	var mockFS fs.FS
+
+	BeforeEach(func() {
+		// Create a mock filesystem with some directories and files
+		mockFS = fstest.MapFS{
+			"artist1":                   &fstest.MapFile{Mode: fs.ModeDir},
+			"artist1/album1":            &fstest.MapFile{Mode: fs.ModeDir},
+			"artist1/album1/track1.mp3": &fstest.MapFile{Data: []byte("audio")},
+			"artist1/album1/track2.mp3": &fstest.MapFile{Data: []byte("audio")},
+			"artist1/album2":            &fstest.MapFile{Mode: fs.ModeDir},
+			"artist1/album2/song.flac":  &fstest.MapFile{Data: []byte("audio")},
+			"artist2":                   &fstest.MapFile{Mode: fs.ModeDir},
+			"artist2/cover.jpg":         &fstest.MapFile{Data: []byte("image")},
+		}
+	})
+
+	It("returns directory path when given a directory", func() {
+		result := resolveFolderPath(mockFS, "artist1/album1")
+		Expect(result).To(Equal("artist1/album1"))
+	})
+
+	It("walks up to parent directory when given a file path", func() {
+		result := resolveFolderPath(mockFS, "artist1/album1/track1.mp3")
+		Expect(result).To(Equal("artist1/album1"))
+	})
+
+	It("walks up multiple levels if needed", func() {
+		result := resolveFolderPath(mockFS, "artist1/album1/nonexistent/file.mp3")
+		Expect(result).To(Equal("artist1/album1"))
+	})
+
+	It("returns empty string for non-existent paths at root", func() {
+		result := resolveFolderPath(mockFS, "nonexistent/path/file.mp3")
+		Expect(result).To(Equal(""))
+	})
+
+	It("returns empty string for dot path", func() {
+		result := resolveFolderPath(mockFS, ".")
+		Expect(result).To(Equal(""))
+	})
+
+	It("returns empty string for empty path", func() {
+		result := resolveFolderPath(mockFS, "")
+		Expect(result).To(Equal(""))
+	})
+
+	It("handles nested file paths correctly", func() {
+		result := resolveFolderPath(mockFS, "artist1/album2/song.flac")
+		Expect(result).To(Equal("artist1/album2"))
+	})
+
+	It("resolves to top-level directory", func() {
+		result := resolveFolderPath(mockFS, "artist2/cover.jpg")
+		Expect(result).To(Equal("artist2"))
 	})
 })
 
