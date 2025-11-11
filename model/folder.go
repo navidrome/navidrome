@@ -90,9 +90,3 @@ type FolderRepository interface {
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
 }
-
-// LibraryPath represents a folder path within a specific library
-type LibraryPath struct {
-	LibraryID  int
-	FolderPath string
-}

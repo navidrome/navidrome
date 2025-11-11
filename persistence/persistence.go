@@ -170,7 +170,7 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 	// TODO: Implement library-specific filtering for GC operations
 	// For now, GC runs globally even in selective scans
 	if len(libraryIDs) > 0 {
-		log.Debug(ctx, "GC: Running with library filter", "libraries", libraryIDs)
+		log.Debug(ctx, "GC: Running with library filter (not implemented)", "libraries", libraryIDs)
 	}
 
 	err := run.Sequentially(
