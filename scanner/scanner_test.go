@@ -39,7 +39,7 @@ var _ = Describe("Scanner", Ordered, func() {
 	var lib model.Library
 	var ds *tests.MockDataStore
 	var mfRepo *mockMediaFileRepo
-	var s scanner.Scanner
+	var s model.Scanner
 
 	createFS := func(files fstest.MapFS) storagetest.FakeFS {
 		fs := storagetest.FakeFS{}

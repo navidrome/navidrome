@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -25,4 +26,13 @@ type ScannerStatus struct {
 	LastError   string
 	ScanType    string
 	ElapsedTime time.Duration
+}
+
+type Scanner interface {
+	// ScanAll starts a scan of all libraries. This is a blocking operation.
+	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
+	// ScanFolders scans specific library/folder pairs, recursing into subdirectories.
+	// If targets is nil, it scans all libraries. This is a blocking operation.
+	ScanFolders(ctx context.Context, fullScan bool, targets []ScanTarget) (warnings []string, err error)
+	Status(context.Context) (*ScannerStatus, error)
 }

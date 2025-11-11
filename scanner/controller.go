@@ -69,17 +69,8 @@ func ParseTargets(libFolders []string) ([]model.ScanTarget, error) {
 	return targets, nil
 }
 
-type Scanner interface {
-	// ScanAll starts a scan of all libraries. This is a blocking operation.
-	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
-	// ScanFolders scans specific library/folder pairs, recursing into subdirectories.
-	// If targets is nil, it scans all libraries. This is a blocking operation.
-	ScanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget) (warnings []string, err error)
-	Status(context.Context) (*model.ScannerStatus, error)
-}
-
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
-	pls core.Playlists, m metrics.Metrics) Scanner {
+	pls core.Playlists, m metrics.Metrics) model.Scanner {
 	c := &controller{
 		rootCtx: rootCtx,
 		ds:      ds,

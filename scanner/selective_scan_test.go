@@ -28,7 +28,7 @@ var _ = Describe("Selective Scan - Deleted Child Folders", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds model.DataStore
-	var s scanner.Scanner
+	var s model.Scanner
 	var fsys storagetest.FakeFS
 
 	BeforeAll(func() {

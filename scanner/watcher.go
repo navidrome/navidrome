@@ -24,7 +24,7 @@ type Watcher interface {
 type watcher struct {
 	mainCtx         context.Context
 	ds              model.DataStore
-	scanner         Scanner
+	scanner         model.Scanner
 	triggerWait     time.Duration
 	watcherNotify   chan scanNotification
 	libraryWatchers map[int]*libraryWatcherInstance
@@ -42,7 +42,7 @@ type scanNotification struct {
 }
 
 // GetWatcher returns the watcher singleton
-func GetWatcher(ds model.DataStore, s Scanner) Watcher {
+func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 	return singleton.GetInstance(func() *watcher {
 		return &watcher{
 			ds:              ds,
