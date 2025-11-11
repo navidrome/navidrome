@@ -82,7 +82,7 @@ func runScanner(ctx context.Context) {
 		log.Info(ctx, "Scanning specific folders", "numTargets", len(scanTargets))
 	}
 
-	progress, err := scanner.CallScanFolders(ctx, ds, pls, fullScan, scanTargets)
+	progress, err := scanner.CallScan(ctx, ds, pls, fullScan, scanTargets)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}

@@ -122,15 +122,10 @@ func (s *controller) getScanner() scanner {
 	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
-// CallScan starts an in-process scan of the music library.
+// CallScan starts an in-process scan of specific library/folder pairs.
+// If targets is empty, it scans all libraries.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
-	return CallScanFolders(ctx, ds, pls, fullScan, nil)
-}
-
-// CallScanFolders starts an in-process scan of specific library/folder pairs.
-// If targets is nil, it scans all libraries. This is meant to be called from the command line.
-func CallScanFolders(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []ScanTarget) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -142,7 +137,7 @@ func CallScanFolders(ctx context.Context, ds model.DataStore, pls core.Playlists
 	go func() {
 		defer close(progress)
 		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
-		if targets == nil {
+		if len(targets) == 0 {
 			scanner.scanAll(ctx, fullScan, progress)
 		} else {
 			scanner.scanFolders(ctx, fullScan, targets, progress)
@@ -296,7 +291,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	go func() {
 		defer close(progress)
 		scanner := s.getScanner()
-		if targets == nil {
+		if len(targets) == 0 {
 			scanner.scanAll(ctx, fullScan, progress)
 		} else {
 			scanner.scanFolders(ctx, fullScan, targets, progress)
