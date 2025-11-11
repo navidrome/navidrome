@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"bufio"
 	"context"
 	"io/fs"
 	"maps"
@@ -11,18 +10,17 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
-	ignore "github.com/sabhiram/go-gitignore"
 )
 
 func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error) {
 	results := make(chan *folderEntry)
 	go func() {
 		defer close(results)
-		err := walkFolder(ctx, job, ".", nil, results)
+		checker := newIgnoreChecker(job.fs)
+		err := walkFolder(ctx, job, ".", checker, results)
 		if err != nil {
 			log.Error(ctx, "Scanner: There were errors reading directories from filesystem", "path", job.lib.Path, err)
 			return
@@ -42,11 +40,12 @@ func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []stri
 				return
 			}
 
-			// Load ignore patterns from parent directories up to this folder
-			ignorePatterns := loadIgnoredPatternsForPath(ctx, job.fs, folderPath)
+			// Create checker and push patterns from root to this folder
+			checker := newIgnoreChecker(job.fs)
+			_ = checker.PushAllParents(ctx, folderPath)
 
 			// Load only this specific folder (no recursion)
-			folder, _, err := loadDir(ctx, job, folderPath, ignorePatterns)
+			folder, _, err := loadDir(ctx, job, folderPath, checker)
 			if err != nil {
 				log.Warn(ctx, "Scanner: Error loading target folder. Skipping", "path", folderPath, err)
 				continue
@@ -65,78 +64,18 @@ func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []stri
 	return results, nil
 }
 
-// loadIgnoredPatternsForPath loads all .ndignore patterns from the root down to the specified path
-func loadIgnoredPatternsForPath(ctx context.Context, fsys fs.FS, targetPath string) []string {
-	var patterns []string
-	currentPath := "."
+func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker *IgnoreChecker, results chan<- *folderEntry) error {
+	// Push patterns for this folder onto the stack
+	_ = checker.Push(ctx, currentFolder)
+	defer checker.Pop() // Pop patterns when leaving this folder
 
-	// If target is root, just check root
-	if targetPath == "." {
-		return loadIgnoredPatterns(ctx, fsys, ".", nil)
-	}
-
-	// Walk from root to target, collecting ignore patterns
-	parts := strings.Split(path.Clean(targetPath), "/")
-	for _, part := range parts {
-		if part == "." {
-			continue
-		}
-		patterns = loadIgnoredPatterns(ctx, fsys, currentPath, patterns)
-		currentPath = path.Join(currentPath, part)
-	}
-	// Load patterns from the target folder itself
-	patterns = loadIgnoredPatterns(ctx, fsys, currentPath, patterns)
-
-	return patterns
-}
-
-// loadIgnoredPatterns loads .ndignore patterns from the specified folder and combines them with currentPatterns
-func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, currentPatterns []string) []string {
-	ignoreFilePath := path.Join(currentFolder, consts.ScanIgnoreFile)
-	var newPatterns []string
-	if _, err := fs.Stat(fsys, ignoreFilePath); err == nil {
-		// Read and parse the .ndignore file
-		ignoreFile, err := fsys.Open(ignoreFilePath)
-		if err != nil {
-			log.Warn(ctx, "Scanner: Error opening .ndignore file", "path", ignoreFilePath, err)
-			// Continue with previous patterns
-		} else {
-			defer ignoreFile.Close()
-			scanner := bufio.NewScanner(ignoreFile)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if line == "" || strings.HasPrefix(line, "#") {
-					continue // Skip empty lines and comments
-				}
-				newPatterns = append(newPatterns, line)
-			}
-			if err := scanner.Err(); err != nil {
-				log.Warn(ctx, "Scanner: Error reading .ignore file", "path", ignoreFilePath, err)
-			}
-		}
-		// If the .ndignore file is empty, mimic the current behavior and ignore everything
-		if len(newPatterns) == 0 {
-			log.Trace(ctx, "Scanner: .ndignore file is empty, ignoring everything", "path", currentFolder)
-			newPatterns = []string{"**/*"}
-		} else {
-			log.Trace(ctx, "Scanner: .ndignore file found ", "path", ignoreFilePath, "patterns", newPatterns)
-		}
-	}
-	// Combine the patterns from the .ndignore file with the ones passed as argument
-	combinedPatterns := append([]string{}, currentPatterns...)
-	return append(combinedPatterns, newPatterns...)
-}
-
-func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignorePatterns []string, results chan<- *folderEntry) error {
-	ignorePatterns = loadIgnoredPatterns(ctx, job.fs, currentFolder, ignorePatterns)
-
-	folder, children, err := loadDir(ctx, job, currentFolder, ignorePatterns)
+	folder, children, err := loadDir(ctx, job, currentFolder, checker)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, job, c, ignorePatterns, results)
+		err := walkFolder(ctx, job, c, checker, results)
 		if err != nil {
 			return err
 		}
@@ -154,7 +93,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 	return nil
 }
 
-func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns []string) (folder *folderEntry, children []string, err error) {
+func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
 	folder = newFolderEntry(job, dirPath)
 
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -176,12 +115,11 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 		return folder, children, err
 	}
 
-	ignoreMatcher := ignore.CompileIgnoreLines(ignorePatterns...)
 	entries := fullReadDir(ctx, dirFile)
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
-		if len(ignorePatterns) > 0 && isScanIgnored(ctx, ignoreMatcher, entryPath) {
+		if checker.ShouldIgnore(ctx, entryPath) {
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
@@ -312,12 +250,4 @@ func isDirIgnored(name string) bool {
 
 func isEntryIgnored(name string) bool {
 	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
-}
-
-func isScanIgnored(ctx context.Context, matcher *ignore.GitIgnore, entryPath string) bool {
-	matches := matcher.MatchesPath(entryPath)
-	if matches {
-		log.Trace(ctx, "Scanner: Ignoring entry matching .ndignore: ", "path", entryPath)
-	}
-	return matches
 }
