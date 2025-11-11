@@ -121,10 +121,11 @@ func (w *watcher) Run(ctx context.Context) error {
 			folderPath := notification.FolderPath
 
 			// If already scheduled for scan, skip
-			if _, exists := targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}]; exists {
+			target := ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}
+			if _, exists := targets[target]; exists {
 				continue
 			}
-			targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}] = struct{}{}
+			targets[target] = struct{}{}
 			trigger.Reset(w.triggerWait)
 
 			log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
