@@ -97,6 +97,88 @@ var _ = Describe("FolderRepository", func() {
 				Expect(results[folder1.ID].Hash).To(Equal(folder1.Hash))
 			})
 
+			It("includes all child folders when querying parent", func() {
+				// Create a parent folder with multiple children
+				parent := model.NewFolder(testLib, "TestParent/Music")
+				child1 := model.NewFolder(testLib, "TestParent/Music/Rock/Queen")
+				child2 := model.NewFolder(testLib, "TestParent/Music/Jazz")
+				otherParent := model.NewFolder(testLib, "TestParent2/Music/Jazz")
+
+				Expect(repo.Put(parent)).To(Succeed())
+				Expect(repo.Put(child1)).To(Succeed())
+				Expect(repo.Put(child2)).To(Succeed())
+
+				// Query the parent folder - should return parent and all children
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestParent/Music")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(3))
+				Expect(results).To(HaveKey(parent.ID))
+				Expect(results).To(HaveKey(child1.ID))
+				Expect(results).To(HaveKey(child2.ID))
+				Expect(results).ToNot(HaveKey(otherParent.ID))
+			})
+
+			It("excludes children from other libraries", func() {
+				// Create parent in testLib
+				parent := model.NewFolder(testLib, "TestIsolation/Parent")
+				child := model.NewFolder(testLib, "TestIsolation/Parent/Child")
+
+				Expect(repo.Put(parent)).To(Succeed())
+				Expect(repo.Put(child)).To(Succeed())
+
+				// Create similar path in other library
+				otherParent := model.NewFolder(otherLib, "TestIsolation/Parent")
+				otherChild := model.NewFolder(otherLib, "TestIsolation/Parent/Child")
+
+				Expect(repo.Put(otherParent)).To(Succeed())
+				Expect(repo.Put(otherChild)).To(Succeed())
+
+				// Query should only return folders from testLib
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestIsolation/Parent")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(2))
+				Expect(results).To(HaveKey(parent.ID))
+				Expect(results).To(HaveKey(child.ID))
+				Expect(results).ToNot(HaveKey(otherParent.ID))
+				Expect(results).ToNot(HaveKey(otherChild.ID))
+			})
+
+			It("excludes missing children when querying parent", func() {
+				// Create parent and children, mark one as missing
+				parent := model.NewFolder(testLib, "TestMissingChild/Parent")
+				child1 := model.NewFolder(testLib, "TestMissingChild/Parent/Child1")
+				child2 := model.NewFolder(testLib, "TestMissingChild/Parent/Child2")
+				child2.Missing = true
+
+				Expect(repo.Put(parent)).To(Succeed())
+				Expect(repo.Put(child1)).To(Succeed())
+				Expect(repo.Put(child2)).To(Succeed())
+
+				// Query parent - should only return parent and non-missing child
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestMissingChild/Parent")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(2))
+				Expect(results).To(HaveKey(parent.ID))
+				Expect(results).To(HaveKey(child1.ID))
+				Expect(results).ToNot(HaveKey(child2.ID))
+			})
+
+			It("handles mix of existing and non-existing target paths", func() {
+				// Create folders for one path but not the other
+				existingParent := model.NewFolder(testLib, "TestMixed/Exists")
+				existingChild := model.NewFolder(testLib, "TestMixed/Exists/Child")
+
+				Expect(repo.Put(existingParent)).To(Succeed())
+				Expect(repo.Put(existingChild)).To(Succeed())
+
+				// Query both existing and non-existing paths
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestMixed/Exists", "TestMixed/DoesNotExist")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(2))
+				Expect(results).To(HaveKey(existingParent.ID))
+				Expect(results).To(HaveKey(existingChild.ID))
+			})
+
 			It("handles empty folder path as root", func() {
 				// Test querying for root folder without creating it (fixtures should have one)
 				rootFolderID := model.FolderID(testLib, ".")
