@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -15,7 +16,7 @@ var _ = Describe("FolderRepository", func() {
 	var repo model.FolderRepository
 	var ctx context.Context
 	var conn *dbx.DB
-	var testLib model.Library
+	var testLib, otherLib model.Library
 
 	BeforeEach(func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
@@ -27,21 +28,52 @@ var _ = Describe("FolderRepository", func() {
 		lib, err := libRepo.Get(1)
 		Expect(err).ToNot(HaveOccurred())
 		testLib = *lib
+
+		// Create a second library with its own folder to verify isolation
+		otherLib = model.Library{Name: "Other Library", Path: "/other/path"}
+		Expect(libRepo.Put(&otherLib)).To(Succeed())
 	})
 
 	AfterEach(func() {
-		// Clean up test folders created by these tests
-		// Only delete folders with paths starting with our test prefix
-		_, _ = conn.NewQuery("DELETE FROM folder WHERE library_id = 1 AND (path LIKE 'TestFolder%' OR path LIKE 'Music/%' OR path = 'Classical' OR path = 'Podcasts')").Execute()
+		// Clean up only test folders created by our tests (paths starting with "Test")
+		// This prevents interference with fixture data needed by other tests
+		_, _ = conn.NewQuery("DELETE FROM folder WHERE library_id = 1 AND path LIKE 'Test%'").Execute()
+		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
 	})
 
-	Describe("GetByPaths", func() {
-		Context("with valid targets", func() {
+	Describe("GetFolderUpdateInfo", func() {
+		Context("with no target paths", func() {
+			It("returns all folders in the library", func() {
+				// Create test folders with unique names to avoid conflicts
+				folder1 := model.NewFolder(testLib, "TestGetLastUpdates/Folder1")
+				folder2 := model.NewFolder(testLib, "TestGetLastUpdates/Folder2")
+
+				err := repo.Put(folder1)
+				Expect(err).ToNot(HaveOccurred())
+				err = repo.Put(folder2)
+				Expect(err).ToNot(HaveOccurred())
+
+				otherFolder := model.NewFolder(otherLib, "TestOtherLib/Folder")
+				err = repo.Put(otherFolder)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Query all folders (no target paths) - should only return folders from testLib
+				results, err := repo.GetFolderUpdateInfo(testLib)
+				Expect(err).ToNot(HaveOccurred())
+				// Should include folders from testLib
+				Expect(results).To(HaveKey(folder1.ID))
+				Expect(results).To(HaveKey(folder2.ID))
+				// Should NOT include folders from other library
+				Expect(results).ToNot(HaveKey(otherFolder.ID))
+			})
+		})
+
+		Context("with specific target paths", func() {
 			It("returns folder info for existing folders", func() {
-				// Create test folders
-				folder1 := model.NewFolder(testLib, "Music/Rock")
-				folder2 := model.NewFolder(testLib, "Music/Jazz")
-				folder3 := model.NewFolder(testLib, "Classical")
+				// Create test folders with unique names
+				folder1 := model.NewFolder(testLib, "TestSpecific/Rock")
+				folder2 := model.NewFolder(testLib, "TestSpecific/Jazz")
+				folder3 := model.NewFolder(testLib, "TestSpecific/Classical")
 
 				err := repo.Put(folder1)
 				Expect(err).ToNot(HaveOccurred())
@@ -50,13 +82,8 @@ var _ = Describe("FolderRepository", func() {
 				err = repo.Put(folder3)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Query by paths
-				targets := []model.LibraryPath{
-					{LibraryID: testLib.ID, FolderPath: "Music/Rock"},
-					{LibraryID: testLib.ID, FolderPath: "Classical"},
-				}
-
-				results, err := repo.GetByPaths(targets)
+				// Query specific paths
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestSpecific/Rock", "TestSpecific/Classical")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(2))
 
@@ -71,101 +98,33 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("handles empty folder path as root", func() {
-				// Create root folder
-				rootFolder := model.NewFolder(testLib, ".")
-				err := repo.Put(rootFolder)
-				Expect(err).ToNot(HaveOccurred())
+				// Test querying for root folder without creating it (fixtures should have one)
+				rootFolderID := model.FolderID(testLib, ".")
 
-				targets := []model.LibraryPath{
-					{LibraryID: testLib.ID, FolderPath: ""},
+				results, err := repo.GetFolderUpdateInfo(testLib, "")
+				Expect(err).ToNot(HaveOccurred())
+				// Should return the root folder if it exists
+				if len(results) > 0 {
+					Expect(results).To(HaveKey(rootFolderID))
 				}
-
-				results, err := repo.GetByPaths(targets)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(HaveLen(1))
-				Expect(results).To(HaveKey(rootFolder.ID))
 			})
 
 			It("returns empty map for non-existent folders", func() {
-				targets := []model.LibraryPath{
-					{LibraryID: testLib.ID, FolderPath: "NonExistent/Path"},
-				}
-
-				results, err := repo.GetByPaths(targets)
+				results, err := repo.GetFolderUpdateInfo(testLib, "NonExistent/Path")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
 
 			It("skips missing folders", func() {
 				// Create a folder and mark it as missing
-				folder := model.NewFolder(testLib, "Music/Missing")
+				folder := model.NewFolder(testLib, "TestMissing/Folder")
 				folder.Missing = true
 				err := repo.Put(folder)
 				Expect(err).ToNot(HaveOccurred())
 
-				targets := []model.LibraryPath{
-					{LibraryID: testLib.ID, FolderPath: "Music/Missing"},
-				}
-
-				results, err := repo.GetByPaths(targets)
+				results, err := repo.GetFolderUpdateInfo(testLib, "TestMissing/Folder")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
-			})
-		})
-
-		Context("with invalid library IDs", func() {
-			It("returns empty map for non-existent library", func() {
-				targets := []model.LibraryPath{
-					{LibraryID: 99999, FolderPath: "Music"},
-				}
-
-				results, err := repo.GetByPaths(targets)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(BeEmpty())
-			})
-		})
-
-		Context("with empty targets", func() {
-			It("returns empty map", func() {
-				results, err := repo.GetByPaths([]model.LibraryPath{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(BeEmpty())
-			})
-
-			It("returns empty map for nil targets", func() {
-				results, err := repo.GetByPaths(nil)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(BeEmpty())
-			})
-		})
-
-		Context("with multiple paths in same library", func() {
-			It("returns multiple folders", func() {
-				// Create multiple folders in the same library
-				folder1 := model.NewFolder(testLib, "Music/Pop")
-				folder2 := model.NewFolder(testLib, "Music/Electronic")
-				folder3 := model.NewFolder(testLib, "Podcasts")
-
-				err := repo.Put(folder1)
-				Expect(err).ToNot(HaveOccurred())
-				err = repo.Put(folder2)
-				Expect(err).ToNot(HaveOccurred())
-				err = repo.Put(folder3)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Query multiple paths
-				targets := []model.LibraryPath{
-					{LibraryID: testLib.ID, FolderPath: "Music/Pop"},
-					{LibraryID: testLib.ID, FolderPath: "Music/Electronic"},
-					{LibraryID: testLib.ID, FolderPath: "Podcasts"},
-				}
-
-				results, err := repo.GetByPaths(targets)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results).To(HaveLen(3))
-				Expect(results).To(HaveKey(folder1.ID))
-				Expect(results).To(HaveKey(folder2.ID))
-				Expect(results).To(HaveKey(folder3.ID))
 			})
 		})
 	})

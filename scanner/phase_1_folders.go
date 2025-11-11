@@ -85,19 +85,8 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	var lastUpdates map[string]model.FolderUpdateInfo
 	var err error
 
-	// If we have target folders, get only those folder updates. Otherwise get all updates for the library
-	if len(targetFolders) > 0 {
-		var targets []model.LibraryPath
-		for _, folderPath := range targetFolders {
-			targets = append(targets, model.LibraryPath{
-				LibraryID:  lib.ID,
-				FolderPath: folderPath,
-			})
-		}
-		lastUpdates, err = ds.Folder(ctx).GetByPaths(targets)
-	} else {
-		lastUpdates, err = ds.Folder(ctx).GetLastUpdates(lib)
-	}
+	// Get folder updates, optionally filtered to specific target folders
+	lastUpdates, err = ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
