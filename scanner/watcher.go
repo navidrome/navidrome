@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/singleton"
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
 type Watcher interface {
@@ -241,6 +242,12 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 			// Find the folder to scan - validate path exists as directory, walk up if needed
 			folderPath := resolveFolderPath(fsys, path)
 
+			// Check if the folder should be ignored based on .ndignore patterns
+			if shouldIgnorePath(ctx, fsys, folderPath) {
+				log.Trace(ctx, "Ignoring change in folder matching .ndignore pattern", "libraryID", lib.ID, "folderPath", folderPath)
+				continue
+			}
+
 			// Notify the main watcher of changes
 			select {
 			case w.watcherNotify <- scanNotification{Library: lib, FolderPath: folderPath}:
@@ -296,4 +303,27 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
 	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
 	return isDirIgnored(baseDir)
+}
+
+// shouldIgnorePath checks if the given path should be ignored based on .ndignore patterns.
+// It loads all .ndignore files from the root down to the path and returns true if the path
+// matches any ignore pattern. This function is suitable for checking paths without recursion,
+// such as in the watcher.
+func shouldIgnorePath(ctx context.Context, fsys fs.FS, relPath string) bool {
+	// Handle root/empty path - never ignore
+	if relPath == "" || relPath == "." {
+		return false
+	}
+
+	// Load ignore patterns from root to the target path
+	patterns := loadIgnoredPatternsForPath(ctx, fsys, relPath)
+
+	// If no patterns, nothing to ignore
+	if len(patterns) == 0 {
+		return false
+	}
+
+	// Compile and check
+	matcher := ignore.CompileIgnoreLines(patterns...)
+	return isScanIgnored(ctx, matcher, relPath)
 }

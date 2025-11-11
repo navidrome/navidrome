@@ -43,7 +43,7 @@ func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []stri
 			}
 
 			// Load ignore patterns from parent directories up to this folder
-			ignorePatterns := loadIgnorePatternsForPath(ctx, job.fs, folderPath)
+			ignorePatterns := loadIgnoredPatternsForPath(ctx, job.fs, folderPath)
 
 			// Load only this specific folder (no recursion)
 			folder, _, err := loadDir(ctx, job, folderPath, ignorePatterns)
@@ -65,8 +65,8 @@ func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []stri
 	return results, nil
 }
 
-// loadIgnorePatternsForPath loads all .ndignore patterns from the root down to the specified path
-func loadIgnorePatternsForPath(ctx context.Context, fsys fs.FS, targetPath string) []string {
+// loadIgnoredPatternsForPath loads all .ndignore patterns from the root down to the specified path
+func loadIgnoredPatternsForPath(ctx context.Context, fsys fs.FS, targetPath string) []string {
 	var patterns []string
 	currentPath := "."
 
@@ -90,33 +90,7 @@ func loadIgnorePatternsForPath(ctx context.Context, fsys fs.FS, targetPath strin
 	return patterns
 }
 
-func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignorePatterns []string, results chan<- *folderEntry) error {
-	ignorePatterns = loadIgnoredPatterns(ctx, job.fs, currentFolder, ignorePatterns)
-
-	folder, children, err := loadDir(ctx, job, currentFolder, ignorePatterns)
-	if err != nil {
-		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
-		return nil
-	}
-	for _, c := range children {
-		err := walkFolder(ctx, job, c, ignorePatterns, results)
-		if err != nil {
-			return err
-		}
-	}
-
-	dir := path.Clean(currentFolder)
-	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
-		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
-		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
-	folder.path = dir
-	folder.elapsed.Start()
-
-	results <- folder
-
-	return nil
-}
-
+// loadIgnoredPatterns loads .ndignore patterns from the specified folder and combines them with currentPatterns
 func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, currentPatterns []string) []string {
 	ignoreFilePath := path.Join(currentFolder, consts.ScanIgnoreFile)
 	var newPatterns []string
@@ -151,6 +125,33 @@ func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, 
 	// Combine the patterns from the .ndignore file with the ones passed as argument
 	combinedPatterns := append([]string{}, currentPatterns...)
 	return append(combinedPatterns, newPatterns...)
+}
+
+func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignorePatterns []string, results chan<- *folderEntry) error {
+	ignorePatterns = loadIgnoredPatterns(ctx, job.fs, currentFolder, ignorePatterns)
+
+	folder, children, err := loadDir(ctx, job, currentFolder, ignorePatterns)
+	if err != nil {
+		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
+		return nil
+	}
+	for _, c := range children {
+		err := walkFolder(ctx, job, c, ignorePatterns, results)
+		if err != nil {
+			return err
+		}
+	}
+
+	dir := path.Clean(currentFolder)
+	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
+		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
+		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
+	folder.path = dir
+	folder.elapsed.Start()
+
+	results <- folder
+
+	return nil
 }
 
 func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns []string) (folder *folderEntry, children []string, err error) {

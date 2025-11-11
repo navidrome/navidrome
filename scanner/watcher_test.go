@@ -146,8 +146,8 @@ var _ = Describe("Watcher", func() {
 			// Send first notification
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
 
-			// Wait half the watcher wait time
-			time.Sleep(25 * time.Millisecond)
+			// Wait a bit less than half the watcher wait time to ensure timer doesn't fire
+			time.Sleep(20 * time.Millisecond)
 
 			// No scan should have been triggered yet
 			Expect(mockScanner.GetScanFoldersCallCount()).To(Equal(0))
@@ -155,14 +155,14 @@ var _ = Describe("Watcher", func() {
 			// Send another notification (resets timer)
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
 
-			// Wait half the watcher wait time again
-			time.Sleep(25 * time.Millisecond)
+			// Wait a bit less than half the watcher wait time again
+			time.Sleep(20 * time.Millisecond)
 
 			// Still no scan
 			Expect(mockScanner.GetScanFoldersCallCount()).To(Equal(0))
 
-			// Wait for full timer to expire after last notification
-			time.Sleep(50 * time.Millisecond)
+			// Wait for full timer to expire after last notification (plus margin)
+			time.Sleep(60 * time.Millisecond)
 
 			// Now scan should have been triggered
 			Eventually(func() int {
@@ -276,6 +276,107 @@ var _ = Describe("Watcher", func() {
 			Expect(libraryIDs).To(HaveKey(1))
 			Expect(libraryIDs).To(HaveKey(2))
 		})
+	})
+})
+
+var _ = Describe("shouldIgnorePath", func() {
+	var ctx context.Context
+	var mockFS fs.FS
+
+	BeforeEach(func() {
+		ctx = context.Background()
+
+		// Create a mock filesystem with .ndignore files
+		mockFS = fstest.MapFS{
+			// Root .ndignore ignoring "temp/*"
+			".ndignore": &fstest.MapFile{Data: []byte("temp/*\n*.log\n")},
+
+			// Normal directories
+			"music":                  &fstest.MapFile{Mode: fs.ModeDir},
+			"music/artist1":          &fstest.MapFile{Mode: fs.ModeDir},
+			"music/artist1/song.mp3": &fstest.MapFile{Data: []byte("audio")},
+
+			// Temp directory (should be ignored)
+			"temp":                &fstest.MapFile{Mode: fs.ModeDir},
+			"temp/cache":          &fstest.MapFile{Mode: fs.ModeDir},
+			"temp/cache/file.mp3": &fstest.MapFile{Data: []byte("audio")},
+
+			// Directory with hierarchical .ndignore
+			"project":                 &fstest.MapFile{Mode: fs.ModeDir},
+			"project/.ndignore":       &fstest.MapFile{Data: []byte("drafts\n")},
+			"project/final":           &fstest.MapFile{Mode: fs.ModeDir},
+			"project/final/album.mp3": &fstest.MapFile{Data: []byte("audio")},
+			"project/drafts":          &fstest.MapFile{Mode: fs.ModeDir},
+			"project/drafts/test.mp3": &fstest.MapFile{Data: []byte("audio")},
+
+			// Directory with empty .ndignore (should ignore everything)
+			"empty":           &fstest.MapFile{Mode: fs.ModeDir},
+			"empty/.ndignore": &fstest.MapFile{Data: []byte("")},
+			"empty/subdir":    &fstest.MapFile{Mode: fs.ModeDir},
+
+			// Log file at root level (should be ignored by *.log pattern)
+			"debug.log": &fstest.MapFile{Data: []byte("logs")},
+		}
+	})
+
+	It("does not ignore paths without .ndignore patterns", func() {
+		result := shouldIgnorePath(ctx, mockFS, "music/artist1")
+		Expect(result).To(BeFalse())
+	})
+
+	It("ignores paths matching root .ndignore patterns", func() {
+		result := shouldIgnorePath(ctx, mockFS, "temp/cache")
+		Expect(result).To(BeTrue())
+	})
+
+	It("ignores log files matching *.log pattern", func() {
+		result := shouldIgnorePath(ctx, mockFS, "debug.log")
+		Expect(result).To(BeTrue())
+	})
+
+	It("applies hierarchical .ndignore patterns", func() {
+		// project/drafts should be ignored by project/.ndignore
+		result := shouldIgnorePath(ctx, mockFS, "project/drafts")
+		Expect(result).To(BeTrue())
+
+		// project/final should NOT be ignored
+		result = shouldIgnorePath(ctx, mockFS, "project/final")
+		Expect(result).To(BeFalse())
+	})
+
+	It("ignores directories with empty .ndignore file", func() {
+		result := shouldIgnorePath(ctx, mockFS, "empty/subdir")
+		Expect(result).To(BeTrue())
+	})
+
+	It("does not ignore root or empty paths", func() {
+		Expect(shouldIgnorePath(ctx, mockFS, "")).To(BeFalse())
+		Expect(shouldIgnorePath(ctx, mockFS, ".")).To(BeFalse())
+	})
+
+	It("combines patterns from multiple .ndignore files", func() {
+		// Create a more complex hierarchy
+		complexFS := fstest.MapFS{
+			".ndignore":             &fstest.MapFile{Data: []byte("*.tmp\n")},
+			"parent":                &fstest.MapFile{Mode: fs.ModeDir},
+			"parent/.ndignore":      &fstest.MapFile{Data: []byte("test\n")},
+			"parent/test":           &fstest.MapFile{Mode: fs.ModeDir},
+			"parent/test/file.mp3":  &fstest.MapFile{Data: []byte("audio")},
+			"parent/prod":           &fstest.MapFile{Mode: fs.ModeDir},
+			"parent/prod/cache.tmp": &fstest.MapFile{Data: []byte("tmp")},
+		}
+
+		// parent/test should be ignored by parent/.ndignore
+		result := shouldIgnorePath(ctx, complexFS, "parent/test")
+		Expect(result).To(BeTrue())
+
+		// parent/prod/cache.tmp path should be ignored by root .ndignore (*.tmp)
+		result = shouldIgnorePath(ctx, complexFS, "parent/prod/cache.tmp")
+		Expect(result).To(BeTrue())
+
+		// parent/prod directory itself should NOT be ignored
+		result = shouldIgnorePath(ctx, complexFS, "parent/prod")
+		Expect(result).To(BeFalse())
 	})
 })
 
