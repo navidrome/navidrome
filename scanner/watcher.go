@@ -26,7 +26,7 @@ type watcher struct {
 	ds              model.DataStore
 	scanner         Scanner
 	triggerWait     time.Duration
-	watcherNotify   chan model.Library
+	watcherNotify   chan scanNotification
 	libraryWatchers map[int]*libraryWatcherInstance
 	mu              sync.RWMutex
 }
@@ -36,6 +36,11 @@ type libraryWatcherInstance struct {
 	cancel  context.CancelFunc
 }
 
+type scanNotification struct {
+	Library    *model.Library
+	FolderPath string
+}
+
 // GetWatcher returns the watcher singleton
 func GetWatcher(ds model.DataStore, s Scanner) Watcher {
 	return singleton.GetInstance(func() *watcher {
@@ -43,7 +48,7 @@ func GetWatcher(ds model.DataStore, s Scanner) Watcher {
 			ds:              ds,
 			scanner:         s,
 			triggerWait:     conf.Server.Scanner.WatcherWait,
-			watcherNotify:   make(chan model.Library, 1),
+			watcherNotify:   make(chan scanNotification, 1),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
 	})
@@ -69,10 +74,11 @@ func (w *watcher) Run(ctx context.Context) error {
 	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
 	waiting := false
+	targets := make(map[ScanTarget]struct{})
 	for {
 		select {
 		case <-trigger.C:
-			log.Info("Watcher: Triggering scan")
+			log.Info("Watcher: Triggering scan for changed folders", "numTargets", len(targets))
 			status, err := w.scanner.Status(ctx)
 			if err != nil {
 				log.Error(ctx, "Watcher: Error retrieving Scanner status", err)
@@ -84,8 +90,18 @@ func (w *watcher) Run(ctx context.Context) error {
 				continue
 			}
 			waiting = false
+
+			// Convert targets map to slice
+			targetSlice := make([]ScanTarget, 0, len(targets))
+			for target := range targets {
+				targetSlice = append(targetSlice, target)
+			}
+
+			// Clear targets for next batch
+			targets = make(map[ScanTarget]struct{})
+
 			go func() {
-				_, err := w.scanner.ScanAll(ctx, false)
+				_, err := w.scanner.ScanFolders(ctx, false, targetSlice)
 				if err != nil {
 					log.Error(ctx, "Watcher: Error scanning", err)
 				} else {
@@ -102,10 +118,16 @@ func (w *watcher) Run(ctx context.Context) error {
 			w.libraryWatchers = make(map[int]*libraryWatcherInstance)
 			w.mu.Unlock()
 			return nil
-		case lib := <-w.watcherNotify:
+		case notification := <-w.watcherNotify:
+			lib := notification.Library
+			folderPath := notification.FolderPath
+
+			// Add target to the map (deduplicates automatically)
+			targets[ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}] = struct{}{}
+
 			if !waiting {
 				log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
-					"libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+					"libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "folderPath", folderPath)
 				waiting = true
 			}
 			trigger.Reset(w.triggerWait)
@@ -218,9 +240,32 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 
 			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", path, "absoluteLibPath", absLibPath)
 
+			// Find the folder to scan - validate path exists as directory, walk up if needed
+			folderPath := path
+			for {
+				info, err := fs.Stat(fsys, folderPath)
+				if err == nil && info.IsDir() {
+					// Found a valid directory
+					break
+				}
+				if folderPath == "." || folderPath == "" {
+					// Reached root, scan entire library
+					folderPath = ""
+					break
+				}
+				// Walk up the tree
+				dir, _ := filepath.Split(folderPath)
+				if dir == "" || dir == "." {
+					folderPath = ""
+					break
+				}
+				// Remove trailing slash
+				folderPath = filepath.Clean(dir)
+			}
+
 			// Notify the main watcher of changes
 			select {
-			case w.watcherNotify <- *lib:
+			case w.watcherNotify <- scanNotification{Library: lib, FolderPath: folderPath}:
 			default:
 				// Channel is full, notification already pending
 			}
