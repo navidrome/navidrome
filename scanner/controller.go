@@ -28,21 +28,10 @@ var (
 	ErrAlreadyScanning = errors.New("already scanning")
 )
 
-// ScanTarget represents a specific folder within a library to be scanned.
-// NOTE: This struct is used as a map key, so it should only contain comparable types.
-type ScanTarget struct {
-	LibraryID  int
-	FolderPath string // Relative path within the library, or "" for entire library
-}
-
-func (st ScanTarget) String() string {
-	return fmt.Sprintf("%d:%s", st.LibraryID, st.FolderPath)
-}
-
 // ParseTargets parses scan targets strings into ScanTarget structs.
 // Example: []string{"1:Music/Rock", "2:Classical"}
-func ParseTargets(libFolders []string) ([]ScanTarget, error) {
-	targets := make([]ScanTarget, 0, len(libFolders))
+func ParseTargets(libFolders []string) ([]model.ScanTarget, error) {
+	targets := make([]model.ScanTarget, 0, len(libFolders))
 
 	for _, part := range libFolders {
 		part = strings.TrimSpace(part)
@@ -67,7 +56,7 @@ func ParseTargets(libFolders []string) ([]ScanTarget, error) {
 			return nil, fmt.Errorf("invalid library ID %q", libIDStr)
 		}
 
-		targets = append(targets, ScanTarget{
+		targets = append(targets, model.ScanTarget{
 			LibraryID:  libID,
 			FolderPath: folderPath,
 		})
@@ -85,7 +74,7 @@ type Scanner interface {
 	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
 	// ScanFolders scans specific library/folder pairs, recursing into subdirectories.
 	// If targets is nil, it scans all libraries. This is a blocking operation.
-	ScanFolders(ctx context.Context, fullScan bool, targets []ScanTarget) (warnings []string, err error)
+	ScanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget) (warnings []string, err error)
 	Status(context.Context) (*StatusInfo, error)
 }
 
@@ -125,7 +114,7 @@ func (s *controller) getScanner() scanner {
 // CallScan starts an in-process scan of specific library/folder pairs.
 // If targets is empty, it scans all libraries.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []ScanTarget) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []model.ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -161,7 +150,7 @@ type ProgressInfo struct {
 // This allows for swapping between in-process and external scanners.
 type scanner interface {
 	// scanFolders performs the actual scanning of folders. If targets is nil, it scans all libraries.
-	scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo)
+	scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo)
 }
 
 type controller struct {
@@ -272,7 +261,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	return s.ScanFolders(requestCtx, fullScan, nil)
 }
 
-func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targets []ScanTarget) ([]string, error) {
+func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
 	release, err := lockScan(requestCtx)
 	if err != nil {
 		return nil, err

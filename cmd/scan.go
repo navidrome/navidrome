@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/utils/pl"
@@ -72,7 +73,7 @@ func runScanner(ctx context.Context) {
 	pls := core.NewPlaylists(ds)
 
 	// Parse targets if provided
-	var scanTargets []scanner.ScanTarget
+	var scanTargets []model.ScanTarget
 	if targets != "" {
 		var err error
 		scanTargets, err = parseTargets(targets)
@@ -96,7 +97,7 @@ func runScanner(ctx context.Context) {
 }
 
 // parseTargets parses the comma-separated targets string into ScanTarget structs
-func parseTargets(targetsStr string) ([]scanner.ScanTarget, error) {
+func parseTargets(targetsStr string) ([]model.ScanTarget, error) {
 	targets := strings.Split(targetsStr, ",")
 	return scanner.ParseTargets(targets)
 }

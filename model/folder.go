@@ -90,3 +90,14 @@ type FolderRepository interface {
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
 }
+
+// ScanTarget represents a specific folder within a library to be scanned.
+// NOTE: This struct is used as a map key, so it should only contain comparable types.
+type ScanTarget struct {
+	LibraryID  int
+	FolderPath string // Relative path within the library, or "" for entire library
+}
+
+func (st ScanTarget) String() string {
+	return fmt.Sprintf("%d:%s", st.LibraryID, st.FolderPath)
+}

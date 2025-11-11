@@ -47,7 +47,7 @@ func (s *scanState) sendError(err error) {
 	s.sendProgress(&ProgressInfo{Error: err.Error()})
 }
 
-func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
+func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
 	startTime := time.Now()
 
 	state := scanState{

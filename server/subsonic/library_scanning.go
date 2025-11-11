@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -47,7 +48,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	fullScan := p.BoolOr("fullScan", false)
 
 	// Parse optional path parameters for selective scanning
-	var targets []scanner.ScanTarget
+	var targets []model.ScanTarget
 	if pathParams, err := p.Strings("path"); err == nil && len(pathParams) > 0 {
 		targets, err = scanner.ParseTargets(pathParams)
 		if err != nil {

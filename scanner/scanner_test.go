@@ -736,7 +736,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			// (lib is already created with the path "fake:///music")
 
 			// Scan only the "rock" and "jazz" folders (including their subdirectories)
-			targets := []scanner.ScanTarget{
+			targets := []model.ScanTarget{
 				{LibraryID: lib.ID, FolderPath: "rock"},
 				{LibraryID: lib.ID, FolderPath: "jazz"},
 			}

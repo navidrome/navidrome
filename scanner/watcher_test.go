@@ -351,7 +351,7 @@ type ScanAllCall struct {
 
 type ScanFoldersCall struct {
 	FullScan bool
-	Targets  []ScanTarget
+	Targets  []model.ScanTarget
 }
 
 func NewMockScanner() *mockScanner {
@@ -370,12 +370,12 @@ func (m *mockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 	return nil, nil
 }
 
-func (m *mockScanner) ScanFolders(_ context.Context, fullScan bool, targets []ScanTarget) ([]string, error) {
+func (m *mockScanner) ScanFolders(_ context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	// Make a copy of targets to avoid race conditions
-	targetsCopy := make([]ScanTarget, len(targets))
+	targetsCopy := make([]model.ScanTarget, len(targets))
 	copy(targetsCopy, targets)
 
 	m.scanFoldersCalls = append(m.scanFoldersCalls, ScanFoldersCall{

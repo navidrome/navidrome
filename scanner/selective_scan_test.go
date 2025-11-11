@@ -146,7 +146,7 @@ var _ = Describe("Selective Scan - Deleted Child Folders", Ordered, func() {
 
 			// Run selective scan on the parent folder (Artist)
 			// This simulates what the watcher does when a child folder is deleted
-			_, err := s.ScanFolders(ctx, false, []scanner.ScanTarget{
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{
 				{LibraryID: lib.ID, FolderPath: "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -208,7 +208,7 @@ var _ = Describe("Selective Scan - Deleted Child Folders", Ordered, func() {
 			})
 
 			// Run selective scan on parent
-			_, err = s.ScanFolders(ctx, false, []scanner.ScanTarget{
+			_, err = s.ScanFolders(ctx, false, []model.ScanTarget{
 				{LibraryID: lib.ID, FolderPath: "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())

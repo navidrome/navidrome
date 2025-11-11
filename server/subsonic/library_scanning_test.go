@@ -292,7 +292,7 @@ type mockScanner struct {
 	// ScanFolders tracking
 	scanFoldersCalled   bool
 	scanFoldersFullScan bool
-	scanFoldersTargets  []scanner.ScanTarget
+	scanFoldersTargets  []model.ScanTarget
 	scanFoldersError    error
 	scanFoldersWarnings []string
 
@@ -310,14 +310,14 @@ func (m *mockScanner) ScanAll(ctx context.Context, fullScan bool) ([]string, err
 	return m.scanAllWarnings, m.scanAllError
 }
 
-func (m *mockScanner) ScanFolders(ctx context.Context, fullScan bool, targets []scanner.ScanTarget) ([]string, error) {
+func (m *mockScanner) ScanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.scanFoldersCalled = true
 	m.scanFoldersFullScan = fullScan
 	// Make a copy of targets to avoid race conditions
-	m.scanFoldersTargets = make([]scanner.ScanTarget, len(targets))
+	m.scanFoldersTargets = make([]model.ScanTarget, len(targets))
 	copy(m.scanFoldersTargets, targets)
 	return m.scanFoldersWarnings, m.scanFoldersError
 }
@@ -357,11 +357,11 @@ func (m *mockScanner) getScanFoldersFullScan() bool {
 	return m.scanFoldersFullScan
 }
 
-func (m *mockScanner) getScanFoldersTargets() []scanner.ScanTarget {
+func (m *mockScanner) getScanFoldersTargets() []model.ScanTarget {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	// Return a copy to avoid race conditions
-	targets := make([]scanner.ScanTarget, len(m.scanFoldersTargets))
+	targets := make([]model.ScanTarget, len(m.scanFoldersTargets))
 	copy(targets, m.scanFoldersTargets)
 	return targets
 }

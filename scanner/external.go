@@ -12,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -24,11 +25,11 @@ import (
 // process will forward them to the caller.
 type scannerExternal struct{}
 
-func (s *scannerExternal) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
+func (s *scannerExternal) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
 	s.scan(ctx, fullScan, targets, progress)
 }
 
-func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
+func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
 	exe, err := os.Executable()
 	if err != nil {
 		progress <- &ProgressInfo{Error: fmt.Sprintf("failed to get executable path: %s", err)}
@@ -46,7 +47,7 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []Sca
 
 	// Add targets if provided
 	if len(targets) > 0 {
-		targetsStr := strings.Join(slice.Map(targets, func(t ScanTarget) string { return t.String() }), ",")
+		targetsStr := strings.Join(slice.Map(targets, func(t model.ScanTarget) string { return t.String() }), ",")
 		args = append(args, "--targets", targetsStr)
 		log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targetsStr)
 	} else {

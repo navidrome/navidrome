@@ -73,7 +73,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	// Main scan triggering loop
 	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
-	targets := make(map[ScanTarget]struct{})
+	targets := make(map[model.ScanTarget]struct{})
 	for {
 		select {
 		case <-trigger.C:
@@ -90,13 +90,13 @@ func (w *watcher) Run(ctx context.Context) error {
 			}
 
 			// Convert targets map to slice
-			targetSlice := make([]ScanTarget, 0, len(targets))
+			targetSlice := make([]model.ScanTarget, 0, len(targets))
 			for target := range targets {
 				targetSlice = append(targetSlice, target)
 			}
 
 			// Clear targets for next batch
-			targets = make(map[ScanTarget]struct{})
+			targets = make(map[model.ScanTarget]struct{})
 
 			go func() {
 				_, err := w.scanner.ScanFolders(ctx, false, targetSlice)
@@ -121,7 +121,7 @@ func (w *watcher) Run(ctx context.Context) error {
 			folderPath := notification.FolderPath
 
 			// If already scheduled for scan, skip
-			target := ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}
+			target := model.ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}
 			if _, exists := targets[target]; exists {
 				continue
 			}
