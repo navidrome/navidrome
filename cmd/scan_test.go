@@ -68,10 +68,10 @@ var _ = Describe("parseTargets", func() {
 			Expect(err.Error()).To(ContainSubstring("invalid library ID"))
 		})
 
-		It("handles negative library ID", func() {
-			targets, err := parseTargets("-1:Music")
-			Expect(err).ToNot(HaveOccurred()) // Actually valid - strconv.Atoi accepts negative numbers
-			Expect(targets[0].LibraryID).To(Equal(-1))
+		It("return error on negative library ID", func() {
+			_, err := parseTargets("-1:Music")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid library ID"))
 		})
 
 		It("handles only whitespace", func() {

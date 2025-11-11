@@ -123,6 +123,9 @@ func parseTargets(targetsStr string) ([]scanner.ScanTarget, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid library ID %q: %w", libIDStr, err)
 		}
+		if libID <= 0 {
+			return nil, fmt.Errorf("invalid library ID %q", libIDStr)
+		}
 
 		targets = append(targets, scanner.ScanTarget{
 			LibraryID:  libID,
