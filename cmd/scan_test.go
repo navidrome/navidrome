@@ -26,9 +26,10 @@ var _ = Describe("parseTargets", func() {
 		})
 
 		It("handles targets with spaces around commas", func() {
-			targets, err := parseTargets("1:Music/Rock , 2:Jazz , 3:Classical")
+			targets, err := parseTargets("1:Music/Rock And Roll, 2:Jazz , 3:Classical")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(targets).To(HaveLen(3))
+			Expect(targets[0].FolderPath).To(Equal("Music/Rock And Roll"))
 		})
 
 		It("handles paths with colons after the first colon", func() {
