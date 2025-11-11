@@ -121,16 +121,16 @@ func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder stri
 	}
 	defer ignoreFile.Close()
 
-	scanner := bufio.NewScanner(ignoreFile)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	lineScanner := bufio.NewScanner(ignoreFile)
+	for lineScanner.Scan() {
+		line := strings.TrimSpace(lineScanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue // Skip empty lines, whitespace-only lines, and comments
 		}
 		patterns = append(patterns, line)
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := lineScanner.Err(); err != nil {
 		log.Warn(ctx, "Scanner: Error reading .ndignore file", "path", ignoreFilePath, err)
 		return patterns
 	}
