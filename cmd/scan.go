@@ -3,9 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/gob"
-	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/core"
@@ -98,44 +96,7 @@ func runScanner(ctx context.Context) {
 }
 
 // parseTargets parses the comma-separated targets string into ScanTarget structs
-// Format: "libraryID:folderPath,libraryID:folderPath,..."
-// Example: "1:Music/Rock,1:Music/Jazz,2:Classical"
 func parseTargets(targetsStr string) ([]scanner.ScanTarget, error) {
-	parts := strings.Split(targetsStr, ",")
-	targets := make([]scanner.ScanTarget, 0, len(parts))
-
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
-		// Split by the first colon
-		colonIdx := strings.Index(part, ":")
-		if colonIdx == -1 {
-			return nil, fmt.Errorf("invalid target format: %q (expected libraryID:folderPath)", part)
-		}
-
-		libIDStr := part[:colonIdx]
-		folderPath := part[colonIdx+1:]
-
-		libID, err := strconv.Atoi(libIDStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid library ID %q: %w", libIDStr, err)
-		}
-		if libID <= 0 {
-			return nil, fmt.Errorf("invalid library ID %q", libIDStr)
-		}
-
-		targets = append(targets, scanner.ScanTarget{
-			LibraryID:  libID,
-			FolderPath: folderPath,
-		})
-	}
-
-	if len(targets) == 0 {
-		return nil, fmt.Errorf("no valid targets found in %q", targetsStr)
-	}
-
-	return targets, nil
+	targets := strings.Split(targetsStr, ",")
+	return scanner.ParseTargets(targets)
 }

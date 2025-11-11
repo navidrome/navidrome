@@ -1,11 +1,13 @@
 package subsonic
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -44,15 +46,32 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	fullScan := p.BoolOr("fullScan", false)
 
+	// Parse optional path parameters for selective scanning
+	var targets []scanner.ScanTarget
+	if pathParams, err := p.Strings("path"); err == nil && len(pathParams) > 0 {
+		targets, err = scanner.ParseTargets(pathParams)
+		if err != nil {
+			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid path parameter: %v", err))
+		}
+	}
+
 	go func() {
 		start := time.Now()
-		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
-		_, err := api.scanner.ScanAll(ctx, fullScan)
+		var err error
+
+		if len(targets) > 0 {
+			log.Info(ctx, "Triggering on-demand scan", "fullScan", fullScan, "targets", len(targets), "user", loggedUser.UserName)
+			_, err = api.scanner.ScanFolders(ctx, fullScan, targets)
+		} else {
+			log.Info(ctx, "Triggering on-demand scan", "fullScan", fullScan, "user", loggedUser.UserName)
+			_, err = api.scanner.ScanAll(ctx, fullScan)
+		}
+
 		if err != nil {
 			log.Error(ctx, "Error scanning", err)
 			return
 		}
-		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
+		log.Info(ctx, "On-demand scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
 	}()
 
 	return api.GetScanStatus(r)
