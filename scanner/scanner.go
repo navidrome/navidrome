@@ -48,6 +48,10 @@ func (s *scanState) sendError(err error) {
 }
 
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
+	s.scanFolders(ctx, fullScan, nil, progress)
+}
+
+func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
 	startTime := time.Now()
 
 	state := scanState{
@@ -61,19 +65,52 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.changesDetected.Store(true)
 	}
 
-	libs, err := s.ds.Library(ctx).GetAll()
+	// Get libraries and optionally filter by targets
+	allLibs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
 		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
 		return
 	}
-	state.libraries = libs
 
-	log.Info(ctx, "Scanner: Starting scan", "fullScan", state.fullScan, "numLibraries", len(libs))
+	var libs model.Libraries
+	isSelectiveScan := len(targets) > 0
+
+	if isSelectiveScan {
+		// Selective scan: filter libraries and build targets map
+		state.targets = make(map[int][]string)
+		affectedLibIDSet := make(map[int]bool)
+
+		for _, target := range targets {
+			folderPath := target.FolderPath
+			if folderPath == "" {
+				folderPath = "."
+			}
+			state.targets[target.LibraryID] = append(state.targets[target.LibraryID], folderPath)
+			affectedLibIDSet[target.LibraryID] = true
+		}
+
+		for _, lib := range allLibs {
+			if affectedLibIDSet[lib.ID] {
+				libs = append(libs, lib)
+				state.affectedLibIDs = append(state.affectedLibIDs, lib.ID)
+			}
+		}
+
+		log.Info(ctx, "Scanner: Starting selective scan", "fullScan", state.fullScan, "numLibraries", len(libs), "numTargets", len(targets))
+	} else {
+		// Full library scan
+		libs = allLibs
+		log.Info(ctx, "Scanner: Starting scan", "fullScan", state.fullScan, "numLibraries", len(libs))
+	}
+	state.libraries = libs
 
 	// Store scan type and start time
 	scanType := "quick"
 	if state.fullScan {
 		scanType = "full"
+	}
+	if isSelectiveScan {
+		scanType += "-selective"
 	}
 	_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, scanType)
 	_ = s.ds.Property(ctx).Put(consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
@@ -84,7 +121,11 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 			if lib.FullScanInProgress {
 				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
-				_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full")
+				if isSelectiveScan {
+					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full-selective")
+				} else {
+					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full")
+				}
 				break
 			}
 		}
@@ -133,117 +174,11 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
-	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
-}
-
-func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
-	startTime := time.Now()
-
-	state := scanState{
-		progress:        progress,
-		fullScan:        fullScan,
-		changesDetected: atomic.Bool{},
-		targets:         make(map[int][]string),
+	if isSelectiveScan {
+		log.Info(ctx, "Scanner: Finished scanning selected folders", "duration", time.Since(startTime), "numTargets", len(targets))
+	} else {
+		log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 	}
-
-	// Set changesDetected to true for full scans to ensure all maintenance operations run
-	if fullScan {
-		state.changesDetected.Store(true)
-	}
-
-	// Group targets by library and collect affected library IDs
-	affectedLibIDSet := make(map[int]bool)
-	for _, target := range targets {
-		folderPath := target.FolderPath
-		if folderPath == "" {
-			folderPath = "."
-		}
-		state.targets[target.LibraryID] = append(state.targets[target.LibraryID], folderPath)
-		affectedLibIDSet[target.LibraryID] = true
-	}
-
-	// Get affected libraries
-	allLibs, err := s.ds.Library(ctx).GetAll()
-	if err != nil {
-		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
-		return
-	}
-
-	var libs model.Libraries
-	for _, lib := range allLibs {
-		if affectedLibIDSet[lib.ID] {
-			libs = append(libs, lib)
-			state.affectedLibIDs = append(state.affectedLibIDs, lib.ID)
-		}
-	}
-	state.libraries = libs
-
-	log.Info(ctx, "Scanner: Starting selective scan", "fullScan", state.fullScan, "numLibraries", len(libs), "numTargets", len(targets))
-
-	// Store scan type and start time
-	scanType := "quick-selective"
-	if state.fullScan {
-		scanType = "full-selective"
-	}
-	_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, scanType)
-	_ = s.ds.Property(ctx).Put(consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
-
-	// if there was a full scan in progress, force a full scan
-	if !state.fullScan {
-		for _, lib := range libs {
-			if lib.FullScanInProgress {
-				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
-				state.fullScan = true
-				_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full-selective")
-				break
-			}
-		}
-	}
-
-	err = run.Sequentially(
-		// Phase 1: Scan specified folders and import new/updated files
-		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw, libs)),
-
-		// Phase 2: Process missing files in scanned folders only
-		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, &state, s.ds)),
-
-		// Phases 3 and 4 can be run in parallel
-		run.Parallel(
-			// Phase 3: Refresh all new/changed albums (from affected libraries only)
-			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, &state, s.ds, libs)),
-
-			// Phase 4: Import/update playlists (from affected libraries only)
-			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
-		),
-
-		// Final Steps (cannot be parallelized):
-
-		// Run GC scoped to affected libraries only
-		s.runGC(ctx, &state),
-
-		// Refresh artist and tags stats
-		s.runRefreshStats(ctx, &state),
-
-		// Update last_scan_completed_at for affected libraries
-		s.runUpdateLibraries(ctx, &state),
-
-		// Optimize DB
-		s.runOptimize(ctx),
-	)
-	if err != nil {
-		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
-		state.sendError(err)
-		return
-	}
-
-	_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, "")
-
-	if state.changesDetected.Load() {
-		state.sendProgress(&ProgressInfo{ChangesDetected: true})
-	}
-
-	log.Info(ctx, "Scanner: Finished scanning selected folders", "duration", time.Since(startTime), "numTargets", len(targets))
 }
 
 func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
