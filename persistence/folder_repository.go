@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -113,7 +114,8 @@ func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...
 				break
 			}
 			// Clean the path to normalize it. Paths stored in the folder table do not have leading/trailing slashes.
-			cleanPath := strings.Trim(targetPath, string(os.PathSeparator))
+			cleanPath := strings.TrimPrefix(targetPath, string(os.PathSeparator))
+			cleanPath = filepath.Clean(cleanPath)
 
 			// Include the target folder itself by ID
 			folderIDs = append(folderIDs, model.FolderID(lib, cleanPath))
