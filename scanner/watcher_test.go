@@ -18,7 +18,7 @@ import (
 var _ = Describe("Watcher", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
-	var mockScanner *MockScanner
+	var mockScanner *mockScanner
 	var mockDS *tests.MockDataStore
 	var w *watcher
 	var lib *model.Library
@@ -337,8 +337,8 @@ var _ = Describe("resolveFolderPath", func() {
 	})
 })
 
-// MockScanner implements scanner.Scanner for testing
-type MockScanner struct {
+// mockScanner implements scanner.Scanner for testing
+type mockScanner struct {
 	mu               sync.Mutex
 	scanAllCalls     []ScanAllCall
 	scanFoldersCalls []ScanFoldersCall
@@ -354,14 +354,14 @@ type ScanFoldersCall struct {
 	Targets  []ScanTarget
 }
 
-func NewMockScanner() *MockScanner {
-	return &MockScanner{
+func NewMockScanner() *mockScanner {
+	return &mockScanner{
 		scanAllCalls:     make([]ScanAllCall, 0),
 		scanFoldersCalls: make([]ScanFoldersCall, 0),
 	}
 }
 
-func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error) {
+func (m *mockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -370,7 +370,7 @@ func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 	return nil, nil
 }
 
-func (m *MockScanner) ScanFolders(_ context.Context, fullScan bool, targets []ScanTarget) ([]string, error) {
+func (m *mockScanner) ScanFolders(_ context.Context, fullScan bool, targets []ScanTarget) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -386,7 +386,7 @@ func (m *MockScanner) ScanFolders(_ context.Context, fullScan bool, targets []Sc
 	return nil, nil
 }
 
-func (m *MockScanner) Status(_ context.Context) (*StatusInfo, error) {
+func (m *mockScanner) Status(_ context.Context) (*StatusInfo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -395,19 +395,19 @@ func (m *MockScanner) Status(_ context.Context) (*StatusInfo, error) {
 	}, nil
 }
 
-func (m *MockScanner) GetScanAllCallCount() int {
+func (m *mockScanner) GetScanAllCallCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.scanAllCalls)
 }
 
-func (m *MockScanner) GetScanFoldersCallCount() int {
+func (m *mockScanner) GetScanFoldersCallCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.scanFoldersCalls)
 }
 
-func (m *MockScanner) GetScanFoldersCalls() []ScanFoldersCall {
+func (m *mockScanner) GetScanFoldersCalls() []ScanFoldersCall {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	// Return a copy to avoid race conditions
@@ -416,14 +416,14 @@ func (m *MockScanner) GetScanFoldersCalls() []ScanFoldersCall {
 	return calls
 }
 
-func (m *MockScanner) Reset() {
+func (m *mockScanner) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.scanAllCalls = make([]ScanAllCall, 0)
 	m.scanFoldersCalls = make([]ScanFoldersCall, 0)
 }
 
-func (m *MockScanner) SetScanning(scanning bool) {
+func (m *mockScanner) SetScanning(scanning bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.scanningStatus = scanning

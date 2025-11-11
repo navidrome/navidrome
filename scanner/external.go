@@ -24,10 +24,6 @@ import (
 // process will forward them to the caller.
 type scannerExternal struct{}
 
-func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
-	s.scan(ctx, fullScan, nil, progress)
-}
-
 func (s *scannerExternal) scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo) {
 	s.scan(ctx, fullScan, targets, progress)
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// Scanner interface for triggering scans
+// Scanner interface for triggering scans. This is a subset of the full scanner.Scanner interface.
 type Scanner interface {
 	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
 }

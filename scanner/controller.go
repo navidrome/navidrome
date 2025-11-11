@@ -137,11 +137,7 @@ func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullS
 	go func() {
 		defer close(progress)
 		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
-		if len(targets) == 0 {
-			scanner.scanAll(ctx, fullScan, progress)
-		} else {
-			scanner.scanFolders(ctx, fullScan, targets, progress)
-		}
+		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 	return progress, nil
 }
@@ -161,8 +157,10 @@ type ProgressInfo struct {
 	ForceUpdate     bool
 }
 
+// scanner defines the interface for different scanner implementations.
+// This allows for swapping between in-process and external scanners.
 type scanner interface {
-	scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo)
+	// scanFolders performs the actual scanning of folders. If targets is nil, it scans all libraries.
 	scanFolders(ctx context.Context, fullScan bool, targets []ScanTarget, progress chan<- *ProgressInfo)
 }
 
@@ -291,11 +289,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	go func() {
 		defer close(progress)
 		scanner := s.getScanner()
-		if len(targets) == 0 {
-			scanner.scanAll(ctx, fullScan, progress)
-		} else {
-			scanner.scanFolders(ctx, fullScan, targets, progress)
-		}
+		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients
