@@ -157,7 +157,7 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 	}, scope...)
 }
 
-func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
+func (s *SQLStore) GC(ctx context.Context) error {
 	trace := func(ctx context.Context, msg string, f func() error) func() error {
 		return func() error {
 			start := time.Now()
@@ -165,12 +165,6 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 			log.Debug(ctx, "GC: "+msg, "elapsed", time.Since(start), err)
 			return err
 		}
-	}
-
-	// TODO: Implement library-specific filtering for GC operations
-	// For now, GC runs globally even in selective scans
-	if len(libraryIDs) > 0 {
-		log.Debug(ctx, "GC: Running with library filter (not implemented)", "libraries", libraryIDs)
 	}
 
 	err := run.Sequentially(

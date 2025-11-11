@@ -373,10 +373,10 @@ type extendedDataStore struct {
 	gcError  error
 }
 
-func (ds *extendedDataStore) GC(ctx context.Context, libraryIDs ...int) error {
+func (ds *extendedDataStore) GC(ctx context.Context) error {
 	ds.gcCalled = true
 	if ds.gcError != nil {
 		return ds.gcError
 	}
-	return ds.MockDataStore.GC(ctx, libraryIDs...)
+	return ds.MockDataStore.GC(ctx)
 }

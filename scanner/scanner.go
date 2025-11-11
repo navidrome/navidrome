@@ -187,7 +187,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			if state.changesDetected.Load() {
 				start := time.Now()
-				err := tx.GC(ctx, state.affectedLibIDs...)
+				err := tx.GC(ctx)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error running GC", err)
 					return fmt.Errorf("running GC: %w", err)
