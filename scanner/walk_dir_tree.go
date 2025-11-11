@@ -30,7 +30,7 @@ func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error)
 	return results, nil
 }
 
-// loadSpecificFolders loads only the specified folders without recursing into subdirectories
+// loadSpecificFolders loads the specified folders and recursively walks their subdirectories
 func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []string) (<-chan *folderEntry, error) {
 	results := make(chan *folderEntry)
 	go func() {
@@ -44,22 +44,14 @@ func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []stri
 			checker := newIgnoreChecker(job.fs)
 			_ = checker.PushAllParents(ctx, folderPath)
 
-			// Load only this specific folder (no recursion)
-			folder, _, err := loadDir(ctx, job, folderPath, checker)
+			// Recursively walk this folder and all its children
+			err := walkFolder(ctx, job, folderPath, checker, results)
 			if err != nil {
-				log.Warn(ctx, "Scanner: Error loading target folder. Skipping", "path", folderPath, err)
+				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
 			}
-
-			folder.path = path.Clean(folderPath)
-			folder.elapsed.Start()
-			log.Trace(ctx, "Scanner: Found target directory", " path", folder.path, "audioFiles", maps.Keys(folder.audioFiles),
-				"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
-				"updTime", folder.updTime, "modTime", folder.modTime)
-
-			results <- folder
 		}
-		log.Debug(ctx, "Scanner: Finished reading target folders", "lib", job.lib.Name, "path", job.lib.Path, "numFolders", len(targetFolders))
+		log.Debug(ctx, "Scanner: Finished reading target folders", "lib", job.lib.Name, "path", job.lib.Path, "numFolders", job.numFolders.Load())
 	}()
 	return results, nil
 }

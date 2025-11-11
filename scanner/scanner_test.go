@@ -719,7 +719,7 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	Describe("ScanFolders", func() {
-		It("scans only specified folders without recursion", func() {
+		It("scans specified folders recursively including all subdirectories", func() {
 			rock := template(_t{"albumartist": "Rock Artist", "album": "Rock Album"})
 			jazz := template(_t{"albumartist": "Jazz Artist", "album": "Jazz Album"})
 			pop := template(_t{"albumartist": "Pop Artist", "album": "Pop Album"})
@@ -735,7 +735,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			// Use the existing library from BeforeEach
 			// (lib is already created with the path "fake:///music")
 
-			// Scan only the "rock" and "jazz" folders (not their subdirectories or pop)
+			// Scan only the "rock" and "jazz" folders (including their subdirectories)
 			targets := []scanner.ScanTarget{
 				{LibraryID: lib.ID, FolderPath: "rock"},
 				{LibraryID: lib.ID, FolderPath: "jazz"},
@@ -745,31 +745,29 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(warnings).To(BeEmpty())
 
-			// Verify only track1, track2, and track4 were imported (not track3, track5, or track6)
+			// Verify all tracks in rock and jazz folders (including subdirectories) were imported
 			allFiles, err := ds.MediaFile(ctx).GetAll()
 			Expect(err).ToNot(HaveOccurred())
 
-			// Should have exactly 3 tracks (rock/track1, rock/track2, jazz/track4)
-			Expect(allFiles).To(HaveLen(3))
+			// Should have 5 tracks (all rock and jazz tracks including subdirectories)
+			Expect(allFiles).To(HaveLen(5))
 
 			// Get the file paths
 			paths := slice.Map(allFiles, func(mf model.MediaFile) string {
 				return filepath.ToSlash(mf.Path)
 			})
 
-			// Verify the correct files were scanned
+			// Verify the correct files were scanned (including subdirectories)
 			Expect(paths).To(ContainElements(
 				"rock/track1.mp3",
 				"rock/track2.mp3",
+				"rock/subdir/track3.mp3",
 				"jazz/track4.mp3",
+				"jazz/subdir/track5.mp3",
 			))
 
-			// Verify files in subdirectories and pop folder were NOT scanned
-			Expect(paths).ToNot(ContainElements(
-				"rock/subdir/track3.mp3",
-				"jazz/subdir/track5.mp3",
-				"pop/track6.mp3",
-			))
+			// Verify files in the pop folder were NOT scanned
+			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
 		})
 	})
 })

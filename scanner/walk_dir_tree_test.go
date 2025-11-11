@@ -103,6 +103,92 @@ var _ = Describe("walk_dir_tree", func() {
 		)
 	})
 
+	Describe("loadSpecificFolders", func() {
+		var (
+			fsys storage.MusicFS
+			job  *scanJob
+			ctx  context.Context
+		)
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ctx = GinkgoT().Context()
+			fsys = &mockMusicFS{
+				FS: fstest.MapFS{
+					"Artist/Album1/track1.mp3":      {},
+					"Artist/Album1/track2.mp3":      {},
+					"Artist/Album2/track1.mp3":      {},
+					"Artist/Album2/track2.mp3":      {},
+					"Artist/Album2/Sub/track3.mp3":  {},
+					"OtherArtist/Album3/track1.mp3": {},
+				},
+			}
+			job = &scanJob{
+				fs:  fsys,
+				lib: model.Library{Path: "/music"},
+			}
+		})
+
+		It("should recursively walk all subdirectories of target folders", func() {
+			results, err := loadSpecificFolders(ctx, job, []string{"Artist"})
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+
+			// Should include the target folder and all its descendants
+			Expect(folders).To(SatisfyAll(
+				HaveKey("Artist"),
+				HaveKey("Artist/Album1"),
+				HaveKey("Artist/Album2"),
+				HaveKey("Artist/Album2/Sub"),
+			))
+
+			// Should not include folders outside the target
+			Expect(folders).ToNot(HaveKey("OtherArtist"))
+			Expect(folders).ToNot(HaveKey("OtherArtist/Album3"))
+
+			// Verify audio files are present
+			Expect(folders["Artist/Album1"].audioFiles).To(HaveLen(2))
+			Expect(folders["Artist/Album2"].audioFiles).To(HaveLen(2))
+			Expect(folders["Artist/Album2/Sub"].audioFiles).To(HaveLen(1))
+		})
+
+		It("should handle multiple target folders", func() {
+			results, err := loadSpecificFolders(ctx, job, []string{"Artist/Album1", "OtherArtist"})
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+
+			// Should include both target folders and their descendants
+			Expect(folders).To(SatisfyAll(
+				HaveKey("Artist/Album1"),
+				HaveKey("OtherArtist"),
+				HaveKey("OtherArtist/Album3"),
+			))
+
+			// Should not include other folders
+			Expect(folders).ToNot(HaveKey("Artist"))
+			Expect(folders).ToNot(HaveKey("Artist/Album2"))
+			Expect(folders).ToNot(HaveKey("Artist/Album2/Sub"))
+		})
+	})
+
 	Describe("helper functions", func() {
 		dir, _ := os.Getwd()
 		fsys := os.DirFS(dir)

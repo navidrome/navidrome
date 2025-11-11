@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -97,16 +99,37 @@ func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...
 		Eq{"missing": false},
 	}
 
-	// If specific paths are requested, generate folder IDs and filter by them
+	// If specific paths are requested, include those folders and all their descendants
 	if len(targetPaths) > 0 {
+		// Collect folder IDs for exact target folders and path conditions for descendants
 		folderIDs := make([]string, 0, len(targetPaths))
-		for _, path := range targetPaths {
-			if path == "" {
-				path = "."
+		pathConditions := make(Or, 0, len(targetPaths)*2)
+
+		for _, targetPath := range targetPaths {
+			if targetPath == "" || targetPath == "." {
+				// Root path - include everything in this library
+				pathConditions = Or{}
+				folderIDs = nil
+				break
 			}
-			folderIDs = append(folderIDs, model.FolderID(lib, path))
+			// Clean the path to normalize it. Paths stored in the folder table do not have leading/trailing slashes.
+			cleanPath := strings.Trim(targetPath, string(os.PathSeparator))
+
+			// Include the target folder itself by ID
+			folderIDs = append(folderIDs, model.FolderID(lib, cleanPath))
+
+			// Include all descendants: folders whose path field equals or starts with the target path
+			// Note: Folder.Path is the directory path, so children have path = targetPath
+			pathConditions = append(pathConditions, Eq{"path": cleanPath})
+			pathConditions = append(pathConditions, Like{"path": cleanPath + "/%"})
 		}
-		where = append(where, Eq{"id": folderIDs})
+
+		// Combine conditions: exact folder IDs OR descendant path patterns
+		if len(folderIDs) > 0 {
+			where = append(where, Or{Eq{"id": folderIDs}, pathConditions})
+		} else if len(pathConditions) > 0 {
+			where = append(where, pathConditions)
+		}
 	}
 
 	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(where)

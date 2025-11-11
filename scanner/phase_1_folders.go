@@ -76,7 +76,7 @@ type scanJob struct {
 	fs            storage.MusicFS
 	cw            artwork.CacheWarmer
 	lastUpdates   map[string]model.FolderUpdateInfo
-	targetFolders []string // Specific folders to scan (non-recursive)
+	targetFolders []string // Specific folders to scan (including all descendants)
 	lock          sync.Mutex
 	numFolders    atomic.Int64
 }
