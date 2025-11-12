@@ -34,19 +34,19 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
+func createFS(files fstest.MapFS) storagetest.FakeFS {
+	fs := storagetest.FakeFS{}
+	fs.SetFiles(files)
+	storagetest.Register("fake", &fs)
+	return fs
+}
+
 var _ = Describe("Scanner", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds *tests.MockDataStore
 	var mfRepo *mockMediaFileRepo
 	var s model.Scanner
-
-	createFS := func(files fstest.MapFS) storagetest.FakeFS {
-		fs := storagetest.FakeFS{}
-		fs.SetFiles(files)
-		storagetest.Register("fake", &fs)
-		return fs
-	}
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
@@ -715,59 +715,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			albumArtistStats := updatedArtist.Stats[model.RoleAlbumArtist]
 			Expect(albumArtistStats.AlbumCount).To(Equal(1)) // 1 album
 			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
-		})
-	})
-
-	Describe("ScanFolders", func() {
-		It("scans specified folders recursively including all subdirectories", func() {
-			rock := template(_t{"albumartist": "Rock Artist", "album": "Rock Album"})
-			jazz := template(_t{"albumartist": "Jazz Artist", "album": "Jazz Album"})
-			pop := template(_t{"albumartist": "Pop Artist", "album": "Pop Album"})
-			createFS(fstest.MapFS{
-				"rock/track1.mp3":        rock(track(1, "Rock Track 1")),
-				"rock/track2.mp3":        rock(track(2, "Rock Track 2")),
-				"rock/subdir/track3.mp3": rock(track(3, "Rock Track 3")),
-				"jazz/track4.mp3":        jazz(track(1, "Jazz Track 1")),
-				"jazz/subdir/track5.mp3": jazz(track(2, "Jazz Track 2")),
-				"pop/track6.mp3":         pop(track(1, "Pop Track 1")),
-			})
-
-			// Use the existing library from BeforeEach
-			// (lib is already created with the path "fake:///music")
-
-			// Scan only the "rock" and "jazz" folders (including their subdirectories)
-			targets := []model.ScanTarget{
-				{LibraryID: lib.ID, FolderPath: "rock"},
-				{LibraryID: lib.ID, FolderPath: "jazz"},
-			}
-
-			warnings, err := s.ScanFolders(ctx, false, targets)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(BeEmpty())
-
-			// Verify all tracks in rock and jazz folders (including subdirectories) were imported
-			allFiles, err := ds.MediaFile(ctx).GetAll()
-			Expect(err).ToNot(HaveOccurred())
-
-			// Should have 5 tracks (all rock and jazz tracks including subdirectories)
-			Expect(allFiles).To(HaveLen(5))
-
-			// Get the file paths
-			paths := slice.Map(allFiles, func(mf model.MediaFile) string {
-				return filepath.ToSlash(mf.Path)
-			})
-
-			// Verify the correct files were scanned (including subdirectories)
-			Expect(paths).To(ContainElements(
-				"rock/track1.mp3",
-				"rock/track2.mp3",
-				"rock/subdir/track3.mp3",
-				"jazz/track4.mp3",
-				"jazz/subdir/track5.mp3",
-			))
-
-			// Verify files in the pop folder were NOT scanned
-			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
 		})
 	})
 })
