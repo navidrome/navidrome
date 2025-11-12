@@ -23,7 +23,7 @@ func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
 }
 
 func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
-	releaseDate := legacyReleaseDate(md)
+	_, _, releaseDate := md.mapDates()
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", legacyMapAlbumArtistName(md), legacyMapAlbumName(md)))
 	if !conf.Server.Scanner.GroupAlbumReleases {
 		if len(releaseDate) != 0 {
@@ -54,10 +54,4 @@ func legacyMapAlbumName(md Metadata) string {
 		md.String(model.TagAlbum),
 		consts.UnknownAlbum,
 	)
-}
-
-// Keep the TaggedLikePicard logic for backwards compatibility
-func legacyReleaseDate(md Metadata) string {
-	_, _, releaseDate := md.mapDates()
-	return string(releaseDate)
 }
