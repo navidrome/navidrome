@@ -598,11 +598,12 @@
   "activity": {
     "title": "Atividade",
     "totalScanned": "Total de pastas scaneadas",
-    "quickScan": "Scan rápido",
-    "fullScan": "Scan completo",
+    "quickScan": "Rápido",
+    "fullScan": "Completo",
+    "selectiveScan": "Seletivo",
     "serverUptime": "Uptime do servidor",
     "serverDown": "DESCONECTADO",
-    "scanType": "Tipo",
+    "scanType": "Último Scan",
     "status": "Erro",
     "elapsedTime": "Duração"
   },

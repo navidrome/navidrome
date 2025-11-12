@@ -600,11 +600,12 @@
   "activity": {
     "title": "Activity",
     "totalScanned": "Total Folders Scanned",
-    "quickScan": "Quick Scan",
-    "fullScan": "Full Scan",
+    "quickScan": "Quick",
+    "fullScan": "Full",
+    "selectiveScan": "Selective",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "scanType": "Type",
+    "scanType": "Last Scan",
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
   },
