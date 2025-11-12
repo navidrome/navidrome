@@ -27,10 +27,9 @@ import (
 )
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer) *phaseFolders {
-	// At this point, all libraries in state.libraries have been initialized
-	// (LastScanStartedAt has been set by prepareLibrariesForScan in scanner.go)
 	var jobs []*scanJob
 
+	// Create scan jobs for all libraries
 	for _, lib := range state.libraries {
 		// Get target folders for this library if selective scan
 		var targetFolders []string
@@ -61,11 +60,8 @@ type scanJob struct {
 }
 
 func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
-	var lastUpdates map[string]model.FolderUpdateInfo
-	var err error
-
 	// Get folder updates, optionally filtered to specific target folders
-	lastUpdates, err = ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
+	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
