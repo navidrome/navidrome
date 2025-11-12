@@ -27,31 +27,14 @@ import (
 )
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer) *phaseFolders {
+	// At this point, all libraries in state.libraries have been initialized
+	// (LastScanStartedAt has been set by prepareLibrariesForScan in scanner.go)
 	var jobs []*scanJob
-	var updatedLibs []model.Library
-	for _, lib := range state.libraries {
-		if lib.LastScanStartedAt.IsZero() {
-			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
-				state.sendWarning(err.Error())
-				continue
-			}
-			// Reload library to get updated state
-			l, err := ds.Library(ctx).Get(lib.ID)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
-				state.sendWarning(err.Error())
-				continue
-			}
-			lib = *l
-		} else {
-			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt, "fullScan", lib.FullScanInProgress)
-		}
 
+	for _, lib := range state.libraries {
 		// Get target folders for this library if selective scan
 		var targetFolders []string
-		if state.targets != nil {
+		if state.isSelectiveScan() {
 			targetFolders = state.targets[lib.ID]
 		}
 
@@ -62,11 +45,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			continue
 		}
 		jobs = append(jobs, job)
-		updatedLibs = append(updatedLibs, lib)
 	}
-
-	// Update the state with the libraries that have been processed and have their scan timestamps set
-	state.libraries = updatedLibs
 
 	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }

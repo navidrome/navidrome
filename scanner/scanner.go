@@ -123,6 +123,14 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		}
 	}
 
+	// Prepare libraries for scanning (initialize LastScanStartedAt if needed)
+	err = s.prepareLibrariesForScan(ctx, &state)
+	if err != nil {
+		log.Error(ctx, "Scanner: Error preparing libraries for scan", err)
+		state.sendError(err)
+		return
+	}
+
 	err = run.Sequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw)),
@@ -171,6 +179,48 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	} else {
 		log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 	}
+}
+
+// prepareLibrariesForScan initializes the scan for all libraries in the state.
+// It calls ScanBegin for libraries that haven't started scanning yet (LastScanStartedAt is zero),
+// reloads them to get the updated state, and filters out any libraries that fail to initialize.
+func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanState) error {
+	var successfulLibs []model.Library
+
+	for _, lib := range state.libraries {
+		if lib.LastScanStartedAt.IsZero() {
+			// This is a new scan - mark it as started
+			err := s.ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error marking scan start", "lib", lib.Name, err)
+				state.sendWarning(err.Error())
+				continue
+			}
+
+			// Reload library to get updated state (timestamps, etc.)
+			reloadedLib, err := s.ds.Library(ctx).Get(lib.ID)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
+				state.sendWarning(err.Error())
+				continue
+			}
+			lib = *reloadedLib
+		} else {
+			// This is a resumed scan
+			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name,
+				"lastScanStartedAt", lib.LastScanStartedAt, "fullScan", lib.FullScanInProgress)
+		}
+
+		successfulLibs = append(successfulLibs, lib)
+	}
+
+	if len(successfulLibs) == 0 {
+		return fmt.Errorf("no libraries available for scanning")
+	}
+
+	// Update state with only successfully initialized libraries
+	state.libraries = successfulLibs
+	return nil
 }
 
 func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
