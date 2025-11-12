@@ -99,7 +99,12 @@ func (w *watcher) Run(ctx context.Context) error {
 			targets = make(map[model.ScanTarget]struct{})
 
 			go func() {
-				_, err := w.scanner.ScanFolders(ctx, false, targetSlice)
+				var err error
+				if conf.Server.DevSelectiveWatcher {
+					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
+				} else {
+					_, err = w.scanner.ScanAll(ctx, false)
+				}
 				if err != nil {
 					log.Error(ctx, "Watcher: Error scanning", err)
 				} else {
