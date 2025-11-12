@@ -76,7 +76,6 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 		log.Error(ctx, "Error getting fs for library", "library", lib.Name, "path", lib.Path, err)
 		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
-	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 	return &scanJob{
 		lib:           lib,
 		fs:            fsys,
