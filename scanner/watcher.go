@@ -308,7 +308,10 @@ func resolveFolderPath(fsys fs.FS, path string) string {
 // in the library. It pushes all parent folders onto the IgnoreChecker stack before checking.
 func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.MusicFS, folderPath string) bool {
 	checker := newIgnoreChecker(fsys)
-	_ = checker.PushAllParents(ctx, folderPath)
+	err := checker.PushAllParents(ctx, folderPath)
+	if err != nil {
+		log.Warn(ctx, "Watcher: Error pushing ignore patterns for folder", "path", folderPath, err)
+	}
 	return checker.ShouldIgnore(ctx, folderPath)
 }
 

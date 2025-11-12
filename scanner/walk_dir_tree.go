@@ -34,10 +34,14 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 
 			// Create checker and push patterns from root to this folder
 			checker := newIgnoreChecker(job.fs)
-			_ = checker.PushAllParents(ctx, folderPath)
+			err := checker.PushAllParents(ctx, folderPath)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
+				continue
+			}
 
 			// Recursively walk this folder and all its children
-			err := walkFolder(ctx, job, folderPath, checker, results)
+			err = walkFolder(ctx, job, folderPath, checker, results)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
