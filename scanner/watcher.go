@@ -225,13 +225,18 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 
 	log.Info(ctx, "Watcher started for library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "absoluteLibPath", absLibPath)
 
+	return w.processLibraryEvents(ctx, lib, fsys, c, absLibPath)
+}
+
+// processLibraryEvents processes filesystem events for a library.
+func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, fsys storage.MusicFS, events <-chan string, absLibPath string) error {
 	for {
 		select {
 		case <-ctx.Done():
 			log.Debug(ctx, "Watcher stopped due to context cancellation", "libraryID", lib.ID, "name", lib.Name)
 			return nil
-		case path := <-c:
-			path, err = filepath.Rel(absLibPath, path)
+		case path := <-events:
+			path, err := filepath.Rel(absLibPath, path)
 			if err != nil {
 				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", path, err)
 				continue
@@ -243,9 +248,18 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 			}
 			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", path, "absoluteLibPath", absLibPath)
 
+			// Check if the original path (before resolution) matches .ndignore patterns
+			// This is crucial for deleted folders - if a deleted folder matches .ndignore,
+			// we should ignore it BEFORE resolveFolderPath walks up to the parent
+			if w.shouldIgnoreFolderPath(ctx, fsys, path) {
+				log.Debug(ctx, "Ignoring change matching .ndignore pattern", "libraryID", lib.ID, "path", path)
+				continue
+			}
+
 			// Find the folder to scan - validate path exists as directory, walk up if needed
 			folderPath := resolveFolderPath(fsys, path)
-			if w.shouldIgnoreFolderPath(ctx, fsys, folderPath) {
+			// Double-check after resolution in case the resolved path is different and also matches patterns
+			if folderPath != path && w.shouldIgnoreFolderPath(ctx, fsys, folderPath) {
 				log.Trace(ctx, "Ignoring change in folder matching .ndignore pattern", "libraryID", lib.ID, "folderPath", folderPath)
 				continue
 			}

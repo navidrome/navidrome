@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"io/fs"
+	"path/filepath"
 	"testing/fstest"
 	"time"
 
@@ -274,6 +275,159 @@ var _ = Describe("Watcher", func() {
 			}
 			Expect(libraryIDs).To(HaveKey(1))
 			Expect(libraryIDs).To(HaveKey(2))
+		})
+	})
+
+	Describe(".ndignore handling", func() {
+		var ctx context.Context
+		var cancel context.CancelFunc
+		var w *watcher
+		var mockFS *mockMusicFS
+		var lib *model.Library
+		var eventChan chan string
+		var absLibPath string
+
+		BeforeEach(func() {
+			ctx, cancel = context.WithCancel(GinkgoT().Context())
+			DeferCleanup(cancel)
+
+			// Set up library
+			var err error
+			absLibPath, err = filepath.Abs(".")
+			Expect(err).NotTo(HaveOccurred())
+
+			lib = &model.Library{
+				ID:   1,
+				Name: "Test Library",
+				Path: absLibPath,
+			}
+
+			// Create watcher with notification channel
+			w = &watcher{
+				watcherNotify: make(chan scanNotification, 10),
+			}
+
+			eventChan = make(chan string, 10)
+		})
+
+		// Helper to send an event - converts relative path to absolute
+		sendEvent := func(relativePath string) {
+			path := filepath.Join(absLibPath, relativePath)
+			eventChan <- path
+		}
+
+		// Helper to start the real event processing loop
+		startEventProcessing := func() {
+			go func() {
+				defer GinkgoRecover()
+				// Call the actual processLibraryEvents method - testing the real implementation!
+				_ = w.processLibraryEvents(ctx, lib, mockFS, eventChan, absLibPath)
+			}()
+		}
+
+		Context("when a folder matching .ndignore is deleted", func() {
+			BeforeEach(func() {
+				// Create filesystem with .ndignore containing _TEMP pattern
+				// The deleted folder (_TEMP) will NOT exist in the filesystem
+				mockFS = &mockMusicFS{
+					FS: fstest.MapFS{
+						"rock":                       &fstest.MapFile{Mode: fs.ModeDir},
+						"rock/.ndignore":             &fstest.MapFile{Data: []byte("_TEMP\n")},
+						"rock/valid_album":           &fstest.MapFile{Mode: fs.ModeDir},
+						"rock/valid_album/track.mp3": &fstest.MapFile{Data: []byte("audio")},
+					},
+				}
+			})
+
+			It("should NOT send scan notification when deleted folder matches .ndignore", func() {
+				startEventProcessing()
+
+				// Simulate deletion event for rock/_TEMP
+				sendEvent("rock/_TEMP")
+
+				// Wait a bit to ensure event is processed
+				time.Sleep(50 * time.Millisecond)
+
+				// No notification should have been sent
+				Consistently(eventChan, 100*time.Millisecond).Should(BeEmpty())
+			})
+
+			It("should send scan notification for valid folder deletion", func() {
+				startEventProcessing()
+
+				// Simulate deletion event for rock/other_folder (not in .ndignore and doesn't exist)
+				// Since it doesn't exist in mockFS, resolveFolderPath will walk up to "rock"
+				sendEvent("rock/other_folder")
+
+				// Should receive notification for parent folder
+				Eventually(w.watcherNotify, 200*time.Millisecond).Should(Receive(Equal(scanNotification{
+					Library:    lib,
+					FolderPath: "rock",
+				})))
+			})
+		})
+
+		Context("with nested folder patterns", func() {
+			BeforeEach(func() {
+				mockFS = &mockMusicFS{
+					FS: fstest.MapFS{
+						"music":             &fstest.MapFile{Mode: fs.ModeDir},
+						"music/.ndignore":   &fstest.MapFile{Data: []byte("**/temp\n**/cache\n")},
+						"music/rock":        &fstest.MapFile{Mode: fs.ModeDir},
+						"music/rock/artist": &fstest.MapFile{Mode: fs.ModeDir},
+					},
+				}
+			})
+
+			It("should NOT send notification when nested ignored folder is deleted", func() {
+				startEventProcessing()
+
+				// Simulate deletion of music/rock/artist/temp (matches **/temp)
+				sendEvent("music/rock/artist/temp")
+
+				// Wait to ensure event is processed
+				time.Sleep(50 * time.Millisecond)
+
+				// No notification should be sent
+				Expect(w.watcherNotify).To(BeEmpty(), "Expected no scan notification for nested ignored folder")
+			})
+
+			It("should send notification for non-ignored nested folder", func() {
+				startEventProcessing()
+
+				// Simulate change in music/rock/artist (doesn't match any pattern)
+				sendEvent("music/rock/artist")
+
+				// Should receive notification
+				Eventually(w.watcherNotify, 200*time.Millisecond).Should(Receive(Equal(scanNotification{
+					Library:    lib,
+					FolderPath: "music/rock/artist",
+				})))
+			})
+		})
+
+		Context("with file events in ignored folders", func() {
+			BeforeEach(func() {
+				mockFS = &mockMusicFS{
+					FS: fstest.MapFS{
+						"rock":           &fstest.MapFile{Mode: fs.ModeDir},
+						"rock/.ndignore": &fstest.MapFile{Data: []byte("_TEMP\n")},
+					},
+				}
+			})
+
+			It("should NOT send notification for file changes in ignored folders", func() {
+				startEventProcessing()
+
+				// Simulate file change in rock/_TEMP/file.mp3
+				sendEvent("rock/_TEMP/file.mp3")
+
+				// Wait to ensure event is processed
+				time.Sleep(50 * time.Millisecond)
+
+				// No notification should be sent
+				Expect(w.watcherNotify).To(BeEmpty(), "Expected no scan notification for file in ignored folder")
+			})
 		})
 	})
 })
