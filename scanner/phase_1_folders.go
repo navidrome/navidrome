@@ -139,7 +139,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 
 			// Use selective folder loading if target folders are specified
 			if len(job.targetFolders) > 0 {
-				log.Debug(p.ctx, "Scanner: Loading specific folders only (non-recursive)", "lib", job.lib.Name, "numTargets", len(job.targetFolders))
+				log.Debug(p.ctx, "Scanner: Loading specific folders and all their subdirectories (recursive)", "lib", job.lib.Name, "numTargets", len(job.targetFolders))
 			}
 			outputChan, err = walkDirTree(p.ctx, job, job.targetFolders...)
 
