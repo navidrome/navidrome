@@ -76,7 +76,7 @@ func runScanner(ctx context.Context) {
 	var scanTargets []model.ScanTarget
 	if targets != "" {
 		var err error
-		scanTargets, err = parseTargets(targets)
+		scanTargets, err = scanner.ParseTargets(strings.Split(targets, ","))
 		if err != nil {
 			log.Fatal(ctx, "Failed to parse targets", err)
 		}
@@ -94,10 +94,4 @@ func runScanner(ctx context.Context) {
 	} else {
 		trackScanInteractively(ctx, progress)
 	}
-}
-
-// parseTargets parses the comma-separated targets string into ScanTarget structs
-func parseTargets(targetsStr string) ([]model.ScanTarget, error) {
-	targets := strings.Split(targetsStr, ",")
-	return scanner.ParseTargets(targets)
 }
