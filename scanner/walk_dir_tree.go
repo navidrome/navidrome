@@ -15,27 +15,19 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error) {
+// walkDirTree recursively walks the directory tree starting from the given targetFolders.
+// If no targetFolders are provided, it starts from the root folder (".").
+// It returns a channel of folderEntry pointers representing each folder found.
+func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-chan *folderEntry, error) {
 	results := make(chan *folderEntry)
+	folders := targetFolders
+	if len(targetFolders) == 0 {
+		// No specific folders provided, scan the root folder
+		folders = []string{"."}
+	}
 	go func() {
 		defer close(results)
-		checker := newIgnoreChecker(job.fs)
-		err := walkFolder(ctx, job, ".", checker, results)
-		if err != nil {
-			log.Error(ctx, "Scanner: There were errors reading directories from filesystem", "path", job.lib.Path, err)
-			return
-		}
-		log.Debug(ctx, "Scanner: Finished reading folders", "lib", job.lib.Name, "path", job.lib.Path, "numFolders", job.numFolders.Load())
-	}()
-	return results, nil
-}
-
-// loadSpecificFolders loads the specified folders and recursively walks their subdirectories
-func loadSpecificFolders(ctx context.Context, job *scanJob, targetFolders []string) (<-chan *folderEntry, error) {
-	results := make(chan *folderEntry)
-	go func() {
-		defer close(results)
-		for _, folderPath := range targetFolders {
+		for _, folderPath := range folders {
 			if utils.IsCtxDone(ctx) {
 				return
 			}
