@@ -10,6 +10,7 @@ import {
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { List, DateField, useResourceRefresh, SizeField } from '../common'
+import LibraryListBulkActions from './LibraryListBulkActions'
 
 const LibraryFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -26,7 +27,7 @@ const LibraryList = (props) => {
       {...props}
       sort={{ field: 'name', order: 'ASC' }}
       exporter={false}
-      bulkActionButtons={false}
+      bulkActionButtons={!isXsmall && <LibraryListBulkActions />}
       filters={<LibraryFilter />}
     >
       {isXsmall ? (
