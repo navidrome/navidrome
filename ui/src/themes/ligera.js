@@ -448,6 +448,11 @@ export default {
         backgroundColor: bLight['500'],
       },
     },
+    RaButton: {
+      button: {
+        margin: '0 5px 0 5px',
+      },
+    },
     RaPaginationActions: {
       button: {
         backgroundColor: '#fff',
