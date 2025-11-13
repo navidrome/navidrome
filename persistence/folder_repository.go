@@ -191,7 +191,7 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	}, nil
 }
 
-func (r folderRepository) purgeEmpty() error {
+func (r folderRepository) purgeEmpty(libraryIDs ...int) error {
 	sq := Delete(r.tableName).Where(And{
 		Eq{"num_audio_files": 0},
 		Eq{"num_playlists": 0},
@@ -199,6 +199,10 @@ func (r folderRepository) purgeEmpty() error {
 		ConcatExpr("id not in (select parent_id from folder)"),
 		ConcatExpr("id not in (select folder_id from media_file)"),
 	})
+	// If libraryIDs are specified, only purge folders from those libraries
+	if len(libraryIDs) > 0 {
+		sq = sq.Where(Eq{"library_id": libraryIDs})
+	}
 	c, err := r.executeSQL(sq)
 	if err != nil {
 		return fmt.Errorf("purging empty folders: %w", err)

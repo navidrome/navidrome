@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("Maintenance", func() {
-	var ds *extendedDataStore
+	var ds *tests.MockDataStore
 	var mfRepo *extendedMediaFileRepo
 	var service Maintenance
 	var ctx context.Context
@@ -42,7 +42,7 @@ var _ = Describe("Maintenance", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mfRepo.deleteMissingCalled).To(BeTrue())
 				Expect(mfRepo.deletedIDs).To(Equal([]string{"mf1", "mf2"}))
-				Expect(ds.gcCalled).To(BeTrue(), "GC should be called after deletion")
+				Expect(ds.GCCalled).To(BeTrue(), "GC should be called after deletion")
 			})
 
 			It("triggers artist stats refresh and album refresh after deletion", func() {
@@ -97,7 +97,7 @@ var _ = Describe("Maintenance", func() {
 				})
 
 				// Set GC to return error
-				ds.gcError = errors.New("gc failed")
+				ds.GCError = errors.New("gc failed")
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
@@ -143,7 +143,7 @@ var _ = Describe("Maintenance", func() {
 			err := service.DeleteAllMissingFiles(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.gcCalled).To(BeTrue(), "GC should be called after deletion")
+			Expect(ds.GCCalled).To(BeTrue(), "GC should be called after deletion")
 		})
 
 		It("returns error if deletion fails", func() {
@@ -253,11 +253,8 @@ var _ = Describe("Maintenance", func() {
 })
 
 // Test helper to create a mock DataStore with controllable behavior
-func createTestDataStore() *extendedDataStore {
-	// Create extended datastore with GC tracking
-	ds := &extendedDataStore{
-		MockDataStore: &tests.MockDataStore{},
-	}
+func createTestDataStore() *tests.MockDataStore {
+	ds := &tests.MockDataStore{}
 
 	// Create extended album repo with Put tracking
 	albumRepo := &extendedAlbumRepo{
@@ -364,19 +361,4 @@ func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.refreshStatsCalled
-}
-
-// Extension of MockDataStore to track GC calls
-type extendedDataStore struct {
-	*tests.MockDataStore
-	gcCalled bool
-	gcError  error
-}
-
-func (ds *extendedDataStore) GC(ctx context.Context) error {
-	ds.gcCalled = true
-	if ds.gcError != nil {
-		return ds.gcError
-	}
-	return ds.MockDataStore.GC(ctx)
 }

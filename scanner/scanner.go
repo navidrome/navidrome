@@ -3,6 +3,8 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -229,7 +231,15 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			if state.changesDetected.Load() {
 				start := time.Now()
-				err := tx.GC(ctx)
+
+				// For selective scans, extract library IDs to scope GC operations
+				var libraryIDs []int
+				if state.isSelectiveScan() {
+					libraryIDs = slices.Collect(maps.Keys(state.targets))
+					log.Debug(ctx, "Scanner: Running selective GC", "libraryIDs", libraryIDs)
+				}
+
+				err := tx.GC(ctx, libraryIDs...)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error running GC", err)
 					return fmt.Errorf("running GC: %w", err)
