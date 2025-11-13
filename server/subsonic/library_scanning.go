@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -51,7 +50,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	// Parse optional target parameters for selective scanning
 	var targets []model.ScanTarget
 	if targetParams, err := p.Strings("target"); err == nil && len(targetParams) > 0 {
-		targets, err = scanner.ParseTargets(targetParams)
+		targets, err = model.ParseTargets(targetParams)
 		if err != nil {
 			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid target parameter: %v", err))
 		}

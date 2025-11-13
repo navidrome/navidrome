@@ -76,7 +76,7 @@ func runScanner(ctx context.Context) {
 	var scanTargets []model.ScanTarget
 	if targets != "" {
 		var err error
-		scanTargets, err = scanner.ParseTargets(strings.Split(targets, ","))
+		scanTargets, err = model.ParseTargets(strings.Split(targets, ","))
 		if err != nil {
 			log.Fatal(ctx, "Failed to parse targets", err)
 		}

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -27,47 +25,6 @@ import (
 var (
 	ErrAlreadyScanning = errors.New("already scanning")
 )
-
-// ParseTargets parses scan targets strings into ScanTarget structs.
-// Example: []string{"1:Music/Rock", "2:Classical"}
-func ParseTargets(libFolders []string) ([]model.ScanTarget, error) {
-	targets := make([]model.ScanTarget, 0, len(libFolders))
-
-	for _, part := range libFolders {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
-		// Split by the first colon
-		colonIdx := strings.Index(part, ":")
-		if colonIdx == -1 {
-			return nil, fmt.Errorf("invalid target format: %q (expected libraryID:folderPath)", part)
-		}
-
-		libIDStr := part[:colonIdx]
-		folderPath := part[colonIdx+1:]
-
-		libID, err := strconv.Atoi(libIDStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid library ID %q: %w", libIDStr, err)
-		}
-		if libID <= 0 {
-			return nil, fmt.Errorf("invalid library ID %q", libIDStr)
-		}
-
-		targets = append(targets, model.ScanTarget{
-			LibraryID:  libID,
-			FolderPath: folderPath,
-		})
-	}
-
-	if len(targets) == 0 {
-		return nil, fmt.Errorf("no valid targets found")
-	}
-
-	return targets, nil
-}
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
 	pls core.Playlists, m metrics.Metrics) model.Scanner {
