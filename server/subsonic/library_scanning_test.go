@@ -100,15 +100,21 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(calls[0].FullScan).To(BeTrue())
 		})
 
-		It("triggers a selective scan with single path parameter", func() {
+		It("triggers a selective scan with single target parameter", func() {
+			// Setup mocks
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
+			api.ds = mockDS
+
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			// Create request with single path parameter
-			r := httptest.NewRequest("GET", "/rest/startScan?path=1:Music/Rock", nil)
+			// Create request with single target parameter
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Rock", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -130,15 +136,21 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(targets[0].FolderPath).To(Equal("Music/Rock"))
 		})
 
-		It("triggers a selective scan with multiple path parameters", func() {
+		It("triggers a selective scan with multiple target parameters", func() {
+			// Setup mocks
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
+			api.ds = mockDS
+
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			// Create request with multiple path parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?path=1:Music/Reggae&path=2:Classical/Bach", nil)
+			// Create request with multiple target parameters
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -162,15 +174,21 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(targets[1].FolderPath).To(Equal("Classical/Bach"))
 		})
 
-		It("triggers a selective full scan with path and fullScan parameters", func() {
+		It("triggers a selective full scan with target and fullScan parameters", func() {
+			// Setup mocks
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1})
+			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
+			api.ds = mockDS
+
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			// Create request with path and fullScan parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?path=1:Music/Jazz&fullScan=true", nil)
+			// Create request with target and fullScan parameters
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -191,15 +209,15 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(targets).To(HaveLen(1))
 		})
 
-		It("returns error for invalid path format", func() {
+		It("returns error for invalid target format", func() {
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			// Create request with invalid path format (missing colon)
-			r := httptest.NewRequest("GET", "/rest/startScan?path=1MusicRock", nil)
+			// Create request with invalid target format (missing colon)
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1MusicRock", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -214,7 +232,7 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 
-		It("returns error for invalid library ID", func() {
+		It("returns error for invalid library ID in target", func() {
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
@@ -222,7 +240,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with invalid library ID
-			r := httptest.NewRequest("GET", "/rest/startScan?path=0:Music/Rock", nil)
+			r := httptest.NewRequest("GET", "/rest/startScan?target=0:Music/Rock", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -237,15 +255,57 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 
-		It("handles URL-encoded paths", func() {
+		It("returns error when library does not exist", func() {
+			// Setup mocks - user has access to library 1 and 2 only
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
+			api.ds = mockDS
+
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			// Create request with URL-encoded path
-			r := httptest.NewRequest("GET", "/rest/startScan?path=1:The%20Beatles", nil)
+			// Create request with library ID that doesn't exist
+			r := httptest.NewRequest("GET", "/rest/startScan?target=999:Music/Rock", nil)
+			r = r.WithContext(ctx)
+
+			// Call endpoint
+			response, err := api.StartScan(r)
+
+			// Should return ErrorDataNotFound
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorDataNotFound))
+		})
+
+		It("calls ScanAll when single library with empty path and only one library exists", func() {
+			// Setup mocks - single library in DB
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1})
+			mockLibraryRepo := &tests.MockLibraryRepo{}
+			mockLibraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Music Library", Path: "/music"},
+			})
+			mockDS := &tests.MockDataStore{
+				MockedUser:    mockUserRepo,
+				MockedLibrary: mockLibraryRepo,
+			}
+			api.ds = mockDS
+
+			// Create admin user
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "admin-id",
+				IsAdmin: true,
+			})
+
+			// Create request with single library and empty path
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -255,13 +315,55 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).ToNot(BeNil())
 
-			// Verify path was decoded correctly
+			// Verify ScanAll was called instead of ScanFolders
+			Eventually(func() int {
+				return ms.GetScanAllCallCount()
+			}).Should(BeNumerically(">", 0))
+			Expect(ms.GetScanFoldersCallCount()).To(Equal(0))
+		})
+
+		It("calls ScanFolders when single library with empty path but multiple libraries exist", func() {
+			// Setup mocks - multiple libraries in DB
+			mockUserRepo := tests.CreateMockUserRepo()
+			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			mockLibraryRepo := &tests.MockLibraryRepo{}
+			mockLibraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Music Library", Path: "/music"},
+				{ID: 2, Name: "Audiobooks", Path: "/audiobooks"},
+			})
+			mockDS := &tests.MockDataStore{
+				MockedUser:    mockUserRepo,
+				MockedLibrary: mockLibraryRepo,
+			}
+			api.ds = mockDS
+
+			// Create admin user
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "admin-id",
+				IsAdmin: true,
+			})
+
+			// Create request with single library and empty path
+			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
+			r = r.WithContext(ctx)
+
+			// Call endpoint
+			response, err := api.StartScan(r)
+
+			// Should succeed
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).ToNot(BeNil())
+
+			// Verify ScanFolders was called (not ScanAll)
 			Eventually(func() int {
 				return ms.GetScanFoldersCallCount()
 			}).Should(BeNumerically(">", 0))
 			calls := ms.GetScanFoldersCalls()
+			Expect(calls).To(HaveLen(1))
 			targets := calls[0].Targets
-			Expect(targets[0].FolderPath).To(Equal("The Beatles"))
+			Expect(targets).To(HaveLen(1))
+			Expect(targets[0].LibraryID).To(Equal(1))
+			Expect(targets[0].FolderPath).To(Equal(""))
 		})
 	})
 

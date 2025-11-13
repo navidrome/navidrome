@@ -29,7 +29,7 @@ const LibraryScanButton = ({ fullScan, selectedIds, className }) => {
       // If specific libraries are selected, scan only those
       // Format: "libraryID:" to scan entire library (no folder path specified)
       if (selectedIds && selectedIds.length > 0) {
-        options.path = selectedIds.map((id) => `${id}:`)
+        options.target = selectedIds.map((id) => `${id}:`)
       }
 
       await subsonic.startScan(options)

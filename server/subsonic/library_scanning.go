@@ -3,6 +3,7 @@ package subsonic
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -47,12 +48,36 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	fullScan := p.BoolOr("fullScan", false)
 
-	// Parse optional path parameters for selective scanning
+	// Parse optional target parameters for selective scanning
 	var targets []model.ScanTarget
-	if pathParams, err := p.Strings("path"); err == nil && len(pathParams) > 0 {
-		targets, err = scanner.ParseTargets(pathParams)
+	if targetParams, err := p.Strings("target"); err == nil && len(targetParams) > 0 {
+		targets, err = scanner.ParseTargets(targetParams)
 		if err != nil {
-			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid path parameter: %v", err))
+			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid target parameter: %v", err))
+		}
+
+		// Validate all libraries in targets exist and user has access to them
+		userLibraries, err := api.ds.User(ctx).GetUserLibraries(loggedUser.ID)
+		if err != nil {
+			return nil, newError(responses.ErrorGeneric, "Internal error")
+		}
+
+		// Check each target library
+		for _, target := range targets {
+			if !slices.ContainsFunc(userLibraries, func(lib model.Library) bool { return lib.ID == target.LibraryID }) {
+				return nil, newError(responses.ErrorDataNotFound, fmt.Sprintf("Library with ID %d not found", target.LibraryID))
+			}
+		}
+
+		// Special case: if single library with empty path and it's the only library in DB, call ScanAll
+		if len(targets) == 1 && targets[0].FolderPath == "" {
+			allLibs, err := api.ds.Library(ctx).GetAll()
+			if err != nil {
+				return nil, newError(responses.ErrorGeneric, "Internal error")
+			}
+			if len(allLibs) == 1 {
+				targets = nil // This will trigger ScanAll below
+			}
 		}
 	}
 
