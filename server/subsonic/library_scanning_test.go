@@ -103,7 +103,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("triggers a selective scan with single target parameter", func() {
 			// Setup mocks
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
 			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
 			api.ds = mockDS
 
@@ -139,7 +139,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("triggers a selective scan with multiple target parameters", func() {
 			// Setup mocks
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
 			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
 			api.ds = mockDS
 
@@ -177,7 +177,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("triggers a selective full scan with target and fullScan parameters", func() {
 			// Setup mocks
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1})
 			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
 			api.ds = mockDS
 
@@ -258,7 +258,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("returns error when library does not exist", func() {
 			// Setup mocks - user has access to library 1 and 2 only
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
 			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
 			api.ds = mockDS
 
@@ -287,7 +287,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("calls ScanAll when single library with empty path and only one library exists", func() {
 			// Setup mocks - single library in DB
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1})
 			mockLibraryRepo := &tests.MockLibraryRepo{}
 			mockLibraryRepo.SetData(model.Libraries{
 				{ID: 1, Name: "Music Library", Path: "/music"},
@@ -325,7 +325,7 @@ var _ = Describe("LibraryScanning", func() {
 		It("calls ScanFolders when single library with empty path but multiple libraries exist", func() {
 			// Setup mocks - multiple libraries in DB
 			mockUserRepo := tests.CreateMockUserRepo()
-			mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
+			_ = mockUserRepo.SetUserLibraries("admin-id", []int{1, 2})
 			mockLibraryRepo := &tests.MockLibraryRepo{}
 			mockLibraryRepo.SetData(model.Libraries{
 				{ID: 1, Name: "Music Library", Path: "/music"},
