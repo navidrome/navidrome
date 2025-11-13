@@ -11,6 +11,7 @@ import {
 import { useMediaQuery } from '@material-ui/core'
 import { List, DateField, useResourceRefresh, SizeField } from '../common'
 import LibraryListBulkActions from './LibraryListBulkActions'
+import LibraryListActions from './LibraryListActions'
 
 const LibraryFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -29,6 +30,7 @@ const LibraryList = (props) => {
       exporter={false}
       bulkActionButtons={!isXsmall && <LibraryListBulkActions />}
       filters={<LibraryFilter />}
+      actions={<LibraryListActions />}
     >
       {isXsmall ? (
         <SimpleList
