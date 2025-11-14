@@ -53,8 +53,8 @@ type scanJob struct {
 	lib           model.Library
 	fs            storage.MusicFS
 	cw            artwork.CacheWarmer
-	lastUpdates   map[string]model.FolderUpdateInfo
-	targetFolders []string // Specific folders to scan (including all descendants)
+	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
+	targetFolders []string                          // Specific folders to scan (including all descendants)
 	lock          sync.Mutex
 	numFolders    atomic.Int64
 }
@@ -85,6 +85,8 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	}, nil
 }
 
+// popLastUpdate retrieves and removes the last update info for the given folder ID
+// This is used to track which folders have been found during the walk_dir_tree
 func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	j.lock.Lock()
 	defer j.lock.Unlock()
@@ -92,6 +94,12 @@ func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	lastUpdate := j.lastUpdates[folderID]
 	delete(j.lastUpdates, folderID)
 	return lastUpdate
+}
+
+func (j *scanJob) createFolderEntry(path string) *folderEntry {
+	id := model.FolderID(j.lib, path)
+	info := j.popLastUpdate(id)
+	return newFolderEntry(j, id, path, info.UpdatedAt, info.Hash)
 }
 
 // phaseFolders represents the first phase of the scanning process, which is responsible

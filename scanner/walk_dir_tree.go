@@ -100,7 +100,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 	}
 
 	// Now that we know the folder exists, create the entry (which removes it from lastUpdates)
-	folder = newFolderEntry(job, dirPath)
+	folder = job.createFolderEntry(dirPath)
 	folder.modTime = dirInfo.ModTime()
 
 	dir, err := job.fs.Open(dirPath)

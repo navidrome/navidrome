@@ -40,9 +40,8 @@ var _ = Describe("folder_entry", func() {
 				UpdatedAt: time.Now().Add(-30 * time.Minute),
 				Hash:      "previous-hash",
 			}
-			job.lastUpdates[folderID] = updateInfo
 
-			entry := newFolderEntry(job, path)
+			entry := newFolderEntry(job, folderID, path, updateInfo.UpdatedAt, updateInfo.Hash)
 
 			Expect(entry.id).To(Equal(folderID))
 			Expect(entry.job).To(Equal(job))
@@ -55,13 +54,18 @@ var _ = Describe("folder_entry", func() {
 		})
 
 		It("creates a new folder entry with zero time when no previous update exists", func() {
-			entry := newFolderEntry(job, path)
+			folderID := model.FolderID(lib, path)
+			emptyInfo := model.FolderUpdateInfo{}
+
+			entry := newFolderEntry(job, folderID, path, emptyInfo.UpdatedAt, emptyInfo.Hash)
 
 			Expect(entry.updTime).To(BeZero())
 			Expect(entry.prevHash).To(BeEmpty())
 		})
+	})
 
-		It("removes the lastUpdate from the job after popping", func() {
+	Describe("createFolderEntry", func() {
+		It("removes the lastUpdate from the job after creation", func() {
 			folderID := model.FolderID(lib, path)
 			updateInfo := model.FolderUpdateInfo{
 				UpdatedAt: time.Now().Add(-30 * time.Minute),
@@ -69,8 +73,10 @@ var _ = Describe("folder_entry", func() {
 			}
 			job.lastUpdates[folderID] = updateInfo
 
-			newFolderEntry(job, path)
+			entry := job.createFolderEntry(path)
 
+			Expect(entry.updTime).To(Equal(updateInfo.UpdatedAt))
+			Expect(entry.prevHash).To(Equal(updateInfo.Hash))
 			Expect(job.lastUpdates).ToNot(HaveKey(folderID))
 		})
 	})
@@ -79,7 +85,8 @@ var _ = Describe("folder_entry", func() {
 		var entry *folderEntry
 
 		BeforeEach(func() {
-			entry = newFolderEntry(job, path)
+			folderID := model.FolderID(lib, path)
+			entry = newFolderEntry(job, folderID, path, time.Time{}, "")
 		})
 
 		Describe("hasNoFiles", func() {
@@ -458,7 +465,9 @@ var _ = Describe("folder_entry", func() {
 	Describe("integration scenarios", func() {
 		It("handles complete folder lifecycle", func() {
 			// Create new folder entry
-			entry := newFolderEntry(job, "music/rock/album")
+			folderPath := "music/rock/album"
+			folderID := model.FolderID(lib, folderPath)
+			entry := newFolderEntry(job, folderID, folderPath, time.Time{}, "")
 
 			// Initially new and has no files
 			Expect(entry.isNew()).To(BeTrue())
