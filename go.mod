@@ -39,6 +39,7 @@ require (
 	github.com/knqyf263/go-plugin v0.9.0
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/maruel/natural v1.2.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/microcosm-cc/bluemonday v1.0.27
