@@ -95,5 +95,26 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.1.jpg")))
 			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/cover.2.jpg")))
 		})
+
+		It("handles case-insensitive sorting", func() {
+			// Test that Cover.jpg and cover.jpg are treated as equivalent
+			repo.result = []model.Folder{
+				{
+					Path:            "Artist/Album",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"Folder.jpg", "cover.jpg", "BACK.jpg"},
+				},
+			}
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(HaveLen(3))
+
+			// Files should be sorted case-insensitively: BACK, cover, Folder
+			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/BACK.jpg")))
+			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
+			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Folder.jpg")))
+		})
 	})
 })

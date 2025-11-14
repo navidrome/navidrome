@@ -131,22 +131,15 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 // Note: This function is called O(n log n) times during sorting, but in practice albums
 // typically have only 1-20 image files, making the repeated string operations negligible.
 func compareImageFiles(a, b string) int {
-	// Case-insensitive comparisons
+	// Case-insensitive comparison
 	a = strings.ToLower(a)
 	b = strings.ToLower(b)
 
-	// Extract just the filename from the full path
-	filenameA := filepath.Base(a)
-	filenameB := filepath.Base(b)
+	// Extract base filenames without extensions
+	baseA := strings.TrimSuffix(filepath.Base(a), filepath.Ext(a))
+	baseB := strings.TrimSuffix(filepath.Base(b), filepath.Ext(b))
 
-	// Remove the extension to get the base name
-	extA := filepath.Ext(filenameA)
-	extB := filepath.Ext(filenameB)
-	baseA := strings.TrimSuffix(filenameA, extA)
-	baseB := strings.TrimSuffix(filenameB, extB)
-
-	// Different base names, compare them.
-	// Same base name, use full path for consistent ordering
+	// Compare base names first, then full paths if equal
 	return cmp.Or(
 		natural.Compare(baseA, baseB),
 		natural.Compare(a, b),
