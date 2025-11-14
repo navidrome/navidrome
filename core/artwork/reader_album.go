@@ -116,8 +116,49 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	}
 
 	// Sort image files to ensure consistent selection of cover art
-	// This prioritizes files from lower-numbered disc folders by sorting the paths
-	slices.Sort(imgFiles)
+	// This prioritizes files without numeric suffixes (e.g., cover.jpg over cover.1.jpg)
+	// by comparing base filenames without extensions
+	slices.SortFunc(imgFiles, compareImageFiles)
 
 	return paths, imgFiles, &updatedAt, nil
+}
+
+// compareImageFiles compares two image file paths for sorting.
+// It extracts the base filename (without extension) and compares case-insensitively.
+// This ensures that "cover.jpg" sorts before "cover.1.jpg" since "cover" < "cover.1".
+// Note: This function is called O(n log n) times during sorting, but in practice albums
+// typically have only 1-20 image files, making the repeated string operations negligible.
+func compareImageFiles(a, b string) int {
+	// Extract just the filename from the full path
+	filenameA := filepath.Base(a)
+	filenameB := filepath.Base(b)
+
+	// Remove the extension to get the base name
+	extA := filepath.Ext(filenameA)
+	extB := filepath.Ext(filenameB)
+	baseA := strings.TrimSuffix(filenameA, extA)
+	baseB := strings.TrimSuffix(filenameB, extB)
+
+	// Compare base names case-insensitively
+	baseLowerA := strings.ToLower(baseA)
+	baseLowerB := strings.ToLower(baseB)
+
+	if baseLowerA != baseLowerB {
+		// Different base names, compare them
+		if baseLowerA < baseLowerB {
+			return -1
+		}
+		return 1
+	}
+
+	// Same base name, use full path for consistent ordering
+	lowerA := strings.ToLower(a)
+	lowerB := strings.ToLower(b)
+	if lowerA < lowerB {
+		return -1
+	}
+	if lowerA > lowerB {
+		return 1
+	}
+	return 0
 }
