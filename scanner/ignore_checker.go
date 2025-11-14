@@ -139,8 +139,6 @@ func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder stri
 	if len(patterns) == 0 {
 		log.Trace(ctx, "Scanner: .ndignore file is empty, ignoring everything", "path", folder)
 		patterns = []string{"**/*"}
-	} else {
-		log.Trace(ctx, "Scanner: .ndignore file found", "path", ignoreFilePath, "patterns", patterns)
 	}
 
 	return patterns

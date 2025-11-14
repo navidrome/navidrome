@@ -231,6 +231,7 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
+	"@Recycle",
 	"@Recently-Snapshot",
 	".streams",
 	"lost+found",
