@@ -43,7 +43,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				{
 					Path:            "Artist/Album/Disc1",
 					ImagesUpdatedAt: expectedAt,
-					ImageFiles:      []string{"cover.jpg", "back.jpg"},
+					ImageFiles:      []string{"cover.jpg", "back.jpg", "cover.1.jpg"},
 				},
 				{
 					Path:            "Artist/Album/Disc2",
@@ -63,15 +63,16 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
 
 			// Check that image files are sorted by base name (without extension)
-			Expect(imgFiles).To(HaveLen(4))
+			Expect(imgFiles).To(HaveLen(5))
 
 			// Files should be sorted by base filename without extension, then by full path
 			// "back" < "cover", so back.jpg comes first
 			// Then all cover.jpg files, sorted by path
 			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/back.jpg")))
 			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.jpg")))
-			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Disc10/cover.jpg")))
-			Expect(imgFiles[3]).To(Equal(filepath.FromSlash("Artist/Album/Disc2/cover.jpg")))
+			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Disc2/cover.jpg")))
+			Expect(imgFiles[3]).To(Equal(filepath.FromSlash("Artist/Album/Disc10/cover.jpg")))
+			Expect(imgFiles[4]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.1.jpg")))
 		})
 
 		It("prioritizes files without numeric suffixes", func() {

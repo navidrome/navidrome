@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"cmp"
 	"context"
 	"crypto/md5"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/maruel/natural"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
@@ -129,6 +131,10 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 // Note: This function is called O(n log n) times during sorting, but in practice albums
 // typically have only 1-20 image files, making the repeated string operations negligible.
 func compareImageFiles(a, b string) int {
+	// Case-insensitive comparisons
+	a = strings.ToLower(a)
+	b = strings.ToLower(b)
+
 	// Extract just the filename from the full path
 	filenameA := filepath.Base(a)
 	filenameB := filepath.Base(b)
@@ -139,26 +145,10 @@ func compareImageFiles(a, b string) int {
 	baseA := strings.TrimSuffix(filenameA, extA)
 	baseB := strings.TrimSuffix(filenameB, extB)
 
-	// Compare base names case-insensitively
-	baseLowerA := strings.ToLower(baseA)
-	baseLowerB := strings.ToLower(baseB)
-
-	if baseLowerA != baseLowerB {
-		// Different base names, compare them
-		if baseLowerA < baseLowerB {
-			return -1
-		}
-		return 1
-	}
-
+	// Different base names, compare them.
 	// Same base name, use full path for consistent ordering
-	lowerA := strings.ToLower(a)
-	lowerB := strings.ToLower(b)
-	if lowerA < lowerB {
-		return -1
-	}
-	if lowerA > lowerB {
-		return 1
-	}
-	return 0
+	return cmp.Or(
+		natural.Compare(baseA, baseB),
+		natural.Compare(a, b),
+	)
 }
