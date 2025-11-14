@@ -182,6 +182,38 @@ var _ = Describe("walk_dir_tree", func() {
 				Expect(folders).ToNot(HaveKey("Artist/Album2"))
 				Expect(folders).ToNot(HaveKey("Artist/Album2/Sub"))
 			})
+
+			It("should skip non-existent target folders and preserve them in lastUpdates", func() {
+				// Setup job with lastUpdates for both existing and non-existing folders
+				job.lastUpdates = map[string]model.FolderUpdateInfo{
+					model.FolderID(job.lib, "Artist/Album1"):             {},
+					model.FolderID(job.lib, "NonExistent/DeletedFolder"): {},
+					model.FolderID(job.lib, "OtherArtist/Album3"):        {},
+				}
+
+				// Try to scan existing folder and non-existing folder
+				results, err := walkDirTree(ctx, job, "Artist/Album1", "NonExistent/DeletedFolder")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Collect results
+				folders := map[string]struct{}{}
+				for folder := range results {
+					folders[folder.path] = struct{}{}
+				}
+
+				// Should only include the existing folder
+				Expect(folders).To(HaveKey("Artist/Album1"))
+				Expect(folders).ToNot(HaveKey("NonExistent/DeletedFolder"))
+
+				// The non-existent folder should still be in lastUpdates (not removed by popLastUpdate)
+				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "NonExistent/DeletedFolder")))
+
+				// The existing folder should have been removed from lastUpdates
+				Expect(job.lastUpdates).ToNot(HaveKey(model.FolderID(job.lib, "Artist/Album1")))
+
+				// Folders not in targets should remain in lastUpdates
+				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
+			})
 		})
 	})
 

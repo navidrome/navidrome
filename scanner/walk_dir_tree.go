@@ -32,9 +32,18 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				return
 			}
 
+			// Check if target folder exists before walking it
+			// If it doesn't exist (e.g., deleted between watcher detection and scan execution),
+			// skip it so it remains in job.lastUpdates and gets handled in following steps
+			_, err := fs.Stat(job.fs, folderPath)
+			if err != nil {
+				log.Warn(ctx, "Scanner: Target folder does not exist.", "path", folderPath, err)
+				continue
+			}
+
 			// Create checker and push patterns from root to this folder
 			checker := newIgnoreChecker(job.fs)
-			err := checker.PushAllParents(ctx, folderPath)
+			err = checker.PushAllParents(ctx, folderPath)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
 				continue
@@ -82,13 +91,16 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 }
 
 func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
-	folder = newFolderEntry(job, dirPath)
-
+	// Check if directory exists before creating the folder entry
+	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
 	dirInfo, err := fs.Stat(job.fs, dirPath)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error stating dir", "path", dirPath, err)
 		return nil, nil, err
 	}
+
+	// Now that we know the folder exists, create the entry (which removes it from lastUpdates)
+	folder = newFolderEntry(job, dirPath)
 	folder.modTime = dirInfo.ModTime()
 
 	dir, err := job.fs.Open(dirPath)
