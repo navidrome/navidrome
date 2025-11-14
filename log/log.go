@@ -80,8 +80,8 @@ var (
 
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l Level) {
-	currentLevel = l
 	loggerMu.Lock()
+	currentLevel = l
 	defaultLogger.Level = logrus.TraceLevel
 	loggerMu.Unlock()
 	logrus.SetLevel(logrus.Level(l))
@@ -114,6 +114,8 @@ func levelFromString(l string) Level {
 
 // SetLogLevels sets the log levels for specific paths in the codebase.
 func SetLogLevels(levels map[string]string) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	logLevels = nil
 	for k, v := range levels {
 		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
@@ -172,6 +174,8 @@ func SetDefaultLogger(l *logrus.Logger) {
 }
 
 func CurrentLevel() Level {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	return currentLevel
 }
 
@@ -220,10 +224,15 @@ func Writer() io.Writer {
 }
 
 func shouldLog(requiredLevel Level, skip int) bool {
-	if currentLevel >= requiredLevel {
+	loggerMu.RLock()
+	level := currentLevel
+	levels := logLevels
+	loggerMu.RUnlock()
+
+	if level >= requiredLevel {
 		return true
 	}
-	if len(logLevels) == 0 {
+	if len(levels) == 0 {
 		return false
 	}
 
@@ -233,7 +242,7 @@ func shouldLog(requiredLevel Level, skip int) bool {
 	}
 
 	file = strings.TrimPrefix(file, rootPath)
-	for _, lp := range logLevels {
+	for _, lp := range levels {
 		if strings.HasPrefix(file, lp.path) {
 			return lp.level >= requiredLevel
 		}
