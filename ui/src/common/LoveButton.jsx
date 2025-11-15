@@ -46,8 +46,13 @@ export const LoveButton = ({
     <Button
       onClick={handleToggleLove}
       size={'small'}
-      disabled={disabled || loading || record?.missing}
+      disabled={disabled || loading || record.missing}
       className={classes.love}
+      title={
+        record.starredAt && record.starredAt !== '0001-01-01T00:00:00Z'
+          ? new Date(record.starredAt).toLocaleString()
+          : undefined
+      }
       {...rest}
     >
       {record.starred ? (
