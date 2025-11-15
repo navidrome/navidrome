@@ -12,7 +12,21 @@ const isAdmin = () => {
 const getSelectedLibraries = () => {
   try {
     const state = JSON.parse(localStorage.getItem('state'))
-    return state?.library?.selectedLibraries || []
+    const selectedLibraries = state?.library?.selectedLibraries || []
+    const userLibraries = state?.library?.userLibraries || []
+
+    // Validate selected libraries against current user libraries
+    const userLibraryIds = userLibraries.map((lib) => lib.id)
+    const validatedSelection = selectedLibraries.filter((id) =>
+      userLibraryIds.includes(id),
+    )
+
+    // If user has only one library, return empty array (no filter needed)
+    if (userLibraryIds.length === 1) {
+      return []
+    }
+
+    return validatedSelection
   } catch (err) {
     return []
   }
