@@ -10,10 +10,10 @@ export const libraryReducer = (previousState = initialState, payload) => {
   switch (type) {
     case SET_USER_LIBRARIES: {
       const newUserLibraryIds = data.map((lib) => lib.id)
-      
+
       // Validate and filter selected libraries to only include IDs that exist in new user libraries
       const validatedSelection = previousState.selectedLibraries.filter((id) =>
-        newUserLibraryIds.includes(id)
+        newUserLibraryIds.includes(id),
       )
 
       // Determine the final selection:
