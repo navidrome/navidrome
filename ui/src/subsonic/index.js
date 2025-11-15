@@ -23,7 +23,13 @@ const url = (command, id, options) => {
       delete options.ts
     }
     Object.keys(options).forEach((k) => {
-      params.append(k, options[k])
+      const value = options[k]
+      // Handle array parameters by appending each value separately
+      if (Array.isArray(value)) {
+        value.forEach((v) => params.append(k, v))
+      } else {
+        params.append(k, value)
+      }
     })
   }
   return `/rest/${command}?${params.toString()}`

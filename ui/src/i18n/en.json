@@ -302,6 +302,8 @@
       },
       "actions": {
         "scan": "Scan Library",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
         "manageUsers": "Manage User Access",
         "viewDetails": "View Details"
       },
@@ -310,6 +312,9 @@
         "updated": "Library updated successfully",
         "deleted": "Library deleted successfully",
         "scanStarted": "Library scan started",
+        "quickScanStarted": "Quick scan started",
+        "fullScanStarted": "Full scan started",
+        "scanError": "Error starting scan. Check logs",
         "scanCompleted": "Library scan completed"
       },
       "validation": {
@@ -600,11 +605,12 @@
   "activity": {
     "title": "Activity",
     "totalScanned": "Total Folders Scanned",
-    "quickScan": "Quick Scan",
-    "fullScan": "Full Scan",
+    "quickScan": "Quick",
+    "fullScan": "Full",
+    "selectiveScan": "Selective",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "scanType": "Type",
+    "scanType": "Last Scan",
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
   },

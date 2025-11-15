@@ -337,8 +337,12 @@ on conflict (user_id, item_id, item_type) do update
 	return r.executeSQL(query)
 }
 
-func (r *albumRepository) purgeEmpty() error {
+func (r *albumRepository) purgeEmpty(libraryIDs ...int) error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
+	// If libraryIDs are specified, only purge albums from those libraries
+	if len(libraryIDs) > 0 {
+		del = del.Where(Eq{"library_id": libraryIDs})
+	}
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("purging empty albums: %w", err)
