@@ -96,6 +96,9 @@ func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	return lastUpdate
 }
 
+// createFolderEntry creates a new folderEntry for the given path, using the last update info from the job
+// to populate the previous update time and hash. It also removes the folder from the job's lastUpdates map.
+// This is used to track which folders have been found during the walk_dir_tree.
 func (j *scanJob) createFolderEntry(path string) *folderEntry {
 	id := model.FolderID(j.lib, path)
 	info := j.popLastUpdate(id)
@@ -141,15 +144,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				break
 			}
 
-			var outputChan <-chan *folderEntry
-			var err error
-
-			// Use selective folder loading if target folders are specified
-			if len(job.targetFolders) > 0 {
-				log.Debug(p.ctx, "Scanner: Loading specific folders and all their subdirectories (recursive)", "lib", job.lib.Name, "numTargets", len(job.targetFolders))
-			}
-			outputChan, err = walkDirTree(p.ctx, job, job.targetFolders...)
-
+			outputChan, err := walkDirTree(p.ctx, job, job.targetFolders...)
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
 			}

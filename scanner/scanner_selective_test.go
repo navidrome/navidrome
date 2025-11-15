@@ -87,9 +87,6 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				"pop/track6.mp3":         pop(track(1, "Pop Track 1")),
 			})
 
-			// Use the existing library from BeforeEach
-			// (lib is already created with the path "fake:///music")
-
 			// Scan only the "rock" and "jazz" folders (including their subdirectories)
 			targets := []model.ScanTarget{
 				{LibraryID: lib.ID, FolderPath: "rock"},

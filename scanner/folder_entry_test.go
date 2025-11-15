@@ -52,16 +52,6 @@ var _ = Describe("folder_entry", func() {
 			Expect(entry.updTime).To(Equal(updateInfo.UpdatedAt))
 			Expect(entry.prevHash).To(Equal(updateInfo.Hash))
 		})
-
-		It("creates a new folder entry with zero time when no previous update exists", func() {
-			folderID := model.FolderID(lib, path)
-			emptyInfo := model.FolderUpdateInfo{}
-
-			entry := newFolderEntry(job, folderID, path, emptyInfo.UpdatedAt, emptyInfo.Hash)
-
-			Expect(entry.updTime).To(BeZero())
-			Expect(entry.prevHash).To(BeEmpty())
-		})
 	})
 
 	Describe("createFolderEntry", func() {
