@@ -21,11 +21,6 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// Scanner interface for triggering scans
-type Scanner interface {
-	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
-}
-
 // Watcher interface for managing file system watchers
 type Watcher interface {
 	Watch(ctx context.Context, lib *model.Library) error
@@ -43,13 +38,13 @@ type Library interface {
 
 type libraryService struct {
 	ds      model.DataStore
-	scanner Scanner
+	scanner model.Scanner
 	watcher Watcher
 	broker  events.Broker
 }
 
 // NewLibrary creates a new Library service
-func NewLibrary(ds model.DataStore, scanner Scanner, watcher Watcher, broker events.Broker) Library {
+func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, broker events.Broker) Library {
 	return &libraryService{
 		ds:      ds,
 		scanner: scanner,
@@ -155,7 +150,7 @@ type libraryRepositoryWrapper struct {
 	model.LibraryRepository
 	ctx     context.Context
 	ds      model.DataStore
-	scanner Scanner
+	scanner model.Scanner
 	watcher Watcher
 	broker  events.Broker
 }
@@ -192,7 +187,7 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ...string) error {
+func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
 	lib := entity.(*model.Library)
 	libID, err := strconv.Atoi(id)
 	if err != nil {

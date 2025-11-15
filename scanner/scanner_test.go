@@ -34,19 +34,19 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
+func createFS(files fstest.MapFS) storagetest.FakeFS {
+	fs := storagetest.FakeFS{}
+	fs.SetFiles(files)
+	storagetest.Register("fake", &fs)
+	return fs
+}
+
 var _ = Describe("Scanner", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds *tests.MockDataStore
 	var mfRepo *mockMediaFileRepo
-	var s scanner.Scanner
-
-	createFS := func(files fstest.MapFS) storagetest.FakeFS {
-		fs := storagetest.FakeFS{}
-		fs.SetFiles(files)
-		storagetest.Register("fake", &fs)
-		return fs
-	}
+	var s model.Scanner
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
@@ -476,6 +476,56 @@ var _ = Describe("Scanner", Ordered, func() {
 			mf, err = findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.Missing).To(BeFalse())
+		})
+
+		It("marks tracks as missing when scanning a deleted folder with ScanFolders", func() {
+			By("Adding a third track to Revolver to have more test data")
+			fsys.Add("The Beatles/Revolver/03 - I'm Only Sleeping.mp3", revolver(track(3, "I'm Only Sleeping")))
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			By("Verifying initial state has 5 tracks")
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"missing": false},
+			})).To(Equal(int64(5)))
+
+			By("Removing the entire Revolver folder from filesystem")
+			fsys.Remove("The Beatles/Revolver/01 - Taxman.mp3")
+			fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+			fsys.Remove("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+
+			By("Scanning the parent folder (simulating watcher behavior)")
+			targets := []model.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "The Beatles"},
+			}
+			_, err := s.ScanFolders(ctx, false, targets)
+			Expect(err).To(Succeed())
+
+			By("Checking all Revolver tracks are marked as missing")
+			mf, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			mf, err = findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			By("Checking the Help! tracks are not affected")
+			mf, err = findByPath("The Beatles/Help!/01 - Help!.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeFalse())
+
+			mf, err = findByPath("The Beatles/Help!/02 - The Night Before.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeFalse())
+
+			By("Verifying only 2 non-missing tracks remain (Help! tracks)")
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"missing": false},
+			})).To(Equal(int64(2)))
 		})
 
 		It("does not override artist fields when importing an undertagged file", func() {
