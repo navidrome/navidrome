@@ -56,7 +56,7 @@ func fromInternalOrProxyAuth(r *http.Request) (string, bool) {
 		return username, true
 	}
 
-	return server.UsernameFromReverseProxyHeader(r), false
+	return server.UsernameFromExtAuthHeader(r), false
 }
 
 func checkRequiredParameters(next http.Handler) http.Handler {

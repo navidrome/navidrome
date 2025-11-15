@@ -95,8 +95,8 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes when all required params are available (reverse-proxy case)", func() {
-			conf.Server.ReverseProxyWhitelist = "127.0.0.234/32"
-			conf.Server.ReverseProxyUserHeader = "Remote-User"
+			conf.Server.ExtAuth.TrustedSources = "127.0.0.234/32"
+			conf.Server.ExtAuth.UserHeader = "Remote-User"
 
 			r := newGetRequest("v=1.15", "c=test")
 			r.Header.Add("Remote-User", "user")
@@ -254,8 +254,8 @@ var _ = Describe("Middlewares", func() {
 		When("using reverse proxy authentication", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.ReverseProxyWhitelist = "192.168.1.1/24"
-				conf.Server.ReverseProxyUserHeader = "Remote-User"
+				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
+				conf.Server.ExtAuth.UserHeader = "Remote-User"
 			})
 
 			It("passes authentication with correct IP and header", func() {
