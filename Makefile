@@ -54,7 +54,7 @@ testall: test-race test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on ./...
+	go test -tags netgo -race -shuffle=on  $(PKG)
 .PHONY: test-race
 
 test-js: ##@Development Run JS tests
