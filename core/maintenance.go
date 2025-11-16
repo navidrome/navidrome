@@ -166,7 +166,7 @@ func (s *maintenanceService) getAffectedAlbumIDs(ctx context.Context, ids []stri
 	if len(ids) > 0 {
 		filters = squirrel.And{
 			squirrel.Eq{"missing": true},
-			squirrel.Eq{"id": ids},
+			squirrel.Eq{"media_file.id": ids},
 		}
 	}
 
