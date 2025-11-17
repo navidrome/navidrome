@@ -62,11 +62,11 @@ require (
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	go.uber.org/goleak v1.3.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
-	golang.org/x/image v0.32.0
+	golang.org/x/image v0.33.0
 	golang.org/x/net v0.46.0
 	golang.org/x/sync v0.18.0
 	golang.org/x/sys v0.38.0
-	golang.org/x/text v0.30.0
+	golang.org/x/text v0.31.0
 	golang.org/x/time v0.14.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
