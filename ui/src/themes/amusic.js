@@ -3,7 +3,8 @@ import stylesheet from './amIsh.css.js'
 export default {
   themeName: 'AMusic',
   typography: {
-    fontFamily: "-apple-system, BlinkMacSystemFont, Apple Color Emoji, SF Pro, SF Pro Icons, Helvetica Neue, Helvetica, Arial, sans-serif",
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, Apple Color Emoji, SF Pro, SF Pro Icons, Helvetica Neue, Helvetica, Arial, sans-serif',
     h6: {
       fontSize: '1rem', // AppBar title
     },
@@ -23,7 +24,7 @@ export default {
     type: 'dark',
   },
   overrides: {
-    MuiFormGroup: { 
+    MuiFormGroup: {
       root: {
         color: 'white',
       },
@@ -38,81 +39,80 @@ export default {
       },
     },
     MuiAppBar: {
-        positionFixed: {
-          backgroundColor: '#1d1d1d !important',
-          boxShadow: 'none',
-        },
+      positionFixed: {
+        backgroundColor: '#1d1d1d !important',
+        boxShadow: 'none',
+      },
     },
     MuiDrawer: {
-        root: {
-          background: '#1d1d1d',
-          borderRight: '1px solid rgba(255, 255, 255, 0.12)',
-        },
+      root: {
+        background: '#1d1d1d',
+        borderRight: '1px solid rgba(255, 255, 255, 0.12)',
+      },
     },
     MuiCardMedia: {
-        img: {
+      img: {
         borderRadius: '10px',
-        },
+      },
     },
     MuiButton: {
-        root: {
-          background: '#D60017',
-          color: '#fff',
-          borderRadius: '6px',
-          paddingRight: '0.5rem',
-          paddingLeft: '0.5rem',
-          marginLeft: '0.5rem',
-          marginBottom: '0.5rem',
+      root: {
+        background: '#D60017',
+        color: '#fff',
+        borderRadius: '6px',
+        paddingRight: '0.5rem',
+        paddingLeft: '0.5rem',
+        marginLeft: '0.5rem',
+        marginBottom: '0.5rem',
+      },
+      textPrimary: {
+        color: '#fff',
+      },
+      label: {
+        color: '#fff',
+        paddingRight: '1rem',
+        paddingLeft: '0.7rem',
+      },
+    },
+    MuiListItemIcon: {
+      root: {
+        color: '#ff4e6b',
+      },
+    },
+    MuiChip: {
+      root: {
+        borderRadius: '10px',
+      },
+    },
+    MuiIconButton: {
+      root: {
+        color: '#ff4e6b',
+      },
+    },
+    MuiTableBody: {
+      '@global': {
+        'tr:nth-child(2)': {
+          background: 'rgba(255, 255, 255, 0.025)',
         },
-        textPrimary: {
-          color: '#fff',
-        },
-        label: {
-          color: '#fff',
-          paddingRight: '1rem',
-          paddingLeft: '0.7rem',
-        },
-    },
-    MuiListItemIcon:{
-        root:{
-            color: '#ff4e6b',
-        }
-    },
-    MuiChip:{
-        root:{
-            borderRadius: '10px',
-        }
-    },
-    MuiIconButton:{
-        root:{
-            color: '#ff4e6b',
-        }
-    },
-    MuiTableBody:{
-        '@global': {
-            'tr:nth-child(2)': {
-              background: 'rgba(255, 255, 255, 0.025)',
-            },
-          },
+      },
     },
     MuiTableRow: {
-        root: {
-          background: 'transparent',
-        },
+      root: {
+        background: 'transparent',
+      },
     },
     MuiTableHead: {
-        root: {
-        },
+      root: {},
     },
     MuiTableCell: {
-        root: {
-            borderBottom: '0 none !important',
-            padding: '10px !important',
-            color: '#b3b3b3 !important',
-        },
-        head: {
-            color: '#b3b3b3 !important',
-        },
+      root: {
+        borderBottom: '0 none !important',
+        padding: '10px !important',
+        color: '#b3b3b3 !important',
+      },
+      head: {
+        color: '#b3b3b3 !important',
+      },
     },
     NDLogin: {
       systemNameLink: {
