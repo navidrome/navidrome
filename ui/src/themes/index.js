@@ -10,6 +10,7 @@ import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import NuclearTheme from './nuclear'
+import AmusicTheme from './amusic'
 
 export default {
   // Classic default themes
@@ -27,4 +28,5 @@ export default {
   NordTheme,
   NuclearTheme,
   SpotifyTheme,
+  AmusicTheme,
 }
