@@ -1,4 +1,4 @@
-import stylesheet from './amIsh.css.js'
+import stylesheet from './amusic.css.js'
 
 export default {
   themeName: 'AMusic',
