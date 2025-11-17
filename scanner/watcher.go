@@ -24,9 +24,9 @@ type Watcher interface {
 type watcher struct {
 	mainCtx         context.Context
 	ds              model.DataStore
-	scanner         Scanner
+	scanner         model.Scanner
 	triggerWait     time.Duration
-	watcherNotify   chan model.Library
+	watcherNotify   chan scanNotification
 	libraryWatchers map[int]*libraryWatcherInstance
 	mu              sync.RWMutex
 }
@@ -36,14 +36,19 @@ type libraryWatcherInstance struct {
 	cancel  context.CancelFunc
 }
 
+type scanNotification struct {
+	Library    *model.Library
+	FolderPath string
+}
+
 // GetWatcher returns the watcher singleton
-func GetWatcher(ds model.DataStore, s Scanner) Watcher {
+func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 	return singleton.GetInstance(func() *watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
 			triggerWait:     conf.Server.Scanner.WatcherWait,
-			watcherNotify:   make(chan model.Library, 1),
+			watcherNotify:   make(chan scanNotification, 1),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
 	})
@@ -68,11 +73,11 @@ func (w *watcher) Run(ctx context.Context) error {
 	// Main scan triggering loop
 	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
-	waiting := false
+	targets := make(map[model.ScanTarget]struct{})
 	for {
 		select {
 		case <-trigger.C:
-			log.Info("Watcher: Triggering scan")
+			log.Info("Watcher: Triggering scan for changed folders", "numTargets", len(targets))
 			status, err := w.scanner.Status(ctx)
 			if err != nil {
 				log.Error(ctx, "Watcher: Error retrieving Scanner status", err)
@@ -83,9 +88,23 @@ func (w *watcher) Run(ctx context.Context) error {
 				trigger.Reset(w.triggerWait * 3)
 				continue
 			}
-			waiting = false
+
+			// Convert targets map to slice
+			targetSlice := make([]model.ScanTarget, 0, len(targets))
+			for target := range targets {
+				targetSlice = append(targetSlice, target)
+			}
+
+			// Clear targets for next batch
+			targets = make(map[model.ScanTarget]struct{})
+
 			go func() {
-				_, err := w.scanner.ScanAll(ctx, false)
+				var err error
+				if conf.Server.DevSelectiveWatcher {
+					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
+				} else {
+					_, err = w.scanner.ScanAll(ctx, false)
+				}
 				if err != nil {
 					log.Error(ctx, "Watcher: Error scanning", err)
 				} else {
@@ -102,13 +121,20 @@ func (w *watcher) Run(ctx context.Context) error {
 			w.libraryWatchers = make(map[int]*libraryWatcherInstance)
 			w.mu.Unlock()
 			return nil
-		case lib := <-w.watcherNotify:
-			if !waiting {
-				log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
-					"libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
-				waiting = true
+		case notification := <-w.watcherNotify:
+			lib := notification.Library
+			folderPath := notification.FolderPath
+
+			// If already scheduled for scan, skip
+			target := model.ScanTarget{LibraryID: lib.ID, FolderPath: folderPath}
+			if _, exists := targets[target]; exists {
+				continue
 			}
+			targets[target] = struct{}{}
 			trigger.Reset(w.triggerWait)
+
+			log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
+				"libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "folderPath", folderPath)
 		}
 	}
 }
@@ -199,13 +225,18 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 
 	log.Info(ctx, "Watcher started for library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "absoluteLibPath", absLibPath)
 
+	return w.processLibraryEvents(ctx, lib, fsys, c, absLibPath)
+}
+
+// processLibraryEvents processes filesystem events for a library.
+func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, fsys storage.MusicFS, events <-chan string, absLibPath string) error {
 	for {
 		select {
 		case <-ctx.Done():
 			log.Debug(ctx, "Watcher stopped due to context cancellation", "libraryID", lib.ID, "name", lib.Name)
 			return nil
-		case path := <-c:
-			path, err = filepath.Rel(absLibPath, path)
+		case path := <-events:
+			path, err := filepath.Rel(absLibPath, path)
 			if err != nil {
 				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", path, err)
 				continue
@@ -215,17 +246,73 @@ func (w *watcher) watchLibrary(ctx context.Context, lib *model.Library) error {
 				log.Trace(ctx, "Ignoring change", "libraryID", lib.ID, "path", path)
 				continue
 			}
-
 			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", path, "absoluteLibPath", absLibPath)
+
+			// Check if the original path (before resolution) matches .ndignore patterns
+			// This is crucial for deleted folders - if a deleted folder matches .ndignore,
+			// we should ignore it BEFORE resolveFolderPath walks up to the parent
+			if w.shouldIgnoreFolderPath(ctx, fsys, path) {
+				log.Debug(ctx, "Ignoring change matching .ndignore pattern", "libraryID", lib.ID, "path", path)
+				continue
+			}
+
+			// Find the folder to scan - validate path exists as directory, walk up if needed
+			folderPath := resolveFolderPath(fsys, path)
+			// Double-check after resolution in case the resolved path is different and also matches patterns
+			if folderPath != path && w.shouldIgnoreFolderPath(ctx, fsys, folderPath) {
+				log.Trace(ctx, "Ignoring change in folder matching .ndignore pattern", "libraryID", lib.ID, "folderPath", folderPath)
+				continue
+			}
 
 			// Notify the main watcher of changes
 			select {
-			case w.watcherNotify <- *lib:
+			case w.watcherNotify <- scanNotification{Library: lib, FolderPath: folderPath}:
 			default:
 				// Channel is full, notification already pending
 			}
 		}
 	}
+}
+
+// resolveFolderPath takes a path (which may be a file or directory) and returns
+// the folder path to scan. If the path is a file, it walks up to find the parent
+// directory. Returns empty string if the path should scan the library root.
+func resolveFolderPath(fsys fs.FS, path string) string {
+	// Handle root paths immediately
+	if path == "." || path == "" {
+		return ""
+	}
+
+	folderPath := path
+	for {
+		info, err := fs.Stat(fsys, folderPath)
+		if err == nil && info.IsDir() {
+			// Found a valid directory
+			return folderPath
+		}
+		if folderPath == "." || folderPath == "" {
+			// Reached root, scan entire library
+			return ""
+		}
+		// Walk up the tree
+		dir, _ := filepath.Split(folderPath)
+		if dir == "" || dir == "." {
+			return ""
+		}
+		// Remove trailing slash
+		folderPath = filepath.Clean(dir)
+	}
+}
+
+// shouldIgnoreFolderPath checks if the given folderPath should be ignored based on .ndignore patterns
+// in the library. It pushes all parent folders onto the IgnoreChecker stack before checking.
+func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.MusicFS, folderPath string) bool {
+	checker := newIgnoreChecker(fsys)
+	err := checker.PushAllParents(ctx, folderPath)
+	if err != nil {
+		log.Warn(ctx, "Watcher: Error pushing ignore patterns for folder", "path", folderPath, err)
+	}
+	return checker.ShouldIgnore(ctx, folderPath)
 }
 
 func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {

@@ -25,82 +25,196 @@ var _ = Describe("walk_dir_tree", func() {
 			ctx  context.Context
 		)
 
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			ctx = GinkgoT().Context()
-			fsys = &mockMusicFS{
-				FS: fstest.MapFS{
-					"root/a/.ndignore":       {Data: []byte("ignored/*")},
-					"root/a/f1.mp3":          {},
-					"root/a/f2.mp3":          {},
-					"root/a/ignored/bad.mp3": {},
-					"root/b/cover.jpg":       {},
-					"root/c/f3":              {},
-					"root/d":                 {},
-					"root/d/.ndignore":       {},
-					"root/d/f1.mp3":          {},
-					"root/d/f2.mp3":          {},
-					"root/d/f3.mp3":          {},
-					"root/e/original/f1.mp3": {},
-					"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("original")},
+		Context("full library", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				ctx = GinkgoT().Context()
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"root/a/.ndignore":       {Data: []byte("ignored/*")},
+						"root/a/f1.mp3":          {},
+						"root/a/f2.mp3":          {},
+						"root/a/ignored/bad.mp3": {},
+						"root/b/cover.jpg":       {},
+						"root/c/f3":              {},
+						"root/d":                 {},
+						"root/d/.ndignore":       {},
+						"root/d/f1.mp3":          {},
+						"root/d/f2.mp3":          {},
+						"root/d/f3.mp3":          {},
+						"root/e/original/f1.mp3": {},
+						"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("original")},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+			})
+
+			// Helper function to call walkDirTree and collect folders from the results channel
+			getFolders := func() map[string]*folderEntry {
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+				return folders
+			}
+
+			DescribeTable("symlink handling",
+				func(followSymlinks bool, expectedFolderCount int) {
+					conf.Server.Scanner.FollowSymlinks = followSymlinks
+					folders := getFolders()
+
+					Expect(folders).To(HaveLen(expectedFolderCount + 2)) // +2 for `.` and `root`
+
+					// Basic folder structure checks
+					Expect(folders["root/a"].audioFiles).To(SatisfyAll(
+						HaveLen(2),
+						HaveKey("f1.mp3"),
+						HaveKey("f2.mp3"),
+					))
+					Expect(folders["root/a"].imageFiles).To(BeEmpty())
+					Expect(folders["root/b"].audioFiles).To(BeEmpty())
+					Expect(folders["root/b"].imageFiles).To(SatisfyAll(
+						HaveLen(1),
+						HaveKey("cover.jpg"),
+					))
+					Expect(folders["root/c"].audioFiles).To(BeEmpty())
+					Expect(folders["root/c"].imageFiles).To(BeEmpty())
+					Expect(folders).ToNot(HaveKey("root/d"))
+
+					// Symlink specific checks
+					if followSymlinks {
+						Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
+					} else {
+						Expect(folders).ToNot(HaveKey("root/e/symlink"))
+					}
 				},
-			}
-			job = &scanJob{
-				fs:  fsys,
-				lib: model.Library{Path: "/music"},
-			}
+				Entry("with symlinks enabled", true, 7),
+				Entry("with symlinks disabled", false, 6),
+			)
 		})
 
-		// Helper function to call walkDirTree and collect folders from the results channel
-		getFolders := func() map[string]*folderEntry {
-			results, err := walkDirTree(ctx, job)
-			Expect(err).ToNot(HaveOccurred())
-
-			folders := map[string]*folderEntry{}
-			g := errgroup.Group{}
-			g.Go(func() error {
-				for folder := range results {
-					folders[folder.path] = folder
+		Context("with target folders", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				ctx = GinkgoT().Context()
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"Artist/Album1/track1.mp3":      {},
+						"Artist/Album1/track2.mp3":      {},
+						"Artist/Album2/track1.mp3":      {},
+						"Artist/Album2/track2.mp3":      {},
+						"Artist/Album2/Sub/track3.mp3":  {},
+						"OtherArtist/Album3/track1.mp3": {},
+					},
 				}
-				return nil
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
 			})
-			_ = g.Wait()
-			return folders
-		}
 
-		DescribeTable("symlink handling",
-			func(followSymlinks bool, expectedFolderCount int) {
-				conf.Server.Scanner.FollowSymlinks = followSymlinks
-				folders := getFolders()
+			It("should recursively walk all subdirectories of target folders", func() {
+				results, err := walkDirTree(ctx, job, "Artist")
+				Expect(err).ToNot(HaveOccurred())
 
-				Expect(folders).To(HaveLen(expectedFolderCount + 2)) // +2 for `.` and `root`
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
 
-				// Basic folder structure checks
-				Expect(folders["root/a"].audioFiles).To(SatisfyAll(
-					HaveLen(2),
-					HaveKey("f1.mp3"),
-					HaveKey("f2.mp3"),
+				// Should include the target folder and all its descendants
+				Expect(folders).To(SatisfyAll(
+					HaveKey("Artist"),
+					HaveKey("Artist/Album1"),
+					HaveKey("Artist/Album2"),
+					HaveKey("Artist/Album2/Sub"),
 				))
-				Expect(folders["root/a"].imageFiles).To(BeEmpty())
-				Expect(folders["root/b"].audioFiles).To(BeEmpty())
-				Expect(folders["root/b"].imageFiles).To(SatisfyAll(
-					HaveLen(1),
-					HaveKey("cover.jpg"),
-				))
-				Expect(folders["root/c"].audioFiles).To(BeEmpty())
-				Expect(folders["root/c"].imageFiles).To(BeEmpty())
-				Expect(folders).ToNot(HaveKey("root/d"))
 
-				// Symlink specific checks
-				if followSymlinks {
-					Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
-				} else {
-					Expect(folders).ToNot(HaveKey("root/e/symlink"))
+				// Should not include folders outside the target
+				Expect(folders).ToNot(HaveKey("OtherArtist"))
+				Expect(folders).ToNot(HaveKey("OtherArtist/Album3"))
+
+				// Verify audio files are present
+				Expect(folders["Artist/Album1"].audioFiles).To(HaveLen(2))
+				Expect(folders["Artist/Album2"].audioFiles).To(HaveLen(2))
+				Expect(folders["Artist/Album2/Sub"].audioFiles).To(HaveLen(1))
+			})
+
+			It("should handle multiple target folders", func() {
+				results, err := walkDirTree(ctx, job, "Artist/Album1", "OtherArtist")
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				// Should include both target folders and their descendants
+				Expect(folders).To(SatisfyAll(
+					HaveKey("Artist/Album1"),
+					HaveKey("OtherArtist"),
+					HaveKey("OtherArtist/Album3"),
+				))
+
+				// Should not include other folders
+				Expect(folders).ToNot(HaveKey("Artist"))
+				Expect(folders).ToNot(HaveKey("Artist/Album2"))
+				Expect(folders).ToNot(HaveKey("Artist/Album2/Sub"))
+			})
+
+			It("should skip non-existent target folders and preserve them in lastUpdates", func() {
+				// Setup job with lastUpdates for both existing and non-existing folders
+				job.lastUpdates = map[string]model.FolderUpdateInfo{
+					model.FolderID(job.lib, "Artist/Album1"):             {},
+					model.FolderID(job.lib, "NonExistent/DeletedFolder"): {},
+					model.FolderID(job.lib, "OtherArtist/Album3"):        {},
 				}
-			},
-			Entry("with symlinks enabled", true, 7),
-			Entry("with symlinks disabled", false, 6),
-		)
+
+				// Try to scan existing folder and non-existing folder
+				results, err := walkDirTree(ctx, job, "Artist/Album1", "NonExistent/DeletedFolder")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Collect results
+				folders := map[string]struct{}{}
+				for folder := range results {
+					folders[folder.path] = struct{}{}
+				}
+
+				// Should only include the existing folder
+				Expect(folders).To(HaveKey("Artist/Album1"))
+				Expect(folders).ToNot(HaveKey("NonExistent/DeletedFolder"))
+
+				// The non-existent folder should still be in lastUpdates (not removed by popLastUpdate)
+				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "NonExistent/DeletedFolder")))
+
+				// The existing folder should have been removed from lastUpdates
+				Expect(job.lastUpdates).ToNot(HaveKey(model.FolderID(job.lib, "Artist/Album1")))
+
+				// Folders not in targets should remain in lastUpdates
+				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
+			})
+		})
 	})
 
 	Describe("helper functions", func() {

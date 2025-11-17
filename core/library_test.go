@@ -29,7 +29,7 @@ var _ = Describe("Library Service", func() {
 	var userRepo *tests.MockedUserRepo
 	var ctx context.Context
 	var tempDir string
-	var scanner *mockScanner
+	var scanner *tests.MockScanner
 	var watcherManager *mockWatcherManager
 	var broker *mockEventBroker
 
@@ -43,7 +43,7 @@ var _ = Describe("Library Service", func() {
 		ds.MockedUser = userRepo
 
 		// Create a mock scanner that tracks calls
-		scanner = &mockScanner{}
+		scanner = tests.NewMockScanner()
 		// Create a mock watcher manager
 		watcherManager = &mockWatcherManager{
 			libraryStates: make(map[int]model.Library),
@@ -616,11 +616,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("triggers scan when updating library path", func() {
@@ -641,11 +642,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("does not trigger scan when updating library without path change", func() {
@@ -661,7 +663,7 @@ var _ = Describe("Library Service", func() {
 
 			// Wait a bit to ensure no scan was triggered
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -674,7 +676,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since creation failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -691,7 +693,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since update failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -707,11 +709,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("does not trigger scan when library deletion fails", func() {
@@ -721,7 +724,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since deletion failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -867,31 +870,6 @@ var _ = Describe("Library Service", func() {
 		})
 	})
 })
-
-// mockScanner provides a simple mock implementation of core.Scanner for testing
-type mockScanner struct {
-	ScanCalls []ScanCall
-	mu        sync.RWMutex
-}
-
-type ScanCall struct {
-	FullScan bool
-}
-
-func (m *mockScanner) ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.ScanCalls = append(m.ScanCalls, ScanCall{
-		FullScan: fullScan,
-	})
-	return []string{}, nil
-}
-
-func (m *mockScanner) len() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.ScanCalls)
-}
 
 // mockWatcherManager provides a simple mock implementation of core.Watcher for testing
 type mockWatcherManager struct {

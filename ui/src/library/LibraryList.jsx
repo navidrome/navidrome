@@ -9,7 +9,9 @@ import {
   BooleanField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { List, DateField, useResourceRefresh } from '../common'
+import { List, DateField, useResourceRefresh, SizeField } from '../common'
+import LibraryListBulkActions from './LibraryListBulkActions'
+import LibraryListActions from './LibraryListActions'
 
 const LibraryFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -26,8 +28,9 @@ const LibraryList = (props) => {
       {...props}
       sort={{ field: 'name', order: 'ASC' }}
       exporter={false}
-      bulkActionButtons={false}
+      bulkActionButtons={!isXsmall && <LibraryListBulkActions />}
       filters={<LibraryFilter />}
+      actions={<LibraryListActions />}
     >
       {isXsmall ? (
         <SimpleList
@@ -42,6 +45,7 @@ const LibraryList = (props) => {
           <NumberField source="totalSongs" label="Songs" />
           <NumberField source="totalAlbums" label="Albums" />
           <NumberField source="totalMissingFiles" label="Missing Files" />
+          <SizeField source="totalSize" />
           <DateField
             source="lastScanAt"
             label="Last Scan"

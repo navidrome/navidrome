@@ -177,7 +177,9 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		return err
 	}
 	// https://www.sqlite.org/pragma.html#pragma_optimize
-	_, err = r.executeSQL(Expr("PRAGMA optimize=0x10012;"))
+	// Use mask 0x10000 to check table sizes without running ANALYZE
+	// Running ANALYZE can cause query planner issues with expression-based collation indexes
+	_, err = r.executeSQL(Expr("PRAGMA optimize=0x10000;"))
 	return err
 }
 

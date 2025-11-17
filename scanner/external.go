@@ -8,10 +8,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // scannerExternal is a scanner that runs an external process to do the scanning. It is used to avoid
@@ -23,19 +25,41 @@ import (
 // process will forward them to the caller.
 type scannerExternal struct{}
 
-func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
+func (s *scannerExternal) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
+	s.scan(ctx, fullScan, targets, progress)
+}
+
+func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
 	exe, err := os.Executable()
 	if err != nil {
 		progress <- &ProgressInfo{Error: fmt.Sprintf("failed to get executable path: %s", err)}
 		return
 	}
-	log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
-	cmd := exec.CommandContext(ctx, exe, "scan",
+
+	// Build command arguments
+	args := []string{
+		"scan",
 		"--nobanner", "--subprocess",
 		"--configfile", conf.Server.ConfigFile,
 		"--datafolder", conf.Server.DataFolder,
 		"--cachefolder", conf.Server.CacheFolder,
-		If(fullScan, "--full", ""))
+	}
+
+	// Add targets if provided
+	if len(targets) > 0 {
+		targetsStr := strings.Join(slice.Map(targets, func(t model.ScanTarget) string { return t.String() }), ",")
+		args = append(args, "--targets", targetsStr)
+		log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targetsStr)
+	} else {
+		log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
+	}
+
+	// Add full scan flag if needed
+	if fullScan {
+		args = append(args, "--full")
+	}
+
+	cmd := exec.CommandContext(ctx, exe, args...)
 
 	in, out := io.Pipe()
 	defer in.Close()
