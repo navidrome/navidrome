@@ -29,15 +29,6 @@ export default {
         color: 'white',
       },
     },
-    MuiButton: {
-      textPrimary: {
-        color: '#fff',
-      },
-      textSecondary: {
-        color: '#ff4e6b',
-        backgroundColor: '#ff4e6b',
-      },
-    },
     MuiAppBar: {
       positionFixed: {
         backgroundColor: '#1d1d1d !important',
@@ -67,6 +58,10 @@ export default {
       },
       textPrimary: {
         color: '#fff',
+      },
+      textSecondary: {
+        color: '#ff4e6b',
+        backgroundColor: '#ff4e6b',
       },
       label: {
         color: '#fff',
