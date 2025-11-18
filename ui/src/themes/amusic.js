@@ -127,6 +127,17 @@ export default {
         
       },
     },
+    NDAlbumGridView: {
+      albumName: {
+        color: '#eee',
+      },
+      albumSubtitle: {
+        color: '#ccc',
+      },
+      albumPlayButton: {
+          color: `#ff4e6b !important`,
+      },
+    },
     NDLogin: {
       systemNameLink: {
         color: '#D60017',
