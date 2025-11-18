@@ -73,9 +73,7 @@ div.player-content > span:first-child svg {
     transform: translateX(-50%) translateY(5%) !important;
 }
 .progress-load-bar {
-    top: 0px;
-    height: 14px;
-    border-radius: 0px;
+	display: none;
 }
 .sound-operation > div:nth-child(4) {
     transform: translateX(-50%) translateY(5%) !important;
@@ -93,6 +91,9 @@ div.player-content > span:first-child svg {
     border-radius: 0px;
     background-color: black!important;
     border: hidden!important;
+}
+.rc-slider[style*="left: 0%"] {
+	transform: translateX(0) !important;
 }
 .rc-slider .rc-slider-track {
     display: none;
@@ -212,6 +213,7 @@ button[data-testid="save-queue-button"] {
     background-color: white;
     border: 1px solid black;
     z-index: -1;
+	border-radius: 4px;
 }
 .react-jinke-music-player-mobile-header {
     align-items: start;
@@ -242,7 +244,7 @@ button[data-testid="save-queue-button"] {
     animation: none;
 }
 .react-jinke-music-player-mobile-progress .current-time {
-    margin-right: 17px;
+    /* margin-right: 17px; */
 }
 .react-jinke-music-player-mobile-progress .current-time, .react-jinke-music-player-mobile-progress .duration {
     color: black!important;

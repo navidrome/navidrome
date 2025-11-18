@@ -4,11 +4,11 @@ export default {
   themeName: 'Nutball',
   palette: {
     primary: {
-      main: '#a8fe40',
+      main: '#80ea00',
       light: '#fff',
     },
     secondary: {
-      main: '#a8fe40',
+      main: '#80ea00',
       contrastText: '#fff',
     },
   },
@@ -62,7 +62,7 @@ export default {
     },
     MuiButton: {
       root: {
-        color: 'rgba(0,0,0,.57)',
+        color: '#80ea00',
         border: '1px solid rgba(0, 0, 0, 0.23)',
         transition: 'none',
         '&[aria-label="Grid"]': {
@@ -443,7 +443,7 @@ export default {
         },
         '& a:hover > div:nth-of-type(2)': {
           border: 'none',
-          outline: '1px solid black'
+          outline: '1px solid black',
         },
       },
       albumLink: {
@@ -474,7 +474,7 @@ export default {
         marginLeft: '0px',
       },
       titlePositionBottom: {
-        bottom: '0'
+        bottom: '0',
       },
       subtitle: {
         '& button': {
