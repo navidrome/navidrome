@@ -43,7 +43,7 @@ export default {
     },
     MuiToolbar: {
       root: {
-        background '#1d1d1d',
+        background: '#1d1d1d',
       },
     },
     MuiCardMedia: {
