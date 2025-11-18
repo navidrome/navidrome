@@ -18,8 +18,8 @@ export default {
       contrastText: '#fff',
     },
     background: {
-      default: '#1d1d1d',
-      paper: '#101010',
+      default: '#1f1f1f',
+      paper: '#1f1f1f',
     },
     type: 'dark',
   },
@@ -41,6 +41,9 @@ export default {
         borderRight: '1px solid rgba(255, 255, 255, 0.12)',
       },
     },
+    MuiToolbar:{
+      background '',
+    },
     MuiCardMedia: {
       img: {
         borderRadius: '10px',
@@ -55,6 +58,8 @@ export default {
         paddingLeft: '0.5rem',
         marginLeft: '0.5rem',
         marginBottom: '0.5rem',
+        textTransform: 'capitalize',
+        fontWeight: 600,
       },
       textPrimary: {
         color: '#fff',
@@ -62,6 +67,11 @@ export default {
       textSecondary: {
         color: '#ff4e6b',
         backgroundColor: '#ff4e6b',
+      },
+      textSizeSmall:{
+        fontSize: '0.8rem',
+        paddingRight: '0.5rem',
+        paddingLeft: '0.5rem',
       },
       label: {
         color: '#fff',
@@ -85,8 +95,8 @@ export default {
       },
     },
     MuiTableBody: {
-      '@global': {
-        'tr:nth-child(2)': {
+      root: {
+        '&>tr:nth-child(2)': {
           background: 'rgba(255, 255, 255, 0.025)',
         },
       },
@@ -107,6 +117,14 @@ export default {
       },
       head: {
         color: '#b3b3b3 !important',
+      },
+    },
+    MuiMenuItem: {
+      root: {
+        fontSize: '0.875rem',
+        borderRadius: '10px',
+        color: '#eee',
+        
       },
     },
     NDLogin: {
