@@ -41,8 +41,10 @@ export default {
         borderRight: '1px solid rgba(255, 255, 255, 0.12)',
       },
     },
-    MuiToolbar:{
-      background '',
+    MuiToolbar: {
+      root: {
+        background '#1d1d1d',
+      },
     },
     MuiCardMedia: {
       img: {
