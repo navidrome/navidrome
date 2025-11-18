@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("Playlists", func() {
@@ -424,6 +425,23 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
 		})
 
+		It("handles Unicode normalization when comparing paths (NFD vs NFC)", func() {
+			// Simulate macOS filesystem: stores paths in NFD (decomposed) form
+			// "è" (U+00E8) in NFC becomes "e" + "◌̀" (U+0065 + U+0300) in NFD
+			nfdPath := "artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
+			repo.data = []string{nfdPath}
+
+			// Simulate Apple Music M3U: uses NFC (composed) form
+			nfcPath := "/music/artist/Mich\u00E8le/song.mp3" // NFC: single è character
+			m3u := nfcPath + "\n"
+			f := strings.NewReader(m3u)
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(1))
+			// Should match despite different Unicode normalization forms
+			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
+		})
+
 	})
 
 	Describe("InPlaylistsPath", func() {
@@ -524,6 +542,9 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
+		// Normalize the data path to NFD (simulates macOS filesystem storage)
+		normalizedDataPath := norm.NFD.String(dataPath)
+
 		for _, requestPath := range paths {
 			// Strip library qualifier if present (format: "libraryID:path")
 			actualPath := requestPath
@@ -535,11 +556,15 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 				}
 			}
 
+			// The request path should already be normalized to NFD by production code
+			// before calling FindByPaths (to match DB storage)
+			normalizedRequestPath := norm.NFD.String(actualPath)
+
 			// Case-insensitive comparison (like SQL's "collate nocase")
-			if strings.EqualFold(actualPath, dataPath) {
+			if strings.EqualFold(normalizedRequestPath, normalizedDataPath) {
 				mfs = append(mfs, model.MediaFile{
 					ID:        strconv.Itoa(idx),
-					Path:      dataPath,
+					Path:      dataPath, // Return original path from DB
 					LibraryID: libraryID,
 				})
 				break

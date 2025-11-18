@@ -201,25 +201,29 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			continue
 		}
 
+		// Normalize to NFD for filesystem compatibility (macOS). Database stores paths in NFD.
+		// See https://github.com/navidrome/navidrome/issues/4663
+		resolvedPaths = slice.Map(resolvedPaths, func(path string) string {
+			return strings.ToLower(norm.NFD.String(path))
+		})
+
 		found, err := mediaFileRepository.FindByPaths(resolvedPaths)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		// Build lookup map with library-qualified keys
+		// Build lookup map with library-qualified keys, normalized for comparison
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			// Key format: "libraryID:path" (normalized)
-			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, normalizePathForComparison(found[idx].Path))
+			// Normalize to lowercase for case-insensitive comparison
+			// Key format: "libraryID:path"
+			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(found[idx].Path))
 			existing[key] = idx
 		}
-		for _, path := range resolvedPaths {
-			// Parse the library-qualified path
-			parts := strings.SplitN(path, ":", 2)
-			// Path is already qualified: "libraryID:path"
-			normalizedPath := parts[0] + ":" + normalizePathForComparison(parts[1])
 
-			idx, ok := existing[normalizedPath]
+		// Find media files in the order of the resolved paths, to keep playlist order
+		for _, path := range resolvedPaths {
+			idx, ok := existing[path]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
@@ -234,13 +238,6 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.AddMediaFiles(mfs)
 
 	return nil
-}
-
-// normalizePathForComparison normalizes a file path to NFC form and converts to lowercase
-// for consistent comparison. This fixes Unicode normalization issues on macOS where
-// Apple Music creates playlists with NFC-encoded paths but the filesystem uses NFD.
-func normalizePathForComparison(path string) string {
-	return strings.ToLower(norm.NFC.String(path))
 }
 
 // pathResolution holds the result of resolving a playlist path to a library-relative path.
