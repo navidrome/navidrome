@@ -70,7 +70,7 @@ export default {
         color: '#ff4e6b',
         backgroundColor: '#ff4e6b',
       },
-      textSizeSmall:{
+      textSizeSmall: {
         fontSize: '0.8rem',
         paddingRight: '0.5rem',
         paddingLeft: '0.5rem',
@@ -126,7 +126,6 @@ export default {
         fontSize: '0.875rem',
         borderRadius: '10px',
         color: '#eee',
-        
       },
     },
     NDAlbumGridView: {
@@ -137,7 +136,7 @@ export default {
         color: '#ccc',
       },
       albumPlayButton: {
-          color: `#ff4e6b !important`,
+        color: `#ff4e6b !important`,
       },
     },
     NDLogin: {
