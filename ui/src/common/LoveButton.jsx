@@ -7,6 +7,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useToggleLove } from './useToggleLove'
 import { useRecordContext } from 'react-admin'
 import config from '../config'
+import { isDateSet } from '../utils/validations'
 
 const useStyles = makeStyles({
   love: {
@@ -49,7 +50,7 @@ export const LoveButton = ({
       disabled={disabled || loading || record.missing}
       className={classes.love}
       title={
-        record.starredAt && record.starredAt !== '0001-01-01T00:00:00Z'
+        isDateSet(record.starredAt)
           ? new Date(record.starredAt).toLocaleString()
           : undefined
       }
