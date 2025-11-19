@@ -42,15 +42,11 @@ const LibraryList = (props) => {
           <TextField source="name" />
           <TextField source="path" />
           <BooleanField source="defaultNewUsers" />
-          <NumberField source="totalSongs" label="Songs" />
-          <NumberField source="totalAlbums" label="Albums" />
-          <NumberField source="totalMissingFiles" label="Missing Files" />
+          <NumberField source="totalSongs" />
+          <NumberField source="totalAlbums" />
+          <NumberField source="totalMissingFiles" />
           <SizeField source="totalSize" />
-          <DateField
-            source="lastScanAt"
-            label="Last Scan"
-            sortByOrder={'DESC'}
-          />
+          <DateField source="lastScanAt" sortByOrder={'DESC'} />
         </Datagrid>
       )}
     </List>
