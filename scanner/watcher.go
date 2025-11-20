@@ -122,6 +122,9 @@ func (w *watcher) Run(ctx context.Context) error {
 			w.mu.Unlock()
 			return nil
 		case notification := <-w.watcherNotify:
+			// Reset the trigger timer for debounce
+			trigger.Reset(w.triggerWait)
+
 			lib := notification.Library
 			folderPath := notification.FolderPath
 
@@ -131,7 +134,6 @@ func (w *watcher) Run(ctx context.Context) error {
 				continue
 			}
 			targets[target] = struct{}{}
-			trigger.Reset(w.triggerWait)
 
 			log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan",
 				"libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "folderPath", folderPath)
