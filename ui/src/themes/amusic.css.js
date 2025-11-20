@@ -19,10 +19,23 @@ const stylesheet = `
     color: #ff4e6b !important
 }
 .react-jinke-music-player-main .lyric-btn {
+    color: #ff4e6b !important
+}
+.react-jinke-music-player-main .lyric-btn-active {
     color: #ff0436 !important
 }
 .react-jinke-music-player-main .loading svg {
-    color: #ff0436 !important
+    color: #ff4e6b !important
+}
+.react-jinke-music-player-main .music-player-lyric{
+    color: #ff4e6b !important;
+	text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000
+}
+.react-jinke-music-player-main .music-player-panel{
+    background-color: #1f1f1f
+}
+.react-jinke-music-player-main *{
+    color: #ddd
 }
 `
 export default stylesheet

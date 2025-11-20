@@ -18,8 +18,8 @@ export default {
       contrastText: '#fff',
     },
     background: {
-      default: '#1f1f1f',
-      paper: '#1f1f1f',
+      default: '#1a1a1a',
+      paper: '#1a1a1a',
     },
     type: 'dark',
   },
@@ -43,12 +43,13 @@ export default {
     },
     MuiToolbar: {
       root: {
-        background: '#1d1d1d',
+        background: 'transparent !important',
       },
     },
     MuiCardMedia: {
       img: {
         borderRadius: '10px',
+        boxShadow: '5px 5px 20px #111',
       },
     },
     MuiButton: {
@@ -98,7 +99,7 @@ export default {
     },
     MuiTableBody: {
       root: {
-        '&>tr:nth-child(2)': {
+        '&>tr:nth-child(odd)': {
           background: 'rgba(255, 255, 255, 0.025)',
         },
       },
@@ -136,7 +137,7 @@ export default {
         color: '#ccc',
       },
       albumPlayButton: {
-        color: `#ff4e6b !important`,
+        color: '#ff4e6b !important',
       },
     },
     NDLogin: {
@@ -149,11 +150,13 @@ export default {
       },
       card: {
         minWidth: 300,
-        backgroundColor: '#3a1b22ed',
+        backgroundColor: '#1d1d1d',
       },
       avatar: {},
-      button: {
-        boxShadow: '3px 3px 5px #D60017a3',
+    },
+    MuiPaper: {
+      elevation1: {
+        boxShadow: 'none',
       },
     },
     NDMobileArtistDetails: {
