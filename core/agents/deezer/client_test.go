@@ -43,6 +43,20 @@ var _ = Describe("client", func() {
 			Expect(err).To(MatchError(ErrNotFound))
 		})
 	})
+
+	Describe("ArtistBio", func() {
+		It("returns artist bio from a successful request", func() {
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.html")
+			Expect(err).To(BeNil())
+			httpClient.mock("https://www.deezer.com/en/artist/27/biography", http.Response{Body: f, StatusCode: 200})
+
+			bio, err := client.getArtistBio(context.TODO(), 27)
+			Expect(err).To(BeNil())
+			Expect(bio).To(ContainSubstring("Schoolmates Thomas and Guy-Manuel"))
+			Expect(bio).ToNot(ContainSubstring("<p>"))
+			Expect(bio).ToNot(ContainSubstring("</p>"))
+		})
+	})
 })
 
 type fakeHttpClient struct {
