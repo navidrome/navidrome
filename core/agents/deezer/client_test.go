@@ -2,7 +2,6 @@ package deezer
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"os"
@@ -17,7 +16,7 @@ var _ = Describe("client", func() {
 
 	BeforeEach(func() {
 		httpClient = &fakeHttpClient{}
-		client = newClient(httpClient)
+		client = newClient(httpClient, "en")
 	})
 
 	Describe("ArtistImages", func() {
@@ -26,7 +25,7 @@ var _ = Describe("client", func() {
 			Expect(err).To(BeNil())
 			httpClient.mock("https://api.deezer.com/search/artist", http.Response{Body: f, StatusCode: 200})
 
-			artists, err := client.searchArtists(context.TODO(), "Michael Jackson", 20)
+			artists, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
 			Expect(err).To(BeNil())
 			Expect(artists).To(HaveLen(17))
 			Expect(artists[0].Name).To(Equal("Michael Jackson"))
@@ -39,7 +38,7 @@ var _ = Describe("client", func() {
 				Body:       io.NopCloser(bytes.NewBufferString(`{"data":[],"total":0}`)),
 			})
 
-			_, err := client.searchArtists(context.TODO(), "Michael Jackson", 20)
+			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
 			Expect(err).To(MatchError(ErrNotFound))
 		})
 	})
@@ -50,11 +49,22 @@ var _ = Describe("client", func() {
 			Expect(err).To(BeNil())
 			httpClient.mock("https://www.deezer.com/en/artist/27/biography", http.Response{Body: f, StatusCode: 200})
 
-			bio, err := client.getArtistBio(context.TODO(), 27)
+			bio, err := client.getArtistBio(GinkgoT().Context(), 27)
 			Expect(err).To(BeNil())
 			Expect(bio).To(ContainSubstring("Schoolmates Thomas and Guy-Manuel"))
 			Expect(bio).ToNot(ContainSubstring("<p>"))
 			Expect(bio).ToNot(ContainSubstring("</p>"))
+		})
+
+		It("uses the configured language", func() {
+			client = newClient(httpClient, "fr")
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.html")
+			Expect(err).To(BeNil())
+			httpClient.mock("https://www.deezer.com/fr/artist/27/biography", http.Response{Body: f, StatusCode: 200})
+
+			_, err = client.getArtistBio(GinkgoT().Context(), 27)
+			Expect(err).To(BeNil())
+			Expect(httpClient.lastRequest.URL.String()).To(Equal("https://www.deezer.com/fr/artist/27/biography"))
 		})
 	})
 })

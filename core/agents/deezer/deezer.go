@@ -33,7 +33,7 @@ func deezerConstructor(dataStore model.DataStore) agents.Interface {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
-	agent.client = newClient(cachedHttpClient)
+	agent.client = newClient(cachedHttpClient, conf.Server.Deezer.Language)
 	return agent
 }
 

@@ -28,10 +28,11 @@ type httpDoer interface {
 
 type client struct {
 	httpDoer httpDoer
+	language string
 }
 
-func newClient(hc httpDoer) *client {
-	return &client{hc}
+func newClient(hc httpDoer, language string) *client {
+	return &client{hc, language}
 }
 
 func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
@@ -122,7 +123,7 @@ var dzrAppStateRegex = regexp.MustCompile(`window\.__DZR_APP_STATE__\s*=\s*({.+?
 var strictPolicy = bluemonday.StrictPolicy()
 
 func (c *client) getArtistBio(ctx context.Context, artistID int) (string, error) {
-	u := fmt.Sprintf("https://www.deezer.com/en/artist/%d/biography", artistID)
+	u := fmt.Sprintf("https://www.deezer.com/%s/artist/%d/biography", c.language, artistID)
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return "", err
