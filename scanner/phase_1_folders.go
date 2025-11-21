@@ -324,6 +324,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	defer p.measure(entry)()
 	p.state.changesDetected.Store(true)
 
+	// Collect artwork IDs to pre-cache after the transaction commits
+	var artworkIDs []model.ArtworkID
+
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
 		folderRepo := tx.Folder(p.ctx)
@@ -362,7 +365,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				entry.job.cw.PreCache(entry.artists[i].CoverArtID())
+				artworkIDs = append(artworkIDs, entry.artists[i].CoverArtID())
 			}
 		}
 
@@ -374,7 +377,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
-				entry.job.cw.PreCache(entry.albums[i].CoverArtID())
+				artworkIDs = append(artworkIDs, entry.albums[i].CoverArtID())
 			}
 		}
 
@@ -411,6 +414,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
 	}
+
+	// Pre-cache artwork after the transaction commits successfully
+	if err == nil {
+		for _, artID := range artworkIDs {
+			entry.job.cw.PreCache(artID)
+		}
+	}
+
 	return entry, err
 }
 
