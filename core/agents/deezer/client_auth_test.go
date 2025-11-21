@@ -28,7 +28,7 @@ var _ = Describe("JWT Authentication", func() {
 	Describe("getJWT", func() {
 		Context("with a valid JWT response", func() {
 			It("successfully fetches and caches a JWT token", func() {
-				testJWT := createTestJWT(1 * time.Hour)
+				testJWT := createTestJWT(5 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, testJWT))),
@@ -40,7 +40,7 @@ var _ = Describe("JWT Authentication", func() {
 			})
 
 			It("returns the cached token on subsequent calls", func() {
-				testJWT := createTestJWT(1 * time.Hour)
+				testJWT := createTestJWT(5 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, testJWT))),
@@ -61,7 +61,7 @@ var _ = Describe("JWT Authentication", func() {
 			})
 
 			It("parses the JWT expiration time correctly", func() {
-				expectedExpiration := time.Now().Add(2 * time.Hour)
+				expectedExpiration := time.Now().Add(5 * time.Minute)
 				testToken, err := jwt.NewBuilder().
 					Expiration(expectedExpiration).
 					Build()
@@ -79,16 +79,16 @@ var _ = Describe("JWT Authentication", func() {
 				Expect(token).ToNot(BeEmpty())
 
 				// Verify the token is cached until close to expiration
-				// The cache should expire 10 minutes before the JWT expires
-				expectedCacheExpiry := expectedExpiration.Add(-10 * time.Minute)
+				// The cache should expire 1 minute before the JWT expires
+				expectedCacheExpiry := expectedExpiration.Add(-1 * time.Minute)
 				Expect(client.jwt.expiresAt).To(BeTemporally("~", expectedCacheExpiry, 2*time.Second))
 			})
 		})
 
 		Context("with JWT tokens that expire soon", func() {
-			It("rejects tokens that expire in less than 10 minutes", func() {
-				// Create a token that expires in 5 minutes
-				testJWT := createTestJWT(5 * time.Minute)
+			It("rejects tokens that expire in less than 1 minute", func() {
+				// Create a token that expires in 30 seconds (less than 1-minute buffer)
+				testJWT := createTestJWT(30 * time.Second)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, testJWT))),
@@ -100,8 +100,8 @@ var _ = Describe("JWT Authentication", func() {
 			})
 
 			It("rejects already expired tokens", func() {
-				// Create a token that expired 1 hour ago
-				testJWT := createTestJWT(-1 * time.Hour)
+				// Create a token that expired 1 minute ago
+				testJWT := createTestJWT(-1 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, testJWT))),
@@ -112,9 +112,9 @@ var _ = Describe("JWT Authentication", func() {
 				Expect(err.Error()).To(ContainSubstring("JWT token already expired or expires too soon"))
 			})
 
-			It("accepts tokens that expire in exactly 11 minutes", func() {
-				// Create a token that expires in 11 minutes (just over the 10-minute buffer)
-				testJWT := createTestJWT(11 * time.Minute)
+			It("accepts tokens that expire in more than 1 minute", func() {
+				// Create a token that expires in 2 minutes (just over the 1-minute buffer)
+				testJWT := createTestJWT(2 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, testJWT))),
@@ -197,8 +197,8 @@ var _ = Describe("JWT Authentication", func() {
 
 		Context("token caching behavior", func() {
 			It("fetches a new token when the cached token expires", func() {
-				// First token expires in 15 minutes
-				firstJWT := createTestJWT(15 * time.Minute)
+				// First token expires in 5 minutes
+				firstJWT := createTestJWT(5 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, firstJWT))),
@@ -211,8 +211,8 @@ var _ = Describe("JWT Authentication", func() {
 				// Manually expire the cached token
 				client.jwt.expiresAt = time.Now().Add(-1 * time.Second)
 
-				// Second token with different expiration
-				secondJWT := createTestJWT(30 * time.Minute)
+				// Second token with different expiration (10 minutes)
+				secondJWT := createTestJWT(10 * time.Minute)
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
 					Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s"}`, secondJWT))),
@@ -241,7 +241,7 @@ var _ = Describe("JWT Authentication", func() {
 		})
 
 		It("returns true for valid tokens", func() {
-			cache.set("test-token", 1*time.Hour)
+			cache.set("test-token", 4*time.Minute)
 			token, valid := cache.get()
 			Expect(valid).To(BeTrue())
 			Expect(token).To(Equal("test-token"))

@@ -47,8 +47,8 @@ var _ = Describe("client", func() {
 
 	Describe("ArtistBio", func() {
 		BeforeEach(func() {
-			// Mock the JWT token endpoint with a valid JWT that expires in 1 hour
-			testJWT := createTestJWT(1 * time.Hour)
+			// Mock the JWT token endpoint with a valid JWT that expires in 5 minutes
+			testJWT := createTestJWT(5 * time.Minute)
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 				StatusCode: 200,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, testJWT))),
@@ -70,7 +70,7 @@ var _ = Describe("client", func() {
 		It("uses the configured language", func() {
 			client = newClient(httpClient, "fr")
 			// Mock JWT token for the new client instance with a valid JWT
-			testJWT := createTestJWT(1 * time.Hour)
+			testJWT := createTestJWT(5 * time.Minute)
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 				StatusCode: 200,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, testJWT))),
@@ -158,8 +158,8 @@ var _ = Describe("client", func() {
 		})
 
 		It("handles JWT token that expires too soon", func() {
-			// Create a JWT that expires in 5 minutes (less than the 10-minute buffer)
-			expiredJWT := createTestJWT(5 * time.Minute)
+			// Create a JWT that expires in 30 seconds (less than the 1-minute buffer)
+			expiredJWT := createTestJWT(30 * time.Second)
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 				StatusCode: 200,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, expiredJWT))),

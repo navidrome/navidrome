@@ -83,13 +83,13 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("deezer: failed to parse JWT token: %w", err)
 	}
 
-	// Calculate TTL with a 10-minute buffer for clock skew and network delays
+	// Calculate TTL with a 1-minute buffer for clock skew and network delays
 	expiresAt := token.Expiration()
 	if expiresAt.IsZero() {
 		return "", errors.New("deezer: JWT token has no expiration time")
 	}
 
-	ttl := time.Until(expiresAt) - 10*time.Minute
+	ttl := time.Until(expiresAt) - 1*time.Minute
 	if ttl <= 0 {
 		return "", errors.New("deezer: JWT token already expired or expires too soon")
 	}
