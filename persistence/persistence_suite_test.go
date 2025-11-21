@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -33,16 +34,22 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
 	mf.LibraryPath = "music" // Default folder
+	mf.LibraryName = "Music Library"
 	mf.Participants = model.Participants{
 		model.RoleArtist: model.ParticipantList{
 			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
 		},
+	}
+	if mf.Lyrics == "" {
+		mf.Lyrics = "[]"
 	}
 	return mf
 }
 
 func al(al model.Album) model.Album {
 	al.LibraryID = 1
+	al.LibraryPath = "music"
+	al.LibraryName = "Music Library"
 	al.Discs = model.Discs{}
 	al.Tags = model.Tags{}
 	al.Participants = model.Participants{}
@@ -62,10 +69,12 @@ var (
 	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
 	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
 	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: p("/kraft/radio/radio.mp3"), SongCount: 2})
+	albumMultiDisc     = al(model.Album{ID: "104", Name: "Multi Disc Album", AlbumArtist: "Test Artist", OrderAlbumName: "multi disc album", AlbumArtistID: "1", EmbedArtPath: p("/test/multi/disc1/track1.mp3"), SongCount: 4})
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
 		albumRadioactivity,
+		albumMultiDisc,
 	}
 )
 
@@ -76,13 +85,33 @@ var (
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
 		Path:        p("/kraft/radio/antenna.mp3"),
-		RGAlbumGain: 1.0, RGAlbumPeak: 2.0, RGTrackGain: 3.0, RGTrackPeak: 4.0,
+		RGAlbumGain: gg.P(1.0), RGAlbumPeak: gg.P(2.0), RGTrackGain: gg.P(3.0), RGTrackPeak: gg.P(4.0),
 	})
-	testSongs = model.MediaFiles{
+	songAntennaWithLyrics = mf(model.MediaFile{
+		ID:       "1005",
+		Title:    "Antenna",
+		ArtistID: "2",
+		Artist:   "Kraftwerk",
+		AlbumID:  "103",
+		Lyrics:   `[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`,
+	})
+	songAntenna2 = mf(model.MediaFile{ID: "1006", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103"})
+	// Multi-disc album tracks (intentionally out of order to test sorting)
+	songDisc2Track11 = mf(model.MediaFile{ID: "2001", Title: "Disc 2 Track 11", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 11, Path: p("/test/multi/disc2/track11.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track01 = mf(model.MediaFile{ID: "2002", Title: "Disc 1 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 1, Path: p("/test/multi/disc1/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc2Track01 = mf(model.MediaFile{ID: "2003", Title: "Disc 2 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 1, Path: p("/test/multi/disc2/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track02 = mf(model.MediaFile{ID: "2004", Title: "Disc 1 Track 2", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 2, Path: p("/test/multi/disc1/track2.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	testSongs        = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
 		songRadioactivity,
 		songAntenna,
+		songAntennaWithLyrics,
+		songAntenna2,
+		songDisc2Track11,
+		songDisc1Track01,
+		songDisc2Track01,
+		songDisc1Track02,
 	}
 )
 
@@ -123,14 +152,13 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	//gr := NewGenreRepository(ctx, conn)
-	//for i := range testGenres {
-	//	g := testGenres[i]
-	//	err := gr.Put(&g)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
+	// Associate users with library 1 (default test library)
+	for i := range testUsers {
+		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
@@ -145,6 +173,15 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Associate artists with library 1 (default test library)
+	lr := NewLibraryRepository(ctx, conn)
+	for i := range testArtists {
+		err := lr.AddArtist(1, testArtists[i].ID)
 		if err != nil {
 			panic(err)
 		}
@@ -175,9 +212,9 @@ var _ = BeforeSuite(func() {
 		Public:    true,
 		SongCount: 2,
 	}
-	plsBest.AddTracks([]string{"1001", "1003"})
+	plsBest.AddMediaFilesByID([]string{"1001", "1003"})
 	plsCool = model.Playlist{Name: "Cool", OwnerID: "userid", OwnerName: "userid"}
-	plsCool.AddTracks([]string{"1004"})
+	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
 	pr := NewPlaylistRepository(ctx, conn)
@@ -192,7 +229,13 @@ var _ = BeforeSuite(func() {
 	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
 		panic(err)
 	}
-	ar, _ := arr.Get(artistBeatles.ID)
+	ar, err := arr.Get(artistBeatles.ID)
+	if err != nil {
+		panic(err)
+	}
+	if ar == nil {
+		panic("artist not found after SetStar")
+	}
 	artistBeatles.Starred = true
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
@@ -203,6 +246,9 @@ var _ = BeforeSuite(func() {
 	al, err := alr.Get(albumRadioactivity.ID)
 	if err != nil {
 		panic(err)
+	}
+	if al == nil {
+		panic("album not found after SetStar")
 	}
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt

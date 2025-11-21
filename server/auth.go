@@ -171,7 +171,7 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	return u, nil
 }
 
-func jwtVerifier(next http.Handler) http.Handler {
+func JWTVerifier(next http.Handler) http.Handler {
 	return jwtauth.Verify(auth.TokenAuth, tokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
 }
 
@@ -211,6 +211,15 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 		return ""
 	}
 	log.Trace(r, "Found username in ReverseProxyUserHeader", "username", username)
+	return username
+}
+
+func InternalAuth(r *http.Request) string {
+	username, ok := request.InternalAuthFrom(r.Context())
+	if !ok {
+		return ""
+	}
+	log.Trace(r, "Found username in InternalAuth", "username", username)
 	return username
 }
 

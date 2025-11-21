@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package scheduler;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/scheduler;scheduler";
+
+// go:plugin type=host version=1
+service SchedulerService {
+    // One-time event scheduling
+    rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
+    
+    // Recurring event scheduling
+    rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
+    
+    // Cancel any scheduled job
+    rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+    
+    // Get current time in multiple formats
+    rpc TimeNow(TimeNowRequest) returns (TimeNowResponse);
+}
+
+message ScheduleOneTimeRequest {
+    int32 delay_seconds = 1;       // Delay in seconds
+    bytes payload = 2;             // Serialized data to pass to the callback
+    string schedule_id = 3;        // Optional custom ID (if not provided, one will be generated)
+}
+
+message ScheduleRecurringRequest {
+    string cron_expression = 1;    // Cron expression (e.g. "0 0 * * *" for daily at midnight)
+    bytes payload = 2;             // Serialized data to pass to the callback
+    string schedule_id = 3;        // Optional custom ID (if not provided, one will be generated)
+}
+
+message ScheduleResponse {
+    string schedule_id = 1;        // ID to reference this scheduled job
+}
+
+message CancelRequest {
+    string schedule_id = 1;        // ID of the schedule to cancel
+}
+
+message CancelResponse {
+    bool success = 1;              // Whether cancellation was successful
+    string error = 2;              // Error message if cancellation failed
+}
+
+message TimeNowRequest {
+    // Empty request - no parameters needed
+}
+
+message TimeNowResponse {
+    string rfc3339_nano = 1;       // Current time in RFC3339Nano format
+    int64 unix_milli = 2;          // Current time as Unix milliseconds timestamp
+    string local_time_zone = 3;    // Local timezone name (e.g., "America/New_York", "UTC")
+} 

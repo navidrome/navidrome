@@ -1,0 +1,199 @@
+{
+  "$id": "navidrome://plugins/manifest",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Navidrome Plugin Manifest",
+  "description": "Schema for Navidrome Plugin manifest.json files",
+  "type": "object",
+  "required": [
+    "name",
+    "author",
+    "version",
+    "description",
+    "website",
+    "capabilities",
+    "permissions"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the plugin"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or organization that created the plugin"
+    },
+    "version": {
+      "type": "string",
+      "description": "Plugin version using semantic versioning format"
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of the plugin's functionality"
+    },
+    "website": {
+      "type": "string",
+      "format": "uri",
+      "description": "Website URL for the plugin or its documentation"
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "List of capabilities implemented by this plugin",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "MetadataAgent",
+          "Scrobbler",
+          "SchedulerCallback",
+          "LifecycleManagement",
+          "WebSocketCallback"
+        ]
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Host services the plugin is allowed to access",
+      "additionalProperties": true,
+      "properties": {
+        "http": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "HTTP service permissions",
+              "required": ["allowedUrls"],
+              "properties": {
+                "allowedUrls": {
+                  "type": "object",
+                  "description": "Map of URL patterns (e.g., 'https://api.example.com/*') to allowed HTTP methods. Redirect destinations must also be included.",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "HEAD",
+                        "OPTIONS",
+                        "*"
+                      ]
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                  },
+                  "minProperties": 1
+                },
+                "allowLocalNetwork": {
+                  "type": "boolean",
+                  "description": "Whether to allow requests to local/private network addresses",
+                  "default": false
+                }
+              }
+            }
+          ]
+        },
+        "config": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Configuration service permissions"
+            }
+          ]
+        },
+        "scheduler": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Scheduler service permissions"
+            }
+          ]
+        },
+        "websocket": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "WebSocket service permissions",
+              "required": ["allowedUrls"],
+              "properties": {
+                "allowedUrls": {
+                  "type": "array",
+                  "description": "List of WebSocket URL patterns that the plugin is allowed to connect to",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^wss?://.*$"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                },
+                "allowLocalNetwork": {
+                  "type": "boolean",
+                  "description": "Whether to allow connections to local/private network addresses",
+                  "default": false
+                }
+              }
+            }
+          ]
+        },
+        "cache": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Cache service permissions"
+            }
+          ]
+        },
+        "artwork": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Artwork service permissions"
+            }
+          ]
+        },
+        "subsonicapi": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "SubsonicAPI service permissions",
+              "properties": {
+                "allowedUsernames": {
+                  "type": "array",
+                  "description": "List of usernames the plugin can pass as u. Any user if empty",
+                  "items": { "type": "string" }
+                },
+                "allowAdmins": {
+                  "type": "boolean",
+                  "description": "If false, reject calls where the u is an admin",
+                  "default": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "basePermission": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explanation of why this permission is needed"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

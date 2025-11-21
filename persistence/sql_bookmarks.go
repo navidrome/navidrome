@@ -15,21 +15,20 @@ import (
 const bookmarkTable = "bookmark"
 
 func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectBuilder {
-	if userId(r.ctx) == invalidUserId {
+	userID := loggedUser(r.ctx).ID
+	if userID == invalidUserId {
 		return query
 	}
 	return query.
 		LeftJoin("bookmark on (" +
 			"bookmark.item_id = " + idField +
-			// item_ids are unique across different item_types, so the clause below is not needed
-			//" AND bookmark.item_type = '" + r.tableName + "'" +
-			" AND bookmark.user_id = '" + userId(r.ctx) + "')").
+			" AND bookmark.user_id = '" + userID + "')").
 		Columns("coalesce(position, 0) as bookmark_position")
 }
 
 func (r sqlRepository) bmkID(itemID ...string) And {
 	return And{
-		Eq{bookmarkTable + ".user_id": userId(r.ctx)},
+		Eq{bookmarkTable + ".user_id": loggedUser(r.ctx).ID},
 		Eq{bookmarkTable + ".item_type": r.tableName},
 		Eq{bookmarkTable + ".item_id": itemID},
 	}
@@ -149,10 +148,10 @@ func (r sqlRepository) cleanBookmarks() error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error cleaning up bookmarks: %w", err)
+		return fmt.Errorf("error cleaning up %s bookmarks: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c)
+		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c, "itemType", r.tableName)
 	}
 	return nil
 }

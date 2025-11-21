@@ -59,6 +59,7 @@ export const SongInfo = (props) => {
   ]
   const data = {
     path: <PathField />,
+    libraryName: <TextField source="libraryName" />,
     album: (
       <AlbumLinkField source="album" sortByOrder={'ASC'} record={record} />
     ),
@@ -138,7 +139,7 @@ export const SongInfo = (props) => {
         </Tabs>
       )}
       <div
-        hidden={tab == 1}
+        hidden={tab === 1}
         id="mapped-tags-body"
         aria-labelledby={record.rawTags ? 'mapped-tags-tab' : undefined}
       >

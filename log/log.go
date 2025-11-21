@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -70,6 +71,7 @@ type levelPath struct {
 
 var (
 	currentLevel  Level
+	loggerMu      sync.RWMutex
 	defaultLogger = logrus.New()
 	logSourceLine = false
 	rootPath      string
@@ -78,8 +80,10 @@ var (
 
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l Level) {
+	loggerMu.Lock()
 	currentLevel = l
 	defaultLogger.Level = logrus.TraceLevel
+	loggerMu.Unlock()
 	logrus.SetLevel(logrus.Level(l))
 }
 
@@ -110,6 +114,8 @@ func levelFromString(l string) Level {
 
 // SetLogLevels sets the log levels for specific paths in the codebase.
 func SetLogLevels(levels map[string]string) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	logLevels = nil
 	for k, v := range levels {
 		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
@@ -125,6 +131,8 @@ func SetLogSourceLine(enabled bool) {
 
 func SetRedacting(enabled bool) {
 	if enabled {
+		loggerMu.Lock()
+		defer loggerMu.Unlock()
 		defaultLogger.AddHook(redacted)
 	}
 }
@@ -133,6 +141,8 @@ func SetOutput(w io.Writer) {
 	if runtime.GOOS == "windows" {
 		w = CRLFWriter(w)
 	}
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger.SetOutput(w)
 }
 
@@ -158,10 +168,14 @@ func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Conte
 }
 
 func SetDefaultLogger(l *logrus.Logger) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger = l
 }
 
 func CurrentLevel() Level {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	return currentLevel
 }
 
@@ -203,11 +217,22 @@ func log(level Level, args ...interface{}) {
 	logger.Log(logrus.Level(level), msg)
 }
 
+func Writer() io.Writer {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
+	return defaultLogger.Writer()
+}
+
 func shouldLog(requiredLevel Level, skip int) bool {
-	if currentLevel >= requiredLevel {
+	loggerMu.RLock()
+	level := currentLevel
+	levels := logLevels
+	loggerMu.RUnlock()
+
+	if level >= requiredLevel {
 		return true
 	}
-	if len(logLevels) == 0 {
+	if len(levels) == 0 {
 		return false
 	}
 
@@ -217,7 +242,7 @@ func shouldLog(requiredLevel Level, skip int) bool {
 	}
 
 	file = strings.TrimPrefix(file, rootPath)
-	for _, lp := range logLevels {
+	for _, lp := range levels {
 		if strings.HasPrefix(file, lp.path) {
 			return lp.level >= requiredLevel
 		}
@@ -310,6 +335,8 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 func createNewLogger() *logrus.Entry {
 	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
 	//l.Formatter = &logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true}
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	logger := logrus.NewEntry(defaultLogger)
 	return logger
 }

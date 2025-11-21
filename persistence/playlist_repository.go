@@ -161,7 +161,7 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
 	}
-	pls.Tracks = tracks
+	pls.SetTracks(tracks)
 	return pls, nil
 }
 
@@ -195,6 +195,25 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 		playlists[i] = p.Playlist
 	}
 	return playlists, err
+}
+
+func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
+	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
+		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
+		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
+	var res []dbPlaylist
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return model.Playlists{}, nil
+		}
+		return nil, err
+	}
+	playlists := make(model.Playlists, len(res))
+	for i, p := range res {
+		playlists[i] = p.Playlist
+	}
+	return playlists, nil
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
@@ -244,7 +263,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + userId(r.ctx) + "')")
+		" AND annotation.user_id = '" + usr.ID + "')")
 	sq = r.addCriteria(sq, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
@@ -360,6 +379,8 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 }
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
+	sel = r.applyLibraryFilter(sel, "f")
+	userID := loggedUser(r.ctx).ID
 	tracksQuery := sel.
 		Columns(
 			"coalesce(starred, 0) as starred",
@@ -370,11 +391,12 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			"f.*",
 			"playlist_tracks.*",
 			"library.path as library_path",
+			"library.name as library_name",
 		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
 			" AND annotation.item_type = 'media_file'" +
-			" AND annotation.user_id = '" + userId(r.ctx) + "')").
+			" AND annotation.user_id = '" + userID + "')").
 		Join("media_file f on f.id = media_file_id").
 		Join("library on f.library_id = library.id").
 		Where(Eq{"playlist_id": id})

@@ -179,7 +179,7 @@ var _ = Describe("Extractor", func() {
 			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, false),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
 			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, 16, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true, true),

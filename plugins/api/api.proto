@@ -1,0 +1,246 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "github.com/navidrome/navidrome/plugins/api;api";
+
+// go:plugin type=plugin version=1
+service MetadataAgent {
+  // Artist metadata methods
+  rpc GetArtistMBID(ArtistMBIDRequest) returns (ArtistMBIDResponse);
+  rpc GetArtistURL(ArtistURLRequest) returns (ArtistURLResponse);
+  rpc GetArtistBiography(ArtistBiographyRequest) returns (ArtistBiographyResponse);
+  rpc GetSimilarArtists(ArtistSimilarRequest) returns (ArtistSimilarResponse);
+  rpc GetArtistImages(ArtistImageRequest) returns (ArtistImageResponse);
+  rpc GetArtistTopSongs(ArtistTopSongsRequest) returns (ArtistTopSongsResponse);
+
+  // Album metadata methods
+  rpc GetAlbumInfo(AlbumInfoRequest) returns (AlbumInfoResponse);
+  rpc GetAlbumImages(AlbumImagesRequest) returns (AlbumImagesResponse);
+}
+
+message ArtistMBIDRequest {
+  string id = 1;
+  string name = 2;
+}
+
+message ArtistMBIDResponse {
+  string mbid = 1;
+}
+
+message ArtistURLRequest {
+  string id = 1;
+  string name = 2;
+  string mbid = 3;
+}
+
+message ArtistURLResponse {
+  string url = 1;
+}
+
+message ArtistBiographyRequest {
+  string id = 1;
+  string name = 2;
+  string mbid = 3;
+}
+
+message ArtistBiographyResponse {
+  string biography = 1;
+}
+
+message ArtistSimilarRequest {
+  string id = 1;
+  string name = 2;
+  string mbid = 3;
+  int32 limit = 4;
+}
+
+message Artist {
+  string name = 1;
+  string mbid = 2;
+}
+
+message ArtistSimilarResponse {
+  repeated Artist artists = 1;
+}
+
+message ArtistImageRequest {
+  string id = 1;
+  string name = 2;
+  string mbid = 3;
+}
+
+message ExternalImage {
+  string url = 1;
+  int32 size = 2;
+}
+
+message ArtistImageResponse {
+  repeated ExternalImage images = 1;
+}
+
+message ArtistTopSongsRequest {
+  string id = 1;
+  string artistName = 2;
+  string mbid = 3;
+  int32 count = 4;
+}
+
+message Song {
+  string name = 1;
+  string mbid = 2;
+}
+
+message ArtistTopSongsResponse {
+  repeated Song songs = 1;
+}
+
+message AlbumInfoRequest {
+  string name = 1;
+  string artist = 2;
+  string mbid = 3;
+}
+
+message AlbumInfo {
+  string name = 1;
+  string mbid = 2;
+  string description = 3;
+  string url = 4;
+}
+
+message AlbumInfoResponse {
+  AlbumInfo info = 1;
+}
+
+message AlbumImagesRequest {
+  string name = 1;
+  string artist = 2;
+  string mbid = 3;
+}
+
+message AlbumImagesResponse {
+  repeated ExternalImage images = 1;
+}
+
+// go:plugin type=plugin version=1
+service Scrobbler {
+  rpc IsAuthorized(ScrobblerIsAuthorizedRequest) returns (ScrobblerIsAuthorizedResponse);
+  rpc NowPlaying(ScrobblerNowPlayingRequest) returns (ScrobblerNowPlayingResponse);
+  rpc Scrobble(ScrobblerScrobbleRequest) returns (ScrobblerScrobbleResponse);
+}
+
+message ScrobblerIsAuthorizedRequest {
+  string user_id = 1;
+  string username = 2;
+}
+
+message ScrobblerIsAuthorizedResponse {
+  bool authorized = 1;
+  string error = 2;
+}
+
+message TrackInfo {
+  string id = 1;
+  string mbid = 2;
+  string name = 3;
+  string album = 4;
+  string album_mbid = 5;
+  repeated Artist artists = 6;
+  repeated Artist album_artists = 7;
+  int32 length = 8; // seconds
+  int32 position = 9; // seconds
+}
+
+message ScrobblerNowPlayingRequest {
+  string user_id = 1;
+  string username = 2;
+  TrackInfo track = 3;
+  int64 timestamp = 4;
+}
+
+message ScrobblerNowPlayingResponse {
+  string error = 1;
+}
+
+message ScrobblerScrobbleRequest {
+  string user_id = 1;
+  string username = 2;
+  TrackInfo track = 3;
+  int64 timestamp = 4;
+}
+
+message ScrobblerScrobbleResponse {
+  string error = 1;
+}
+
+// go:plugin type=plugin version=1
+service SchedulerCallback {
+  rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
+}
+
+message SchedulerCallbackRequest {
+  string schedule_id = 1;  // ID of the scheduled job that triggered this callback
+  bytes payload = 2;       // The data passed when the job was scheduled
+  bool is_recurring = 3;   // Whether this is from a recurring schedule (cron job)
+}
+
+message SchedulerCallbackResponse {
+  string error = 1;        // Error message if the callback failed
+}
+
+// go:plugin type=plugin version=1
+service LifecycleManagement {
+  rpc OnInit(InitRequest) returns (InitResponse);
+}
+
+message InitRequest {
+  map<string, string> config = 1;  // Configuration specific to this plugin
+}
+
+message InitResponse {
+  string error = 1;     // Error message if initialization failed
+}
+
+// go:plugin type=plugin version=1
+service WebSocketCallback {
+  // Called when a text message is received
+  rpc OnTextMessage(OnTextMessageRequest) returns (OnTextMessageResponse);
+
+  // Called when a binary message is received
+  rpc OnBinaryMessage(OnBinaryMessageRequest) returns (OnBinaryMessageResponse);
+
+  // Called when an error occurs
+  rpc OnError(OnErrorRequest) returns (OnErrorResponse);
+
+  // Called when the connection is closed
+  rpc OnClose(OnCloseRequest) returns (OnCloseResponse);
+}
+
+message OnTextMessageRequest {
+  string connection_id = 1;
+  string message = 2;
+}
+
+message OnTextMessageResponse {}
+
+message OnBinaryMessageRequest {
+  string connection_id = 1;
+  bytes data = 2;
+}
+
+message OnBinaryMessageResponse {}
+
+message OnErrorRequest {
+  string connection_id = 1;
+  string error = 2;
+}
+
+message OnErrorResponse {}
+
+message OnCloseRequest {
+  string connection_id = 1;
+  int32 code = 2;
+  string reason = 3;
+}
+
+message OnCloseResponse {}

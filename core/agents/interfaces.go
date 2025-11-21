@@ -13,12 +13,12 @@ type Interface interface {
 	AgentName() string
 }
 
+// AlbumInfo contains album metadata (no images)
 type AlbumInfo struct {
 	Name        string
 	MBID        string
 	Description string
 	URL         string
-	Images      []ExternalImage
 }
 
 type Artist struct {
@@ -40,9 +40,14 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-// TODO Break up this interface in more specific methods, like artists
+// AlbumInfoRetriever provides album info (no images)
 type AlbumInfoRetriever interface {
 	GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error)
+}
+
+// AlbumImageRetriever provides album images
+type AlbumImageRetriever interface {
+	GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]ExternalImage, error)
 }
 
 type ArtistMBIDRetriever interface {

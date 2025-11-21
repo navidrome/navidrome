@@ -143,5 +143,19 @@ var _ = Describe("SimpleCache", func() {
 				Expect(cache.Get("key0")).To(Equal("value0"))
 			})
 		})
+
+		Describe("OnExpiration", func() {
+			It("should call callback when item expires", func() {
+				cache = NewSimpleCache[string, string]()
+				expired := make(chan struct{})
+				cache.OnExpiration(func(k, v string) { close(expired) })
+				Expect(cache.AddWithTTL("key", "value", 10*time.Millisecond)).To(Succeed())
+				select {
+				case <-expired:
+				case <-time.After(100 * time.Millisecond):
+					Fail("expiration callback not called")
+				}
+			})
+		})
 	})
 })

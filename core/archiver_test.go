@@ -145,9 +145,21 @@ var _ = Describe("Archiver", func() {
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
 			Expect(err).To(BeNil())
 
-			Expect(len(zr.File)).To(Equal(2))
+			Expect(len(zr.File)).To(Equal(3))
 			Expect(zr.File[0].Name).To(Equal("01 - AC_DC - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("02 - Artist 2 - track2.mp3"))
+			Expect(zr.File[2].Name).To(Equal("Test Playlist.m3u"))
+
+			// Verify M3U content
+			m3uFile, err := zr.File[2].Open()
+			Expect(err).To(BeNil())
+			defer m3uFile.Close()
+
+			m3uContent, err := io.ReadAll(m3uFile)
+			Expect(err).To(BeNil())
+
+			expectedM3U := "#EXTM3U\n#PLAYLIST:Test Playlist\n#EXTINF:0,AC/DC - track1\n01 - AC_DC - track1.mp3\n#EXTINF:0,Artist 2 - track2\n02 - Artist 2 - track2.mp3\n"
+			Expect(string(m3uContent)).To(Equal(expectedM3U))
 		})
 	})
 })

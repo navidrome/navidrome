@@ -1,10 +1,8 @@
 package model
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
@@ -42,6 +40,21 @@ func (pls Playlist) MediaFiles() MediaFiles {
 	return pls.Tracks.MediaFiles()
 }
 
+func (pls *Playlist) refreshStats() {
+	pls.SongCount = len(pls.Tracks)
+	pls.Duration = 0
+	pls.Size = 0
+	for _, t := range pls.Tracks {
+		pls.Duration += t.MediaFile.Duration
+		pls.Size += t.MediaFile.Size
+	}
+}
+
+func (pls *Playlist) SetTracks(tracks PlaylistTracks) {
+	pls.Tracks = tracks
+	pls.refreshStats()
+}
+
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
@@ -51,22 +64,15 @@ func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 		newTracks = append(newTracks, t)
 	}
 	pls.Tracks = newTracks
+	pls.refreshStats()
 }
 
-// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
-// https://docs.fileformat.com/audio/m3u/#extended-m3u
+// ToM3U8 exports the playlist to the Extended M3U8 format
 func (pls *Playlist) ToM3U8() string {
-	buf := strings.Builder{}
-	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
-	for _, t := range pls.Tracks {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		buf.WriteString(t.AbsolutePath() + "\n")
-	}
-	return buf.String()
+	return pls.MediaFiles().ToM3U8(pls.Name, true)
 }
 
-func (pls *Playlist) AddTracks(mediaFileIds []string) {
+func (pls *Playlist) AddMediaFilesByID(mediaFileIds []string) {
 	pos := len(pls.Tracks)
 	for _, mfId := range mediaFileIds {
 		pos++
@@ -78,6 +84,7 @@ func (pls *Playlist) AddTracks(mediaFileIds []string) {
 		}
 		pls.Tracks = append(pls.Tracks, t)
 	}
+	pls.refreshStats()
 }
 
 func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
@@ -92,6 +99,7 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 		}
 		pls.Tracks = append(pls.Tracks, t)
 	}
+	pls.refreshStats()
 }
 
 func (pls Playlist) CoverArtID() ArtworkID {
@@ -111,6 +119,7 @@ type PlaylistRepository interface {
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
+	GetPlaylists(mediaFileId string) (Playlists, error)
 }
 
 type PlaylistTrack struct {

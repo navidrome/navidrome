@@ -38,6 +38,7 @@ type lastfmAgent struct {
 	secret       string
 	lang         string
 	client       *client
+	httpClient   httpDoer
 	getInfoMutex sync.Mutex
 }
 
@@ -56,6 +57,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	l.httpClient = chc
 	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
 	return l
 }
@@ -72,16 +74,23 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		return nil, err
 	}
 
-	response := agents.AlbumInfo{
+	return &agents.AlbumInfo{
 		Name:        a.Name,
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
-		Images:      make([]agents.ExternalImage, 0),
+	}, nil
+}
+
+func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
+	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
+	if err != nil {
+		return nil, err
 	}
 
 	// Last.fm can return duplicate sizes.
 	seenSizes := map[int]bool{}
+	images := make([]agents.ExternalImage, 0)
 
 	// This assumes that Last.fm returns images with size small, medium, and large.
 	// This is true as of December 29, 2022
@@ -92,23 +101,20 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 			log.Trace(ctx, "LastFM/albuminfo image URL does not match expected regex or is empty", "url", img.URL, "size", img.Size)
 			continue
 		}
-
 		numericSize, err := strconv.Atoi(size[0][2:])
 		if err != nil {
 			log.Error(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL, "size", img.Size, err)
 			return nil, err
-		} else {
-			if _, exists := seenSizes[numericSize]; !exists {
-				response.Images = append(response.Images, agents.ExternalImage{
-					Size: numericSize,
-					URL:  img.URL,
-				})
-				seenSizes[numericSize] = true
-			}
+		}
+		if _, exists := seenSizes[numericSize]; !exists {
+			images = append(images, agents.ExternalImage{
+				Size: numericSize,
+				URL:  img.URL,
+			})
+			seenSizes[numericSize] = true
 		}
 	}
-
-	return &response, nil
+	return images, nil
 }
 
 func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
@@ -186,13 +192,13 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 	return res, nil
 }
 
-var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
+var (
+	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
+	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
+)
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
 	log.Debug(ctx, "Getting artist images from Last.fm", "name", name)
-	hc := http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
 	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
@@ -201,7 +207,7 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	if err != nil {
 		return nil, fmt.Errorf("create artist image request: %w", err)
 	}
-	resp, err := hc.Do(req)
+	resp, err := l.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get artist url: %w", err)
 	}
@@ -218,11 +224,16 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 		return res, nil
 	}
 	for _, attr := range n.Attr {
-		if attr.Key == "content" {
-			res = []agents.ExternalImage{
-				{URL: attr.Val},
-			}
-			break
+		if attr.Key != "content" {
+			continue
+		}
+		if strings.Contains(attr.Val, artistIgnoredImage) {
+			log.Debug(ctx, "Artist image is ignored default image", "name", name, "url", attr.Val)
+			return res, nil
+		}
+
+		res = []agents.ExternalImage{
+			{URL: attr.Val},
 		}
 	}
 	return res, nil
@@ -279,14 +290,21 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName str
 	return t.Track, nil
 }
 
-func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
+	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[model.RoleArtist]) > 0 {
+		return track.Participants[model.RoleArtist][0].Name
+	}
+	return track.Artist
+}
+
+func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
 	}
 
 	err = l.client.updateNowPlaying(ctx, sk, ScrobbleInfo{
-		artist:      track.Artist,
+		artist:      l.getArtistForScrobble(track),
 		track:       track.Title,
 		album:       track.Album,
 		trackNumber: track.TrackNumber,
@@ -312,7 +330,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return nil
 	}
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
-		artist:      s.Artist,
+		artist:      l.getArtistForScrobble(&s.MediaFile),
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,

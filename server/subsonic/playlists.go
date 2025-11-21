@@ -76,7 +76,7 @@ func (api *Router) create(ctx context.Context, playlistId, name string, ids []st
 			pls.OwnerID = owner.ID
 		}
 		pls.Tracks = nil
-		pls.AddTracks(ids)
+		pls.AddMediaFilesByID(ids)
 
 		err = tx.Playlist(ctx).Put(pls)
 		playlistId = pls.ID
@@ -131,14 +131,8 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	if s, err := p.String("name"); err == nil {
 		plsName = &s
 	}
-	var comment *string
-	if s, err := p.String("comment"); err == nil {
-		comment = &s
-	}
-	var public *bool
-	if p, err := p.Bool("public"); err == nil {
-		public = &p
-	}
+	comment := p.StringPtr("comment")
+	public := p.BoolPtr("public")
 
 	log.Debug(r, "Updating playlist", "id", playlistId)
 	if plsName != nil {

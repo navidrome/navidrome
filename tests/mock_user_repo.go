@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,14 +12,16 @@ import (
 
 func CreateMockUserRepo() *MockedUserRepo {
 	return &MockedUserRepo{
-		Data: map[string]*model.User{},
+		Data:          map[string]*model.User{},
+		UserLibraries: map[string][]int{},
 	}
 }
 
 type MockedUserRepo struct {
 	model.UserRepository
-	Error error
-	Data  map[string]*model.User
+	Error         error
+	Data          map[string]*model.User
+	UserLibraries map[string][]int // userID -> libraryIDs
 }
 
 func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
@@ -55,6 +58,18 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 	return u.FindByUsername(username)
 }
 
+func (u *MockedUserRepo) Get(id string) (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	for _, usr := range u.Data {
+		if usr.ID == id {
+			return usr, nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
+
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
@@ -73,4 +88,38 @@ func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 		}
 	}
 	return u.Error
+}
+
+// Library association methods - mock implementations
+
+func (u *MockedUserRepo) GetUserLibraries(userID string) (model.Libraries, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	libraryIDs, exists := u.UserLibraries[userID]
+	if !exists {
+		return model.Libraries{}, nil
+	}
+
+	// Mock: Create libraries based on IDs
+	var libraries model.Libraries
+	for _, id := range libraryIDs {
+		libraries = append(libraries, model.Library{
+			ID:   id,
+			Name: fmt.Sprintf("Test Library %d", id),
+			Path: fmt.Sprintf("/music/library%d", id),
+		})
+	}
+	return libraries, nil
+}
+
+func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	if u.UserLibraries == nil {
+		u.UserLibraries = make(map[string][]int)
+	}
+	u.UserLibraries[userID] = libraryIDs
+	return nil
 }

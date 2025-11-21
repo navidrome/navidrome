@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"reflect"
@@ -105,8 +106,15 @@ func booleanFilter(field string, value any) Sqlizer {
 	return Eq{field: v == "true"}
 }
 
-func fullTextFilter(tableName string) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer { return fullTextExpr(tableName, value.(string)) }
+func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {
+	return func(field string, value any) Sqlizer {
+		v := strings.ToLower(value.(string))
+		cond := cmp.Or(
+			mbidExpr(tableName, v, mbidFields...),
+			fullTextExpr(tableName, v),
+		)
+		return cond
+	}
 }
 
 func substringFilter(field string, value any) Sqlizer {
