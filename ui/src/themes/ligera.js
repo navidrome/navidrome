@@ -70,7 +70,7 @@ export default {
     },
     background: {
       default: '#f0f2f5',
-      paper: 'inherit',
+      paper: bLight['500'],
     },
     text: {
       secondary: '#232323',
@@ -446,6 +446,11 @@ export default {
     RaBulkActionsToolbar: {
       toolbar: {
         backgroundColor: bLight['500'],
+      },
+    },
+    RaButton: {
+      button: {
+        margin: '0 5px 0 5px',
       },
     },
     RaPaginationActions: {

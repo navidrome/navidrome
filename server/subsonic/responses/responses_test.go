@@ -768,11 +768,45 @@ var _ = Describe("Responses", func() {
 				response.PlayQueue.Username = "user1"
 				response.PlayQueue.Current = "111"
 				response.PlayQueue.Position = 243
-				response.PlayQueue.Changed = &time.Time{}
+				response.PlayQueue.Changed = time.Time{}
 				response.PlayQueue.ChangedBy = "a_client"
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.PlayQueue.Entry = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("PlayQueueByIndex", func() {
+		BeforeEach(func() {
+			response.PlayQueueByIndex = &PlayQueueByIndex{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.PlayQueueByIndex.Username = "user1"
+				response.PlayQueueByIndex.CurrentIndex = gg.P(0)
+				response.PlayQueueByIndex.Position = 243
+				response.PlayQueueByIndex.Changed = time.Time{}
+				response.PlayQueueByIndex.ChangedBy = "a_client"
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.PlayQueueByIndex.Entry = child
 			})
 			It("should match .XML", func() {
 				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())

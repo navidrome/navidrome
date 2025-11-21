@@ -31,8 +31,12 @@
         "mood": "Estado",
         "participants": "Participantes adicionais",
         "tags": "Etiquetas adicionais",
-        "mappedTags": "",
-        "rawTags": "Etiquetas en cru"
+        "mappedTags": "Etiquetas mapeadas",
+        "rawTags": "Etiquetas en cru",
+        "bitDepth": "Calidade de Bit",
+        "sampleRate": "Taxa de mostra",
+        "missing": "Falta",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -41,7 +45,8 @@
         "shuffleAll": "Remexer todo",
         "download": "Descargar",
         "playNext": "A continuación",
-        "info": "Obter info"
+        "info": "Obter info",
+        "showInPlaylist": "Mostrar en Lista de reprodución"
       }
     },
     "album": {
@@ -70,7 +75,10 @@
         "releaseType": "Tipo",
         "grouping": "Grupos",
         "media": "Multimedia",
-        "mood": "Estado"
+        "mood": "Estado",
+        "date": "Data de gravación",
+        "missing": "Falta",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -102,7 +110,8 @@
         "rating": "Valoración",
         "genre": "Xénero",
         "size": "Tamaño",
-        "role": "Rol"
+        "role": "Rol",
+        "missing": "Falta"
       },
       "roles": {
         "albumartist": "Artista do álbum |||| Artistas do álbum",
@@ -117,7 +126,13 @@
         "mixer": "Mistura |||| Mistura",
         "remixer": "Remezcla |||| Remezcla",
         "djmixer": "Mezcla DJs |||| Mezcla DJs",
-        "performer": "Intérprete |||| Intérpretes"
+        "performer": "Intérprete |||| Intérpretes",
+        "maincredit": "Artista do álbum ou Artista |||| Artistas do álbum ou Artistas"
+      },
+      "actions": {
+        "shuffle": "Barallar",
+        "radio": "Radio",
+        "topSongs": "Cancións destacadas"
       }
     },
     "user": {
@@ -134,10 +149,12 @@
         "currentPassword": "Contrasinal actual",
         "newPassword": "Novo contrasinal",
         "token": "Token",
-        "lastAccessAt": "Último acceso"
+        "lastAccessAt": "Último acceso",
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
-        "name": "Os cambios no nome aplicaranse a próxima vez que accedas"
+        "name": "Os cambios no nome aplicaranse a próxima vez que accedas",
+        "libraries": "Selecciona bibliotecas específicas para esta usuaria, ou deixa baleiro para usar as bibliotecas por defecto"
       },
       "notifications": {
         "created": "Creouse a usuaria",
@@ -146,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Escribe o token de usuaria de ListenBrainz",
-        "clickHereForToken": "Preme aquí para obter o token"
+        "clickHereForToken": "Preme aquí para obter o token",
+        "selectAllLibraries": "Seleccionar todas as bibliotecas",
+        "adminAutoLibraries": "As usuarias Admin teñen acceso por defecto a todas as bibliotecas"
+      },
+      "validation": {
+        "librariesRequired": "Debes seleccionar polo menos unha biblioteca para usuarias non admins"
       }
     },
     "player": {
@@ -190,11 +212,17 @@
         "addNewPlaylist": "Crear \"%{name}\"",
         "export": "Exportar",
         "makePublic": "Facela Pública",
-        "makePrivate": "Facela Privada"
+        "makePrivate": "Facela Privada",
+        "saveQueue": "Salvar a Cola como Lista de reprodución",
+        "searchOrCreate": "Buscar listas ou escribe para crear nova…",
+        "pressEnterToCreate": "Preme Enter para crear nova lista",
+        "removeFromSelection": "Retirar da selección"
       },
       "message": {
         "duplicate_song": "Engadir cancións duplicadas",
-        "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?"
+        "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?",
+        "noPlaylistsFound": "Sen listas de reprodución",
+        "noPlaylists": "Sen listas dispoñibles"
       }
     },
     "radio": {
@@ -232,13 +260,68 @@
       "fields": {
         "path": "Ruta",
         "size": "Tamaño",
-        "updatedAt": "Desapareceu o"
+        "updatedAt": "Desapareceu o",
+        "libraryName": "Biblioteca"
       },
       "actions": {
-        "remove": "Retirar"
+        "remove": "Retirar",
+        "remove_all": "Retirar todo"
       },
       "notifications": {
         "removed": "Ficheiro(s) faltantes retirados"
+      },
+      "empty": "Sen ficheiros faltantes"
+    },
+    "library": {
+      "name": "Biblioteca |||| Bibliotecas",
+      "fields": {
+        "name": "Nome",
+        "path": "Ruta",
+        "remotePath": "Ruta remota",
+        "lastScanAt": "Último escaneado",
+        "songCount": "Cancións",
+        "albumCount": "Álbums",
+        "artistCount": "Artistas",
+        "totalSongs": "Cancións",
+        "totalAlbums": "Álbums",
+        "totalArtists": "Artistas",
+        "totalFolders": "Cartafoles",
+        "totalFiles": "Ficheiros",
+        "totalMissingFiles": "Ficheiros que faltan",
+        "totalSize": "Tamaño total",
+        "totalDuration": "Duración",
+        "defaultNewUsers": "Por defecto para novas usuarias",
+        "createdAt": "Creada",
+        "updatedAt": "Actualizada"
+      },
+      "sections": {
+        "basic": "Información básica",
+        "statistics": "Estatísticas"
+      },
+      "actions": {
+        "scan": "Escanear Biblioteca",
+        "manageUsers": "Xestionar acceso das usuarias",
+        "viewDetails": "Ver detalles"
+      },
+      "notifications": {
+        "created": "Biblioteca creada correctamente",
+        "updated": "Biblioteca actualizada correctamente",
+        "deleted": "Biblioteca eliminada correctamente",
+        "scanStarted": "Comezou o escaneo da biblioteca",
+        "scanCompleted": "Completouse o escaneado da biblioteca"
+      },
+      "validation": {
+        "nameRequired": "Requírese un nome para a biblioteca",
+        "pathRequired": "Requírese unha ruta para a biblioteca",
+        "pathNotDirectory": "A ruta á biblioteca ten que ser un directorio",
+        "pathNotFound": "Non se atopa a ruta á biblioteca",
+        "pathNotAccessible": "A ruta á biblioteca non é accesible",
+        "pathInvalid": "Ruta non válida á biblioteca"
+      },
+      "messages": {
+        "deleteConfirm": "Tes certeza de querer eliminar esta biblioteca? Isto eliminará todos os datos asociados e accesos de usuarias.",
+        "scanInProgress": "Escaneo en progreso…",
+        "noLibrariesAssigned": "Sen bibliotecas asignadas a esta usuaria"
       }
     }
   },
@@ -419,7 +502,11 @@
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copiar ao portapapeis: Ctrl+C, Enter",
     "remove_missing_title": "Retirar ficheiros que faltan",
-    "remove_missing_content": "Tes certeza de querer retirar da base de datos os ficheiros que faltan? Isto retirará de xeito permanente todas a referencias a eles, incluíndo a conta de reproducións e valoracións."
+    "remove_missing_content": "Tes certeza de querer retirar da base de datos os ficheiros que faltan? Isto retirará de xeito permanente todas a referencias a eles, incluíndo a conta de reproducións e valoracións.",
+    "remove_all_missing_title": "Retirar todos os ficheiros que faltan",
+    "remove_all_missing_content": "Tes certeza de querer retirar da base de datos todos os ficheiros que faltan? Isto eliminará todas as referencias a eles, incluíndo o número de reproducións e valoracións.",
+    "noSimilarSongsFound": "Sen cancións parecidas",
+    "noTopSongsFound": "Sen cancións destacadas"
   },
   "menu": {
     "library": "Biblioteca",
@@ -448,7 +535,13 @@
     "albumList": "Álbums",
     "about": "Acerca de",
     "playlists": "Listas de reprodución",
-    "sharedPlaylists": "Listas compartidas"
+    "sharedPlaylists": "Listas compartidas",
+    "librarySelector": {
+      "allLibraries": "Todas as bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
+      "selectLibraries": "Seleccionar Bibliotecas",
+      "none": "Ningunha"
+    }
   },
   "player": {
     "playListsText": "Reproducir cola",
@@ -485,6 +578,21 @@
         "disabled": "Desactivado",
         "waiting": "Agardando"
       }
+    },
+    "tabs": {
+      "about": "Sobre",
+      "config": "Configuración"
+    },
+    "config": {
+      "configName": "Nome",
+      "environmentVariable": "Variable de entorno",
+      "currentValue": "Valor actual",
+      "configurationFile": "Ficheiro de configuración",
+      "exportToml": "Exportar configuración (TOML)",
+      "exportSuccess": "Configuración exportada ao portapapeis no formato TOML",
+      "exportFailed": "Fallou a copia da configuración",
+      "devFlagsHeader": "Configuracións de Desenvolvemento (suxeitas a cambio/retirada)",
+      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións"
     }
   },
   "activity": {
@@ -493,7 +601,10 @@
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
     "serverUptime": "Servidor a funcionar",
-    "serverDown": "SEN CONEXIÓN"
+    "serverDown": "SEN CONEXIÓN",
+    "scanType": "Tipo",
+    "status": "Erro de escaneado",
+    "elapsedTime": "Tempo transcurrido"
   },
   "help": {
     "title": "Atallos de Navidrome",
@@ -508,5 +619,10 @@
       "toggle_love": "Engadir canción a favoritas",
       "current_song": "Ir á Canción actual "
     }
+  },
+  "nowPlaying": {
+    "title": "En reprodución",
+    "empty": "Sen reprodución",
+    "minutesAgo": "hai %{smart_count} minuto |||| hai %{smart_count} minutos"
   }
 }
