@@ -44,10 +44,18 @@ var _ = Describe("client", func() {
 	})
 
 	Describe("ArtistBio", func() {
+		BeforeEach(func() {
+			// Mock the JWT token endpoint
+			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"jwt":"test-jwt-token","refresh_token":""}`)),
+			})
+		})
+
 		It("returns artist bio from a successful request", func() {
-			f, err := os.Open("tests/fixtures/deezer.artist.bio.html")
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
 			Expect(err).To(BeNil())
-			httpClient.mock("https://www.deezer.com/en/artist/27/biography", http.Response{Body: f, StatusCode: 200})
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
 
 			bio, err := client.getArtistBio(GinkgoT().Context(), 27)
 			Expect(err).To(BeNil())
@@ -58,13 +66,88 @@ var _ = Describe("client", func() {
 
 		It("uses the configured language", func() {
 			client = newClient(httpClient, "fr")
-			f, err := os.Open("tests/fixtures/deezer.artist.bio.html")
+			// Mock JWT token for the new client instance
+			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"jwt":"test-jwt-token","refresh_token":""}`)),
+			})
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
 			Expect(err).To(BeNil())
-			httpClient.mock("https://www.deezer.com/fr/artist/27/biography", http.Response{Body: f, StatusCode: 200})
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
 
 			_, err = client.getArtistBio(GinkgoT().Context(), 27)
 			Expect(err).To(BeNil())
-			Expect(httpClient.lastRequest.URL.String()).To(Equal("https://www.deezer.com/fr/artist/27/biography"))
+			Expect(httpClient.lastRequest.Header.Get("Accept-Language")).To(Equal("fr"))
+		})
+
+		It("includes the JWT token in the request", func() {
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
+			Expect(err).To(BeNil())
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
+
+			_, err = client.getArtistBio(GinkgoT().Context(), 27)
+			Expect(err).To(BeNil())
+			Expect(httpClient.lastRequest.Header.Get("Authorization")).To(Equal("Bearer test-jwt-token"))
+		})
+
+		It("handles GraphQL errors", func() {
+			errorResponse := `{
+				"data": {
+					"artist": {
+						"bio": {
+							"full": ""
+						}
+					}
+				},
+				"errors": [
+					{
+						"message": "Artist not found"
+					},
+					{
+						"message": "Invalid artist ID"
+					}
+				]
+			}`
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(errorResponse)),
+			})
+
+			_, err := client.getArtistBio(GinkgoT().Context(), 999)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("GraphQL error"))
+			Expect(err.Error()).To(ContainSubstring("Artist not found"))
+			Expect(err.Error()).To(ContainSubstring("Invalid artist ID"))
+		})
+
+		It("handles empty biography", func() {
+			emptyBioResponse := `{
+				"data": {
+					"artist": {
+						"bio": {
+							"full": ""
+						}
+					}
+				}
+			}`
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(emptyBioResponse)),
+			})
+
+			_, err := client.getArtistBio(GinkgoT().Context(), 27)
+			Expect(err).To(MatchError("deezer: biography not found"))
+		})
+
+		It("handles JWT token fetch failure", func() {
+			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
+				StatusCode: 500,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":"Internal server error"}`)),
+			})
+
+			_, err := client.getArtistBio(GinkgoT().Context(), 27)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get JWT"))
 		})
 	})
 })
