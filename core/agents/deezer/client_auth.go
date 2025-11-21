@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -64,8 +65,7 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 
 	type authResponse struct {
-		JWT          string `json:"jwt"`
-		RefreshToken string `json:"refresh_token"`
+		JWT string `json:"jwt"`
 	}
 
 	var result authResponse
@@ -76,13 +76,26 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	if result.JWT == "" {
 		return "", errors.New("deezer: no JWT token in response")
 	}
-	// Cache the token for 50 minutes (tokens expire in 1 hour).
-	// The 10-minute buffer helps handle clock skew, network delays, or timing issues,
-	// ensuring we refresh the token before it actually expires.
-	// Note: c.jwt is assumed to be thread-safe.
-	// Cache the token for 50 minutes (tokens expire in 1 hour)
-	c.jwt.set(result.JWT, 50*time.Minute)
-	log.Trace(ctx, "Fetched new Deezer JWT token")
+
+	// Parse JWT to get actual expiration time
+	token, err := jwt.ParseString(result.JWT, jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		return "", fmt.Errorf("deezer: failed to parse JWT token: %w", err)
+	}
+
+	// Calculate TTL with a 10-minute buffer for clock skew and network delays
+	expiresAt := token.Expiration()
+	if expiresAt.IsZero() {
+		return "", errors.New("deezer: JWT token has no expiration time")
+	}
+
+	ttl := time.Until(expiresAt) - 10*time.Minute
+	if ttl <= 0 {
+		return "", errors.New("deezer: JWT token already expired or expires too soon")
+	}
+
+	c.jwt.set(result.JWT, ttl)
+	log.Trace(ctx, "Fetched new Deezer JWT token", "expiresAt", expiresAt, "ttl", ttl)
 
 	return result.JWT, nil
 }
