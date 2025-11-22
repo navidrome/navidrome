@@ -184,6 +184,11 @@ export default {
         paddingBottom: '1rem',
       },
     },
+    AlbumGridViewWithWidth: {
+      cover: {
+        borderRadius: '10px',
+      },
+    },
   },
   player: {
     theme: 'dark',
