@@ -63,7 +63,8 @@ const stylesheet = `
 	border-radius: 6px 6px 0 0;
 }
 .react-jinke-music-player-main .music-player-panel .panel-content .img-rotate,
-.react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover{
+.react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover,
+.react-jinke-music-player-mobile-cover {
     border-radius: 6px !important;
 	animation-duration: 0s !important
 }
