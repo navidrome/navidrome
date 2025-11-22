@@ -17,7 +17,7 @@ const stylesheet = `
 .react-jinke-music-player-main .group player-delete {
     color: #ff4e6b
 }
-.audio-lists-panel-content .audio-item:hover,{
+.audio-lists-panel-content .audio-item:hover{
     color: #ff0436
 }
 .react-jinke-music-player-main .audio-item.playing .player-singer {
@@ -46,9 +46,13 @@ const stylesheet = `
 	border: 1px solid rgba(255, 255, 255, 0.12);
 	border-radius: 6px 6px 0 0;
 }
-.react-jinke-music-player-main .music-player-panel .panel-content div.img-rotate{
+.music-player-panel .panel-content div.img-rotate{
     border-radius: 6px;
 	animation-duration: 0s !important
+}
+.react-jinke-music-player-main .music-player-panel .panel-content .img-content{
+	width: 60px;
+	height: 60px
 }
 .react-jinke-music-player-main .songTitle{
     color: #ddd
