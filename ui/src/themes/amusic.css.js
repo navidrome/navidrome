@@ -37,12 +37,13 @@ const stylesheet = `
     color: #ff4e6b !important;
 	text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000
 }
-.react-jinke-music-player-main .music-player-panel,
-.react-jinke-music-player-main .audio-lists-panel{
+.react-jinke-music-player-main .music-player-panel{
     background-color: #1f1f1f;
 	border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.react-jinke-music-player-main .audio-lists-panel{
+.audio-lists-panel{
+    background-color: #1f1f1f;
+	border: 1px solid rgba(255, 255, 255, 0.12);
 	border-radius: 6px 6px 0 0;
 }
 .react-jinke-music-player-main .music-player-panel .panel-content div.img-rotate{
