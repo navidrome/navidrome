@@ -18,6 +18,7 @@ export default {
   DarkTheme,
 
   // New themes should be added here, in alphabetic order
+  AmusicTheme,
   CatppuccinMacchiatoTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
@@ -28,5 +29,4 @@ export default {
   NordTheme,
   NuclearTheme,
   SpotifyTheme,
-  AmusicTheme,
 }
