@@ -1,6 +1,6 @@
 const stylesheet = `
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
-    color: #ff0436
+    color: #D60017
 }
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle, 
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-track {
@@ -22,7 +22,7 @@ const stylesheet = `
 .audio-lists-panel-content .audio-item:hover,
 .audio-lists-panel-content .audio-item:hover svg
 .audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg{
-    color: #ff0436
+    color: #D60017
 }
 .react-jinke-music-player-main .audio-item.playing .player-singer {
     color: #ff4e6b !important
@@ -32,7 +32,7 @@ const stylesheet = `
     color: #ff4e6b !important
 }
 .react-jinke-music-player-main .lyric-btn-active {
-    color: #ff0436 !important
+    color: #D60017 !important
 }
 .react-jinke-music-player-main .loading svg {
     color: #ff4e6b !important
