@@ -300,7 +300,9 @@
       },
       "actions": {
         "scan": "Könyvtár szkennelése",
-        "manageUsers": "Elérés kezelése",
+        "quickScan": "Gyors szkennelés",
+        "fullScan": "Teljes szkennelés",
+        "manageUsers": "Hozzáférés kezelése",
         "viewDetails": "Részletek"
       },
       "notifications": {
@@ -598,11 +600,12 @@
   "activity": {
     "title": "Aktivitás",
     "totalScanned": "Összes beolvasott mappa:",
-    "quickScan": "Gyors szkennelés",
-    "fullScan": "Teljes szkennelés",
+    "quickScan": "Gyors",
+    "fullScan": "Teljes",
+    "selectiveScan": "Szelektív",
     "serverUptime": "Szerver üzemidő",
     "serverDown": "OFFLINE",
-    "scanType": "Típus",
+    "scanType": "Legutóbbi szkennelés",
     "status": "Szkennelési hiba",
     "elapsedTime": "Eltelt idő"
   },
