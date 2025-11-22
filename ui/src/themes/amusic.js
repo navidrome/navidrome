@@ -116,9 +116,6 @@ export default {
         background: 'transparent',
       },
     },
-    MuiTableHead: {
-      root: {},
-    },
     MuiTableCell: {
       root: {
         borderBottom: '0 none !important',
