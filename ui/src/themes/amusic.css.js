@@ -77,6 +77,9 @@ const stylesheet = `
 .react-jinke-music-player .music-player-controller{
     color: #ff4e6b
 }
+.audio-lists-panel-mobile .audio-item:not(.audio-lists-panel-sortable-highlight-bg){
+	background: unset
+}
 .lastfm-icon, 
 .musicbrainz-icon{
 	color: #eee
