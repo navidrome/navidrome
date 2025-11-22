@@ -8,6 +8,10 @@ export default {
     h6: {
       fontSize: '1rem', // AppBar title
     },
+    h6: {
+      fontSize: '2em',
+      fontWeight: '600',
+    },
   },
   palette: {
     primary: {
@@ -67,9 +71,6 @@ export default {
         textTransform: 'capitalize',
         fontWeight: 600,
       },
-      textPrimary: {
-        color: '#fff',
-      },
       textSecondary: {
         color: '#ff4e6b',
         backgroundColor: '#ff4e6b',
@@ -80,7 +81,6 @@ export default {
         paddingLeft: '0.5rem',
       },
       label: {
-        color: '#fff',
         paddingRight: '1rem',
         paddingLeft: '0.7rem',
       },
@@ -92,7 +92,7 @@ export default {
     },
     MuiChip: {
       root: {
-        borderRadius: '10px',
+        borderRadius: '6px',
       },
     },
     MuiIconButton: {
@@ -184,7 +184,7 @@ export default {
         paddingBottom: '1rem',
       },
     },
-    AlbumGridViewWithWidth: {
+    NDAlbumGridViewWithWidth: {
       cover: {
         borderRadius: '10px',
       },
