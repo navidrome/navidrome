@@ -154,7 +154,6 @@ export default {
       systemNameLink: {
         color: '#D60017',
       },
-      icon: {},
       welcome: {
         color: '#eee',
       },
@@ -162,7 +161,6 @@ export default {
         minWidth: 300,
         backgroundColor: '#1d1d1d',
       },
-      avatar: {},
     },
     MuiPaper: {
       elevation1: {
