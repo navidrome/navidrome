@@ -168,21 +168,21 @@ export default {
     NDMobileArtistDetails: {
       bgContainer: {
         background: '#1a1a1a',
-      }
-	  artistName:{
-		fontWeight:'600',
-		fontSize: '2em'
-	  }
+      },
+      artistName: {
+        fontWeight: '600',
+        fontSize: '2em',
+      },
     },
-	NDDesktopArtistDetails: {
-	  artistName:{
-		fontWeight:'600',
-		fontSize: '2em'
-	  }
-	  artistDetail:{
-		padding: 'unset',
-		paddingBottom: '1rem'
-	  }
+    NDDesktopArtistDetails: {
+      artistName: {
+        fontWeight: '600',
+        fontSize: '2em',
+      },
+      artistDetail: {
+        padding: 'unset',
+        paddingBottom: '1rem',
+      },
     },
   },
   player: {
