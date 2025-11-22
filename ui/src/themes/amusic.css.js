@@ -76,5 +76,9 @@ const stylesheet = `
 .react-jinke-music-player .music-player-controller{
     color: #ff4e6b
 }
+.lastfm-icon, 
+musicbrainz-icon{
+	color: #ddd
+}
 `
 export default stylesheet
