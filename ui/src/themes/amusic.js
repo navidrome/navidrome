@@ -34,9 +34,9 @@ export default {
         backgroundColor: '#1d1d1d !important',
         boxShadow: 'none',
       },
-	  colorSecondary{
-		color: '#ddd'
-	  }
+      colorSecondary: {
+        color: '#ddd',
+      },
     },
     MuiDrawer: {
       root: {
@@ -161,15 +161,28 @@ export default {
       elevation1: {
         boxShadow: 'none',
       },
-	  root:{
-		color: '#ddd'
-	  }
+      root: {
+        color: '#ddd',
+      },
     },
     NDMobileArtistDetails: {
       bgContainer: {
-        background:
-          'linear-gradient(to bottom, rgba(52, 18, 20, 0.72), rgb(48, 20, 22))!important',
-      },
+        background: '#1a1a1a',
+      }
+	  artistName:{
+		fontWeight:'600',
+		fontSize: '2em'
+	  }
+    },
+	NDDesktopArtistDetails: {
+	  artistName:{
+		fontWeight:'600',
+		fontSize: '2em'
+	  }
+	  artistDetail:{
+		padding: 'unset',
+		paddingBottom: '1rem'
+	  }
     },
   },
   player: {

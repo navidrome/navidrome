@@ -36,6 +36,9 @@ const stylesheet = `
 .react-jinke-music-player-main .loading svg {
     color: #ff4e6b !important
 }
+.react-jinke-music-player .music-player-controller .music-player-controller-setting{
+    color: #ff4e6b4d
+}
 .react-jinke-music-player-main .music-player-lyric{
     color: #ff4e6b !important;
 	text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000
