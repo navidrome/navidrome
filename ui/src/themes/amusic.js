@@ -8,7 +8,7 @@ export default {
     h6: {
       fontSize: '1rem', // AppBar title
     },
-    h6: {
+    h5: {
       fontSize: '2em',
       fontWeight: '600',
     },
