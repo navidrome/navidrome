@@ -15,7 +15,7 @@ export default {
     },
     secondary: {
       main: '#D60017',
-      contrastText: '#fff',
+      contrastText: '#ddd',
     },
     background: {
       default: '#1a1a1a',
@@ -34,6 +34,9 @@ export default {
         backgroundColor: '#1d1d1d !important',
         boxShadow: 'none',
       },
+	  colorSecondary{
+		color: '#ddd'
+	  }
     },
     MuiDrawer: {
       root: {
@@ -158,6 +161,9 @@ export default {
       elevation1: {
         boxShadow: 'none',
       },
+	  root:{
+		color: '#ddd'
+	  }
     },
     NDMobileArtistDetails: {
       bgContainer: {
