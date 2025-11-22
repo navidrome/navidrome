@@ -10,6 +10,7 @@ import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import NuclearTheme from './nuclear'
+import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 
 export default {
@@ -18,6 +19,7 @@ export default {
   DarkTheme,
 
   // New themes should be added here, in alphabetic order
+  AmusicTheme,
   CatppuccinMacchiatoTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
