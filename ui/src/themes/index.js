@@ -11,6 +11,7 @@ import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import NuclearTheme from './nuclear'
 import AmusicTheme from './amusic'
+import SquiddiesGlassTheme from './SquiddiesGlass'
 
 export default {
   // Classic default themes
@@ -29,4 +30,5 @@ export default {
   NordTheme,
   NuclearTheme,
   SpotifyTheme,
+  SquiddiesGlassTheme,
 }
