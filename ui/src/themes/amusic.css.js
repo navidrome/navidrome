@@ -54,7 +54,7 @@ const stylesheet = `
 }
 .ril__toolbarItem{
 	font-size: 100%;
-	color: #ddd
+	color: #eee
 }
 .audio-lists-panel{
     background-color: #1f1f1f;
@@ -71,14 +71,14 @@ const stylesheet = `
 	height: 60px
 }
 .react-jinke-music-player-main .songTitle{
-    color: #ddd
+    color: #eee
 }
 .react-jinke-music-player .music-player-controller{
     color: #ff4e6b
 }
 .lastfm-icon, 
-musicbrainz-icon{
-	color: #ddd
+.musicbrainz-icon{
+	color: #eee
 }
 `
 export default stylesheet

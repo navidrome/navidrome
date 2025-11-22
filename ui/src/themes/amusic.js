@@ -19,7 +19,7 @@ export default {
     },
     secondary: {
       main: '#D60017',
-      contrastText: '#ddd',
+      contrastText: '#eee',
     },
     background: {
       default: '#1a1a1a',
@@ -39,7 +39,7 @@ export default {
         boxShadow: 'none',
       },
       colorSecondary: {
-        color: '#ddd',
+        color: '#eee',
       },
     },
     MuiDrawer: {
@@ -70,6 +70,9 @@ export default {
         marginBottom: '0.5rem',
         textTransform: 'capitalize',
         fontWeight: 600,
+      },
+      textPrimary: {
+        color: '#eee',
       },
       textSecondary: {
         color: '#ff4e6b',
@@ -142,6 +145,12 @@ export default {
       albumPlayButton: {
         color: '#ff4e6b !important',
       },
+      albumArtistName: {
+        color: '#ff4e6b',
+      },
+      cover: {
+        borderRadius: '10px',
+      },
     },
     NDLogin: {
       systemNameLink: {
@@ -162,7 +171,7 @@ export default {
         boxShadow: 'none',
       },
       root: {
-        color: '#ddd',
+        color: '#eee',
       },
     },
     NDMobileArtistDetails: {
@@ -182,11 +191,6 @@ export default {
       artistDetail: {
         padding: 'unset',
         paddingBottom: '1rem',
-      },
-    },
-    NDAlbumGridViewWithWidth: {
-      cover: {
-        borderRadius: '10px',
       },
     },
   },
