@@ -48,7 +48,7 @@ const stylesheet = `
 	border-radius: 6px 6px 0 0;
 }
 .react-jinke-music-player-main .music-player-panel .panel-content .img-rotate{
-    border-radius: 6px;
+    border-radius: 6px !important;
 	animation-duration: 0s !important
 }
 .react-jinke-music-player-main .music-player-panel .panel-content .img-content{
