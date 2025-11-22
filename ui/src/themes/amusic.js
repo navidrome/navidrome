@@ -37,6 +37,7 @@ export default {
       positionFixed: {
         backgroundColor: '#1d1d1d !important',
         boxShadow: 'none',
+        borderBottom: '1px solid #fff1',
       },
       colorSecondary: {
         color: '#eee',
@@ -45,7 +46,7 @@ export default {
     MuiDrawer: {
       root: {
         background: '#1d1d1d',
-        borderRight: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRight: '1px solid #fff1',
       },
     },
     MuiToolbar: {
@@ -146,10 +147,10 @@ export default {
         color: '#ff4e6b !important',
       },
       albumArtistName: {
-        color: '#ff4e6b',
+        color: '#ff4e6b !important',
       },
       cover: {
-        borderRadius: '10px',
+        borderRadius: '10px !important',
       },
     },
     NDLogin: {
