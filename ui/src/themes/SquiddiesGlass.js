@@ -386,11 +386,13 @@ export default {
           inset: '0',
           zIndex: '-1',
           borderRadius: '50%',
-          background: 'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.08) 0deg, rgba(255,255,255,0.08) 0.5deg, rgba(0,0,0,1) 1deg)',
+          background:
+            'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.08) 0deg, rgba(255,255,255,0.08) 0.5deg, rgba(0,0,0,1) 1deg)',
           filter: 'contrast(999) sepia(1)',
-          boxShadow: 'inset 0 0 25px rgba(255,255,255,0.05), inset 0 0 95px rgba(0,0,0,0.9)',
+          boxShadow:
+            'inset 0 0 25px rgba(255,255,255,0.05), inset 0 0 95px rgba(0,0,0,0.9)',
           animation: 'spin 6s linear infinite',
-        }
+        },
       },
       details: {
         zIndex: '99999',
