@@ -76,7 +76,7 @@ export default {
         color: '#eee',
       },
       textSecondary: {
-        color: '#ff4e6b',
+        color: '#eee',
         backgroundColor: '#ff4e6b',
       },
       textSizeSmall: {
