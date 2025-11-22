@@ -20,7 +20,8 @@ const stylesheet = `
     color: #ff4e6b
 }
 .audio-lists-panel-content .audio-item:hover,
-.audio-lists-panel-content .audio-item:hover svg{
+.audio-lists-panel-content .audio-item:hover svg
+.audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg{
     color: #ff0436
 }
 .react-jinke-music-player-main .audio-item.playing .player-singer {
