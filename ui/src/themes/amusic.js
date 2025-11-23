@@ -152,7 +152,7 @@ export default {
     },
     NDLogin: {
       systemNameLink: {
-        color: '#D60017',
+        color: '#ff4e6b',
       },
       welcome: {
         color: '#eee',
@@ -161,6 +161,9 @@ export default {
         minWidth: 300,
         backgroundColor: '#1d1d1d',
       },
+      icon: {
+        filter: 'hue-rotate(115deg)',
+      },
     },
     MuiPaper: {
       elevation1: {
@@ -168,6 +171,9 @@ export default {
       },
       root: {
         color: '#eee',
+      },
+      rounded: {
+        borderRadius: '6px',
       },
     },
     NDMobileArtistDetails: {
@@ -189,10 +195,10 @@ export default {
         paddingBottom: '1rem',
       },
     },
-	NDDeleteMissingFilesButton: {
+    NDDeleteMissingFilesButton: {
       deleteButton: {
         color: 'unset',
-      }
+      },
     },
   },
   player: {
