@@ -47,17 +47,15 @@ const stylesheet = `
 .react-jinke-music-player-main .music-player-panel,
 .react-jinke-music-player-mobile,
 .ril__outer{
-    background-color: #1f1f1f;
+    background-color: #1a1a1a;
 	border: 1px solid #fff1;
-}
-.ril__toolbar{
-    background-color: #1d1d1d
 }
 .ril__toolbarItem{
 	font-size: 100%;
 	color: #eee
 }
-.audio-lists-panel{
+.audio-lists-panel,
+.ril__toolbar{
     background-color: #1f1f1f;
 	border: 1px solid #fff1;
 	border-radius: 6px 6px 0 0;
