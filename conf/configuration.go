@@ -617,7 +617,12 @@ func init() {
 
 func InitConfig(cfgFile string) {
 	codecRegistry := viper.NewCodecRegistry()
-	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{
+		LoadOptions: ini.LoadOptions{
+			UnescapeValueDoubleQuotes:   true,
+			UnescapeValueCommentSymbols: true,
+		},
+	})
 	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
 
 	cfgFile = getConfigFile(cfgFile)
