@@ -189,6 +189,11 @@ export default {
         paddingBottom: '1rem',
       },
     },
+	NDDeleteMissingFilesButton: {
+      deleteButton: {
+        color: 'unset',
+      }
+    },
   },
   player: {
     theme: 'dark',
