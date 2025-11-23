@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
@@ -164,6 +165,33 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 		bitRate = plr.MaxBitRate
 	}
 	return
+}
+
+// childFromPlaylistTrack finds a media file in the database based on the path from an
+// mpv PlaylistTrack, and then uses the original childFromMediaFile to perform the full conversion.
+// This is the correct, robust way to handle the conversion.
+func (api *Router) childFromPlaylistTrack(ctx context.Context, ptId string) responses.Child {
+	log.Debug(ctx, "childFromPlaylistTrack", "track", ptId)
+	if ptId == "" {
+		return responses.Child{}
+	}
+
+	// Step 1: Use the path from the mpv track to find the full MediaFile in the database.
+	mf, err := api.ds.MediaFile(ctx).Get(ptId)
+	if err != nil {
+		log.Warn(ctx, "Could not find media file in database for path from mpv", "filename", ptId, "error", err)
+		return responses.Child{}
+	}
+	// Step 2: Once we have the full MediaFile object, call the original, trusted function.
+	// This reuses the existing logic and ensures all database-backed fields are populated.
+	log.Debug(ctx, "childFromPlaylistTrack retrieved", "mediafile", mf)
+	child := childFromMediaFile(ctx, *mf)
+
+	// Optional Step 3: We can override fields with more current data from mpv if desired.
+	// For example, if the user is playing a transcoded stream, the bitrate might differ.
+	// For now, we will trust the database record and the original function.
+
+	return child
 }
 
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
