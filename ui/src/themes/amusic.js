@@ -138,8 +138,7 @@ export default {
         color: '#eee',
       },
       albumPlayButton: {
-        background: '#ff4e6b',
-        color: '#fff',
+        color: '#ff4e6b',
       },
       albumArtistName: {
         color: '#ccc',
