@@ -198,6 +198,16 @@ export default {
         color: 'unset',
       },
     },
+    NDDeleteLibraryButton: {
+      deleteButton: {
+        color: 'unset',
+      },
+    },
+    NDDeleteUserButton: {
+      deleteButton: {
+        color: 'unset',
+      },
+    },
     RaPaginationActions: {
       currentPageButton: {
         border: '2px solid #D60017',
