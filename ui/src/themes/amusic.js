@@ -193,17 +193,7 @@ export default {
         paddingBottom: '1rem',
       },
     },
-    NDDeleteMissingFilesButton: {
-      deleteButton: {
-        color: 'unset',
-      },
-    },
-    NDDeleteLibraryButton: {
-      deleteButton: {
-        color: 'unset',
-      },
-    },
-    NDDeleteUserButton: {
+    RaDeleteWithConfirmButton: {
       deleteButton: {
         color: 'unset',
       },
