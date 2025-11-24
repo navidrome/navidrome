@@ -8,12 +8,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // scannerExternal is a scanner that runs an external process to do the scanning. It is used to avoid
@@ -47,9 +45,10 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []mod
 
 	// Add targets if provided
 	if len(targets) > 0 {
-		targetsStr := strings.Join(slice.Map(targets, func(t model.ScanTarget) string { return t.String() }), ",")
-		args = append(args, "--targets", targetsStr)
-		log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targetsStr)
+		for _, target := range targets {
+			args = append(args, "-t", target.String())
+		}
+		log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targets)
 	} else {
 		log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
 	}
