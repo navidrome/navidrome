@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/gob"
 	"os"
-	"strings"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/db"
@@ -19,13 +18,13 @@ import (
 var (
 	fullScan   bool
 	subprocess bool
-	targets    string
+	targets    []string
 )
 
 func init() {
 	scanCmd.Flags().BoolVarP(&fullScan, "full", "f", false, "check all subfolders, ignoring timestamps")
 	scanCmd.Flags().BoolVarP(&subprocess, "subprocess", "", false, "run as subprocess (internal use)")
-	scanCmd.Flags().StringVarP(&targets, "targets", "t", "", "comma-separated list of libraryID:folderPath pairs (e.g., \"1:Music/Rock,1:Music/Jazz,2:Classical\")")
+	scanCmd.Flags().StringArrayVarP(&targets, "target", "t", []string{}, "list of libraryID:folderPath pairs, can be repeated (e.g., \"-t 1:Music/Rock -t 1:Music/Jazz -t 2:Classical\")")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -74,9 +73,9 @@ func runScanner(ctx context.Context) {
 
 	// Parse targets if provided
 	var scanTargets []model.ScanTarget
-	if targets != "" {
+	if len(targets) > 0 {
 		var err error
-		scanTargets, err = model.ParseTargets(strings.Split(targets, ","))
+		scanTargets, err = model.ParseTargets(targets)
 		if err != nil {
 			log.Fatal(ctx, "Failed to parse targets", err)
 		}
