@@ -137,17 +137,15 @@ export default {
       albumName: {
         color: '#eee',
       },
-      albumSubtitle: {
-        color: '#ccc',
-      },
       albumPlayButton: {
-        color: '#ff4e6b !important',
+        background: '#ff4e6b',
+        color: '#fff',
       },
       albumArtistName: {
-        color: '#ff4e6b !important',
+        color: '#ccc',
       },
       cover: {
-        borderRadius: '10px !important',
+        borderRadius: '6px',
       },
     },
     NDLogin: {
