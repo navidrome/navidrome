@@ -200,6 +200,25 @@ export default {
         color: 'unset',
       },
     },
+    RaPaginationActions: {
+      currentPageButton: {
+        border: '2px solid #D60017',
+        background: 'transparent',
+      },
+      button: {
+        border: '2px solid #D60017',
+      },
+      actions: {
+        '@global': {
+          '.next-page': {
+            border: '0 none',
+          },
+          '.previous-page': {
+            border: '0 none',
+          },
+        },
+      },
+    },
   },
   player: {
     theme: 'dark',
