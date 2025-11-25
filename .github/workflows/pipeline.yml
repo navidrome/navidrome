@@ -159,6 +159,20 @@ jobs:
           done
       - run: ./.github/workflows/validate-translations.sh -v
 
+  migrations-lint:
+    name: Validate migrations
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch master branch
+        run: git fetch origin master
+
+      - name: Validate migration timestamps
+        run: ./.github/workflows/validate-migrations.sh
 
   check-push-enabled:
     name: Check Docker configuration
@@ -172,7 +186,8 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-lint, i18n-lint, migrations-lint, git-version, check-push-enabled]
+    if: ${{ !failure() && !cancelled() }}
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
