@@ -106,6 +106,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"random":         "random",
 		"recently_added": recentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
+		"rated_at":       "rating, rated_at",
 	})
 	return r
 }
