@@ -388,6 +388,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			"coalesce(play_count, 0) as play_count",
 			"play_date",
 			"coalesce(rating, 0) as rating",
+			"rated_at",
 			"f.*",
 			"playlist_tracks.*",
 			"library.path as library_path",
