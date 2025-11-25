@@ -25,7 +25,7 @@ jobs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
       git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -63,7 +63,7 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
@@ -114,7 +114,7 @@ jobs:
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -145,7 +145,7 @@ jobs:
     name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: |
           set -e
           for file in resources/i18n/*.json; do
@@ -191,7 +191,7 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -217,7 +217,7 @@ jobs:
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome-${{ env.PLATFORM }}
           path: ./output
@@ -248,7 +248,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"          
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
@@ -264,10 +264,10 @@ jobs:
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -318,9 +318,9 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           path: ./binaries
           pattern: navidrome-windows*
@@ -339,7 +339,7 @@ jobs:
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome-windows-installers
           path: binaries/msi/*.msi
@@ -352,12 +352,12 @@ jobs:
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           path: ./binaries
           pattern: navidrome-*
@@ -383,7 +383,7 @@ jobs:
           rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: packages
           path: dist/navidrome_0*
@@ -406,13 +406,13 @@ jobs:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
     steps:
       - name: Download all-packages artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: packages
           path: ./dist
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: navidrome_linux_${{ matrix.item }}
           path: dist/navidrome_0*_linux_${{ matrix.item }}

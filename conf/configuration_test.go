@@ -39,6 +39,7 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Server.MusicFolder).To(Equal(fmt.Sprintf("/%s/music", format)))
 			Expect(conf.Server.UIWelcomeMessage).To(Equal("Welcome " + format))
 			Expect(conf.Server.Tags["custom"].Aliases).To(Equal([]string{format, "test"}))
+			Expect(conf.Server.Tags["artist"].Split).To(Equal([]string{";"}))
 
 			// The config file used should be the one we created
 			Expect(conf.Server.ConfigFile).To(Equal(filename))

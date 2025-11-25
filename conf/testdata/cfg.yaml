@@ -1,6 +1,8 @@
 musicFolder: "/yaml/music"
 uiWelcomeMessage: "Welcome yaml"
 Tags:
+  artist:
+    split:  [";"]
   custom:
     aliases:
       - yaml

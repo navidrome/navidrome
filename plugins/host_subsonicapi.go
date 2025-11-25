@@ -93,8 +93,12 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.Call
 		RawQuery: query.Encode(),
 	}
 
-	// Create HTTP request with internal authentication
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", finalURL.String(), nil)
+	// Create HTTP request with a fresh context to avoid Chi RouteContext pollution.
+	// Using http.NewRequest (instead of http.NewRequestWithContext) ensures the internal
+	// SubsonicAPI call doesn't inherit routing information from the parent handler,
+	// which would cause Chi to invoke the wrong handler. Authentication context is
+	// explicitly added in the next step via request.WithInternalAuth.
+	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
 	if err != nil {
 		return &subsonicapi.CallResponse{
 			Error: fmt.Sprintf("failed to create HTTP request: %v", err),

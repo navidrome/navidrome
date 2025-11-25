@@ -32,7 +32,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 	var ctx context.Context
 	var lib1, lib2 model.Library
 	var ds *tests.MockDataStore
-	var s scanner.Scanner
+	var s model.Scanner
 
 	createFS := func(path string, files fstest.MapFS) storagetest.FakeFS {
 		fs := storagetest.FakeFS{}

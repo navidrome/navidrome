@@ -69,9 +69,6 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 		}
 	}
 	for _, lib := range p.state.libraries {
-		if lib.LastScanStartedAt.IsZero() {
-			continue
-		}
 		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name)
 		cursor, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
 		if err != nil {
