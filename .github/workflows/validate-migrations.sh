@@ -57,6 +57,26 @@ if [ -n "$MODIFIED_MIGRATIONS" ]; then
         echo "  - $migration (timestamp: $TIMESTAMP)"
         echo "::warning file=$migration::Modifying existing migration files may cause issues for users who have already applied them"
     done
+
+    # Post a PR review comment if running in GitHub Actions with a PR
+    if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$PR_NUMBER" ]; then
+        COMMENT_BODY="### ⚠️ Modified Migration Files Detected
+
+This PR modifies existing migration files that may have already been applied by users:
+
+$(for m in $MODIFIED_MIGRATIONS; do echo "- \`$m\`"; done)
+
+**Warning:** Modifying migrations that have already been applied can cause issues for existing users. Please ensure this change is intentional and consider the impact on users who have already run these migrations."
+
+        # Use GitHub API to post a PR comment
+        curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+            -d "$(jq -n --arg body "$COMMENT_BODY" '{body: $body}')" > /dev/null
+        
+        echo "Posted PR comment about modified migrations"
+    fi
 fi
 
 if [ "$HAS_ERRORS" = "true" ]; then

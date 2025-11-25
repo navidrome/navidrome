@@ -172,6 +172,9 @@ jobs:
         run: git fetch origin master
 
       - name: Validate migration timestamps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: ./.github/workflows/validate-migrations.sh
 
   check-push-enabled:
