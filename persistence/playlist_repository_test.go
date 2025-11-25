@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"context"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -11,13 +10,14 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx := log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
@@ -250,6 +250,120 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(tracks[1].MediaFileID).To(Equal("2004")) // Disc 1, Track 2
 			Expect(tracks[2].MediaFileID).To(Equal("2003")) // Disc 2, Track 1
 			Expect(tracks[3].MediaFileID).To(Equal("2001")) // Disc 2, Track 11
+		})
+	})
+
+	Describe("Smart Playlists with Tag Criteria", func() {
+		var mfRepo model.MediaFileRepository
+		var testPlaylistID string
+		var songWithGrouping, songWithoutGrouping model.MediaFile
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+
+			// Register 'grouping' as a valid tag for smart playlists
+			criteria.AddTagNames([]string{"grouping"})
+
+			// Create a song with the grouping tag
+			songWithGrouping = model.MediaFile{
+				ID:       "test-grouping-1",
+				Title:    "Song With Grouping",
+				Artist:   "Test Artist",
+				ArtistID: "1",
+				Album:    "Test Album",
+				AlbumID:  "101",
+				Path:     "/test/grouping/song1.mp3",
+				Tags: model.Tags{
+					"grouping": []string{"My Crate"},
+				},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithGrouping)).To(Succeed())
+
+			// Create a song without the grouping tag
+			songWithoutGrouping = model.MediaFile{
+				ID:           "test-grouping-2",
+				Title:        "Song Without Grouping",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         "/test/grouping/song2.mp3",
+				Tags:         model.Tags{},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithoutGrouping)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+			// Clean up test media files
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-1"}).Execute()
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-2"}).Execute()
+		})
+
+		It("matches tracks with a tag value using 'contains' with empty string (issue #4728 workaround)", func() {
+			By("creating a smart playlist that checks if grouping tag has any value")
+			// This is the workaround for issue #4728: using 'contains' with empty string
+			// generates SQL: value LIKE '%%' which matches any non-empty string
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks with Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying only the track with grouping tag is matched")
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].MediaFileID).To(Equal(songWithGrouping.ID))
+		})
+
+		It("excludes tracks with a tag value using 'notContains' with empty string", func() {
+			By("creating a smart playlist that checks if grouping tag is NOT set")
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.NotContains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks without Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying the track with grouping is NOT in the playlist")
+			for _, track := range pls.Tracks {
+				Expect(track.MediaFileID).ToNot(Equal(songWithGrouping.ID))
+			}
+
+			By("verifying the track without grouping IS in the playlist")
+			var foundWithoutGrouping bool
+			for _, track := range pls.Tracks {
+				if track.MediaFileID == songWithoutGrouping.ID {
+					foundWithoutGrouping = true
+					break
+				}
+			}
+			Expect(foundWithoutGrouping).To(BeTrue())
 		})
 	})
 })
