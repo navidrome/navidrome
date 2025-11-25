@@ -60,7 +60,17 @@ if [ -n "$MODIFIED_MIGRATIONS" ]; then
 
     # Post a PR review comment if running in GitHub Actions with a PR
     if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPOSITORY" ] && [ -n "$PR_NUMBER" ]; then
-        COMMENT_BODY="### ⚠️ Modified Migration Files Detected
+        # Check if a warning comment already exists to avoid duplicates
+        EXISTING_COMMENT=$(curl -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+            | jq -r '.[] | select(.body | startswith("### ⚠️ Modified Migration Files Detected")) | .id' | head -1)
+
+        if [ -n "$EXISTING_COMMENT" ]; then
+            echo "Warning comment already exists (comment ID: $EXISTING_COMMENT), skipping"
+        else
+            COMMENT_BODY="### ⚠️ Modified Migration Files Detected
 
 This PR modifies existing migration files that may have already been applied by users:
 
@@ -68,14 +78,15 @@ $(for m in $MODIFIED_MIGRATIONS; do echo "- \`$m\`"; done)
 
 **Warning:** Modifying migrations that have already been applied can cause issues for existing users. Please ensure this change is intentional and consider the impact on users who have already run these migrations."
 
-        # Use GitHub API to post a PR comment
-        curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-            -d "$(jq -n --arg body "$COMMENT_BODY" '{body: $body}')" > /dev/null
-        
-        echo "Posted PR comment about modified migrations"
+            # Use GitHub API to post a PR comment
+            curl -s -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+                -d "$(jq -n --arg body "$COMMENT_BODY" '{body: $body}')" > /dev/null
+            
+            echo "Posted PR comment about modified migrations"
+        fi
     fi
 fi
 
