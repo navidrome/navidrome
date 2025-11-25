@@ -3,6 +3,7 @@
 # the latest migration timestamp on the master branch.
 #
 # This prevents migration ordering conflicts when multiple PRs add migrations.
+# Modified existing migrations only produce warnings, not errors.
 
 set -e
 
@@ -17,35 +18,55 @@ fi
 
 MASTER_LATEST=$(echo "$MASTER_MIGRATIONS" | sed 's|db/migrations/||' | cut -c1-14 | sort -n | tail -1)
 
-# Get migrations added/modified in this PR compared to master
-CHANGED_MIGRATIONS=$(git diff --name-only origin/master -- db/migrations/ | grep -E '^db/migrations/[0-9]{14}_.*\.(sql|go)$' || true)
+# Get NEW migrations (added in this PR)
+NEW_MIGRATIONS=$(git diff --name-only --diff-filter=A origin/master -- db/migrations/ | grep -E '^db/migrations/[0-9]{14}_.*\.(sql|go)$' || true)
 
-if [ -z "$CHANGED_MIGRATIONS" ]; then
-    echo "No new migrations found in this PR"
+# Get MODIFIED migrations (existing files that were changed)
+MODIFIED_MIGRATIONS=$(git diff --name-only --diff-filter=M origin/master -- db/migrations/ | grep -E '^db/migrations/[0-9]{14}_.*\.(sql|go)$' || true)
+
+if [ -z "$NEW_MIGRATIONS" ] && [ -z "$MODIFIED_MIGRATIONS" ]; then
+    echo "No new or modified migrations found in this PR"
     exit 0
 fi
 
 echo "Latest migration on master: $MASTER_LATEST"
-echo "New/modified migrations in this PR:"
 
 HAS_ERRORS=false
-for migration in $CHANGED_MIGRATIONS; do
-    TIMESTAMP=$(basename "$migration" | cut -c1-14)
-    echo "  - $migration (timestamp: $TIMESTAMP)"
-    
-    if [ "$TIMESTAMP" -le "$MASTER_LATEST" ]; then
-        echo "::error file=$migration::Migration timestamp $TIMESTAMP must be greater than latest master timestamp $MASTER_LATEST"
-        HAS_ERRORS=true
-    fi
-done
+
+# Check NEW migrations - these MUST have valid timestamps (errors)
+if [ -n "$NEW_MIGRATIONS" ]; then
+    echo ""
+    echo "New migrations in this PR:"
+    for migration in $NEW_MIGRATIONS; do
+        TIMESTAMP=$(basename "$migration" | cut -c1-14)
+        echo "  - $migration (timestamp: $TIMESTAMP)"
+        
+        if [ "$TIMESTAMP" -le "$MASTER_LATEST" ]; then
+            echo "::error file=$migration::Migration timestamp $TIMESTAMP must be greater than latest master timestamp $MASTER_LATEST"
+            HAS_ERRORS=true
+        fi
+    done
+fi
+
+# Check MODIFIED migrations - only warn, don't fail
+if [ -n "$MODIFIED_MIGRATIONS" ]; then
+    echo ""
+    echo "Modified existing migrations in this PR:"
+    for migration in $MODIFIED_MIGRATIONS; do
+        TIMESTAMP=$(basename "$migration" | cut -c1-14)
+        echo "  - $migration (timestamp: $TIMESTAMP)"
+        echo "::warning file=$migration::Modifying existing migration files may cause issues for users who have already applied them"
+    done
+fi
 
 if [ "$HAS_ERRORS" = "true" ]; then
     echo ""
-    echo "ERROR: One or more migrations have timestamps that are not after the latest migration on master."
+    echo "ERROR: One or more NEW migrations have timestamps that are not after the latest migration on master."
     echo "Please regenerate the migration with a newer timestamp using:"
     echo "  make migration-sql name=your_migration_name"
     echo "  make migration-go name=your_migration_name"
     exit 1
 fi
 
+echo ""
 echo "All migration timestamps are valid!"
