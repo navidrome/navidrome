@@ -28,6 +28,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
+			"rated_at",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
@@ -77,7 +78,8 @@ func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 }
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {
-	return r.annUpsert(map[string]interface{}{"rating": rating}, itemID)
+	ratedAt := time.Now()
+	return r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
 }
 
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {

@@ -141,6 +141,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
+		"rated_at":    "rating, rated_at",
 		"song_count":  "stats->>'total'->>'m'",
 		"album_count": "stats->>'total'->>'a'",
 		"size":        "stats->>'total'->>'s'",
