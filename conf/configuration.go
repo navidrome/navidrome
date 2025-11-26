@@ -86,8 +86,7 @@ type configOptions struct {
 	AuthRequestLimit                int
 	AuthWindowLength                time.Duration
 	PasswordEncryptionKey           string
-	ReverseProxyUserHeader          string
-	ReverseProxyWhitelist           string
+	ExtAuth                         extAuthOptions
 	Plugins                         pluginsOptions
 	PluginConfig                    map[string]map[string]string
 	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
@@ -229,6 +228,11 @@ type pluginsOptions struct {
 	CacheSize string
 }
 
+type extAuthOptions struct {
+	TrustedSources string
+	UserHeader     string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -246,6 +250,7 @@ func LoadFromFile(confFile string) {
 
 func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
+	mapDeprecatedOptions()
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -350,6 +355,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("Scanner.GenreSeparators")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases")
 	logDeprecatedOptions("DevEnableBufferedScrobble") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+	logDeprecatedOptions("ReverseProxyWhitelist", "ReverseProxyUserHeader")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -366,6 +372,17 @@ func logDeprecatedOptions(options ...string) {
 		if viper.InConfig(option) {
 			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
 		}
+	}
+}
+
+// mapDeprecatedOptions is used to provide backwards compatibility for deprecated options. It should be called after
+// the config has been read by viper, but before unmarshalling it into the Config struct.
+func mapDeprecatedOptions() {
+	if viper.IsSet("ReverseProxyWhitelist") {
+		viper.Set("ExtAuth.TrustedSources", viper.Get("ReverseProxyWhitelist"))
+	}
+	if viper.IsSet("ReverseProxyUserHeader") {
+		viper.Set("ExtAuth.UserHeader", viper.Get("ReverseProxyUserHeader"))
 	}
 }
 
@@ -536,8 +553,8 @@ func setViperDefaults() {
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 	viper.SetDefault("passwordencryptionkey", "")
-	viper.SetDefault("reverseproxyuserheader", "Remote-User")
-	viper.SetDefault("reverseproxywhitelist", "")
+	viper.SetDefault("extauth.userheader", "Remote-User")
+	viper.SetDefault("extauth.trustedsources", "")
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")
