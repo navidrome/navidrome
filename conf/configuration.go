@@ -132,6 +132,7 @@ type configOptions struct {
 	DevEnablePluginsInsights         bool
 	DevPluginCompilationTimeout      time.Duration
 	DevExternalArtistFetchMultiplier float64
+	DevOptimizeDB                    bool
 }
 
 type scannerOptions struct {
@@ -438,7 +439,7 @@ func validatePurgeMissingOption() error {
 		}
 	}
 	if !valid {
-		err := fmt.Errorf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
+		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
 		log.Error(err.Error())
 		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
 		return err
@@ -630,6 +631,7 @@ func setViperDefaults() {
 	viper.SetDefault("devenablepluginsinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
+	viper.SetDefault("devoptimizedb", true)
 }
 
 func init() {
