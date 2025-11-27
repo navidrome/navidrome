@@ -264,6 +264,11 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
 		" AND annotation.user_id = '" + usr.ID + "')")
+
+	// Only include media files from libraries the user has access to
+	sq = r.applyLibraryFilter(sq, "media_file")
+
+	// Apply the criteria rules
 	sq = r.addCriteria(sq, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
