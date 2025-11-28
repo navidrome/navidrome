@@ -137,22 +137,19 @@ export default {
       albumName: {
         color: '#eee',
       },
-      albumSubtitle: {
-        color: '#ccc',
-      },
       albumPlayButton: {
-        color: '#ff4e6b !important',
+        color: '#ff4e6b',
       },
       albumArtistName: {
-        color: '#ff4e6b !important',
+        color: '#ccc',
       },
       cover: {
-        borderRadius: '10px !important',
+        borderRadius: '6px',
       },
     },
     NDLogin: {
       systemNameLink: {
-        color: '#D60017',
+        color: '#ff4e6b',
       },
       welcome: {
         color: '#eee',
@@ -161,6 +158,9 @@ export default {
         minWidth: 300,
         backgroundColor: '#1d1d1d',
       },
+      icon: {
+        filter: 'hue-rotate(115deg)',
+      },
     },
     MuiPaper: {
       elevation1: {
@@ -168,6 +168,9 @@ export default {
       },
       root: {
         color: '#eee',
+      },
+      rounded: {
+        borderRadius: '6px',
       },
     },
     NDMobileArtistDetails: {
@@ -187,6 +190,30 @@ export default {
       artistDetail: {
         padding: 'unset',
         paddingBottom: '1rem',
+      },
+    },
+    RaDeleteWithConfirmButton: {
+      deleteButton: {
+        color: 'unset',
+      },
+    },
+    RaPaginationActions: {
+      currentPageButton: {
+        border: '2px solid #D60017',
+        background: 'transparent',
+      },
+      button: {
+        border: '2px solid #D60017',
+      },
+      actions: {
+        '@global': {
+          '.next-page': {
+            border: '0 none',
+          },
+          '.previous-page': {
+            border: '0 none',
+          },
+        },
       },
     },
   },
