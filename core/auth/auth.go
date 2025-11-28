@@ -113,9 +113,9 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 	if err != nil {
 		c, err := ds.User(ctx).CountAll()
 		if c == 0 && err == nil {
-			log.Debug(ctx, "Scanner: No admin user yet!", err)
+			log.Debug(ctx, "No admin user yet!", err)
 		} else {
-			log.Error(ctx, "Scanner: No admin user found!", err)
+			log.Error(ctx, "No admin user found!", err)
 		}
 		u = &model.User{}
 	}
