@@ -372,15 +372,18 @@ var _ = Describe("PlaylistRepository", func() {
 		var testPlaylistID string
 		var lib2ID int
 		var restrictedUserID string
+		var uniqueLibPath string
 
 		BeforeEach(func() {
 			db := GetDBXBuilder()
 
 			// Generate unique IDs for this test run
-			restrictedUserID = "restricted-user-" + time.Now().Format("20060102150405.000")
+			uniqueSuffix := time.Now().Format("20060102150405.000")
+			restrictedUserID = "restricted-user-" + uniqueSuffix
+			uniqueLibPath = "/music/lib2-" + uniqueSuffix
 
-			// Create a second library
-			_, err := db.DB().Exec("INSERT INTO library (name, path, created_at, updated_at) VALUES ('Library 2', '/music/lib2', datetime('now'), datetime('now'))")
+			// Create a second library with unique name and path to avoid conflicts with other tests
+			_, err := db.DB().Exec("INSERT INTO library (name, path, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))", "Library 2-"+uniqueSuffix, uniqueLibPath)
 			Expect(err).ToNot(HaveOccurred())
 			err = db.DB().QueryRow("SELECT last_insert_rowid()").Scan(&lib2ID)
 			Expect(err).ToNot(HaveOccurred())
@@ -420,7 +423,7 @@ var _ = Describe("PlaylistRepository", func() {
 				ArtistID:     "1",
 				Album:        "Test Album",
 				AlbumID:      "101",
-				Path:         "/music/lib2/song.mp3",
+				Path:         uniqueLibPath + "/song.mp3",
 				LibraryID:    lib2ID,
 				Participants: model.Participants{},
 				Tags:         model.Tags{},
