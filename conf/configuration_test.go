@@ -31,7 +31,7 @@ var _ = Describe("Configuration", func() {
 			filename := filepath.Join("testdata", "cfg."+format)
 
 			// Initialize config with the test file
-			conf.InitConfig(filename)
+			conf.InitConfig(filename, false)
 			// Load the configuration (with noConfigDump=true)
 			conf.Load(true)
 
