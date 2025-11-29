@@ -617,7 +617,7 @@ func init() {
 	setViperDefaults()
 }
 
-func InitConfig(cfgFile string) {
+func InitConfig(cfgFile string, loadEnvVars bool) {
 	codecRegistry := viper.NewCodecRegistry()
 	_ = codecRegistry.RegisterCodec("ini", ini.Codec{
 		LoadOptions: ini.LoadOptions{
@@ -638,10 +638,12 @@ func InitConfig(cfgFile string) {
 	}
 
 	_ = viper.BindEnv("port")
-	viper.SetEnvPrefix("ND")
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AutomaticEnv()
+	if loadEnvVars {
+		viper.SetEnvPrefix("ND")
+		replacer := strings.NewReplacer(".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+		viper.AutomaticEnv()
+	}
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {

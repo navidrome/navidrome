@@ -346,7 +346,7 @@ func startPluginManager(ctx context.Context) func() error {
 // TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
-		conf.InitConfig(cfgFile)
+		conf.InitConfig(cfgFile, true)
 	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
