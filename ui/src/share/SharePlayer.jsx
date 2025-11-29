@@ -53,6 +53,7 @@ const SharePlayer = () => {
     remove: false,
     spaceBar: true,
     volumeFade: { fadeIn: 200, fadeOut: 200 },
+    sortableOptions: { delay: 200, delayOnTouchOnly: true },
   }
   return (
     <ReactJkMusicPlayer
