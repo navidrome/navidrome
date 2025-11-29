@@ -27,14 +27,13 @@ import (
 type phaseRefreshAlbums struct {
 	ds        model.DataStore
 	ctx       context.Context
-	libs      model.Libraries
 	refreshed atomic.Uint32
 	skipped   atomic.Uint32
 	state     *scanState
 }
 
-func createPhaseRefreshAlbums(ctx context.Context, state *scanState, ds model.DataStore, libs model.Libraries) *phaseRefreshAlbums {
-	return &phaseRefreshAlbums{ctx: ctx, ds: ds, libs: libs, state: state}
+func createPhaseRefreshAlbums(ctx context.Context, state *scanState, ds model.DataStore) *phaseRefreshAlbums {
+	return &phaseRefreshAlbums{ctx: ctx, ds: ds, state: state}
 }
 
 func (p *phaseRefreshAlbums) description() string {
@@ -47,7 +46,7 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 
 func (p *phaseRefreshAlbums) produce(put func(album *model.Album)) error {
 	count := 0
-	for _, lib := range p.libs {
+	for _, lib := range p.state.libraries {
 		cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
 		if err != nil {
 			return fmt.Errorf("loading touched albums: %w", err)

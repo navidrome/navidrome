@@ -45,10 +45,12 @@ func Db() *sql.DB {
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
-		_, err = db.Exec("PRAGMA optimize=0x10002")
-		if err != nil {
-			log.Error("Error applying PRAGMA optimize", err)
-			return nil
+		if conf.Server.DevOptimizeDB {
+			_, err = db.Exec("PRAGMA optimize=0x10002")
+			if err != nil {
+				log.Error("Error applying PRAGMA optimize", err)
+				return nil
+			}
 		}
 		return db
 	})
@@ -99,7 +101,7 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
-	if hasSchemaChanges {
+	if hasSchemaChanges && conf.Server.DevOptimizeDB {
 		log.Debug(ctx, "Applying PRAGMA optimize after schema changes")
 		_, err = db.ExecContext(ctx, "PRAGMA optimize")
 		if err != nil {
@@ -114,6 +116,9 @@ func Init(ctx context.Context) func() {
 
 // Optimize runs PRAGMA optimize on each connection in the pool
 func Optimize(ctx context.Context) {
+	if !conf.Server.DevOptimizeDB {
+		return
+	}
 	numConns := Db().Stats().OpenConnections
 	if numConns == 0 {
 		log.Debug(ctx, "No open connections to optimize")

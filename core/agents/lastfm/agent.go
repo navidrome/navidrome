@@ -38,6 +38,7 @@ type lastfmAgent struct {
 	secret       string
 	lang         string
 	client       *client
+	httpClient   httpDoer
 	getInfoMutex sync.Mutex
 }
 
@@ -56,6 +57,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	l.httpClient = chc
 	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
 	return l
 }
@@ -190,13 +192,13 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 	return res, nil
 }
 
-var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
+var (
+	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
+	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
+)
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
 	log.Debug(ctx, "Getting artist images from Last.fm", "name", name)
-	hc := http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
 	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
@@ -205,7 +207,7 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	if err != nil {
 		return nil, fmt.Errorf("create artist image request: %w", err)
 	}
-	resp, err := hc.Do(req)
+	resp, err := l.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get artist url: %w", err)
 	}
@@ -222,11 +224,16 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 		return res, nil
 	}
 	for _, attr := range n.Attr {
-		if attr.Key == "content" {
-			res = []agents.ExternalImage{
-				{URL: attr.Val},
-			}
-			break
+		if attr.Key != "content" {
+			continue
+		}
+		if strings.Contains(attr.Val, artistIgnoredImage) {
+			log.Debug(ctx, "Artist image is ignored default image", "name", name, "url", attr.Val)
+			return res, nil
+		}
+
+		res = []agents.ExternalImage{
+			{URL: attr.Val},
 		}
 	}
 	return res, nil

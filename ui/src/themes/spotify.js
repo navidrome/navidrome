@@ -389,6 +389,11 @@ export default {
         marginRight: '1rem',
       },
     },
+    RaButton: {
+      button: {
+        margin: '0 5px 0 5px',
+      },
+    },
     RaPaginationActions: {
       currentPageButton: {
         border: '1px solid #b3b3b3',

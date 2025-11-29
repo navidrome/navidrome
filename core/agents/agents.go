@@ -87,7 +87,7 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Warn("Unknown agent ignored", "name", name)
+			log.Debug("Unknown agent ignored", "name", name)
 		}
 	}
 	return validAgents

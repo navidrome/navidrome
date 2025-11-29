@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"context"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -11,13 +10,14 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx := log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
@@ -250,6 +250,252 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(tracks[1].MediaFileID).To(Equal("2004")) // Disc 1, Track 2
 			Expect(tracks[2].MediaFileID).To(Equal("2003")) // Disc 2, Track 1
 			Expect(tracks[3].MediaFileID).To(Equal("2001")) // Disc 2, Track 11
+		})
+	})
+
+	Describe("Smart Playlists with Tag Criteria", func() {
+		var mfRepo model.MediaFileRepository
+		var testPlaylistID string
+		var songWithGrouping, songWithoutGrouping model.MediaFile
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+
+			// Register 'grouping' as a valid tag for smart playlists
+			criteria.AddTagNames([]string{"grouping"})
+
+			// Create a song with the grouping tag
+			songWithGrouping = model.MediaFile{
+				ID:       "test-grouping-1",
+				Title:    "Song With Grouping",
+				Artist:   "Test Artist",
+				ArtistID: "1",
+				Album:    "Test Album",
+				AlbumID:  "101",
+				Path:     "/test/grouping/song1.mp3",
+				Tags: model.Tags{
+					"grouping": []string{"My Crate"},
+				},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithGrouping)).To(Succeed())
+
+			// Create a song without the grouping tag
+			songWithoutGrouping = model.MediaFile{
+				ID:           "test-grouping-2",
+				Title:        "Song Without Grouping",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         "/test/grouping/song2.mp3",
+				Tags:         model.Tags{},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithoutGrouping)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+			// Clean up test media files
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-1"}).Execute()
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-2"}).Execute()
+		})
+
+		It("matches tracks with a tag value using 'contains' with empty string (issue #4728 workaround)", func() {
+			By("creating a smart playlist that checks if grouping tag has any value")
+			// This is the workaround for issue #4728: using 'contains' with empty string
+			// generates SQL: value LIKE '%%' which matches any non-empty string
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks with Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying only the track with grouping tag is matched")
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].MediaFileID).To(Equal(songWithGrouping.ID))
+		})
+
+		It("excludes tracks with a tag value using 'notContains' with empty string", func() {
+			By("creating a smart playlist that checks if grouping tag is NOT set")
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.NotContains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks without Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying the track with grouping is NOT in the playlist")
+			for _, track := range pls.Tracks {
+				Expect(track.MediaFileID).ToNot(Equal(songWithGrouping.ID))
+			}
+
+			By("verifying the track without grouping IS in the playlist")
+			var foundWithoutGrouping bool
+			for _, track := range pls.Tracks {
+				if track.MediaFileID == songWithoutGrouping.ID {
+					foundWithoutGrouping = true
+					break
+				}
+			}
+			Expect(foundWithoutGrouping).To(BeTrue())
+		})
+	})
+
+	Describe("Smart Playlists Library Filtering", func() {
+		var mfRepo model.MediaFileRepository
+		var testPlaylistID string
+		var lib2ID int
+		var restrictedUserID string
+		var uniqueLibPath string
+
+		BeforeEach(func() {
+			db := GetDBXBuilder()
+
+			// Generate unique IDs for this test run
+			uniqueSuffix := time.Now().Format("20060102150405.000")
+			restrictedUserID = "restricted-user-" + uniqueSuffix
+			uniqueLibPath = "/music/lib2-" + uniqueSuffix
+
+			// Create a second library with unique name and path to avoid conflicts with other tests
+			_, err := db.DB().Exec("INSERT INTO library (name, path, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))", "Library 2-"+uniqueSuffix, uniqueLibPath)
+			Expect(err).ToNot(HaveOccurred())
+			err = db.DB().QueryRow("SELECT last_insert_rowid()").Scan(&lib2ID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create a restricted user with access only to library 1
+			_, err = db.DB().Exec("INSERT INTO user (id, user_name, name, is_admin, password, created_at, updated_at) VALUES (?, ?, 'Restricted User', false, 'pass', datetime('now'), datetime('now'))", restrictedUserID, restrictedUserID)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = db.DB().Exec("INSERT INTO user_library (user_id, library_id) VALUES (?, 1)", restrictedUserID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create test media files in each library
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			mfRepo = NewMediaFileRepository(ctx, db)
+
+			// Song in library 1 (accessible by restricted user)
+			songLib1 := model.MediaFile{
+				ID:           "lib1-song",
+				Title:        "Song in Lib1",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         "/music/lib1/song.mp3",
+				LibraryID:    1,
+				Participants: model.Participants{},
+				Tags:         model.Tags{},
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songLib1)).To(Succeed())
+
+			// Song in library 2 (NOT accessible by restricted user)
+			songLib2 := model.MediaFile{
+				ID:           "lib2-song",
+				Title:        "Song in Lib2",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         uniqueLibPath + "/song.mp3",
+				LibraryID:    lib2ID,
+				Participants: model.Participants{},
+				Tags:         model.Tags{},
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songLib2)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			db := GetDBXBuilder()
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+			// Clean up test data
+			_, _ = db.Delete("media_file", dbx.HashExp{"id": "lib1-song"}).Execute()
+			_, _ = db.Delete("media_file", dbx.HashExp{"id": "lib2-song"}).Execute()
+			_, _ = db.Delete("user_library", dbx.HashExp{"user_id": restrictedUserID}).Execute()
+			_, _ = db.Delete("user", dbx.HashExp{"id": restrictedUserID}).Execute()
+			_, _ = db.DB().Exec("DELETE FROM library WHERE id = ?", lib2ID)
+		})
+
+		It("should only include tracks from libraries the user has access to (issue #4738)", func() {
+			db := GetDBXBuilder()
+			ctx := log.NewContext(GinkgoT().Context())
+
+			// Create the smart playlist as the restricted user
+			restrictedUser := model.User{ID: restrictedUserID, UserName: restrictedUserID, IsAdmin: false}
+			ctx = request.WithUser(ctx, restrictedUser)
+			restrictedRepo := NewPlaylistRepository(ctx, db)
+
+			// Create a smart playlist that matches all songs
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Gt{"playCount": -1}, // Matches everything
+				},
+			}
+			newPls := model.Playlist{Name: "All Songs", OwnerID: restrictedUserID, Rules: rules}
+			Expect(restrictedRepo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := restrictedRepo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying only the track from library 1 is in the playlist")
+			var foundLib1Song, foundLib2Song bool
+			for _, track := range pls.Tracks {
+				if track.MediaFileID == "lib1-song" {
+					foundLib1Song = true
+				}
+				if track.MediaFileID == "lib2-song" {
+					foundLib2Song = true
+				}
+			}
+			Expect(foundLib1Song).To(BeTrue(), "Song from library 1 should be in the playlist")
+			Expect(foundLib2Song).To(BeFalse(), "Song from library 2 should NOT be in the playlist")
+
+			By("verifying playlist_tracks table only contains the accessible track")
+			var playlistTracksCount int
+			err = db.DB().QueryRow("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ?", newPls.ID).Scan(&playlistTracksCount)
+			Expect(err).ToNot(HaveOccurred())
+			// Count should only include tracks visible to the user (lib1-song)
+			// The count may include other test songs from library 1, but NOT lib2-song
+			var lib2TrackCount int
+			err = db.DB().QueryRow("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ? AND media_file_id = 'lib2-song'", newPls.ID).Scan(&lib2TrackCount)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib2TrackCount).To(Equal(0), "lib2-song should not be in playlist_tracks")
+
+			By("verifying SongCount matches visible tracks")
+			Expect(pls.SongCount).To(Equal(len(pls.Tracks)), "SongCount should match the number of visible tracks")
 		})
 	})
 })

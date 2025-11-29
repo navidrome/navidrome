@@ -28,6 +28,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
+			"rated_at",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
@@ -77,7 +78,8 @@ func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 }
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {
-	return r.annUpsert(map[string]interface{}{"rating": rating}, itemID)
+	ratedAt := time.Now()
+	return r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
 }
 
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
@@ -119,7 +121,7 @@ func (r sqlRepository) cleanAnnotations() error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error cleaning up annotations: %w", err)
+		return fmt.Errorf("error cleaning up %s annotations: %w", r.tableName, err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)

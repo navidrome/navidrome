@@ -14,6 +14,24 @@ vi.mock('@material-ui/core', async () => {
   }
 })
 
+// Mock formatFullDate to return deterministic results
+vi.mock('../utils', async () => {
+  const actual = await import('../utils')
+  return {
+    ...actual,
+    formatFullDate: (date) => {
+      if (!date) return ''
+      // Use en-CA locale for consistent test results
+      return new Date(date).toLocaleDateString('en-CA', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      })
+    },
+  }
+})
+
 describe('Details component', () => {
   describe('Desktop view', () => {
     beforeEach(() => {
