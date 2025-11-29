@@ -12,6 +12,7 @@
         "artist": "Artista",
         "album": "Albuma",
         "path": "Fitxategiaren bidea",
+        "libraryName": "Liburutegia",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
@@ -58,6 +59,7 @@
         "playCount": "Erreprodukzioak",
         "size": "Fitxategiaren tamaina",
         "name": "Izena",
+        "libraryName": "Liburutegia",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
@@ -147,19 +149,26 @@
         "currentPassword": "Uneko pasahitza",
         "newPassword": "Pasahitz berria",
         "token": "Tokena",
-        "lastAccessAt": "Azken sarbidea"
+        "lastAccessAt": "Azken sarbidea",
+        "libraries": "Liburutegiak"
       },
       "helperTexts": {
-        "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira"
+        "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira",
+        "libraries": "Hautatu erabiltzaile honentzat liburutegi jakinak, edo utzi hutsik defektuzko liburutegiak erabiltzeko"
       },
       "notifications": {
         "created": "Erabiltzailea sortu da",
         "updated": "Erabiltzailea eguneratu da",
         "deleted": "Erabiltzailea ezabatu da"
       },
+      "validation": {
+        "librariesRequired": "Gutxienez liburutegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat"
+      },
       "message": {
         "listenBrainzToken": "Idatzi zure ListenBrainz erabiltzailearen tokena",
-        "clickHereForToken": "Egin klik hemen tokena lortzeko"
+        "clickHereForToken": "Egin klik hemen tokena lortzeko",
+        "selectAllLibraries": "Hautatu liburutegi guztiak",
+        "adminAutoLibraries": "Administratzaileek automatikoki dute liburutegi guztietara sarbidea"
       }
     },
     "player": {
@@ -254,6 +263,7 @@
       "fields": {
         "path": "Bidea",
         "size": "Tamaina",
+        "libraryName": "Liburutegia",
         "updatedAt": "Desagertze-data:"
       },
       "actions": {
@@ -262,6 +272,58 @@
       },
       "notifications": {
         "removed": "Aurkitzen ez ziren fitxategiak kendu dira"
+      }
+    },
+    "library": {
+      "name": "Liburutegia |||| Liburutegiak",
+      "fields": {
+        "name": "Izena",
+        "path": "Fitxategiaren bidea",
+        "remotePath": "Urruneko bidea",
+        "lastScanAt": "Azken araketa",
+        "songCount": "Abestiak",
+        "albumCount": "Albumak",
+        "artistCount": "Artistak",
+        "totalSongs": "Abestiak",
+        "totalAlbums": "Albumak",
+        "totalArtists": "Artistak",
+        "totalFolders": "Karpetak",
+        "totalFiles": "Fitxategiak",
+        "totalMissingFiles": "Fitxategiak faltan",
+        "totalSize": "Tamaina guztira",
+        "totalDuration": "Iraupena",
+        "defaultNewUsers": "Defektuz erabiltzaile berrientzat",
+        "createdAt": "Sortze-data",
+        "updatedAt": "Eguneratze-data"
+      },
+      "sections": {
+        "basic": "Oinarrizko informazioa",
+        "statistics": "Estatistikak"
+      },
+      "actions": {
+        "scan": "Arakatu liburutegia",
+        "manageUsers": "Kudeatu erabiltzaileen sarbidea",
+        "viewDetails": "Ikusi xehetasunak"
+      },
+      "notifications": {
+        "created": "Liburutegia ondo sortu da",
+        "updated": "Liburutegia ondo eguneratu da",
+        "deleted": "Liburutegia ondo ezabatu da",
+        "scanStarted": "Liburutegiaren araketa hasi da",
+        "scanCompleted": "Liburutegiaren araketa amaitu da"
+      },
+      "validation": {
+        "nameRequired": "Liburutegiaren izena beharrezkoa da",
+        "pathRequired": "Liburutegiaren bidea beharrezkoa da",
+        "pathNotDirectory": "Liburutegiaren bidea direktorio bat izan behar da",
+        "pathNotFound": "Ez da liburutegiaren bidea aurkitu",
+        "pathNotAccessible": "Liburutegiaren bidea ez dago eskuragai",
+        "pathInvalid": "Liburutegiaren bidea ez da baliozkoa"
+      },
+      "messages": {
+        "deleteConfirm": "Ziur liburutegia ezabatu nahi duzula? Erlazionatutako datu guztiak eta erabiltzaileen sarbidea kenduko ditu.",
+        "scanInProgress": "Araketa abian da…",
+        "noLibrariesAssigned": "Ez da liburutegirik egokitu erabiltzaile honentzat"
       }
     }
   },
@@ -450,6 +512,12 @@
   },
   "menu": {
     "library": "Liburutegia",
+    "librarySelector": {
+      "allLibraries": "Liburutegi guztiak (%{count})",
+      "multipleLibraries": "%{total} liburutegitik %{selected} hautatuta",
+      "selectLibraries": "Hautatu liburutegiak",
+      "none": "Bat ere ez"
+    },
     "settings": "Ezarpenak",
     "version": "Bertsioa",
     "theme": "Itxura",
