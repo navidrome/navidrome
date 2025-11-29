@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery, CircularProgress } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import {
   Button,
@@ -45,6 +45,12 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+const LoadingButton = ({ loading, icon, ...rest }) => (
+  <Button {...rest}>
+    {loading ? <CircularProgress size={20} color="inherit" /> : icon}
+  </Button>
+)
+
 const ArtistActions = ({ className, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
@@ -52,34 +58,45 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const notify = useNotify()
   const classes = useStyles()
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const [loadingAction, setLoadingAction] = React.useState(null)
+  const isLoading = !!loadingAction
 
   const handlePlay = React.useCallback(async () => {
+    setLoadingAction('play')
     try {
       await playTopSongs(dispatch, notify, record.name)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error fetching top songs for artist:', e)
       notify('ra.page.error', 'warning')
+    } finally {
+      setLoadingAction(null)
     }
   }, [dispatch, notify, record])
 
   const handleShuffle = React.useCallback(async () => {
+    setLoadingAction('shuffle')
     try {
       await playShuffle(dataProvider, dispatch, record.id)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error fetching songs for shuffle:', e)
       notify('ra.page.error', 'warning')
+    } finally {
+      setLoadingAction(null)
     }
   }, [dataProvider, dispatch, record, notify])
 
   const handleRadio = React.useCallback(async () => {
+    setLoadingAction('radio')
     try {
       await playSimilar(dispatch, notify, record.id)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error starting radio for artist:', e)
       notify('ra.page.error', 'warning')
+    } finally {
+      setLoadingAction(null)
     }
   }, [dispatch, notify, record])
 
@@ -88,30 +105,33 @@ const ArtistActions = ({ className, record, ...rest }) => {
       className={`${className} ${classes.toolbar}`}
       {...sanitizeListRestProps(rest)}
     >
-      <Button
+      <LoadingButton
         onClick={handlePlay}
         label={translate('resources.artist.actions.topSongs')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
-      >
-        <PlayArrowIcon />
-      </Button>
-      <Button
+        disabled={isLoading}
+        loading={loadingAction === 'play'}
+        icon={<PlayArrowIcon />}
+      />
+      <LoadingButton
         onClick={handleShuffle}
         label={translate('resources.artist.actions.shuffle')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
-      >
-        <ShuffleIcon />
-      </Button>
-      <Button
+        disabled={isLoading}
+        loading={loadingAction === 'shuffle'}
+        icon={<ShuffleIcon />}
+      />
+      <LoadingButton
         onClick={handleRadio}
         label={translate('resources.artist.actions.radio')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
-      >
-        <IoIosRadio className={classes.radioIcon} />
-      </Button>
+        disabled={isLoading}
+        loading={loadingAction === 'radio'}
+        icon={<IoIosRadio className={classes.radioIcon} />}
+      />
     </TopToolbar>
   )
 }

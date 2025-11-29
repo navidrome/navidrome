@@ -15,9 +15,7 @@ import (
 	"github.com/navidrome/navidrome/utils/chrono"
 )
 
-func newFolderEntry(job *scanJob, path string) *folderEntry {
-	id := model.FolderID(job.lib, path)
-	info := job.popLastUpdate(id)
+func newFolderEntry(job *scanJob, id, path string, updTime time.Time, hash string) *folderEntry {
 	f := &folderEntry{
 		id:         id,
 		job:        job,
@@ -25,8 +23,8 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
 		albumIDMap: make(map[string]string),
-		updTime:    info.UpdatedAt,
-		prevHash:   info.Hash,
+		updTime:    updTime,
+		prevHash:   hash,
 	}
 	return f
 }
