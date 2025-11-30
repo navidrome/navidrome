@@ -243,7 +243,13 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, startTime, updateMediaSessionPlaybackState],
+    [
+      context,
+      dispatch,
+      showNotifications,
+      startTime,
+      updateMediaSessionPlaybackState,
+    ],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
