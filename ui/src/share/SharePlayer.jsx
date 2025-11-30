@@ -49,21 +49,21 @@ const SharePlayer = () => {
   }, [])
 
   const onAudioPlay = useCallback(
-    (info) => {
+    (_info) => {
       updateMediaSessionPlaybackState('playing')
     },
     [updateMediaSessionPlaybackState],
   )
 
   const onAudioPause = useCallback(
-    (info) => {
+    (_info) => {
       updateMediaSessionPlaybackState('paused')
     },
     [updateMediaSessionPlaybackState],
   )
 
   const onAudioEnded = useCallback(
-    (currentPlayId, audioLists, info) => {
+    (_currentPlayId, _audioLists, _info) => {
       updateMediaSessionPlaybackState('none')
     },
     [updateMediaSessionPlaybackState],
