@@ -41,6 +41,7 @@ type configOptions struct {
 	UIWelcomeMessage                string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
+	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableInsightsCollector         bool
@@ -492,6 +493,7 @@ func setViperDefaults() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
+	viper.SetDefault("enabletranscodingcancellation", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
