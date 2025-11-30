@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # 1. Detect Architecture
 ARCH=$(dpkg --print-architecture)
@@ -13,7 +13,7 @@ case $ARCH in
         DOWNLOAD_ARCH="linux-arm64"
         ;;
     *)
-        echo "Unsupported architecture: $ARCH"
+        echo "Unsupported architecture: $ARCH" >&2
         exit 1
         ;;
 esac
@@ -24,7 +24,8 @@ echo "Downloading TagLib for ${ARCH} from ${URL}"
 
 wget "$URL" -O /tmp/cross-taglib.tar.gz
 sudo tar -xzf /tmp/cross-taglib.tar.gz -C /usr --strip-components=1
-sudo mv /usr/include/taglib/* /usr/include
+sudo mv /usr/include/taglib/* /usr/include/
+sudo rmdir /usr/include/taglib
 sudo rm /tmp/cross-taglib.tar.gz /usr/provenance.json
 
 echo "TagLib installation complete"
