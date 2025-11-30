@@ -301,14 +301,19 @@
       "actions": {
         "scan": "สแกนห้องสมุด",
         "manageUsers": "ตั้งค่าการเข้าถึง",
-        "viewDetails": "ดูรายละเอียด"
+        "viewDetails": "ดูรายละเอียด",
+        "quickScan": "สแกนแบบเร็ว",
+        "fullScan": "สแกนแบบเต็ม"
       },
       "notifications": {
         "created": "สร้างห้องสมุดเรียบร้อย",
         "updated": "อัพเดทห้องสมุดเรียบร้อย",
         "deleted": "ลบห้องสมุดเพลงเรียบร้อยแล้ว",
         "scanStarted": "เริ่มสแกนห้องสมุด",
-        "scanCompleted": "สแกนห้องสมุดเสร็จแล้ว"
+        "scanCompleted": "สแกนห้องสมุดเสร็จแล้ว",
+        "quickScanStarted": "เริ่มสแกนแบบเร็ว",
+        "fullScanStarted": "เริ่มสแกนแบบเต็ม",
+        "scanError": "การเริ่มสแกนผิดพลาด ดูในบันทึก"
       },
       "validation": {
         "nameRequired": "ต้องใส่ชื่อห้องสมุดเพลง",
@@ -604,7 +609,8 @@
     "serverDown": "ออฟไลน์",
     "scanType": "ประเภท",
     "status": "สแกนผิดพลาด",
-    "elapsedTime": "เวลาที่ใช้"
+    "elapsedTime": "เวลาที่ใช้",
+    "selectiveScan": "เลือก"
   },
   "help": {
     "title": "คีย์ลัด Navidrome",
