@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import ReactJkMusicPlayer from 'navidrome-music-player'
 import config, { shareInfo } from '../config'
 import { shareCoverUrl, shareDownloadUrl, shareStreamUrl } from '../utils'
@@ -39,6 +40,35 @@ const SharePlayer = () => {
       src: shareDownloadUrl(shareInfo?.id),
     })
   }
+
+  // ReactJKMusicPlayer doesn't set playbackState, so we do it manually
+  const updateMediaSessionPlaybackState = useCallback((state) => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = state
+    }
+  }, [])
+
+  const onAudioPlay = useCallback(
+    (info) => {
+      updateMediaSessionPlaybackState('playing')
+    },
+    [updateMediaSessionPlaybackState],
+  )
+
+  const onAudioPause = useCallback(
+    (info) => {
+      updateMediaSessionPlaybackState('paused')
+    },
+    [updateMediaSessionPlaybackState],
+  )
+
+  const onAudioEnded = useCallback(
+    (currentPlayId, audioLists, info) => {
+      updateMediaSessionPlaybackState('none')
+    },
+    [updateMediaSessionPlaybackState],
+  )
+
   const options = {
     audioLists: list,
     mode: 'full',
@@ -59,6 +89,9 @@ const SharePlayer = () => {
     <ReactJkMusicPlayer
       {...options}
       className={classes.player}
+      onAudioPlay={onAudioPlay}
+      onAudioPause={onAudioPause}
+      onAudioEnded={onAudioEnded}
       onBeforeAudioDownload={onBeforeAudioDownload}
     />
   )
