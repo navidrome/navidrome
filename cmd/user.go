@@ -129,14 +129,15 @@ var (
 func promptPassword() string {
 	for {
 		fmt.Print("Enter new password (press enter with no password to cancel): ")
-		password, err := term.ReadPassword(syscall.Stdin)
+		// This cast is necessary for some platforms
+		password, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 
 		if err != nil {
 			log.Fatal("Error getting password", err)
 		}
 
 		fmt.Print("\nConfirm new password (press enter with no password to cancel): ")
-		confirmation, err := term.ReadPassword(syscall.Stdin)
+		confirmation, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 
 		if err != nil {
 			log.Fatal("Error getting password confirmation", err)
