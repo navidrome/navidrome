@@ -142,6 +142,7 @@ func promptPassword() string {
 			log.Fatal("Error getting password confirmation", err)
 		}
 
+		// clear the line.
 		fmt.Println()
 
 		pass := string(password)
@@ -155,7 +156,7 @@ func promptPassword() string {
 			return pass
 		}
 
-		fmt.Print("Username and password do not match")
+		fmt.Println("Password and password confirmation do not match")
 	}
 }
 
@@ -368,12 +369,37 @@ func runUserList() {
 
 	if outputFormat == "csv" {
 		w := csv.NewWriter(os.Stdout)
-		_ = w.Write([]string{"user id", "username", "user's name", "user email", "admin", "created at", "updated at", "last access", "last login", "last login", "libraries"})
+		_ = w.Write([]string{
+			"user id",
+			"username",
+			"user's name",
+			"user email",
+			"admin",
+			"created at",
+			"updated at",
+			"last access",
+			"last login",
+			"libraries",
+		})
 		for _, user := range userList {
 			paths := make([]string, len(user.Libraries))
 
 			for idx, library := range user.Libraries {
 				paths[idx] = fmt.Sprintf("%d:%s", library.ID, library.Path)
+			}
+
+			var lastAccess, lastLogin string
+
+			if user.LastAccessAt != nil {
+				lastAccess = user.LastAccessAt.Format(time.RFC3339Nano)
+			} else {
+				lastAccess = "never"
+			}
+
+			if user.LastLoginAt != nil {
+				lastLogin = user.LastLoginAt.Format(time.RFC3339Nano)
+			} else {
+				lastLogin = "never"
 			}
 
 			_ = w.Write([]string{
@@ -384,8 +410,8 @@ func runUserList() {
 				strconv.FormatBool(user.IsAdmin),
 				user.CreatedAt.Format(time.RFC3339Nano),
 				user.UpdatedAt.Format(time.RFC3339Nano),
-				user.LastAccessAt.Format(time.RFC3339Nano),
-				user.LastLoginAt.Format(time.RFC3339Nano),
+				lastAccess,
+				lastLogin,
 				fmt.Sprintf("'%s'", strings.Join(paths, ",")),
 			})
 		}
