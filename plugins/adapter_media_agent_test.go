@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -23,6 +24,7 @@ var _ = Describe("Adapter Media Agent", func() {
 		// Ensure plugins folder is set to testdata
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Folder = testDataDir
+		conf.Server.DevPluginCompilationTimeout = 2 * time.Minute
 
 		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
