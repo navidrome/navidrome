@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -10,11 +9,8 @@ import (
 	"strconv"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/spf13/cobra"
 )
 
@@ -66,9 +62,7 @@ var (
 )
 
 func runExporter() {
-	sqlDB := db.Db()
-	ds := persistence.New(sqlDB)
-	ctx := auth.WithAdminUser(context.Background(), ds)
+	ds, ctx := getContext()
 	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Fatal("Error retrieving playlist", "name", playlistID, err)
@@ -105,26 +99,14 @@ func runList() {
 		log.Fatal("Invalid output format. Must be one of csv, json", "format", outputFormat)
 	}
 
-	sqlDB := db.Db()
-	ds := persistence.New(sqlDB)
-	ctx := auth.WithAdminUser(context.Background(), ds)
-
+	ds, ctx := getContext()
 	options := model.QueryOptions{Sort: "owner_name"}
 
 	if userID != "" {
-		user, err := ds.User(ctx).FindByUsername(userID)
-
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal("Error retrieving user by name", "name", userID, err)
+		user, err := getUser(userID, ds, ctx)
+		if err != nil {
+			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
 		}
-
-		if errors.Is(err, model.ErrNotFound) {
-			user, err = ds.User(ctx).Get(userID)
-			if err != nil {
-				log.Fatal("Error retrieving user by id", "id", userID, err)
-			}
-		}
-
 		options.Filters = squirrel.Eq{"owner_id": user.ID}
 	}
 
