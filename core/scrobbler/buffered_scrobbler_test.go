@@ -51,9 +51,10 @@ var _ = Describe("BufferedScrobbler", func() {
 		Expect(scr.ScrobbleCalled.Load()).To(BeFalse())
 
 		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
-		Expect(buffer.Length()).To(Equal(int64(1)))
 
-		// Wait for the scrobble to be sent
+		// Wait for the background goroutine to process the scrobble.
+		// We don't check buffer.Length() here because the background goroutine
+		// may dequeue the entry before we can observe it.
 		Eventually(scr.ScrobbleCalled.Load).Should(BeTrue())
 
 		lastScrobble := scr.LastScrobble.Load()
