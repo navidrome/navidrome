@@ -250,7 +250,7 @@ func (p *playTracker) nowPlayingWorker() {
 		select {
 		case <-p.shutdown:
 			return
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(time.Second):
 		case <-p.npSignal:
 		}
 
