@@ -42,6 +42,7 @@ type MountInfo struct {
 
 var fsTypeMap = map[int64]string{
 	0x5346414f: "afs",
+	0x187:      "autofs",
 	0x61756673: "aufs",
 	0x9123683E: "btrfs",
 	0xc36400:   "ceph",
@@ -55,9 +56,11 @@ var fsTypeMap = map[int64]string{
 	0x6a656a63: "fakeowner", // FS inside a container
 	0x65735546: "fuse",
 	0x4244:     "hfs",
+	0x482b:     "hfs+",
 	0x9660:     "iso9660",
 	0x3153464a: "jfs",
 	0x00006969: "nfs",
+	0x5346544e: "ntfs", // NTFS_SB_MAGIC
 	0x7366746e: "ntfs",
 	0x794c7630: "overlayfs",
 	0x9fa0:     "proc",
@@ -69,8 +72,15 @@ var fsTypeMap = map[int64]string{
 	0x01021997: "v9fs",
 	0x786f4256: "vboxsf",
 	0x4d44:     "vfat",
+	0xca451a4e: "virtiofs",
 	0x58465342: "xfs",
 	0x2FC12FC1: "zfs",
+
+	// Signed/unsigned conversion issues (negative hex values converted to uint32)
+	-0x6edc97c2: "btrfs", // 0x9123683e
+	-0x1acb2be:  "smb2",  // 0xfe534d42
+	-0xacb2be:   "cifs",  // 0xff534d42
+	-0xd0adff0:  "f2fs",  // 0xf2f52010
 }
 
 func getFilesystemType(path string) (string, error) {

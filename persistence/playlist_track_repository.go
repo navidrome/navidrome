@@ -55,7 +55,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"id":           "playlist_tracks.id",
 			"artist":       "order_artist_name",
 			"album_artist": "order_album_artist_name",
-			"album":        "order_album_name, order_album_artist_name",
+			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 			"title":        "order_title",
 			// To make sure these fields will be whitelisted
 			"duration": "duration",
@@ -97,6 +97,7 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
+			"rated_at",
 			"f.*",
 			"playlist_tracks.*",
 		).

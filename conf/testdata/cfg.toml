@@ -1,5 +1,7 @@
 musicFolder = "/toml/music"
 uiWelcomeMessage = "Welcome toml"
 
+Tags.artist.Split = ';'
+
 [Tags.custom]
 aliases = ["toml", "test"]

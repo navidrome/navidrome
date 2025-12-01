@@ -13,12 +13,14 @@
                 "album": "专辑",
                 "path": "文件路径",
                 "genre": "流派",
+                "libraryName": "媒体库",
                 "compilation": "合辑",
                 "year": "发行年份",
                 "size": "文件大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
                 "bitDepth": "比特深度",
+                "sampleRate": "采样率",
                 "channels": "声道",
                 "discSubtitle": "字幕",
                 "starred": "收藏",
@@ -33,12 +35,14 @@
                 "participants": "其他参与人员",
                 "tags": "附加标签",
                 "mappedTags": "映射标签",
-                "rawTags": "原始标签"
+                "rawTags": "原始标签",
+                "missing": "缺失"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
                 "playNow": "立即播放",
                 "addToPlaylist": "加入歌单",
+                "showInPlaylist": "定位到播放列表",
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
                 "playNext": "下一首播放",
@@ -56,6 +60,7 @@
                 "size": "文件大小",
                 "name": "名称",
                 "genre": "流派",
+                "libraryName": "媒体库",
                 "compilation": "合辑",
                 "year": "发行年份",
                 "date": "录制日期",
@@ -72,7 +77,8 @@
                 "releaseType": "发行类型",
                 "grouping": "分组",
                 "media": "媒体类型",
-                "mood": "情绪"
+                "mood": "情绪",
+                "missing": "缺失"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -104,7 +110,8 @@
                 "playCount": "播放次数",
                 "rating": "评分",
                 "genre": "流派",
-                "role": "参与角色"
+                "role": "参与角色",
+                "missing": "缺失"
             },
             "roles": {
                 "albumartist": "专辑歌手",
@@ -119,7 +126,13 @@
                 "mixer": "混音师",
                 "remixer": "重混师",
                 "djmixer": "DJ混音师",
-                "performer": "演奏家"
+                "performer": "演奏家",
+                "maincredit": "主要艺术家"
+            },
+            "actions": {
+                "topSongs": "热门歌曲",
+                "shuffle": "随机播放",
+                "radio": "电台"
             }
         },
         "user": {
@@ -136,19 +149,26 @@
                 "changePassword": "修改密码？",
                 "currentPassword": "当前密码",
                 "newPassword": "新密码",
-                "token": "令牌"
+                "token": "令牌",
+                "libraries": "媒体库"
             },
             "helperTexts": {
-                "name": "名称的更改将在下次登录时生效"
+                "name": "名称的更改将在下次登录时生效",
+                "libraries": "为该用户选择指定媒体库，留空则使用默认媒体库"
             },
             "notifications": {
                 "created": "用户已创建",
                 "updated": "用户已更新",
                 "deleted": "用户已删除"
             },
+            "validation": {
+                "librariesRequired": "普通用户必须至少选择一个媒体库"
+            },
             "message": {
                 "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
-                "clickHereForToken": "点击这里来获得你的 ListenBrainz 令牌"
+                "clickHereForToken": "点击这里来获得你的 ListenBrainz 令牌",
+                "selectAllLibraries": "选择全部媒体库",
+                "adminAutoLibraries": "管理员默认可访问所有媒体库"
             }
         },
         "player": {
@@ -191,12 +211,18 @@
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出",
+                "saveQueue": "保存为歌单",
                 "makePublic": "设为公开",
-                "makePrivate": "设为私有"
+                "makePrivate": "设为私有",
+                "searchOrCreate": "搜索歌单，或输入名称新建…",
+                "pressEnterToCreate": "按 Enter 键新建歌单",
+                "removeFromSelection": "移除选中项"
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
-                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？"
+                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？",
+                "noPlaylistsFound": "未找到歌单",
+                "noPlaylists": "暂无可用歌单"
             }
         },
         "radio": {
@@ -237,13 +263,67 @@
             "fields": {
                 "path": "路径",
                 "size": "文件大小",
+                "libraryName": "媒体库",
                 "updatedAt": "丢失于"
             },
             "actions": {
-                "remove": "移除"
+                "remove": "移除",
+                "remove_all": "移除所有"
             },
             "notifications": {
                 "removed": "丢失文件已移除"
+            }
+        },
+        "library": {
+            "name": "媒体库",
+            "fields": {
+                "name": "名称",
+                "path": "路径",
+                "remotePath": "远程路径",
+                "lastScanAt": "上次扫描",
+                "songCount": "歌曲",
+                "albumCount": "专辑",
+                "artistCount": "艺术家",
+                "totalSongs": "歌曲",
+                "totalAlbums": "专辑",
+                "totalArtists": "艺术家",
+                "totalFolders": "目录",
+                "totalFiles": "文件",
+                "totalMissingFiles": "缺失的文件",
+                "totalSize": "总大小",
+                "totalDuration": "时长",
+                "defaultNewUsers": "新用户默认",
+                "createdAt": "创建于",
+                "updatedAt": "更新于"
+            },
+            "sections": {
+                "basic": "基本信息",
+                "statistics": "统计数据"
+            },
+            "actions": {
+                "scan": "扫描媒体库",
+                "manageUsers": "管理用户权限",
+                "viewDetails": "查看详情"
+            },
+            "notifications": {
+                "created": "媒体库已创建",
+                "updated": "媒体库已更新",
+                "deleted": "媒体库已删除",
+                "scanStarted": "开始扫描媒体库",
+                "scanCompleted": "媒体库扫描已完成"
+            },
+            "validation": {
+                "nameRequired": "媒体库名称不能为空！",
+                "pathRequired": "媒体库路径不能为空！",
+                "pathNotDirectory": "媒体库路径必须为目录！",
+                "pathNotFound": "媒体库路径不存在！",
+                "pathNotAccessible": "媒体库路径无法访问！",
+                "pathInvalid": "媒体库路径无效！"
+            },
+            "messages": {
+                "deleteConfirm": "您确定要删除此媒体库吗？此操作将删除所有关联数据及用户访问权限！",
+                "scanInProgress": "正在扫描...",
+                "noLibrariesAssigned": "该用户未分配任何媒体库！"
             }
         }
     },
@@ -397,11 +477,15 @@
         "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
         "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
+        "noSimilarSongsFound": "未找到相似歌曲",
+        "noTopSongsFound": "未找到热门歌曲",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
         "remove_missing_title": "移除丢失文件",
         "remove_missing_content": "您确定要将选中的丢失文件从数据库中永久移除吗？此操作将删除所有相关信息，包括播放次数和评分。",
+        "remove_all_missing_title": "删除所有丢失文件",
+        "remove_all_missing_content": "您确定要从数据库中删除所有丢失文件吗？这将永久删除对它们的所有引用，包括它们的播放次数和评分。",
         "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
         "notifications_not_available": "此浏览器不支持桌面通知",
         "lastfmLinkSuccess": "Last.fm 已关联并启用喜好记录",
@@ -428,6 +512,12 @@
     },
     "menu": {
         "library": "曲库",
+        "librarySelector": {
+            "allLibraries": "全部媒体库 (%{count})",
+            "multipleLibraries": "已选 %{selected} 共 %{total} 媒体库",
+            "selectLibraries": "选择媒体库",
+            "none": "无"
+        },
         "settings": "设置",
         "version": "版本",
         "theme": "主题",
@@ -490,6 +580,21 @@
                 "disabled": "禁用",
                 "waiting": "等待"
             }
+        },
+        "tabs": {
+            "about": "关于",
+            "config": "配置"
+        },
+        "config": {
+            "configName": "配置名称",
+            "environmentVariable": "环境变量",
+            "currentValue": "当前值",
+            "configurationFile": "配置文件",
+            "exportToml": "导出配置（TOML）",
+            "exportSuccess": "配置以 TOML 格式导出到剪贴板",
+            "exportFailed": "复制配置失败",
+            "devFlagsHeader": "开发标志（可能会更改/删除）",
+            "devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
         }
     },
     "activity": {
@@ -498,7 +603,15 @@
         "quickScan": "快速扫描",
         "fullScan": "完全扫描",
         "serverUptime": "服务器已运行",
-        "serverDown": "服务器已离线"
+        "serverDown": "服务器已离线",
+        "scanType": "扫描类型",
+        "status": "扫描状态",
+        "elapsedTime": "用时"
+    },
+    "nowPlaying": {
+        "title": "正在播放",
+        "empty": "无播放内容",
+        "minutesAgo": "%{smart_count} 分钟前"
     },
     "help": {
         "title": "Navidrome 快捷键",

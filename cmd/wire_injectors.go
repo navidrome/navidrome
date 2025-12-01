@@ -45,7 +45,6 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
 	wire.Bind(new(metrics.PluginLoader), new(plugins.Manager)),
-	wire.Bind(new(core.Scanner), new(scanner.Scanner)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )
 
@@ -103,7 +102,7 @@ func CreatePrometheus() metrics.Metrics {
 	))
 }
 
-func CreateScanner(ctx context.Context) scanner.Scanner {
+func CreateScanner(ctx context.Context) model.Scanner {
 	panic(wire.Build(
 		allProviders,
 	))
