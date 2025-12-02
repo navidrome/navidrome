@@ -340,9 +340,16 @@ func Load(noConfigDump bool) {
 		Server.BaseScheme = u.Scheme
 	}
 
+	// Log configuration source
+	if Server.ConfigFile != "" {
+		log.Info("Loaded configuration", "file", Server.ConfigFile)
+	} else {
+		log.Warn("No configuration file found. Using default values. To specify a config file, use the --configfile flag or set the ND_CONFIGFILE environment variable.")
+	}
+
 	// Print current configuration if log level is Debug
 	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfigDump {
-		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
+		prettyConf := pretty.Sprintf("Configuration: %# v", Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
