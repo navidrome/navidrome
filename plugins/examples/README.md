@@ -4,11 +4,11 @@ This directory contains example plugins for Navidrome, intended for demonstratio
 
 ## Contents
 
-- `wikimedia/`: Example plugin that retrieves artist information from Wikidata.
-- `coverartarchive/`: Example plugin that retrieves album cover images from the Cover Art Archive.
-- `crypto-ticker/`: Example plugin using websockets to log real-time cryptocurrency prices.
-- `discord-rich-presence/`: Example plugin that integrates with Discord Rich Presence to display currently playing tracks on Discord profiles.
-- `subsonicapi-demo/`: Example plugin that demonstrates how to interact with the Navidrome's Subsonic API from a plugin.
+- `wikimedia/`: Retrieves artist information from Wikidata.
+- `coverartarchive/`: Fetches album cover images from the Cover Art Archive.
+- `crypto-ticker/`: Uses websockets to log real-time cryptocurrency prices.
+- `discord-rich-presence/`: Integrates with Discord Rich Presence to display currently playing tracks on Discord profiles.
+- `subsonicapi-demo/`: Demonstrates interaction with Navidrome's Subsonic API from a plugin.
 
 ## Building
 

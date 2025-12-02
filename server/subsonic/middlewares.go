@@ -47,11 +47,23 @@ func postFormToQueryParams(next http.Handler) http.Handler {
 	})
 }
 
+func fromInternalOrProxyAuth(r *http.Request) (string, bool) {
+	username := server.InternalAuth(r)
+
+	// If the username comes from internal auth, do not also do reverse proxy auth, as
+	// the request will have no reverse proxy IP
+	if username != "" {
+		return username, true
+	}
+
+	return server.UsernameFromExtAuthHeader(r), false
+}
+
 func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var requiredParameters []string
 
-		username := cmp.Or(server.InternalAuth(r), server.UsernameFromReverseProxyHeader(r))
+		username, _ := fromInternalOrProxyAuth(r)
 		if username != "" {
 			requiredParameters = []string{"v", "c"}
 		} else {
@@ -91,10 +103,9 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			var usr *model.User
 			var err error
 
-			internalAuth := server.InternalAuth(r)
-			proxyAuth := server.UsernameFromReverseProxyHeader(r)
-			if username := cmp.Or(internalAuth, proxyAuth); username != "" {
-				authType := If(internalAuth != "", "internal", "reverse-proxy")
+			username, isInternalAuth := fromInternalOrProxyAuth(r)
+			if username != "" {
+				authType := If(isInternalAuth, "internal", "reverse-proxy")
 				usr, err = ds.User(ctx).FindByUsername(username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
@@ -226,21 +237,35 @@ func playerIDCookieName(userName string) string {
 	return cookieName
 }
 
+const subsonicErrorPointer = "subsonicErrorPointer"
+
 func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
+			status := int32(-1)
+			contextWithStatus := context.WithValue(r.Context(), subsonicErrorPointer, &status)
+
 			start := time.Now()
 			defer func() {
+				elapsed := time.Since(start).Milliseconds()
+
 				// We want to get the client name (even if not present for certain endpoints)
 				p := req.Params(r)
 				client, _ := p.String("c")
 
-				metrics.RecordRequest(r.Context(), strings.Replace(r.URL.Path, ".view", "", 1), r.Method, client, ww.Status(), time.Since(start).Milliseconds())
+				// If there is no Subsonic status (e.g., HTTP 501 not implemented), fallback to HTTP
+				if status == -1 {
+					status = int32(ww.Status())
+				}
+
+				shortPath := strings.Replace(r.URL.Path, ".view", "", 1)
+
+				metrics.RecordRequest(r.Context(), shortPath, r.Method, client, status, elapsed)
 			}()
 
-			next.ServeHTTP(ww, r)
+			next.ServeHTTP(ww, r.WithContext(contextWithStatus))
 		}
 		return http.HandlerFunc(fn)
 	}

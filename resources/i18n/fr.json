@@ -2,7 +2,7 @@
   "languageName": "Français",
   "resources": {
     "song": {
-      "name": "Piste |||| Pistes",
+      "name": "Titre |||| Titres",
       "fields": {
         "albumArtist": "Artiste",
         "duration": "Durée",
@@ -11,7 +11,7 @@
         "title": "Titre",
         "artist": "Artiste",
         "album": "Album",
-        "path": "Chemin",
+        "path": "Chemin d'accès",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Année",
@@ -35,7 +35,8 @@
         "rawTags": "Étiquettes brutes",
         "bitDepth": "Profondeur de bits",
         "sampleRate": "Fréquence d'échantillonnage",
-        "missing": "Manquant"
+        "missing": "Manquant",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -44,7 +45,8 @@
         "shuffleAll": "Tout mélanger",
         "download": "Télécharger",
         "playNext": "Jouer ensuite",
-        "info": "Plus d'informations"
+        "info": "Plus d'informations",
+        "showInPlaylist": "Montrer dans la playlist"
       }
     },
     "album": {
@@ -53,7 +55,7 @@
         "albumArtist": "Artiste",
         "artist": "Artiste",
         "duration": "Durée",
-        "songCount": "Nombre de pistes",
+        "songCount": "Titres",
         "playCount": "Nombre d'écoutes",
         "name": "Nom",
         "genre": "Genre",
@@ -75,7 +77,8 @@
         "media": "Média",
         "mood": "Humeur",
         "date": "Date d'enregistrement",
-        "missing": "Manquant"
+        "missing": "Manquant",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "playAll": "Lire",
@@ -102,7 +105,7 @@
       "fields": {
         "name": "Nom",
         "albumCount": "Nombre d'albums",
-        "songCount": "Nombre de pistes",
+        "songCount": "Nombre de titres",
         "playCount": "Lectures",
         "rating": "Classement",
         "genre": "Genre",
@@ -123,7 +126,13 @@
         "mixer": "Mixeur |||| Mixeurs",
         "remixer": "Remixeur |||| Remixeurs",
         "djmixer": "Mixeur DJ |||| Mixeurs DJ",
-        "performer": "Interprète |||| Interprètes"
+        "performer": "Interprète |||| Interprètes",
+        "maincredit": "Artiste de l'album ou Artiste |||| Artistes de l'album ou Artistes"
+      },
+      "actions": {
+        "shuffle": "Lecture aléatoire",
+        "radio": "Radio",
+        "topSongs": "Meilleurs titres"
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Mot de passe actuel",
         "newPassword": "Nouveau mot de passe",
         "token": "Token",
-        "lastAccessAt": "Dernier accès"
+        "lastAccessAt": "Dernier accès",
+        "libraries": "Bibliothèques"
       },
       "helperTexts": {
-        "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
+        "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion",
+        "libraries": "Sélectionner une bibliothèque pour cet utilisateur ou laisser vide pour utiliser la bibliothèque par défaut"
       },
       "notifications": {
         "created": "Utilisateur créé",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Entrez votre token ListenBrainz.",
-        "clickHereForToken": "Cliquez ici pour recevoir votre token"
+        "clickHereForToken": "Cliquez ici pour recevoir votre token",
+        "selectAllLibraries": "Sélectionner toutes les bibliothèques",
+        "adminAutoLibraries": "Les utilisateurs admin ont automatiquement accès à l'ensemble des bibliothèques"
+      },
+      "validation": {
+        "librariesRequired": "Au moins une bibliothèque doit être sélectionnée pour les utilisateurs non administrateurs"
       }
     },
     "player": {
@@ -164,7 +180,7 @@
         "client": "Client",
         "userName": "Nom d'utilisateur",
         "lastSeen": "Vu pour la dernière fois",
-        "reportRealPath": "Rapporter le chemin absolu",
+        "reportRealPath": "Rapporter le chemin d'accès absolu",
         "scrobbleEnabled": "Scrobbler vers des services externes"
       }
     },
@@ -192,16 +208,21 @@
         "path": "Importer depuis"
       },
       "actions": {
-        "selectPlaylist": "Ajouter les pistes à la playlist",
+        "selectPlaylist": "Sélectionner une playlist :",
         "addNewPlaylist": "Créer \"%{name}\"",
         "export": "Exporter",
         "makePublic": "Rendre publique",
         "makePrivate": "Rendre privée",
-        "saveQueue": "Sauvegarder la file de lecture dans la playlist"
+        "saveQueue": "Sauvegarder la file de lecture dans la playlist",
+        "searchOrCreate": "Chercher ou créer une nouvelle playlist...",
+        "pressEnterToCreate": "Appuyer sur entrée pour créer une nouvelle playlist",
+        "removeFromSelection": "Supprimer de la sélection"
       },
       "message": {
-        "duplicate_song": "Pistes déjà présentes dans la playlist",
-        "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
+        "duplicate_song": "Ajouter les titres déjà présents dans la playlist",
+        "song_exist": "Certains des titres sélectionnés font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?",
+        "noPlaylistsFound": "Aucune playlist trouvée",
+        "noPlaylists": "Aucune playlist disponible"
       }
     },
     "radio": {
@@ -237,9 +258,10 @@
     "missing": {
       "name": "Fichier manquant|||| Fichiers manquants",
       "fields": {
-        "path": "Chemin",
+        "path": "Chemin d'accès",
         "size": "Taille",
-        "updatedAt": "A disparu le"
+        "updatedAt": "A disparu le",
+        "libraryName": "Bibliothèque"
       },
       "actions": {
         "remove": "Supprimer",
@@ -249,6 +271,63 @@
         "removed": "Fichier(s) manquant(s) supprimé(s)"
       },
       "empty": "Aucun fichier manquant"
+    },
+    "library": {
+      "name": "Bibliothèque |||| Bibliothèques",
+      "fields": {
+        "name": "Nom",
+        "path": "Chemin d'accès",
+        "remotePath": "Chemin d'accès distant",
+        "lastScanAt": "Dernier scan",
+        "songCount": "Titres",
+        "albumCount": "Albums",
+        "artistCount": "Artistes",
+        "totalSongs": "Titres",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artistes",
+        "totalFolders": "Dossiers",
+        "totalFiles": "Fichiers",
+        "totalMissingFiles": "Fichiers manquants",
+        "totalSize": "Taille totale",
+        "totalDuration": "Durée",
+        "defaultNewUsers": "Défaut pour les nouveaux utilisateurs",
+        "createdAt": "Crée",
+        "updatedAt": "Mise à jour"
+      },
+      "sections": {
+        "basic": "Informations",
+        "statistics": "Statistiques"
+      },
+      "actions": {
+        "scan": "Scanner la bibliothèque",
+        "manageUsers": "Gérer les accès utilisateurs",
+        "viewDetails": "Voir les détails",
+        "quickScan": "Scan Rapide",
+        "fullScan": "Scan Complet"
+      },
+      "notifications": {
+        "created": "Bibliothèque créée avec succès",
+        "updated": "Bibliothèque mise à jour avec succès",
+        "deleted": "Bibliothèque supprimée avec succès",
+        "scanStarted": "Le scan de la bibliothèque a commencé",
+        "scanCompleted": "Le scan de la bibliothèque est terminé",
+        "quickScanStarted": "Scan rapide démarré",
+        "fullScanStarted": "Scan complet démarré",
+        "scanError": "Une erreur est survenue en démarrant le scan. Veuillez regarder les logs"
+      },
+      "validation": {
+        "nameRequired": "La bibliothèque doit obligatoirement avoir un nom",
+        "pathRequired": "La bibliothèque doit obligatoirement avoir un chemin d'accès",
+        "pathNotDirectory": "Le chemin d'accès de la bibliothèque doit pointer sur un dossier",
+        "pathNotFound": "Impossible de trouver ce chemin d'accès",
+        "pathNotAccessible": "Impossible d'accéder à ce chemin d'accès",
+        "pathInvalid": "Ce chemin d'accès n'est pas valide"
+      },
+      "messages": {
+        "deleteConfirm": "Êtes-vous sûr(e) de vouloir supprimer cette bibliothèque ? Cela supprimera toutes les données associées ainsi que les accès utilisateurs.",
+        "scanInProgress": "Scan en cours...",
+        "noLibrariesAssigned": "Aucune bibliothèque pour cet utilisateur"
+      }
     }
   },
   "ra": {
@@ -400,7 +479,7 @@
     "note": "NOTE",
     "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
     "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
-    "songsAddedToPlaylist": "Une piste a été ajoutée à la playlist |||| %{smart_count} pistes ont été ajoutées à la playlist",
+    "songsAddedToPlaylist": "1 titre a été ajouté à la playlist |||| %{smart_count} titres ont été ajoutés à la playlist",
     "noPlaylistsAvailable": "Aucune playlist",
     "delete_user_title": "Supprimer l'utilisateur '%{name}'",
     "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
@@ -430,7 +509,9 @@
     "remove_missing_title": "Supprimer les fichiers manquants",
     "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations",
     "remove_all_missing_title": "Supprimer tous les fichiers manquants",
-    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence."
+    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence.",
+    "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
+    "noTopSongsFound": "Aucun meilleur titre n'a été trouvé"
   },
   "menu": {
     "library": "Bibliothèque",
@@ -451,7 +532,7 @@
         "gain": {
           "none": "Désactivé",
           "album": "Utiliser le gain de l'album",
-          "track": "Utiliser le gain des pistes"
+          "track": "Utiliser le gain des titres"
         },
         "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée"
       }
@@ -459,7 +540,13 @@
     "albumList": "Albums",
     "about": "À propos",
     "playlists": "Playlists",
-    "sharedPlaylists": "Playlists partagées"
+    "sharedPlaylists": "Playlists partagées",
+    "librarySelector": {
+      "allLibraries": "Toutes les bibliothèques (%{count})",
+      "multipleLibraries": "%{selected} bibliothèque(s) sélectionnée(s) sur %{total}",
+      "selectLibraries": "Sélectionner les bibliothèques",
+      "none": "Aucune"
+    }
   },
   "player": {
     "playListsText": "File de lecture",
@@ -496,6 +583,21 @@
         "disabled": "Désactivée",
         "waiting": "En attente"
       }
+    },
+    "tabs": {
+      "about": "À propos",
+      "config": "Paramètres"
+    },
+    "config": {
+      "configName": "Nom de la configuration",
+      "environmentVariable": "Variable d'environnement",
+      "currentValue": "Valeur actuelle",
+      "configurationFile": "Fichier de configuration",
+      "exportToml": "Exporter la configuration (TOML)",
+      "exportSuccess": "La configuration a été copiée vers le presse-papier au format TOML",
+      "exportFailed": "Une erreur est survenue en copiant la configuration",
+      "devFlagsHeader": "Options de développement (peuvent être amenés à changer / être supprimés)",
+      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur"
     }
   },
   "activity": {
@@ -507,7 +609,8 @@
     "serverDown": "HORS LIGNE",
     "scanType": "Type",
     "status": "Erreur de scan",
-    "elapsedTime": "Temps écoulé"
+    "elapsedTime": "Temps écoulé",
+    "selectiveScan": "Sélectif"
   },
   "help": {
     "title": "Raccourcis Navidrome",
@@ -520,7 +623,12 @@
       "vol_up": "Augmenter le volume",
       "vol_down": "Baisser le volume",
       "toggle_love": "Ajouter/Enlever le morceau des favoris",
-      "current_song": "Aller à la chanson en cours"
+      "current_song": "Aller au titre en cours"
     }
+  },
+  "nowPlaying": {
+    "title": "En cours de lecture",
+    "empty": "Aucun titre en cours de lecture",
+    "minutesAgo": "Il y a %{smart_count} minute |||| Il y a %{smart_count} minutes"
   }
 }

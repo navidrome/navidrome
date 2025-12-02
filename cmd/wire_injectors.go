@@ -38,12 +38,14 @@ var allProviders = wire.NewSet(
 	listenbrainz.NewRouter,
 	events.GetBroker,
 	scanner.New,
-	scanner.NewWatcher,
+	scanner.GetWatcher,
 	plugins.GetManager,
 	metrics.GetPrometheusInstance,
 	db.Db,
-	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
-	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(metrics.PluginLoader), new(plugins.Manager)),
+	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )
 
 func CreateDataStore() model.DataStore {
@@ -58,7 +60,7 @@ func CreateServer() *server.Server {
 	))
 }
 
-func CreateNativeAPIRouter() *nativeapi.Router {
+func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -100,7 +102,7 @@ func CreatePrometheus() metrics.Metrics {
 	))
 }
 
-func CreateScanner(ctx context.Context) scanner.Scanner {
+func CreateScanner(ctx context.Context) model.Scanner {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -118,13 +120,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	))
 }
 
-func getPluginManager() *plugins.Manager {
+func getPluginManager() plugins.Manager {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func GetPluginManager(ctx context.Context) *plugins.Manager {
+func GetPluginManager(ctx context.Context) plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
 	return manager

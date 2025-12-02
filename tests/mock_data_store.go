@@ -27,6 +27,11 @@ type MockDataStore struct {
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedRadio          model.RadioRepository
 	scrobbleBufferMu     sync.Mutex
+	repoMu               sync.Mutex
+
+	// GC tracking
+	GCCalled bool
+	GCError  error
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
@@ -85,6 +90,8 @@ func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
 }
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedMediaFile == nil {
 		if db.RealDS != nil {
 			db.MockedMediaFile = db.RealDS.MediaFile(ctx)
@@ -255,6 +262,10 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 	}
 }
 
-func (db *MockDataStore) GC(context.Context) error {
+func (db *MockDataStore) GC(context.Context, ...int) error {
+	db.GCCalled = true
+	if db.GCError != nil {
+		return db.GCError
+	}
 	return nil
 }

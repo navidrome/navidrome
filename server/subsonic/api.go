@@ -18,7 +18,6 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -39,7 +38,7 @@ type Router struct {
 	players   core.Players
 	provider  external.Provider
 	playlists core.Playlists
-	scanner   scanner.Scanner
+	scanner   model.Scanner
 	broker    events.Broker
 	scrobbler scrobbler.PlayTracker
 	share     core.Share
@@ -48,7 +47,7 @@ type Router struct {
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
-	players core.Players, provider external.Provider, scanner scanner.Scanner, broker events.Broker,
+	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics,
 ) *Router {
@@ -148,7 +147,9 @@ func (api *Router) routes() http.Handler {
 			h(r, "createBookmark", api.CreateBookmark)
 			h(r, "deleteBookmark", api.DeleteBookmark)
 			h(r, "getPlayQueue", api.GetPlayQueue)
+			h(r, "getPlayQueueByIndex", api.GetPlayQueueByIndex)
 			h(r, "savePlayQueue", api.SavePlayQueue)
+			h(r, "savePlayQueueByIndex", api.SavePlayQueueByIndex)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -333,6 +334,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		sendError(w, r, err)
 		return
 	}
+
 	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
@@ -342,6 +344,17 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	} else {
 		log.Warn(r.Context(), "API: Failed response", "endpoint", r.URL.Path, "error", payload.Error.Code, "message", payload.Error.Message)
 	}
+
+	statusPointer, ok := r.Context().Value(subsonicErrorPointer).(*int32)
+
+	if ok && statusPointer != nil {
+		if payload.Status == responses.StatusOK {
+			*statusPointer = 0
+		} else {
+			*statusPointer = payload.Error.Code
+		}
+	}
+
 	if _, err := w.Write(response); err != nil {
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}

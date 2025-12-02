@@ -8,7 +8,6 @@ import (
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	navidsched "github.com/navidrome/navidrome/scheduler"
 )
@@ -46,16 +45,20 @@ func (s SchedulerHostFunctions) CancelSchedule(ctx context.Context, req *schedul
 	return s.ss.cancelSchedule(ctx, s.pluginID, req)
 }
 
+func (s SchedulerHostFunctions) TimeNow(ctx context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
+	return s.ss.timeNow(ctx, req)
+}
+
 type schedulerService struct {
 	// Map of schedule IDs to their callback info
 	schedules  map[string]*ScheduledCallback
-	manager    *Manager
+	manager    *managerImpl
 	navidSched navidsched.Scheduler // Navidrome scheduler for recurring jobs
 	mu         sync.Mutex
 }
 
 // newSchedulerService creates a new schedulerService instance
-func newSchedulerService(manager *Manager) *schedulerService {
+func newSchedulerService(manager *managerImpl) *schedulerService {
 	return &schedulerService{
 		schedules:  make(map[string]*ScheduledCallback),
 		manager:    manager,
@@ -261,6 +264,17 @@ func (s *schedulerService) cancelSchedule(_ context.Context, pluginID string, re
 	}, nil
 }
 
+// timeNow returns the current time in multiple formats
+func (s *schedulerService) timeNow(_ context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
+	now := time.Now()
+
+	return &scheduler.TimeNowResponse{
+		Rfc3339Nano:   now.Format(time.RFC3339Nano),
+		UnixMilli:     now.UnixMilli(),
+		LocalTimeZone: now.Location().String(),
+	}, nil
+}
+
 // runOneTimeSchedule handles the one-time schedule execution and callback
 func (s *schedulerService) runOneTimeSchedule(ctx context.Context, internalScheduleId string, delay time.Duration) {
 	tmr := time.NewTimer(delay)
@@ -295,20 +309,9 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 		return
 	}
 
-	callbackType := "one-time"
-	if isRecurring {
-		callbackType = "recurring"
-	}
-
-	log.Debug("Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
+	ctx = log.NewContext(ctx, "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callback.Type)
+	log.Debug("Executing schedule callback")
 	start := time.Now()
-
-	// Create a SchedulerCallbackRequest
-	req := &api.SchedulerCallbackRequest{
-		ScheduleId:  callback.ID,
-		Payload:     callback.Payload,
-		IsRecurring: isRecurring,
-	}
 
 	// Get the plugin
 	p := s.manager.LoadPlugin(callback.PluginID, CapabilitySchedulerCallback)
@@ -317,31 +320,19 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 		return
 	}
 
-	// Get instance
-	inst, closeFn, err := p.Instantiate(ctx)
-	if err != nil {
-		log.Error("Error getting plugin instance for callback", "plugin", callback.PluginID, err)
-		return
-	}
-	defer closeFn()
-
 	// Type-check the plugin
-	plugin, ok := inst.(api.SchedulerCallback)
+	plugin, ok := p.(*wasmSchedulerCallback)
 	if !ok {
 		log.Error("Plugin does not implement SchedulerCallback", "plugin", callback.PluginID)
 		return
 	}
 
 	// Call the plugin's OnSchedulerCallback method
-	log.Trace(ctx, "Executing schedule callback", "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callbackType)
-	resp, err := plugin.OnSchedulerCallback(ctx, req)
+	log.Trace(ctx, "Executing schedule callback")
+	err := plugin.OnSchedulerCallback(ctx, callback.ID, callback.Payload, isRecurring)
 	if err != nil {
-		log.Error("Error executing schedule callback", "plugin", callback.PluginID, "elapsed", time.Since(start), err)
+		log.Error("Error executing schedule callback", "elapsed", time.Since(start), err)
 		return
 	}
-	log.Debug("Schedule callback executed", "plugin", callback.PluginID, "elapsed", time.Since(start))
-
-	if resp.Error != "" {
-		log.Error("Plugin reported error in schedule callback", "plugin", callback.PluginID, resp.Error)
-	}
+	log.Debug("Schedule callback executed", "elapsed", time.Since(start))
 }

@@ -110,7 +110,7 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer()
-		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {
@@ -346,7 +346,7 @@ func startPluginManager(ctx context.Context) func() error {
 // TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
-		conf.InitConfig(cfgFile)
+		conf.InitConfig(cfgFile, true)
 	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
@@ -374,6 +374,7 @@ func init() {
 	rootCmd.Flags().Duration("scaninterval", viper.GetDuration("scaninterval"), "how frequently to scan for changes in your music library")
 	rootCmd.Flags().String("uiloginbackgroundurl", viper.GetString("uiloginbackgroundurl"), "URL to a backaground image used in the Login page")
 	rootCmd.Flags().Bool("enabletranscodingconfig", viper.GetBool("enabletranscodingconfig"), "enables transcoding configuration in the UI")
+	rootCmd.Flags().Bool("enabletranscodingcancellation", viper.GetBool("enabletranscodingcancellation"), "enables transcoding context cancellation")
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 	rootCmd.Flags().String("albumplaycountmode", viper.GetString("albumplaycountmode"), "how to compute playcount for albums. absolute (default) or normalized")
@@ -397,6 +398,7 @@ func init() {
 	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
 
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
+	_ = viper.BindPFlag("enabletranscodingcancellation", rootCmd.Flags().Lookup("enabletranscodingcancellation"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
 }

@@ -14,6 +14,9 @@ service SchedulerService {
     
     // Cancel any scheduled job
     rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+    
+    // Get current time in multiple formats
+    rpc TimeNow(TimeNowRequest) returns (TimeNowResponse);
 }
 
 message ScheduleOneTimeRequest {
@@ -39,4 +42,14 @@ message CancelRequest {
 message CancelResponse {
     bool success = 1;              // Whether cancellation was successful
     string error = 2;              // Error message if cancellation failed
+}
+
+message TimeNowRequest {
+    // Empty request - no parameters needed
+}
+
+message TimeNowResponse {
+    string rfc3339_nano = 1;       // Current time in RFC3339Nano format
+    int64 unix_milli = 2;          // Current time as Unix milliseconds timestamp
+    string local_time_zone = 3;    // Local timezone name (e.g., "America/New_York", "UTC")
 } 

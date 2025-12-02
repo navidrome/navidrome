@@ -31,6 +31,12 @@ type Submission struct {
 	Timestamp time.Time
 }
 
+type nowPlayingEntry struct {
+	userId   string
+	track    *model.MediaFile
+	position int
+}
+
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
@@ -40,7 +46,7 @@ type PlayTracker interface {
 // PluginLoader is a minimal interface for plugin manager usage in PlayTracker
 // (avoids import cycles)
 type PluginLoader interface {
-	PluginNames(service string) []string
+	PluginNames(capability string) []string
 	LoadScrobbler(name string) (Scrobbler, bool)
 }
 
@@ -52,6 +58,11 @@ type playTracker struct {
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
 	mu                sync.RWMutex
+	npQueue           map[string]nowPlayingEntry
+	npMu              sync.Mutex
+	npSignal          chan struct{}
+	shutdown          chan struct{}
+	workerDone        chan struct{}
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
@@ -71,11 +82,14 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		builtinScrobblers: make(map[string]Scrobbler),
 		pluginScrobblers:  make(map[string]Scrobbler),
 		pluginLoader:      pluginManager,
+		npQueue:           make(map[string]nowPlayingEntry),
+		npSignal:          make(chan struct{}, 1),
+		shutdown:          make(chan struct{}),
+		workerDone:        make(chan struct{}),
 	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
-			ctx := events.BroadcastToAll(context.Background())
-			broker.SendMessage(ctx, &events.NowPlayingCount{Count: m.Len()})
+			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		})
 	}
 
@@ -91,7 +105,14 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		p.builtinScrobblers[name] = s
 	}
 	log.Debug("List of builtin scrobblers enabled", "names", enabled)
+	go p.nowPlayingWorker()
 	return p
+}
+
+// stopNowPlayingWorker stops the background worker. This is primarily for testing.
+func (p *playTracker) stopNowPlayingWorker() {
+	close(p.shutdown)
+	<-p.workerDone // Wait for worker to finish
 }
 
 // pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers
@@ -138,23 +159,18 @@ func (p *playTracker) refreshPluginScrobblers() {
 		}
 	}
 
+	type stoppableScrobbler interface {
+		Scrobbler
+		Stop()
+	}
+
 	// Process removals - remove plugins that no longer exist
 	for name, scrobbler := range p.pluginScrobblers {
 		if _, exists := current[name]; !exists {
-			// Type assertion to access the Stop method
-			// We need to ensure this works even with interface objects
-			if bs, ok := scrobbler.(*bufferedScrobbler); ok {
-				log.Debug("Stopping buffered scrobbler goroutine", "name", name)
-				bs.Stop()
-			} else {
-				// For tests - try to see if this is a mock with a Stop method
-				type stoppable interface {
-					Stop()
-				}
-				if s, ok := scrobbler.(stoppable); ok {
-					log.Debug("Stopping mock scrobbler", "name", name)
-					s.Stop()
-				}
+			// If the scrobbler implements stoppableScrobbler, call Stop() before removing it
+			if stoppable, ok := scrobbler.(stoppableScrobbler); ok {
+				log.Debug("Stopping scrobbler", "name", name)
+				stoppable.Stop()
 			}
 			delete(p.pluginScrobblers, name)
 		}
@@ -200,14 +216,60 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	if conf.Server.EnableNowPlaying {
-		ctx = events.BroadcastToAll(ctx)
-		p.broker.SendMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
+		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, mf, position)
+		p.enqueueNowPlaying(playerId, user.ID, mf, position)
 	}
 	return nil
+}
+
+func (p *playTracker) enqueueNowPlaying(playerId string, userId string, track *model.MediaFile, position int) {
+	p.npMu.Lock()
+	defer p.npMu.Unlock()
+	p.npQueue[playerId] = nowPlayingEntry{
+		userId:   userId,
+		track:    track,
+		position: position,
+	}
+	p.sendNowPlayingSignal()
+}
+
+func (p *playTracker) sendNowPlayingSignal() {
+	// Don't block if the previous signal was not read yet
+	select {
+	case p.npSignal <- struct{}{}:
+	default:
+	}
+}
+
+func (p *playTracker) nowPlayingWorker() {
+	defer close(p.workerDone)
+	for {
+		select {
+		case <-p.shutdown:
+			return
+		case <-time.After(time.Second):
+		case <-p.npSignal:
+		}
+
+		p.npMu.Lock()
+		if len(p.npQueue) == 0 {
+			p.npMu.Unlock()
+			continue
+		}
+
+		// Keep a copy of the entries to process and clear the queue
+		entries := p.npQueue
+		p.npQueue = make(map[string]nowPlayingEntry)
+		p.npMu.Unlock()
+
+		// Process entries without holding lock
+		for _, entry := range entries {
+			p.dispatchNowPlaying(context.Background(), entry.userId, entry.track, entry.position)
+		}
+	}
 }
 
 func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {

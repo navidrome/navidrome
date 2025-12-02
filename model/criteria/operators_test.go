@@ -29,7 +29,11 @@ var _ = Describe("Operators", func() {
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
 		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
+		Entry("is [numeric]", Is{"library_id": 1}, "media_file.library_id = ?", 1),
+		Entry("is [numeric list]", Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
 		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
+		Entry("isNot [numeric]", IsNot{"library_id": 1}, "media_file.library_id <> ?", 1),
+		Entry("isNot [numeric list]", IsNot{"library_id": []int{1, 2}}, "media_file.library_id NOT IN (?,?)", 1, 2),
 		Entry("gt", Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
 		Entry("lt", Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
 		Entry("contains", Contains{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider%"),
@@ -100,6 +104,40 @@ var _ = Describe("Operators", func() {
 			sql, args, _ := op.ToSql()
 			gomega.Expect(sql).To(gomega.BeEmpty())
 			gomega.Expect(args).To(gomega.BeEmpty())
+		})
+		It("supports releasetype as multi-valued tag", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Contains{"releasetype": "soundtrack"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%soundtrack%"))
+		})
+		It("supports albumtype as alias for releasetype", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Contains{"albumtype": "live"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
+		})
+		It("supports albumtype alias with Is operator", func() {
+			AddTagNames([]string{"releasetype"})
+			op := Is{"albumtype": "album"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			// Should query $.releasetype, not $.albumtype
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("album"))
+		})
+		It("supports albumtype alias with IsNot operator", func() {
+			AddTagNames([]string{"releasetype"})
+			op := IsNot{"albumtype": "compilation"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			// Should query $.releasetype, not $.albumtype
+			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("compilation"))
 		})
 	})
 

@@ -41,6 +41,7 @@ type configOptions struct {
 	UIWelcomeMessage                string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
+	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableInsightsCollector         bool
@@ -86,8 +87,7 @@ type configOptions struct {
 	AuthRequestLimit                int
 	AuthWindowLength                time.Duration
 	PasswordEncryptionKey           string
-	ReverseProxyUserHeader          string
-	ReverseProxyWhitelist           string
+	ExtAuth                         extAuthOptions
 	Plugins                         pluginsOptions
 	PluginConfig                    map[string]map[string]string
 	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
@@ -125,10 +125,13 @@ type configOptions struct {
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
 	DevScannerThreads                 uint
+	DevSelectiveWatcher               bool
 	DevInsightsInitialDelay           time.Duration
 	DevEnablePlayerInsights           bool
+	DevEnablePluginsInsights          bool
 	DevPluginCompilationTimeout       time.Duration
 	DevExternalArtistFetchMultiplier  float64
+	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 }
 
@@ -175,7 +178,8 @@ type spotifyOptions struct {
 }
 
 type deezerOptions struct {
-	Enabled bool
+	Enabled  bool
+	Language string
 }
 
 type listenBrainzOptions struct {
@@ -226,6 +230,11 @@ type pluginsOptions struct {
 	CacheSize string
 }
 
+type extAuthOptions struct {
+	TrustedSources string
+	UserHeader     string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -243,6 +252,10 @@ func LoadFromFile(confFile string) {
 
 func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
+
+	// Map deprecated options to their new names for backwards compatibility
+	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
+	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -265,13 +278,15 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
-	if Server.Plugins.Folder == "" {
-		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
-	}
-	err = os.MkdirAll(Server.Plugins.Folder, 0700)
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
-		os.Exit(1)
+	if Server.Plugins.Enabled {
+		if Server.Plugins.Folder == "" {
+			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
+		}
+		err = os.MkdirAll(Server.Plugins.Folder, 0700)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
+			os.Exit(1)
+		}
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -345,6 +360,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("Scanner.GenreSeparators")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases")
 	logDeprecatedOptions("DevEnableBufferedScrobble") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+	logDeprecatedOptions("ReverseProxyWhitelist", "ReverseProxyUserHeader")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -361,6 +377,14 @@ func logDeprecatedOptions(options ...string) {
 		if viper.InConfig(option) {
 			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
 		}
+	}
+}
+
+// mapDeprecatedOption is used to provide backwards compatibility for deprecated options. It should be called after
+// the config has been read by viper, but before unmarshalling it into the Config struct.
+func mapDeprecatedOption(legacyName, newName string) {
+	if viper.IsSet(legacyName) {
+		viper.Set(newName, viper.Get(legacyName))
 	}
 }
 
@@ -423,7 +447,7 @@ func validatePurgeMissingOption() error {
 		}
 	}
 	if !valid {
-		err := fmt.Errorf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
+		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
 		log.Error(err.Error())
 		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
 		return err
@@ -487,6 +511,7 @@ func setViperDefaults() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
+	viper.SetDefault("enabletranscodingcancellation", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
@@ -531,8 +556,8 @@ func setViperDefaults() {
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 	viper.SetDefault("passwordencryptionkey", "")
-	viper.SetDefault("reverseproxyuserheader", "Remote-User")
-	viper.SetDefault("reverseproxywhitelist", "")
+	viper.SetDefault("extauth.userheader", "Remote-User")
+	viper.SetDefault("extauth.trustedsources", "")
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")
@@ -563,6 +588,7 @@ func setViperDefaults() {
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("deezer.enabled", true)
+	viper.SetDefault("deezer.language", "en")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
@@ -598,10 +624,13 @@ func setViperDefaults() {
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)
 	viper.SetDefault("devscannerthreads", 5)
+	viper.SetDefault("devselectivewatcher", true)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devenablepluginsinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
+	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 }
 
@@ -609,9 +638,14 @@ func init() {
 	setViperDefaults()
 }
 
-func InitConfig(cfgFile string) {
+func InitConfig(cfgFile string, loadEnvVars bool) {
 	codecRegistry := viper.NewCodecRegistry()
-	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{
+		LoadOptions: ini.LoadOptions{
+			UnescapeValueDoubleQuotes:   true,
+			UnescapeValueCommentSymbols: true,
+		},
+	})
 	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
 
 	cfgFile = getConfigFile(cfgFile)
@@ -625,10 +659,12 @@ func InitConfig(cfgFile string) {
 	}
 
 	_ = viper.BindEnv("port")
-	viper.SetEnvPrefix("ND")
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AutomaticEnv()
+	if loadEnvVars {
+		viper.SetEnvPrefix("ND")
+		replacer := strings.NewReplacer(".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+		viper.AutomaticEnv()
+	}
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {

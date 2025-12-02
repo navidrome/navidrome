@@ -35,7 +35,8 @@
         "rawTags": "Etiquetas sin procesar",
         "bitDepth": "Profundidad de bits",
         "sampleRate": "Frecuencia de muestreo",
-        "missing": "Faltante"
+        "missing": "Faltante",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -44,7 +45,8 @@
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
-        "info": "Obtener información"
+        "info": "Obtener información",
+        "showInPlaylist": "Mostrar en la lista de reproducción"
       }
     },
     "album": {
@@ -75,7 +77,8 @@
         "media": "Medios",
         "mood": "Estado de ánimo",
         "date": "Fecha de grabación",
-        "missing": "Faltante"
+        "missing": "Faltante",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -123,7 +126,13 @@
         "mixer": "Mezclador",
         "remixer": "Remixer",
         "djmixer": "DJ Mixer",
-        "performer": "Intérprete"
+        "performer": "Intérprete",
+        "maincredit": "Artista del álbum o Artista |||| Artistas del álbum o Artistas"
+      },
+      "actions": {
+        "shuffle": "Aleatorio",
+        "radio": "Radio",
+        "topSongs": "Más destacadas"
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Contraseña actual",
         "newPassword": "Nueva contraseña",
         "token": "Token",
-        "lastAccessAt": "Último acceso"
+        "lastAccessAt": "Último acceso",
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
-        "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
+        "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
+        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto"
       },
       "notifications": {
         "created": "Usuario creado",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
-        "clickHereForToken": "Click aquí para obtener tu token"
+        "clickHereForToken": "Click aquí para obtener tu token",
+        "selectAllLibraries": "Seleccionar todas las bibliotecas",
+        "adminAutoLibraries": "Los usuarios administradores tienen acceso a todas las bibliotecas automáticamente"
+      },
+      "validation": {
+        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores"
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Exportar",
         "makePublic": "Hazla pública",
         "makePrivate": "Hazla privada",
-        "saveQueue": "Guardar la fila de reproducción en una playlist"
+        "saveQueue": "Guardar la fila de reproducción en una playlist",
+        "searchOrCreate": "Buscar listas de reproducción o escribe para crear una nueva…",
+        "pressEnterToCreate": "Pulsa Enter para crear una nueva lista de reproducción",
+        "removeFromSelection": "Quitar de la selección"
       },
       "message": {
         "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
-        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
+        "noPlaylistsFound": "No se encontraron listas de reproducción",
+        "noPlaylists": "No hay listas de reproducción disponibles"
       }
     },
     "radio": {
@@ -239,7 +260,8 @@
       "fields": {
         "path": "Ruta",
         "size": "Tamaño",
-        "updatedAt": "Actualizado el"
+        "updatedAt": "Actualizado el",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "remove": "Eliminar",
@@ -249,6 +271,63 @@
         "removed": "Eliminado"
       },
       "empty": "No hay archivos perdidos"
+    },
+    "library": {
+      "name": "Biblioteca |||| Bibliotecas",
+      "fields": {
+        "name": "Nombre",
+        "path": "Ruta",
+        "remotePath": "Ruta remota",
+        "lastScanAt": "Último escaneo",
+        "songCount": "Canciones",
+        "albumCount": "Álbumes",
+        "artistCount": "Artistas",
+        "totalSongs": "Canciones",
+        "totalAlbums": "Álbumes",
+        "totalArtists": "Artistas",
+        "totalFolders": "Carpetas",
+        "totalFiles": "Archivos",
+        "totalMissingFiles": "Archivos faltantes",
+        "totalSize": "Tamaño total",
+        "totalDuration": "Duración",
+        "defaultNewUsers": "Valor por defecto para los nuevos usuarios",
+        "createdAt": "Creado",
+        "updatedAt": "Actualizado"
+      },
+      "sections": {
+        "basic": "Información básica",
+        "statistics": "Estadísticas"
+      },
+      "actions": {
+        "scan": "Escanear biblioteca",
+        "manageUsers": "Gestionar el acceso de usarios",
+        "viewDetails": "Ver detalles",
+        "quickScan": "Escaneo rápido",
+        "fullScan": "Escaneo completo"
+      },
+      "notifications": {
+        "created": "La biblioteca se creó correctamente",
+        "updated": "La biblioteca se actualizó correctamente",
+        "deleted": "La biblioteca se eliminó correctamente",
+        "scanStarted": "El escaneo de la biblioteca ha comenzado",
+        "scanCompleted": "El escaneo de la biblioteca se completó",
+        "quickScanStarted": "Escaneo rápido ha comenzado",
+        "fullScanStarted": "Escaneo completo ha comenzado",
+        "scanError": "Error al iniciar el escaneo. Revisa los registros"
+      },
+      "validation": {
+        "nameRequired": "El nombre de la biblioteca es obligatorio",
+        "pathRequired": "La ruta de la biblioteca es obligatoria",
+        "pathNotDirectory": "La ruta de la biblioteca debe ser un directorio",
+        "pathNotFound": "Ruta de la biblioteca no encontrada",
+        "pathNotAccessible": "La ruta de la biblioteca no es accesible",
+        "pathInvalid": "Ruta de la biblioteca no válida"
+      },
+      "messages": {
+        "deleteConfirm": "¿Estás seguro/a de que quieres eliminar esta biblioteca? Esto eliminará todos los datos asociados y el acceso de les usuaries.",
+        "scanInProgress": "Escaneo en curso...",
+        "noLibrariesAssigned": "No hay bibliotecas asignadas a este usuario"
+      }
     }
   },
   "ra": {
@@ -430,7 +509,9 @@
     "remove_missing_title": "Eliminar elemento faltante",
     "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "remove_all_missing_title": "Eliminar todos los archivos perdidos",
-    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones."
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "noSimilarSongsFound": "No se encontraron canciones similares",
+    "noTopSongsFound": "No se encontraron canciones destacadas"
   },
   "menu": {
     "library": "Biblioteca",
@@ -459,7 +540,13 @@
     "albumList": "Álbumes",
     "about": "Acerca de",
     "playlists": "Playlists",
-    "sharedPlaylists": "Playlists Compartidas"
+    "sharedPlaylists": "Playlists Compartidas",
+    "librarySelector": {
+      "allLibraries": "Todas las bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} bibliotecas",
+      "selectLibraries": "Seleccionar bibliotecas",
+      "none": "Ninguno"
+    }
   },
   "player": {
     "playListsText": "Fila de reproducción",
@@ -496,6 +583,21 @@
         "disabled": "Deshabilitado",
         "waiting": "Esperando"
       }
+    },
+    "tabs": {
+      "about": "Acerca de",
+      "config": "Configuración"
+    },
+    "config": {
+      "configName": "Nombre de la configuración",
+      "environmentVariable": "Variables de entorno",
+      "currentValue": "Valor actual",
+      "configurationFile": "Archivo de configuración",
+      "exportToml": "Exportar configuración (TOML)",
+      "exportSuccess": "Configuración exportada al portapapeles en formato TOML",
+      "exportFailed": "Error al copiar la configuración",
+      "devFlagsHeader": "Indicadores de desarrollo (sujetos a cambios o eliminación)",
+      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras"
     }
   },
   "activity": {
@@ -507,7 +609,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Tipo",
     "status": "Error de escaneo",
-    "elapsedTime": "Tiempo transcurrido"
+    "elapsedTime": "Tiempo transcurrido",
+    "selectiveScan": "Selectivo"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",
@@ -522,5 +625,10 @@
       "toggle_love": "Marca esta canción como favorita",
       "current_song": "Canción actual"
     }
+  },
+  "nowPlaying": {
+    "title": "En reproducción",
+    "empty": "Nada en reproducción",
+    "minutesAgo": "Hace %{smart_count} minuto |||| Hace %{smart_count} minutos"
   }
 }

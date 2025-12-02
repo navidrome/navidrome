@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/plugins/api"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,7 +15,7 @@ import (
 
 var _ = Describe("Adapter Media Agent", func() {
 	var ctx context.Context
-	var mgr *Manager
+	var mgr *managerImpl
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
@@ -23,8 +24,14 @@ var _ = Describe("Adapter Media Agent", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Folder = testDataDir
 
-		mgr = createManager(nil, nil)
+		mgr = createManager(nil, metrics.NewNoopInstance())
 		mgr.ScanPlugins()
+
+		// Wait for all plugins to compile to avoid race conditions
+		err := mgr.EnsureCompiled("multi_plugin")
+		Expect(err).NotTo(HaveOccurred(), "multi_plugin should compile successfully")
+		err = mgr.EnsureCompiled("fake_album_agent")
+		Expect(err).NotTo(HaveOccurred(), "fake_album_agent should compile successfully")
 	})
 
 	Describe("AgentName and PluginName", func() {

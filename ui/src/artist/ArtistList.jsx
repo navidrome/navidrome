@@ -132,8 +132,10 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   useResourceRefresh('artist')
 
   const role = filterValues?.role
-  const getCounter = (record, counter) =>
-    role ? record?.stats[role]?.[counter] : record?.[counter]
+  const getCounter = (record, counter) => {
+    if (!record) return undefined
+    return role ? record?.stats?.[role]?.[counter] : record?.[counter]
+  }
   const getAlbumCount = (record) => getCounter(record, 'albumCount')
   const getSongCount = (record) => getCounter(record, 'songCount')
   const getSize = (record) => {

@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
 
 ########################################################################################################################
-### Build xx (orignal image: tonistiigi/xx)
+### Build xx (original image: tonistiigi/xx)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.19 AS xx-build
 
 # v1.5.0
@@ -28,10 +28,12 @@ COPY --from=xx-build /out/ /usr/bin/
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.19 AS taglib-build
 ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.1.0-1
+ARG CROSS_TAGLIB_VERSION=2.1.1-1
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
+# wget in busybox can't follow redirects
 RUN <<EOT
+    apk add --no-cache wget
     PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
     FILE=taglib-${PLATFORM}.tar.gz
 
@@ -61,7 +63,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.24-bookworm AS base
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
@@ -135,7 +137,6 @@ ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
 ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
-ENV GODEBUG="asyncpreemptoff=1"
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}

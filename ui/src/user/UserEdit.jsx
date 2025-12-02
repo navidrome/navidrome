@@ -18,9 +18,13 @@ import {
   useRefresh,
   FormDataConsumer,
   usePermissions,
+  useRecordContext,
 } from 'react-admin'
+import { Typography } from '@material-ui/core'
 import { Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
+import { LibrarySelectionField } from './LibrarySelectionField.jsx'
+import { validateUserForm } from './userValidation'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -100,12 +104,18 @@ const UserEdit = (props) => {
     [mutate, notify, permissions, redirect, refresh],
   )
 
+  // Custom validation function
+  const validateForm = (values) => {
+    return validateUserForm(values, translate)
+  }
+
   return (
     <Edit title={<UserTitle />} undoable={false} {...props}>
       <SimpleForm
         variant={'outlined'}
         toolbar={<UserToolbar showDelete={canDelete} />}
         save={save}
+        validate={validateForm}
       >
         {permissions === 'admin' && (
           <TextInput
@@ -139,6 +149,28 @@ const UserEdit = (props) => {
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
+
+        {/* Conditional Library Selection for Admin Users Only */}
+        {permissions === 'admin' && (
+          <FormDataConsumer>
+            {({ formData }) => (
+              <>
+                {!formData.isAdmin && <LibrarySelectionField />}
+
+                {formData.isAdmin && (
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    style={{ marginTop: 16, marginBottom: 16 }}
+                  >
+                    {translate('resources.user.message.adminAutoLibraries')}
+                  </Typography>
+                )}
+              </>
+            )}
+          </FormDataConsumer>
+        )}
+
         <DateField variant="body1" source="lastLoginAt" showTime />
         <DateField variant="body1" source="lastAccessAt" showTime />
         <DateField variant="body1" source="updatedAt" showTime />

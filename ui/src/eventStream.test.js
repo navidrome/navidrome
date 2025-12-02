@@ -25,13 +25,15 @@ describe('startEventStream', () => {
 
   beforeEach(() => {
     dispatch = vi.fn()
-    global.EventSource = vi.fn((url) => {
+    global.EventSource = vi.fn().mockImplementation(function (url) {
       instance = new MockEventSource(url)
       return instance
     })
     localStorage.setItem('is-authenticated', 'true')
     localStorage.setItem('token', 'abc')
     config.devNewEventStream = true
+    // Mock console.log to suppress output during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   afterEach(() => {

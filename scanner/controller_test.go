@@ -21,7 +21,7 @@ import (
 var _ = Describe("Controller", func() {
 	var ctx context.Context
 	var ds *tests.MockDataStore
-	var ctrl scanner.Scanner
+	var ctrl model.Scanner
 
 	Describe("Status", func() {
 		BeforeEach(func() {
@@ -32,7 +32,6 @@ var _ = Describe("Controller", func() {
 			ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 			ds.MockedProperty = &tests.MockedPropertyRepo{}
 			ctrl = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(), core.NewPlaylists(ds), metrics.NewNoopInstance())
-			Expect(ds.Library(ctx).Put(&model.Library{ID: 1, Name: "lib", Path: "/tmp"})).To(Succeed())
 		})
 
 		It("includes last scan error", func() {

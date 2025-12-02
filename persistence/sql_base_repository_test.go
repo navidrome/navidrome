@@ -223,4 +223,62 @@ var _ = Describe("sqlRepository", func() {
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 	})
+
+	Describe("applyLibraryFilter", func() {
+		var sq squirrel.SelectBuilder
+
+		BeforeEach(func() {
+			sq = squirrel.Select("*").From("test_table")
+		})
+
+		Context("Admin User", func() {
+			BeforeEach(func() {
+				r.ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
+			})
+
+			It("should not apply library filter for admin users", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
+		})
+
+		Context("Regular User", func() {
+			BeforeEach(func() {
+				r.ctx = request.WithUser(context.Background(), model.User{ID: "user123", IsAdmin: false})
+			})
+
+			It("should apply library filter for regular users", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, args, _ := result.ToSql()
+				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
+				Expect(args).To(ContainElement("user123"))
+			})
+
+			It("should use custom table name when provided", func() {
+				result := r.applyLibraryFilter(sq, "custom_table")
+				sql, args, _ := result.ToSql()
+				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
+				Expect(args).To(ContainElement("user123"))
+			})
+		})
+
+		Context("Headless Process (No User Context)", func() {
+			BeforeEach(func() {
+				r.ctx = context.Background() // No user context
+			})
+
+			It("should not apply library filter for headless processes", func() {
+				result := r.applyLibraryFilter(sq)
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
+
+			It("should not apply library filter even with custom table name", func() {
+				result := r.applyLibraryFilter(sq, "custom_table")
+				sql, _, _ := result.ToSql()
+				Expect(sql).To(Equal("SELECT * FROM test_table"))
+			})
+		})
+	})
 })

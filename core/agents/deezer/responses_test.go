@@ -35,4 +35,35 @@ var _ = Describe("Responses", func() {
 			Expect(errorResp.Error.Message).To(Equal("Missing parameters: q"))
 		})
 	})
+
+	Describe("Related Artists", func() {
+		It("parses the related artists response correctly", func() {
+			var resp RelatedArtists
+			body, err := os.ReadFile("tests/fixtures/deezer.artist.related.json")
+			Expect(err).To(BeNil())
+			err = json.Unmarshal(body, &resp)
+			Expect(err).To(BeNil())
+
+			Expect(resp.Data).To(HaveLen(20))
+			justice := resp.Data[0]
+			Expect(justice.Name).To(Equal("Justice"))
+			Expect(justice.ID).To(Equal(6404))
+		})
+	})
+
+	Describe("Top Tracks", func() {
+		It("parses the top tracks response correctly", func() {
+			var resp TopTracks
+			body, err := os.ReadFile("tests/fixtures/deezer.artist.top.json")
+			Expect(err).To(BeNil())
+			err = json.Unmarshal(body, &resp)
+			Expect(err).To(BeNil())
+
+			Expect(resp.Data).To(HaveLen(5))
+			track := resp.Data[0]
+			Expect(track.Title).To(Equal("Instant Crush (feat. Julian Casablancas)"))
+			Expect(track.ID).To(Equal(67238732))
+			Expect(track.Album.Title).To(Equal("Random Access Memories"))
+		})
+	})
 })

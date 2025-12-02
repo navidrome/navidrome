@@ -20,7 +20,7 @@ import (
 type Metrics interface {
 	WriteInitialMetrics(ctx context.Context)
 	WriteAfterScanMetrics(ctx context.Context, success bool)
-	RecordRequest(ctx context.Context, endpoint, method, client string, status int, elapsed int64)
+	RecordRequest(ctx context.Context, endpoint, method, client string, status int32, elapsed int64)
 	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
 	GetHandler() http.Handler
 }
@@ -56,7 +56,7 @@ func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
 }
 
-func (m *metrics) RecordRequest(_ context.Context, endpoint, method, client string, status int, elapsed int64) {
+func (m *metrics) RecordRequest(_ context.Context, endpoint, method, client string, status int32, elapsed int64) {
 	httpLabel := prometheus.Labels{
 		"endpoint": endpoint,
 		"method":   method,
@@ -233,7 +233,7 @@ func (n noopMetrics) WriteInitialMetrics(context.Context) {}
 
 func (n noopMetrics) WriteAfterScanMetrics(context.Context, bool) {}
 
-func (n noopMetrics) RecordRequest(context.Context, string, string, string, int, int64) {}
+func (n noopMetrics) RecordRequest(context.Context, string, string, string, int32, int64) {}
 
 func (n noopMetrics) RecordPluginRequest(context.Context, string, string, bool, int64) {}
 
