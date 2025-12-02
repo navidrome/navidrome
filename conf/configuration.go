@@ -251,7 +251,10 @@ func LoadFromFile(confFile string) {
 
 func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
-	mapDeprecatedOptions()
+
+	// Map deprecated options to their new names for backwards compatibility
+	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
+	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -376,14 +379,11 @@ func logDeprecatedOptions(options ...string) {
 	}
 }
 
-// mapDeprecatedOptions is used to provide backwards compatibility for deprecated options. It should be called after
+// mapDeprecatedOption is used to provide backwards compatibility for deprecated options. It should be called after
 // the config has been read by viper, but before unmarshalling it into the Config struct.
-func mapDeprecatedOptions() {
-	if viper.IsSet("ReverseProxyWhitelist") {
-		viper.Set("ExtAuth.TrustedSources", viper.Get("ReverseProxyWhitelist"))
-	}
-	if viper.IsSet("ReverseProxyUserHeader") {
-		viper.Set("ExtAuth.UserHeader", viper.Get("ReverseProxyUserHeader"))
+func mapDeprecatedOption(legacyName, newName string) {
+	if viper.IsSet(legacyName) {
+		viper.Set(newName, viper.Get(legacyName))
 	}
 }
 
