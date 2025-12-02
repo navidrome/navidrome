@@ -1,6 +1,7 @@
 {
   "musicFolder": "/json/music",
   "uiWelcomeMessage": "Welcome json",
+  "reverseProxyUserHeader": "X-Auth-User",
   "Tags": {
     "artist": {
       "split": ";"
