@@ -260,11 +260,8 @@ func (p *playTracker) nowPlayingWorker() {
 			continue
 		}
 
-		// Drain queue into local map and clear
-		entries := make(map[string]nowPlayingEntry)
-		for k, v := range p.npQueue {
-			entries[k] = v
-		}
+		// Keep a copy of the entries to process and clear the queue
+		entries := p.npQueue
 		p.npQueue = make(map[string]nowPlayingEntry)
 		p.npMu.Unlock()
 
