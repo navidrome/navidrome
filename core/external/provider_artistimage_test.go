@@ -313,7 +313,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 				conf.Server.DevPreserveUnicodeInExternalCalls = false
 			})
 
-			It("normalizes Unicode characters)", func() {
+			It("normalizes Unicode characters", func() {
 				// Act
 				imgURL, err := provider.ArtistImage(ctx, "artist-endash")
 

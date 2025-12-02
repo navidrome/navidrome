@@ -51,7 +51,15 @@ type provider struct {
 
 type auxAlbum struct {
 	model.Album
-	Name string
+}
+
+// Name returns the appropriate album name for external API calls
+// based on the DevPreserveUnicodeInExternalCalls configuration option
+func (a *auxAlbum) Name() string {
+	if conf.Server.DevPreserveUnicodeInExternalCalls {
+		return a.Album.Name
+	}
+	return str.Clear(a.Album.Name)
 }
 
 type auxArtist struct {
@@ -96,7 +104,6 @@ func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
 	switch v := entity.(type) {
 	case *model.Album:
 		album.Album = *v
-		album.Name = str.Clear(v.Name)
 	case *model.MediaFile:
 		return e.getAlbum(ctx, v.AlbumID)
 	default:
@@ -114,8 +121,9 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 	}
 
 	updatedAt := V(album.ExternalInfoUpdatedAt)
+	albumName := album.Name()
 	if updatedAt.IsZero() {
-		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", album.Name)
+		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", albumName)
 		album, err = e.populateAlbumInfo(ctx, album)
 		if err != nil {
 			return nil, err
@@ -124,7 +132,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 
 	// If info is expired, trigger a populateAlbumInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
-		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
+		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", albumName)
 		e.albumQueue.enqueue(&album)
 	}
 
@@ -133,12 +141,13 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 
 func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAlbum, error) {
 	start := time.Now()
-	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	albumName := album.Name()
+	info, err := e.ag.GetAlbumInfo(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
 	if errors.Is(err, agents.ErrNotFound) {
 		return album, nil
 	}
 	if err != nil {
-		log.Error("Error refreshing AlbumInfo", "id", album.ID, "name", album.Name, "artist", album.AlbumArtist,
+		log.Error("Error refreshing AlbumInfo", "id", album.ID, "name", albumName, "artist", album.AlbumArtist,
 			"elapsed", time.Since(start), err)
 		return album, err
 	}
@@ -150,7 +159,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		album.Description = info.Description
 	}
 
-	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
 	if err == nil && len(images) > 0 {
 		sort.Slice(images, func(i, j int) bool {
 			return images[i].Size > images[j].Size
@@ -169,7 +178,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 
 	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
 	if err != nil {
-		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", album.Name,
+		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", albumName,
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "AlbumInfo collected", "album", album, "elapsed", time.Since(start))
@@ -353,22 +362,23 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		return nil, err
 	}
 
-	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	albumName := album.Name()
+	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
 	if err != nil {
 		switch {
 		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
 			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
 			log.Debug(ctx, "GetAlbumImages call canceled", err)
 		default:
-			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist, err)
 		}
 		return nil, err
 	}
 
 	if len(images) == 0 {
-		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
 		return nil, model.ErrNotFound
 	}
 
