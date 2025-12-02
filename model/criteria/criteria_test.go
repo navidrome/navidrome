@@ -118,6 +118,16 @@ var _ = Describe("Criteria", func() {
 				)
 			})
 
+			It("sorts by albumtype alias (resolves to releasetype)", func() {
+				AddTagNames([]string{"releasetype"})
+				goObj.Sort = "albumtype"
+				gomega.Expect(goObj.OrderBy()).To(
+					gomega.Equal(
+						"COALESCE(json_extract(media_file.tags, '$.releasetype[0].value'), '') asc",
+					),
+				)
+			})
+
 			It("sorts by random", func() {
 				newObj := goObj
 				newObj.Sort = "random"

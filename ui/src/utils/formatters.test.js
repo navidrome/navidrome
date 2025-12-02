@@ -121,35 +121,35 @@ describe('formatDuration2', () => {
 
 describe('formatNumber', () => {
   it('handles null and undefined values', () => {
-    expect(formatNumber(null)).toEqual('0')
-    expect(formatNumber(undefined)).toEqual('0')
+    expect(formatNumber(null, 'en-CA')).toEqual('0')
+    expect(formatNumber(undefined, 'en-CA')).toEqual('0')
   })
 
   it('formats integers', () => {
-    expect(formatNumber(0)).toEqual('0')
-    expect(formatNumber(1)).toEqual('1')
-    expect(formatNumber(123)).toEqual('123')
-    expect(formatNumber(1000)).toEqual('1,000')
-    expect(formatNumber(1234567)).toEqual('1,234,567')
+    expect(formatNumber(0, 'en-CA')).toEqual('0')
+    expect(formatNumber(1, 'en-CA')).toEqual('1')
+    expect(formatNumber(123, 'en-CA')).toEqual('123')
+    expect(formatNumber(1000, 'en-CA')).toEqual('1,000')
+    expect(formatNumber(1234567, 'en-CA')).toEqual('1,234,567')
   })
 
   it('formats decimal numbers', () => {
-    expect(formatNumber(123.45)).toEqual('123.45')
-    expect(formatNumber(1234.567)).toEqual('1,234.567')
+    expect(formatNumber(123.45, 'en-CA')).toEqual('123.45')
+    expect(formatNumber(1234.567, 'en-CA')).toEqual('1,234.567')
   })
 
   it('formats negative numbers', () => {
-    expect(formatNumber(-123)).toEqual('-123')
-    expect(formatNumber(-1234)).toEqual('-1,234')
-    expect(formatNumber(-123.45)).toEqual('-123.45')
+    expect(formatNumber(-123, 'en-CA')).toEqual('-123')
+    expect(formatNumber(-1234, 'en-CA')).toEqual('-1,234')
+    expect(formatNumber(-123.45, 'en-CA')).toEqual('-123.45')
   })
 })
 
 describe('formatFullDate', () => {
   it('format dates', () => {
-    expect(formatFullDate('2011', 'en-US')).toEqual('2011')
-    expect(formatFullDate('2011-06', 'en-US')).toEqual('Jun 2011')
-    expect(formatFullDate('1985-01-01', 'en-US')).toEqual('Jan 1, 1985')
+    expect(formatFullDate('2011', 'en-CA')).toEqual('2011')
+    expect(formatFullDate('2011-06', 'en-CA')).toEqual('Jun 2011')
+    expect(formatFullDate('1985-01-01', 'en-CA')).toEqual('Jan 1, 1985')
     expect(formatFullDate('199704')).toEqual('')
   })
 })

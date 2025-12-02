@@ -2,6 +2,9 @@
   "musicFolder": "/json/music",
   "uiWelcomeMessage": "Welcome json",
   "Tags": {
+    "artist": {
+      "split": ";"
+    },
     "custom": {
       "aliases": [
         "json",

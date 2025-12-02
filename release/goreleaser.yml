@@ -83,6 +83,15 @@ nfpms:
           owner: navidrome
           group: navidrome
 
+      - src: release/linux/.package.rpm  # contents: "rpm"
+        dst: /var/lib/navidrome/.package
+        type: "config|noreplace"
+        packager: rpm
+      - src: release/linux/.package.deb  # contents: "deb"
+        dst: /var/lib/navidrome/.package
+        type: "config|noreplace"
+        packager: deb
+
     scripts:
       preinstall: "release/linux/preinstall.sh"
       postinstall: "release/linux/postinstall.sh"

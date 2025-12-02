@@ -85,7 +85,7 @@ type FolderRepository interface {
 	GetByPath(lib Library, path string) (*Folder, error)
 	GetAll(...QueryOptions) ([]Folder, error)
 	CountAll(...QueryOptions) (int64, error)
-	GetLastUpdates(lib Library) (map[string]FolderUpdateInfo, error)
+	GetFolderUpdateInfo(lib Library, targetPaths ...string) (map[string]FolderUpdateInfo, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -22,8 +23,11 @@ var _ = Describe("Plugin Manager", func() {
 		// but, as this is an integration test, we can't use configtest.SetupConfig() as it causes
 		// data races.
 		originalPluginsFolder := conf.Server.Plugins.Folder
+		originalTimeout := conf.Server.DevPluginCompilationTimeout
+		conf.Server.DevPluginCompilationTimeout = 2 * time.Minute
 		DeferCleanup(func() {
 			conf.Server.Plugins.Folder = originalPluginsFolder
+			conf.Server.DevPluginCompilationTimeout = originalTimeout
 		})
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = testDataDir

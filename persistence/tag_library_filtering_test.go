@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -45,6 +46,9 @@ var _ = Describe("Tag Library Filtering", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 
+		// Generate unique path suffix to avoid conflicts with other tests
+		uniqueSuffix := time.Now().Format("20060102150405.000")
+
 		// Clean up database
 		db := GetDBXBuilder()
 		_, err := db.NewQuery("DELETE FROM library_tag").Execute()
@@ -57,12 +61,12 @@ var _ = Describe("Tag Library Filtering", func() {
 		_, err = db.NewQuery("DELETE FROM library WHERE id > 1").Execute()
 		Expect(err).ToNot(HaveOccurred())
 
-		// Create test libraries
+		// Create test libraries with unique names and paths to avoid conflicts with other tests
 		_, err = db.NewQuery("INSERT INTO library (id, name, path) VALUES ({:id}, {:name}, {:path})").
-			Bind(dbx.Params{"id": libraryID2, "name": "Library 2", "path": "/music/lib2"}).Execute()
+			Bind(dbx.Params{"id": libraryID2, "name": "Library 2-" + uniqueSuffix, "path": "/music/lib2-" + uniqueSuffix}).Execute()
 		Expect(err).ToNot(HaveOccurred())
 		_, err = db.NewQuery("INSERT INTO library (id, name, path) VALUES ({:id}, {:name}, {:path})").
-			Bind(dbx.Params{"id": libraryID3, "name": "Library 3", "path": "/music/lib3"}).Execute()
+			Bind(dbx.Params{"id": libraryID3, "name": "Library 3-" + uniqueSuffix, "path": "/music/lib3-" + uniqueSuffix}).Execute()
 		Expect(err).ToNot(HaveOccurred())
 
 		// Give admin access to all libraries

@@ -38,7 +38,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(6)))
+		Expect(mr.CountAll()).To(Equal(int64(10)))
 	})
 
 	It("returns songs ordered by lyrics with a specific title/artist", func() {
