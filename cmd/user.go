@@ -36,18 +36,15 @@ func init() {
 
 	userCreateCommand.Flags().StringVarP(&userID, "username", "u", "", "username")
 
-	userCreateCommand.Flags().BoolVar(&setPassword, "set-password", false, "If set, the user's new password will be prompted on the CLI")
 	userCreateCommand.Flags().StringVarP(&password, "password", "p", "", "Set the user's password. Note that this will be captured in terminal history")
-	userCreateCommand.MarkFlagsMutuallyExclusive("password", "set-password")
 
 	userCreateCommand.Flags().StringVarP(&email, "email", "e", "", "New user email")
-	userCreateCommand.Flags().IntSliceVar(&libraryIds, "library-ids", []int{}, "Set the user's accessible libraries. If empty, the user can access all libraries. This is incompatible with admin, as admin can always access all libraries")
+	userCreateCommand.Flags().IntSliceVarP(&libraryIds, "library-ids", "i", []int{}, "Comma-separated list of library IDs. Set the user's accessible libraries. If empty, the user can access all libraries. This is incompatible with admin, as admin can always access all libraries")
 
 	userCreateCommand.Flags().BoolVarP(&setAdmin, "admin", "a", false, "If set, make the user an admin. This user will have access to every library")
 	userCreateCommand.Flags().StringVar(&name, "name", "", "New user's name (this is separate from username used to log in)")
 
 	_ = userCreateCommand.MarkFlagRequired("username")
-	userCreateCommand.MarkFlagsOneRequired("password", "set-password")
 
 	userRoot.AddCommand(userCreateCommand)
 
@@ -73,7 +70,7 @@ func init() {
 	userEditCommand.Flags().StringVarP(&password, "password", "p", "", "Set the user's password. Note that this will be captured in terminal history")
 	userEditCommand.MarkFlagsMutuallyExclusive("password", "set-password")
 
-	userEditCommand.Flags().IntSliceVar(&libraryIds, "library-ids", []int{}, "Set the user's accessible libraries by id")
+	userEditCommand.Flags().IntSliceVarP(&libraryIds, "library-ids", "i", []int{}, "Comma-separated list of library IDs. Set the user's accessible libraries by id")
 
 	_ = userEditCommand.MarkFlagRequired("user")
 	userRoot.AddCommand(userEditCommand)
@@ -161,6 +158,14 @@ func promptPassword() string {
 	}
 }
 
+func libraryError(libraries model.Libraries) error {
+	ids := make([]int, len(libraries))
+	for idx, library := range libraries {
+		ids[idx] = library.ID
+	}
+	return fmt.Errorf("not all available libraries found. Requested ids: %v, Found libraries: %v", libraryIds, ids)
+}
+
 func runCreateUser() {
 	if password == "" {
 		password = promptPassword()
@@ -175,6 +180,10 @@ func runCreateUser() {
 		Name:        name,
 		IsAdmin:     setAdmin,
 		NewPassword: password,
+	}
+
+	if user.Name == "" {
+		user.Name = userID
 	}
 
 	ds, ctx := getContext()
@@ -196,7 +205,7 @@ func runCreateUser() {
 			}
 
 			if len(user.Libraries) != len(libraryIds) {
-				return fmt.Errorf("not all available libraries found. Requested ids: %v, Found libraries: %d", libraryIds, len(user.Libraries))
+				return libraryError(user.Libraries)
 			}
 		} else {
 			user.Libraries, err = tx.Library(ctx).GetAll()
@@ -210,7 +219,13 @@ func runCreateUser() {
 			return err
 		}
 
-		return nil
+		updatedIds := make([]int, len(user.Libraries))
+		for idx, lib := range user.Libraries {
+			updatedIds[idx] = lib.ID
+		}
+
+		err = tx.User(ctx).SetUserLibraries(user.ID, updatedIds)
+		return err
 	})
 
 	if err != nil {
@@ -236,7 +251,7 @@ func runDeleteUser() {
 			return errors.New("refusing to delete the last user")
 		}
 
-		user, err = getUser(userID, tx, ctx)
+		user, err = getUser(ctx, userID, tx)
 		if err != nil {
 			return err
 		}
@@ -259,7 +274,9 @@ func runUserEdit() {
 	changes := []string{}
 
 	err = ds.WithTx(func(tx model.DataStore) error {
-		user, err = getUser(userID, tx, ctx)
+		var newLibraries model.Libraries
+
+		user, err = getUser(ctx, userID, tx)
 		if err != nil {
 			return err
 		}
@@ -272,10 +289,10 @@ func runUserEdit() {
 			}
 
 			if len(libraries) != len(libraryIds) {
-				return fmt.Errorf("not all available libraries found. Requested ids: %v, Found libraries: %d", libraryIds, len(libraries))
+				return libraryError(libraries)
 			}
 
-			user.Libraries = libraries
+			newLibraries = libraries
 			changes = append(changes, "updated library ids")
 		}
 
@@ -288,6 +305,8 @@ func runUserEdit() {
 			user.IsAdmin = true
 			user.Libraries = libraries
 			changes = append(changes, "set admin")
+
+			newLibraries = libraries
 		}
 
 		if setRegularUser && user.IsAdmin {
@@ -325,15 +344,31 @@ func runUserEdit() {
 			return nil
 		}
 
-		err = tx.User(ctx).Put(user)
-		return err
+		err := tx.User(ctx).Put(user)
+		if err != nil {
+			return err
+		}
+
+		if len(newLibraries) > 0 {
+			updatedIds := make([]int, len(newLibraries))
+			for idx, lib := range newLibraries {
+				updatedIds[idx] = lib.ID
+			}
+
+			err := tx.User(ctx).SetUserLibraries(user.ID, updatedIds)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {
 		log.Fatal(ctx, "Failed to update user", err)
 	}
 
-	log.Info(ctx, "Updated user", "user", user.Name, "changes", strings.Join(changes, ", "))
+	log.Info(ctx, "Updated user", "user", user.UserName, "changes", strings.Join(changes, ", "))
 }
 
 type displayLibrary struct {

@@ -103,7 +103,7 @@ func runList() {
 	options := model.QueryOptions{Sort: "owner_name"}
 
 	if userID != "" {
-		user, err := getUser(userID, ds, ctx)
+		user, err := getUser(ctx, userID, ds)
 		if err != nil {
 			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
 		}
