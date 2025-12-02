@@ -223,7 +223,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
 	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
-	data.Config.ReverseProxyConfigured = conf.Server.ReverseProxyWhitelist != ""
+	data.Config.ReverseProxyConfigured = conf.Server.ExtAuth.TrustedSources != ""
 	data.Config.HasCustomPID = conf.Server.PID.Track != "" || conf.Server.PID.Album != ""
 	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
