@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Scanna bibliotek",
         "manageUsers": "Hantera användaråtkomst",
-        "viewDetails": "Se detaljer"
+        "viewDetails": "Se detaljer",
+        "quickScan": "Snabbscan",
+        "fullScan": "Komplett scan"
       },
       "notifications": {
         "created": "Biblioteket har skapats",
         "updated": "Biblioteket har uppdaterats",
         "deleted": "Biblioteket har raderats",
         "scanStarted": "Biblioteksscan startad",
-        "scanCompleted": "Biblioteksscan avslutad"
+        "scanCompleted": "Biblioteksscan avslutad",
+        "quickScanStarted": "Snabbscan startad",
+        "fullScanStarted": "Komplett scan startad",
+        "scanError": "Fel vid start av scan. Se loggarna"
       },
       "validation": {
         "nameRequired": "Biblioteksnamn krävs",
@@ -604,7 +609,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Typ",
     "status": "Fel vid scanning",
-    "elapsedTime": "Spelad tid"
+    "elapsedTime": "Spelad tid",
+    "selectiveScan": "Urval"
   },
   "help": {
     "title": "Navidrome kortkommandon",
