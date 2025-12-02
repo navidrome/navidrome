@@ -75,6 +75,7 @@ var fsTypeMap = map[int64]string{
 	0xca451a4e: "virtiofs",
 	0x58465342: "xfs",
 	0x2FC12FC1: "zfs",
+	0x7c7c6673: "prlfs", // Parallels Shared Folders
 
 	// Signed/unsigned conversion issues (negative hex values converted to uint32)
 	-0x6edc97c2: "btrfs", // 0x9123683e
