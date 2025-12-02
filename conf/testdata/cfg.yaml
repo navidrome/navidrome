@@ -1,5 +1,6 @@
 musicFolder: "/yaml/music"
 uiWelcomeMessage: "Welcome yaml"
+reverseProxyUserHeader: "X-Auth-User"
 Tags:
   artist:
     split:  [";"]

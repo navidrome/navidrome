@@ -41,6 +41,9 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Server.Tags["custom"].Aliases).To(Equal([]string{format, "test"}))
 			Expect(conf.Server.Tags["artist"].Split).To(Equal([]string{";"}))
 
+			// Check deprecated option mapping
+			Expect(conf.Server.ExtAuth.UserHeader).To(Equal("X-Auth-User"))
+
 			// The config file used should be the one we created
 			Expect(conf.Server.ConfigFile).To(Equal(filename))
 		},
