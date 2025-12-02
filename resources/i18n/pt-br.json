@@ -300,6 +300,8 @@
       },
       "actions": {
         "scan": "Scanear Biblioteca",
+        "quickScan": "Scan Rápido",
+        "fullScan": "Scan Completo",
         "manageUsers": "Gerenciar Acesso do Usuário",
         "viewDetails": "Ver Detalhes"
       },
@@ -308,6 +310,9 @@
         "updated": "Biblioteca atualizada com sucesso",
         "deleted": "Biblioteca excluída com sucesso",
         "scanStarted": "Scan da biblioteca iniciada",
+        "quickScanStarted": "Scan rápido iniciado",
+        "fullScanStarted": "Scan completo iniciado",
+        "scanError": "Erro ao iniciar o scan. Verifique os logs",
         "scanCompleted": "Scan da biblioteca concluída"
       },
       "validation": {
@@ -598,11 +603,12 @@
   "activity": {
     "title": "Atividade",
     "totalScanned": "Total de pastas scaneadas",
-    "quickScan": "Scan rápido",
-    "fullScan": "Scan completo",
+    "quickScan": "Rápido",
+    "fullScan": "Completo",
+    "selectiveScan": "Seletivo",
     "serverUptime": "Uptime do servidor",
     "serverDown": "DESCONECTADO",
-    "scanType": "Tipo",
+    "scanType": "Último Scan",
     "status": "Erro",
     "elapsedTime": "Duração"
   },

@@ -204,7 +204,20 @@ func NewTranscodingCache() TranscodingCache {
 				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
 				return nil, os.ErrInvalid
 			}
-			out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.filePath, job.bitRate, job.offset)
+
+			// Choose the appropriate context based on EnableTranscodingCancellation configuration.
+			// This is where we decide whether transcoding processes should be cancellable or not.
+			var transcodingCtx context.Context
+			if conf.Server.EnableTranscodingCancellation {
+				// Use the request context directly, allowing cancellation when client disconnects
+				transcodingCtx = ctx
+			} else {
+				// Use background context with request values preserved.
+				// This prevents cancellation but maintains request metadata (user, client, etc.)
+				transcodingCtx = request.AddValues(context.Background(), ctx)
+			}
+
+			out, err := job.ms.transcoder.Transcode(transcodingCtx, t.Command, job.filePath, job.bitRate, job.offset)
 			if err != nil {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid

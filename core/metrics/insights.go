@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -21,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
@@ -63,9 +65,16 @@ func GetInstance(ds model.DataStore, pluginLoader PluginLoader) Insights {
 }
 
 func (c *insightsCollector) Run(ctx context.Context) {
-	ctx = auth.WithAdminUser(ctx, c.ds)
 	for {
-		c.sendInsights(ctx)
+		// Refresh admin context on each iteration to handle cases where
+		// admin user wasn't available on previous runs
+		insightsCtx := auth.WithAdminUser(ctx, c.ds)
+		u, _ := request.UserFrom(insightsCtx)
+		if !u.IsAdmin {
+			log.Trace(insightsCtx, "No admin user available, skipping insights collection")
+		} else {
+			c.sendInsights(insightsCtx)
+		}
 		select {
 		case <-time.After(consts.InsightsUpdateInterval):
 			continue
@@ -159,6 +168,13 @@ var staticData = sync.OnceValue(func() insights.Data {
 	// Build info
 	data.Build.Settings, data.Build.GoVersion = buildInfo()
 	data.OS.Containerized = consts.InContainer
+
+	// Install info
+	packageFilename := filepath.Join(conf.Server.DataFolder, ".package")
+	packageFileData, err := os.ReadFile(packageFilename)
+	if err == nil {
+		data.OS.Package = string(packageFileData)
+	}
 
 	// OS info
 	data.OS.Type = runtime.GOOS

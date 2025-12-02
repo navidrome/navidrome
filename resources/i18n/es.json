@@ -36,7 +36,7 @@
         "bitDepth": "Profundidad de bits",
         "sampleRate": "Frecuencia de muestreo",
         "missing": "Faltante",
-        "libraryName": ""
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -78,7 +78,7 @@
         "mood": "Estado de ánimo",
         "date": "Fecha de grabación",
         "missing": "Faltante",
-        "libraryName": ""
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -127,12 +127,12 @@
         "remixer": "Remixer",
         "djmixer": "DJ Mixer",
         "performer": "Intérprete",
-        "maincredit": ""
+        "maincredit": "Artista del álbum o Artista |||| Artistas del álbum o Artistas"
       },
       "actions": {
         "shuffle": "Aleatorio",
         "radio": "Radio",
-        "topSongs": ""
+        "topSongs": "Más destacadas"
       }
     },
     "user": {
@@ -150,11 +150,11 @@
         "newPassword": "Nueva contraseña",
         "token": "Token",
         "lastAccessAt": "Último acceso",
-        "libraries": ""
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
         "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
-        "libraries": ""
+        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto"
       },
       "notifications": {
         "created": "Usuario creado",
@@ -164,11 +164,11 @@
       "message": {
         "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
         "clickHereForToken": "Click aquí para obtener tu token",
-        "selectAllLibraries": "",
-        "adminAutoLibraries": ""
+        "selectAllLibraries": "Seleccionar todas las bibliotecas",
+        "adminAutoLibraries": "Los usuarios administradores tienen acceso a todas las bibliotecas automáticamente"
       },
       "validation": {
-        "librariesRequired": ""
+        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores"
       }
     },
     "player": {
@@ -261,7 +261,7 @@
         "path": "Ruta",
         "size": "Tamaño",
         "updatedAt": "Actualizado el",
-        "libraryName": ""
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "remove": "Eliminar",
@@ -273,55 +273,60 @@
       "empty": "No hay archivos perdidos"
     },
     "library": {
-      "name": "",
+      "name": "Biblioteca |||| Bibliotecas",
       "fields": {
-        "name": "",
-        "path": "",
-        "remotePath": "",
-        "lastScanAt": "",
-        "songCount": "",
-        "albumCount": "",
-        "artistCount": "",
-        "totalSongs": "",
-        "totalAlbums": "",
-        "totalArtists": "",
-        "totalFolders": "",
-        "totalFiles": "",
-        "totalMissingFiles": "",
-        "totalSize": "",
-        "totalDuration": "",
-        "defaultNewUsers": "",
-        "createdAt": "",
-        "updatedAt": ""
+        "name": "Nombre",
+        "path": "Ruta",
+        "remotePath": "Ruta remota",
+        "lastScanAt": "Último escaneo",
+        "songCount": "Canciones",
+        "albumCount": "Álbumes",
+        "artistCount": "Artistas",
+        "totalSongs": "Canciones",
+        "totalAlbums": "Álbumes",
+        "totalArtists": "Artistas",
+        "totalFolders": "Carpetas",
+        "totalFiles": "Archivos",
+        "totalMissingFiles": "Archivos faltantes",
+        "totalSize": "Tamaño total",
+        "totalDuration": "Duración",
+        "defaultNewUsers": "Valor por defecto para los nuevos usuarios",
+        "createdAt": "Creado",
+        "updatedAt": "Actualizado"
       },
       "sections": {
-        "basic": "",
-        "statistics": ""
+        "basic": "Información básica",
+        "statistics": "Estadísticas"
       },
       "actions": {
-        "scan": "",
-        "manageUsers": "",
-        "viewDetails": ""
+        "scan": "Escanear biblioteca",
+        "manageUsers": "Gestionar el acceso de usarios",
+        "viewDetails": "Ver detalles",
+        "quickScan": "Escaneo rápido",
+        "fullScan": "Escaneo completo"
       },
       "notifications": {
-        "created": "",
-        "updated": "",
-        "deleted": "",
-        "scanStarted": "",
-        "scanCompleted": ""
+        "created": "La biblioteca se creó correctamente",
+        "updated": "La biblioteca se actualizó correctamente",
+        "deleted": "La biblioteca se eliminó correctamente",
+        "scanStarted": "El escaneo de la biblioteca ha comenzado",
+        "scanCompleted": "El escaneo de la biblioteca se completó",
+        "quickScanStarted": "Escaneo rápido ha comenzado",
+        "fullScanStarted": "Escaneo completo ha comenzado",
+        "scanError": "Error al iniciar el escaneo. Revisa los registros"
       },
       "validation": {
-        "nameRequired": "",
-        "pathRequired": "",
-        "pathNotDirectory": "",
-        "pathNotFound": "",
-        "pathNotAccessible": "",
-        "pathInvalid": ""
+        "nameRequired": "El nombre de la biblioteca es obligatorio",
+        "pathRequired": "La ruta de la biblioteca es obligatoria",
+        "pathNotDirectory": "La ruta de la biblioteca debe ser un directorio",
+        "pathNotFound": "Ruta de la biblioteca no encontrada",
+        "pathNotAccessible": "La ruta de la biblioteca no es accesible",
+        "pathInvalid": "Ruta de la biblioteca no válida"
       },
       "messages": {
-        "deleteConfirm": "",
-        "scanInProgress": "",
-        "noLibrariesAssigned": ""
+        "deleteConfirm": "¿Estás seguro/a de que quieres eliminar esta biblioteca? Esto eliminará todos los datos asociados y el acceso de les usuaries.",
+        "scanInProgress": "Escaneo en curso...",
+        "noLibrariesAssigned": "No hay bibliotecas asignadas a este usuario"
       }
     }
   },
@@ -506,7 +511,7 @@
     "remove_all_missing_title": "Eliminar todos los archivos perdidos",
     "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "noSimilarSongsFound": "No se encontraron canciones similares",
-    "noTopSongsFound": ""
+    "noTopSongsFound": "No se encontraron canciones destacadas"
   },
   "menu": {
     "library": "Biblioteca",
@@ -537,10 +542,10 @@
     "playlists": "Playlists",
     "sharedPlaylists": "Playlists Compartidas",
     "librarySelector": {
-      "allLibraries": "",
-      "multipleLibraries": "",
-      "selectLibraries": "",
-      "none": ""
+      "allLibraries": "Todas las bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} bibliotecas",
+      "selectLibraries": "Seleccionar bibliotecas",
+      "none": "Ninguno"
     }
   },
   "player": {
@@ -604,7 +609,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Tipo",
     "status": "Error de escaneo",
-    "elapsedTime": "Tiempo transcurrido"
+    "elapsedTime": "Tiempo transcurrido",
+    "selectiveScan": "Selectivo"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",
@@ -621,8 +627,8 @@
     }
   },
   "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
+    "title": "En reproducción",
+    "empty": "Nada en reproducción",
+    "minutesAgo": "Hace %{smart_count} minuto |||| Hace %{smart_count} minutos"
   }
 }

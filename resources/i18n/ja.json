@@ -27,12 +27,16 @@
         "playDate": "最後の再生",
         "channels": "チャンネル",
         "createdAt": "追加日",
-        "grouping": "",
-        "mood": "",
-        "participants": "",
-        "tags": "",
-        "mappedTags": "",
-        "rawTags": ""
+        "grouping": "グループ分け",
+        "mood": "ムード",
+        "participants": "追加参加者",
+        "tags": "追加タグ",
+        "mappedTags": "マッピング済みタグ",
+        "rawTags": "未処理タグ",
+        "bitDepth": "ビット深度",
+        "sampleRate": "サンプリングレート",
+        "missing": "不明",
+        "libraryName": "ライブラリ"
       },
       "actions": {
         "addToQueue": "最後に再生",
@@ -41,7 +45,8 @@
         "shuffleAll": "全曲シャッフル",
         "download": "ダウンロード",
         "playNext": "次に再生",
-        "info": "詳細"
+        "info": "詳細",
+        "showInPlaylist": "含まれるプレイリスト"
       }
     },
     "album": {
@@ -65,12 +70,15 @@
         "releaseDate": "リリース日",
         "releases": "リリース",
         "released": "リリース",
-        "recordLabel": "",
-        "catalogNum": "",
-        "releaseType": "",
-        "grouping": "",
-        "media": "",
-        "mood": ""
+        "recordLabel": "ラベル",
+        "catalogNum": "カタログ番号",
+        "releaseType": "タイプ",
+        "grouping": "グループ分け",
+        "media": "メディア",
+        "mood": "ムード",
+        "date": "録音日",
+        "missing": "不明",
+        "libraryName": "ライブラリ"
       },
       "actions": {
         "playAll": "再生",
@@ -102,22 +110,29 @@
         "rating": "レート",
         "genre": "ジャンル",
         "size": "サイズ",
-        "role": ""
+        "role": "役割",
+        "missing": "不明"
       },
       "roles": {
-        "albumartist": "",
-        "artist": "",
-        "composer": "",
-        "conductor": "",
-        "lyricist": "",
-        "arranger": "",
-        "producer": "",
-        "director": "",
-        "engineer": "",
-        "mixer": "",
-        "remixer": "",
-        "djmixer": "",
-        "performer": ""
+        "albumartist": "アルバムアーティスト",
+        "artist": "アーティスト",
+        "composer": "作曲家",
+        "conductor": "指揮者",
+        "lyricist": "作詞家",
+        "arranger": "編曲者",
+        "producer": "プロデューサー",
+        "director": "ディレクター",
+        "engineer": "エンジニア",
+        "mixer": "ミキサー",
+        "remixer": "リミキサー",
+        "djmixer": "DJ ミキサー",
+        "performer": "演奏者",
+        "maincredit": "アルバムアーティストもしくはアーティスト"
+      },
+      "actions": {
+        "shuffle": "シャッフル",
+        "radio": "ラジオ",
+        "topSongs": "トップソング"
       }
     },
     "user": {
@@ -134,10 +149,12 @@
         "currentPassword": "現在のパスワード",
         "newPassword": "新しいパスワード",
         "token": "トークン",
-        "lastAccessAt": "最終アクセス"
+        "lastAccessAt": "最終アクセス",
+        "libraries": "ライブラリ"
       },
       "helperTexts": {
-        "name": "名前の変更は次回ログイン以降反映されます"
+        "name": "名前の変更は次回ログイン以降反映されます",
+        "libraries": "このユーザーに対して特定ライブラリを選択するか、デフォルトのライブラリを使用する場合は空欄のままにします"
       },
       "notifications": {
         "created": "ユーザーが作成されました",
@@ -146,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "ListenBrainzユーザートークンを入力",
-        "clickHereForToken": "ここをクリックしトークンを入手"
+        "clickHereForToken": "ここをクリックしトークンを入手",
+        "selectAllLibraries": "全てのライブラリを選択",
+        "adminAutoLibraries": "管理者ユーザーは自動的にすべてのライブラリにアクセスできます"
+      },
+      "validation": {
+        "librariesRequired": "管理者以外のユーザーには少なくとも1つのライブラリを選択する必要があります"
       }
     },
     "player": {
@@ -190,11 +212,17 @@
         "addNewPlaylist": "'%{name}' を作成",
         "export": "エクスポート",
         "makePublic": "公開する",
-        "makePrivate": "非公開にする"
+        "makePrivate": "非公開にする",
+        "saveQueue": "キューをプレイリストに保存",
+        "searchOrCreate": "プレイリストを検索または入力して新規作成...",
+        "pressEnterToCreate": "Enterキーを押して新しいプレイリストを作成",
+        "removeFromSelection": "選択から削除"
       },
       "message": {
         "duplicate_song": "重複する曲を追加",
-        "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
+        "song_exist": "既にプレイリストに存在する曲です。追加しますか？",
+        "noPlaylistsFound": "プレイリストが見つかりません",
+        "noPlaylists": "利用可能なプレイリストはありません"
       }
     },
     "radio": {
@@ -228,17 +256,77 @@
       }
     },
     "missing": {
-      "name": "",
+      "name": "欠落したファイル",
       "fields": {
-        "path": "",
-        "size": "",
-        "updatedAt": ""
+        "path": "パス",
+        "size": "サイズ",
+        "updatedAt": "欠落日",
+        "libraryName": "ライブラリ"
       },
       "actions": {
-        "remove": ""
+        "remove": "削除",
+        "remove_all": "全て削除"
       },
       "notifications": {
-        "removed": ""
+        "removed": "欠落ファイルが削除されました"
+      },
+      "empty": "ファイルの欠落はありません"
+    },
+    "library": {
+      "name": "ライブラリ",
+      "fields": {
+        "name": "名前",
+        "path": "パス",
+        "remotePath": "リモートパス",
+        "lastScanAt": "最終スキャン",
+        "songCount": "曲数",
+        "albumCount": "アルバム数",
+        "artistCount": "アーティスト数",
+        "totalSongs": "曲数",
+        "totalAlbums": "アルバム数",
+        "totalArtists": "アーティスト数",
+        "totalFolders": "フォルダー数",
+        "totalFiles": "ファイル数",
+        "totalMissingFiles": "欠落したファイル",
+        "totalSize": "合計サイズ",
+        "totalDuration": "合計時間",
+        "defaultNewUsers": "新規ユーザーに対するデフォルト",
+        "createdAt": "作成日",
+        "updatedAt": "更新日"
+      },
+      "sections": {
+        "basic": "基本情報",
+        "statistics": "統計"
+      },
+      "actions": {
+        "scan": "ライブラリをスキャン",
+        "manageUsers": "ユーザーアクセス管理",
+        "viewDetails": "詳細を表示",
+        "quickScan": "クイックスキャン",
+        "fullScan": "フルスキャン"
+      },
+      "notifications": {
+        "created": "ライブラリが正常に作成されました",
+        "updated": "ライブラリが正常に更新されました",
+        "deleted": "ライブラリが正常に削除されました",
+        "scanStarted": "スキャンを開始しました",
+        "scanCompleted": "スキャンが完了しました",
+        "quickScanStarted": "クイックスキャンを開始しました",
+        "fullScanStarted": "フルスキャンを開始しました",
+        "scanError": "スキャン開始中にエラーが発生。ログを確認してください"
+      },
+      "validation": {
+        "nameRequired": "ライブラリの名前が必要です",
+        "pathRequired": "ライブラリのパスが必要です",
+        "pathNotDirectory": "ライブラリパスはディレクトリである必要があります",
+        "pathNotFound": "ライブラリのパスが見つかりません",
+        "pathNotAccessible": "ライブラリパスへアクセスできません",
+        "pathInvalid": "無効なライブラリパス"
+      },
+      "messages": {
+        "deleteConfirm": "このライブラリを削除しますか？関連する全てのデータとユーザーアクセスが削除されます。",
+        "scanInProgress": "スキャン中...",
+        "noLibrariesAssigned": "このユーザーに割り当てられているライブラリはありません"
       }
     }
   },
@@ -418,8 +506,12 @@
     "shareFailure": "コピーに失敗しました %{url}",
     "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter",
-    "remove_missing_title": "",
-    "remove_missing_content": ""
+    "remove_missing_title": "欠落ファイルを削除",
+    "remove_missing_content": "選択した欠落ファイルをデータベースから削除してもよろしいですか？これにより、再生数や評価を含むそれらのファイルへの参照が完全に削除されます。",
+    "remove_all_missing_title": "全ての欠落ファイルを削除",
+    "remove_all_missing_content": "データベースから欠落ファイルをすべて削除してもよろしいですか？これにより、再生数や評価を含むそれらのファイルへの参照が永久に削除されます。",
+    "noSimilarSongsFound": "類似の曲が見つかりませんでした",
+    "noTopSongsFound": "トップソングが見つかりません"
   },
   "menu": {
     "library": "ライブラリ",
@@ -448,7 +540,13 @@
     "albumList": "アルバム",
     "about": "詳細",
     "playlists": "プレイリスト",
-    "sharedPlaylists": "共有プレイリスト"
+    "sharedPlaylists": "共有プレイリスト",
+    "librarySelector": {
+      "allLibraries": "全てのライブラリ( %{count} )",
+      "multipleLibraries": "%{selected}  個 / %{total} 個のライブラリ",
+      "selectLibraries": "ライブラリを選択",
+      "none": "無し"
+    }
   },
   "player": {
     "playListsText": "再生リスト",
@@ -485,15 +583,34 @@
         "disabled": "無効",
         "waiting": "待機中"
       }
+    },
+    "tabs": {
+      "about": "詳細",
+      "config": "設定"
+    },
+    "config": {
+      "configName": "設定名",
+      "environmentVariable": "環境変数",
+      "currentValue": "現在値",
+      "configurationFile": "設定ファイル",
+      "exportToml": "設定をエクスポート(TOML)",
+      "exportSuccess": "設定をTOML形式でクリップボードへエクスポートしました",
+      "exportFailed": "設定のコピーに失敗しました",
+      "devFlagsHeader": "開発フラグ(変更・削除の可能性あり)",
+      "devFlagsComment": "これらは実験的な設定であり、将来のバージョンで削除される可能性があります"
     }
   },
   "activity": {
     "title": "活動",
     "totalScanned": "スキャン済みフォルダー",
-    "quickScan": "クイックスキャン",
-    "fullScan": "フルスキャン",
+    "quickScan": "クイック",
+    "fullScan": "フル",
     "serverUptime": "サーバー稼働時間",
-    "serverDown": "サーバーオフライン"
+    "serverDown": "サーバーオフライン",
+    "scanType": "最終スキャン",
+    "status": "スキャンエラー",
+    "elapsedTime": "経過時間",
+    "selectiveScan": "選択的スキャン"
   },
   "help": {
     "title": "ホットキー",
@@ -508,5 +625,10 @@
       "toggle_love": "星の付け外し",
       "current_song": "現在の曲へ移動"
     }
+  },
+  "nowPlaying": {
+    "title": "再生中",
+    "empty": "何も再生されていません",
+    "minutesAgo": "%{smart_count} 分前 |||| %{smart_count} 分前"
   }
 }

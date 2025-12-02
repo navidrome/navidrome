@@ -31,6 +31,12 @@ type Submission struct {
 	Timestamp time.Time
 }
 
+type nowPlayingEntry struct {
+	userId   string
+	track    *model.MediaFile
+	position int
+}
+
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
@@ -52,6 +58,11 @@ type playTracker struct {
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
 	mu                sync.RWMutex
+	npQueue           map[string]nowPlayingEntry
+	npMu              sync.Mutex
+	npSignal          chan struct{}
+	shutdown          chan struct{}
+	workerDone        chan struct{}
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
@@ -71,6 +82,10 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		builtinScrobblers: make(map[string]Scrobbler),
 		pluginScrobblers:  make(map[string]Scrobbler),
 		pluginLoader:      pluginManager,
+		npQueue:           make(map[string]nowPlayingEntry),
+		npSignal:          make(chan struct{}, 1),
+		shutdown:          make(chan struct{}),
+		workerDone:        make(chan struct{}),
 	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
@@ -90,7 +105,14 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		p.builtinScrobblers[name] = s
 	}
 	log.Debug("List of builtin scrobblers enabled", "names", enabled)
+	go p.nowPlayingWorker()
 	return p
+}
+
+// stopNowPlayingWorker stops the background worker. This is primarily for testing.
+func (p *playTracker) stopNowPlayingWorker() {
+	close(p.shutdown)
+	<-p.workerDone // Wait for worker to finish
 }
 
 // pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers
@@ -198,9 +220,56 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, mf, position)
+		p.enqueueNowPlaying(playerId, user.ID, mf, position)
 	}
 	return nil
+}
+
+func (p *playTracker) enqueueNowPlaying(playerId string, userId string, track *model.MediaFile, position int) {
+	p.npMu.Lock()
+	defer p.npMu.Unlock()
+	p.npQueue[playerId] = nowPlayingEntry{
+		userId:   userId,
+		track:    track,
+		position: position,
+	}
+	p.sendNowPlayingSignal()
+}
+
+func (p *playTracker) sendNowPlayingSignal() {
+	// Don't block if the previous signal was not read yet
+	select {
+	case p.npSignal <- struct{}{}:
+	default:
+	}
+}
+
+func (p *playTracker) nowPlayingWorker() {
+	defer close(p.workerDone)
+	for {
+		select {
+		case <-p.shutdown:
+			return
+		case <-time.After(time.Second):
+		case <-p.npSignal:
+		}
+
+		p.npMu.Lock()
+		if len(p.npQueue) == 0 {
+			p.npMu.Unlock()
+			continue
+		}
+
+		// Keep a copy of the entries to process and clear the queue
+		entries := p.npQueue
+		p.npQueue = make(map[string]nowPlayingEntry)
+		p.npMu.Unlock()
+
+		// Process entries without holding lock
+		for _, entry := range entries {
+			p.dispatchNowPlaying(context.Background(), entry.userId, entry.track, entry.position)
+		}
+	}
 }
 
 func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {

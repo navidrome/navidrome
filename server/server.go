@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"crypto/tls"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -69,6 +72,13 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	// Determine if TLS is enabled
 	tlsEnabled := tlsCert != "" && tlsKey != ""
 
+	// Validate TLS certificates before starting the server
+	if tlsEnabled {
+		if err := validateTLSCertificates(tlsCert, tlsKey); err != nil {
+			return err
+		}
+	}
+
 	// Create a listener based on the address type (either Unix socket or TCP)
 	var listener net.Listener
 	var err error
@@ -89,17 +99,17 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	// Start the server in a new goroutine and send an error signal to errC if there's an error
 	errC := make(chan error)
 	go func() {
+		var err error
 		if tlsEnabled {
 			// Start the HTTPS server
 			log.Info("Starting server with TLS (HTTPS) enabled", "tlsCert", tlsCert, "tlsKey", tlsKey)
-			if err := server.ServeTLS(listener, tlsCert, tlsKey); !errors.Is(err, http.ErrServerClosed) {
-				errC <- err
-			}
+			err = server.ServeTLS(listener, tlsCert, tlsKey)
 		} else {
 			// Start the HTTP server
-			if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
-				errC <- err
-			}
+			err = server.Serve(listener)
+		}
+		if !errors.Is(err, http.ErrServerClosed) {
+			errC <- err
 		}
 	}()
 
@@ -248,4 +258,57 @@ func AbsoluteURL(r *http.Request, u string, params url.Values) string {
 		buildUrl.RawQuery = params.Encode()
 	}
 	return buildUrl.String()
+}
+
+// validateTLSCertificates validates the TLS certificate and key files before starting the server.
+// It provides detailed error messages for common issues like encrypted private keys.
+func validateTLSCertificates(certFile, keyFile string) error {
+	// Read the key file to check for encryption
+	keyData, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("reading TLS key file: %w", err)
+	}
+
+	// Parse PEM blocks and check for encryption
+	block, _ := pem.Decode(keyData)
+	if block == nil {
+		return errors.New("TLS key file does not contain a valid PEM block")
+	}
+
+	// Check for encrypted private key indicators
+	if isEncryptedPEM(block, keyData) {
+		return errors.New("TLS private key is encrypted (password-protected). " +
+			"Navidrome does not support encrypted private keys. " +
+			"Please decrypt your key using: openssl pkey -in <encrypted-key> -out <decrypted-key>")
+	}
+
+	// Try to load the certificate pair to validate it
+	_, err = tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return fmt.Errorf("loading TLS certificate/key pair: %w", err)
+	}
+
+	return nil
+}
+
+// isEncryptedPEM checks if a PEM block represents an encrypted private key.
+func isEncryptedPEM(block *pem.Block, rawData []byte) bool {
+	// Check for PKCS#8 encrypted format (BEGIN ENCRYPTED PRIVATE KEY)
+	if block.Type == "ENCRYPTED PRIVATE KEY" {
+		return true
+	}
+
+	// Check for legacy encrypted format with Proc-Type header
+	if block.Headers != nil {
+		if procType, ok := block.Headers["Proc-Type"]; ok && strings.Contains(procType, "ENCRYPTED") {
+			return true
+		}
+	}
+
+	// Also check raw data for DEK-Info header (in case pem.Decode doesn't parse headers correctly)
+	if bytes.Contains(rawData, []byte("DEK-Info:")) || bytes.Contains(rawData, []byte("Proc-Type: 4,ENCRYPTED")) {
+		return true
+	}
+
+	return false
 }
