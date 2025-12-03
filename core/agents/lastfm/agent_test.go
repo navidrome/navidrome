@@ -233,6 +233,23 @@ var _ = Describe("lastfmAgent", func() {
 				err := agent.NowPlaying(ctx, "user-2", track, 0)
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 			})
+
+			When("ScrobbleFirstArtistOnly is true", func() {
+				BeforeEach(func() {
+					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+				})
+
+				It("uses only the first artist", func() {
+					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+					err := agent.NowPlaying(ctx, "user-1", track, 0)
+
+					Expect(err).ToNot(HaveOccurred())
+					sentParams := httpClient.SavedRequest.URL.Query()
+					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
+					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
+				})
+			})
 		})
 
 		Describe("scrobble", func() {
