@@ -257,7 +257,7 @@ jobs:
           retention-days: 1
 
   push-manifest-ghcr:
-    name: Push Docker manifest to GHCR
+    name: Push to GHCR
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
@@ -290,7 +290,7 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
 
   push-manifest-dockerhub:
-    name: Push Docker manifest to Docker Hub
+    name: Push to Docker Hub
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
