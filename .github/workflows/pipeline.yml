@@ -258,6 +258,8 @@ jobs:
 
   push-manifest-ghcr:
     name: Push to GHCR
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
@@ -292,6 +294,8 @@ jobs:
   push-manifest-dockerhub:
     name: Push to Docker Hub
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
     continue-on-error: true
