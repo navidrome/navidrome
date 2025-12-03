@@ -271,22 +271,6 @@ var _ = Describe("lastfmAgent", func() {
 					Expect(err).ToNot(HaveOccurred())
 					sentParams := httpClient.SavedRequest.URL.Query()
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
-				})
-			})
-
-			When("ScrobbleFirstAlbumArtistOnly is true", func() {
-				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstAlbumArtistOnly = true
-				})
-
-				It("uses only the first album artist", func() {
-					ts := time.Now()
-					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
-
-					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
-
-					Expect(err).ToNot(HaveOccurred())
-					sentParams := httpClient.SavedRequest.URL.Query()
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
 			})

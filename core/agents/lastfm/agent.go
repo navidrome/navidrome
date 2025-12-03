@@ -298,7 +298,7 @@ func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
 }
 
 func (l *lastfmAgent) getAlbumArtistForScrobble(track *model.MediaFile) string {
-	if conf.Server.LastFM.ScrobbleFirstAlbumArtistOnly && len(track.Participants[model.RoleAlbumArtist]) > 0 {
+	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[model.RoleAlbumArtist]) > 0 {
 		return track.Participants[model.RoleAlbumArtist][0].Name
 	}
 	return track.AlbumArtist
