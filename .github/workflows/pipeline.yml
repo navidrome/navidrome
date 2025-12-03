@@ -328,7 +328,8 @@ jobs:
           command: |
             cd /tmp/digests
             docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io") | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf '${{ vars.DOCKER_HUB_REPO }}@sha256:%s ' *)
+              $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
+
       - name: Inspect image in Docker Hub
         run: |
           docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
