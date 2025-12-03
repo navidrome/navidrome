@@ -297,6 +297,13 @@ func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
 	return track.Artist
 }
 
+func (l *lastfmAgent) getAlbumArtistForScrobble(track *model.MediaFile) string {
+	if conf.Server.LastFM.ScrobbleFirstAlbumArtistOnly && len(track.Participants[model.RoleAlbumArtist]) > 0 {
+		return track.Participants[model.RoleAlbumArtist][0].Name
+	}
+	return track.AlbumArtist
+}
+
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
@@ -310,7 +317,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		trackNumber: track.TrackNumber,
 		mbid:        track.MbzRecordingID,
 		duration:    int(track.Duration),
-		albumArtist: track.AlbumArtist,
+		albumArtist: l.getAlbumArtistForScrobble(track),
 	})
 	if err != nil {
 		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
@@ -336,7 +343,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		trackNumber: s.TrackNumber,
 		mbid:        s.MbzRecordingID,
 		duration:    int(s.Duration),
-		albumArtist: s.AlbumArtist,
+		albumArtist: l.getAlbumArtistForScrobble(&s.MediaFile),
 		timestamp:   s.TimeStamp,
 	})
 	if err == nil {
