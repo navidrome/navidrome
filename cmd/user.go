@@ -22,7 +22,6 @@ var (
 	email      string
 	libraryIds []int
 	name       string
-	password   string
 
 	removeEmail    bool
 	removeName     bool
@@ -35,8 +34,6 @@ func init() {
 	rootCmd.AddCommand(userRoot)
 
 	userCreateCommand.Flags().StringVarP(&userID, "username", "u", "", "username")
-
-	userCreateCommand.Flags().StringVarP(&password, "password", "p", "", "Set the user's password. Note that this will be captured in terminal history")
 
 	userCreateCommand.Flags().StringVarP(&email, "email", "e", "", "New user email")
 	userCreateCommand.Flags().IntSliceVarP(&libraryIds, "library-ids", "i", []int{}, "Comma-separated list of library IDs. Set the user's accessible libraries. If empty, the user can access all libraries. This is incompatible with admin, as admin can always access all libraries")
@@ -67,8 +64,6 @@ func init() {
 	userEditCommand.MarkFlagsMutuallyExclusive("name", "remove-name")
 
 	userEditCommand.Flags().BoolVar(&setPassword, "set-password", false, "If set, the user's new password will be prompted on the CLI")
-	userEditCommand.Flags().StringVarP(&password, "password", "p", "", "Set the user's password. Note that this will be captured in terminal history")
-	userEditCommand.MarkFlagsMutuallyExclusive("password", "set-password")
 
 	userEditCommand.Flags().IntSliceVarP(&libraryIds, "library-ids", "i", []int{}, "Comma-separated list of library IDs. Set the user's accessible libraries by id")
 
@@ -167,11 +162,9 @@ func libraryError(libraries model.Libraries) error {
 }
 
 func runCreateUser() {
+	password := promptPassword()
 	if password == "" {
-		password = promptPassword()
-		if password == "" {
-			log.Fatal("Empty password provided, user creation cancelled")
-		}
+		log.Fatal("Empty password provided, user creation cancelled")
 	}
 
 	user := model.User{
@@ -315,12 +308,12 @@ func runUserEdit() {
 		}
 
 		if setPassword {
-			password = promptPassword()
-		}
+			password := promptPassword()
 
-		if password != "" {
-			user.NewPassword = password
-			changes = append(changes, "updated password")
+			if password != "" {
+				user.NewPassword = password
+				changes = append(changes, "updated password")
+			}
 		}
 
 		if email != "" && email != user.Email {
@@ -340,7 +333,6 @@ func runUserEdit() {
 		}
 
 		if len(changes) == 0 {
-			log.Info(ctx, "No changes for user", "user", user.UserName)
 			return nil
 		}
 
@@ -368,7 +360,11 @@ func runUserEdit() {
 		log.Fatal(ctx, "Failed to update user", err)
 	}
 
-	log.Info(ctx, "Updated user", "user", user.UserName, "changes", strings.Join(changes, ", "))
+	if len(changes) == 0 {
+		log.Info(ctx, "No changes for user", "user", user.UserName)
+	} else {
+		log.Info(ctx, "Updated user", "user", user.UserName, "changes", strings.Join(changes, ", "))
+	}
 }
 
 type displayLibrary struct {
@@ -448,7 +444,7 @@ func runUserList() {
 				user.UpdatedAt.Format(time.RFC3339Nano),
 				lastAccess,
 				lastLogin,
-				fmt.Sprintf("'%s'", strings.Join(paths, ",")),
+				fmt.Sprintf("'%s'", strings.Join(paths, "|")),
 			})
 		}
 		w.Flush()
