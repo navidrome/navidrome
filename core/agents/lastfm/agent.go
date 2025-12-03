@@ -290,11 +290,11 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName str
 	return t.Track, nil
 }
 
-func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
-	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[model.RoleArtist]) > 0 {
-		return track.Participants[model.RoleArtist][0].Name
+func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {
+	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
+		return track.Participants[role][0].Name
 	}
-	return track.Artist
+	return displayName
 }
 
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
@@ -304,13 +304,13 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 	}
 
 	err = l.client.updateNowPlaying(ctx, sk, ScrobbleInfo{
-		artist:      l.getArtistForScrobble(track),
+		artist:      l.getArtistForScrobble(track, model.RoleArtist, track.Artist),
 		track:       track.Title,
 		album:       track.Album,
 		trackNumber: track.TrackNumber,
 		mbid:        track.MbzRecordingID,
 		duration:    int(track.Duration),
-		albumArtist: track.AlbumArtist,
+		albumArtist: l.getArtistForScrobble(track, model.RoleAlbumArtist, track.AlbumArtist),
 	})
 	if err != nil {
 		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
@@ -330,13 +330,13 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return nil
 	}
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
-		artist:      l.getArtistForScrobble(&s.MediaFile),
+		artist:      l.getArtistForScrobble(&s.MediaFile, model.RoleArtist, s.Artist),
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,
 		mbid:        s.MbzRecordingID,
 		duration:    int(s.Duration),
-		albumArtist: s.AlbumArtist,
+		albumArtist: l.getArtistForScrobble(&s.MediaFile, model.RoleAlbumArtist, s.AlbumArtist),
 		timestamp:   s.TimeStamp,
 	})
 	if err == nil {
