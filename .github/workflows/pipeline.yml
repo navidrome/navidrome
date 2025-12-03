@@ -256,8 +256,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  push-manifest:
-    name: Push Docker manifest
+  push-manifest-ghcr:
+    name: Push Docker manifest to GHCR
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
@@ -278,32 +278,63 @@ jobs:
         id: docker
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
-          hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Create manifest list and push to ghcr.io
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io"))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-
-      - name: Create manifest list and push to Docker Hub
-        working-directory: /tmp/digests
-        if: vars.DOCKER_HUB_REPO != ''
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ vars.DOCKER_HUB_REPO }}@sha256:%s ' *)          
 
       - name: Inspect image in ghcr.io
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
 
+  push-manifest-dockerhub:
+    name: Push Docker manifest to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [build, check-push-enabled]
+    if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download digests
+        uses: actions/download-artifact@v6
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Prepare Docker Buildx
+        uses: ./.github/actions/prepare-docker
+        id: docker
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
+          hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Create manifest list and push to Docker Hub
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            cd /tmp/digests
+            docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io") | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf '${{ vars.DOCKER_HUB_REPO }}@sha256:%s ' *)
+
       - name: Inspect image in Docker Hub
-        if: vars.DOCKER_HUB_REPO != ''
         run: |
           docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
 
+  cleanup-digests:
+    name: Cleanup digest artifacts
+    runs-on: ubuntu-latest
+    needs: [push-manifest-ghcr, push-manifest-dockerhub]
+    if: always() && needs.push-manifest-ghcr.result == 'success'
+    steps:
       - name: Delete unnecessary digest artifacts
         env:
           GH_TOKEN: ${{ github.token }}
