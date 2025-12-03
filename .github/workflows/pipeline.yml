@@ -259,7 +259,7 @@ jobs:
   push-manifest-ghcr:
     name: Push to GHCR
     permissions:
-      contents: read
+      contents: write
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
