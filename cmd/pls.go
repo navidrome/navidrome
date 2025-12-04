@@ -10,11 +10,8 @@ import (
 	"strconv"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +49,7 @@ var (
 		Short: "Export playlists",
 		Long:  "Export Navidrome playlists to M3U files",
 		Run: func(cmd *cobra.Command, args []string) {
-			runExporter()
+			runExporter(cmd.Context())
 		},
 	}
 
@@ -60,15 +57,13 @@ var (
 		Use:   "list",
 		Short: "List playlists",
 		Run: func(cmd *cobra.Command, args []string) {
-			runList()
+			runList(cmd.Context())
 		},
 	}
 )
 
-func runExporter() {
-	sqlDB := db.Db()
-	ds := persistence.New(sqlDB)
-	ctx := auth.WithAdminUser(context.Background(), ds)
+func runExporter(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
 	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Fatal("Error retrieving playlist", "name", playlistID, err)
@@ -100,31 +95,19 @@ func runExporter() {
 	}
 }
 
-func runList() {
+func runList(ctx context.Context) {
 	if outputFormat != "csv" && outputFormat != "json" {
 		log.Fatal("Invalid output format. Must be one of csv, json", "format", outputFormat)
 	}
 
-	sqlDB := db.Db()
-	ds := persistence.New(sqlDB)
-	ctx := auth.WithAdminUser(context.Background(), ds)
-
+	ds, ctx := getAdminContext(ctx)
 	options := model.QueryOptions{Sort: "owner_name"}
 
 	if userID != "" {
-		user, err := ds.User(ctx).FindByUsername(userID)
-
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal("Error retrieving user by name", "name", userID, err)
+		user, err := getUser(ctx, userID, ds)
+		if err != nil {
+			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
 		}
-
-		if errors.Is(err, model.ErrNotFound) {
-			user, err = ds.User(ctx).Get(userID)
-			if err != nil {
-				log.Fatal("Error retrieving user by id", "id", userID, err)
-			}
-		}
-
 		options.Filters = squirrel.Eq{"owner_id": user.ID}
 	}
 

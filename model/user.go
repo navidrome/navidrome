@@ -42,7 +42,9 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 type Users []User
 
 type UserRepository interface {
+	ResourceRepository
 	CountAll(...QueryOptions) (int64, error)
+	Delete(id string) error
 	Get(id string) (*User, error)
 	Put(*User) error
 	UpdateLastLoginAt(id string) error
