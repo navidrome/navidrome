@@ -11,10 +11,10 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 )
 
-func getContext() (model.DataStore, context.Context) {
+func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 	sqlDB := db.Db()
 	ds := persistence.New(sqlDB)
-	return ds, auth.WithAdminUser(context.Background(), ds)
+	return ds, auth.WithAdminUser(ctx, ds)
 }
 
 func getUser(ctx context.Context, id string, ds model.DataStore) (*model.User, error) {

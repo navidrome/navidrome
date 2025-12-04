@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -86,7 +87,7 @@ var (
 		Aliases: []string{"c"},
 		Short:   "Create a new user",
 		Run: func(cmd *cobra.Command, args []string) {
-			runCreateUser()
+			runCreateUser(cmd.Context())
 		},
 	}
 
@@ -95,7 +96,7 @@ var (
 		Aliases: []string{"d"},
 		Short:   "Deletes an existing user",
 		Run: func(cmd *cobra.Command, args []string) {
-			runDeleteUser()
+			runDeleteUser(cmd.Context())
 		},
 	}
 
@@ -105,7 +106,7 @@ var (
 		Short:   "Edit a user",
 		Long:    "Edit the password, admin status, and/or library access",
 		Run: func(cmd *cobra.Command, args []string) {
-			runUserEdit()
+			runUserEdit(cmd.Context())
 		},
 	}
 
@@ -113,7 +114,7 @@ var (
 		Use:   "list",
 		Short: "List users",
 		Run: func(cmd *cobra.Command, args []string) {
-			runUserList()
+			runUserList(cmd.Context())
 		},
 	}
 )
@@ -161,7 +162,7 @@ func libraryError(libraries model.Libraries) error {
 	return fmt.Errorf("not all available libraries found. Requested ids: %v, Found libraries: %v", libraryIds, ids)
 }
 
-func runCreateUser() {
+func runCreateUser(ctx context.Context) {
 	password := promptPassword()
 	if password == "" {
 		log.Fatal("Empty password provided, user creation cancelled")
@@ -179,7 +180,7 @@ func runCreateUser() {
 		user.Name = userID
 	}
 
-	ds, ctx := getContext()
+	ds, ctx := getAdminContext(ctx)
 
 	err := ds.WithTx(func(tx model.DataStore) error {
 		existingUser, err := tx.User(ctx).FindByUsername(userID)
@@ -228,8 +229,8 @@ func runCreateUser() {
 	log.Info(ctx, "Successfully created user", "id", user.ID, "username", user.UserName)
 }
 
-func runDeleteUser() {
-	ds, ctx := getContext()
+func runDeleteUser(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
 
 	var err error
 	var user *model.User
@@ -259,8 +260,8 @@ func runDeleteUser() {
 	log.Info(ctx, "Deleted user", "username", user.UserName)
 }
 
-func runUserEdit() {
-	ds, ctx := getContext()
+func runUserEdit(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
 
 	var err error
 	var user *model.User
@@ -385,12 +386,12 @@ type displayUser struct {
 	Libraries  []displayLibrary `json:"libraries"`
 }
 
-func runUserList() {
+func runUserList(ctx context.Context) {
 	if outputFormat != "csv" && outputFormat != "json" {
 		log.Fatal("Invalid output format. Must be one of csv, json", "format", outputFormat)
 	}
 
-	ds, ctx := getContext()
+	ds, ctx := getAdminContext(ctx)
 
 	users, err := ds.User(ctx).ReadAll()
 	if err != nil {

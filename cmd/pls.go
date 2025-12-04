@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -48,7 +49,7 @@ var (
 		Short: "Export playlists",
 		Long:  "Export Navidrome playlists to M3U files",
 		Run: func(cmd *cobra.Command, args []string) {
-			runExporter()
+			runExporter(cmd.Context())
 		},
 	}
 
@@ -56,13 +57,13 @@ var (
 		Use:   "list",
 		Short: "List playlists",
 		Run: func(cmd *cobra.Command, args []string) {
-			runList()
+			runList(cmd.Context())
 		},
 	}
 )
 
-func runExporter() {
-	ds, ctx := getContext()
+func runExporter(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
 	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Fatal("Error retrieving playlist", "name", playlistID, err)
@@ -94,12 +95,12 @@ func runExporter() {
 	}
 }
 
-func runList() {
+func runList(ctx context.Context) {
 	if outputFormat != "csv" && outputFormat != "json" {
 		log.Fatal("Invalid output format. Must be one of csv, json", "format", outputFormat)
 	}
 
-	ds, ctx := getContext()
+	ds, ctx := getAdminContext(ctx)
 	options := model.QueryOptions{Sort: "owner_name"}
 
 	if userID != "" {
