@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Skannaa kirjasto",
         "manageUsers": "Hallitse käyttäjien pääsyä",
-        "viewDetails": "Näytä tiedot"
+        "viewDetails": "Näytä tiedot",
+        "quickScan": "Nopea skannaus",
+        "fullScan": "Täysi skannaus"
       },
       "notifications": {
         "created": "Kirjasto luotu onnistuneesti",
         "updated": "Kirjasto päivitetty onnistuneesti",
         "deleted": "Kirjasto poistettu onnistuneesti",
         "scanStarted": "Kirjaston skannaus aloitettu",
-        "scanCompleted": "Kirjaston skannaus valmistunut"
+        "scanCompleted": "Kirjaston skannaus valmistunut",
+        "quickScanStarted": "Nopea skannaus aloitettu",
+        "fullScanStarted": "Täysi skannaus aloitettu",
+        "scanError": "Virhe skannauksen käynnistyksessä. Tarkista lokit"
       },
       "validation": {
         "nameRequired": "Kirjaston nimi vaaditaan",
@@ -604,7 +609,8 @@
     "serverDown": "SAMMUTETTU",
     "scanType": "Tyyppi",
     "status": "Skannausvirhe",
-    "elapsedTime": "Kulunut aika"
+    "elapsedTime": "Kulunut aika",
+    "selectiveScan": "Valikoiva"
   },
   "help": {
     "title": "Navidrome pikapainikkeet",

@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Escanear Biblioteca",
         "manageUsers": "Xestionar acceso das usuarias",
-        "viewDetails": "Ver detalles"
+        "viewDetails": "Ver detalles",
+        "quickScan": "Escaneado rápido",
+        "fullScan": "Escaneado completo"
       },
       "notifications": {
         "created": "Biblioteca creada correctamente",
         "updated": "Biblioteca actualizada correctamente",
         "deleted": "Biblioteca eliminada correctamente",
         "scanStarted": "Comezou o escaneo da biblioteca",
-        "scanCompleted": "Completouse o escaneado da biblioteca"
+        "scanCompleted": "Completouse o escaneado da biblioteca",
+        "quickScanStarted": "Iniciado o escaneado rápido",
+        "fullScanStarted": "Iniciado o escaneado completo",
+        "scanError": "Erro ao escanear. Comproba o rexistro"
       },
       "validation": {
         "nameRequired": "Requírese un nome para a biblioteca",
@@ -604,7 +609,8 @@
     "serverDown": "SEN CONEXIÓN",
     "scanType": "Tipo",
     "status": "Erro de escaneado",
-    "elapsedTime": "Tempo transcurrido"
+    "elapsedTime": "Tempo transcurrido",
+    "selectiveScan": "Selectivo"
   },
   "help": {
     "title": "Atallos de Navidrome",

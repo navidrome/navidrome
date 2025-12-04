@@ -18,8 +18,6 @@
         "size": "Filstørrelse",
         "updatedAt": "Oppdatert",
         "bitRate": "Bit rate",
-        "bitDepth": "Bit depth",
-        "channels": "Kanaler",
         "discSubtitle": "Disk Undertittel",
         "starred": "Favoritt",
         "comment": "Kommentar",
@@ -27,13 +25,18 @@
         "quality": "Kvalitet",
         "bpm": "BPM",
         "playDate": "Sist Avspilt",
+        "channels": "Kanaler",
         "createdAt": "Lagt til",
         "grouping": "Gruppering",
         "mood": "Stemning",
         "participants": "Ytterlige deltakere",
         "tags": "Ytterlige Tags",
         "mappedTags": "Kartlagte tags",
-        "rawTags": "Rå tags"
+        "rawTags": "Rå tags",
+        "bitDepth": "Bit depth",
+        "sampleRate": "",
+        "missing": "",
+        "libraryName": ""
       },
       "actions": {
         "addToQueue": "Avspill senere",
@@ -42,7 +45,8 @@
         "shuffleAll": "Shuffle Alle",
         "download": "Last ned",
         "playNext": "Avspill neste",
-        "info": "Få Info"
+        "info": "Få Info",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -53,36 +57,38 @@
         "duration": "Tid",
         "songCount": "Sanger",
         "playCount": "Avspillinger",
-        "size": "Størrelse",
         "name": "Navn",
         "genre": "Sjanger",
         "compilation": "Samling",
         "year": "År",
-        "date": "Inspillingsdato",
-        "originalDate": "Original",
-        "releaseDate": "Utgitt",
-        "releases": "Utgivelse |||| Utgivelser",
-        "released": "Utgitt",
         "updatedAt": "Oppdatert",
         "comment": "Kommentar",
         "rating": "Rangering",
         "createdAt": "Lagt Til",
+        "size": "Størrelse",
+        "originalDate": "Original",
+        "releaseDate": "Utgitt",
+        "releases": "Utgivelse |||| Utgivelser",
+        "released": "Utgitt",
         "recordLabel": "Plateselskap",
         "catalogNum": "Katalognummer",
         "releaseType": "Type",
         "grouping": "Gruppering",
         "media": "Media",
-        "mood": "Stemning"
+        "mood": "Stemning",
+        "date": "Inspillingsdato",
+        "missing": "",
+        "libraryName": ""
       },
       "actions": {
         "playAll": "Avspill",
         "playNext": "Avspill Neste",
         "addToQueue": "Avspill Senere",
-        "share": "Del",
         "shuffle": "Shuffle",
         "addToPlaylist": "Legg til i spilleliste",
         "download": "Last ned",
-        "info": "Få Info"
+        "info": "Få Info",
+        "share": "Del"
       },
       "lists": {
         "all": "Alle",
@@ -100,11 +106,12 @@
         "name": "Navn",
         "albumCount": "Album Antall",
         "songCount": "Song Antall",
-        "size": "Størrelse",
         "playCount": "Avspillinger",
         "rating": "Rangering",
         "genre": "Sjanger",
-        "role": "Rolle"
+        "size": "Størrelse",
+        "role": "Rolle",
+        "missing": ""
       },
       "roles": {
         "albumartist": "Album Artist |||| Album Artister",
@@ -119,7 +126,13 @@
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Performer |||| Performers"
+        "performer": "Performer |||| Performers",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
       }
     },
     "user": {
@@ -128,7 +141,6 @@
         "userName": "Brukernavn",
         "isAdmin": "Admin",
         "lastLoginAt": "Sist Pålogging",
-        "lastAccessAt": "Sist Tilgang",
         "updatedAt": "Oppdatert",
         "name": "Navn",
         "password": "Passord",
@@ -136,10 +148,13 @@
         "changePassword": "Bytt Passord?",
         "currentPassword": "Nåværende Passord",
         "newPassword": "Nytt Passord",
-        "token": "Token"
+        "token": "Token",
+        "lastAccessAt": "Sist Tilgang",
+        "libraries": ""
       },
       "helperTexts": {
-        "name": "Navnendringer vil ikke være synlig før neste pålogging"
+        "name": "Navnendringer vil ikke være synlig før neste pålogging",
+        "libraries": ""
       },
       "notifications": {
         "created": "Bruker opprettet",
@@ -148,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Fyll inn din ListenBrainz bruker token.",
-        "clickHereForToken": "Klikk her for å hente din token"
+        "clickHereForToken": "Klikk her for å hente din token",
+        "selectAllLibraries": "",
+        "adminAutoLibraries": ""
+      },
+      "validation": {
+        "librariesRequired": ""
       }
     },
     "player": {
@@ -192,11 +212,17 @@
         "addNewPlaylist": "Opprett \"%{name}\"",
         "export": "Eksporter",
         "makePublic": "Gjør Offentlig",
-        "makePrivate": "Gjør Privat"
+        "makePrivate": "Gjør Privat",
+        "saveQueue": "",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": ""
       },
       "message": {
         "duplicate_song": "Legg til Duplikater",
-        "song_exist": "Duplikater har blitt lagt til i spillelisten. Ønsker du å legge til duplikater eller hoppe over de?"
+        "song_exist": "Duplikater har blitt lagt til i spillelisten. Ønsker du å legge til duplikater eller hoppe over de?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -218,7 +244,6 @@
         "username": "Delt Av",
         "url": "URL",
         "description": "Beskrivelse",
-        "downloadable": "Tillat Nedlastinger?",
         "contents": "Innhold",
         "expiresAt": "Utløper",
         "lastVisitedAt": "Sist Besøkt",
@@ -226,24 +251,82 @@
         "format": "Format",
         "maxBitRate": "Maks. Bit Rate",
         "updatedAt": "Oppdatert",
-        "createdAt": "Opprettet"
-      },
-      "notifications": {},
-      "actions": {}
+        "createdAt": "Opprettet",
+        "downloadable": "Tillat Nedlastinger?"
+      }
     },
     "missing": {
       "name": "Manglende Fil|||| Manglende Filer",
-      "empty": "Ingen Manglende Filer",
       "fields": {
         "path": "Filsti",
         "size": "Størrelse",
-        "updatedAt": "Ble borte"
+        "updatedAt": "Ble borte",
+        "libraryName": ""
       },
       "actions": {
-        "remove": "Fjern"
+        "remove": "Fjern",
+        "remove_all": ""
       },
       "notifications": {
         "removed": "Manglende fil(er) fjernet"
+      },
+      "empty": "Ingen Manglende Filer"
+    },
+    "library": {
+      "name": "",
+      "fields": {
+        "name": "",
+        "path": "",
+        "remotePath": "",
+        "lastScanAt": "",
+        "songCount": "",
+        "albumCount": "",
+        "artistCount": "",
+        "totalSongs": "",
+        "totalAlbums": "",
+        "totalArtists": "",
+        "totalFolders": "",
+        "totalFiles": "",
+        "totalMissingFiles": "",
+        "totalSize": "",
+        "totalDuration": "",
+        "defaultNewUsers": "",
+        "createdAt": "",
+        "updatedAt": ""
+      },
+      "sections": {
+        "basic": "",
+        "statistics": ""
+      },
+      "actions": {
+        "scan": "",
+        "manageUsers": "",
+        "viewDetails": "",
+        "quickScan": "",
+        "fullScan": ""
+      },
+      "notifications": {
+        "created": "",
+        "updated": "",
+        "deleted": "Biblioteket slettet",
+        "scanStarted": "Skanning startet",
+        "scanCompleted": "",
+        "quickScanStarted": "",
+        "fullScanStarted": "",
+        "scanError": "Error starte skanning. Sjekk loggene"
+      },
+      "validation": {
+        "nameRequired": "",
+        "pathRequired": "",
+        "pathNotDirectory": "",
+        "pathNotFound": "",
+        "pathNotAccessible": "",
+        "pathInvalid": ""
+      },
+      "messages": {
+        "deleteConfirm": "",
+        "scanInProgress": "",
+        "noLibrariesAssigned": ""
       }
     }
   },
@@ -282,7 +365,6 @@
       "add": "Legg Til",
       "back": "Tilbake",
       "bulk_actions": "1 element valgt |||| %{smart_count} elementer valgt",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "Avbryt",
       "clear_input_value": "Nullstill verdi",
       "clone": "Klone",
@@ -306,6 +388,7 @@
       "close_menu": "Lukk meny",
       "unselect": "Avvelg",
       "skip": "Hopp over",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Del",
       "download": "Last Ned"
     },
@@ -400,31 +483,35 @@
     "noPlaylistsAvailable": "Ingen tilgjengelig",
     "delete_user_title": "Slett bruker '%{name}'",
     "delete_user_content": "Er du sikker på at du vil slette denne brukeren og all tilhørlig data (inkludert spillelister og preferanser)?",
-    "remove_missing_title": "Fjern manglende filer",
-    "remove_missing_content": "Er du sikker på at du ønsker å fjerne de valgte manglende filene fra databasen? Dette vil permanent fjerne alle referanser til de, inkludert antall avspillinger og rangeringer.",
     "notifications_blocked": "Du har blokkert notifikasjoner for denne nettsiden i din nettleser.",
     "notifications_not_available": "Denne nettleseren støtter ikke skrivebordsnotifikasjoner, eller så er du ikke tilkoblet Navidrome via https.",
     "lastfmLinkSuccess": "Last.fm er tilkoblet og scrobbling er aktivert",
     "lastfmLinkFailure": "Last.fm kunne ikke koble til",
     "lastfmUnlinkSuccess": "Last.fm er avkoblet og scrobbling er deaktivert",
     "lastfmUnlinkFailure": "Last.fm kunne ikke avkobles",
-    "listenBrainzLinkSuccess": "ListenBrainz er koblet til og scrobbling er aktivert som bruker: %{user}",
-    "listenBrainzLinkFailure": "ListenBrainz kunne ikke koble til: %{error}",
-    "listenBrainzUnlinkSuccess": "ListenBrainz er avkoblet og scrobbling er deaktivert",
-    "listenBrainzUnlinkFailure": "ListenBrainz kunne ikke avkobles",
     "openIn": {
       "lastfm": "Åpne i Last.fm",
       "musicbrainz": "Åpne i MusicBrainz"
     },
     "lastfmLink": "Les Mer...",
+    "listenBrainzLinkSuccess": "ListenBrainz er koblet til og scrobbling er aktivert som bruker: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz kunne ikke koble til: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz er avkoblet og scrobbling er deaktivert",
+    "listenBrainzUnlinkFailure": "ListenBrainz kunne ikke avkobles",
+    "downloadOriginalFormat": "Last ned i originalformat",
     "shareOriginalFormat": "Del i originalformat",
     "shareDialogTitle": "Del %{resource} '%{name}'",
     "shareBatchDialogTitle": "Del 1 %{resource} |||| Del %{smart_count} %{resource}",
-    "shareCopyToClipboard": "Kopier til utklippstavle: Ctrl+C, Enter",
     "shareSuccess": "URL kopiert til utklippstavle: %{url}",
     "shareFailure": "Error ved kopiering av URL %{url} til utklippstavle",
     "downloadDialogTitle": "Last ned %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Last ned i originalformat"
+    "shareCopyToClipboard": "Kopier til utklippstavle: Ctrl+C, Enter",
+    "remove_missing_title": "Fjern manglende filer",
+    "remove_missing_content": "Er du sikker på at du ønsker å fjerne de valgte manglende filene fra databasen? Dette vil permanent fjerne alle referanser til de, inkludert antall avspillinger og rangeringer.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": "",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Bibliotek",
@@ -438,7 +525,6 @@
         "language": "Språk",
         "defaultView": "Standardvisning",
         "desktop_notifications": "Skrivebordsnotifikasjoner",
-        "lastfmNotConfigured": "Last.fm API-Key er ikke konfigurert",
         "lastfmScrobbling": "Scrobble til Last.fm",
         "listenBrainzScrobbling": "Scrobble til ListenBrainz",
         "replaygain": "ReplayGain Mode",
@@ -447,13 +533,20 @@
           "none": "Deaktivert",
           "album": "Bruk Album Gain",
           "track": "Bruk Track Gain"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API-Key er ikke konfigurert"
       }
     },
     "albumList": "Album",
+    "about": "Om",
     "playlists": "Spillelister",
     "sharedPlaylists": "Delte Spillelister",
-    "about": "Om"
+    "librarySelector": {
+      "allLibraries": "",
+      "multipleLibraries": "",
+      "selectLibraries": "",
+      "none": ""
+    }
   },
   "player": {
     "playListsText": "Spill Av Kø",
@@ -490,6 +583,21 @@
         "disabled": "Deaktivert",
         "waiting": "Venter"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
@@ -498,7 +606,11 @@
     "quickScan": "Hurtigskann",
     "fullScan": "Full Skann",
     "serverUptime": "Server Oppetid",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": "",
+    "selectiveScan": "Utvalgt"
   },
   "help": {
     "title": "Navidrome Hurtigtaster",
@@ -508,10 +620,15 @@
       "toggle_play": "Avspill / Pause",
       "prev_song": "Forrige Sang",
       "next_song": "Neste Sang",
-      "current_song": "Gå til Nåværende Sang",
       "vol_up": "Volum Opp",
       "vol_down": "Volum Ned",
-      "toggle_love": "Legg til spor i favoritter"
+      "toggle_love": "Legg til spor i favoritter",
+      "current_song": "Gå til Nåværende Sang"
     }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
   }
 }
