@@ -21,7 +21,8 @@ func NewScrobbleRepository(ctx context.Context, db dbx.Builder) model.ScrobbleRe
 	return r
 }
 
-func (r *scrobbleRepository) RecordScrobble(mediaFileID, userID string, submissionTime time.Time) error {
+func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime time.Time) error {
+	userID := loggedUser(r.ctx).ID
 	values := map[string]interface{}{
 		"media_file_id":   mediaFileID,
 		"user_id":         userID,

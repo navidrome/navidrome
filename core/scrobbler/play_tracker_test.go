@@ -61,7 +61,7 @@ var _ = Describe("PlayTracker", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
@@ -177,9 +177,9 @@ var _ = Describe("PlayTracker", func() {
 			track2 := track
 			track2.ID = "456"
 			_ = ds.MediaFile(ctx).Put(&track2)
-			ctx = request.WithUser(context.Background(), model.User{UserName: "user-1"})
+			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-1"})
 			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			ctx = request.WithUser(context.Background(), model.User{UserName: "user-2"})
+			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-2"})
 			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456", 0)
 
 			playing, err := tracker.GetNowPlaying(ctx)
@@ -235,6 +235,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("records scrobble in repository", func() {
+			conf.Server.EnableScrobbleHistory = true
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 			ts := time.Now()
 
@@ -368,7 +369,7 @@ var _ = Describe("PlayTracker", func() {
 		var mockedBS *mockBufferedScrobbler
 
 		BeforeEach(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 			ds = &tests.MockDataStore{}

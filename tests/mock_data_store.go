@@ -220,7 +220,7 @@ func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository 
 		if db.RealDS != nil {
 			db.MockedScrobble = db.RealDS.Scrobble(ctx)
 		} else {
-			db.MockedScrobble = &MockScrobbleRepo{}
+			db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
 		}
 	}
 	return db.MockedScrobble

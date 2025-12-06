@@ -2,7 +2,6 @@ package scrobbler
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"sort"
 	"sync"
@@ -335,10 +334,6 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 }
 
 func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time) error {
-	user, ok := request.UserFrom(ctx)
-	if !ok {
-		return fmt.Errorf("user not found in context")
-	}
 	return p.ds.WithTx(func(tx model.DataStore) error {
 		err := tx.MediaFile(ctx).IncPlayCount(track.ID, timestamp)
 		if err != nil {
@@ -354,7 +349,10 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 				return err
 			}
 		}
-		return tx.Scrobble(ctx).RecordScrobble(track.ID, user.ID, timestamp)
+		if conf.Server.EnableScrobbleHistory {
+			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+		}
+		return nil
 	})
 }
 

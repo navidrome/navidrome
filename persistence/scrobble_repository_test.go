@@ -23,7 +23,7 @@ var _ = Describe("ScrobbleRepository", func() {
 	BeforeEach(func() {
 		fileID = id.NewRandom()
 		userID = id.NewRandom()
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: userID, UserName: "johndoe", IsAdmin: true})
 		db := GetDBXBuilder()
 		repo = NewScrobbleRepository(ctx, db)
 
@@ -63,7 +63,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = repo.RecordScrobble(fileID, userID, submissionTime)
+			err = repo.RecordScrobble(fileID, submissionTime)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify insertion

@@ -102,7 +102,8 @@ type configOptions struct {
 	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
-	Tags                            map[string]TagConf  `json:",omitempty"`
+	EnableScrobbleHistory           bool
+	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
@@ -598,6 +599,7 @@ func setViperDefaults() {
 	viper.SetDefault("deezer.language", "en")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")

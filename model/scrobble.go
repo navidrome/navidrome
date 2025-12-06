@@ -9,5 +9,5 @@ type Scrobble struct {
 }
 
 type ScrobbleRepository interface {
-	RecordScrobble(mediaFileID, userID string, submissionTime time.Time) error
+	RecordScrobble(mediaFileID string, submissionTime time.Time) error
 }
