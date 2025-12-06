@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Scan bibliotheek",
         "manageUsers": "Beheer gebruikerstoegang",
-        "viewDetails": "Bekijk details"
+        "viewDetails": "Bekijk details",
+        "quickScan": "Snelle scan",
+        "fullScan": "Volledige scan"
       },
       "notifications": {
         "created": "Bibliotheek succesvol aangemaakt",
         "updated": "Bibliotheek succesvol bijgewerkt",
         "deleted": "Bibliotheek succesvol verwijderd",
         "scanStarted": "Bibliotheekscan is gestart",
-        "scanCompleted": "Bibliotheekscan is voltooid"
+        "scanCompleted": "Bibliotheekscan is voltooid",
+        "quickScanStarted": "Snelle scan gestart",
+        "fullScanStarted": "Volledige scan gestart",
+        "scanError": "Fout bij start van scan. Check de logs"
       },
       "validation": {
         "nameRequired": "Bibliotheek naam is vereist",
@@ -604,7 +609,8 @@
     "serverDown": "Offline",
     "scanType": "Type",
     "status": "Scan fout",
-    "elapsedTime": "Verlopen tijd"
+    "elapsedTime": "Verlopen tijd",
+    "selectiveScan": "Selectief"
   },
   "help": {
     "title": "Navidrome sneltoetsen",
