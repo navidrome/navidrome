@@ -234,23 +234,6 @@ var _ = Describe("PlayTracker", func() {
 			Expect(lastScrobble.Participants).To(Equal(track.Participants))
 		})
 
-		It("records scrobble in repository", func() {
-			conf.Server.EnableScrobbleHistory = true
-			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
-			ts := time.Now()
-
-			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
-
-			Expect(err).ToNot(HaveOccurred())
-
-			mockDS := ds.(*tests.MockDataStore)
-			mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
-			Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
-			Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
-			Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
-			Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
-		})
-
 		It("increments play counts in the DB", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 			ts := time.Now()
@@ -307,6 +290,38 @@ var _ = Describe("PlayTracker", func() {
 			// It should increment play counts for all artists
 			Expect(artist1.PlayCount).To(Equal(int64(1)))
 			Expect(artist2.PlayCount).To(Equal(int64(1)))
+		})
+
+		Context("Scrobble History", func() {
+			It("records scrobble in repository", func() {
+				conf.Server.EnableScrobbleHistory = true
+				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+				ts := time.Now()
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				mockDS := ds.(*tests.MockDataStore)
+				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
+				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
+				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
+				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
+			})
+
+			It("does not record scrobble when history is disabled", func() {
+				conf.Server.EnableScrobbleHistory = false
+				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+				ts := time.Now()
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+
+				Expect(err).ToNot(HaveOccurred())
+				mockDS := ds.(*tests.MockDataStore)
+				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
+			})
 		})
 	})
 

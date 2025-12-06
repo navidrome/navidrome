@@ -67,12 +67,18 @@ var _ = Describe("ScrobbleRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify insertion
-			var count int
-			err = rawRepo.db.Select("count(*)").From("scrobbles").
+			var scrobble struct {
+				MediaFileID    string `db:"media_file_id"`
+				UserID         string `db:"user_id"`
+				SubmissionTime int64  `db:"submission_time"`
+			}
+			err = rawRepo.db.Select("*").From("scrobbles").
 				Where(dbx.HashExp{"media_file_id": fileID, "user_id": userID}).
-				Row(&count)
+				One(&scrobble)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(count).To(Equal(1))
+			Expect(scrobble.MediaFileID).To(Equal(fileID))
+			Expect(scrobble.UserID).To(Equal(userID))
+			Expect(scrobble.SubmissionTime).To(Equal(submissionTime.Unix()))
 		})
 	})
 })
