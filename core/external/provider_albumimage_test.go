@@ -260,6 +260,69 @@ var _ = Describe("Provider - AlbumImage", func() {
 		mockMediaFileRepo.AssertCalled(GinkgoT(), "Get", "not-found")
 		mockAlbumAgent.AssertNotCalled(GinkgoT(), "GetAlbumImages", mock.Anything, mock.Anything, mock.Anything)
 	})
+
+	Context("Unicode handling in album names", func() {
+		var albumWithEnDash *model.Album
+		var expectedURL *url.URL
+
+		const (
+			originalAlbumName   = "Raising Hell–Deluxe" // Album name with en dash
+			normalizedAlbumName = "Raising Hell-Deluxe" // Normalized version with hyphen
+		)
+
+		BeforeEach(func() {
+			// Test with en dash (–) in album name
+			albumWithEnDash = &model.Album{ID: "album-endash", Name: originalAlbumName, AlbumArtistID: "artist-1"}
+			mockArtistRepo.Mock = mock.Mock{} // Reset default expectations
+			mockAlbumRepo.Mock = mock.Mock{}  // Reset default expectations
+			mockArtistRepo.On("Get", "album-endash").Return(nil, model.ErrNotFound).Once()
+			mockAlbumRepo.On("Get", "album-endash").Return(albumWithEnDash, nil).Once()
+
+			expectedURL, _ = url.Parse("http://example.com/album.jpg")
+
+			// Mock the album agent to return an image for the album
+			mockAlbumAgent.On("GetAlbumImages", ctx, mock.AnythingOfType("string"), "", "").
+				Return([]agents.ExternalImage{
+					{URL: "http://example.com/album.jpg", Size: 1000},
+				}, nil).Once()
+		})
+
+		When("DevPreserveUnicodeInExternalCalls is true", func() {
+			BeforeEach(func() {
+				conf.Server.DevPreserveUnicodeInExternalCalls = true
+			})
+
+			It("preserves Unicode characters in album names", func() {
+				// Act
+				imgURL, err := provider.AlbumImage(ctx, "album-endash")
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(imgURL).To(Equal(expectedURL))
+				mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-endash")
+				// This is the key assertion: ensure the original Unicode name is used
+				mockAlbumAgent.AssertCalled(GinkgoT(), "GetAlbumImages", ctx, originalAlbumName, "", "")
+			})
+		})
+
+		When("DevPreserveUnicodeInExternalCalls is false", func() {
+			BeforeEach(func() {
+				conf.Server.DevPreserveUnicodeInExternalCalls = false
+			})
+
+			It("normalizes Unicode characters", func() {
+				// Act
+				imgURL, err := provider.AlbumImage(ctx, "album-endash")
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(imgURL).To(Equal(expectedURL))
+				mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-endash")
+				// This assertion ensures the normalized name is used (en dash → hyphen)
+				mockAlbumAgent.AssertCalled(GinkgoT(), "GetAlbumImages", ctx, normalizedAlbumName, "", "")
+			})
+		})
+	})
 })
 
 // mockAlbumInfoAgent implementation

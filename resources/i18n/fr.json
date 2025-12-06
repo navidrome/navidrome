@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Scanner la bibliothèque",
         "manageUsers": "Gérer les accès utilisateurs",
-        "viewDetails": "Voir les détails"
+        "viewDetails": "Voir les détails",
+        "quickScan": "Scan Rapide",
+        "fullScan": "Scan Complet"
       },
       "notifications": {
         "created": "Bibliothèque créée avec succès",
         "updated": "Bibliothèque mise à jour avec succès",
         "deleted": "Bibliothèque supprimée avec succès",
         "scanStarted": "Le scan de la bibliothèque a commencé",
-        "scanCompleted": "Le scan de la bibliothèque est terminé"
+        "scanCompleted": "Le scan de la bibliothèque est terminé",
+        "quickScanStarted": "Scan rapide démarré",
+        "fullScanStarted": "Scan complet démarré",
+        "scanError": "Une erreur est survenue en démarrant le scan. Veuillez regarder les logs"
       },
       "validation": {
         "nameRequired": "La bibliothèque doit obligatoirement avoir un nom",
@@ -604,7 +609,8 @@
     "serverDown": "HORS LIGNE",
     "scanType": "Type",
     "status": "Erreur de scan",
-    "elapsedTime": "Temps écoulé"
+    "elapsedTime": "Temps écoulé",
+    "selectiveScan": "Sélectif"
   },
   "help": {
     "title": "Raccourcis Navidrome",

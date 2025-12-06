@@ -169,7 +169,7 @@ const LibraryEdit = (props) => {
                         resource={'library'}
                         source={'totalSize'}
                         label={translate('resources.library.fields.totalSize')}
-                        format={formatBytes}
+                        format={(v) => formatBytes(v, 2)}
                         fullWidth
                         variant="outlined"
                       />

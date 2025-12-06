@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/utils/pl"
@@ -17,11 +18,13 @@ import (
 var (
 	fullScan   bool
 	subprocess bool
+	targets    []string
 )
 
 func init() {
 	scanCmd.Flags().BoolVarP(&fullScan, "full", "f", false, "check all subfolders, ignoring timestamps")
 	scanCmd.Flags().BoolVarP(&subprocess, "subprocess", "", false, "run as subprocess (internal use)")
+	scanCmd.Flags().StringArrayVarP(&targets, "target", "t", []string{}, "list of libraryID:folderPath pairs, can be repeated (e.g., \"-t 1:Music/Rock -t 1:Music/Jazz -t 2:Classical\")")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -68,7 +71,18 @@ func runScanner(ctx context.Context) {
 	ds := persistence.New(sqlDB)
 	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.CallScan(ctx, ds, pls, fullScan)
+	// Parse targets if provided
+	var scanTargets []model.ScanTarget
+	if len(targets) > 0 {
+		var err error
+		scanTargets, err = model.ParseTargets(targets)
+		if err != nil {
+			log.Fatal(ctx, "Failed to parse targets", err)
+		}
+		log.Info(ctx, "Scanning specific folders", "numTargets", len(scanTargets))
+	}
+
+	progress, err := scanner.CallScan(ctx, ds, pls, fullScan, scanTargets)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}

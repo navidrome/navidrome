@@ -16,6 +16,7 @@ DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
 CROSS_TAGLIB_VERSION ?= 2.1.1-1
+GOLANGCI_LINT_VERSION ?= v2.6.2
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -32,6 +33,14 @@ server: check_go_env buildjs ##@Development Start the backend in development mod
 	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
 .PHONY: server
 
+stop: ##@Development Stop development servers (UI and backend)
+	@echo "Stopping development servers..."
+	@-pkill -f "vite"
+	@-pkill -f "go tool reflex.*reflex.conf"
+	@-pkill -f "go run.*netgo"
+	@echo "Development servers stopped."
+.PHONY: stop
+
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
@@ -45,7 +54,7 @@ testall: test-race test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on ./...
+	go test -tags netgo -race -shuffle=on  $(PKG)
 .PHONY: test-race
 
 test-js: ##@Development Run JS tests
@@ -57,7 +66,22 @@ test-i18n: ##@Development Validate all translations files
 .PHONY: test-i18n
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@INSTALL=false; \
+	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
+		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
+			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
+			rm -f ./bin/golangci-lint; \
+			INSTALL=true; \
+		fi; \
+	else \
+		INSTALL=true; \
+	fi; \
+	if [ "$$INSTALL" = "true" ]; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s $(GOLANGCI_LINT_VERSION); \
+	fi
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code

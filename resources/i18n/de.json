@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Bibliothek scannen",
         "manageUsers": "Zugriff verwalten",
-        "viewDetails": "Details ansehen"
+        "viewDetails": "Details ansehen",
+        "quickScan": "Schneller Scan",
+        "fullScan": "Kompletter Scan"
       },
       "notifications": {
         "created": "Bibliothek erfolgreich erstellt",
         "updated": "Bibliothek erfolgreich geändert",
         "deleted": "Bibliothek erfolgreich gelöscht",
         "scanStarted": "Bibliothek Scan gestartet",
-        "scanCompleted": "Bibliothek Scan vollständig"
+        "scanCompleted": "Bibliothek Scan vollständig",
+        "quickScanStarted": "Schneller Scan gestartet",
+        "fullScanStarted": "Kompletter Scan gestartet",
+        "scanError": "Fehler beim Starten des Scans. Logs prüfen"
       },
       "validation": {
         "nameRequired": "Bibliotheksname ist Pflichtfeld",
@@ -604,7 +609,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Typ",
     "status": "Scan Fehler",
-    "elapsedTime": "Laufzeit"
+    "elapsedTime": "Laufzeit",
+    "selectiveScan": "Selektiver Scan"
   },
   "help": {
     "title": "Navidrome Hotkeys",

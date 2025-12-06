@@ -89,6 +89,10 @@ func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepos
 	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
+	return NewScrobbleRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -157,7 +161,7 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 	}, scope...)
 }
 
-func (s *SQLStore) GC(ctx context.Context) error {
+func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 	trace := func(ctx context.Context, msg string, f func() error) func() error {
 		return func() error {
 			start := time.Now()
@@ -167,11 +171,17 @@ func (s *SQLStore) GC(ctx context.Context) error {
 		}
 	}
 
+	// If libraryIDs are provided, scope operations to those libraries where possible
+	scoped := len(libraryIDs) > 0
+	if scoped {
+		log.Debug(ctx, "GC: Running selective garbage collection", "libraryIDs", libraryIDs)
+	}
+
 	err := run.Sequentially(
-		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() }),
+		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty(libraryIDs...) }),
 		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
 		trace(ctx, "mark missing artists", func() error { return s.Artist(ctx).(*artistRepository).markMissing() }),
-		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() }),
+		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty(libraryIDs...) }),
 		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
 		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() }),

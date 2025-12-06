@@ -1,460 +1,634 @@
 {
-    "languageName": "Български",
-    "resources": {
-        "song": {
-            "name": "Песен |||| Песни",
-            "fields": {
-                "albumArtist": "Изпълнител албум",
-                "duration": "Време",
-                "trackNumber": "#",
-                "playCount": "Пускания",
-                "title": "Заглавие",
-                "artist": "Изпълнител",
-                "album": "Албум",
-                "path": "Път до файл",
-                "genre": "Жанр",
-                "compilation": "Компилация",
-                "year": "Година",
-                "size": "Размер на файла",
-                "updatedAt": "Актуализирана",
-                "bitRate": "Битрейт",
-                "discSubtitle": "Субтитри на диска",
-                "starred": "Любима",
-                "comment": "Коментар",
-                "rating": "Рейтинг",
-                "quality": "Качество",
-                "bpm": "BPM",
-                "playDate": "Последно слушана",
-                "channels": "Канала",
-                "createdAt": "Добавено на"
-            },
-            "actions": {
-                "addToQueue": "Пусни по-късно",
-                "playNow": "Пусни сега",
-                "addToPlaylist": "Добави към плейлист",
-                "shuffleAll": "Разбъркай всички",
-                "download": "Свали",
-                "playNext": "Следваща",
-                "info": "Информация"
-            }
-        },
-        "album": {
-            "name": "Албум |||| Албуми",
-            "fields": {
-                "albumArtist": "Изпълнител албум",
-                "artist": "Изпълнител",
-                "duration": "Време",
-                "songCount": "Песни",
-                "playCount": "Пускания",
-                "name": "Име",
-                "genre": "Жанр",
-                "compilation": "Компилация",
-                "year": "Година",
-                "updatedAt": "Актуализиран",
-                "comment": "Коментар",
-                "rating": "Рейтинг",
-                "createdAt": "Добавено на",
-                "size": "Размер",
-                "originalDate": "Оригинал",
-                "releaseDate": "Издаден",
-                "releases": "Издание |||| Издания",
-                "released": "Издаден"
-            },
-            "actions": {
-                "playAll": "Пусни",
-                "playNext": "Пусни следваща",
-                "addToQueue": "Пусни по-късно",
-                "shuffle": "Разбъркай",
-                "addToPlaylist": "Добави към плейлист",
-                "download": "Свали",
-                "info": "Информация",
-                "share": "Сподели"
-            },
-            "lists": {
-                "all": "Всички",
-                "random": "Случайни",
-                "recentlyAdded": "Последно добавени",
-                "recentlyPlayed": "Последно слушани",
-                "mostPlayed": "Най-слушани",
-                "starred": "Любими",
-                "topRated": "Най-висок рейтинг"
-            }
-        },
-        "artist": {
-            "name": "Изпълнител |||| Изпълнители",
-            "fields": {
-                "name": "Име",
-                "albumCount": "Брой албуми",
-                "songCount": "Брой песни",
-                "playCount": "Пускания",
-                "rating": "Рейтинг",
-                "genre": "Жанр",
-                "size": "Размер"
-            }
-        },
-        "user": {
-            "name": "Потребител |||| Потребители",
-            "fields": {
-                "userName": "Потребителско име",
-                "isAdmin": "Администратор",
-                "lastLoginAt": "Последен вход",
-                "updatedAt": "Актуализиран",
-                "name": "Име",
-                "password": "Парола",
-                "createdAt": "Създаден на",
-                "changePassword": "Промяна на паролата?",
-                "currentPassword": "Текуща парола",
-                "newPassword": "Нова парола",
-                "token": "Токен"
-            },
-            "helperTexts": {
-                "name": "Промените в името ще бъдат отразени при следващото влизане"
-            },
-            "notifications": {
-                "created": "Потребителят е създаден",
-                "updated": "Потребителят е актуализиран",
-                "deleted": "Потребителят е изтрит"
-            },
-            "message": {
-                "listenBrainzToken": "Въведете Вашия токен за ListenBrainz.",
-                "clickHereForToken": "Кликнете тук, за да получите Вашия токен"
-            }
-        },
-        "player": {
-            "name": "Плейър |||| Плейъри",
-            "fields": {
-                "name": "Име",
-                "transcodingId": "Транскодиране",
-                "maxBitRate": "Макс. битрейт",
-                "client": "Клиент",
-                "userName": "Потребителско име",
-                "lastSeen": "Последно видян",
-                "reportRealPath": "Докладвай реален път",
-                "scrobbleEnabled": "Изпрати Scrobbles към външни услуги"
-            }
-        },
-        "transcoding": {
-            "name": "Транскодиране |||| Транскодинг",
-            "fields": {
-                "name": "Име",
-                "targetFormat": "Целеви формат",
-                "defaultBitRate": "Битрейт по подразбиране",
-                "command": "Команда"
-            }
-        },
-        "playlist": {
-            "name": "Плейлист |||| Плейлисти",
-            "fields": {
-                "name": "Име",
-                "duration": "Продължителност",
-                "ownerName": "Собственик",
-                "public": "Публичен",
-                "updatedAt": "Актуализиран",
-                "createdAt": "Създаден на",
-                "songCount": "Песни",
-                "comment": "Коментар",
-                "sync": "Автоматично импортиране",
-                "path": "Импортиране от"
-            },
-            "actions": {
-                "selectPlaylist": "Изберете плейлист:",
-                "addNewPlaylist": "Създай \"%{name}\"",
-                "export": "Експорт",
-                "makePublic": "Направи публичен",
-                "makePrivate": "Направи личен"
-            },
-            "message": {
-                "duplicate_song": "Добави дублирани песни",
-                "song_exist": "Към плейлиста се добавят дублиращи. Желаете ли да ги добавите или предпочитате да ги пропуснете?"
-            }
-        },
-        "radio": {
-            "name": "Радиостанция |||| Радиостанции",
-            "fields": {
-                "name": "Име",
-                "streamUrl": "Стрийм адрес",
-                "homePageUrl": "Начална страница адрес",
-                "updatedAt": "Актуализиранa на",
-                "createdAt": "Създаденa на"
-            },
-            "actions": {
-                "playNow": "Възпроизвеждане сега"
-            }
-        },
-        "share": {
-            "name": "Сподели |||| Споделени",
-            "fields": {
-                "username": "Споделено от",
-                "url": "Адрес",
-                "description": "Описание",
-                "contents": "Съдържание",
-                "expiresAt": "Изтича",
-                "lastVisitedAt": "Последно посетен",
-                "visitCount": "Посещения",
-                "format": "Формат",
-                "maxBitRate": "Макс. Bit Rate",
-                "updatedAt": "Актуализирана на",
-                "createdAt": "Създадена на",
-                "downloadable": "Разреши изтегляния?"
-            }
-        }
+  "languageName": "Български",
+  "resources": {
+    "song": {
+      "name": "Песен |||| Песни",
+      "fields": {
+        "albumArtist": "Изпълнител албум",
+        "duration": "Време",
+        "trackNumber": "#",
+        "playCount": "Пускания",
+        "title": "Заглавие",
+        "artist": "Изпълнител",
+        "album": "Албум",
+        "path": "Път до файл",
+        "genre": "Жанр",
+        "compilation": "Компилация",
+        "year": "Година",
+        "size": "Размер на файла",
+        "updatedAt": "Актуализирана",
+        "bitRate": "Битрейт",
+        "discSubtitle": "Субтитри на диска",
+        "starred": "Любима",
+        "comment": "Коментар",
+        "rating": "Рейтинг",
+        "quality": "Качество",
+        "bpm": "BPM",
+        "playDate": "Последно слушана",
+        "channels": "Канала",
+        "createdAt": "Добавено на",
+        "grouping": "Групиране",
+        "mood": "Настроение",
+        "participants": "Допълнителни участници",
+        "tags": "Допълнителни етикети",
+        "mappedTags": "",
+        "rawTags": "",
+        "bitDepth": "Битова дълбочина",
+        "sampleRate": "",
+        "missing": "Липсва",
+        "libraryName": ""
+      },
+      "actions": {
+        "addToQueue": "Пусни по-късно",
+        "playNow": "Пусни сега",
+        "addToPlaylist": "Добави към плейлист",
+        "shuffleAll": "Разбъркай всички",
+        "download": "Свали",
+        "playNext": "Следваща",
+        "info": "Информация",
+        "showInPlaylist": ""
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Благодаря, че инсталирахте Navidrome!",
-            "welcome2": "За да започнете, създайте администраторски профил",
-            "confirmPassword": "Потвърдете паролата",
-            "buttonCreateAdmin": "Създaй администратор",
-            "auth_check_error": "Моля, влезте за да продължите",
-            "user_menu": "Профил",
-            "username": "Потребителско име",
-            "password": "Парола",
-            "sign_in": "Вход",
-            "sign_in_error": "Грешка при удостоверяването. Моля, опитайте отново",
-            "logout": "Изход"
-        },
-        "validation": {
-            "invalidChars": "Моля, използвайте само букви и цифри",
-            "passwordDoesNotMatch": "Паролата не съвпада",
-            "required": "Задължително",
-            "minLength": "Трябва да съдържа поне %{min} знака",
-            "maxLength": "Трябва да съдържа %{max} знака или по-малко",
-            "minValue": "Трябва да е поне %{min}",
-            "maxValue": "Трябва да бъде %{max} или по-малко",
-            "number": "Трябва да е число",
-            "email": "Трябва да е валиден имейл",
-            "oneOf": "Трябва да е едно от: %{options}",
-            "regex": "Трябва да съответства на конкретен формат (regexp): %{pattern}",
-            "unique": "Трябва да е уникално",
-            "url": "Трябва да бъде валиден адрес"
-        },
-        "action": {
-            "add_filter": "Добави филтър",
-            "add": "Добави",
-            "back": "Назад",
-            "bulk_actions": "Избран е 1 елемент |||| Избрани са %{smart_count} елемента",
-            "cancel": "Отмени",
-            "clear_input_value": "Изчисти въведеното",
-            "clone": "Клонирай",
-            "confirm": "Потвърди",
-            "create": "Създай",
-            "delete": "Изтрий",
-            "edit": "Редактирай",
-            "export": "Експорт",
-            "list": "Списък",
-            "refresh": "Обнови",
-            "remove_filter": "Премахни този филтър",
-            "remove": "Премахни",
-            "save": "Запази",
-            "search": "Търси",
-            "show": "Покажи",
-            "sort": "Сортирай",
-            "undo": "Отмени",
-            "expand": "Разгърни",
-            "close": "Затвори",
-            "open_menu": "Отвори меню",
-            "close_menu": "Затвори меню",
-            "unselect": "Премахни избора",
-            "skip": "Пропусни",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "Споделяне",
-            "download": "Сваляне"
-        },
-        "boolean": {
-            "true": "Да",
-            "false": "Не"
-        },
-        "page": {
-            "create": "Създаване на %{name}",
-            "dashboard": "Табло",
-            "edit": "%{name} #%{id}",
-            "error": "Нещо се обърка",
-            "list": "%{name}",
-            "loading": "Зареждане",
-            "not_found": "Не е намерен",
-            "show": "%{name} #%{id}",
-            "empty": "Все още няма %{name}.",
-            "invite": "Желаете ли да добавите?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Пуснете файл за да качите, или кликнете за да изберете.",
-                "upload_single": "Пуснете файл за да качите, или кликнете за да изберете."
-            },
-            "image": {
-                "upload_several": "Пуснете снимки за качване, или кликнете, за да изберете.",
-                "upload_single": "Пуснете снимка за качване, или кликнете за да изберете."
-            },
-            "references": {
-                "all_missing": "Не намирам свързаните данни.",
-                "many_missing": "Изглежда, че поне една от свързаните препратки, вече не е налична.",
-                "single_missing": "Изглежда, че връзката вече не е налична."
-            },
-            "password": {
-                "toggle_visible": "Скрий паролата",
-                "toggle_hidden": "Покажи паролата"
-            }
-        },
-        "message": {
-            "about": "Относно",
-            "are_you_sure": "Сигурни ли сте?",
-            "bulk_delete_content": "Наистина ли желаете да изтриете това %{name}? |||| Наистина ли желаете да изтриете тези %{smart_count} елементи?",
-            "bulk_delete_title": "Изтрий %{name} |||| Изтрий %{smart_count} %{name}",
-            "delete_content": "Наистина ли желаете да изтриете този елемент?",
-            "delete_title": "Изтрий %{name} #%{id}",
-            "details": "Описание",
-            "error": "Възникна грешка с клиента и заявката Ви не може да бъде изпълнена.",
-            "invalid_form": "Формата не е валидна. Моля, проверете за грешки",
-            "loading": "Страницата се зарежда, моля изчакайте",
-            "no": "Не",
-            "not_found": "Или сте въвели грешен URL адрес, или сте следвали грешна връзка.",
-            "yes": "Да",
-            "unsaved_changes": "Някои от промените не бяха запазени. Сигурни ли сте, че желаете да ги игнорирате?"
-        },
-        "navigation": {
-            "no_results": "Няма намерени резултати",
-            "no_more_results": "Страница %{page} е извън границите. Опитайте предишната страница.",
-            "page_out_of_boundaries": "Страница %{page} е извън границите",
-            "page_out_from_end": "Не може да отидете след последната страница",
-            "page_out_from_begin": "Не може да се премине преди страница 1",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} от %{total}",
-            "page_rows_per_page": "Елемента на страница:",
-            "next": "Следваща",
-            "prev": "Предишна",
-            "skip_nav": "Премини към съдържанието"
-        },
-        "notification": {
-            "updated": "Елементът е актуализиран |||| %{smart_count} елемента са актуализирани",
-            "created": "Елементът е създаден",
-            "deleted": "Елементът е изтрит |||| %{smart_count} елемента са изтрити",
-            "bad_item": "Неправилен елемент",
-            "item_doesnt_exist": "Елементът не съществува",
-            "http_error": "Грешка в комуникацията със сървъра",
-            "data_provider_error": "Грешка в доставчика на данни. Проверете конзолата за подробности.",
-            "i18n_error": "Не мога да заредя преводите за посочения език",
-            "canceled": "Действието е отменено",
-            "logged_out": "Вашата сесия приключи. Моля, влезте отново.",
-            "new_version": "Налична е нова версия! Моля, опреснете този прозорец."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Колони за показване",
-            "layout": "Оформление",
-            "grid": "Решетка",
-            "table": "Таблица"
-        }
+    "album": {
+      "name": "Албум |||| Албуми",
+      "fields": {
+        "albumArtist": "Изпълнител албум",
+        "artist": "Изпълнител",
+        "duration": "Време",
+        "songCount": "Песни",
+        "playCount": "Пускания",
+        "name": "Име",
+        "genre": "Жанр",
+        "compilation": "Компилация",
+        "year": "Година",
+        "updatedAt": "Актуализиран",
+        "comment": "Коментар",
+        "rating": "Рейтинг",
+        "createdAt": "Добавено на",
+        "size": "Размер",
+        "originalDate": "Оригинал",
+        "releaseDate": "Издаден",
+        "releases": "Издание |||| Издания",
+        "released": "Издаден",
+        "recordLabel": "Лейбъл",
+        "catalogNum": "Каталожен номер",
+        "releaseType": "Тип",
+        "grouping": "Групиране",
+        "media": "Медия",
+        "mood": "Настроение",
+        "date": "Дата на запис",
+        "missing": "Липсва",
+        "libraryName": ""
+      },
+      "actions": {
+        "playAll": "Пусни",
+        "playNext": "Пусни следваща",
+        "addToQueue": "Пусни по-късно",
+        "shuffle": "Разбъркай",
+        "addToPlaylist": "Добави към плейлист",
+        "download": "Свали",
+        "info": "Информация",
+        "share": "Сподели"
+      },
+      "lists": {
+        "all": "Всички",
+        "random": "Случайни",
+        "recentlyAdded": "Последно добавени",
+        "recentlyPlayed": "Последно слушани",
+        "mostPlayed": "Най-слушани",
+        "starred": "Любими",
+        "topRated": "Най-висок рейтинг"
+      }
     },
-    "message": {
-        "note": "ЗАБЕЛЕЖКА",
-        "transcodingDisabled": "Промяната на конфигурацията за транскодиране през уеб интерфейса е забранена от съображения за сигурност. Ако желаете да промените (редактирате или добавите) опциите за транскодиране, рестартирайте сървъра с конфигурационната опция %{config}.",
-        "transcodingEnabled": "Navidrome в момента работи с %{config}, което прави възможно стартирането на системни команди от настройките за транскодиране с помощта на уеб интерфейса. Препоръчваме да го деактивирате от съображения за сигурност и да го активирате само при конфигуриране на опциите за транскодиране.",
-        "songsAddedToPlaylist": "Добавена 1 песен към плейлиста |||| Добавени %{smart_count} песни към плейлиста",
-        "noPlaylistsAvailable": "Няма налични",
-        "delete_user_title": "Изтрий потребителя '%{name}'",
-        "delete_user_content": "Наистина ли желаете да изтриете този потребител и всичките му данни (включително плейлисти и предпочитания)?",
-        "notifications_blocked": "В настройките на браузъра сте блокирали известията за този сайт",
-        "notifications_not_available": "Този браузър не поддържа известия на работния плот или нямате достъп до Navidrome през https",
-        "lastfmLinkSuccess": "Връзката с Last.fm е успешна! Scrobbling е активиран",
-        "lastfmLinkFailure": "Last.fm не можа да бъде свързан",
-        "lastfmUnlinkSuccess": "Връзката с Last.fm е прекъсната! Scrobbling е деактивиран",
-        "lastfmUnlinkFailure": "Last.fm връзката не можа да бъде премахната",
-        "openIn": {
-            "lastfm": "Отвори в Last.fm",
-            "musicbrainz": "Отвори в MusicBrainz"
-        },
-        "lastfmLink": "Прочетете още...",
-        "listenBrainzLinkSuccess": "Връзката с ListenBrainz е успешна! Scrobbling е активиран от името на потребителя: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz не можа да бъде свързан: %{error}",
-        "listenBrainzUnlinkSuccess": "Връзката с ListenBrainz е прекъсната! Scrobbling е деактивиран",
-        "listenBrainzUnlinkFailure": "Връзката с ListenBrainz не можа да бъде прекратена",
-        "downloadOriginalFormat": "Свали в оригиналния формат",
-        "shareOriginalFormat": "Сподели в оригинален формат",
-        "shareDialogTitle": "Сподели %{resource} '%{name}'",
-        "shareBatchDialogTitle": "Сподели 1 %{resource} |||| Сподели %{smart_count} %{resource}",
-        "shareSuccess": "Адресът е копиран в клипборда: %{url}",
-        "shareFailure": "Грешка при копиране на адрес %{url} в клипборда",
-        "downloadDialogTitle": "Сваляне %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Копиране в клипборда: Ctrl+C, Enter"
+    "artist": {
+      "name": "Изпълнител |||| Изпълнители",
+      "fields": {
+        "name": "Име",
+        "albumCount": "Брой албуми",
+        "songCount": "Брой песни",
+        "playCount": "Пускания",
+        "rating": "Рейтинг",
+        "genre": "Жанр",
+        "size": "Размер",
+        "role": "Роля",
+        "missing": "Липсва"
+      },
+      "roles": {
+        "albumartist": "Изпълнител на албума |||| Изпълнители на албума",
+        "artist": "Изпълнител |||| Изпълнители",
+        "composer": "Композитор |||| Композитори",
+        "conductor": "Диригент |||| Диригенти",
+        "lyricist": "Текстописец |||| Текстописци",
+        "arranger": "Аранжор |||| Аранжори",
+        "producer": "Продуцент |||| Продуценти",
+        "director": "Директор |||| Директори",
+        "engineer": "Инженер |||| Инженери",
+        "mixer": "Миксер |||| Миксери",
+        "remixer": "Ремиксер |||| Ремиксери",
+        "djmixer": "DJ миксер |||| DJ миксери",
+        "performer": "Изпълнител |||| Изпълнители",
+        "maincredit": ""
+      },
+      "actions": {
+        "shuffle": "",
+        "radio": "",
+        "topSongs": ""
+      }
     },
-    "menu": {
-        "library": "Библиотека",
-        "settings": "Настройки",
-        "version": "Версия",
-        "theme": "Тема",
-        "personal": {
-            "name": "Лични",
-            "options": {
-                "theme": "Тема",
-                "language": "Език",
-                "defaultView": "Изглед по подразбиране",
-                "desktop_notifications": "Известия на работния плот",
-                "lastfmScrobbling": "Scrobble към Last.fm",
-                "listenBrainzScrobbling": "Scrobble към ListenBrainz",
-                "replaygain": "Режим ReplayGain",
-                "preAmp": "ReplayGain PreAmp (dB)",
-                "gain": {
-                    "none": "Изключен",
-                    "album": "Използвай Album Gain",
-                    "track": "Използвай Track Gain"
-                }
-            }
-        },
-        "albumList": "Албуми",
-        "about": "Относно",
-        "playlists": "Плейлисти",
-        "sharedPlaylists": "Споделени плейлисти"
+    "user": {
+      "name": "Потребител |||| Потребители",
+      "fields": {
+        "userName": "Потребителско име",
+        "isAdmin": "Администратор",
+        "lastLoginAt": "Последен вход",
+        "updatedAt": "Актуализиран",
+        "name": "Име",
+        "password": "Парола",
+        "createdAt": "Създаден на",
+        "changePassword": "Промяна на паролата?",
+        "currentPassword": "Текуща парола",
+        "newPassword": "Нова парола",
+        "token": "Токен",
+        "lastAccessAt": "Последен достъп",
+        "libraries": ""
+      },
+      "helperTexts": {
+        "name": "Промените в името ще бъдат отразени при следващото влизане",
+        "libraries": ""
+      },
+      "notifications": {
+        "created": "Потребителят е създаден",
+        "updated": "Потребителят е актуализиран",
+        "deleted": "Потребителят е изтрит"
+      },
+      "message": {
+        "listenBrainzToken": "Въведете Вашия токен за ListenBrainz.",
+        "clickHereForToken": "Кликнете тук, за да получите Вашия токен",
+        "selectAllLibraries": "",
+        "adminAutoLibraries": ""
+      },
+      "validation": {
+        "librariesRequired": ""
+      }
     },
     "player": {
-        "playListsText": "Списък с песни",
-        "openText": "Отвори",
-        "closeText": "Затвори",
-        "notContentText": "Няма песни",
-        "clickToPlayText": "Пускане",
-        "clickToPauseText": "Пауза",
-        "nextTrackText": "Следваща песен",
-        "previousTrackText": "Предишна песен",
-        "reloadText": "Презареди",
-        "volumeText": "Сила на звука",
-        "toggleLyricText": "Текст на песен",
-        "toggleMiniModeText": "Минимизирай",
-        "destroyText": "Унищожи",
-        "downloadText": "Свали",
-        "removeAudioListsText": "Изтриване на плейлисти",
-        "clickToDeleteText": "Кликнете, за да изтриете %{name}",
-        "emptyLyricText": "Няма текст",
-        "playModeText": {
-            "order": "По ред",
-            "orderLoop": "Повтаряй всички",
-            "singleLoop": "Повтаряй същата",
-            "shufflePlay": "Разбъркай"
-        }
+      "name": "Плейър |||| Плейъри",
+      "fields": {
+        "name": "Име",
+        "transcodingId": "Транскодиране",
+        "maxBitRate": "Макс. битрейт",
+        "client": "Клиент",
+        "userName": "Потребителско име",
+        "lastSeen": "Последно видян",
+        "reportRealPath": "Докладвай реален път",
+        "scrobbleEnabled": "Изпрати Scrobbles към външни услуги"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Начална страница",
-            "source": "Програмен код",
-            "featureRequests": "Заявете функционалност"
-        }
+    "transcoding": {
+      "name": "Транскодиране |||| Транскодинг",
+      "fields": {
+        "name": "Име",
+        "targetFormat": "Целеви формат",
+        "defaultBitRate": "Битрейт по подразбиране",
+        "command": "Команда"
+      }
     },
-    "activity": {
-        "title": "Действия",
-        "totalScanned": "Сканирани папки",
-        "quickScan": "Бързо сканиране",
-        "fullScan": "Пълно сканиране",
-        "serverUptime": "Сървърът работи",
-        "serverDown": "ОФЛАЙН"
+    "playlist": {
+      "name": "Плейлист |||| Плейлисти",
+      "fields": {
+        "name": "Име",
+        "duration": "Продължителност",
+        "ownerName": "Собственик",
+        "public": "Публичен",
+        "updatedAt": "Актуализиран",
+        "createdAt": "Създаден на",
+        "songCount": "Песни",
+        "comment": "Коментар",
+        "sync": "Автоматично импортиране",
+        "path": "Импортиране от"
+      },
+      "actions": {
+        "selectPlaylist": "Изберете плейлист:",
+        "addNewPlaylist": "Създай \"%{name}\"",
+        "export": "Експорт",
+        "makePublic": "Направи публичен",
+        "makePrivate": "Направи личен",
+        "saveQueue": "",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": ""
+      },
+      "message": {
+        "duplicate_song": "Добави дублирани песни",
+        "song_exist": "Към плейлиста се добавят дублиращи. Желаете ли да ги добавите или предпочитате да ги пропуснете?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
+      }
     },
-    "help": {
-        "title": "Бързи клавиши на Navidrome",
-        "hotkeys": {
-            "show_help": "Показва този помощен текст",
-            "toggle_menu": "Превключване на страничната меню лента",
-            "toggle_play": "Пусни / Пауза",
-            "prev_song": "Предишна песен",
-            "next_song": "Следваща песен",
-            "vol_up": "Увеличи звука",
-            "vol_down": "Намали звука",
-            "toggle_love": "Добави песента към любими",
-            "current_song": "Премини към текущата песен"
-        }
+    "radio": {
+      "name": "Радиостанция |||| Радиостанции",
+      "fields": {
+        "name": "Име",
+        "streamUrl": "Стрийм адрес",
+        "homePageUrl": "Начална страница адрес",
+        "updatedAt": "Актуализиранa на",
+        "createdAt": "Създаденa на"
+      },
+      "actions": {
+        "playNow": "Възпроизвеждане сега"
+      }
+    },
+    "share": {
+      "name": "Сподели |||| Споделени",
+      "fields": {
+        "username": "Споделено от",
+        "url": "Адрес",
+        "description": "Описание",
+        "contents": "Съдържание",
+        "expiresAt": "Изтича",
+        "lastVisitedAt": "Последно посетен",
+        "visitCount": "Посещения",
+        "format": "Формат",
+        "maxBitRate": "Макс. Bit Rate",
+        "updatedAt": "Актуализирана на",
+        "createdAt": "Създадена на",
+        "downloadable": "Разреши изтегляния?"
+      }
+    },
+    "missing": {
+      "name": "Липсващ файл |||| Липсващи файлове",
+      "fields": {
+        "path": "Път",
+        "size": "Размер",
+        "updatedAt": "Изчезнал на",
+        "libraryName": ""
+      },
+      "actions": {
+        "remove": "Премахни",
+        "remove_all": "Премахни всички"
+      },
+      "notifications": {
+        "removed": "Липсващите файлове са премахнати"
+      },
+      "empty": "Няма липсващи файлове"
+    },
+    "library": {
+      "name": "",
+      "fields": {
+        "name": "",
+        "path": "",
+        "remotePath": "",
+        "lastScanAt": "",
+        "songCount": "",
+        "albumCount": "",
+        "artistCount": "",
+        "totalSongs": "",
+        "totalAlbums": "",
+        "totalArtists": "",
+        "totalFolders": "",
+        "totalFiles": "",
+        "totalMissingFiles": "",
+        "totalSize": "",
+        "totalDuration": "",
+        "defaultNewUsers": "",
+        "createdAt": "",
+        "updatedAt": ""
+      },
+      "sections": {
+        "basic": "",
+        "statistics": ""
+      },
+      "actions": {
+        "scan": "",
+        "manageUsers": "",
+        "viewDetails": "",
+        "quickScan": "",
+        "fullScan": ""
+      },
+      "notifications": {
+        "created": "",
+        "updated": "",
+        "deleted": "",
+        "scanStarted": "",
+        "scanCompleted": "",
+        "quickScanStarted": "",
+        "fullScanStarted": "",
+        "scanError": ""
+      },
+      "validation": {
+        "nameRequired": "",
+        "pathRequired": "",
+        "pathNotDirectory": "",
+        "pathNotFound": "",
+        "pathNotAccessible": "",
+        "pathInvalid": ""
+      },
+      "messages": {
+        "deleteConfirm": "",
+        "scanInProgress": "",
+        "noLibrariesAssigned": ""
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Благодаря, че инсталирахте Navidrome!",
+      "welcome2": "За да започнете, създайте администраторски профил",
+      "confirmPassword": "Потвърдете паролата",
+      "buttonCreateAdmin": "Създaй администратор",
+      "auth_check_error": "Моля, влезте за да продължите",
+      "user_menu": "Профил",
+      "username": "Потребителско име",
+      "password": "Парола",
+      "sign_in": "Вход",
+      "sign_in_error": "Грешка при удостоверяването. Моля, опитайте отново",
+      "logout": "Изход",
+      "insightsCollectionNote": "Navidrome събира анонимни данни, за да помогне\nподобряването на проекта. Кликнете [тук], за да\nнаучите повече и да се откажете, ако желаете"
+    },
+    "validation": {
+      "invalidChars": "Моля, използвайте само букви и цифри",
+      "passwordDoesNotMatch": "Паролата не съвпада",
+      "required": "Задължително",
+      "minLength": "Трябва да съдържа поне %{min} знака",
+      "maxLength": "Трябва да съдържа %{max} знака или по-малко",
+      "minValue": "Трябва да е поне %{min}",
+      "maxValue": "Трябва да бъде %{max} или по-малко",
+      "number": "Трябва да е число",
+      "email": "Трябва да е валиден имейл",
+      "oneOf": "Трябва да е едно от: %{options}",
+      "regex": "Трябва да съответства на конкретен формат (regexp): %{pattern}",
+      "unique": "Трябва да е уникално",
+      "url": "Трябва да бъде валиден адрес"
+    },
+    "action": {
+      "add_filter": "Добави филтър",
+      "add": "Добави",
+      "back": "Назад",
+      "bulk_actions": "Избран е 1 елемент |||| Избрани са %{smart_count} елемента",
+      "cancel": "Отмени",
+      "clear_input_value": "Изчисти въведеното",
+      "clone": "Клонирай",
+      "confirm": "Потвърди",
+      "create": "Създай",
+      "delete": "Изтрий",
+      "edit": "Редактирай",
+      "export": "Експорт",
+      "list": "Списък",
+      "refresh": "Обнови",
+      "remove_filter": "Премахни този филтър",
+      "remove": "Премахни",
+      "save": "Запази",
+      "search": "Търси",
+      "show": "Покажи",
+      "sort": "Сортирай",
+      "undo": "Отмени",
+      "expand": "Разгърни",
+      "close": "Затвори",
+      "open_menu": "Отвори меню",
+      "close_menu": "Затвори меню",
+      "unselect": "Премахни избора",
+      "skip": "Пропусни",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Споделяне",
+      "download": "Сваляне"
+    },
+    "boolean": {
+      "true": "Да",
+      "false": "Не"
+    },
+    "page": {
+      "create": "Създаване на %{name}",
+      "dashboard": "Табло",
+      "edit": "%{name} #%{id}",
+      "error": "Нещо се обърка",
+      "list": "%{name}",
+      "loading": "Зареждане",
+      "not_found": "Не е намерен",
+      "show": "%{name} #%{id}",
+      "empty": "Все още няма %{name}.",
+      "invite": "Желаете ли да добавите?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Пуснете файл за да качите, или кликнете за да изберете.",
+        "upload_single": "Пуснете файл за да качите, или кликнете за да изберете."
+      },
+      "image": {
+        "upload_several": "Пуснете снимки за качване, или кликнете, за да изберете.",
+        "upload_single": "Пуснете снимка за качване, или кликнете за да изберете."
+      },
+      "references": {
+        "all_missing": "Не намирам свързаните данни.",
+        "many_missing": "Изглежда, че поне една от свързаните препратки, вече не е налична.",
+        "single_missing": "Изглежда, че връзката вече не е налична."
+      },
+      "password": {
+        "toggle_visible": "Скрий паролата",
+        "toggle_hidden": "Покажи паролата"
+      }
+    },
+    "message": {
+      "about": "Относно",
+      "are_you_sure": "Сигурни ли сте?",
+      "bulk_delete_content": "Наистина ли желаете да изтриете това %{name}? |||| Наистина ли желаете да изтриете тези %{smart_count} елементи?",
+      "bulk_delete_title": "Изтрий %{name} |||| Изтрий %{smart_count} %{name}",
+      "delete_content": "Наистина ли желаете да изтриете този елемент?",
+      "delete_title": "Изтрий %{name} #%{id}",
+      "details": "Описание",
+      "error": "Възникна грешка с клиента и заявката Ви не може да бъде изпълнена.",
+      "invalid_form": "Формата не е валидна. Моля, проверете за грешки",
+      "loading": "Страницата се зарежда, моля изчакайте",
+      "no": "Не",
+      "not_found": "Или сте въвели грешен URL адрес, или сте следвали грешна връзка.",
+      "yes": "Да",
+      "unsaved_changes": "Някои от промените не бяха запазени. Сигурни ли сте, че желаете да ги игнорирате?"
+    },
+    "navigation": {
+      "no_results": "Няма намерени резултати",
+      "no_more_results": "Страница %{page} е извън границите. Опитайте предишната страница.",
+      "page_out_of_boundaries": "Страница %{page} е извън границите",
+      "page_out_from_end": "Не може да отидете след последната страница",
+      "page_out_from_begin": "Не може да се премине преди страница 1",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} от %{total}",
+      "page_rows_per_page": "Елемента на страница:",
+      "next": "Следваща",
+      "prev": "Предишна",
+      "skip_nav": "Премини към съдържанието"
+    },
+    "notification": {
+      "updated": "Елементът е актуализиран |||| %{smart_count} елемента са актуализирани",
+      "created": "Елементът е създаден",
+      "deleted": "Елементът е изтрит |||| %{smart_count} елемента са изтрити",
+      "bad_item": "Неправилен елемент",
+      "item_doesnt_exist": "Елементът не съществува",
+      "http_error": "Грешка в комуникацията със сървъра",
+      "data_provider_error": "Грешка в доставчика на данни. Проверете конзолата за подробности.",
+      "i18n_error": "Не мога да заредя преводите за посочения език",
+      "canceled": "Действието е отменено",
+      "logged_out": "Вашата сесия приключи. Моля, влезте отново.",
+      "new_version": "Налична е нова версия! Моля, опреснете този прозорец."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Колони за показване",
+      "layout": "Оформление",
+      "grid": "Решетка",
+      "table": "Таблица"
+    }
+  },
+  "message": {
+    "note": "ЗАБЕЛЕЖКА",
+    "transcodingDisabled": "Промяната на конфигурацията за транскодиране през уеб интерфейса е забранена от съображения за сигурност. Ако желаете да промените (редактирате или добавите) опциите за транскодиране, рестартирайте сървъра с конфигурационната опция %{config}.",
+    "transcodingEnabled": "Navidrome в момента работи с %{config}, което прави възможно стартирането на системни команди от настройките за транскодиране с помощта на уеб интерфейса. Препоръчваме да го деактивирате от съображения за сигурност и да го активирате само при конфигуриране на опциите за транскодиране.",
+    "songsAddedToPlaylist": "Добавена 1 песен към плейлиста |||| Добавени %{smart_count} песни към плейлиста",
+    "noPlaylistsAvailable": "Няма налични",
+    "delete_user_title": "Изтрий потребителя '%{name}'",
+    "delete_user_content": "Наистина ли желаете да изтриете този потребител и всичките му данни (включително плейлисти и предпочитания)?",
+    "notifications_blocked": "В настройките на браузъра сте блокирали известията за този сайт",
+    "notifications_not_available": "Този браузър не поддържа известия на работния плот или нямате достъп до Navidrome през https",
+    "lastfmLinkSuccess": "Връзката с Last.fm е успешна! Scrobbling е активиран",
+    "lastfmLinkFailure": "Last.fm не можа да бъде свързан",
+    "lastfmUnlinkSuccess": "Връзката с Last.fm е прекъсната! Scrobbling е деактивиран",
+    "lastfmUnlinkFailure": "Last.fm връзката не можа да бъде премахната",
+    "openIn": {
+      "lastfm": "Отвори в Last.fm",
+      "musicbrainz": "Отвори в MusicBrainz"
+    },
+    "lastfmLink": "Прочетете още...",
+    "listenBrainzLinkSuccess": "Връзката с ListenBrainz е успешна! Scrobbling е активиран от името на потребителя: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz не можа да бъде свързан: %{error}",
+    "listenBrainzUnlinkSuccess": "Връзката с ListenBrainz е прекъсната! Scrobbling е деактивиран",
+    "listenBrainzUnlinkFailure": "Връзката с ListenBrainz не можа да бъде прекратена",
+    "downloadOriginalFormat": "Свали в оригиналния формат",
+    "shareOriginalFormat": "Сподели в оригинален формат",
+    "shareDialogTitle": "Сподели %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Сподели 1 %{resource} |||| Сподели %{smart_count} %{resource}",
+    "shareSuccess": "Адресът е копиран в клипборда: %{url}",
+    "shareFailure": "Грешка при копиране на адрес %{url} в клипборда",
+    "downloadDialogTitle": "Сваляне %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Копиране в клипборда: Ctrl+C, Enter",
+    "remove_missing_title": "Премахни липсващите файлове",
+    "remove_missing_content": "Сигурни ли сте, че желаете да премахнете избраните липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
+    "remove_all_missing_title": "Премахни всички липсващи файлове",
+    "remove_all_missing_content": "Сигурни ли сте, че желаете да премахнете всички липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
+    "noSimilarSongsFound": "",
+    "noTopSongsFound": ""
+  },
+  "menu": {
+    "library": "Библиотека",
+    "settings": "Настройки",
+    "version": "Версия",
+    "theme": "Тема",
+    "personal": {
+      "name": "Лични",
+      "options": {
+        "theme": "Тема",
+        "language": "Език",
+        "defaultView": "Изглед по подразбиране",
+        "desktop_notifications": "Известия на работния плот",
+        "lastfmScrobbling": "Scrobble към Last.fm",
+        "listenBrainzScrobbling": "Scrobble към ListenBrainz",
+        "replaygain": "Режим ReplayGain",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "Изключен",
+          "album": "Използвай Album Gain",
+          "track": "Използвай Track Gain"
+        },
+        "lastfmNotConfigured": "API ключът на Last.fm не е конфигуриран"
+      }
+    },
+    "albumList": "Албуми",
+    "about": "Относно",
+    "playlists": "Плейлисти",
+    "sharedPlaylists": "Споделени плейлисти",
+    "librarySelector": {
+      "allLibraries": "",
+      "multipleLibraries": "",
+      "selectLibraries": "",
+      "none": ""
+    }
+  },
+  "player": {
+    "playListsText": "Списък с песни",
+    "openText": "Отвори",
+    "closeText": "Затвори",
+    "notContentText": "Няма песни",
+    "clickToPlayText": "Пускане",
+    "clickToPauseText": "Пауза",
+    "nextTrackText": "Следваща песен",
+    "previousTrackText": "Предишна песен",
+    "reloadText": "Презареди",
+    "volumeText": "Сила на звука",
+    "toggleLyricText": "Текст на песен",
+    "toggleMiniModeText": "Минимизирай",
+    "destroyText": "Унищожи",
+    "downloadText": "Свали",
+    "removeAudioListsText": "Изтриване на плейлисти",
+    "clickToDeleteText": "Кликнете, за да изтриете %{name}",
+    "emptyLyricText": "Няма текст",
+    "playModeText": {
+      "order": "По ред",
+      "orderLoop": "Повтаряй всички",
+      "singleLoop": "Повтаряй същата",
+      "shufflePlay": "Разбъркай"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Начална страница",
+      "source": "Програмен код",
+      "featureRequests": "Заявете функционалност",
+      "lastInsightsCollection": "",
+      "insights": {
+        "disabled": "Деактивиран",
+        "waiting": "Изчакване"
+      }
+    },
+    "tabs": {
+      "about": "Относно",
+      "config": "Конфигурация"
+    },
+    "config": {
+      "configName": "Име на конфигурация",
+      "environmentVariable": "Променлива на средата",
+      "currentValue": "Текуща стойност",
+      "configurationFile": "",
+      "exportToml": "Експортиране на конфигурация (TOML)",
+      "exportSuccess": "Конфигурация, експортирана в клипборда във формат TOML",
+      "exportFailed": "Неуспешно копиране на конфигурация",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
+    }
+  },
+  "activity": {
+    "title": "Действия",
+    "totalScanned": "Сканирани папки",
+    "quickScan": "Бързо сканиране",
+    "fullScan": "Пълно сканиране",
+    "serverUptime": "Сървърът работи",
+    "serverDown": "ОФЛАЙН",
+    "scanType": "Последно сканиране",
+    "status": "Грешка при сканиране",
+    "elapsedTime": "Изминало време",
+    "selectiveScan": ""
+  },
+  "help": {
+    "title": "Бързи клавиши на Navidrome",
+    "hotkeys": {
+      "show_help": "Показва този помощен текст",
+      "toggle_menu": "Превключване на страничната меню лента",
+      "toggle_play": "Пусни / Пауза",
+      "prev_song": "Предишна песен",
+      "next_song": "Следваща песен",
+      "vol_up": "Увеличи звука",
+      "vol_down": "Намали звука",
+      "toggle_love": "Добави песента към любими",
+      "current_song": "Премини към текущата песен"
+    }
+  },
+  "nowPlaying": {
+    "title": "",
+    "empty": "",
+    "minutesAgo": ""
+  }
 }

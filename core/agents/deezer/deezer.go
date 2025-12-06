@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const deezerAgentName = "deezer"
@@ -32,7 +33,7 @@ func deezerConstructor(dataStore model.DataStore) agents.Interface {
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
-	agent.client = newClient(cachedHttpClient)
+	agent.client = newClient(cachedHttpClient, conf.Server.Deezer.Language)
 	return agent
 }
 
@@ -86,6 +87,56 @@ func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, e
 		return nil, agents.ErrNotFound
 	}
 	return &artists[0], err
+}
+
+func (s *deezerAgent) GetSimilarArtists(ctx context.Context, _, name, _ string, limit int) ([]agents.Artist, error) {
+	artist, err := s.searchArtist(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	related, err := s.client.getRelatedArtists(ctx, artist.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := slice.Map(related, func(r Artist) agents.Artist {
+		return agents.Artist{
+			Name: r.Name,
+		}
+	})
+	if len(res) > limit {
+		res = res[:limit]
+	}
+	return res, nil
+}
+
+func (s *deezerAgent) GetArtistTopSongs(ctx context.Context, _, artistName, _ string, count int) ([]agents.Song, error) {
+	artist, err := s.searchArtist(ctx, artistName)
+	if err != nil {
+		return nil, err
+	}
+
+	tracks, err := s.client.getTopTracks(ctx, artist.ID, count)
+	if err != nil {
+		return nil, err
+	}
+
+	res := slice.Map(tracks, func(r Track) agents.Song {
+		return agents.Song{
+			Name: r.Title,
+		}
+	})
+	return res, nil
+}
+
+func (s *deezerAgent) GetArtistBiography(ctx context.Context, _, name, _ string) (string, error) {
+	artist, err := s.searchArtist(ctx, name)
+	if err != nil {
+		return "", err
+	}
+
+	return s.client.getArtistBio(ctx, artist.ID)
 }
 
 func init() {

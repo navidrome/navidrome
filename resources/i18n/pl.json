@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Skanuj Bibliotekę",
         "manageUsers": "Zarządzaj Dostępami Użytkownika",
-        "viewDetails": "Zobacz Szczegóły"
+        "viewDetails": "Zobacz Szczegóły",
+        "quickScan": "Szybkie Skanowanie",
+        "fullScan": "Pełne Skanowanie"
       },
       "notifications": {
         "created": "Biblioteka utworzona prawidłowo",
         "updated": "Biblioteka zaktualizowana prawidłowo",
         "deleted": "Biblioteka usunięta prawidłowo",
         "scanStarted": "Rozpoczęto skan biblioteki",
-        "scanCompleted": "Zakończono skan biblioteki"
+        "scanCompleted": "Zakończono skan biblioteki",
+        "quickScanStarted": "Szybkie skanowanie rozpoczęte",
+        "fullScanStarted": "Pełne skanowanie rozpoczęte",
+        "scanError": "Błąd podczas startu skanowania. Sprawdź logi"
       },
       "validation": {
         "nameRequired": "Nazwa biblioteki jest wymagana",
@@ -604,7 +609,8 @@
     "serverDown": "NIEDOSTĘPNY",
     "scanType": "Typ",
     "status": "Błąd Skanowania",
-    "elapsedTime": "Upłynięty Czas"
+    "elapsedTime": "Upłynięty Czas",
+    "selectiveScan": "Selektywne"
   },
   "help": {
     "title": "Skróty Klawiszowe Navidrome",

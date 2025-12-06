@@ -83,7 +83,7 @@
       "actions": {
         "playAll": "Afspil",
         "playNext": "Afspil næste",
-        "addToQueue": "Afspil senere",
+        "addToQueue": "Føj til kø",
         "shuffle": "Bland",
         "addToPlaylist": "Føj til afspilningsliste",
         "download": "Download",
@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Scanningsbibliotek",
         "manageUsers": "Administrer brugeradgang",
-        "viewDetails": "Se detaljer"
+        "viewDetails": "Se detaljer",
+        "quickScan": "hurtig skanning",
+        "fullScan": "Fuld skanning"
       },
       "notifications": {
         "created": "Bibliotek oprettet",
         "updated": "Biblioteket er blevet opdateret",
         "deleted": "Biblioteket er blevet slettet",
         "scanStarted": "Biblioteksscanning startet",
-        "scanCompleted": "Biblioteksscanning fuldført"
+        "scanCompleted": "Biblioteksscanning fuldført",
+        "quickScanStarted": "hurtig skanning startet",
+        "fullScanStarted": "Fuld skanning startet",
+        "scanError": "Kan ikke starte skanning. Tjek loggen"
       },
       "validation": {
         "nameRequired": "Biblioteksnavn er påkrævet",
@@ -549,7 +554,7 @@
     "closeText": "Luk",
     "notContentText": "Ingen musik",
     "clickToPlayText": "Tryk for at afspille",
-    "clickToPauseText": "Tryk for at pause",
+    "clickToPauseText": "Tryk for at sætte på pause",
     "nextTrackText": "Næste nummer",
     "previousTrackText": "Forrige nummer",
     "reloadText": "Genindlæs",
@@ -604,7 +609,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Type",
     "status": "Scanningsfejl",
-    "elapsedTime": "Medgået tid"
+    "elapsedTime": "Medgået tid",
+    "selectiveScan": "Selektiv"
   },
   "help": {
     "title": "Navidrome genvejstaster",

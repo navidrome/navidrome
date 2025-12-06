@@ -201,6 +201,10 @@ var _ = Describe("lastfmAgent", func() {
 						{Artist: model.Artist{ID: "ar-1", Name: "First Artist"}},
 						{Artist: model.Artist{ID: "ar-2", Name: "Second Artist"}},
 					},
+					model.RoleAlbumArtist: []model.Participant{
+						{Artist: model.Artist{ID: "ar-1", Name: "First Album Artist"}},
+						{Artist: model.Artist{ID: "ar-2", Name: "Second Album Artist"}},
+					},
 				},
 			}
 		})
@@ -228,6 +232,23 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrNotAuthorized if user is not linked", func() {
 				err := agent.NowPlaying(ctx, "user-2", track, 0)
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+			})
+
+			When("ScrobbleFirstArtistOnly is true", func() {
+				BeforeEach(func() {
+					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+				})
+
+				It("uses only the first artist", func() {
+					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+					err := agent.NowPlaying(ctx, "user-1", track, 0)
+
+					Expect(err).ToNot(HaveOccurred())
+					sentParams := httpClient.SavedRequest.URL.Query()
+					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
+					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
+				})
 			})
 		})
 
@@ -267,6 +288,7 @@ var _ = Describe("lastfmAgent", func() {
 					Expect(err).ToNot(HaveOccurred())
 					sentParams := httpClient.SavedRequest.URL.Query()
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
+					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
 			})
 
@@ -391,6 +413,75 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(httpClient.RequestCount).To(Equal(2))
 				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 			})
+		})
+	})
+
+	Describe("GetArtistImages", func() {
+		var agent *lastfmAgent
+		var apiClient *tests.FakeHttpClient
+		var httpClient *tests.FakeHttpClient
+
+		BeforeEach(func() {
+			apiClient = &tests.FakeHttpClient{}
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("API_KEY", "SECRET", "pt", apiClient)
+			agent = lastFMConstructor(ds)
+			agent.client = client
+			agent.httpClient = httpClient
+		})
+
+		It("returns the artist image from the page", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(HaveLen(1))
+			Expect(images[0].URL).To(Equal("https://lastfm.freetls.fastly.net/i/u/ar0/818148bf682d429dc21b59a73ef6f68e.png"))
+		})
+
+		It("returns empty list if image is the ignored default image", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.ignored.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(BeEmpty())
+		})
+
+		It("returns empty list if page has no meta tags", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.no_meta.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(BeEmpty())
+		})
+
+		It("returns error if API call fails", func() {
+			apiClient.Err = errors.New("api error")
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("get artist info"))
+		})
+
+		It("returns error if scraper call fails", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			httpClient.Err = errors.New("scraper error")
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("get artist url"))
 		})
 	})
 })
