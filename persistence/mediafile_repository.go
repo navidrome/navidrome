@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -193,12 +195,43 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	}, nil
 }
 
+// FindByPaths finds media files by their paths.
+// The paths can be library-qualified (format: "libraryID:path") or unqualified ("path").
+// Library-qualified paths search within the specified library, while unqualified paths
+// search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
+	query := Or{}
+
+	for _, path := range paths {
+		parts := strings.SplitN(path, ":", 2)
+		if len(parts) == 2 {
+			// Library-qualified path: "libraryID:path"
+			libraryID, err := strconv.Atoi(parts[0])
+			if err != nil {
+				// Invalid format, skip
+				continue
+			}
+			relativePath := parts[1]
+			query = append(query, And{
+				Eq{"path collate nocase": relativePath},
+				Eq{"library_id": libraryID},
+			})
+		} else {
+			// Unqualified path: search across all libraries
+			query = append(query, Eq{"path collate nocase": path})
+		}
+	}
+
+	if len(query) == 0 {
+		return model.MediaFiles{}, nil
+	}
+
+	sel := r.newSelect().Columns("*").Where(query)
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
 	}
+
 	return res.toModels(), nil
 }
 
