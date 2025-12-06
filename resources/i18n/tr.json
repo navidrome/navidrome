@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Kütüphaneyi Tara",
         "manageUsers": "Kullanıcı Erişimini Yönet",
-        "viewDetails": "Ayrıntıları Görüntüle"
+        "viewDetails": "Ayrıntıları Görüntüle",
+        "quickScan": "Hızlı Tarama",
+        "fullScan": "Tam Tarama"
       },
       "notifications": {
         "created": "Kütüphane başarıyla oluşturuldu",
         "updated": "Kütüphane başarıyla güncellendi",
         "deleted": "Kütüphane başarıyla silindi",
         "scanStarted": "Kütüphane taraması başladı",
-        "scanCompleted": "Kütüphane taraması tamamlandı"
+        "scanCompleted": "Kütüphane taraması tamamlandı",
+        "quickScanStarted": "Hızlı tarama başlatıldı",
+        "fullScanStarted": "Tam tarama başlatıldı",
+        "scanError": "Tarama başlatılırken hata oluştu. Günlükleri kontrol edin."
       },
       "validation": {
         "nameRequired": "Kütüphane adı gereklidir",
@@ -604,7 +609,8 @@
     "serverDown": "ÇEVRİMDIŞI",
     "scanType": "Tür",
     "status": "Tarama Hatası",
-    "elapsedTime": "Geçen Süre"
+    "elapsedTime": "Geçen Süre",
+    "selectiveScan": "Seçmeli"
   },
   "help": {
     "title": "Navidrome Kısayolları",
