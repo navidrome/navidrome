@@ -32,3 +32,4 @@ AGENTS.md
 *.exe
 *.test
 *.wasm
+openspec/

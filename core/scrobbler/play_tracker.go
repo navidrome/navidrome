@@ -345,8 +345,14 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 		}
 		for _, artist := range track.Participants[model.RoleArtist] {
 			err = tx.Artist(ctx).IncPlayCount(artist.ID, timestamp)
+			if err != nil {
+				return err
+			}
 		}
-		return err
+		if conf.Server.EnableScrobbleHistory {
+			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+		}
+		return nil
 	})
 }
 

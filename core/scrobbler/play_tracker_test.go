@@ -61,7 +61,7 @@ var _ = Describe("PlayTracker", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
@@ -177,9 +177,9 @@ var _ = Describe("PlayTracker", func() {
 			track2 := track
 			track2.ID = "456"
 			_ = ds.MediaFile(ctx).Put(&track2)
-			ctx = request.WithUser(context.Background(), model.User{UserName: "user-1"})
+			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-1"})
 			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			ctx = request.WithUser(context.Background(), model.User{UserName: "user-2"})
+			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-2"})
 			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456", 0)
 
 			playing, err := tracker.GetNowPlaying(ctx)
@@ -291,6 +291,38 @@ var _ = Describe("PlayTracker", func() {
 			Expect(artist1.PlayCount).To(Equal(int64(1)))
 			Expect(artist2.PlayCount).To(Equal(int64(1)))
 		})
+
+		Context("Scrobble History", func() {
+			It("records scrobble in repository", func() {
+				conf.Server.EnableScrobbleHistory = true
+				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+				ts := time.Now()
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				mockDS := ds.(*tests.MockDataStore)
+				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
+				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
+				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
+				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
+			})
+
+			It("does not record scrobble when history is disabled", func() {
+				conf.Server.EnableScrobbleHistory = false
+				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+				ts := time.Now()
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+
+				Expect(err).ToNot(HaveOccurred())
+				mockDS := ds.(*tests.MockDataStore)
+				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
+			})
+		})
 	})
 
 	Describe("Plugin scrobbler logic", func() {
@@ -352,7 +384,7 @@ var _ = Describe("PlayTracker", func() {
 		var mockedBS *mockBufferedScrobbler
 
 		BeforeEach(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 			ds = &tests.MockDataStore{}
