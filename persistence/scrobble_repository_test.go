@@ -1,0 +1,78 @@
+package persistence
+
+import (
+	"context"
+	"time"
+
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
+)
+
+var _ = Describe("ScrobbleRepository", func() {
+	var repo model.ScrobbleRepository
+	var rawRepo sqlRepository
+	var ctx context.Context
+	var fileID string
+	var userID string
+
+	BeforeEach(func() {
+		fileID = id.NewRandom()
+		userID = id.NewRandom()
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		db := GetDBXBuilder()
+		repo = NewScrobbleRepository(ctx, db)
+
+		rawRepo = sqlRepository{
+			ctx:       ctx,
+			tableName: "scrobbles",
+			db:        db,
+		}
+	})
+
+	AfterEach(func() {
+		_, _ = rawRepo.db.Delete("scrobbles", dbx.HashExp{"media_file_id": fileID}).Execute()
+		_, _ = rawRepo.db.Delete("media_file", dbx.HashExp{"id": fileID}).Execute()
+		_, _ = rawRepo.db.Delete("user", dbx.HashExp{"id": userID}).Execute()
+	})
+
+	Describe("RecordScrobble", func() {
+		It("records a scrobble event", func() {
+			submissionTime := time.Now().UTC()
+
+			// Insert User
+			_, err := rawRepo.db.Insert("user", dbx.Params{
+				"id":         userID,
+				"user_name":  "user",
+				"password":   "pw",
+				"created_at": time.Now(),
+				"updated_at": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Insert MediaFile
+			_, err = rawRepo.db.Insert("media_file", dbx.Params{
+				"id":         fileID,
+				"path":       "path",
+				"created_at": time.Now(),
+				"updated_at": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			err = repo.RecordScrobble(fileID, userID, submissionTime)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify insertion
+			var count int
+			err = rawRepo.db.Select("count(*)").From("scrobbles").
+				Where(dbx.HashExp{"media_file_id": fileID, "user_id": userID}).
+				Row(&count)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(1))
+		})
+	})
+})
