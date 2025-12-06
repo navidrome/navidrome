@@ -31,7 +31,7 @@
         "mood": "Tunnelma",
         "participants": "Lisäosallistujat",
         "tags": "Lisätunnisteet",
-        "mappedTags": "Mäpättyt tunnisteet",
+        "mappedTags": "Mäpätyt tunnisteet",
         "rawTags": "Raakatunnisteet",
         "bitDepth": "Bittisyvyys",
         "sampleRate": "Näytteenottotaajuus",
@@ -324,7 +324,7 @@
         "pathInvalid": "Virheellinen kirjaston polku"
       },
       "messages": {
-        "deleteConfirm": "Oletko varma, että haluat poistaa tämän kirjaston? Tämä poistaa kaikki liittyvät tiedot ja käyttäjien pääsyn.",
+        "deleteConfirm": "Haluatko varmasti poistaa tämän kirjaston? Kaikki siihen liittyvät tiedot ja käyttäjien pääsy poistetaan.",
         "scanInProgress": "Skannaus käynnissä...",
         "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja"
       }
@@ -341,7 +341,7 @@
       "username": "Käyttäjänimi",
       "password": "Salasana",
       "sign_in": "Kirjaudu",
-      "sign_in_error": "Autentikointi epäonnistui. Yritä uudelleen",
+      "sign_in_error": "Kirjautuminen epäonnistui. Yritä uudelleen",
       "logout": "Kirjaudu ulos",
       "insightsCollectionNote": "Navidrome kerää anonyymejä käyttötietoja auttaakseen parantamaan\nprojektia. Paina [tästä] saadaksesi lisätietoa\nja halutessasi kieltäytyä"
     },
@@ -351,7 +351,7 @@
       "required": "Pakollinen",
       "minLength": "Pitää vähintään olla %{min} merkkiä",
       "maxLength": "Saa olla enintään %{max} merkkiä",
-      "minValue": "pitää olla vähintään %{min}",
+      "minValue": "Pitää olla vähintään %{min}",
       "maxValue": "Saa olla enentään %{max}",
       "number": "Pitää olla numero",
       "email": "Pitää olla oikea sähköpostiosoite",
@@ -445,7 +445,7 @@
     },
     "navigation": {
       "no_results": "Ei tuloksia",
-      "no_more_results": "Sivunumero %{page} on rajojen ulkopuolella. Kokeile edellinen sivu.",
+      "no_more_results": "Sivunumeroa %{page} ei löydy. Yritä edellistä sivua.",
       "page_out_of_boundaries": "Sivunumero %{page} on rajojen ulkopuolella",
       "page_out_from_end": "Viimeinen sivu, ei voi edetä",
       "page_out_from_begin": "Ensimmäinen sivu, ei voi palata",
@@ -527,7 +527,7 @@
         "desktop_notifications": "Työpöytäilmoitukset",
         "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
         "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun",
-        "replaygain": "RepleyGain -tila",
+        "replaygain": "ReplayGain -tila",
         "preAmp": "ReplayGain esivahvistus (dB)",
         "gain": {
           "none": "Pois käytöstä",
@@ -559,7 +559,7 @@
     "previousTrackText": "Edellinen kappale",
     "reloadText": "Päivitä",
     "volumeText": "Äänenvoimakkuus",
-    "toggleLyricText": "Toggle lyric",
+    "toggleLyricText": "Näytä/piilota sanat",
     "toggleMiniModeText": "Minimoi",
     "destroyText": "Poista",
     "downloadText": "Lataa",
@@ -618,7 +618,7 @@
       "show_help": "Näytä tämä apuvalikko",
       "toggle_menu": "Menuvalikko päälle ja pois",
       "toggle_play": "Toista / Tauko",
-      "prev_song": "Esellinen kappale",
+      "prev_song": "Edellinen kappale",
       "next_song": "Seuraava kappale",
       "vol_up": "Kovemmalle",
       "vol_down": "Hiljemmalle",
