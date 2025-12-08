@@ -64,7 +64,7 @@ require (
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
 	golang.org/x/image v0.33.0
 	golang.org/x/net v0.47.0
-	golang.org/x/sync v0.18.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.37.0
 	golang.org/x/text v0.31.0
