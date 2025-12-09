@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("PlaylistRepository", func() {
@@ -124,6 +125,36 @@ var _ = Describe("PlaylistRepository", func() {
 			pls, err := repo.GetPlaylists("9999")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls).To(HaveLen(0))
+		})
+	})
+
+	Describe("Normalization", func() {
+		It("normalizes playlist paths to NFC when saving", func() {
+			decomposed := "music/Mich" + string([]rune{'e', '\u0300'}) + "le.m3u"
+			pls := model.Playlist{Name: "Unicode", OwnerID: "userid", Path: decomposed}
+			Expect(repo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+
+			stored, err := repo.Get(pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored.Path).To(Equal(model.NormalizePlaylistPath(decomposed)))
+		})
+
+		It("finds playlists stored with legacy NFD paths", func() {
+			basePath := "music/Mich" + string([]rune{'e', '\u0301'}) + "le.m3u"
+			pls := model.Playlist{Name: "Legacy", OwnerID: "userid", Path: basePath}
+			Expect(repo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+
+			legacyPath := norm.NFD.String(basePath)
+			_, err := GetDBXBuilder().NewQuery("update playlist set path = {:path} where id = {:id}").
+				Bind(dbx.Params{"path": legacyPath, "id": pls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			found, err := repo.FindByPath(model.NormalizePlaylistPath(basePath))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(found.ID).To(Equal(pls.ID))
+			Expect(found.Path).To(Equal(legacyPath))
 		})
 	})
 

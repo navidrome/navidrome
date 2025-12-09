@@ -3,6 +3,7 @@ package core_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -83,6 +84,26 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Name).To(Equal("Test Playlist"))
 				Expect(pls.Tracks).To(HaveLen(1))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+			})
+
+			It("stores playlist paths normalized to NFC", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileRepo{data: []string{"1:song.mp3"}}
+				ps = core.NewPlaylists(ds)
+
+				nfdName := "cafe" + string([]rune{'\u0301'}) + ".m3u"
+				playlistPath := filepath.Join(tmpDir, nfdName)
+				Expect(os.WriteFile(playlistPath, []byte("song.mp3\n"), 0o644)).To(Succeed())
+
+				folder = &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir}
+
+				pls, err := ps.ImportFile(ctx, folder, nfdName)
+				Expect(err).ToNot(HaveOccurred())
+
+				normalizedPath := model.NormalizePlaylistPath(playlistPath)
+				Expect(pls.Path).To(Equal(normalizedPath))
+				Expect(mockPlsRepo.last.Path).To(Equal(normalizedPath))
 			})
 
 			It("parses UTF-16 LE encoded playlists with BOM and converts to UTF-8", func() {
