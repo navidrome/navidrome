@@ -426,20 +426,19 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("handles Unicode normalization when comparing paths (NFD vs NFC)", func() {
-			// Simulate macOS filesystem: stores paths in NFD (decomposed) form
-			// "è" (U+00E8) in NFC becomes "e" + "◌̀" (U+0065 + U+0300) in NFD
-			nfdPath := "artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
-			repo.data = []string{nfdPath}
+			// Simulate database storing NFC (composed) form
+			nfcPath := "artist/Mich\u00E8le/song.mp3" // NFC: single è character
+			repo.data = []string{nfcPath}
 
-			// Simulate Apple Music M3U: uses NFC (composed) form
-			nfcPath := "/music/artist/Mich\u00E8le/song.mp3" // NFC: single è character
-			m3u := nfcPath + "\n"
+			// Playlist entry uses NFD (decomposed) form
+			nfdPath := "/music/artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
+			m3u := nfdPath + "\n"
 			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
 			// Should match despite different Unicode normalization forms
-			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
+			Expect(pls.Tracks[0].Path).To(Equal(nfcPath))
 		})
 
 	})
@@ -542,8 +541,8 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
-		// Normalize the data path to NFD (simulates macOS filesystem storage)
-		normalizedDataPath := norm.NFD.String(dataPath)
+		// Normalize the data path to NFC (matches playlist normalization)
+		normalizedDataPath := norm.NFC.String(dataPath)
 
 		for _, requestPath := range paths {
 			// Strip library qualifier if present (format: "libraryID:path")
@@ -556,9 +555,8 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 				}
 			}
 
-			// The request path should already be normalized to NFD by production code
-			// before calling FindByPaths (to match DB storage)
-			normalizedRequestPath := norm.NFD.String(actualPath)
+			// The request path should already be normalized to NFC by production code
+			normalizedRequestPath := norm.NFC.String(actualPath)
 
 			// Case-insensitive comparison (like SQL's "collate nocase")
 			if strings.EqualFold(normalizedRequestPath, normalizedDataPath) {
