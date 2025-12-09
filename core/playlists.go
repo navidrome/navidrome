@@ -117,6 +117,8 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 		return nil, err
 	}
 
+	normalizedPath := model.NormalizePlaylistPath(playlistPath)
+
 	var extension = filepath.Ext(playlistFile)
 	var name = playlistFile[0 : len(playlistFile)-len(extension)]
 
@@ -124,7 +126,7 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 		Name:      name,
 		Comment:   fmt.Sprintf("Auto-imported from '%s'", playlistFile),
 		Public:    false,
-		Path:      playlistPath,
+		Path:      normalizedPath,
 		Sync:      true,
 		UpdatedAt: info.ModTime(),
 	}
@@ -386,6 +388,8 @@ func (s *playlists) resolvePaths(ctx context.Context, folder *model.Folder, line
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UserFrom(ctx)
+
+	newPls.Path = model.NormalizePlaylistPath(newPls.Path)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {

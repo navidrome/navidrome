@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
+	"golang.org/x/text/unicode/norm"
+	"path/filepath"
 )
 
 type Playlist struct {
@@ -27,6 +29,22 @@ type Playlist struct {
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
+}
+
+// NormalizePlaylistPath cleans a playlist path and converts it to Unicode NFC form.
+// This ensures consistent storage and lookup across filesystems that may use
+// different normalization forms (e.g., macOS using NFD).
+func NormalizePlaylistPath(path string) string {
+	cleaned := filepath.Clean(path)
+	return norm.NFC.String(cleaned)
+}
+
+// NormalizePlaylistPathNFD returns the playlist path normalized to Unicode NFD,
+// keeping the cleaned path separators. This is useful to match paths stored in
+// legacy databases using decomposed forms.
+func NormalizePlaylistPathNFD(path string) string {
+	cleaned := filepath.Clean(path)
+	return norm.NFD.String(cleaned)
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {
