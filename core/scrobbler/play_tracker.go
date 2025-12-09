@@ -32,6 +32,7 @@ type Submission struct {
 }
 
 type nowPlayingEntry struct {
+	ctx      context.Context
 	userId   string
 	track    *model.MediaFile
 	position int
@@ -220,15 +221,17 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.enqueueNowPlaying(playerId, user.ID, mf, position)
+		p.enqueueNowPlaying(ctx, playerId, user.ID, mf, position)
 	}
 	return nil
 }
 
-func (p *playTracker) enqueueNowPlaying(playerId string, userId string, track *model.MediaFile, position int) {
+func (p *playTracker) enqueueNowPlaying(ctx context.Context, playerId string, userId string, track *model.MediaFile, position int) {
 	p.npMu.Lock()
 	defer p.npMu.Unlock()
+	ctx = context.WithoutCancel(ctx) // Prevent cancellation from affecting background processing
 	p.npQueue[playerId] = nowPlayingEntry{
+		ctx:      ctx,
 		userId:   userId,
 		track:    track,
 		position: position,
@@ -267,7 +270,7 @@ func (p *playTracker) nowPlayingWorker() {
 
 		// Process entries without holding lock
 		for _, entry := range entries {
-			p.dispatchNowPlaying(context.Background(), entry.userId, entry.track, entry.position)
+			p.dispatchNowPlaying(entry.ctx, entry.userId, entry.track, entry.position)
 		}
 	}
 }
