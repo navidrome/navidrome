@@ -170,6 +170,17 @@ var _ = Describe("PlayTracker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(eventBroker.getEvents()).To(BeEmpty())
 		})
+
+		It("passes user to scrobbler via context (fix for issue #4787)", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "testuser"})
+			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
+
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+			// Verify the username was passed through async dispatch via context
+			Eventually(func() string { return fake.GetUsername() }).Should(Equal("testuser"))
+		})
 	})
 
 	Describe("GetNowPlaying", func() {
@@ -428,6 +439,7 @@ type fakeScrobbler struct {
 	nowPlayingCalled atomic.Bool
 	ScrobbleCalled   atomic.Bool
 	userID           atomic.Pointer[string]
+	username         atomic.Pointer[string]
 	track            atomic.Pointer[model.MediaFile]
 	position         atomic.Int32
 	LastScrobble     atomic.Pointer[Scrobble]
@@ -453,6 +465,13 @@ func (f *fakeScrobbler) GetPosition() int {
 	return int(f.position.Load())
 }
 
+func (f *fakeScrobbler) GetUsername() string {
+	if p := f.username.Load(); p != nil {
+		return *p
+	}
+	return ""
+}
+
 func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
 	return f.Error == nil && f.Authorized
 }
@@ -463,6 +482,16 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 		return f.Error
 	}
 	f.userID.Store(&userId)
+	// Capture username from context (this is what plugin scrobblers do)
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		if u, ok := request.UserFrom(ctx); ok {
+			username = u.UserName
+		}
+	}
+	if username != "" {
+		f.username.Store(&username)
+	}
 	f.track.Store(track)
 	f.position.Store(int32(position))
 	return nil
