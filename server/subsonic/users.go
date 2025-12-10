@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -35,7 +36,13 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
-
+	username, err := req.Params(r).String("username")
+	if err != nil {
+		return nil, err
+	}
+	if username != loggedUser.UserName {
+		return nil, newError(responses.ErrorAuthorizationFail)
+	}
 	response := newResponse()
 	user := buildUserResponse(loggedUser)
 	response.User = &user

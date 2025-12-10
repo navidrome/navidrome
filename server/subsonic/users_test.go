@@ -1,7 +1,7 @@
 package subsonic
 
 import (
-	"context"
+	"errors"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -43,8 +43,8 @@ var _ = Describe("Users", func() {
 			}
 
 			// Create request with user in context
-			req := httptest.NewRequest("GET", "/rest/getUser", nil)
-			ctx := request.WithUser(context.Background(), testUser)
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
 			userResponse, err1 := router.GetUser(req)
@@ -114,6 +114,62 @@ var _ = Describe("Users", func() {
 
 			Expect(response.Folder).To(HaveLen(3))
 			Expect(response.Folder).To(ContainElements(int32(1), int32(2), int32(5)))
+		})
+	})
+
+	Describe("GetUser authorization", func() {
+		It("should allow user to request their own information", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).ToNot(BeNil())
+			Expect(response.User).ToNot(BeNil())
+			Expect(response.User.Username).To(Equal("testuser"))
+		})
+
+		It("should deny user from requesting another user's information", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=anotheruser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorAuthorizationFail))
+		})
+
+		It("should return error when username parameter is missing", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(MatchError("missing parameter: 'username'"))
+			Expect(response).To(BeNil())
+		})
+
+		It("should return error when user context is missing", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 	})
 })
