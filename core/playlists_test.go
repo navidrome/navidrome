@@ -89,7 +89,7 @@ var _ = Describe("Playlists", func() {
 			It("stores playlist paths normalized to NFC", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
-				ds.MockedMediaFile = &mockedMediaFileRepo{data: []string{"1:song.mp3"}}
+				ds.MockedMediaFile = &mockedMediaFileRepo{}
 				ps = core.NewPlaylists(ds)
 
 				nfdName := "cafe" + string([]rune{'\u0301'}) + ".m3u"
