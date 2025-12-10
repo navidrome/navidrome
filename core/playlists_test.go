@@ -94,7 +94,7 @@ var _ = Describe("Playlists", func() {
 
 				nfdName := "cafe" + string([]rune{'\u0301'}) + ".m3u"
 				playlistPath := filepath.Join(tmpDir, nfdName)
-				Expect(os.WriteFile(playlistPath, []byte("song.mp3\n"), 0o644)).To(Succeed())
+				Expect(os.WriteFile(playlistPath, []byte("song.mp3\n"), 0o600)).To(Succeed())
 
 				folder = &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir}
 
