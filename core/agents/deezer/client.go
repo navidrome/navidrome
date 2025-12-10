@@ -43,6 +43,7 @@ func newClient(hc httpDoer, language string) *client {
 func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]Artist, error) {
 	params := url.Values{}
 	params.Add("q", name)
+	params.Add("order", "RANKING")
 	params.Add("limit", strconv.Itoa(limit))
 	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/search/artist", nil)
 	if err != nil {
