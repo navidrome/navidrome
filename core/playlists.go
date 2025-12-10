@@ -88,12 +88,14 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 }
 
 func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, folder *model.Folder) (*model.Playlist, error) {
-	pls, err := s.newSyncedPlaylist(folder.AbsolutePath(), playlistFile)
+	playlistPath := filepath.Join(folder.AbsolutePath(), playlistFile)
+
+	pls, err := s.newSyncedPlaylist(playlistPath, playlistFile)
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := os.Open(pls.Path)
+	file, err := os.Open(playlistPath)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +112,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	return pls, err
 }
 
-func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*model.Playlist, error) {
-	playlistPath := filepath.Join(baseDir, playlistFile)
+func (s *playlists) newSyncedPlaylist(playlistPath string, playlistFile string) (*model.Playlist, error) {
 	info, err := os.Stat(playlistPath)
 	if err != nil {
 		return nil, err
