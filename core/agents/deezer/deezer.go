@@ -3,6 +3,7 @@ package deezer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -82,10 +83,20 @@ func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, e
 		return nil, err
 	}
 
+	log.Trace(ctx, "Artists found", "count", len(artists), "searched_name", name)
+	for i := range artists {
+		log.Trace(ctx, fmt.Sprintf("Artists found #%d", i), "name", artists[i].Name, "id", artists[i].ID, "link", artists[i].Link)
+		if i > 2 {
+			break
+		}
+	}
+
 	// If the first one has the same name, that's the one
 	if !strings.EqualFold(artists[0].Name, name) {
+		log.Trace(ctx, "Top artist do not match", "searched_name", name, "found_name", artists[0].Name)
 		return nil, agents.ErrNotFound
 	}
+	log.Trace(ctx, "Found artist", "name", artists[0].Name, "id", artists[0].ID, "link", artists[0].Link)
 	return &artists[0], err
 }
 
