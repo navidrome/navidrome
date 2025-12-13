@@ -107,7 +107,7 @@ func secureMiddleware() func(http.Handler) http.Handler {
 		FrameDeny:               true,
 		ReferrerPolicy:          "same-origin",
 		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
-		CustomFrameOptionsValue: conf.Server.HTTPSecurityHeaders.CustomFrameOptionsValue,
+		CustomFrameOptionsValue: conf.Server.HTTPHeaders.FrameOptions,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
