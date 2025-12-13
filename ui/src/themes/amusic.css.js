@@ -27,7 +27,6 @@ const stylesheet = `
 .react-jinke-music-player-main .audio-item.playing .player-singer {
     color: #ff4e6b !important
 }
-.react-jinke-music-player-main .lyric-btn,
 .react-jinke-music-player-main .lyric-btn-active svg{
     color: #ff4e6b !important
 }
