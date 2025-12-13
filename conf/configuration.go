@@ -90,7 +90,7 @@ type configOptions struct {
 	ExtAuth                         extAuthOptions
 	Plugins                         pluginsOptions
 	PluginConfig                    map[string]map[string]string
-	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
+	HTTPHeaders                     httpHeaderOptions   `json:",omitzero"`
 	Prometheus                      prometheusOptions   `json:",omitzero"`
 	Scanner                         scannerOptions      `json:",omitzero"`
 	Jukebox                         jukeboxOptions      `json:",omitzero"`
@@ -188,8 +188,8 @@ type listenBrainzOptions struct {
 	BaseURL string
 }
 
-type secureOptions struct {
-	CustomFrameOptionsValue string
+type httpHeaderOptions struct {
+	FrameOptions string
 }
 
 type prometheusOptions struct {
@@ -257,6 +257,7 @@ func Load(noConfigDump bool) {
 	// Map deprecated options to their new names for backwards compatibility
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
+	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -367,10 +368,12 @@ func Load(noConfigDump bool) {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
-	logDeprecatedOptions("Scanner.GenreSeparators")
-	logDeprecatedOptions("Scanner.GroupAlbumReleases")
-	logDeprecatedOptions("DevEnableBufferedScrobble") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
-	logDeprecatedOptions("ReverseProxyWhitelist", "ReverseProxyUserHeader")
+	logDeprecatedOptions("Scanner.GenreSeparators", "")
+	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
+	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
+	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
+	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -378,15 +381,21 @@ func Load(noConfigDump bool) {
 	}
 }
 
-func logDeprecatedOptions(options ...string) {
-	for _, option := range options {
-		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
-		if os.Getenv(envVar) != "" {
-			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", envVar))
+func logDeprecatedOptions(oldName, newName string) {
+	envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(oldName, ".", "_"))
+	newEnvVar := "ND_" + strings.ToUpper(strings.ReplaceAll(newName, ".", "_"))
+	logWarning := func(oldName, newName string) {
+		if newName != "" {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release. Please use the new '%s'", oldName, newName))
+		} else {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", oldName))
 		}
-		if viper.InConfig(option) {
-			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
-		}
+	}
+	if os.Getenv(envVar) != "" {
+		logWarning(envVar, newEnvVar)
+	}
+	if viper.InConfig(oldName) {
+		logWarning(oldName, newName)
 	}
 }
 
@@ -612,7 +621,7 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 	viper.SetDefault("enablescrobblehistory", true)
-	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
+	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)
