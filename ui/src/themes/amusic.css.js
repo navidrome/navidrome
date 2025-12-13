@@ -1,4 +1,10 @@
 const stylesheet = `
+.react-jinke-music-player-main .music-player-panel svg {
+    color: #eee
+}
+.react-jinke-music-player-main .music-player-panel button:disabled svg {
+    opacity: 0.3
+}
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
     color: #D60017
 }
