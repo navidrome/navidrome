@@ -111,6 +111,7 @@ func (r *playlistRepository) Delete(id string) error {
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
 	pls := dbPlaylist{Playlist: *p}
+	pls.Path = model.NormalizePlaylistPath(pls.Path)
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
 	} else {
@@ -129,6 +130,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 		return err
 	}
 	p.ID = id
+	p.Path = pls.Path
 
 	if p.IsSmartPlaylist() {
 		// Do not update tracks at this point, as it may take a long time and lock the DB, breaking the scan process
@@ -166,6 +168,21 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 }
 
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
+	normalizedPath := model.NormalizePlaylistPath(path)
+	nfdPath := model.NormalizePlaylistPathNFD(path)
+
+	if pls, err := r.findBy(Eq{"path": normalizedPath}); err == nil || !errors.Is(err, model.ErrNotFound) {
+		return pls, err
+	}
+
+	// Fallback to legacy paths stored using different normalization
+	if nfdPath != normalizedPath {
+		if pls, err := r.findBy(Eq{"path": nfdPath}); err == nil || !errors.Is(err, model.ErrNotFound) {
+			return pls, err
+		}
+	}
+
+	// Final attempt with the raw path to cover any unexpected formats
 	return r.findBy(Eq{"path": path})
 }
 
