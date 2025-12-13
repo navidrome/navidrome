@@ -1,4 +1,10 @@
 const stylesheet = `
+.react-jinke-music-player-main .music-player-panel svg {
+    color: #eee
+}
+.react-jinke-music-player-main .music-player-panel button:disabled svg {
+    opacity: 0.3
+}
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
     color: #D60017
 }
@@ -27,7 +33,6 @@ const stylesheet = `
 .react-jinke-music-player-main .audio-item.playing .player-singer {
     color: #ff4e6b !important
 }
-.react-jinke-music-player-main .lyric-btn,
 .react-jinke-music-player-main .lyric-btn-active svg{
     color: #ff4e6b !important
 }
