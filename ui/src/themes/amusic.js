@@ -194,7 +194,12 @@ export default {
     },
     RaDeleteWithConfirmButton: {
       deleteButton: {
-        color: 'unset',
+        color: '#fff',
+      },
+    },
+    RaBulkDeleteWithUndoButton: {
+      deleteButton: {
+        color: '#fff',
       },
     },
     RaPaginationActions: {
