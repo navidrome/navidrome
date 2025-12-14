@@ -80,14 +80,13 @@ const authProvider = {
       }
 
       return Promise.resolve()
-    } catch (err) {
-      console.error('Logout failed:', err)
+    } catch (error) {
       removeItems()
       if (window.eventSource) {
         window.eventSource.close()
         window.eventSource = null
       }
-      return Promise.resolve()
+      throw new Error(error)
     }
   },
 
