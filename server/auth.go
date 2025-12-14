@@ -24,6 +24,7 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
+	httputils "github.com/navidrome/navidrome/utils/http"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -46,6 +47,14 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func logout(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		httputils.ClearJWTEventCookie(w, r)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message":"logged out"}`))
+	}
+}
+
 func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
 	user, err := validateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
@@ -65,6 +74,9 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 	}
 	payload := buildAuthPayload(user)
 	payload["token"] = tokenString
+
+	httputils.SetJWTEventCookie(w, r, tokenString)
+
 	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
