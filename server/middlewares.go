@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
+	httputils "github.com/navidrome/navidrome/utils/http"
 	"github.com/unrolled/secure"
 )
 
@@ -205,7 +206,7 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 		// Call the serverAddress function to get the scheme and host of the server
 		// handling the request. If a host is found, modify the request object to use
 		// that host and scheme instead of the original ones.
-		if rScheme, rHost := serverAddress(r); rHost != "" {
+		if rScheme, rHost := httputils.ServerAddress(r); rHost != "" {
 			r.Host = rHost
 			r.URL.Scheme = rScheme
 		}
@@ -216,58 +217,6 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 
 	// Return the new handler function as a http.Handler object.
 	return http.HandlerFunc(fn)
-}
-
-// Define constants for the X-Forwarded-* header keys.
-var (
-	xForwardedHost   = http.CanonicalHeaderKey("X-Forwarded-Host")
-	xForwardedProto  = http.CanonicalHeaderKey("X-Forwarded-Proto")
-	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Scheme")
-)
-
-// serverAddress is a helper function that returns the scheme and host of the server
-// handling the given request, as determined by the presence of X-Forwarded-* headers
-// or the scheme and host of the request URL.
-func serverAddress(r *http.Request) (scheme, host string) {
-	// Save the original request host for later comparison.
-	origHost := r.Host
-
-	// Determine the protocol of the request based on the presence of a TLS connection.
-	protocol := "http"
-	if r.TLS != nil {
-		protocol = "https"
-	}
-
-	// Get the X-Forwarded-Host header and extract the first host name if there are
-	// multiple hosts listed. If there is no X-Forwarded-Host header, use the original
-	// request host as the default.
-	xfh := r.Header.Get(xForwardedHost)
-	if xfh != "" {
-		i := strings.Index(xfh, ",")
-		if i == -1 {
-			i = len(xfh)
-		}
-		xfh = xfh[:i]
-	}
-	host = cmp.Or(xfh, r.Host)
-
-	// Determine the protocol and scheme of the request based on the presence of
-	// X-Forwarded-* headers or the scheme of the request URL.
-	scheme = cmp.Or(
-		r.Header.Get(xForwardedProto),
-		r.Header.Get(xForwardedScheme),
-		r.URL.Scheme,
-		protocol,
-	)
-
-	// If the request host has changed due to the X-Forwarded-Host header, log a trace
-	// message with the original and new host values, as well as the scheme and URL.
-	if host != origHost {
-		log.Trace(r.Context(), "Request host has changed", "origHost", origHost, "host", host, "scheme", scheme, "url", r.URL)
-	}
-
-	// Return the scheme and host of the server handling the request.
-	return scheme, host
 }
 
 // URLParamsMiddleware is a middleware function that decodes the query string of
