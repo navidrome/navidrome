@@ -50,8 +50,9 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 func logout(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		httputils.ClearJWTEventCookie(w, r)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"logged out"}`))
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{
+			"message": "logged out",
+		})
 	}
 }
 

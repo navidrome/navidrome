@@ -18,7 +18,7 @@ var _ = Describe("Http Utils", func() {
 	BeforeEach(func() {
 		w = httptest.NewRecorder()
 		r = httptest.NewRequest("GET", "/api/events", nil)
-		token = "fake-jwt-token"
+		token = "fake-jwt-token" // #nosec G101
 	})
 
 	Describe("SetJWTEventCookie", func() {
