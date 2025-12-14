@@ -60,6 +60,21 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+
+				var jwtCookie *http.Cookie
+				for _, c := range resp.Result().Cookies() {
+					if c.Name == consts.JWTCookie {
+						jwtCookie = c
+						break
+					}
+				}
+
+				Expect(jwtCookie).ToNot(BeNil())
+				Expect(jwtCookie.Name).To(Equal(consts.JWTCookie))
+				Expect(jwtCookie.Value).To(Equal(parsed["token"]))
+				Expect(jwtCookie.SameSite).To(Equal(http.SameSiteLaxMode))
+				Expect(jwtCookie.Path).To(Equal("/api/events"))
+				Expect(jwtCookie.HttpOnly).To(BeTrue())
 			})
 		})
 
@@ -213,6 +228,21 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Jane"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+
+				var jwtCookie *http.Cookie
+				for _, c := range resp.Result().Cookies() {
+					if c.Name == consts.JWTCookie {
+						jwtCookie = c
+						break
+					}
+				}
+
+				Expect(jwtCookie).ToNot(BeNil())
+				Expect(jwtCookie.Name).To(Equal(consts.JWTCookie))
+				Expect(jwtCookie.Value).To(Equal(parsed["token"]))
+				Expect(jwtCookie.SameSite).To(Equal(http.SameSiteLaxMode))
+				Expect(jwtCookie.Path).To(Equal("/api/events"))
+				Expect(jwtCookie.HttpOnly).To(BeTrue())
 			})
 		})
 	})
@@ -342,4 +372,47 @@ var _ = Describe("Auth", func() {
 			Expect(u.IsAdmin).To(BeFalse())
 		})
 	})
+
+	Describe("logout", func() {
+		var ds model.DataStore
+		var req *http.Request
+		var resp *httptest.ResponseRecorder
+
+		BeforeEach(func() {
+			ds = &tests.MockDataStore{}
+			auth.Init(ds)
+			resp = httptest.NewRecorder()
+		})
+
+		It("clears the JWT cookie and returns 200", func() {
+			req = httptest.NewRequest("POST", "/logout", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  consts.JWTCookie,
+				Value: "sometoken",
+				Path:  "/api/events",
+			})
+
+			logout(ds)(resp, req)
+			Expect(resp.Code).To(Equal(http.StatusOK))
+
+			var parsed map[string]interface{}
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
+			Expect(parsed["message"]).To(Equal("logged out"))
+
+			var jwtCookie *http.Cookie
+			for _, c := range resp.Result().Cookies() {
+				if c.Name == consts.JWTCookie {
+					jwtCookie = c
+					break
+				}
+			}
+
+			Expect(jwtCookie).ToNot(BeNil())
+			Expect(jwtCookie.Value).To(BeEmpty())
+			Expect(jwtCookie.Path).To(Equal("/api/events"))
+			Expect(jwtCookie.HttpOnly).To(BeTrue())
+			Expect(jwtCookie.MaxAge).To(Equal(-1))
+		})
+	})
+
 })
