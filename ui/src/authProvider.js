@@ -68,7 +68,7 @@ const authProvider = {
     try {
       await fetch(baseUrl('auth/logout'), {
         method: 'POST',
-        credentials: 'include', 
+        credentials: 'include',
       })
 
       removeItems()
