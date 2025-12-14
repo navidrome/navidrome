@@ -64,9 +64,31 @@ const authProvider = {
       })
   },
 
-  logout: () => {
-    removeItems()
-    return Promise.resolve()
+  logout: async () => {
+    try {
+      await fetch(baseUrl('auth/logout'), {
+        method: 'POST',
+        credentials: 'include', 
+      })
+
+      removeItems()
+
+      // Close SSE connection if any is opened
+      if (window.eventSource) {
+        window.eventSource.close()
+        window.eventSource = null
+      }
+
+      return Promise.resolve()
+    } catch (err) {
+      console.error('Logout failed:', err)
+      removeItems()
+      if (window.eventSource) {
+        window.eventSource.close()
+        window.eventSource = null
+      }
+      return Promise.resolve()
+    }
   },
 
   checkAuth: () =>

@@ -6,10 +6,8 @@ import config from './config'
 
 const newEventStream = async () => {
   let url = baseUrl(`${REST_URL}/events`)
-  if (localStorage.getItem('token')) {
-    url = url + `?jwt=${localStorage.getItem('token')}`
-  }
-  return new EventSource(url)
+
+  return new EventSource(url, { withCredentials: true })
 }
 
 let eventStream
