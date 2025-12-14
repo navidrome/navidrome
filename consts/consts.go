@@ -22,6 +22,7 @@ const (
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
 	JWTSecretKey           = "JWTSecret"
 	JWTIssuer              = "ND"
+	JWTCookie              = "jwt"
 	DefaultSessionTimeout  = 48 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
