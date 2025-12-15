@@ -88,7 +88,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		shutdown:          make(chan struct{}),
 		workerDone:        make(chan struct{}),
 	}
-	if conf.Server.EnableNowPlaying {
+	if conf.Server.NowPlaying.Enabled {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
 			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		})
@@ -216,7 +216,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
-	if conf.Server.EnableNowPlaying {
+	if conf.Server.NowPlaying.Enabled {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 	player, _ := request.PlayerFrom(ctx)

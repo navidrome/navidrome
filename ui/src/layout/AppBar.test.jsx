@@ -39,6 +39,7 @@ describe('<AppBar />', () => {
   beforeEach(() => {
     config.devActivityPanel = true
     config.enableNowPlaying = true
+    config.nowPlayingAdminOnly = true
     store = createStore(combineReducers({ activity: activityReducer }), {
       activity: { nowPlayingCount: 0 },
     })
@@ -61,5 +62,15 @@ describe('<AppBar />', () => {
       </Provider>,
     )
     expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('shows NowPlayingPanel to all users when adminOnly is false', () => {
+    config.nowPlayingAdminOnly = false
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.getByTestId('now-playing-panel')).toBeInTheDocument()
   })
 })
