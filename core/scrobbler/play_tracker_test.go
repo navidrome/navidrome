@@ -148,7 +148,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
+			conf.Server.NowPlaying.Enabled = false
 			tracker = newPlayTracker(ds, eventBroker, nil)
 			info := PlaybackSession{MediaFile: track, Start: time.Now(), Username: "user"}
 			_ = tracker.playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
@@ -455,8 +455,8 @@ var _ = Describe("PlayTracker", func() {
 				Expect(evts[3].(*events.NowPlayingCount).Count).To(Equal(0))
 			})
 
-			It("does NOT broadcast when EnableNowPlaying is false", func() {
-				conf.Server.EnableNowPlaying = false
+			It("does NOT broadcast when NowPlaying is disabled", func() {
+				conf.Server.NowPlaying.Enabled = false
 				tracker = newPlayTracker(ds, eventBroker, nil)
 				tracker.builtinScrobblers["fake"] = fake
 
