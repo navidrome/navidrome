@@ -1,6 +1,7 @@
 package public
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -185,11 +186,14 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render template
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = tmpl.Execute(w, data)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
 		log.Error(r.Context(), "Error executing aplayer template", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(buf.Bytes())
 }
 
 
