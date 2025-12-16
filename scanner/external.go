@@ -14,6 +14,12 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+const (
+	// argLengthThreshold is the threshold for switching from command-line args to file-based target passing.
+	// Set conservatively at 24KB to support Windows (~32KB limit) with margin for env vars.
+	argLengthThreshold = 24 * 1024
+)
+
 // scannerExternal is a scanner that runs an external process to do the scanning. It is used to avoid
 // memory leaks or retention in the main process, as the scanner can consume a lot of memory. The
 // external process will be spawned with the same executable as the current process, and will run
@@ -45,10 +51,14 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []mod
 
 	// Add targets if provided
 	if len(targets) > 0 {
-		for _, target := range targets {
-			args = append(args, "-t", target.String())
+		targetArgs, cleanup, err := targetArguments(ctx, targets, argLengthThreshold)
+		if err != nil {
+			progress <- &ProgressInfo{Error: err.Error()}
+			return
 		}
-		log.Debug(ctx, "Spawning external scanner process with targets", "fullScan", fullScan, "path", exe, "targets", targets)
+		defer cleanup()
+		log.Debug(ctx, "Spawning external scanner process with target file", "fullScan", fullScan, "path", exe, "numTargets", len(targets))
+		args = append(args, targetArgs...)
 	} else {
 		log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
 	}
@@ -96,6 +106,64 @@ func (s *scannerExternal) wait(cmd *exec.Cmd, out *io.PipeWriter) {
 		return
 	}
 	_ = out.Close()
+}
+
+// targetArguments builds command-line arguments for the given scan targets.
+// If the estimated argument length exceeds a threshold, it writes the targets to a temp file
+// and returns the --target-file argument instead.
+// Returns the arguments, a cleanup function to remove any temp file created, and an error if any.
+func targetArguments(ctx context.Context, targets []model.ScanTarget, lengthThreshold int) ([]string, func(), error) {
+	var args []string
+
+	// Estimate argument length to decide whether to use file-based approach
+	argLength := estimateArgLength(targets)
+
+	if argLength > lengthThreshold {
+		// Write targets to temp file and pass via --target-file
+		targetFile, err := writeTargetsToFile(targets)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to write targets to file: %w", err)
+		}
+		args = append(args, "--target-file", targetFile)
+		return args, func() {
+			os.Remove(targetFile) // Clean up temp file
+		}, nil
+	}
+
+	// Use command-line arguments for small target lists
+	for _, target := range targets {
+		args = append(args, "-t", target.String())
+	}
+	return args, func() {}, nil
+}
+
+// estimateArgLength estimates the total length of command-line arguments for the given targets.
+func estimateArgLength(targets []model.ScanTarget) int {
+	length := 0
+	for _, target := range targets {
+		// Each target adds: "-t " + target string + space
+		length += 3 + len(target.String()) + 1
+	}
+	return length
+}
+
+// writeTargetsToFile writes the targets to a temporary file, one per line.
+// Returns the path to the temp file, which the caller should clean up.
+func writeTargetsToFile(targets []model.ScanTarget) (string, error) {
+	tmpFile, err := os.CreateTemp("", "navidrome-scan-targets-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer tmpFile.Close()
+
+	for _, target := range targets {
+		if _, err := fmt.Fprintln(tmpFile, target.String()); err != nil {
+			os.Remove(tmpFile.Name())
+			return "", fmt.Errorf("failed to write to temp file: %w", err)
+		}
+	}
+
+	return tmpFile.Name(), nil
 }
 
 var _ scanner = (*scannerExternal)(nil)
