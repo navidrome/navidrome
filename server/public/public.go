@@ -57,6 +57,7 @@ func (pub *Router) routes() http.Handler {
 				r.HandleFunc("/d/{id}", pub.handleDownloads)
 			}
 			r.HandleFunc("/{id}/m3u", pub.handleM3U)
+			r.HandleFunc("/{id}/aplayer", pub.handleAPlayer)
 			r.HandleFunc("/{id}", pub.handleShares)
 			r.HandleFunc("/", pub.handleShares)
 			r.Handle("/*", pub.assetsHandler)

@@ -2,16 +2,23 @@ package public
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"html/template"
 	"net/http"
 	"path"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (pub *Router) handleShares(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +65,144 @@ func (pub *Router) handleM3U(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "audio/x-mpegurl")
 	_, _ = w.Write([]byte(s.ToM3U8()))
 }
+
+func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
+	id, err := req.Params(r).String(":id")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Load share
+	s, err := pub.share.Load(r.Context(), id)
+	if err != nil {
+		checkShareError(r.Context(), w, err, id)
+		return
+	}
+
+	// Map share info for APlayer
+	s = pub.mapShareInfo(r, *s)
+
+	// Read template
+	tmplData, err := resources.FS().Open("aplayer.html")
+	if err != nil {
+		log.Error(r.Context(), "Could not find aplayer.html template", err)
+		http.Error(w, "Template not found", http.StatusInternalServerError)
+		return
+	}
+	defer tmplData.Close()
+
+	tmplContent := make([]byte, 0)
+	buf := make([]byte, 1024)
+	for {
+		n, err := tmplData.Read(buf)
+		if n > 0 {
+			tmplContent = append(tmplContent, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	// Read APlayer script
+	scriptData, err := resources.FS().Open("aplayer-share.js")
+	if err != nil {
+		log.Error(r.Context(), "Could not find aplayer-share.js", err)
+		http.Error(w, "Script not found", http.StatusInternalServerError)
+		return
+	}
+	defer scriptData.Close()
+
+	scriptContent := make([]byte, 0)
+	for {
+		n, err := scriptData.Read(buf)
+		if n > 0 {
+			scriptContent = append(scriptContent, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	// Parse template
+	tmpl, err := template.New("aplayer").Parse(string(tmplContent))
+	if err != nil {
+		log.Error(r.Context(), "Error parsing aplayer.html template", err)
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare share data for JSON
+	type aplayerTrack struct {
+		ID        string    `json:"id"`
+		Title     string    `json:"title"`
+		Artist    string    `json:"artist"`
+		Album     string    `json:"album"`
+		Duration  float32   `json:"duration"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	}
+
+	type aplayerShareInfo struct {
+		ID           string          `json:"id"`
+		Description  string          `json:"description"`
+		Downloadable bool            `json:"downloadable"`
+		Tracks       []aplayerTrack  `json:"tracks"`
+		ImageUrl     string          `json:"imageUrl"`
+	}
+
+	shareData := aplayerShareInfo{
+		ID:           s.ID,
+		Description:  s.Description,
+		Downloadable: s.Downloadable,
+		ImageUrl:     s.ImageURL,
+		Tracks: slice.Map(s.Tracks, func(mf model.MediaFile) aplayerTrack {
+			return aplayerTrack{
+				ID:        mf.ID,
+				Title:     mf.Title,
+				Artist:    mf.Artist,
+				Album:     mf.Album,
+				Duration:  mf.Duration,
+				UpdatedAt: mf.UpdatedAt,
+			}
+		}),
+	}
+
+	shareInfoJSON, err := json.Marshal(shareData)
+	if err != nil {
+		log.Error(r.Context(), "Error converting share data to JSON", err)
+		http.Error(w, "Error processing share data", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare template data
+	description := s.Description
+	if description == "" {
+		description = str.SanitizeText(s.Contents)
+	}
+	if description == "" {
+		description = "Shared Music"
+	}
+
+	baseURL := str.SanitizeText(conf.Server.BasePath)
+	if baseURL == "" {
+		baseURL = ""
+	}
+
+	data := map[string]interface{}{
+		"ShareDescription": description,
+		"ShareInfo":        string(shareInfoJSON),
+		"APlayerScript":    string(scriptContent),
+		"BaseURL":          baseURL,
+	}
+
+	// Render template
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		log.Error(r.Context(), "Error executing aplayer template", err)
+	}
+}
+
 
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
 	switch {
