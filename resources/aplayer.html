@@ -6,8 +6,8 @@
     <title>{{.ShareDescription}} - Navidrome</title>
     <meta name="description" content="Shared music player - {{.ShareDescription}}">
 
-    <!-- APlayer CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.css">
+    <!-- APlayer CSS (vendored locally) -->
+    <link rel="stylesheet" href="{{.BaseURL}}/public/aplayer/APlayer.min.css">
 
     <style>
         * {
@@ -119,8 +119,8 @@
         };
     </script>
 
-    <!-- APlayer library -->
-    <script src="https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.js"></script>
+    <!-- APlayer library (vendored locally) -->
+    <script src="{{.BaseURL}}/public/aplayer/APlayer.min.js"></script>
 
     <!-- APlayer Share integration script -->
     <script>{{.APlayerScript}}</script>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"html/template"
+	"io"
 	"net/http"
 	"path"
 	"time"
@@ -92,16 +93,11 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tmplData.Close()
 
-	tmplContent := make([]byte, 0)
-	buf := make([]byte, 1024)
-	for {
-		n, err := tmplData.Read(buf)
-		if n > 0 {
-			tmplContent = append(tmplContent, buf[:n]...)
-		}
-		if err != nil {
-			break
-		}
+	tmplContent, err := io.ReadAll(tmplData)
+	if err != nil {
+		log.Error(r.Context(), "Error reading aplayer.html template", err)
+		http.Error(w, "Error reading template", http.StatusInternalServerError)
+		return
 	}
 
 	// Read APlayer script
@@ -113,15 +109,11 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 	defer scriptData.Close()
 
-	scriptContent := make([]byte, 0)
-	for {
-		n, err := scriptData.Read(buf)
-		if n > 0 {
-			scriptContent = append(scriptContent, buf[:n]...)
-		}
-		if err != nil {
-			break
-		}
+	scriptContent, err := io.ReadAll(scriptData)
+	if err != nil {
+		log.Error(r.Context(), "Error reading aplayer-share.js", err)
+		http.Error(w, "Error reading script", http.StatusInternalServerError)
+		return
 	}
 
 	// Parse template
@@ -184,9 +176,6 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	baseURL := str.SanitizeText(conf.Server.BasePath)
-	if baseURL == "" {
-		baseURL = ""
-	}
 
 	data := map[string]interface{}{
 		"ShareDescription": description,

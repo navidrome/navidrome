@@ -56,6 +56,17 @@ You can either:
 3. Tokens automatically expire when the share expires
 4. All streaming is done through Navidrome's public API endpoints
 
+### CDN vs. Vendored Assets
+
+**✅ Current Implementation**: APlayer assets are vendored locally and served from the application
+
+- Files are embedded in the Navidrome binary
+- No external CDN dependencies
+- Works in offline/intranet environments
+- Better privacy and performance
+
+For details on the vendoring implementation, see [VENDOR_APLAYER.md](VENDOR_APLAYER.md).
+
 ### Security
 
 - No username/password required

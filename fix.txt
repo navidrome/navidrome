@@ -1,0 +1,78 @@
+server/public/handle_shares.go：
+
+This manual read loop can be simplified by using io.ReadAll. This will make the code more concise and robust, as it properly handles errors during reading. The current implementation ignores non-EOF errors from Read. Note that the buf variable at line 96 is also used by the second loop; if you apply this suggestion, you'll need to address that as well (e.g., by applying a similar change to the second loop and removing buf). You'll need to add "io" to your imports.
+
+tmplContent, err := io.ReadAll(tmplData)
+if err != nil {
+	log.Error(r.Context(), "Error reading aplayer.html template", err)
+	http.Error(w, "Template not found", http.StatusInternalServerError)
+	return
+}
+
+
+
+server/public/handle_shares.go：
+
+Comment on lines +116 to +125
+	scriptContent := make([]byte, 0)
+	for {
+		n, err := scriptData.Read(buf)
+		if n > 0 {
+			scriptContent = append(scriptContent, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+
+Similar to the file reading above, this manual loop can be replaced with io.ReadAll for simplicity and better error handling. Applying this change along with the one above will allow you to remove the buf variable defined at line 96.
+
+scriptContent, err := io.ReadAll(scriptData)
+if err != nil {
+	log.Error(r.Context(), "Error reading aplayer-share.js", err)
+	http.Error(w, "Script not found", http.StatusInternalServerError)
+	return
+}
+
+
+
+APLAYER_INTEGRATION.md：
+
+  <meta name="description" content="Shared music player - {{.ShareDescription}}">
+
+    <!-- APlayer CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.css">
+The APlayer library CSS and JS (on line 123) are loaded from a public CDN. This creates a dependency on an external service (cdn.jsdelivr.net) and requires an internet connection for the shared player to work. For a self-hosted application like Navidrome, it's often better to vendor these assets and serve them directly from the application. This improves reliability, works in offline/intranet environments, and avoids potential privacy issues with CDNs. Please consider vendoring APlayer.min.css and APlayer.min.js.
+
+
+
+
+
+server/public/handle_shares.go：
+
+	baseURL := str.SanitizeText(conf.Server.BasePath)
+	if baseURL == "" {
+		baseURL = ""
+	}
+	
+	This if block is redundant. If baseURL is already "", setting it to "" again has no effect. You can safely remove these lines.
+
+baseURL := str.SanitizeText(conf.Server.BasePath)
+
+
+
+
+
+ui/src/share/ShareEdit.jsx：
+
+          <Typography variant="body2" color="textSecondary" gutterBottom>
+            APlayer Embed URL
+          </Typography>
+          <Link source="APlayerURL" href={aplayerUrl} target="_blank" rel="noopener noreferrer">
+
+Similar to the Share URL link above, the source prop is not valid for a Material-UI Link component and should be removed.
+
+Suggested change
+          <Link source="APlayerURL" href={aplayerUrl} target="_blank" rel="noopener noreferrer">
+		  to
+          <Link href={aplayerUrl} target="_blank" rel="noopener noreferrer">

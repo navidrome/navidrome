@@ -22,7 +22,7 @@ export const ShareEdit = (props) => {
           <Typography variant="body2" color="textSecondary" gutterBottom>
             Share URL
           </Typography>
-          <Link source="URL" href={url} target="_blank" rel="noopener noreferrer">
+          <Link href={url} target="_blank" rel="noopener noreferrer">
             {url}
           </Link>
         </Box>
@@ -30,7 +30,7 @@ export const ShareEdit = (props) => {
           <Typography variant="body2" color="textSecondary" gutterBottom>
             APlayer Embed URL
           </Typography>
-          <Link source="APlayerURL" href={aplayerUrl} target="_blank" rel="noopener noreferrer">
+          <Link href={aplayerUrl} target="_blank" rel="noopener noreferrer">
             {aplayerUrl}
           </Link>
         </Box>
