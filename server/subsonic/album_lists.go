@@ -3,10 +3,10 @@ package subsonic
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
-	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -209,18 +209,24 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
+	// Get user's accessible library IDs for filtering
+	accessibleLibraryIds, _ := selectedMusicFolderIds(r, false)
+
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
-	var i int32
-	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.NowPlayingInfo) responses.NowPlayingEntry {
-		return responses.NowPlayingEntry{
+	// Filter entries to only include tracks from libraries the user has access to
+	for i, np := range npInfo {
+		if !slices.Contains(accessibleLibraryIds, np.MediaFile.LibraryID) {
+			continue
+		}
+		response.NowPlaying.Entry = append(response.NowPlaying.Entry, responses.NowPlayingEntry{
 			Child:      childFromMediaFile(ctx, np.MediaFile),
 			UserName:   np.Username,
 			MinutesAgo: int32(time.Since(np.Start).Minutes()),
-			PlayerId:   i + 1, // Fake numeric playerId, it does not seem to be used for anything
+			PlayerId:   int32(i), // Fake numeric playerId, it does not seem to be used for anything
 			PlayerName: np.PlayerName,
-		}
-	})
+		})
+	}
 	return response, nil
 }
 
