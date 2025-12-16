@@ -51,8 +51,10 @@ func unmarshalParticipants(data string) (model.Participants, error) {
 }
 
 func (r sqlRepository) updateParticipants(itemID string, participants model.Participants) error {
-	ids := participants.AllIDs()
-	sqd := Delete(r.tableName + "_artists").Where(And{Eq{r.tableName + "_id": itemID}, NotEq{"artist_id": ids}})
+	// Delete all existing participant entries for this item.
+	// This ensures stale role associations are removed when an artist's role changes
+	// (e.g., an artist was both albumartist and composer, but is now only composer).
+	sqd := Delete(r.tableName + "_artists").Where(Eq{r.tableName + "_id": itemID})
 	_, err := r.executeSQL(sqd)
 	if err != nil {
 		return err
