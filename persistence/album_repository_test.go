@@ -512,6 +512,70 @@ var _ = Describe("AlbumRepository", func() {
 			// Clean up the test album created for this test
 			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
+
+		It("removes stale role associations when artist role changes", func() {
+			// Regression test for issue #4242: Composers displayed in albumartist list
+			// This happens when an artist's role changes (e.g., was both albumartist and composer,
+			// now only composer) and the old role association isn't properly removed.
+
+			// Create an artist that will have changing roles
+			artist := &model.Artist{
+				ID:              "role-change-artist-1",
+				Name:            "Role Change Artist",
+				OrderArtistName: "role change artist",
+			}
+			err := createArtistWithLibrary(artistRepo, artist, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create album with artist as both albumartist and composer
+			album := &model.Album{
+				LibraryID:     1,
+				ID:            "test-album-role-change",
+				Name:          "Test Album Role Change",
+				AlbumArtistID: "role-change-artist-1",
+				AlbumArtist:   "Role Change Artist",
+				Participants: model.Participants{
+					model.RoleAlbumArtist: {
+						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+					},
+					model.RoleComposer: {
+						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+					},
+				},
+			}
+
+			err = albumRepo.Put(album)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify initial state: artist has both albumartist and composer roles
+			expected := []albumArtistRecord{
+				{ArtistID: "role-change-artist-1", Role: "albumartist", SubRole: ""},
+				{ArtistID: "role-change-artist-1", Role: "composer", SubRole: ""},
+			}
+			verifyAlbumArtists(album.ID, expected)
+
+			// Now update album so artist is ONLY a composer (remove albumartist role)
+			album.Participants = model.Participants{
+				model.RoleComposer: {
+					{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+				},
+			}
+
+			err = albumRepo.Put(album)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify that the albumartist role was removed - only composer should remain
+			// This is the key test: before the fix, the albumartist role would remain
+			// causing composers to appear in the albumartist filter
+			expectedAfter := []albumArtistRecord{
+				{ArtistID: "role-change-artist-1", Role: "composer", SubRole: ""},
+			}
+			verifyAlbumArtists(album.ID, expectedAfter)
+
+			// Clean up
+			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+		})
 	})
 })
 
