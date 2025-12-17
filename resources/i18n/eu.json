@@ -302,6 +302,8 @@
       },
       "actions": {
         "scan": "Arakatu liburutegia",
+        "quickScan": "Araketa bizkorra",
+        "fullScan": "Araketa sakona",
         "manageUsers": "Kudeatu erabiltzaileen sarbidea",
         "viewDetails": "Ikusi xehetasunak"
       },
@@ -310,6 +312,9 @@
         "updated": "Liburutegia ondo eguneratu da",
         "deleted": "Liburutegia ondo ezabatu da",
         "scanStarted": "Liburutegiaren araketa hasi da",
+        "quickScanStarted": "Araketa bizkorra hasi da",
+        "fullScanStarted": "Araketa sakona hasi da",
+        "scanError": "Errorea araketa abiaraztean. Aztertu erregistroak",
         "scanCompleted": "Liburutegiaren araketa amaitu da"
       },
       "validation": {
@@ -459,7 +464,7 @@
       "bad_item": "Elementu okerra",
       "item_doesnt_exist": "Elementua ez dago",
       "http_error": "Errorea zerbitzariarekin komunikatzerakoan",
-      "data_provider_error": "Errorea datuen hornitzailean. Berrikusi kontsola xehetasun gehiagorako.",
+      "data_provider_error": "Errorea datuen hornitzailean. Aztertu kontsola xehetasun gehiagorako.",
       "i18n_error": "Ezin izan dira zehaztutako hizkuntzaren itzulpenak kargatu",
       "canceled": "Ekintza bertan behera utzi da",
       "logged_out": "Saioa amaitu da, konektatu berriro.",
@@ -600,8 +605,9 @@
   "activity": {
     "title": "Ekintzak",
     "totalScanned": "Arakatutako karpeta guztiak",
-    "quickScan": "Arakatze azkarra",
+    "quickScan": "Arakatze bizkorra",
     "fullScan": "Arakatze sakona",
+    "selectiveScan": "Arakatze selektiboa",
     "serverUptime": "Zerbitzariak piztuta daraman denbora",
     "serverDown": "LINEAZ KANPO",
     "scanType": "Mota",
