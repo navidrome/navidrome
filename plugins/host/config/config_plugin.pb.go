@@ -10,8 +10,9 @@ package config
 
 import (
 	context "context"
-	wasm "github.com/knqyf263/go-plugin/wasm"
 	_ "unsafe"
+
+	wasm "github.com/knqyf263/go-plugin/wasm"
 )
 
 type configService struct{}

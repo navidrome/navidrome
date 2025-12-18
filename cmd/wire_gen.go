@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
@@ -29,9 +30,7 @@ import (
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
-)
 
-import (
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 

@@ -12,10 +12,11 @@ import (
 	context "context"
 	errors "errors"
 	fmt "fmt"
+	os "os"
+
 	wazero "github.com/tetratelabs/wazero"
 	api "github.com/tetratelabs/wazero/api"
 	sys "github.com/tetratelabs/wazero/sys"
-	os "os"
 )
 
 const MetadataAgentPluginAPIVersion = 1

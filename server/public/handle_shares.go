@@ -136,11 +136,11 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type aplayerShareInfo struct {
-		ID           string          `json:"id"`
-		Description  string          `json:"description"`
-		Downloadable bool            `json:"downloadable"`
-		Tracks       []aplayerTrack  `json:"tracks"`
-		ImageUrl     string          `json:"imageUrl"`
+		ID           string         `json:"id"`
+		Description  string         `json:"description"`
+		Downloadable bool           `json:"downloadable"`
+		Tracks       []aplayerTrack `json:"tracks"`
+		ImageUrl     string         `json:"imageUrl"`
 	}
 
 	shareData := aplayerShareInfo{
@@ -195,7 +195,6 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(buf.Bytes())
 }
-
 
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
 	switch {
