@@ -38,7 +38,7 @@
     // Convert share tracks to APlayer format
     const playlist = shareInfo.tracks.map(function(track) {
       // Stream URL uses the encoded track ID (contains JWT token)
-      const streamUrl = baseURL + '/public/s/' + track.id;
+      const streamUrl = baseURL + '/share/s/' + track.id;
 
       // Cover art URL - we'll construct it from the share's image
       const coverUrl = shareInfo.imageUrl || baseURL + '/android-chrome-192x192.png';
