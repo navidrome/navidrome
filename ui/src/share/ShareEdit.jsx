@@ -7,9 +7,10 @@ import {
   TextInput,
 } from 'react-admin'
 import { sharePlayerUrl, shareAPlayerUrl } from '../utils'
-import { Link, Box, Typography } from '@material-ui/core'
+import { Link, Box, Typography, Divider } from '@material-ui/core'
 import { DateField } from '../common'
 import config from '../config'
+import { EmbedCodeField } from './EmbedCodeField'
 
 export const ShareEdit = (props) => {
   const { id, basePath, hasCreate, ...rest } = props
@@ -33,6 +34,13 @@ export const ShareEdit = (props) => {
           <Link href={aplayerUrl} target="_blank" rel="noopener noreferrer">
             {aplayerUrl}
           </Link>
+        </Box>
+        <Box mb={3}>
+          <Divider />
+        </Box>
+        <EmbedCodeField url={aplayerUrl} title="Navidrome Music Player" />
+        <Box mb={3}>
+          <Divider />
         </Box>
         <TextInput source="description" />
         {config.enableDownloads && <BooleanInput source="downloadable" />}
