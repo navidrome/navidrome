@@ -2,9 +2,11 @@
 
 package schema
 
-import "encoding/json"
-import "fmt"
-import "reflect"
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+)
 
 type BasePermission struct {
 	// Explanation of why this permission is needed
