@@ -16,7 +16,7 @@ DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
 CROSS_TAGLIB_VERSION ?= 2.1.1-1
-GOLANGCI_LINT_VERSION ?= v2.6.2
+GOLANGCI_LINT_VERSION ?= v2.7.2
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
