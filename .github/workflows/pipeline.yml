@@ -217,7 +217,7 @@ jobs:
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: navidrome-${{ env.PLATFORM }}
           path: ./output
@@ -248,7 +248,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"          
 
       - name: Upload digest
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
@@ -270,7 +270,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -304,7 +304,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -356,7 +356,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           path: ./binaries
           pattern: navidrome-windows*
@@ -375,7 +375,7 @@ jobs:
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: navidrome-windows-installers
           path: binaries/msi/*.msi
@@ -393,7 +393,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           path: ./binaries
           pattern: navidrome-*
@@ -419,7 +419,7 @@ jobs:
           rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: packages
           path: dist/navidrome_0*
@@ -442,13 +442,13 @@ jobs:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
     steps:
       - name: Download all-packages artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: packages
           path: ./dist
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: navidrome_linux_${{ matrix.item }}
           path: dist/navidrome_0*_linux_${{ matrix.item }}
