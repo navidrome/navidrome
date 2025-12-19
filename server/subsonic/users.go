@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
@@ -40,7 +41,7 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	if username != loggedUser.UserName {
+	if !strings.EqualFold(username, loggedUser.UserName) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	response := newResponse()
