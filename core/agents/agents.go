@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
+// TODO(PLUGINS): Implement PluginLoader with new plugin system
 // PluginLoader defines an interface for loading plugins
 type PluginLoader interface {
 	// PluginNames returns the names of all plugins that implement a particular service

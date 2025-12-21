@@ -44,6 +44,7 @@ type PlayTracker interface {
 	Submit(ctx context.Context, submissions []Submission) error
 }
 
+// TODO(PLUGINS): Implement PluginLoader with new plugin system
 // PluginLoader is a minimal interface for plugin manager usage in PlayTracker
 // (avoids import cycles)
 type PluginLoader interface {
@@ -129,6 +130,7 @@ func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scro
 	return true
 }
 
+// TODO(PLUGINS): Implement refreshPluginScrobblers with new plugin system
 // refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers
 func (p *playTracker) refreshPluginScrobblers() {
 	p.mu.Lock()
