@@ -117,20 +117,20 @@ Expected output:
 
 ## API Endpoints Used
 
-| Service | Endpoint | Purpose |
-|---------|----------|---------|
-| Wikidata | `https://query.wikidata.org/sparql` | SPARQL queries for Wikipedia URLs and images |
-| DBpedia | `https://dbpedia.org/sparql` | Fallback SPARQL queries for Wikipedia URLs and short bios |
-| Wikipedia | `https://en.wikipedia.org/w/api.php` | MediaWiki API for article extracts |
+| Service   | Endpoint                             | Purpose                                                   |
+|-----------|--------------------------------------|-----------------------------------------------------------|
+| Wikidata  | `https://query.wikidata.org/sparql`  | SPARQL queries for Wikipedia URLs and images              |
+| DBpedia   | `https://dbpedia.org/sparql`         | Fallback SPARQL queries for Wikipedia URLs and short bios |
+| Wikipedia | `https://en.wikipedia.org/w/api.php` | MediaWiki API for article extracts                        |
 
 ## Implemented Functions
 
-| Function | Description |
-|----------|-------------|
-| `nd_manifest` | Returns plugin manifest with HTTP permissions |
-| `nd_get_artist_url` | Returns Wikipedia URL for an artist |
-| `nd_get_artist_biography` | Returns artist biography from Wikipedia |
-| `nd_get_artist_images` | Returns artist image URLs from Wikidata |
+| Function                  | Description                                   |
+|---------------------------|-----------------------------------------------|
+| `nd_manifest`             | Returns plugin manifest with HTTP permissions |
+| `nd_get_artist_url`       | Returns Wikipedia URL for an artist           |
+| `nd_get_artist_biography` | Returns artist biography from Wikipedia       |
+| `nd_get_artist_images`    | Returns artist image URLs from Wikidata       |
 
 ## License
 
