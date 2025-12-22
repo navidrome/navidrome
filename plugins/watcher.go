@@ -108,6 +108,11 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 
 // processPluginEvent handles the actual plugin load/unload/reload after debouncing
 func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) {
+	// Don't process if manager is stopping/stopped (atomic check to avoid race with Stop())
+	if m.stopped.Load() {
+		return
+	}
+
 	// Clean up debounce timer entry
 	m.debounceMu.Lock()
 	delete(m.debounceTimers, pluginName)
