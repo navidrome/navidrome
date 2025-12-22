@@ -24,6 +24,11 @@ var _ = Describe("Watcher", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 
+		// Use shorter debounce for faster tests
+		originalDebounce := debounceDuration
+		debounceDuration = 50 * time.Millisecond
+		DeferCleanup(func() { debounceDuration = originalDebounce })
+
 		// Get testdata directory
 		_, currentFile, _, ok := runtime.Caller(0)
 		Expect(ok).To(BeTrue())
@@ -71,7 +76,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for debounce + processing
 			Eventually(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 2*time.Second, 100*time.Millisecond).Should(ContainElement("watch-create"))
+			}, 1*time.Second, 50*time.Millisecond).Should(ContainElement("watch-create"))
 		})
 
 		It("reloads a plugin when the wasm file is modified", func() {
@@ -81,7 +86,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for it to be loaded
 			Eventually(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 2*time.Second, 100*time.Millisecond).Should(ContainElement("watch-modify"))
+			}, 1*time.Second, 50*time.Millisecond).Should(ContainElement("watch-modify"))
 
 			// Get the original plugin info
 			originalInfo := manager.GetPluginInfo()["watch-modify"]
@@ -101,7 +106,7 @@ var _ = Describe("Watcher", func() {
 			// but at least verify it's still loaded
 			Consistently(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 1*time.Second, 100*time.Millisecond).Should(ContainElement("watch-modify"))
+			}, 300*time.Millisecond, 50*time.Millisecond).Should(ContainElement("watch-modify"))
 		})
 
 		It("unloads a plugin when the wasm file is removed", func() {
@@ -111,7 +116,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for it to be loaded
 			Eventually(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 2*time.Second, 100*time.Millisecond).Should(ContainElement("watch-remove"))
+			}, 1*time.Second, 50*time.Millisecond).Should(ContainElement("watch-remove"))
 
 			// Remove the file
 			err := os.Remove(wasmPath)
@@ -120,7 +125,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for it to be unloaded
 			Eventually(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 2*time.Second, 100*time.Millisecond).ShouldNot(ContainElement("watch-remove"))
+			}, 1*time.Second, 50*time.Millisecond).ShouldNot(ContainElement("watch-remove"))
 		})
 	})
 
@@ -144,7 +149,7 @@ var _ = Describe("Watcher", func() {
 			// Wait a bit and verify plugin is NOT loaded
 			Consistently(func() []string {
 				return manager.PluginNames(string(CapabilityMetadataAgent))
-			}, 1*time.Second, 100*time.Millisecond).ShouldNot(ContainElement("no-watch"))
+			}, 300*time.Millisecond, 50*time.Millisecond).ShouldNot(ContainElement("no-watch"))
 		})
 	})
 })
