@@ -2,6 +2,8 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,10 +40,11 @@ type Manager struct {
 
 // pluginInstance represents a loaded plugin
 type pluginInstance struct {
-	name     string // Plugin name (from filename)
-	path     string // Path to the wasm file
-	manifest *Manifest
-	compiled *extism.CompiledPlugin
+	name         string // Plugin name (from filename)
+	path         string // Path to the wasm file
+	manifest     *Manifest
+	compiled     *extism.CompiledPlugin
+	capabilities []Capability // Auto-detected capabilities based on exported functions
 }
 
 // GetManager returns a singleton instance of the plugin manager.
@@ -121,6 +124,7 @@ func (m *Manager) Stop() error {
 
 // PluginNames returns the names of all plugins that implement a particular capability.
 // This is used by both agents and scrobbler systems to discover available plugins.
+// Capabilities are auto-detected from the plugin's exported functions.
 func (m *Manager) PluginNames(capability string) []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -128,7 +132,7 @@ func (m *Manager) PluginNames(capability string) []string {
 	var names []string
 	cap := Capability(capability)
 	for name, instance := range m.plugins {
-		if instance.manifest.HasCapability(cap) {
+		if hasCapability(instance.capabilities, cap) {
 			names = append(names, name)
 		}
 	}
@@ -142,7 +146,7 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 	instance, ok := m.plugins[name]
 	m.mu.RUnlock()
 
-	if !ok || !instance.manifest.HasCapability(CapabilityMetadataAgent) {
+	if !ok || !hasCapability(instance.capabilities, CapabilityMetadataAgent) {
 		return nil, false
 	}
 
@@ -256,7 +260,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
 	}
 
-	// Create temporary plugin to read manifest
+	// Create temporary plugin to read manifest and detect capabilities
 	tempPlugin, err := extism.NewPlugin(m.ctx, tempManifest, tempConfig, nil)
 	if err != nil {
 		return err
@@ -272,14 +276,14 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		return err
 	}
 
-	// Parse and validate manifest
-	manifest, err := ParseManifest(manifestBytes)
-	if err != nil {
-		return err
+	// Parse manifest (validation happens during unmarshal via generated code)
+	var manifest Manifest
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return fmt.Errorf("invalid plugin manifest: %w", err)
 	}
-	if err := manifest.Validate(); err != nil {
-		return err
-	}
+
+	// Detect capabilities based on exported functions
+	capabilities := detectCapabilities(tempPlugin)
 
 	// Now create the final compiled plugin with proper AllowedHosts
 	finalManifest := extism.Manifest{
@@ -306,10 +310,11 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 
 	m.mu.Lock()
 	m.plugins[name] = &pluginInstance{
-		name:     name,
-		path:     wasmPath,
-		manifest: manifest,
-		compiled: compiled,
+		name:         name,
+		path:         wasmPath,
+		manifest:     &manifest,
+		compiled:     compiled,
+		capabilities: capabilities,
 	}
 	m.mu.Unlock()
 

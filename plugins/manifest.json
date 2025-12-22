@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://navidrome.org/schemas/Manifest.json",
+  "title": "Manifest",
+  "description": "Plugin manifest for Navidrome plugins",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "author", "version"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The display name of the plugin",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "description": "The author of the plugin",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the plugin (semver recommended)",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of what the plugin does"
+    },
+    "website": {
+      "type": "string",
+      "description": "URL to the plugin's website or repository",
+      "format": "uri"
+    },
+    "permissions": {
+      "$ref": "#/$defs/Permissions"
+    }
+  },
+  "$defs": {
+    "Permissions": {
+      "type": "object",
+      "description": "Permissions required by the plugin",
+      "additionalProperties": false,
+      "properties": {
+        "http": {
+          "$ref": "#/$defs/HTTPPermission"
+        },
+        "config": {
+          "$ref": "#/$defs/ConfigPermission"
+        }
+      }
+    },
+    "HTTPPermission": {
+      "type": "object",
+      "description": "HTTP access permissions for a plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why HTTP access is needed"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "description": "List of allowed host patterns for HTTP requests (e.g., 'api.example.com', '*.spotify.com')",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ConfigPermission": {
+      "type": "object",
+      "description": "Configuration access permissions for a plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why config access is needed"
+        }
+      }
+    }
+  }
+}

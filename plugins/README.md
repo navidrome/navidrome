@@ -44,34 +44,35 @@ Plugins must export an `nd_manifest` function that returns JSON:
   "version": "1.0.0",
   "description": "Plugin description",
   "website": "https://example.com",
-  "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
       "reason": "Fetch metadata from external API",
-      "allowedUrls": {
-        "https://api.example.com/*": ["GET"]
-      }
+      "allowedHosts": ["api.example.com", "*.musicbrainz.org"]
     }
   }
 }
 ```
 
+**Note**: Capabilities are auto-detected based on which functions the plugin exports. You don't need to declare them in the manifest.
+
 ## Capabilities
+
+Capabilities are automatically detected by examining which functions a plugin exports. There's no need to declare capabilities in the manifest.
 
 ### MetadataAgent
 
-Provides artist and album metadata. Implement one or more of these functions:
+Provides artist and album metadata. A plugin has this capability if it exports one or more of these functions:
 
-| Function | Input | Output | Description |
-|----------|-------|--------|-------------|
-| `nd_get_artist_mbid` | `{id, name}` | `{mbid}` | Get MusicBrainz ID |
-| `nd_get_artist_url` | `{id, name, mbid?}` | `{url}` | Get artist URL |
-| `nd_get_artist_biography` | `{id, name, mbid?}` | `{biography}` | Get artist biography |
-| `nd_get_similar_artists` | `{id, name, mbid?, limit}` | `{artists: [{name, mbid?}]}` | Get similar artists |
-| `nd_get_artist_images` | `{id, name, mbid?}` | `{images: [{url, size}]}` | Get artist images |
-| `nd_get_artist_top_songs` | `{id, name, mbid?, count}` | `{songs: [{name, mbid?}]}` | Get top songs |
-| `nd_get_album_info` | `{name, artist, mbid?}` | `{name, mbid, description, url}` | Get album info |
-| `nd_get_album_images` | `{name, artist, mbid?}` | `{images: [{url, size}]}` | Get album images |
+| Function                  | Input                      | Output                           | Description          |
+|---------------------------|----------------------------|----------------------------------|----------------------|
+| `nd_get_artist_mbid`      | `{id, name}`               | `{mbid}`                         | Get MusicBrainz ID   |
+| `nd_get_artist_url`       | `{id, name, mbid?}`        | `{url}`                          | Get artist URL       |
+| `nd_get_artist_biography` | `{id, name, mbid?}`        | `{biography}`                    | Get artist biography |
+| `nd_get_similar_artists`  | `{id, name, mbid?, limit}` | `{artists: [{name, mbid?}]}`     | Get similar artists  |
+| `nd_get_artist_images`    | `{id, name, mbid?}`        | `{images: [{url, size}]}`        | Get artist images    |
+| `nd_get_artist_top_songs` | `{id, name, mbid?, count}` | `{songs: [{name, mbid?}]}`       | Get top songs        |
+| `nd_get_album_info`       | `{name, artist, mbid?}`    | `{name, mbid, description, url}` | Get album info       |
+| `nd_get_album_images`     | `{name, artist, mbid?}`    | `{images: [{url, size}]}`        | Get album images     |
 
 ## Developing Plugins
 
@@ -88,19 +89,17 @@ import (
 )
 
 type Manifest struct {
-    Name         string   `json:"name"`
-    Author       string   `json:"author"`
-    Version      string   `json:"version"`
-    Capabilities []string `json:"capabilities"`
+    Name    string `json:"name"`
+    Author  string `json:"author"`
+    Version string `json:"version"`
 }
 
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
     manifest := Manifest{
-        Name:         "My Plugin",
-        Author:       "Me",
-        Version:      "1.0.0",
-        Capabilities: []string{"MetadataAgent"},
+        Name:    "My Plugin",
+        Author:  "Me",
+        Version: "1.0.0",
     }
     out, _ := json.Marshal(manifest)
     pdk.Output(out)
@@ -143,7 +142,7 @@ tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
 
 ### Using HTTP
 
-Plugins can make HTTP requests using the Extism PDK. The host controls which URLs are allowed via the `permissions.http.allowedUrls` manifest field.
+Plugins can make HTTP requests using the Extism PDK. The host controls which hosts are allowed via the `permissions.http.allowedHosts` manifest field.
 
 ```go
 //go:wasmexport nd_get_artist_biography
@@ -177,7 +176,7 @@ if !ok {
 
 Plugins run in a secure WebAssembly sandbox with these restrictions:
 
-1. **URL Allowlisting**: Only URLs listed in `permissions.http.allowedUrls` are accessible
+1. **Host Allowlisting**: Only hosts listed in `permissions.http.allowedHosts` are accessible
 2. **No File System Access**: Plugins cannot access the file system
 3. **No Network Listeners**: Plugins cannot bind ports or create servers
 4. **Config Isolation**: Plugins receive only their own config section
