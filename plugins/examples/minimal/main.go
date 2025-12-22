@@ -14,11 +14,10 @@ import (
 )
 
 type Manifest struct {
-	Name         string   `json:"name"`
-	Author       string   `json:"author"`
-	Version      string   `json:"version"`
-	Description  string   `json:"description"`
-	Capabilities []string `json:"capabilities"`
+	Name        string `json:"name"`
+	Author      string `json:"author"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
 }
 
 type ArtistInput struct {
@@ -34,11 +33,10 @@ type BiographyOutput struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:         "Minimal Example",
-		Author:       "Navidrome",
-		Version:      "1.0.0",
-		Description:  "A minimal example plugin",
-		Capabilities: []string{"MetadataAgent"},
+		Name:        "Minimal Example",
+		Author:      "Navidrome",
+		Version:     "1.0.0",
+		Description: "A minimal example plugin",
 	}
 	out, err := json.Marshal(manifest)
 	if err != nil {

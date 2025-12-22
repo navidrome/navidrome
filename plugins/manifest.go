@@ -10,3 +10,6 @@ func (m *Manifest) AllowedHosts() []string {
 	}
 	return m.Permissions.Http.AllowedHosts
 }
+
+// TODO: ConfigPermission is defined in the schema but not currently enforced.
+// Plugins always receive their config section. Implement permission checking or remove from schema.

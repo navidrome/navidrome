@@ -282,7 +282,6 @@ func (m *Manager) discoverPlugins(folder string) error {
 
 // loadPlugin loads a single plugin from a wasm file
 func (m *Manager) loadPlugin(name, wasmPath string) error {
-	// Check if manager is stopped (cache may be closed)
 	if m.stopped.Load() {
 		return fmt.Errorf("manager is stopped")
 	}
@@ -296,81 +295,69 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		return fmt.Errorf("manager is stopped")
 	}
 
-	// Read wasm file
 	wasmBytes, err := os.ReadFile(wasmPath)
 	if err != nil {
 		return err
 	}
 
-	// Get plugin-specific config from conf.Server.PluginConfig
 	pluginConfig := m.getPluginConfig(name)
-
-	// Create Extism manifest for this plugin
-	// Note: We create a temporary plugin first to get the manifest,
-	// then we'll create the final one with proper AllowedHosts
-	tempManifest := extism.Manifest{
+	pluginManifest := extism.Manifest{
 		Wasm: []extism.Wasm{
-			extism.WasmData{
-				Data: wasmBytes,
-				Name: "main",
-			},
+			extism.WasmData{Data: wasmBytes, Name: "main"},
 		},
-		Config: pluginConfig,
+		Config:  pluginConfig,
+		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
-
-	tempConfig := extism.PluginConfig{
+	extismConfig := extism.PluginConfig{
 		EnableWasi:    true,
 		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
 	}
 
-	// Create temporary plugin to read manifest and detect capabilities
-	tempPlugin, err := extism.NewPlugin(m.ctx, tempManifest, tempConfig, nil)
+	// Create initial compiled plugin (without AllowedHosts)
+	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, nil)
 	if err != nil {
 		return err
 	}
-	defer tempPlugin.Close(m.ctx)
-	tempPlugin.SetLogger(extismLogger(name))
 
-	// Call nd_manifest to get plugin manifest
-	exit, manifestBytes, err := tempPlugin.Call(manifestFunction, nil)
+	// Create instance to read manifest and detect capabilities
+	instance, err := compiled.Instance(m.ctx, extism.PluginInstanceConfig{})
 	if err != nil {
+		compiled.Close(m.ctx)
+		return err
+	}
+	instance.SetLogger(extismLogger(name))
+
+	exit, manifestBytes, err := instance.Call(manifestFunction, nil)
+	if err != nil {
+		instance.Close(m.ctx)
+		compiled.Close(m.ctx)
 		return err
 	}
 	if exit != 0 {
+		instance.Close(m.ctx)
+		compiled.Close(m.ctx)
 		return fmt.Errorf("calling %s: %d", manifestFunction, exit)
 	}
 
-	// Parse manifest (validation happens during unmarshal via generated code)
 	var manifest Manifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		instance.Close(m.ctx)
+		compiled.Close(m.ctx)
 		return fmt.Errorf("invalid plugin manifest: %w", err)
 	}
 
-	// Detect capabilities based on exported functions
-	capabilities := detectCapabilities(tempPlugin)
+	// Detect capabilities using the instance before closing it
+	capabilities := detectCapabilities(instance)
+	instance.Close(m.ctx)
 
-	// Now create the final compiled plugin with proper AllowedHosts
-	finalManifest := extism.Manifest{
-		Wasm: []extism.Wasm{
-			extism.WasmData{
-				Data: wasmBytes,
-				Name: "main",
-			},
-		},
-		Config:       pluginConfig,
-		AllowedHosts: manifest.AllowedHosts(),
-		Timeout:      uint64(defaultTimeout.Milliseconds()),
-	}
-	log.Debug(m.ctx, "Loaded plugin", "plugin", name, "name", manifest.Name, "version", manifest.Version, "capabilities", capabilities)
-
-	finalConfig := extism.PluginConfig{
-		EnableWasi:    true,
-		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
-	}
-
-	compiled, err := extism.NewCompiledPlugin(m.ctx, finalManifest, finalConfig, nil)
-	if err != nil {
-		return err
+	// Recompile only if plugin requires HTTP access (AllowedHosts)
+	if hosts := manifest.AllowedHosts(); len(hosts) > 0 {
+		compiled.Close(m.ctx)
+		pluginManifest.AllowedHosts = hosts
+		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	m.mu.Lock()
@@ -382,7 +369,6 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		capabilities: capabilities,
 	}
 	m.mu.Unlock()
-
 	return nil
 }
 
@@ -466,8 +452,6 @@ func (m *Manager) ReloadPlugin(name string) error {
 		log.Error(m.ctx, "Failed to reload plugin, plugin remains unloaded", "plugin", name, err)
 		return fmt.Errorf("failed to reload plugin %q: %w", name, err)
 	}
-
-	log.Info(m.ctx, "Reloaded plugin", "plugin", name)
 	return nil
 }
 
