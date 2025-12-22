@@ -449,6 +449,8 @@ func (m *Manager) ReloadPlugin(name string) error {
 // callPluginFunction is a helper to call a plugin function with input and output types.
 // It handles JSON marshalling/unmarshalling and error checking.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstance, funcName string, input I) (O, error) {
+	start := time.Now()
+
 	var result O
 
 	// Create plugin instance
@@ -467,9 +469,10 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 		return result, fmt.Errorf("failed to marshal input: %w", err)
 	}
 
+	startCall := time.Now()
 	exit, output, err := p.Call(funcName, inputBytes)
 	if err != nil {
-		log.Debug(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, err)
+		log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
 	if exit != 0 {
@@ -478,8 +481,10 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 
 	err = json.Unmarshal(output, &result)
 	if err != nil {
-		log.Debug(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, err)
+		log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
 	}
+
+	log.Trace(ctx, "Plugin call succeeded", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
 	return result, err
 }
 
