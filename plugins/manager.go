@@ -21,12 +21,12 @@ import (
 )
 
 const (
-	// ManifestFunction is the name of the function that plugins must export
+	// manifestFunction is the name of the function that plugins must export
 	// to provide their manifest.
-	ManifestFunction = "nd_manifest"
+	manifestFunction = "nd_manifest"
 
-	// DefaultTimeout is the default timeout for plugin function calls
-	DefaultTimeout = 30 * time.Second
+	// defaultTimeout is the default timeout for plugin function calls
+	defaultTimeout = 30 * time.Second
 )
 
 // Manager manages loading and lifecycle of WebAssembly plugins.
@@ -77,7 +77,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Initialize wazero compilation cache for better performance
 	m.cache = wazero.NewCompilationCache()
 
-	folder := m.pluginsFolder()
+	folder := conf.Server.Plugins.Folder
 	if folder == "" {
 		log.Debug("No plugins folder configured")
 		return nil
@@ -98,7 +98,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// Start file watcher if auto-reload is enabled
-	if autoReloadEnabled() {
+	if conf.Server.Plugins.AutoReload {
 		if err := m.startWatcher(); err != nil {
 			log.Error(ctx, "Failed to start plugin file watcher", err)
 			// Non-fatal - plugins are still loaded, just no auto-reload
@@ -192,7 +192,6 @@ type PluginInfo struct {
 }
 
 // GetPluginInfo returns information about all loaded plugins.
-// This is used by the metrics/insights system.
 func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -205,18 +204,6 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 		}
 	}
 	return info
-}
-
-// pluginsFolder returns the configured plugins folder path
-func (m *Manager) pluginsFolder() string {
-	if conf.Server.Plugins.Folder != "" {
-		return conf.Server.Plugins.Folder
-	}
-	// Default to DataFolder/plugins
-	if conf.Server.DataFolder != "" {
-		return filepath.Join(conf.Server.DataFolder, "plugins")
-	}
-	return ""
 }
 
 // discoverPlugins scans the plugins folder and loads all .wasm files
@@ -286,12 +273,12 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	defer tempPlugin.Close(m.ctx)
 
 	// Call nd_manifest to get plugin manifest
-	exit, manifestBytes, err := tempPlugin.Call(ManifestFunction, nil)
+	exit, manifestBytes, err := tempPlugin.Call(manifestFunction, nil)
 	if err != nil {
 		return err
 	}
 	if exit != 0 {
-		return fmt.Errorf("calling %s: %d", ManifestFunction, exit)
+		return fmt.Errorf("calling %s: %d", manifestFunction, exit)
 	}
 
 	// Parse manifest (validation happens during unmarshal via generated code)
@@ -313,7 +300,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		},
 		Config:       pluginConfig,
 		AllowedHosts: manifest.AllowedHosts(),
-		Timeout:      uint64(DefaultTimeout.Milliseconds()),
+		Timeout:      uint64(defaultTimeout.Milliseconds()),
 	}
 
 	finalConfig := extism.PluginConfig{
@@ -399,7 +386,7 @@ func (m *Manager) LoadPlugin(name string) error {
 		return fmt.Errorf("plugin %q is already loaded", name)
 	}
 
-	folder := m.pluginsFolder()
+	folder := conf.Server.Plugins.Folder
 	if folder == "" {
 		return fmt.Errorf("no plugins folder configured")
 	}
