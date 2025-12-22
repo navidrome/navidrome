@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -312,7 +313,15 @@ func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error)
 
 // collectPlugins collects information about installed plugins
 func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
-	plugins := make(map[string]insights.PluginInfo)
-	// TODO(PLUGINS): Get the list from the new plugin system
-	return plugins
+	manager := plugins.GetManager()
+	info := manager.GetPluginInfo()
+
+	result := make(map[string]insights.PluginInfo, len(info))
+	for name, p := range info {
+		result[name] = insights.PluginInfo{
+			Name:    p.Name,
+			Version: p.Version,
+		}
+	}
+	return result
 }

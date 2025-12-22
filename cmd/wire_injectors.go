@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
@@ -40,10 +41,9 @@ var allProviders = wire.NewSet(
 	scanner.GetWatcher,
 	metrics.GetPrometheusInstance,
 	db.Db,
-	// TODO(PLUGINS): Replace NoopPluginLoader with actual plugin manager
-	core.GetNoopPluginLoader,
-	wire.Bind(new(agents.PluginLoader), new(*core.NoopPluginLoader)),
-	wire.Bind(new(scrobbler.PluginLoader), new(*core.NoopPluginLoader)),
+	plugins.GetManager,
+	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )
 

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -327,11 +328,16 @@ func startPlaybackServer(ctx context.Context) func() error {
 	}
 }
 
-// TODO(PLUGINS): Implement startPluginManager with new plugin system
 // startPluginManager starts the plugin manager, if configured.
-func startPluginManager(_ context.Context) func() error {
+func startPluginManager(ctx context.Context) func() error {
 	return func() error {
-		return nil
+		if !conf.Server.Plugins.Enabled {
+			log.Debug("Plugin system is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting plugin manager")
+		manager := plugins.GetManager()
+		return manager.Start(ctx)
 	}
 }
 
