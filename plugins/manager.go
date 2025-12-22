@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
 )
 
@@ -36,6 +37,12 @@ type Manager struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
+
+	// File watcher fields (used when AutoReload is enabled)
+	watcherEvents  chan notify.EventInfo
+	watcherDone    chan struct{}
+	debounceTimers map[string]*time.Timer
+	debounceMu     sync.Mutex
 }
 
 // pluginInstance represents a loaded plugin
@@ -90,11 +97,22 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Start file watcher if auto-reload is enabled
+	if autoReloadEnabled() {
+		if err := m.startWatcher(); err != nil {
+			log.Error(ctx, "Failed to start plugin file watcher", err)
+			// Non-fatal - plugins are still loaded, just no auto-reload
+		}
+	}
+
 	return nil
 }
 
 // Stop shuts down the plugin manager and releases all resources.
 func (m *Manager) Stop() error {
+	// Stop file watcher first
+	m.stopWatcher()
+
 	if m.cancel != nil {
 		m.cancel()
 	}
@@ -273,7 +291,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		return err
 	}
 	if exit != 0 {
-		return err
+		return fmt.Errorf("calling %s: %d", ManifestFunction, exit)
 	}
 
 	// Parse manifest (validation happens during unmarshal via generated code)
@@ -340,6 +358,83 @@ func (m *Manager) createMetadataAgent(instance *pluginInstance) (*MetadataAgent,
 	}
 
 	return NewMetadataAgent(instance.name, plugin), nil
+}
+
+// UnloadPlugin removes a plugin from the manager and closes its resources.
+// Returns an error if the plugin is not found.
+func (m *Manager) UnloadPlugin(name string) error {
+	m.mu.Lock()
+	instance, ok := m.plugins[name]
+	if !ok {
+		m.mu.Unlock()
+		return fmt.Errorf("plugin %q not found", name)
+	}
+	delete(m.plugins, name)
+	m.mu.Unlock()
+
+	// Close the compiled plugin outside the lock with a grace period
+	// to allow in-flight requests to complete
+	if instance.compiled != nil {
+		// Use a brief timeout for cleanup
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := instance.compiled.Close(ctx); err != nil {
+			log.Error("Error closing plugin during unload", "plugin", name, err)
+		}
+	}
+
+	log.Info(m.ctx, "Unloaded plugin", "plugin", name)
+	return nil
+}
+
+// LoadPlugin loads a new plugin by name from the plugins folder.
+// The plugin file must exist at <plugins_folder>/<name>.wasm.
+// Returns an error if the plugin is already loaded or fails to load.
+func (m *Manager) LoadPlugin(name string) error {
+	m.mu.RLock()
+	_, exists := m.plugins[name]
+	m.mu.RUnlock()
+
+	if exists {
+		return fmt.Errorf("plugin %q is already loaded", name)
+	}
+
+	folder := m.pluginsFolder()
+	if folder == "" {
+		return fmt.Errorf("no plugins folder configured")
+	}
+
+	wasmPath := filepath.Join(folder, name+".wasm")
+	if _, err := os.Stat(wasmPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("plugin file not found: %s", wasmPath)
+		}
+		return err
+	}
+
+	if err := m.loadPlugin(name, wasmPath); err != nil {
+		return fmt.Errorf("failed to load plugin %q: %w", name, err)
+	}
+
+	log.Info(m.ctx, "Loaded plugin", "plugin", name)
+	return nil
+}
+
+// ReloadPlugin unloads and reloads a plugin by name.
+// If the plugin was loaded and unload succeeds but reload fails,
+// the plugin remains unloaded and the error is returned.
+func (m *Manager) ReloadPlugin(name string) error {
+	if err := m.UnloadPlugin(name); err != nil {
+		return fmt.Errorf("failed to unload plugin %q: %w", name, err)
+	}
+
+	if err := m.LoadPlugin(name); err != nil {
+		log.Error(m.ctx, "Failed to reload plugin, plugin remains unloaded", "plugin", name, err)
+		return fmt.Errorf("failed to reload plugin %q: %w", name, err)
+	}
+
+	log.Info(m.ctx, "Reloaded plugin", "plugin", name)
+	return nil
 }
 
 // Verify interface implementations at compile time

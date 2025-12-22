@@ -172,6 +172,50 @@ if !ok {
 }
 ```
 
+## Runtime Loading
+
+Navidrome supports loading, unloading, and reloading plugins at runtime without restarting the server.
+
+### Auto-Reload (File Watcher)
+
+Enable automatic plugin reloading when files change:
+
+```toml
+[Plugins]
+Enabled = true
+AutoReload = true   # Default: false
+```
+
+When enabled, Navidrome watches the plugins folder and automatically:
+- **Loads** new `.wasm` files when they are created
+- **Reloads** plugins when their `.wasm` file is modified  
+- **Unloads** plugins when their `.wasm` file is removed
+
+This is especially useful during plugin development - just rebuild your plugin and it will be automatically reloaded.
+
+### Programmatic API
+
+The plugin Manager exposes methods for runtime plugin management:
+
+```go
+manager := plugins.GetManager()
+
+// Load a new plugin (file must exist at <plugins_folder>/<name>.wasm)
+err := manager.LoadPlugin("my-plugin")
+
+// Unload a running plugin
+err := manager.UnloadPlugin("my-plugin")
+
+// Reload a plugin (unload + load)
+err := manager.ReloadPlugin("my-plugin")
+```
+
+### Notes on Runtime Loading
+
+- **In-flight requests**: When a plugin is unloaded, existing plugin instances continue working until their request completes. New requests use the reloaded version.
+- **Config changes**: Plugin configuration (`PluginConfig.<name>`) is read at load time. Changes require a reload.
+- **Failed reloads**: If loading fails after unloading, the plugin remains unloaded. Check logs for errors.
+
 ## Security
 
 Plugins run in a secure WebAssembly sandbox with these restrictions:
