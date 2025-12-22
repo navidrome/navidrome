@@ -36,8 +36,8 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy test plugin to temp dir
-		srcPath := filepath.Join(testdataDir, "test-plugin.wasm")
-		destPath := filepath.Join(tmpDir, "test-plugin.wasm")
+		srcPath := filepath.Join(testdataDir, "fake-metadata-agent.wasm")
+		destPath := filepath.Join(tmpDir, "fake-metadata-agent.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -58,7 +58,7 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 
 		// Load the agent via manager
 		var ok2 bool
-		agent, ok2 = manager.LoadMediaAgent("test-plugin")
+		agent, ok2 = manager.LoadMediaAgent("fake-metadata-agent")
 		Expect(ok2).To(BeTrue())
 
 		DeferCleanup(func() {
@@ -69,7 +69,7 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 
 	Describe("AgentName", func() {
 		It("returns the plugin name", func() {
-			Expect(agent.AgentName()).To(Equal("test-plugin"))
+			Expect(agent.AgentName()).To(Equal("fake-metadata-agent"))
 		})
 	})
 

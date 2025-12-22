@@ -106,6 +106,38 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 	m.debounceMu.Unlock()
 }
 
+// pluginAction represents the action to take on a plugin based on a file event
+type pluginAction int
+
+const (
+	actionNone   pluginAction = iota // No action needed
+	actionLoad                       // Load the plugin
+	actionUnload                     // Unload the plugin
+	actionReload                     // Reload the plugin
+)
+
+// determinePluginAction decides what action to take based on the file event type
+// and whether the plugin is currently loaded. This is a pure function with no side effects.
+func determinePluginAction(eventType notify.Event, isLoaded bool) pluginAction {
+	switch {
+	case eventType&notify.Remove != 0 || eventType&notify.Rename != 0:
+		// File removed or renamed away - unload if loaded
+		return actionUnload
+
+	case eventType&notify.Create != 0:
+		// New file - load it
+		return actionLoad
+
+	case eventType&notify.Write != 0:
+		// File modified - reload if loaded, otherwise load
+		if isLoaded {
+			return actionReload
+		}
+		return actionLoad
+	}
+	return actionNone
+}
+
 // processPluginEvent handles the actual plugin load/unload/reload after debouncing
 func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) {
 	// Don't process if manager is stopping/stopped (atomic check to avoid race with Stop())
@@ -118,35 +150,25 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 	delete(m.debounceTimers, pluginName)
 	m.debounceMu.Unlock()
 
-	switch {
-	case eventType&notify.Remove != 0 || eventType&notify.Rename != 0:
-		// File removed or renamed away - unload if loaded
+	// Check if plugin is currently loaded
+	m.mu.RLock()
+	_, isLoaded := m.plugins[pluginName]
+	m.mu.RUnlock()
+
+	// Determine and execute the appropriate action
+	action := determinePluginAction(eventType, isLoaded)
+	switch action {
+	case actionLoad:
+		if err := m.LoadPlugin(pluginName); err != nil {
+			log.Error(m.ctx, "Failed to load plugin", "plugin", pluginName, err)
+		}
+	case actionUnload:
 		if err := m.UnloadPlugin(pluginName); err != nil {
-			// Plugin may not have been loaded, that's okay
 			log.Debug(m.ctx, "Plugin not loaded, skipping unload", "plugin", pluginName, err)
 		}
-
-	case eventType&notify.Create != 0:
-		// New file - load it
-		if err := m.LoadPlugin(pluginName); err != nil {
-			log.Error(m.ctx, "Failed to load new plugin", "plugin", pluginName, err)
-		}
-
-	case eventType&notify.Write != 0:
-		// File modified - check if it's loaded and reload
-		m.mu.RLock()
-		_, isLoaded := m.plugins[pluginName]
-		m.mu.RUnlock()
-
-		if isLoaded {
-			if err := m.ReloadPlugin(pluginName); err != nil {
-				log.Error(m.ctx, "Failed to reload plugin", "plugin", pluginName, err)
-			}
-		} else {
-			// Not loaded yet, try to load it (might be a new file that was written after create)
-			if err := m.LoadPlugin(pluginName); err != nil {
-				log.Error(m.ctx, "Failed to load plugin", "plugin", pluginName, err)
-			}
+	case actionReload:
+		if err := m.ReloadPlugin(pluginName); err != nil {
+			log.Error(m.ctx, "Failed to reload plugin", "plugin", pluginName, err)
 		}
 	}
 }
