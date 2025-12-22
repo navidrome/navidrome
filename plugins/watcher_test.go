@@ -44,6 +44,7 @@ var _ = Describe("Watcher", func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = true
+		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Create a fresh manager for each test
 		manager = &Manager{
