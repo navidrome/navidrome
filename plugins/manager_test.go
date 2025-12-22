@@ -2,12 +2,15 @@ package plugins
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -37,6 +40,7 @@ var _ = Describe("Manager", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Create a fresh manager for each test
 		manager = &Manager{
@@ -157,4 +161,43 @@ var _ = Describe("Manager", func() {
 			Expect(names).ToNot(ContainElement("fail-reload"))
 		})
 	})
+
+	It("can call the plugin concurrently", func() {
+		copyTestPlugin("new-plugin")
+		err := manager.LoadPlugin("new-plugin")
+		Expect(err).ToNot(HaveOccurred())
+
+		const concurrency = 100
+		errs := make(chan error, concurrency)
+		bios := make(chan string, concurrency)
+
+		g := sync.WaitGroup{}
+		g.Add(concurrency)
+		for i := range concurrency {
+			go func(i int) {
+				defer g.Done()
+				a, ok := manager.LoadMediaAgent("new-plugin")
+				Expect(ok).To(BeTrue())
+				agent := a.(agents.ArtistBiographyRetriever)
+				bio, err := agent.GetArtistBiography(ctx, fmt.Sprintf("artist-%d", i), fmt.Sprintf("Artist %d", i), "")
+				if err != nil {
+					errs <- err
+					return
+				}
+				bios <- bio
+			}(i)
+		}
+		g.Wait()
+
+		// Collect results
+		for range concurrency {
+			select {
+			case err := <-errs:
+				Expect(err).ToNot(HaveOccurred())
+			case bio := <-bios:
+				Expect(bio).To(ContainSubstring("Biography for Artist"))
+			}
+		}
+	})
+
 })
