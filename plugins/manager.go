@@ -202,8 +202,19 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 // LoadScrobbler loads and returns a scrobbler plugin by name.
 // Returns false if the plugin is not found or doesn't have the Scrobbler capability.
 func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	// Scrobbler capability is not yet implemented
-	return nil, false
+	m.mu.RLock()
+	instance, ok := m.plugins[name]
+	m.mu.RUnlock()
+
+	if !ok || !hasCapability(instance.capabilities, CapabilityScrobbler) {
+		return nil, false
+	}
+
+	// Create a new scrobbler adapter for this plugin
+	return &ScrobblerPlugin{
+		name:   instance.name,
+		plugin: instance,
+	}, true
 }
 
 // PluginInfo contains basic information about a plugin for metrics/insights.
@@ -479,9 +490,11 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 		return result, fmt.Errorf("plugin call exited with code %d", exit)
 	}
 
-	err = json.Unmarshal(output, &result)
-	if err != nil {
-		log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+	if len(output) > 0 {
+		err = json.Unmarshal(output, &result)
+		if err != nil {
+			log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+		}
 	}
 
 	log.Trace(ctx, "Plugin call succeeded", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
