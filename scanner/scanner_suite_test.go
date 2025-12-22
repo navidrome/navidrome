@@ -16,6 +16,9 @@ func TestScanner(t *testing.T) {
 	// Detect any goroutine leaks in the scanner code under test
 	defer goleak.VerifyNone(t,
 		goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
+		// The notify library creates internal goroutines for file watching that persist after Stop() is called.
+		// These are created by the plugins package tests and are expected behavior.
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
 	)
 
 	tests.Init(t, true)

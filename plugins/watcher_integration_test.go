@@ -88,14 +88,15 @@ var _ = Describe("Watcher Integration", Ordered, func() {
 			_ = manager.Stop()
 
 			conf.Server.Plugins.AutoReload = true
-			manager = &Manager{
+			autoReloadManager := &Manager{
 				plugins: make(map[string]*pluginInstance),
 			}
-			err := manager.Start(ctx)
+			err := autoReloadManager.Start(ctx)
 			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(autoReloadManager.Stop)
 
-			Expect(manager.watcherEvents).ToNot(BeNil())
-			Expect(manager.watcherDone).ToNot(BeNil())
+			Expect(autoReloadManager.watcherEvents).ToNot(BeNil())
+			Expect(autoReloadManager.watcherDone).ToNot(BeNil())
 		})
 	})
 })
