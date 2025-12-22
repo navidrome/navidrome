@@ -55,6 +55,12 @@ type pluginInstance struct {
 	capabilities []Capability // Auto-detected capabilities based on exported functions
 }
 
+func (p *pluginInstance) create() (*extism.Plugin, error) {
+	return p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
+		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
+	})
+}
+
 // GetManager returns a singleton instance of the plugin manager.
 // The manager is not started automatically; call Start() to begin loading plugins.
 func GetManager() *Manager {
@@ -174,14 +180,11 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 		return nil, false
 	}
 
-	// Create a new plugin instance for this agent
-	agent, err := m.createMetadataAgent(instance)
-	if err != nil {
-		log.Error("Failed to create metadata agent from plugin", "plugin", name, err)
-		return nil, false
-	}
-
-	return agent, true
+	// Create a new metadata agent adapter for this plugin
+	return &MetadataAgent{
+		name:   instance.name,
+		plugin: instance,
+	}, true
 }
 
 // LoadScrobbler loads and returns a scrobbler plugin by name.
@@ -340,19 +343,6 @@ func (m *Manager) getPluginConfig(name string) map[string]string {
 	return conf.Server.PluginConfig[name]
 }
 
-// createMetadataAgent creates a new MetadataAgent from a plugin instance
-func (m *Manager) createMetadataAgent(instance *pluginInstance) (*MetadataAgent, error) {
-	// Create a new plugin instance from the compiled plugin
-	plugin, err := instance.compiled.Instance(m.ctx, extism.PluginInstanceConfig{
-		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return NewMetadataAgent(instance.name, plugin), nil
-}
-
 // UnloadPlugin removes a plugin from the manager and closes its resources.
 // Returns an error if the plugin is not found.
 func (m *Manager) UnloadPlugin(name string) error {
@@ -428,6 +418,43 @@ func (m *Manager) ReloadPlugin(name string) error {
 
 	log.Info(m.ctx, "Reloaded plugin", "plugin", name)
 	return nil
+}
+
+// callPluginFunction is a helper to call a plugin function with input and output types.
+// It handles JSON marshalling/unmarshalling and error checking.
+func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstance, funcName string, input I) (O, error) {
+	var result O
+
+	// Create plugin instance
+	p, err := plugin.create()
+	if err != nil {
+		return result, fmt.Errorf("failed to create plugin: %w", err)
+	}
+	defer p.Close(ctx)
+
+	if !p.FunctionExists(funcName) {
+		return result, fmt.Errorf("%s does not exist", funcName)
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return result, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	exit, output, err := p.Call(funcName, inputBytes)
+	if err != nil {
+		log.Debug(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, err)
+		return result, fmt.Errorf("plugin call failed: %w", err)
+	}
+	if exit != 0 {
+		return result, fmt.Errorf("plugin call exited with code %d", exit)
+	}
+
+	err = json.Unmarshal(output, &result)
+	if err != nil {
+		log.Debug(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, err)
+	}
+	return result, err
 }
 
 // Verify interface implementations at compile time

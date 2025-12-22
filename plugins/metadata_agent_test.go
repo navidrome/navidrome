@@ -2,48 +2,69 @@ package plugins
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"runtime"
 
-	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("MetadataAgent", func() {
 	var (
-		agent *MetadataAgent
-		ctx   context.Context
+		manager     *Manager
+		agent       agents.Interface
+		ctx         context.Context
+		testdataDir string
+		tmpDir      string
 	)
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 
-		// Load the test plugin
+		// Get testdata directory
 		_, currentFile, _, ok := runtime.Caller(0)
 		Expect(ok).To(BeTrue())
-		testdataDir := filepath.Join(filepath.Dir(currentFile), "testdata")
-		wasmPath := filepath.Join(testdataDir, "test-plugin.wasm")
+		testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")
 
-		manifest := extism.Manifest{
-			Wasm: []extism.Wasm{
-				extism.WasmFile{Path: wasmPath},
-			},
-			AllowedHosts: []string{"test.example.com"},
-		}
-
-		plugin, err := extism.NewPlugin(ctx, manifest, extism.PluginConfig{
-			EnableWasi: true,
-		}, nil)
+		// Create temp dir for plugins
+		var err error
+		tmpDir, err = os.MkdirTemp("", "metadata-agent-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		agent = NewMetadataAgent("test-plugin", plugin)
-	})
+		// Copy test plugin to temp dir
+		srcPath := filepath.Join(testdataDir, "test-plugin.wasm")
+		destPath := filepath.Join(tmpDir, "test-plugin.wasm")
+		data, err := os.ReadFile(srcPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(destPath, data, 0600)
+		Expect(err).ToNot(HaveOccurred())
 
-	AfterEach(func() {
-		if agent != nil {
-			_ = agent.Close()
+		// Setup config
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Plugins.Enabled = true
+		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
+
+		// Create and start the manager
+		manager = &Manager{
+			plugins: make(map[string]*pluginInstance),
 		}
+		err = manager.Start(ctx)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Load the agent via manager
+		var ok2 bool
+		agent, ok2 = manager.LoadMediaAgent("test-plugin")
+		Expect(ok2).To(BeTrue())
+
+		DeferCleanup(func() {
+			_ = manager.Stop()
+			_ = os.RemoveAll(tmpDir)
+		})
 	})
 
 	Describe("AgentName", func() {
@@ -54,7 +75,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetArtistMBID", func() {
 		It("returns the MBID from the plugin", func() {
-			mbid, err := agent.GetArtistMBID(ctx, "artist-1", "The Beatles")
+			retriever := agent.(agents.ArtistMBIDRetriever)
+			mbid, err := retriever.GetArtistMBID(ctx, "artist-1", "The Beatles")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mbid).To(Equal("test-mbid-The Beatles"))
 		})
@@ -62,7 +84,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetArtistURL", func() {
 		It("returns the URL from the plugin", func() {
-			url, err := agent.GetArtistURL(ctx, "artist-1", "The Beatles", "some-mbid")
+			retriever := agent.(agents.ArtistURLRetriever)
+			url, err := retriever.GetArtistURL(ctx, "artist-1", "The Beatles", "some-mbid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(url).To(Equal("https://test.example.com/artist/The Beatles"))
 		})
@@ -70,7 +93,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetArtistBiography", func() {
 		It("returns the biography from the plugin", func() {
-			bio, err := agent.GetArtistBiography(ctx, "artist-1", "The Beatles", "some-mbid")
+			retriever := agent.(agents.ArtistBiographyRetriever)
+			bio, err := retriever.GetArtistBiography(ctx, "artist-1", "The Beatles", "some-mbid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bio).To(Equal("Biography for The Beatles"))
 		})
@@ -78,7 +102,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetArtistImages", func() {
 		It("returns images from the plugin", func() {
-			images, err := agent.GetArtistImages(ctx, "artist-1", "The Beatles", "some-mbid")
+			retriever := agent.(agents.ArtistImageRetriever)
+			images, err := retriever.GetArtistImages(ctx, "artist-1", "The Beatles", "some-mbid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(images).To(HaveLen(2))
 			Expect(images[0].URL).To(Equal("https://test.example.com/images/The Beatles/large.jpg"))
@@ -90,7 +115,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetSimilarArtists", func() {
 		It("returns similar artists from the plugin", func() {
-			artists, err := agent.GetSimilarArtists(ctx, "artist-1", "The Beatles", "some-mbid", 3)
+			retriever := agent.(agents.ArtistSimilarRetriever)
+			artists, err := retriever.GetSimilarArtists(ctx, "artist-1", "The Beatles", "some-mbid", 3)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).To(HaveLen(3))
 			Expect(artists[0].Name).To(Equal("The Beatles Similar A"))
@@ -101,7 +127,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetArtistTopSongs", func() {
 		It("returns top songs from the plugin", func() {
-			songs, err := agent.GetArtistTopSongs(ctx, "artist-1", "The Beatles", "some-mbid", 3)
+			retriever := agent.(agents.ArtistTopSongsRetriever)
+			songs, err := retriever.GetArtistTopSongs(ctx, "artist-1", "The Beatles", "some-mbid", 3)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(3))
 			Expect(songs[0].Name).To(Equal("The Beatles Song 1"))
@@ -112,7 +139,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetAlbumInfo", func() {
 		It("returns album info from the plugin", func() {
-			info, err := agent.GetAlbumInfo(ctx, "Abbey Road", "The Beatles", "album-mbid")
+			retriever := agent.(agents.AlbumInfoRetriever)
+			info, err := retriever.GetAlbumInfo(ctx, "Abbey Road", "The Beatles", "album-mbid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(info.Name).To(Equal("Abbey Road"))
 			Expect(info.MBID).To(Equal("test-album-mbid-Abbey Road"))
@@ -123,7 +151,8 @@ var _ = Describe("MetadataAgent", func() {
 
 	Describe("GetAlbumImages", func() {
 		It("returns album images from the plugin", func() {
-			images, err := agent.GetAlbumImages(ctx, "Abbey Road", "The Beatles", "album-mbid")
+			retriever := agent.(agents.AlbumImageRetriever)
+			images, err := retriever.GetAlbumImages(ctx, "Abbey Road", "The Beatles", "album-mbid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(images).To(HaveLen(1))
 			Expect(images[0].URL).To(Equal("https://test.example.com/albums/Abbey Road/cover.jpg"))
