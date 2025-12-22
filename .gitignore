@@ -17,6 +17,7 @@ master.zip
 testDB
 cache/*
 *.swp
+coverage.out
 dist
 music
 *.db*
