@@ -18,7 +18,7 @@ var _ = Describe("MetadataAgent", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 
 		// Load the test plugin
 		_, currentFile, _, ok := runtime.Caller(0)
