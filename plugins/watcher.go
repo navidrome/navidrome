@@ -19,7 +19,7 @@ var debounceDuration = 500 * time.Millisecond
 // startWatcher starts the file watcher for the plugins folder.
 // It watches for CREATE, WRITE, and REMOVE events on .wasm files.
 func (m *Manager) startWatcher() error {
-	folder := m.pluginsFolder()
+	folder := conf.Server.Plugins.Folder
 	if folder == "" {
 		return nil
 	}
@@ -144,9 +144,4 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 			}
 		}
 	}
-}
-
-// autoReloadEnabled returns true if auto-reload is enabled
-func autoReloadEnabled() bool {
-	return conf.Server.Plugins.AutoReload
 }
