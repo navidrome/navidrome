@@ -70,7 +70,7 @@ var _ = Describe("Capabilities", func() {
 		})
 
 		It("returns false when capability does not exist", func() {
-			caps := []Capability{}
+			var caps []Capability
 			Expect(hasCapability(caps, CapabilityMetadataAgent)).To(BeFalse())
 		})
 

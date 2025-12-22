@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -68,25 +69,30 @@ func GetManager() *Manager {
 // It should be called once during application startup when plugins are enabled.
 func (m *Manager) Start(ctx context.Context) error {
 	if !conf.Server.Plugins.Enabled {
-		log.Debug("Plugin system is disabled")
+		log.Debug(ctx, "Plugin system is disabled")
 		return nil
 	}
 
 	m.ctx, m.cancel = context.WithCancel(ctx)
 
 	// Initialize wazero compilation cache for better performance
-	m.cache = wazero.NewCompilationCache()
+	var err error
+	m.cache, err = wazero.NewCompilationCacheWithDir(filepath.Join(conf.Server.CacheFolder, "plugins"))
+	if err != nil {
+		log.Error(ctx, "Failed to create wazero compilation cache", err)
+		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	}
 
 	folder := conf.Server.Plugins.Folder
 	if folder == "" {
-		log.Debug("No plugins folder configured")
+		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
 	// Create plugins folder if it doesn't exist
 	if err := os.MkdirAll(folder, 0755); err != nil {
-		log.Error("Failed to create plugins folder", "folder", folder, err)
-		return err
+		log.Error(ctx, "Failed to create plugins folder", "folder", folder, err)
+		return fmt.Errorf("creating plugins folder: %w", err)
 	}
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
@@ -94,7 +100,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Discover and load plugins
 	if err := m.discoverPlugins(folder); err != nil {
 		log.Error(ctx, "Error discovering plugins", err)
-		return err
+		return fmt.Errorf("discovering plugins: %w", err)
 	}
 
 	// Start file watcher if auto-reload is enabled
@@ -338,7 +344,7 @@ func (m *Manager) getPluginConfig(name string) map[string]string {
 func (m *Manager) createMetadataAgent(instance *pluginInstance) (*MetadataAgent, error) {
 	// Create a new plugin instance from the compiled plugin
 	plugin, err := instance.compiled.Instance(m.ctx, extism.PluginInstanceConfig{
-		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime(),
+		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
 	})
 	if err != nil {
 		return nil, err
