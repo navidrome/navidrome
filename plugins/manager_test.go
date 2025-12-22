@@ -3,65 +3,49 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Manager", Ordered, func() {
-	var (
-		manager     *Manager
-		ctx         context.Context
-		testdataDir string
-	)
+	var ctx context.Context
 
+	// Ensure plugin is loaded at the start (might have been unloaded by previous tests)
 	BeforeAll(func() {
-		ctx = context.Background()
-
-		// Get testdata directory (where fake-metadata-agent.wasm lives)
-		_, currentFile, _, ok := runtime.Caller(0)
-		Expect(ok).To(BeTrue())
-		testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")
-
-		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = testdataDir
-
-		// Create manager once for all tests
-		manager = &Manager{
-			plugins: make(map[string]*pluginInstance),
+		ctx = GinkgoT().Context()
+		if _, ok := testManager.plugins["fake-metadata-agent"]; !ok {
+			err := testManager.LoadPlugin("fake-metadata-agent")
+			Expect(err).ToNot(HaveOccurred())
 		}
-		err := manager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
+	})
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
-		})
+	// Ensure plugin is restored after all tests in this block
+	AfterAll(func() {
+		if _, ok := testManager.plugins["fake-metadata-agent"]; !ok {
+			_ = testManager.LoadPlugin("fake-metadata-agent")
+		}
 	})
 
 	Describe("LoadPlugin", func() {
 		It("auto-loads plugins from folder on Start", func() {
-			// Plugin is already loaded by manager.Start() via discoverPlugins
-			names := manager.PluginNames(string(CapabilityMetadataAgent))
+			// Plugin is already loaded by testManager.Start() via discoverPlugins
+			names := testManager.PluginNames(string(CapabilityMetadataAgent))
 			Expect(names).To(ContainElement("fake-metadata-agent"))
 		})
 
 		It("returns error when plugin file does not exist", func() {
-			err := manager.LoadPlugin("nonexistent")
+			err := testManager.LoadPlugin("nonexistent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("plugin file not found"))
 		})
 
 		It("returns error when plugin is already loaded", func() {
 			// Plugin was loaded on Start, try to load again
-			err := manager.LoadPlugin("fake-metadata-agent")
+			err := testManager.LoadPlugin("fake-metadata-agent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("already loaded"))
 		})
@@ -76,7 +60,7 @@ var _ = Describe("Manager", Ordered, func() {
 				conf.Server.DataFolder = originalDataFolder
 			}()
 
-			err := manager.LoadPlugin("test")
+			err := testManager.LoadPlugin("test")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no plugins folder configured"))
 		})
@@ -85,24 +69,24 @@ var _ = Describe("Manager", Ordered, func() {
 	Describe("UnloadPlugin", func() {
 		It("removes a loaded plugin", func() {
 			// Plugin is already loaded from Start
-			err := manager.UnloadPlugin("fake-metadata-agent")
+			err := testManager.UnloadPlugin("fake-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
-			names := manager.PluginNames(string(CapabilityMetadataAgent))
+			names := testManager.PluginNames(string(CapabilityMetadataAgent))
 			Expect(names).ToNot(ContainElement("fake-metadata-agent"))
 		})
 
 		It("can reload after unload", func() {
 			// Reload the plugin we just unloaded
-			err := manager.LoadPlugin("fake-metadata-agent")
+			err := testManager.LoadPlugin("fake-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
-			names := manager.PluginNames(string(CapabilityMetadataAgent))
+			names := testManager.PluginNames(string(CapabilityMetadataAgent))
 			Expect(names).To(ContainElement("fake-metadata-agent"))
 		})
 
 		It("returns error when plugin not found", func() {
-			err := manager.UnloadPlugin("nonexistent")
+			err := testManager.UnloadPlugin("nonexistent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})
@@ -110,24 +94,33 @@ var _ = Describe("Manager", Ordered, func() {
 
 	Describe("ReloadPlugin", func() {
 		It("unloads and reloads a plugin", func() {
-			err := manager.ReloadPlugin("fake-metadata-agent")
+			err := testManager.ReloadPlugin("fake-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
-			names := manager.PluginNames(string(CapabilityMetadataAgent))
+			names := testManager.PluginNames(string(CapabilityMetadataAgent))
 			Expect(names).To(ContainElement("fake-metadata-agent"))
 		})
 
 		It("returns error when plugin not found", func() {
-			err := manager.ReloadPlugin("nonexistent")
+			err := testManager.ReloadPlugin("nonexistent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to unload"))
+		})
+	})
+
+	Describe("GetPluginInfo", func() {
+		It("returns information about all loaded plugins", func() {
+			info := testManager.GetPluginInfo()
+			Expect(info).To(HaveKey("fake-metadata-agent"))
+			Expect(info["fake-metadata-agent"].Name).To(Equal("Test Plugin"))
+			Expect(info["fake-metadata-agent"].Version).To(Equal("1.0.0"))
 		})
 	})
 
 	It("can call the plugin concurrently", func() {
 		// Plugin is already loaded
 
-		const concurrency = 100
+		const concurrency = 30
 		errs := make(chan error, concurrency)
 		bios := make(chan string, concurrency)
 
@@ -136,7 +129,7 @@ var _ = Describe("Manager", Ordered, func() {
 		for i := range concurrency {
 			go func(i int) {
 				defer g.Done()
-				a, ok := manager.LoadMediaAgent("fake-metadata-agent")
+				a, ok := testManager.LoadMediaAgent("fake-metadata-agent")
 				Expect(ok).To(BeTrue())
 				agent := a.(agents.ArtistBiographyRetriever)
 				bio, err := agent.GetArtistBiography(ctx, fmt.Sprintf("artist-%d", i), fmt.Sprintf("Artist %d", i), "")

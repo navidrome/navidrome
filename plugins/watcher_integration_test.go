@@ -4,58 +4,34 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rjeczalik/notify"
 )
 
 var _ = Describe("Watcher Integration", Ordered, func() {
+	// Uses testdataDir and createTestManager from BeforeSuite
 	var (
-		manager     *Manager
-		ctx         context.Context
-		testdataDir string
-		tmpDir      string
+		manager *Manager
+		tmpDir  string
+		ctx     context.Context
 	)
 
 	BeforeAll(func() {
 		if testing.Short() {
 			Skip("Skipping integration test in short mode")
 		}
-
 		ctx = GinkgoT().Context()
 
-		// Get testdata directory
-		_, currentFile, _, ok := runtime.Caller(0)
-		Expect(ok).To(BeTrue())
-		testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")
+		// Create manager for watcher lifecycle tests (no plugin preloaded - tests copy plugin as needed)
+		manager, tmpDir = createTestManager(nil)
 
-		// Create temp dir for plugins
-		var err error
-		tmpDir, err = os.MkdirTemp("", "plugins-watcher-integration-*")
-		Expect(err).ToNot(HaveOccurred())
-
-		// Setup config (AutoReload disabled - tests inject events directly)
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
-		conf.Server.Plugins.AutoReload = false
-
-		// Create a fresh manager for each test
-		manager = &Manager{
-			plugins: make(map[string]*pluginInstance),
-		}
-		err = manager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
-
-		DeferCleanup(func() {
-			_ = manager.Stop()
-			_ = os.RemoveAll(tmpDir)
-		})
+		// Remove the auto-loaded plugin so tests can control loading
+		_ = manager.UnloadPlugin("fake-metadata-agent")
+		_ = os.Remove(filepath.Join(tmpDir, "fake-metadata-agent.wasm"))
 	})
 
 	// Helper to copy test plugin into the temp folder
