@@ -59,9 +59,14 @@ type pluginInstance struct {
 }
 
 func (p *pluginInstance) create() (*extism.Plugin, error) {
-	return p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
+	plugin, err := p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
 		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
 	})
+	if err != nil {
+		return nil, err
+	}
+	plugin.SetLogger(extismLogger(p.name))
+	return plugin, nil
 }
 
 // GetManager returns a singleton instance of the plugin manager.
@@ -81,6 +86,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		log.Debug(ctx, "Plugin system is disabled")
 		return nil
 	}
+
+	// Set extism log level based on plugin-specific config or global log level
+	pluginLogLevel := conf.Server.Plugins.LogLevel
+	if pluginLogLevel == "" {
+		pluginLogLevel = conf.Server.LogLevel
+	}
+	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
 
 	m.ctx, m.cancel = context.WithCancel(ctx)
 
@@ -317,6 +329,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		return err
 	}
 	defer tempPlugin.Close(m.ctx)
+	tempPlugin.SetLogger(extismLogger(name))
 
 	// Call nd_manifest to get plugin manifest
 	exit, manifestBytes, err := tempPlugin.Call(manifestFunction, nil)
@@ -348,6 +361,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		AllowedHosts: manifest.AllowedHosts(),
 		Timeout:      uint64(defaultTimeout.Milliseconds()),
 	}
+	log.Debug(m.ctx, "Loaded plugin", "plugin", name, "name", manifest.Name, "version", manifest.Version, "capabilities", capabilities)
 
 	finalConfig := extism.PluginConfig{
 		EnableWasi:    true,
@@ -483,7 +497,7 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 	startCall := time.Now()
 	exit, output, err := p.Call(funcName, inputBytes)
 	if err != nil {
-		log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
 	if exit != 0 {
@@ -493,12 +507,40 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 	if len(output) > 0 {
 		err = json.Unmarshal(output, &result)
 		if err != nil {
-			log.Trace(ctx, "Plugin call failed", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+			log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
 		}
 	}
 
-	log.Trace(ctx, "Plugin call succeeded", "p", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
+	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
 	return result, err
+}
+
+// extismLogger is a helper to log messages from Extism plugins
+func extismLogger(pluginName string) func(level extism.LogLevel, msg string) {
+	return func(level extism.LogLevel, msg string) {
+		if level == extism.LogLevelOff {
+			return
+		}
+		log.Log(log.ParseLogLevel(level.String()), msg, "plugin", pluginName)
+	}
+}
+
+// toExtismLogLevel converts a Navidrome log level to an extism LogLevel
+func toExtismLogLevel(level log.Level) extism.LogLevel {
+	switch level {
+	case log.LevelTrace:
+		return extism.LogLevelTrace
+	case log.LevelDebug:
+		return extism.LogLevelDebug
+	case log.LevelInfo:
+		return extism.LogLevelInfo
+	case log.LevelWarn:
+		return extism.LogLevelWarn
+	case log.LevelError, log.LevelFatal:
+		return extism.LogLevelError
+	default:
+		return extism.LogLevelInfo
+	}
 }
 
 // Verify interface implementations at compile time
