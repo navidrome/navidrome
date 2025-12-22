@@ -4,9 +4,28 @@ package main
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/extism/go-pdk"
 )
+
+// checkConfigError checks if the plugin is configured to return an error.
+// If "error" config is set, it returns the error message and exit code.
+// If "exitcode" is also set, it uses that value (default: 1).
+func checkConfigError() (bool, int32) {
+	errMsg, hasErr := pdk.GetConfig("error")
+	if !hasErr || errMsg == "" {
+		return false, 0
+	}
+	exitCode := int32(1)
+	if code, hasCode := pdk.GetConfig("exitcode"); hasCode {
+		if parsed, err := strconv.Atoi(code); err == nil {
+			exitCode = int32(parsed)
+		}
+	}
+	pdk.SetErrorString(errMsg)
+	return true, exitCode
+}
 
 type Manifest struct {
 	Name         string       `json:"name"`
@@ -130,6 +149,9 @@ func ndManifest() int32 {
 
 //go:wasmexport nd_get_artist_mbid
 func ndGetArtistMBID() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -145,6 +167,9 @@ func ndGetArtistMBID() int32 {
 
 //go:wasmexport nd_get_artist_url
 func ndGetArtistURL() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -160,6 +185,9 @@ func ndGetArtistURL() int32 {
 
 //go:wasmexport nd_get_artist_biography
 func ndGetArtistBiography() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -175,6 +203,9 @@ func ndGetArtistBiography() int32 {
 
 //go:wasmexport nd_get_artist_images
 func ndGetArtistImages() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -195,6 +226,9 @@ func ndGetArtistImages() int32 {
 
 //go:wasmexport nd_get_similar_artists
 func ndGetSimilarArtists() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInputWithLimit
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -220,6 +254,9 @@ func ndGetSimilarArtists() int32 {
 
 //go:wasmexport nd_get_artist_top_songs
 func ndGetArtistTopSongs() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input ArtistInputWithCount
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -245,6 +282,9 @@ func ndGetArtistTopSongs() int32 {
 
 //go:wasmexport nd_get_album_info
 func ndGetAlbumInfo() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input AlbumInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
@@ -265,6 +305,9 @@ func ndGetAlbumInfo() int32 {
 
 //go:wasmexport nd_get_album_images
 func ndGetAlbumImages() int32 {
+	if hasErr, code := checkConfigError(); hasErr {
+		return code
+	}
 	var input AlbumInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)

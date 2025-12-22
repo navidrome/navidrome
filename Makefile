@@ -50,7 +50,7 @@ test: ##@Development Run Go tests. Use PKG variable to specify packages to test,
 	go test -tags netgo $(PKG)
 .PHONY: test
 
-testall: test-race test-i18n test-js ##@Development Run Go and JS tests
+testall: test test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector

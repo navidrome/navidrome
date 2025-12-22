@@ -3,9 +3,14 @@
 package plugins
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -13,6 +18,13 @@ import (
 )
 
 const testDataDir = "plugins/testdata"
+
+// Shared test state initialized in BeforeSuite
+var (
+	testdataDir   string // Path to testdata folder with fake-metadata-agent.wasm
+	tmpPluginsDir string // Temp directory for plugin tests that modify files
+	testManager   *Manager
+)
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
@@ -32,3 +44,61 @@ func buildTestPlugins(t *testing.T, path string) {
 		t.Fatalf("Failed to build test plugins: %v", err)
 	}
 }
+
+// createTestManager creates a new plugin Manager with the given plugin config.
+// It creates a temp directory, copies the fake plugin, and starts the manager.
+// Returns the manager, temp directory path, and a cleanup function.
+func createTestManager(pluginConfig map[string]map[string]string) (*Manager, string) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
+	Expect(err).ToNot(HaveOccurred())
+
+	// Copy test plugin to temp dir
+	srcPath := filepath.Join(testdataDir, "fake-metadata-agent.wasm")
+	destPath := filepath.Join(tmpDir, "fake-metadata-agent.wasm")
+	data, err := os.ReadFile(srcPath)
+	Expect(err).ToNot(HaveOccurred())
+	err = os.WriteFile(destPath, data, 0600)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Setup config
+	DeferCleanup(configtest.SetupConfig())
+	conf.Server.Plugins.Enabled = true
+	conf.Server.Plugins.Folder = tmpDir
+	conf.Server.Plugins.AutoReload = false
+	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
+	conf.Server.PluginConfig = pluginConfig
+
+	// Create and start manager
+	manager := &Manager{
+		plugins: make(map[string]*pluginInstance),
+	}
+	err = manager.Start(GinkgoT().Context())
+	Expect(err).ToNot(HaveOccurred())
+
+	DeferCleanup(func() {
+		_ = manager.Stop()
+		_ = os.RemoveAll(tmpDir)
+	})
+
+	return manager, tmpDir
+}
+
+var _ = BeforeSuite(func() {
+	// Get testdata directory (where fake-metadata-agent.wasm lives)
+	_, currentFile, _, ok := runtime.Caller(0)
+	Expect(ok).To(BeTrue())
+	testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")
+
+	// Create shared manager for most tests
+	testManager, tmpPluginsDir = createTestManager(nil)
+})
+
+var _ = AfterSuite(func() {
+	if testManager != nil {
+		_ = testManager.Stop()
+	}
+	if tmpPluginsDir != "" {
+		_ = os.RemoveAll(tmpPluginsDir)
+	}
+})

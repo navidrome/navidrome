@@ -2,69 +2,22 @@ package plugins
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"runtime"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("MetadataAgent", Ordered, func() {
-	var (
-		manager     *Manager
-		agent       agents.Interface
-		ctx         context.Context
-		testdataDir string
-		tmpDir      string
-	)
+	var agent agents.Interface
+	var ctx context.Context
 
 	BeforeAll(func() {
 		ctx = GinkgoT().Context()
-
-		// Get testdata directory
-		_, currentFile, _, ok := runtime.Caller(0)
+		// Load the agent via shared manager
+		var ok bool
+		agent, ok = testManager.LoadMediaAgent("fake-metadata-agent")
 		Expect(ok).To(BeTrue())
-		testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")
-
-		// Create temp dir for plugins
-		var err error
-		tmpDir, err = os.MkdirTemp("", "metadata-agent-test-*")
-		Expect(err).ToNot(HaveOccurred())
-
-		// Copy test plugin to temp dir
-		srcPath := filepath.Join(testdataDir, "fake-metadata-agent.wasm")
-		destPath := filepath.Join(tmpDir, "fake-metadata-agent.wasm")
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
-
-		// Create and start the manager
-		manager = &Manager{
-			plugins: make(map[string]*pluginInstance),
-		}
-		err = manager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Load the agent via manager
-		var ok2 bool
-		agent, ok2 = manager.LoadMediaAgent("fake-metadata-agent")
-		Expect(ok2).To(BeTrue())
-
-		DeferCleanup(func() {
-			_ = manager.Stop()
-			_ = os.RemoveAll(tmpDir)
-		})
 	})
 
 	Describe("AgentName", func() {
@@ -158,5 +111,86 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 			Expect(images[0].URL).To(Equal("https://test.example.com/albums/Abbey Road/cover.jpg"))
 			Expect(images[0].Size).To(Equal(500))
 		})
+	})
+})
+
+var _ = Describe("MetadataAgent error handling", Ordered, func() {
+	// Tests error paths when plugin is configured to return errors
+	var (
+		errorManager *Manager
+		errorAgent   agents.Interface
+		ctx          context.Context
+	)
+
+	BeforeAll(func() {
+		ctx = GinkgoT().Context()
+
+		// Create manager with error injection config
+		errorManager, _ = createTestManager(map[string]map[string]string{
+			"fake-metadata-agent": {
+				"error": "simulated plugin error",
+			},
+		})
+
+		// Load the agent
+		var ok bool
+		errorAgent, ok = errorManager.LoadMediaAgent("fake-metadata-agent")
+		Expect(ok).To(BeTrue())
+	})
+
+	It("returns error from GetArtistMBID", func() {
+		retriever := errorAgent.(agents.ArtistMBIDRetriever)
+		_, err := retriever.GetArtistMBID(ctx, "artist-1", "Test")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetArtistURL", func() {
+		retriever := errorAgent.(agents.ArtistURLRetriever)
+		_, err := retriever.GetArtistURL(ctx, "artist-1", "Test", "mbid")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetArtistBiography", func() {
+		retriever := errorAgent.(agents.ArtistBiographyRetriever)
+		_, err := retriever.GetArtistBiography(ctx, "artist-1", "Test", "mbid")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetArtistImages", func() {
+		retriever := errorAgent.(agents.ArtistImageRetriever)
+		_, err := retriever.GetArtistImages(ctx, "artist-1", "Test", "mbid")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetSimilarArtists", func() {
+		retriever := errorAgent.(agents.ArtistSimilarRetriever)
+		_, err := retriever.GetSimilarArtists(ctx, "artist-1", "Test", "mbid", 5)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetArtistTopSongs", func() {
+		retriever := errorAgent.(agents.ArtistTopSongsRetriever)
+		_, err := retriever.GetArtistTopSongs(ctx, "artist-1", "Test", "mbid", 5)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetAlbumInfo", func() {
+		retriever := errorAgent.(agents.AlbumInfoRetriever)
+		_, err := retriever.GetAlbumInfo(ctx, "Album", "Artist", "mbid")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetAlbumImages", func() {
+		retriever := errorAgent.(agents.AlbumImageRetriever)
+		_, err := retriever.GetAlbumImages(ctx, "Album", "Artist", "mbid")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
 	})
 })
