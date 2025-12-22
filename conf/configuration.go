@@ -230,6 +230,7 @@ type pluginsOptions struct {
 	Folder     string
 	CacheSize  string
 	AutoReload bool
+	LogLevel   string
 }
 
 type extAuthOptions struct {
