@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -38,6 +39,8 @@ type Manager struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
+	stopped atomic.Bool    // Set to true when Stop() is called
+	loadWg  sync.WaitGroup // Tracks in-flight plugin load operations
 
 	// File watcher fields (used when AutoReload is enabled)
 	watcherEvents  chan notify.EventInfo
@@ -122,12 +125,20 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // Stop shuts down the plugin manager and releases all resources.
 func (m *Manager) Stop() error {
-	// Stop file watcher first
-	m.stopWatcher()
+	// Mark as stopped first to prevent new operations
+	m.stopped.Store(true)
 
+	// Cancel context to signal all goroutines to stop
 	if m.cancel != nil {
 		m.cancel()
 	}
+
+	// Stop file watcher
+	m.stopWatcher()
+
+	// Wait for all in-flight plugin load operations to complete
+	// This is critical to avoid races with cache.Close()
+	m.loadWg.Wait()
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -147,6 +158,7 @@ func (m *Manager) Stop() error {
 		if err := m.cache.Close(context.Background()); err != nil {
 			log.Error("Error closing wazero cache", err)
 		}
+		m.cache = nil
 	}
 
 	return nil
@@ -247,6 +259,20 @@ func (m *Manager) discoverPlugins(folder string) error {
 
 // loadPlugin loads a single plugin from a wasm file
 func (m *Manager) loadPlugin(name, wasmPath string) error {
+	// Check if manager is stopped (cache may be closed)
+	if m.stopped.Load() {
+		return fmt.Errorf("manager is stopped")
+	}
+
+	// Track this operation so Stop() can wait for it to complete
+	m.loadWg.Add(1)
+	defer m.loadWg.Done()
+
+	// Double-check after adding to WaitGroup (Stop may have been called between check and Add)
+	if m.stopped.Load() {
+		return fmt.Errorf("manager is stopped")
+	}
+
 	// Read wasm file
 	wasmBytes, err := os.ReadFile(wasmPath)
 	if err != nil {
