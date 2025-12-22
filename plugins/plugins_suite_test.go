@@ -46,20 +46,29 @@ func buildTestPlugins(t *testing.T, path string) {
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
-// It creates a temp directory, copies the fake plugin, and starts the manager.
+// It creates a temp directory, copies the fake-metadata-agent plugin, and starts the manager.
 // Returns the manager, temp directory path, and a cleanup function.
 func createTestManager(pluginConfig map[string]map[string]string) (*Manager, string) {
+	return createTestManagerWithPlugins(pluginConfig, "fake-metadata-agent.wasm")
+}
+
+// createTestManagerWithPlugins creates a new plugin Manager with the given plugin config
+// and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
+// Returns the manager and temp directory path.
+func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
 
-	// Copy test plugin to temp dir
-	srcPath := filepath.Join(testdataDir, "fake-metadata-agent.wasm")
-	destPath := filepath.Join(tmpDir, "fake-metadata-agent.wasm")
-	data, err := os.ReadFile(srcPath)
-	Expect(err).ToNot(HaveOccurred())
-	err = os.WriteFile(destPath, data, 0600)
-	Expect(err).ToNot(HaveOccurred())
+	// Copy test plugins to temp dir
+	for _, plugin := range plugins {
+		srcPath := filepath.Join(testdataDir, plugin)
+		destPath := filepath.Join(tmpDir, plugin)
+		data, err := os.ReadFile(srcPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(destPath, data, 0600)
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	// Setup config
 	DeferCleanup(configtest.SetupConfig())

@@ -74,6 +74,132 @@ Provides artist and album metadata. A plugin has this capability if it exports o
 | `nd_get_album_info`       | `{name, artist, mbid?}`    | `{name, mbid, description, url}` | Get album info       |
 | `nd_get_album_images`     | `{name, artist, mbid?}`    | `{images: [{url, size}]}`        | Get album images     |
 
+### Scrobbler
+
+Provides scrobbling (listening history) integration with external services. A plugin has this capability if it exports one or more of these functions:
+
+| Function                     | Input                 | Output                  | Description                   |
+|------------------------------|-----------------------|-------------------------|-------------------------------|
+| `nd_scrobbler_is_authorized` | `{user_id, username}` | `{authorized}`          | Check if user is authorized   |
+| `nd_scrobbler_now_playing`   | See NowPlaying Input  | `{error?, error_type?}` | Send now playing notification |
+| `nd_scrobbler_scrobble`      | See Scrobble Input    | `{error?, error_type?}` | Submit a scrobble             |
+
+#### NowPlaying Input
+
+```json
+{
+  "user_id": "string",
+  "username": "string",
+  "track": {
+    "id": "string",
+    "title": "string",
+    "album": "string",
+    "artist": "string",
+    "album_artist": "string",
+    "duration": 180.5,
+    "track_number": 1,
+    "disc_number": 1,
+    "mbz_recording_id": "string",
+    "mbz_album_id": "string",
+    "mbz_artist_id": "string",
+    "mbz_release_group_id": "string",
+    "mbz_album_artist_id": "string",
+    "mbz_release_track_id": "string"
+  },
+  "position": 30
+}
+```
+
+#### Scrobble Input
+
+```json
+{
+  "user_id": "string",
+  "username": "string",
+  "track": { /* same as NowPlaying */ },
+  "timestamp": 1703270400
+}
+```
+
+#### Scrobbler Output
+
+The output for `nd_scrobbler_now_playing` and `nd_scrobbler_scrobble` is **optional on success**. If there is no error, the plugin can return nothing (empty output).
+
+On error, return:
+
+```json
+{
+  "error": "error message",
+  "error_type": "not_authorized|retry_later|unrecoverable"
+}
+```
+
+**Error types:**
+- `not_authorized`: User needs to re-authorize with the scrobbling service
+- `retry_later`: Temporary failure, Navidrome will retry the scrobble later
+- `unrecoverable`: Permanent failure, scrobble will be discarded
+
+#### Example Scrobbler Plugin
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "github.com/extism/go-pdk"
+)
+
+type AuthInput struct {
+    UserID   string `json:"user_id"`
+    Username string `json:"username"`
+}
+
+type AuthOutput struct {
+    Authorized bool `json:"authorized"`
+}
+
+type ScrobblerOutput struct {
+    Error     string `json:"error,omitempty"`
+    ErrorType string `json:"error_type,omitempty"`
+}
+
+//go:wasmexport nd_scrobbler_is_authorized
+func ndScrobblerIsAuthorized() int32 {
+    var input AuthInput
+    if err := pdk.InputJSON(&input); err != nil {
+        pdk.SetError(err)
+        return 1
+    }
+    
+    // Check if user is authorized with your scrobbling service
+    // This could check a session key stored in plugin config
+    sessionKey, hasKey := pdk.GetConfig("session_key_" + input.UserID)
+    
+    output := AuthOutput{Authorized: hasKey && sessionKey != ""}
+    if err := pdk.OutputJSON(output); err != nil {
+        pdk.SetError(err)
+        return 1
+    }
+    return 0
+}
+
+//go:wasmexport nd_scrobbler_scrobble
+func ndScrobblerScrobble() int32 {
+    // Read input, send to external service...
+    
+    output := ScrobblerOutput{ErrorType: "none"}
+    if err := pdk.OutputJSON(output); err != nil {
+        pdk.SetError(err)
+        return 1
+    }
+    return 0
+}
+
+func main() {}
+```
+
+Scrobbler plugins are automatically discovered and used by Navidrome's PlayTracker alongside built-in scrobblers (Last.fm, ListenBrainz).
+
 ## Developing Plugins
 
 Plugins can be written in any language that compiles to WebAssembly. We recommend using the [Extism PDK](https://extism.org/docs/category/write-a-plug-in) for your language.

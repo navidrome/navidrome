@@ -9,8 +9,9 @@ const (
 	// Detected when the plugin exports at least one of the metadata agent functions.
 	CapabilityMetadataAgent Capability = "MetadataAgent"
 
-	// Future capabilities:
-	// CapabilityScrobbler Capability = "Scrobbler"
+	// CapabilityScrobbler indicates the plugin can receive scrobble events.
+	// Detected when the plugin exports at least one of the scrobbler functions.
+	CapabilityScrobbler Capability = "Scrobbler"
 )
 
 // capabilityFunctions maps each capability to its required/optional functions.
@@ -25,6 +26,11 @@ var capabilityFunctions = map[Capability][]string{
 		FuncGetArtistTopSongs,
 		FuncGetAlbumInfo,
 		FuncGetAlbumImages,
+	},
+	CapabilityScrobbler: {
+		FuncScrobblerIsAuthorized,
+		FuncScrobblerNowPlaying,
+		FuncScrobblerScrobble,
 	},
 }
 
