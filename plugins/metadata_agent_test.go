@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("MetadataAgent", func() {
+var _ = Describe("MetadataAgent", Ordered, func() {
 	var (
 		manager     *Manager
 		agent       agents.Interface
@@ -22,7 +22,7 @@ var _ = Describe("MetadataAgent", func() {
 		tmpDir      string
 	)
 
-	BeforeEach(func() {
+	BeforeAll(func() {
 		ctx = GinkgoT().Context()
 
 		// Get testdata directory
