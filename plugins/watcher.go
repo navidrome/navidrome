@@ -13,8 +13,7 @@ import (
 
 // debounceDuration is the time to wait before acting on file events
 // to handle multiple rapid events for the same file.
-// This is a var (not const) to allow tests to use a shorter duration.
-var debounceDuration = 500 * time.Millisecond
+const debounceDuration = 500 * time.Millisecond
 
 // startWatcher starts the file watcher for the plugins folder.
 // It watches for CREATE, WRITE, and REMOVE events on .wasm files.
