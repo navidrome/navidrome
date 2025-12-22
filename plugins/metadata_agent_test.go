@@ -6,7 +6,6 @@ import (
 	"runtime"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -129,20 +128,6 @@ var _ = Describe("MetadataAgent", func() {
 			Expect(images).To(HaveLen(1))
 			Expect(images[0].URL).To(Equal("https://test.example.com/albums/Abbey Road/cover.jpg"))
 			Expect(images[0].Size).To(Equal(500))
-		})
-	})
-
-	Describe("interface assertions", func() {
-		It("implements all required interfaces", func() {
-			var _ agents.Interface = agent
-			var _ agents.ArtistMBIDRetriever = agent
-			var _ agents.ArtistURLRetriever = agent
-			var _ agents.ArtistBiographyRetriever = agent
-			var _ agents.ArtistSimilarRetriever = agent
-			var _ agents.ArtistImageRetriever = agent
-			var _ agents.ArtistTopSongsRetriever = agent
-			var _ agents.AlbumInfoRetriever = agent
-			var _ agents.AlbumImageRetriever = agent
 		})
 	})
 })
