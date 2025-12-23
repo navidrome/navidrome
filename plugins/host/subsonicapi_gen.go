@@ -11,8 +11,8 @@ import (
 
 // SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
 type SubsonicAPICallResponse struct {
-	Response []byte `json:"response,omitempty"`
-	Error    string `json:"error,omitempty"`
+	ResponseJSON string `json:"responseJSON,omitempty"`
+	Error        string `json:"error,omitempty"`
 }
 
 // RegisterSubsonicAPIHostFunctions registers SubsonicAPI service host functions.
@@ -34,14 +34,14 @@ func newSubsonicAPICallHostFunction(service SubsonicAPIService) extism.HostFunct
 			}
 
 			// Call the service method
-			response, err := service.Call(ctx, uri)
+			responsejson, err := service.Call(ctx, uri)
 			if err != nil {
 				subsonicapiWriteError(p, stack, err)
 				return
 			}
 			// Write JSON response to plugin memory
 			resp := SubsonicAPICallResponse{
-				Response: response,
+				ResponseJSON: responsejson,
 			}
 			subsonicapiWriteResponse(p, stack, resp)
 		},
