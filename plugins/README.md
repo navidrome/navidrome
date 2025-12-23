@@ -342,6 +342,118 @@ err := manager.ReloadPlugin("my-plugin")
 - **Config changes**: Plugin configuration (`PluginConfig.<name>`) is read at load time. Changes require a reload.
 - **Failed reloads**: If loading fails after unloading, the plugin remains unloaded. Check logs for errors.
 
+## Host Services (Internal Development)
+
+This section is for Navidrome developers who want to add new host services that plugins can call.
+
+### Overview
+
+Host services allow plugins to call back into Navidrome for functionality like Subsonic API access, scheduling, and other internal services. The `hostgen` tool generates Extism host function wrappers from annotated Go interfaces, automating the boilerplate of memory management, JSON marshalling, and error handling.
+
+### Adding a New Host Service
+
+1. **Create an annotated interface** in `plugins/host/`:
+
+```go
+// MyService provides some functionality to plugins.
+//nd:hostservice name=MyService permission=myservice
+type MyService interface {
+    // DoSomething performs an action.
+    //nd:hostfunc
+    DoSomething(ctx context.Context, input string) (output string, err error)
+}
+```
+
+2. **Run the generator**:
+
+```bash
+make gen
+# Or directly:
+go run ./plugins/cmd/hostgen -input=./plugins/host -output=./plugins/host
+```
+
+3. **Implement the interface** and wire it up in `plugins/manager.go`.
+
+### Annotation Format
+
+#### Service-level (`//nd:hostservice`)
+
+Marks an interface as a host service:
+- `name=<ServiceName>` - Service identifier used in generated code
+- `permission=<key>` - Manifest permission key (e.g., "subsonicapi", "scheduler")
+
+#### Method-level (`//nd:hostfunc`)
+
+Marks a method for host function wrapper generation:
+- `name=<CustomName>` - (Optional) Override the export name
+
+### Method Signature Requirements
+
+- First parameter must be `context.Context`
+- Last return value must be `error`
+- All parameter types must be JSON-serializable
+- Supported types: primitives, structs, slices, maps
+
+### Generated Code
+
+The generator creates `<servicename>_gen.go` with:
+- Request/response structs for each method
+- `Register<Service>HostFunctions()` - Returns Extism host functions to register
+- Helper functions for memory operations and error handling
+
+Example generated function name: `subsonicapi_call` for `SubsonicAPIService.Call`
+
+### Important: Annotation Placement
+
+**The annotation line must immediately precede the type/method declaration without an empty comment line between them.**
+
+✅ **Correct** (annotation directly before type):
+```go
+// MyService provides functionality.
+// More documentation here.
+//nd:hostservice name=MyService permission=myservice
+type MyService interface { ... }
+```
+
+❌ **Incorrect** (empty comment line separates annotation):
+```go
+// MyService provides functionality.
+//
+//nd:hostservice name=MyService permission=myservice
+type MyService interface { ... }
+```
+
+This is due to how Go's AST parser groups comments. An empty `//` line creates a new comment group, causing the annotation to be separated from the type's doc comment.
+
+### Troubleshooting
+
+#### "No host services found" when running generator
+
+1. **Check annotation placement**: Ensure `//nd:hostservice` is on the line immediately before the `type` declaration (no blank `//` line between doc text and annotation).
+
+2. **Check file naming**: The generator skips files ending in `_gen.go` or `_test.go`.
+
+3. **Check interface syntax**: The type must be an interface, not a struct.
+
+4. **Run with verbose flag**: Use `-v` to see what the generator is finding:
+   ```bash
+   go run ./plugins/cmd/hostgen -input=./plugins/host -output=./plugins/host -v
+   ```
+
+#### Generated code doesn't compile
+
+1. **Check method signatures**: First parameter must be `context.Context`, last return must be `error`.
+
+2. **Check parameter types**: All types must be JSON-serializable. Avoid channels, functions, and unexported types.
+
+3. **Review raw output**: Use `-dry-run` to see the generated code without writing files.
+
+#### Methods not being generated
+
+1. **Check `//nd:hostfunc` annotation**: It must be in the method's doc comment, immediately before the method signature.
+
+2. **Check method visibility**: Only methods with names (not embedded interfaces) are processed.
+
 ## Security
 
 Plugins run in a secure WebAssembly sandbox with these restrictions:

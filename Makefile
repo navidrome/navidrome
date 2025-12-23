@@ -103,6 +103,10 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags=netgo ./...
 .PHONY: wire
 
+gen: check_go_env ##@Development Run go generate for code generation
+	go generate ./...
+.PHONY: gen
+
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
 .PHONY: snapshots
