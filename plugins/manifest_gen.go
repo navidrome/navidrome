@@ -82,4 +82,37 @@ type Permissions struct {
 
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
+
+	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
+	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
+}
+
+// SubsonicAPI service permissions
+type SubsonicAPIPermission struct {
+	// If false, reject calls where the u is an admin
+	AllowAdmins bool `json:"allowAdmins,omitempty" yaml:"allowAdmins,omitempty" mapstructure:"allowAdmins,omitempty"`
+
+	// List of usernames the plugin can pass as u. Any user if empty
+	AllowedUsernames []string `json:"allowedUsernames,omitempty" yaml:"allowedUsernames,omitempty" mapstructure:"allowedUsernames,omitempty"`
+
+	// Explanation for why SubsonicAPI access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SubsonicAPIPermission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	type Plain SubsonicAPIPermission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if v, ok := raw["allowAdmins"]; !ok || v == nil {
+		plain.AllowAdmins = false
+	}
+	*j = SubsonicAPIPermission(plain)
+	return nil
 }
