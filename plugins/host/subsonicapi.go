@@ -14,5 +14,5 @@ type SubsonicAPIService interface {
 	// The uri parameter should be the Subsonic API path without the server prefix,
 	// e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
 	//nd:hostfunc
-	Call(ctx context.Context, uri string) (response []byte, err error)
+	Call(ctx context.Context, uri string) (responseJSON string, err error)
 }
