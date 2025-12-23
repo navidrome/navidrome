@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
@@ -30,6 +33,9 @@ const (
 	// defaultTimeout is the default timeout for plugin function calls
 	defaultTimeout = 30 * time.Second
 )
+
+// SubsonicRouter is an http.Handler that serves Subsonic API requests.
+type SubsonicRouter = http.Handler
 
 // Manager manages loading and lifecycle of WebAssembly plugins.
 // It implements both agents.PluginLoader and scrobbler.PluginLoader interfaces.
@@ -47,6 +53,10 @@ type Manager struct {
 	watcherDone    chan struct{}
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
+
+	// SubsonicAPI host function dependencies (set once before Start, not modified after)
+	subsonicRouter SubsonicRouter
+	ds             model.DataStore
 }
 
 // pluginInstance represents a loaded plugin
@@ -77,6 +87,19 @@ func GetManager() *Manager {
 			plugins: make(map[string]*pluginInstance),
 		}
 	})
+}
+
+// SetSubsonicRouter sets the Subsonic router for SubsonicAPI host functions.
+// This should be called after the subsonic router is created but before plugins
+// that require SubsonicAPI access are loaded.
+func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
+	m.subsonicRouter = router
+}
+
+// SetDataStore sets the data store for plugins that need database access.
+// This should be called before plugins are loaded.
+func (m *Manager) SetDataStore(ds model.DataStore) {
+	m.ds = ds
 }
 
 // Start initializes the plugin manager and loads plugins from the configured folder.
@@ -313,8 +336,14 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
 	}
 
-	// Create initial compiled plugin (without AllowedHosts)
-	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, nil)
+	// Register stub host functions for initial compilation.
+	// This is necessary because plugins that import host functions will fail to compile
+	// if those functions aren't available at compile time. We use a stub service that
+	// returns an error - the real service will be registered during recompilation.
+	stubHostFunctions := host.RegisterSubsonicAPIHostFunctions(nil)
+
+	// Create initial compiled plugin with stub host functions
+	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, stubHostFunctions)
 	if err != nil {
 		return err
 	}
@@ -350,11 +379,31 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	capabilities := detectCapabilities(instance)
 	instance.Close(m.ctx)
 
-	// Recompile only if plugin requires HTTP access (AllowedHosts)
+	// Check if recompilation is needed (AllowedHosts or SubsonicAPI permission)
+	needsRecompile := false
+	var hostFunctions []extism.HostFunction
+
 	if hosts := manifest.AllowedHosts(); len(hosts) > 0 {
-		compiled.Close(m.ctx)
 		pluginManifest.AllowedHosts = hosts
-		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, nil)
+		needsRecompile = true
+	}
+
+	// Register SubsonicAPI host functions if permission is granted
+	if manifest.Permissions != nil && manifest.Permissions.Subsonicapi != nil {
+		perm := manifest.Permissions.Subsonicapi
+		if m.subsonicRouter != nil && m.ds != nil {
+			service := newSubsonicAPIService(name, m.subsonicRouter, m.ds, perm)
+			hostFunctions = append(hostFunctions, host.RegisterSubsonicAPIHostFunctions(service)...)
+			needsRecompile = true
+		} else {
+			log.Warn(m.ctx, "Plugin requires SubsonicAPI but router/datastore not available", "plugin", name)
+		}
+	}
+
+	// Recompile if needed (AllowedHosts or host functions)
+	if needsRecompile {
+		compiled.Close(m.ctx)
+		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
 		if err != nil {
 			return err
 		}
@@ -526,9 +575,3 @@ func toExtismLogLevel(level log.Level) extism.LogLevel {
 		return extism.LogLevelInfo
 	}
 }
-
-// Verify interface implementations at compile time
-var (
-	_ agents.PluginLoader    = (*Manager)(nil)
-	_ scrobbler.PluginLoader = (*Manager)(nil)
-)
