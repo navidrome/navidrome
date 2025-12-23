@@ -22,6 +22,7 @@ func GenerateService(svc Service, pkgName string) ([]byte, error) {
 		"needsJSON":        NeedsJSON,
 		"needsRequestType": func(m Method) bool { return m.NeedsRequestType() },
 		"needsRespType":    func(m Method) bool { return m.NeedsResponseType() },
+		"isErrorOnly":      func(m Method) bool { return m.IsErrorOnly() },
 		"hasErrFromRead":   hasErrorFromRead,
 		"readParam":        generateReadParam,
 		"writeReturn":      generateWriteReturn,
@@ -292,14 +293,24 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 {{- end}}
 {{- if .HasError}}
 			if err != nil {
-{{- if needsRespType .}}
+{{- if isErrorOnly .}}
+				// Write error string to plugin memory
+				if ptr, err := p.WriteString(err.Error()); err == nil {
+					stack[0] = ptr
+				}
+{{- else if needsRespType .}}
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 {{- end}}
 				return
 			}
 {{- end}}
 
-{{- if needsRespType .}}
+{{- if isErrorOnly .}}
+			// Write empty string to indicate success
+			if ptr, err := p.WriteString(""); err == nil {
+				stack[0] = ptr
+			}
+{{- else if needsRespType .}}
 			// Write JSON response to plugin memory
 			resp := {{responseType .}}{
 {{- range .Returns}}
@@ -319,7 +330,7 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 {{- else}}
 		[]extism.ValueType{ {{- range $i, $p := .Params}}{{if $i}}, {{end}}{{valueType $p.Type}}{{end}}{{if not .HasParams}}{{end}} },
 {{- end}}
-{{- if needsRespType .}}
+{{- if or (needsRespType .) (isErrorOnly .)}}
 		[]extism.ValueType{extism.ValueTypePTR},
 {{- else}}
 		[]extism.ValueType{ {{- range $i, $r := .Returns}}{{if $i}}, {{end}}{{valueType $r.Type}}{{end}}{{if not .HasReturns}}{{end}} },

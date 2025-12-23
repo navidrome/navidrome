@@ -75,11 +75,19 @@ func newMetaSetHostFunction(service MetaService) extism.HostFunction {
 			// Call the service method
 			err = service.Set(ctx, req.Data)
 			if err != nil {
+				// Write error string to plugin memory
+				if ptr, err := p.WriteString(err.Error()); err == nil {
+					stack[0] = ptr
+				}
 				return
+			}
+			// Write empty string to indicate success
+			if ptr, err := p.WriteString(""); err == nil {
+				stack[0] = ptr
 			}
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
-		[]extism.ValueType{},
+		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
 

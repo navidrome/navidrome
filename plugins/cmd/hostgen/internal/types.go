@@ -176,14 +176,15 @@ func (m Method) NeedsRequestType() bool {
 }
 
 // NeedsResponseType returns true if a response struct is needed.
-// Needed when we have complex returns that require JSON, or error handling.
+// Needed when we have complex returns that require JSON (but not for error-only methods).
 func (m Method) NeedsResponseType() bool {
-	// If there's an error, we need a response type to serialize it
-	if m.HasError {
-		// But only if there are also returns, or if returns need JSON
-		if m.HasReturns() {
-			return true
-		}
+	// Error-only methods return a simple string, not JSON
+	if m.IsErrorOnly() {
+		return false
+	}
+	// If there's an error with other returns, we need a response type
+	if m.HasError && m.HasReturns() {
+		return true
 	}
 	for _, r := range m.Returns {
 		if NeedsJSON(r.Type) {
@@ -191,6 +192,11 @@ func (m Method) NeedsResponseType() bool {
 		}
 	}
 	return false
+}
+
+// IsErrorOnly returns true if the method only returns an error (no other return values).
+func (m Method) IsErrorOnly() bool {
+	return m.HasError && !m.HasReturns()
 }
 
 // toJSONName converts a Go identifier to camelCase JSON field name.
