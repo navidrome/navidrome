@@ -9,7 +9,7 @@ import (
 )
 
 var _ = Describe("Generator", func() {
-	Describe("GenerateService", func() {
+	Describe("GenerateHost", func() {
 		It("should generate valid Go code for a simple service with strings", func() {
 			// String params/returns don't need JSON - they use direct memory read/write
 			svc := Service{
@@ -26,7 +26,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify the code is valid Go
@@ -73,7 +73,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = format.Source(code)
@@ -98,7 +98,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = format.Source(code)
@@ -132,7 +132,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = format.Source(code)
@@ -164,7 +164,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = format.Source(code)
@@ -200,7 +200,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = format.Source(code)
@@ -229,7 +229,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
@@ -254,7 +254,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
@@ -278,7 +278,7 @@ var _ = Describe("Generator", func() {
 				},
 			}
 
-			code, err := GenerateService(svc, "host")
+			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
@@ -336,7 +336,7 @@ type TestService interface {
 			Expect(services).To(HaveLen(1))
 
 			// Generate
-			code, err := GenerateService(services[0], "host")
+			code, err := GenerateHost(services[0], "host")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Format (validates syntax)

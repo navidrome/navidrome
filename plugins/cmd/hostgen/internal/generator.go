@@ -84,12 +84,6 @@ func GenerateHost(svc Service, pkgName string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// GenerateService generates the host function wrapper code for a service.
-// Deprecated: Use GenerateHost instead.
-func GenerateService(svc Service, pkgName string) ([]byte, error) {
-	return GenerateHost(svc, pkgName)
-}
-
 // GenerateClientGo generates client wrapper code for plugins to call host functions.
 func GenerateClientGo(svc Service) ([]byte, error) {
 	tmplContent, err := templatesFS.ReadFile("templates/client_go.go.tmpl")
