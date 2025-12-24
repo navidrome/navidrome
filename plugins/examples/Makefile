@@ -10,7 +10,7 @@ all: $(PLUGINS:%=%.wasm)
 clean:
 	rm -f $(PLUGINS:%=%.wasm)
 
-%.wasm: %/main.go %/go.mod
+%.wasm: %/*.go %/go.mod
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else
