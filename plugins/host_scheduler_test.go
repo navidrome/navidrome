@@ -128,7 +128,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		It("should auto-generate schedule ID when empty", func() {
 			scheduleID, err := testService.ScheduleOneTime(GinkgoT().Context(), 1, "data", "")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(scheduleID).To(HaveLen(36)) // UUID format
+			Expect(scheduleID).ToNot(BeEmpty())
 		})
 	})
 

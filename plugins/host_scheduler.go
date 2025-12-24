@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 )
@@ -49,7 +49,7 @@ func newSchedulerService(pluginName string, manager *Manager, sched scheduler.Sc
 
 func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds int32, payload string, scheduleID string) (string, error) {
 	if scheduleID == "" {
-		scheduleID = uuid.New().String()
+		scheduleID = id.NewRandom()
 	}
 
 	s.mu.Lock()
@@ -81,7 +81,7 @@ func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds
 
 func (s *schedulerServiceImpl) ScheduleRecurring(ctx context.Context, cronExpression string, payload string, scheduleID string) (string, error) {
 	if scheduleID == "" {
-		scheduleID = uuid.New().String()
+		scheduleID = id.NewRandom()
 	}
 
 	capturedID := scheduleID
