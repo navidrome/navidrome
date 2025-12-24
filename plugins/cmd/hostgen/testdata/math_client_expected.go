@@ -2,6 +2,8 @@
 //
 // This file contains client wrappers for the Math host service.
 // It is intended for use in Navidrome plugins built with TinyGo.
+//
+//go:build wasip1
 
 package main
 
