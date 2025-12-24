@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
@@ -341,6 +342,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	// if those functions aren't available at compile time. We use a stub service that
 	// returns an error - the real service will be registered during recompilation.
 	stubHostFunctions := host.RegisterSubsonicAPIHostFunctions(nil)
+	stubHostFunctions = append(stubHostFunctions, host.RegisterSchedulerHostFunctions(nil)...)
 
 	// Create initial compiled plugin with stub host functions
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, stubHostFunctions)
@@ -400,6 +402,14 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		}
 	}
 
+	// Register Scheduler host functions if permission is granted
+	if manifest.Permissions != nil && manifest.Permissions.Scheduler != nil {
+		service := newSchedulerService(name, m, scheduler.GetInstance())
+		hostFunctions = append(hostFunctions, host.RegisterSchedulerHostFunctions(service)...)
+		registerSchedulerService(name, service.(*schedulerServiceImpl))
+		needsRecompile = true
+	}
+
 	// Recompile if needed (AllowedHosts or host functions)
 	if needsRecompile {
 		compiled.Close(m.ctx)
@@ -440,6 +450,9 @@ func (m *Manager) UnloadPlugin(name string) error {
 	}
 	delete(m.plugins, name)
 	m.mu.Unlock()
+
+	// Cancel all scheduled tasks for this plugin
+	unregisterSchedulerService(name)
 
 	// Close the compiled plugin outside the lock with a grace period
 	// to allow in-flight requests to complete

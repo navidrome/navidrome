@@ -83,8 +83,17 @@ type Permissions struct {
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
 
+	// Scheduler corresponds to the JSON schema field "scheduler".
+	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
+
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
+}
+
+// Scheduler service permissions for scheduling tasks
+type SchedulerPermission struct {
+	// Explanation for why scheduler access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
 // SubsonicAPI service permissions

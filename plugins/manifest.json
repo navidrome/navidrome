@@ -49,6 +49,9 @@
         },
         "subsonicapi": {
           "$ref": "#/$defs/SubsonicAPIPermission"
+        },
+        "scheduler": {
+          "$ref": "#/$defs/SchedulerPermission"
         }
       }
     },
@@ -101,6 +104,17 @@
           "type": "boolean",
           "description": "If false, reject calls where the u is an admin",
           "default": false
+        }
+      }
+    },
+    "SchedulerPermission": {
+      "type": "object",
+      "description": "Scheduler service permissions for scheduling tasks",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why scheduler access is needed"
         }
       }
     }

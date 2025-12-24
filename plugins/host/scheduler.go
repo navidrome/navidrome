@@ -18,7 +18,7 @@ type SchedulerService interface {
 	//
 	// Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 	//nd:hostfunc
-	ScheduleOneTime(ctx context.Context, delaySeconds int32, payload []byte, scheduleID string) (newScheduleID string, err error)
+	ScheduleOneTime(ctx context.Context, delaySeconds int32, payload string, scheduleID string) (newScheduleID string, err error)
 
 	// ScheduleRecurring schedules a recurring event using a cron expression.
 	//
@@ -29,7 +29,7 @@ type SchedulerService interface {
 	//
 	// Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 	//nd:hostfunc
-	ScheduleRecurring(ctx context.Context, cronExpression string, payload []byte, scheduleID string) (newScheduleID string, err error)
+	ScheduleRecurring(ctx context.Context, cronExpression string, payload string, scheduleID string) (newScheduleID string, err error)
 
 	// CancelSchedule cancels a scheduled job identified by its schedule ID.
 	//
@@ -38,5 +38,5 @@ type SchedulerService interface {
 	//
 	// Returns an error if the schedule ID is not found or if cancellation fails.
 	//nd:hostfunc
-	CancelSchedule(ctx context.Context, scheduelID string) error
+	CancelSchedule(ctx context.Context, scheduleID string) error
 }
