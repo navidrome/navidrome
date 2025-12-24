@@ -39,4 +39,9 @@ type SchedulerService interface {
 	// Returns an error if the schedule ID is not found or if cancellation fails.
 	//nd:hostfunc
 	CancelSchedule(ctx context.Context, scheduleID string) error
+
+	// Close cleans up any resources used by the SchedulerService.
+	//
+	// This should be called when the plugin is unloaded to ensure proper cleanup.
+	Close() error
 }

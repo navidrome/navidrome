@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -67,6 +69,7 @@ type pluginInstance struct {
 	manifest     *Manifest
 	compiled     *extism.CompiledPlugin
 	capabilities []Capability // Auto-detected capabilities based on exported functions
+	closers      []io.Closer  // Cleanup functions to call on unload
 }
 
 func (p *pluginInstance) create() (*extism.Plugin, error) {
@@ -78,6 +81,17 @@ func (p *pluginInstance) create() (*extism.Plugin, error) {
 	}
 	plugin.SetLogger(extismLogger(p.name))
 	return plugin, nil
+}
+
+func (p *pluginInstance) Close() error {
+	var errs []error
+	for _, f := range p.closers {
+		err := f.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // GetManager returns a singleton instance of the plugin manager.
@@ -384,6 +398,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	// Check if recompilation is needed (AllowedHosts or SubsonicAPI permission)
 	needsRecompile := false
 	var hostFunctions []extism.HostFunction
+	var closers []io.Closer
 
 	if hosts := manifest.AllowedHosts(); len(hosts) > 0 {
 		pluginManifest.AllowedHosts = hosts
@@ -405,8 +420,8 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	// Register Scheduler host functions if permission is granted
 	if manifest.Permissions != nil && manifest.Permissions.Scheduler != nil {
 		service := newSchedulerService(name, m, scheduler.GetInstance())
+		closers = append(closers, service)
 		hostFunctions = append(hostFunctions, host.RegisterSchedulerHostFunctions(service)...)
-		registerSchedulerService(name, service.(*schedulerServiceImpl))
 		needsRecompile = true
 	}
 
@@ -426,6 +441,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		manifest:     &manifest,
 		compiled:     compiled,
 		capabilities: capabilities,
+		closers:      closers,
 	}
 	m.mu.Unlock()
 	return nil
@@ -451,8 +467,11 @@ func (m *Manager) UnloadPlugin(name string) error {
 	delete(m.plugins, name)
 	m.mu.Unlock()
 
-	// Cancel all scheduled tasks for this plugin
-	unregisterSchedulerService(name)
+	// Run cleanup functions
+	err := instance.Close()
+	if err != nil {
+		log.Error("Error during plugin cleanup", "plugin", name, err)
+	}
 
 	// Close the compiled plugin outside the lock with a grace period
 	// to allow in-flight requests to complete

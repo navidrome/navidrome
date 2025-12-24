@@ -61,8 +61,8 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		// Wrap the scheduler service and replace the scheduler with our mock
-		service := getSchedulerService("fake-scheduler")
+		// Get scheduler service from plugin's closers and wrap it for testing
+		service := findSchedulerService(manager, "fake-scheduler")
 		Expect(service).ToNot(BeNil())
 		testService = &testableSchedulerService{schedulerServiceImpl: service}
 		testService.scheduler = mockSched
@@ -87,7 +87,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		})
 
 		It("should register scheduler service for plugin", func() {
-			service := getSchedulerService("fake-scheduler")
+			service := findSchedulerService(manager, "fake-scheduler")
 			Expect(service).ToNot(BeNil())
 		})
 	})
@@ -245,7 +245,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			err = manager.UnloadPlugin("fake-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(getSchedulerService("fake-scheduler")).To(BeNil())
+			Expect(findSchedulerService(manager, "fake-scheduler")).To(BeNil())
 			Expect(mockSched.GetCallbackCount()).To(Equal(0)) // Recurring task removed
 		})
 	})
@@ -385,4 +385,20 @@ func (r *mockTimerRegistry) Reset() {
 	defer r.mu.Unlock()
 	r.callbacks = make([]func(), 0)
 	r.timers = make([]*time.Timer, 0)
+}
+
+// findSchedulerService finds the scheduler service from a plugin's closers.
+func findSchedulerService(m *Manager, pluginName string) *schedulerServiceImpl {
+	m.mu.RLock()
+	instance, ok := m.plugins[pluginName]
+	m.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	for _, closer := range instance.closers {
+		if svc, ok := closer.(*schedulerServiceImpl); ok {
+			return svc
+		}
+	}
+	return nil
 }
