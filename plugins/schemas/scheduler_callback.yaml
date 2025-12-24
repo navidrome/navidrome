@@ -1,0 +1,49 @@
+version: v1-draft
+
+exports:
+  nd_scheduler_callback:
+    description: |
+      Called when a scheduled task fires. Plugins that use the scheduler host service
+      must export this function to receive callbacks when their scheduled tasks execute.
+    input:
+      $ref: "#/components/schemas/SchedulerCallbackInput"
+      contentType: application/json
+    output:
+      $ref: "#/components/schemas/SchedulerCallbackOutput"
+      contentType: application/json
+
+components:
+  schemas:
+    SchedulerCallbackInput:
+      description: Input provided to the scheduler callback when a scheduled task fires
+      properties:
+        schedule_id:
+          type: string
+          description: |
+            The unique identifier for this scheduled task. This is either the ID
+            provided when scheduling, or an auto-generated UUID if none was specified.
+        payload:
+          type: string
+          description: |
+            The payload data that was provided when the task was scheduled.
+            Can be used to pass context or parameters to the callback handler.
+        is_recurring:
+          type: boolean
+          description: |
+            True if this is a recurring schedule (created via ScheduleRecurring),
+            false if it's a one-time schedule (created via ScheduleOneTime).
+      required:
+        - schedule_id
+        - payload
+        - is_recurring
+
+    SchedulerCallbackOutput:
+      description: Output from the scheduler callback
+      properties:
+        error:
+          type: string
+          nullable: true
+          description: |
+            Error message if the callback failed to process the scheduled task.
+            Empty or null indicates success. The error is logged but does not
+            affect the scheduling system.

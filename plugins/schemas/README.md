@@ -6,10 +6,11 @@ new plugins using the `xtp` CLI tool.
 
 ## Available Schemas
 
-| Schema                                     | Description                                                     |
-|--------------------------------------------|-----------------------------------------------------------------|
-| [metadata_agent.yaml](metadata_agent.yaml) | Metadata agent for retrieving artist/album information          |
-| [scrobbler.yaml](scrobbler.yaml)           | Scrobbler capability for sending play data to external services |
+| Schema                                               | Description                                                     |
+|------------------------------------------------------|-----------------------------------------------------------------|
+| [metadata_agent.yaml](metadata_agent.yaml)           | Metadata agent for retrieving artist/album information          |
+| [scheduler_callback.yaml](scheduler_callback.yaml)   | Scheduler callback for plugins using the scheduler host service |
+| [scrobbler.yaml](scrobbler.yaml)                     | Scrobbler capability for sending play data to external services |
 
 ## Prerequisites
 
