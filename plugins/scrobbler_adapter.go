@@ -9,12 +9,25 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+// CapabilityScrobbler indicates the plugin can receive scrobble events.
+// Detected when the plugin exports at least one of the scrobbler functions.
+const CapabilityScrobbler Capability = "Scrobbler"
+
 // Scrobbler function names (snake_case as per design)
 const (
 	FuncScrobblerIsAuthorized = "nd_scrobbler_is_authorized"
 	FuncScrobblerNowPlaying   = "nd_scrobbler_now_playing"
 	FuncScrobblerScrobble     = "nd_scrobbler_scrobble"
 )
+
+func init() {
+	registerCapability(
+		CapabilityScrobbler,
+		FuncScrobblerIsAuthorized,
+		FuncScrobblerNowPlaying,
+		FuncScrobblerScrobble,
+	)
+}
 
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.

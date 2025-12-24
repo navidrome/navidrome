@@ -7,6 +7,10 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 )
 
+// CapabilityMetadataAgent indicates the plugin can provide artist/album metadata.
+// Detected when the plugin exports at least one of the metadata agent functions.
+const CapabilityMetadataAgent Capability = "MetadataAgent"
+
 // Export function names (snake_case as per design)
 const (
 	FuncGetArtistMBID      = "nd_get_artist_mbid"
@@ -18,6 +22,20 @@ const (
 	FuncGetAlbumInfo       = "nd_get_album_info"
 	FuncGetAlbumImages     = "nd_get_album_images"
 )
+
+func init() {
+	registerCapability(
+		CapabilityMetadataAgent,
+		FuncGetArtistMBID,
+		FuncGetArtistURL,
+		FuncGetArtistBiography,
+		FuncGetSimilarArtists,
+		FuncGetArtistImages,
+		FuncGetArtistTopSongs,
+		FuncGetAlbumInfo,
+		FuncGetAlbumImages,
+	)
+}
 
 // MetadataAgent is an adapter that wraps an Extism plugin and implements
 // the agents interfaces for metadata retrieval.

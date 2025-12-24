@@ -4,41 +4,13 @@ package plugins
 // Capabilities are detected by checking which functions a plugin exports.
 type Capability string
 
-const (
-	// CapabilityMetadataAgent indicates the plugin can provide artist/album metadata.
-	// Detected when the plugin exports at least one of the metadata agent functions.
-	CapabilityMetadataAgent Capability = "MetadataAgent"
-
-	// CapabilityScrobbler indicates the plugin can receive scrobble events.
-	// Detected when the plugin exports at least one of the scrobbler functions.
-	CapabilityScrobbler Capability = "Scrobbler"
-
-	// CapabilityScheduler indicates the plugin can receive scheduled event callbacks.
-	// Detected when the plugin exports the scheduler callback function.
-	CapabilityScheduler Capability = "Scheduler"
-)
-
 // capabilityFunctions maps each capability to its required/optional functions.
 // A plugin has a capability if it exports at least one of these functions.
-var capabilityFunctions = map[Capability][]string{
-	CapabilityMetadataAgent: {
-		FuncGetArtistMBID,
-		FuncGetArtistURL,
-		FuncGetArtistBiography,
-		FuncGetSimilarArtists,
-		FuncGetArtistImages,
-		FuncGetArtistTopSongs,
-		FuncGetAlbumInfo,
-		FuncGetAlbumImages,
-	},
-	CapabilityScrobbler: {
-		FuncScrobblerIsAuthorized,
-		FuncScrobblerNowPlaying,
-		FuncScrobblerScrobble,
-	},
-	CapabilityScheduler: {
-		FuncSchedulerCallback,
-	},
+var capabilityFunctions = map[Capability][]string{}
+
+// registerCapability registers a capability with its associated functions.
+func registerCapability(cap Capability, functions ...string) {
+	capabilityFunctions[cap] = functions
 }
 
 // functionExistsChecker is an interface for checking if a function exists in a plugin.
