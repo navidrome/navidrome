@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -17,13 +18,15 @@ import (
 
 var _ = Describe("SchedulerService", Ordered, func() {
 	var (
-		manager   *Manager
-		tmpDir    string
-		mockSched *mockScheduler
+		manager     *Manager
+		tmpDir      string
+		mockSched   *mockScheduler
+		mockTimers  *mockTimerRegistry
+		testService *testableSchedulerService
+		origAfterFn func(time.Duration, func()) *time.Timer
 	)
 
 	BeforeAll(func() {
-		// Create temp directory
 		var err error
 		tmpDir, err = os.MkdirTemp("", "scheduler-test-*")
 		Expect(err).ToNot(HaveOccurred())
@@ -43,8 +46,13 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		conf.Server.Plugins.AutoReload = false
 		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
-		// Create mock scheduler
+		// Create mock scheduler and timer registry
 		mockSched = newMockScheduler()
+		mockTimers = newMockTimerRegistry()
+
+		// Replace timeAfterFunc with mock
+		origAfterFn = timeAfterFunc
+		timeAfterFunc = mockTimers.AfterFunc
 
 		// Create and start manager
 		manager = &Manager{
@@ -53,31 +61,23 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		// Replace the scheduler in the service with our mock
+		// Wrap the scheduler service and replace the scheduler with our mock
 		service := getSchedulerService("fake-scheduler")
-		if service != nil {
-			service.scheduler = mockSched
-		}
+		Expect(service).ToNot(BeNil())
+		testService = &testableSchedulerService{schedulerServiceImpl: service}
+		testService.scheduler = mockSched
 
 		DeferCleanup(func() {
+			timeAfterFunc = origAfterFn
 			_ = manager.Stop()
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
 
-	// Reset state between tests
 	BeforeEach(func() {
 		mockSched.Reset()
-		service := getSchedulerService("fake-scheduler")
-		if service != nil {
-			service.ResetCallbackRecords()
-			// Clear any pending schedules
-			service.mu.Lock()
-			for id := range service.schedules {
-				delete(service.schedules, id)
-			}
-			service.mu.Unlock()
-		}
+		mockTimers.Reset()
+		testService.ClearSchedules()
 	})
 
 	Describe("Plugin Loading", func() {
@@ -93,170 +93,140 @@ var _ = Describe("SchedulerService", Ordered, func() {
 	})
 
 	Describe("ScheduleOneTime", func() {
-		It("should schedule a one-time callback", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule a callback
-			scheduleID, err := service.ScheduleOneTime(GinkgoT().Context(), 1, "test-payload", "test-id")
+		It("should schedule a one-time task", func() {
+			scheduleID, err := testService.ScheduleOneTime(GinkgoT().Context(), 1, "test-payload", "test-id")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(scheduleID).To(Equal("test-id"))
 
 			// Verify schedule was registered
-			Expect(service.GetScheduleCount()).To(Equal(1))
-			Expect(mockSched.GetCallbackCount()).To(Equal(1))
-
-			// Manually trigger the callback
-			mockSched.TriggerAll()
-
-			// Verify callback was invoked
-			Expect(service.GetCallbackCount()).To(Equal(1))
+			Expect(testService.GetScheduleCount()).To(Equal(1))
+			Expect(mockTimers.GetTimerCount()).To(Equal(1))
 		})
 
-		It("should pass payload to callback", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule with specific payload
-			scheduleID, err := service.ScheduleOneTime(GinkgoT().Context(), 1, "my-test-data", "custom-id")
+		It("should invoke plugin callback and auto-cleanup after firing", func() {
+			_, err := testService.ScheduleOneTime(GinkgoT().Context(), 1, "data", "cleanup-id")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(scheduleID).To(Equal("custom-id"))
+			Expect(testService.GetScheduleCount()).To(Equal(1))
 
-			// Trigger callback
-			mockSched.TriggerAll()
+			// Trigger fires the callback which calls the plugin's nd_scheduler_callback
+			// One-time schedules clean up after the callback completes
+			mockTimers.TriggerAll()
 
-			// Verify payload was received
-			records := service.GetCallbackRecords()
-			Expect(records).To(HaveKey("custom-id"))
-			Expect(records["custom-id"].Payload).To(Equal("my-test-data"))
-			Expect(records["custom-id"].IsRecurring).To(BeFalse())
+			// One-time schedules should self-cleanup
+			Expect(testService.GetScheduleCount()).To(Equal(0))
 		})
 
 		It("should reject duplicate schedule ID", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule first
-			_, err := service.ScheduleOneTime(GinkgoT().Context(), 60, "data", "dup-id")
+			_, err := testService.ScheduleOneTime(GinkgoT().Context(), 60, "data", "dup-id")
 			Expect(err).ToNot(HaveOccurred())
 
-			// Try to schedule with same ID
-			_, err = service.ScheduleOneTime(GinkgoT().Context(), 60, "data2", "dup-id")
+			_, err = testService.ScheduleOneTime(GinkgoT().Context(), 60, "data2", "dup-id")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("already exists"))
 		})
 
-		It("should clean up one-time schedule after firing", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule a callback
-			_, err := service.ScheduleOneTime(GinkgoT().Context(), 1, "cleanup-test", "cleanup-id")
-			Expect(err).ToNot(HaveOccurred())
-
-			// Verify schedule exists
-			Expect(service.GetScheduleCount()).To(Equal(1))
-
-			// Trigger callback (one-time schedules self-cancel)
-			mockSched.TriggerAll()
-
-			// Schedule should be cleaned up
-			Expect(service.GetScheduleCount()).To(Equal(0))
-		})
-
 		It("should auto-generate schedule ID when empty", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule without providing ID
-			scheduleID, err := service.ScheduleOneTime(GinkgoT().Context(), 1, "data", "")
+			scheduleID, err := testService.ScheduleOneTime(GinkgoT().Context(), 1, "data", "")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(scheduleID).ToNot(BeEmpty())
-			// UUID format
-			Expect(scheduleID).To(HaveLen(36))
+			Expect(scheduleID).To(HaveLen(36)) // UUID format
 		})
 	})
 
 	Describe("ScheduleRecurring", func() {
-		It("should schedule recurring callbacks", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule recurring task
-			scheduleID, err := service.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "recurring", "recurring-id")
+		It("should schedule recurring tasks", func() {
+			scheduleID, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "recurring-data", "recurring-id")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(scheduleID).To(Equal("recurring-id"))
 
-			// Trigger multiple times
-			mockSched.TriggerAll()
-			mockSched.TriggerAll()
-
-			// Verify callback count
-			Expect(service.GetCallbackCount()).To(Equal(2))
-
-			// Verify records show recurring
-			records := service.GetCallbackRecords()
-			Expect(records).To(HaveKey("recurring-id"))
-			Expect(records["recurring-id"].IsRecurring).To(BeTrue())
-			Expect(records["recurring-id"].Count).To(Equal(2))
+			// Verify schedule was registered
+			Expect(testService.GetScheduleCount()).To(Equal(1))
+			entry := testService.GetSchedule("recurring-id")
+			Expect(entry).ToNot(BeNil())
+			Expect(entry.isRecurring).To(BeTrue())
 		})
 
-		It("should not self-cancel recurring schedules", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule recurring task
-			_, err := service.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "data", "persist-id")
+		It("should invoke plugin callback multiple times without self-canceling", func() {
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "data", "persist-id")
 			Expect(err).ToNot(HaveOccurred())
 
-			// Trigger multiple times
+			// Trigger multiple times - recurring schedules should persist
 			mockSched.TriggerAll()
 			mockSched.TriggerAll()
 
-			// Schedule should still exist (recurring doesn't self-cancel)
-			Expect(service.GetScheduleCount()).To(Equal(1))
+			// Recurring schedules should persist
+			Expect(testService.GetScheduleCount()).To(Equal(1))
+		})
+	})
+
+	Describe("Plugin Calling Host Functions", func() {
+		It("should allow plugin to schedule a one-time task from callback", func() {
+			// Schedule with magic payload that triggers plugin to call SchedulerScheduleOneTime
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "schedule-followup", "trigger-id")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(1))
+
+			// Trigger - plugin callback will schedule a follow-up task
+			mockSched.TriggerAll()
+
+			// Verify the plugin created a new schedule via host function
+			Expect(testService.GetScheduleCount()).To(Equal(2)) // original + followup
+
+			// Verify the follow-up schedule was created with correct ID and properties
+			followup := testService.GetSchedule("followup-id")
+			Expect(followup).ToNot(BeNil())
+			Expect(followup.payload).To(Equal("followup-created"))
+			Expect(followup.isRecurring).To(BeFalse())
+			Expect(followup.timer).ToNot(BeNil()) // One-time tasks use timers
 		})
 
-		It("should reject invalid cron expression", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Note: The mock scheduler doesn't validate cron expressions,
-			// but the real scheduler would. This test verifies behavior
-			// when the scheduler returns an error.
-			// For now, just verify the method works with a valid expression
-			_, err := service.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "data", "")
+		It("should allow plugin to schedule a recurring task from callback", func() {
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "schedule-recurring", "trigger-id")
 			Expect(err).ToNot(HaveOccurred())
+
+			mockSched.TriggerAll()
+
+			// Verify the plugin created a recurring schedule
+			entry := testService.GetSchedule("recurring-from-plugin")
+			Expect(entry).ToNot(BeNil())
+			Expect(entry.isRecurring).To(BeTrue())
+			Expect(entry.payload).To(Equal("recurring-created"))
 		})
 	})
 
 	Describe("CancelSchedule", func() {
-		It("should cancel a scheduled task", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule recurring task
-			_, err := service.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "cancel-test", "cancel-id")
+		It("should cancel a recurring task", func() {
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "data", "cancel-id")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(1))
 
-			Expect(service.GetScheduleCount()).To(Equal(1))
-
-			// Cancel
-			err = service.CancelSchedule(GinkgoT().Context(), "cancel-id")
+			err = testService.CancelSchedule(GinkgoT().Context(), "cancel-id")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(0))
+		})
 
-			Expect(service.GetScheduleCount()).To(Equal(0))
+		It("should cancel a one-time task", func() {
+			_, err := testService.ScheduleOneTime(GinkgoT().Context(), 60, "data", "cancel-onetime-id")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(1))
+			Expect(mockTimers.GetTimerCount()).To(Equal(1))
 
-			// Trigger should not invoke callback
-			mockSched.TriggerAll()
-			Expect(service.GetCallbackCount()).To(Equal(0))
+			err = testService.CancelSchedule(GinkgoT().Context(), "cancel-onetime-id")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(0))
+		})
+
+		It("should remove callback from scheduler for recurring tasks", func() {
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 1s", "data", "cancel-id")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockSched.GetCallbackCount()).To(Equal(1))
+
+			err = testService.CancelSchedule(GinkgoT().Context(), "cancel-id")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockSched.GetCallbackCount()).To(Equal(0))
 		})
 
 		It("should return error for non-existent schedule", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			err := service.CancelSchedule(GinkgoT().Context(), "non-existent")
+			err := testService.CancelSchedule(GinkgoT().Context(), "non-existent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})
@@ -264,29 +234,47 @@ var _ = Describe("SchedulerService", Ordered, func() {
 
 	Describe("Plugin Unload", func() {
 		It("should cancel all schedules when plugin is unloaded", func() {
-			service := getSchedulerService("fake-scheduler")
-			Expect(service).ToNot(BeNil())
-
-			// Schedule multiple tasks
-			_, err := service.ScheduleRecurring(GinkgoT().Context(), "@every 10s", "data1", "unload-1")
+			_, err := testService.ScheduleRecurring(GinkgoT().Context(), "@every 10s", "data1", "unload-1")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = service.ScheduleRecurring(GinkgoT().Context(), "@every 10s", "data2", "unload-2")
+			_, err = testService.ScheduleOneTime(GinkgoT().Context(), 60, "data2", "unload-2")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(testService.GetScheduleCount()).To(Equal(2))
+			Expect(mockSched.GetCallbackCount()).To(Equal(1)) // Only recurring task uses scheduler
+			Expect(mockTimers.GetTimerCount()).To(Equal(1))   // Only one-time task uses timer
 
-			Expect(service.GetScheduleCount()).To(Equal(2))
-
-			// Unload plugin
 			err = manager.UnloadPlugin("fake-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
-			// Verify scheduler service was cleaned up
 			Expect(getSchedulerService("fake-scheduler")).To(BeNil())
+			Expect(mockSched.GetCallbackCount()).To(Equal(0)) // Recurring task removed
 		})
 	})
 })
 
+// testableSchedulerService wraps schedulerServiceImpl with test helpers.
+type testableSchedulerService struct {
+	*schedulerServiceImpl
+}
+
+func (t *testableSchedulerService) GetScheduleCount() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.schedules)
+}
+
+func (t *testableSchedulerService) GetSchedule(id string) *scheduleEntry {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.schedules[id]
+}
+
+func (t *testableSchedulerService) ClearSchedules() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.schedules = make(map[string]*scheduleEntry)
+}
+
 // mockScheduler implements scheduler.Scheduler for testing without timing dependencies.
-// It allows tests to manually trigger callbacks.
 type mockScheduler struct {
 	mu        sync.Mutex
 	callbacks map[int]func()
@@ -300,9 +288,7 @@ func newMockScheduler() *mockScheduler {
 	}
 }
 
-func (s *mockScheduler) Run(_ context.Context) {
-	// No-op for mock - we trigger callbacks manually
-}
+func (s *mockScheduler) Run(_ context.Context) {}
 
 func (s *mockScheduler) Add(_ string, cmd func()) (int, error) {
 	s.mu.Lock()
@@ -319,19 +305,6 @@ func (s *mockScheduler) Remove(id int) {
 	delete(s.callbacks, id)
 }
 
-// TriggerCallback manually triggers a callback by its entry ID.
-func (s *mockScheduler) TriggerCallback(id int) bool {
-	s.mu.Lock()
-	cb, exists := s.callbacks[id]
-	s.mu.Unlock()
-	if exists && cb != nil {
-		cb()
-		return true
-	}
-	return false
-}
-
-// TriggerAll triggers all registered callbacks.
 func (s *mockScheduler) TriggerAll() {
 	s.mu.Lock()
 	callbacks := make([]func(), 0, len(s.callbacks))
@@ -344,14 +317,12 @@ func (s *mockScheduler) TriggerAll() {
 	}
 }
 
-// GetCallbackCount returns the number of registered callbacks.
 func (s *mockScheduler) GetCallbackCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.callbacks)
 }
 
-// Reset clears all callbacks and resets the ID counter.
 func (s *mockScheduler) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -360,3 +331,58 @@ func (s *mockScheduler) Reset() {
 }
 
 var _ scheduler.Scheduler = (*mockScheduler)(nil)
+
+// mockTimerRegistry tracks mock timers created during tests.
+type mockTimerRegistry struct {
+	mu        sync.Mutex
+	callbacks []func()
+	timers    []*time.Timer
+}
+
+func newMockTimerRegistry() *mockTimerRegistry {
+	return &mockTimerRegistry{
+		callbacks: make([]func(), 0),
+		timers:    make([]*time.Timer, 0),
+	}
+}
+
+// AfterFunc creates a timer that we control for testing.
+func (r *mockTimerRegistry) AfterFunc(_ time.Duration, f func()) *time.Timer {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Store callback for TriggerAll
+	r.callbacks = append(r.callbacks, f)
+
+	// Create a real timer that won't fire (very long duration, immediately stopped)
+	t := time.NewTimer(time.Hour * 24 * 365)
+	t.Stop()
+	r.timers = append(r.timers, t)
+
+	return t
+}
+
+// TriggerAll fires all pending timer callbacks.
+func (r *mockTimerRegistry) TriggerAll() {
+	r.mu.Lock()
+	callbacks := make([]func(), len(r.callbacks))
+	copy(callbacks, r.callbacks)
+	r.mu.Unlock()
+
+	for _, cb := range callbacks {
+		cb()
+	}
+}
+
+func (r *mockTimerRegistry) GetTimerCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.callbacks)
+}
+
+func (r *mockTimerRegistry) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.callbacks = make([]func(), 0)
+	r.timers = make([]*time.Timer, 0)
+}
