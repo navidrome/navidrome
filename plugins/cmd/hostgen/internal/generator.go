@@ -175,10 +175,10 @@ func serviceClientNeedsJSON(svc Service) bool {
 }
 
 // serviceClientNeedsErrors returns true if any method needs the errors package in client code.
-// This is true if any method returns an error.
+// This is only true for error-only methods (methods that return just error).
 func serviceClientNeedsErrors(svc Service) bool {
 	for _, m := range svc.Methods {
-		if m.HasError {
+		if m.IsErrorOnly() {
 			return true
 		}
 	}

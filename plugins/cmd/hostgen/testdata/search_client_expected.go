@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -40,10 +39,6 @@ func SearchFind(query string) (*SearchFindResponse, error) {
 	var response SearchFindResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
-	}
-
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
