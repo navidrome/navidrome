@@ -150,69 +150,146 @@ type ServiceB interface {
 			Expect(filepath.Join(outputDir, "servicea_gen.go")).To(BeAnExistingFile())
 			Expect(filepath.Join(outputDir, "serviceb_gen.go")).To(BeAnExistingFile())
 		})
+
+		It("generates only host code with -host-only flag", func() {
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-host-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			Expect(filepath.Join(outputDir, "test_gen.go")).To(BeAnExistingFile())
+			Expect(filepath.Join(outputDir, "go")).ToNot(BeADirectory())
+		})
+
+		It("generates only client code with -plugin-only flag", func() {
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "main", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			// Host code should not exist in output root
+			entries, err := os.ReadDir(outputDir)
+			Expect(err).ToNot(HaveOccurred())
+
+			var genFiles []string
+			for _, e := range entries {
+				if e.Name() != "go" {
+					genFiles = append(genFiles, e.Name())
+				}
+			}
+			Expect(genFiles).To(BeEmpty(), "Expected no host code files, found: %v", genFiles)
+
+			// Client code should exist in go/ subdirectory
+			Expect(filepath.Join(outputDir, "go")).To(BeADirectory())
+			Expect(filepath.Join(outputDir, "go", "nd_host_test.go")).To(BeAnExistingFile())
+		})
+
+		It("generates both host and client code by default", func() {
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			// Host code in output root
+			Expect(filepath.Join(outputDir, "test_gen.go")).To(BeAnExistingFile())
+
+			// Client code in go/ subdirectory
+			Expect(filepath.Join(outputDir, "go")).To(BeADirectory())
+			Expect(filepath.Join(outputDir, "go", "nd_host_test.go")).To(BeAnExistingFile())
+		})
+
+		It("rejects using both -host-only and -plugin-only together", func() {
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-host-only", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).To(HaveOccurred())
+			Expect(string(output)).To(ContainSubstring("-host-only and -plugin-only cannot be used together"))
+		})
 	})
 
 	Describe("code generation", func() {
-		DescribeTable("generates correct output",
-			func(serviceFile, expectedFile string) {
+		DescribeTable("generates correct host and client output",
+			func(serviceFile, hostExpectedFile, clientExpectedFile string) {
 				serviceCode := readTestdata(serviceFile)
-				expectedCode := readTestdata(expectedFile)
+				hostExpected := readTestdata(hostExpectedFile)
+				clientExpected := readTestdata(clientExpectedFile)
 
 				Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
 
+				// Generate both host and client code in one run
 				cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg")
 				output, err := cmd.CombinedOutput()
 				Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
+				// Verify host code
 				entries, err := os.ReadDir(outputDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(entries).To(HaveLen(1), "Expected exactly one generated file")
 
-				actual, err := os.ReadFile(filepath.Join(outputDir, entries[0].Name()))
+				var hostFiles []string
+				for _, e := range entries {
+					if e.Name() != "go" && !e.IsDir() {
+						hostFiles = append(hostFiles, e.Name())
+					}
+				}
+				Expect(hostFiles).To(HaveLen(1), "Expected exactly one host file, got: %v", hostFiles)
+
+				hostActual, err := os.ReadFile(filepath.Join(outputDir, hostFiles[0]))
 				Expect(err).ToNot(HaveOccurred())
 
-				// Format both for comparison
-				formattedActual, err := format.Source(actual)
-				Expect(err).ToNot(HaveOccurred(), "Generated code is not valid Go:\n%s", actual)
+				formattedHostActual, err := format.Source(hostActual)
+				Expect(err).ToNot(HaveOccurred(), "Generated host code is not valid Go:\n%s", hostActual)
 
-				formattedExpected, err := format.Source([]byte(expectedCode))
-				Expect(err).ToNot(HaveOccurred(), "Expected code is not valid Go")
+				formattedHostExpected, err := format.Source([]byte(hostExpected))
+				Expect(err).ToNot(HaveOccurred(), "Expected host code is not valid Go")
 
-				Expect(string(formattedActual)).To(Equal(string(formattedExpected)))
+				Expect(string(formattedHostActual)).To(Equal(string(formattedHostExpected)), "Host code mismatch")
+
+				// Verify client code
+				goDir := filepath.Join(outputDir, "go")
+				clientEntries, err := os.ReadDir(goDir)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(clientEntries).To(HaveLen(1), "Expected exactly one client file")
+
+				clientActual, err := os.ReadFile(filepath.Join(goDir, clientEntries[0].Name()))
+				Expect(err).ToNot(HaveOccurred())
+
+				formattedClientActual, err := format.Source(clientActual)
+				Expect(err).ToNot(HaveOccurred(), "Generated client code is not valid Go:\n%s", clientActual)
+
+				formattedClientExpected, err := format.Source([]byte(clientExpected))
+				Expect(err).ToNot(HaveOccurred(), "Expected client code is not valid Go")
+
+				Expect(string(formattedClientActual)).To(Equal(string(formattedClientExpected)), "Client code mismatch")
 			},
 
-			Entry("simple string params - no request type needed",
-				"echo_service.go", "echo_expected.go"),
+			Entry("simple string params",
+				"echo_service.go", "echo_expected.go", "echo_client_expected.go"),
 
-			Entry("multiple simple params",
-				"math_service.go", "math_expected.go"),
+			Entry("multiple simple params (int32)",
+				"math_service.go", "math_expected.go", "math_client_expected.go"),
 
 			Entry("struct param with request type",
-				"store_service.go", "store_expected.go"),
+				"store_service.go", "store_expected.go", "store_client_expected.go"),
 
 			Entry("mixed simple and complex params",
-				"list_service.go", "list_expected.go"),
+				"list_service.go", "list_expected.go", "list_client_expected.go"),
 
 			Entry("method without error",
-				"counter_service.go", "counter_expected.go"),
+				"counter_service.go", "counter_expected.go", "counter_client_expected.go"),
 
 			Entry("no params, error only",
-				"ping_service.go", "ping_expected.go"),
+				"ping_service.go", "ping_expected.go", "ping_client_expected.go"),
 
 			Entry("map and interface types",
-				"meta_service.go", "meta_expected.go"),
+				"meta_service.go", "meta_expected.go", "meta_client_expected.go"),
 
 			Entry("pointer types",
-				"users_service.go", "users_expected.go"),
+				"users_service.go", "users_expected.go", "users_client_expected.go"),
 
 			Entry("multiple returns",
-				"search_service.go", "search_expected.go"),
+				"search_service.go", "search_expected.go", "search_client_expected.go"),
 
 			Entry("bytes",
-				"codec_service.go", "codec_expected.go"),
+				"codec_service.go", "codec_expected.go", "codec_client_expected.go"),
 		)
 
-		It("generates compilable code for comprehensive service", func() {
+		It("generates compilable host code for comprehensive service", func() {
 			serviceCode := readTestdata("comprehensive_service.go")
 
 			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
@@ -221,8 +298,8 @@ type ServiceB interface {
 			goMod := "module testpkg\n\ngo 1.23\n\nrequire github.com/extism/go-sdk v1.7.1\n"
 			Expect(os.WriteFile(filepath.Join(testDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
 
-			// Generate
-			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", testDir, "-package", "testpkg")
+			// Generate host code only
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", testDir, "-package", "testpkg", "-host-only")
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Generation failed: %s", output)
 
@@ -237,6 +314,89 @@ type ServiceB interface {
 			buildCmd.Dir = testDir
 			buildOutput, err := buildCmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Build failed: %s", buildOutput)
+		})
+
+		It("generates compilable client code for comprehensive service", func() {
+			serviceCode := readTestdata("comprehensive_service.go")
+
+			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
+
+			// Generate client code only to a separate client directory
+			clientDir := filepath.Join(outputDir, "client")
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", clientDir, "-package", "main", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Generation failed: %s", output)
+
+			// Read generated client code
+			goDir := filepath.Join(clientDir, "go")
+			entries, err := os.ReadDir(goDir)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(entries).To(HaveLen(1), "Expected exactly one generated client file")
+
+			content, err := os.ReadFile(filepath.Join(goDir, entries[0].Name()))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify key expected content first
+			contentStr := string(content)
+			// Should have wasmimport declarations for all methods
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_simpleparams"))
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_structparam"))
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noerror"))
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparams"))
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparamsnoreturns"))
+
+			// Should have response types for methods with complex returns
+			Expect(contentStr).To(ContainSubstring("type ComprehensiveSimpleParamsResponse struct"))
+			Expect(contentStr).To(ContainSubstring("type ComprehensiveMultipleReturnsResponse struct"))
+
+			// Should have wrapper functions
+			Expect(contentStr).To(ContainSubstring("func ComprehensiveSimpleParams("))
+			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParams()"))
+			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParamsNoReturns()"))
+
+			// Move generated file to clientDir root for compilation
+			Expect(os.Rename(filepath.Join(goDir, entries[0].Name()), filepath.Join(clientDir, "nd_host.go"))).To(Succeed())
+
+			// Create go.mod for client code
+			goMod := "module main\n\ngo 1.23\n\nrequire github.com/extism/go-pdk v1.1.1\n"
+			Expect(os.WriteFile(filepath.Join(clientDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
+
+			// Add a simple main function for the plugin
+			mainGo := `package main
+
+func main() {}
+`
+			Expect(os.WriteFile(filepath.Join(clientDir, "main.go"), []byte(mainGo), 0600)).To(Succeed())
+
+			// Add type definitions needed by the generated code
+			typesGo := `package main
+
+type User2 struct {
+	ID   string
+	Name string
+}
+
+type Filter2 struct {
+	Active bool
+}
+`
+			Expect(os.WriteFile(filepath.Join(clientDir, "types.go"), []byte(typesGo), 0600)).To(Succeed())
+
+			// Tidy dependencies
+			goTidyCmd := exec.Command("go", "mod", "tidy")
+			goTidyCmd.Dir = clientDir
+			goTidyOutput, err := goTidyCmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "go mod tidy failed: %s", goTidyOutput)
+
+			// Build as WASM plugin - this validates the client code compiles correctly
+			buildCmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", "plugin.wasm", ".")
+			buildCmd.Dir = clientDir
+			buildCmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+			buildOutput, err := buildCmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "WASM build failed: %s", buildOutput)
+
+			// Verify .wasm file was created
+			Expect(filepath.Join(clientDir, "plugin.wasm")).To(BeAnExistingFile())
 		})
 	})
 })

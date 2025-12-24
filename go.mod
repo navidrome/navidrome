@@ -21,6 +21,7 @@ require (
 	github.com/djherbis/stream v1.4.0
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
+	github.com/extism/go-pdk v1.1.3
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.2.3

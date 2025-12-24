@@ -6,11 +6,13 @@
 //
 // Flags:
 //
-//	-input    Input directory containing Go source files with annotated interfaces
-//	-output   Output directory for generated files (default: same as input)
-//	-package  Output package name (default: inferred from output directory)
-//	-v        Verbose output
-//	-dry-run  Preview generated code without writing files
+//	-input       Input directory containing Go source files with annotated interfaces
+//	-output      Output directory for generated files (default: same as input)
+//	-package     Output package name (default: inferred from output directory)
+//	-host-only   Generate only host-side code (default: false)
+//	-plugin-only Generate only plugin/client-side code (default: false)
+//	-v           Verbose output
+//	-dry-run     Preview generated code without writing files
 package main
 
 import (
@@ -19,19 +21,28 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/plugins/cmd/hostgen/internal"
 )
 
 func main() {
 	var (
-		inputDir  = flag.String("input", ".", "Input directory containing Go source files")
-		outputDir = flag.String("output", "", "Output directory for generated files (default: same as input)")
-		pkgName   = flag.String("package", "", "Output package name (default: inferred from output directory)")
-		verbose   = flag.Bool("v", false, "Verbose output")
-		dryRun    = flag.Bool("dry-run", false, "Preview generated code without writing files")
+		inputDir   = flag.String("input", ".", "Input directory containing Go source files")
+		outputDir  = flag.String("output", "", "Output directory for generated files (default: same as input)")
+		pkgName    = flag.String("package", "", "Output package name (default: inferred from output directory)")
+		hostOnly   = flag.Bool("host-only", false, "Generate only host-side code")
+		pluginOnly = flag.Bool("plugin-only", false, "Generate only plugin/client-side code")
+		verbose    = flag.Bool("v", false, "Verbose output")
+		dryRun     = flag.Bool("dry-run", false, "Preview generated code without writing files")
 	)
 	flag.Parse()
+
+	// Validate conflicting flags
+	if *hostOnly && *pluginOnly {
+		fmt.Fprintf(os.Stderr, "Error: -host-only and -plugin-only cannot be used together\n")
+		os.Exit(1)
+	}
 
 	if *outputDir == "" {
 		*outputDir = *inputDir
@@ -54,10 +65,16 @@ func main() {
 		*pkgName = filepath.Base(absOutput)
 	}
 
+	// Determine what to generate
+	generateHost := !*pluginOnly
+	generateClient := !*hostOnly
+
 	if *verbose {
 		fmt.Printf("Input directory: %s\n", absInput)
 		fmt.Printf("Output directory: %s\n", absOutput)
 		fmt.Printf("Package name: %s\n", *pkgName)
+		fmt.Printf("Generate host code: %v\n", generateHost)
+		fmt.Printf("Generate client code: %v\n", generateClient)
 	}
 
 	// Parse source files
@@ -83,34 +100,85 @@ func main() {
 
 	// Generate code for each service
 	for _, svc := range services {
-		code, err := internal.GenerateService(svc, *pkgName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating code for %s: %v\n", svc.Name, err)
-			os.Exit(1)
+		// Generate host-side code
+		if generateHost {
+			if err := generateHostCode(svc, *pkgName, absOutput, *dryRun, *verbose); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating host code for %s: %v\n", svc.Name, err)
+				os.Exit(1)
+			}
 		}
 
-		// Format the generated code
-		formatted, err := format.Source(code)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error formatting generated code for %s: %v\n", svc.Name, err)
-			fmt.Fprintf(os.Stderr, "Raw code:\n%s\n", code)
-			os.Exit(1)
-		}
-
-		outputFile := filepath.Join(absOutput, svc.OutputFileName())
-
-		if *dryRun {
-			fmt.Printf("=== %s ===\n%s\n", outputFile, formatted)
-			continue
-		}
-
-		if err := os.WriteFile(outputFile, formatted, 0600); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", outputFile, err)
-			os.Exit(1)
-		}
-
-		if *verbose {
-			fmt.Printf("Generated %s\n", outputFile)
+		// Generate client-side code
+		if generateClient {
+			if err := generateClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating client code for %s: %v\n", svc.Name, err)
+				os.Exit(1)
+			}
 		}
 	}
+}
+
+// generateHostCode generates host-side code for a service.
+func generateHostCode(svc internal.Service, pkgName, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateHost(svc, pkgName)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting code: %w\nRaw code:\n%s", err, code)
+	}
+
+	outputFile := filepath.Join(outputDir, svc.OutputFileName())
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", outputFile, formatted)
+		return nil
+	}
+
+	if err := os.WriteFile(outputFile, formatted, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated host code: %s\n", outputFile)
+	}
+	return nil
+}
+
+// generateClientCode generates client-side code for a service.
+func generateClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateClientGo(svc)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting code: %w\nRaw code:\n%s", err, code)
+	}
+
+	// Client code goes in go/ subdirectory
+	clientDir := filepath.Join(outputDir, "go")
+	clientFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+".go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", clientFile, formatted)
+		return nil
+	}
+
+	// Create go/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating client directory: %w", err)
+	}
+
+	if err := os.WriteFile(clientFile, formatted, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated client code: %s\n", clientFile)
+	}
+	return nil
 }
