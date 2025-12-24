@@ -46,10 +46,6 @@ func MetaGet(key string) (*MetaGetResponse, error) {
 		return nil, err
 	}
 
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
-	}
-
 	return &response, nil
 }
 

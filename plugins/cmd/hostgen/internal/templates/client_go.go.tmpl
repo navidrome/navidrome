@@ -79,10 +79,6 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 		return nil, err
 	}
 
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
-	}
-
 	return &response, nil
 {{- else if isErrorOnly .}}
 {{- /* Error-only response - string result */}}
