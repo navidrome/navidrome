@@ -10,6 +10,7 @@ import "context"
 //nd:hostservice name=Scheduler permission=scheduler
 type SchedulerService interface {
 	// ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
+	// Plugins that use this function must also implement the SchedulerCallback capability
 	//
 	// Parameters:
 	//   - delaySeconds: Number of seconds to wait before triggering the event
@@ -21,6 +22,7 @@ type SchedulerService interface {
 	ScheduleOneTime(ctx context.Context, delaySeconds int32, payload string, scheduleID string) (newScheduleID string, err error)
 
 	// ScheduleRecurring schedules a recurring event using a cron expression.
+	// Plugins that use this function must also implement the SchedulerCallback capability
 	//
 	// Parameters:
 	//   - cronExpression: Standard cron format expression (e.g., "0 0 * * *" for daily at midnight)
