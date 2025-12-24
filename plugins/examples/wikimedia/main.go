@@ -1,14 +1,23 @@
 // Wikimedia plugin for Navidrome - fetches artist metadata from Wikidata, DBpedia and Wikipedia.
 //
+// This plugin was generated using:
+//
+//	xtp plugin init --schema-file plugins/schemas/metadata_agent.yaml --template go --path ./wikimedia --name wikimedia-plugin
+//
 // Build with:
 //
-//	tinygo build -o wikimedia.wasm -target wasip1 -buildmode=c-shared ./main.go
+//	xtp plugin build
 //
-// Install by copying wikimedia.wasm to your Navidrome plugins folder.
+// Or manually:
+//
+//	tinygo build -o wikimedia.wasm -target wasip1 -buildmode=c-shared .
+//
+// Install by copying the .wasm file to your Navidrome plugins folder.
 package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -22,7 +31,7 @@ const (
 	mediawikiAPIEndpoint = "https://en.wikipedia.org/w/api.php"
 )
 
-// Manifest types
+// Plugin manifest containing metadata about this plugin
 type Manifest struct {
 	Name        string       `json:"name"`
 	Author      string       `json:"author"`
@@ -39,31 +48,6 @@ type Permissions struct {
 type HTTPPermission struct {
 	Reason       string   `json:"reason,omitempty"`
 	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
-
-// Input types
-type ArtistInput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	MBID string `json:"mbid,omitempty"`
-}
-
-// Output types
-type URLOutput struct {
-	URL string `json:"url"`
-}
-
-type BiographyOutput struct {
-	Biography string `json:"biography"`
-}
-
-type ImageInfo struct {
-	URL  string `json:"url"`
-	Size int    `json:"size"`
-}
-
-type ImagesOutput struct {
-	Images []ImageInfo `json:"images"`
 }
 
 // SPARQL response types
@@ -99,7 +83,9 @@ type MediaWikiPage struct {
 	Missing bool   `json:"missing"`
 }
 
-//go:wasmexport nd_manifest
+// nd_manifest is required by Navidrome to identify the plugin.
+//
+//export nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
 		Name:        "Wikimedia",
@@ -150,7 +136,7 @@ func sparqlQuery(endpoint, query string) (*SPARQLResult, error) {
 		return nil, fmt.Errorf("failed to parse SPARQL response: %w", err)
 	}
 	if len(result.Results.Bindings) == 0 {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 	return &result, nil
 }
@@ -179,7 +165,7 @@ func getWikidataWikipediaURL(mbid, name string) (string, error) {
 		escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 		q = fmt.Sprintf(`SELECT ?sitelink WHERE { ?artist rdfs:label "%s"@en. ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>. } LIMIT 1`, escapedName)
 	} else {
-		return "", fmt.Errorf("MBID or Name required for Wikidata URL lookup")
+		return "", errors.New("MBID or Name required for Wikidata URL lookup")
 	}
 
 	result, err := sparqlQuery(wikidataEndpoint, q)
@@ -189,13 +175,13 @@ func getWikidataWikipediaURL(mbid, name string) (string, error) {
 	if result.Results.Bindings[0].Sitelink != nil {
 		return result.Results.Bindings[0].Sitelink.Value, nil
 	}
-	return "", fmt.Errorf("not found")
+	return "", errors.New("not found")
 }
 
 // getDBpediaWikipediaURL fetches the Wikipedia URL from DBpedia using name
 func getDBpediaWikipediaURL(name string) (string, error) {
 	if name == "" {
-		return "", fmt.Errorf("not found")
+		return "", errors.New("not found")
 	}
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	q := fmt.Sprintf(`SELECT ?wiki WHERE { ?artist foaf:name "%s"@en; foaf:isPrimaryTopicOf ?wiki. FILTER regex(str(?wiki), "^https://en.wikipedia.org/") } LIMIT 1`, escapedName)
@@ -207,13 +193,13 @@ func getDBpediaWikipediaURL(name string) (string, error) {
 	if result.Results.Bindings[0].Wiki != nil {
 		return result.Results.Bindings[0].Wiki.Value, nil
 	}
-	return "", fmt.Errorf("not found")
+	return "", errors.New("not found")
 }
 
 // getDBpediaComment fetches the DBpedia comment (short bio) for an artist
 func getDBpediaComment(name string) (string, error) {
 	if name == "" {
-		return "", fmt.Errorf("not found")
+		return "", errors.New("not found")
 	}
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	q := fmt.Sprintf(`SELECT ?comment WHERE { ?artist foaf:name "%s"@en; rdfs:comment ?comment. FILTER (lang(?comment) = 'en') } LIMIT 1`, escapedName)
@@ -225,13 +211,13 @@ func getDBpediaComment(name string) (string, error) {
 	if result.Results.Bindings[0].Comment != nil {
 		return result.Results.Bindings[0].Comment.Value, nil
 	}
-	return "", fmt.Errorf("not found")
+	return "", errors.New("not found")
 }
 
 // getWikipediaExtract fetches the intro text from Wikipedia
 func getWikipediaExtract(pageTitle string) (string, error) {
 	if pageTitle == "" {
-		return "", fmt.Errorf("page title required")
+		return "", errors.New("page title required")
 	}
 	params := url.Values{}
 	params.Set("action", "query")
@@ -260,7 +246,7 @@ func getWikipediaExtract(pageTitle string) (string, error) {
 			return strings.TrimSpace(page.Extract), nil
 		}
 	}
-	return "", fmt.Errorf("not found")
+	return "", errors.New("not found")
 }
 
 // extractPageTitleFromURL extracts the page title from a Wikipedia URL
@@ -278,7 +264,7 @@ func extractPageTitleFromURL(wikiURL string) (string, error) {
 	}
 	title := pathParts[1]
 	if title == "" {
-		return "", fmt.Errorf("extracted title is empty")
+		return "", errors.New("extracted title is empty")
 	}
 	decodedTitle, err := url.PathUnescape(title)
 	if err != nil {
@@ -287,25 +273,23 @@ func extractPageTitleFromURL(wikiURL string) (string, error) {
 	return decodedTitle, nil
 }
 
-//go:wasmexport nd_get_artist_url
-func ndGetArtistURL() int32 {
-	var input ArtistInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
+// getMBID extracts the MBID from an optional pointer
+func getMBID(mbid *string) string {
+	if mbid == nil {
+		return ""
 	}
+	return *mbid
+}
 
-	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistURL: name=%s, mbid=%s", input.Name, input.MBID))
+// NdGetArtistUrl returns the Wikipedia URL for an artist
+func NdGetArtistUrl(input ArtistInput) (ArtistURLOutput, error) {
+	mbid := getMBID(input.Mbid)
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistURL: name=%s, mbid=%s", input.Name, mbid))
 
 	// 1. Try Wikidata (MBID first, then name)
-	wikiURL, err := getWikidataWikipediaURL(input.MBID, input.Name)
+	wikiURL, err := getWikidataWikipediaURL(mbid, input.Name)
 	if err == nil && wikiURL != "" {
-		output := URLOutput{URL: wikiURL}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return 1
-		}
-		return 0
+		return ArtistURLOutput{Url: wikiURL}, nil
 	}
 	if err != nil {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikidata URL failed: %v", err))
@@ -315,12 +299,7 @@ func ndGetArtistURL() int32 {
 	if input.Name != "" {
 		wikiURL, err = getDBpediaWikipediaURL(input.Name)
 		if err == nil && wikiURL != "" {
-			output := URLOutput{URL: wikiURL}
-			if err := pdk.OutputJSON(output); err != nil {
-				pdk.SetError(err)
-				return 1
-			}
-			return 0
+			return ArtistURLOutput{Url: wikiURL}, nil
 		}
 		if err != nil {
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia URL failed: %v", err))
@@ -331,31 +310,20 @@ func ndGetArtistURL() int32 {
 	if input.Name != "" {
 		searchURL := fmt.Sprintf("https://en.wikipedia.org/w/index.php?search=%s", url.QueryEscape(input.Name))
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("URL not found, falling back to search URL: %s", searchURL))
-		output := URLOutput{URL: searchURL}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return 1
-		}
-		return 0
+		return ArtistURLOutput{Url: searchURL}, nil
 	}
 
-	pdk.SetErrorString("could not determine Wikipedia URL")
-	return 1
+	return ArtistURLOutput{}, errors.New("could not determine Wikipedia URL")
 }
 
-//go:wasmexport nd_get_artist_biography
-func ndGetArtistBiography() int32 {
-	var input ArtistInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-
-	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistBiography: name=%s, mbid=%s", input.Name, input.MBID))
+// NdGetArtistBiography returns the biography for an artist from Wikipedia
+func NdGetArtistBiography(input ArtistInput) (ArtistBiographyOutput, error) {
+	mbid := getMBID(input.Mbid)
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistBiography: name=%s, mbid=%s", input.Name, mbid))
 
 	// 1. Get Wikipedia URL (using the logic from GetArtistURL)
 	wikiURL := ""
-	tempURL, wdErr := getWikidataWikipediaURL(input.MBID, input.Name)
+	tempURL, wdErr := getWikidataWikipediaURL(mbid, input.Name)
 	if wdErr == nil && tempURL != "" {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Found Wikidata URL: %s", tempURL))
 		wikiURL = tempURL
@@ -378,12 +346,7 @@ func ndGetArtistBiography() int32 {
 			bio, err := getWikipediaExtract(pageTitle)
 			if err == nil && bio != "" {
 				pdk.Log(pdk.LogDebug, "Found Wikipedia extract")
-				output := BiographyOutput{Biography: bio}
-				if err := pdk.OutputJSON(output); err != nil {
-					pdk.SetError(err)
-					return 1
-				}
-				return 0
+				return ArtistBiographyOutput{Biography: bio}, nil
 			}
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikipedia extract failed: %v", err))
 		} else {
@@ -397,62 +360,64 @@ func ndGetArtistBiography() int32 {
 		bio, err := getDBpediaComment(input.Name)
 		if err == nil && bio != "" {
 			pdk.Log(pdk.LogDebug, "Found DBpedia comment")
-			output := BiographyOutput{Biography: bio}
-			if err := pdk.OutputJSON(output); err != nil {
-				pdk.SetError(err)
-				return 1
-			}
-			return 0
+			return ArtistBiographyOutput{Biography: bio}, nil
 		}
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia comment failed: %v", err))
 	}
 
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("Biography not found for: %s (%s)", input.Name, input.MBID))
-	pdk.SetErrorString("biography not found")
-	return 1
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("Biography not found for: %s (%s)", input.Name, mbid))
+	return ArtistBiographyOutput{}, errors.New("biography not found")
 }
 
-//go:wasmexport nd_get_artist_images
-func ndGetArtistImages() int32 {
-	var input ArtistInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-
-	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistImages: name=%s, mbid=%s", input.Name, input.MBID))
+// NdGetArtistImages returns artist images from Wikidata
+func NdGetArtistImages(input ArtistInput) (ArtistImagesOutput, error) {
+	mbid := getMBID(input.Mbid)
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistImages: name=%s, mbid=%s", input.Name, mbid))
 
 	var q string
-	if input.MBID != "" {
-		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist wdt:P434 "%s"; wdt:P18 ?img } LIMIT 1`, input.MBID)
+	if mbid != "" {
+		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist wdt:P434 "%s"; wdt:P18 ?img } LIMIT 1`, mbid)
 	} else if input.Name != "" {
 		escapedName := strings.ReplaceAll(input.Name, "\"", "\\\"")
 		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist rdfs:label "%s"@en; wdt:P18 ?img } LIMIT 1`, escapedName)
 	} else {
-		pdk.SetErrorString("MBID or Name required for Wikidata Image lookup")
-		return 1
+		return ArtistImagesOutput{}, errors.New("MBID or Name required for Wikidata Image lookup")
 	}
 
 	result, err := sparqlQuery(wikidataEndpoint, q)
 	if err != nil {
-		pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, input.MBID))
-		pdk.SetErrorString("image not found")
-		return 1
+		pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, mbid))
+		return ArtistImagesOutput{}, errors.New("image not found")
 	}
 	if result.Results.Bindings[0].Img != nil {
-		output := ImagesOutput{
-			Images: []ImageInfo{{URL: result.Results.Bindings[0].Img.Value, Size: 0}},
-		}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return 1
-		}
-		return 0
+		return ArtistImagesOutput{
+			Images: []ImageInfo{{Url: result.Results.Bindings[0].Img.Value, Size: 0}},
+		}, nil
 	}
 
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, input.MBID))
-	pdk.SetErrorString("image not found")
-	return 1
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, mbid))
+	return ArtistImagesOutput{}, errors.New("image not found")
 }
 
-func main() {}
+// The functions below are not implemented - they return errors to indicate
+// Navidrome should fall back to other agents.
+
+func NdGetAlbumImages(input AlbumInput) (AlbumImagesOutput, error) {
+	return AlbumImagesOutput{}, errors.New("not implemented")
+}
+
+func NdGetAlbumInfo(input AlbumInput) (AlbumInfoOutput, error) {
+	return AlbumInfoOutput{}, errors.New("not implemented")
+}
+
+func NdGetArtistMbid(input ArtistMBIDInput) (ArtistMBIDOutput, error) {
+	return ArtistMBIDOutput{}, errors.New("not implemented")
+}
+
+func NdGetArtistTopSongs(input TopSongsInput) (TopSongsOutput, error) {
+	return TopSongsOutput{}, errors.New("not implemented")
+}
+
+func NdGetSimilarArtists(input SimilarArtistsInput) (SimilarArtistsOutput, error) {
+	return SimilarArtistsOutput{}, errors.New("not implemented")
+}
