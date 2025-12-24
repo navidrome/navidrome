@@ -44,9 +44,6 @@
         "http": {
           "$ref": "#/$defs/HTTPPermission"
         },
-        "config": {
-          "$ref": "#/$defs/ConfigPermission"
-        },
         "subsonicapi": {
           "$ref": "#/$defs/SubsonicAPIPermission"
         },
