@@ -37,7 +37,7 @@ func newSchedulerScheduleOneTimeHostFunction(service SchedulerService) extism.Ho
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			// Read parameters from stack
 			delaySeconds := extism.DecodeI32(stack[0])
-			payload, err := p.ReadBytes(stack[1])
+			payload, err := p.ReadString(stack[1])
 			if err != nil {
 				return
 			}
@@ -72,7 +72,7 @@ func newSchedulerScheduleRecurringHostFunction(service SchedulerService) extism.
 			if err != nil {
 				return
 			}
-			payload, err := p.ReadBytes(stack[1])
+			payload, err := p.ReadString(stack[1])
 			if err != nil {
 				return
 			}
@@ -103,13 +103,13 @@ func newSchedulerCancelScheduleHostFunction(service SchedulerService) extism.Hos
 		"scheduler_cancelschedule",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			// Read parameters from stack
-			scheduelID, err := p.ReadString(stack[0])
+			scheduleID, err := p.ReadString(stack[0])
 			if err != nil {
 				return
 			}
 
 			// Call the service method
-			err = service.CancelSchedule(ctx, scheduelID)
+			err = service.CancelSchedule(ctx, scheduleID)
 			if err != nil {
 				// Write error string to plugin memory
 				if ptr, err := p.WriteString(err.Error()); err == nil {

@@ -12,6 +12,10 @@ const (
 	// CapabilityScrobbler indicates the plugin can receive scrobble events.
 	// Detected when the plugin exports at least one of the scrobbler functions.
 	CapabilityScrobbler Capability = "Scrobbler"
+
+	// CapabilityScheduler indicates the plugin can receive scheduled event callbacks.
+	// Detected when the plugin exports the scheduler callback function.
+	CapabilityScheduler Capability = "Scheduler"
 )
 
 // capabilityFunctions maps each capability to its required/optional functions.
@@ -31,6 +35,9 @@ var capabilityFunctions = map[Capability][]string{
 		FuncScrobblerIsAuthorized,
 		FuncScrobblerNowPlaying,
 		FuncScrobblerScrobble,
+	},
+	CapabilityScheduler: {
+		FuncSchedulerCallback,
 	},
 }
 
