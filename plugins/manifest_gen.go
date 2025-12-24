@@ -77,9 +77,6 @@ func (j *Manifest) UnmarshalJSON(value []byte) error {
 
 // Permissions required by the plugin
 type Permissions struct {
-	// Config corresponds to the JSON schema field "config".
-	Config *ConfigPermission `json:"config,omitempty" yaml:"config,omitempty" mapstructure:"config,omitempty"`
-
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
 
