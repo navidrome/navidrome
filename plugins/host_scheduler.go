@@ -61,7 +61,7 @@ func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds
 
 	capturedID := scheduleID
 	timer := timeAfterFunc(time.Duration(delaySeconds)*time.Second, func() {
-		s.invokeCallback(capturedID)
+		s.invokeCallback(ctx, capturedID)
 		// Clean up the entry after firing
 		s.mu.Lock()
 		delete(s.schedules, capturedID)
@@ -86,7 +86,7 @@ func (s *schedulerServiceImpl) ScheduleRecurring(ctx context.Context, cronExpres
 
 	capturedID := scheduleID
 	callback := func() {
-		s.invokeCallback(capturedID)
+		s.invokeCallback(ctx, capturedID)
 	}
 
 	s.mu.Lock()
@@ -131,9 +131,9 @@ func (s *schedulerServiceImpl) CancelSchedule(ctx context.Context, scheduleID st
 	return nil
 }
 
-// CancelAllForPlugin cancels all schedules for this plugin.
+// Close cancels all schedules for this plugin.
 // This is called when the plugin is unloaded.
-func (s *schedulerServiceImpl) CancelAllForPlugin() {
+func (s *schedulerServiceImpl) Close() error {
 	s.mu.Lock()
 	schedules := make(map[string]*scheduleEntry, len(s.schedules))
 	for k, v := range s.schedules {
@@ -148,8 +148,9 @@ func (s *schedulerServiceImpl) CancelAllForPlugin() {
 		} else {
 			s.scheduler.Remove(entry.entryID)
 		}
-		log.Debug(context.Background(), "Cancelled schedule on plugin unload", "plugin", s.pluginName, "scheduleID", scheduleID)
+		log.Debug("Cancelled schedule on plugin unload", "plugin", s.pluginName, "scheduleID", scheduleID)
 	}
+	return nil
 }
 
 // schedulerCallbackInput is the input format for the nd_scheduler_callback function.
@@ -165,8 +166,7 @@ type schedulerCallbackOutput struct {
 }
 
 // invokeCallback calls the plugin's nd_scheduler_callback function.
-func (s *schedulerServiceImpl) invokeCallback(scheduleID string) {
-	ctx := context.Background()
+func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID string) {
 	log.Debug(ctx, "Scheduler callback invoked", "plugin", s.pluginName, "scheduleID", scheduleID)
 
 	s.mu.Lock()
@@ -220,41 +220,3 @@ func (s *schedulerServiceImpl) invokeCallback(scheduleID string) {
 
 // Verify interface implementation
 var _ host.SchedulerService = (*schedulerServiceImpl)(nil)
-
-// schedulerServiceRegistry keeps track of scheduler services per plugin for cleanup.
-type schedulerServiceRegistry struct {
-	mu       sync.RWMutex
-	services map[string]*schedulerServiceImpl
-}
-
-var schedulerRegistry = &schedulerServiceRegistry{
-	services: make(map[string]*schedulerServiceImpl),
-}
-
-// registerSchedulerService registers a scheduler service for a plugin.
-func registerSchedulerService(pluginName string, service *schedulerServiceImpl) {
-	schedulerRegistry.mu.Lock()
-	defer schedulerRegistry.mu.Unlock()
-	schedulerRegistry.services[pluginName] = service
-}
-
-// unregisterSchedulerService unregisters and cancels all schedules for a plugin.
-func unregisterSchedulerService(pluginName string) {
-	schedulerRegistry.mu.Lock()
-	service, exists := schedulerRegistry.services[pluginName]
-	if exists {
-		delete(schedulerRegistry.services, pluginName)
-	}
-	schedulerRegistry.mu.Unlock()
-
-	if exists && service != nil {
-		service.CancelAllForPlugin()
-	}
-}
-
-// getSchedulerService returns the scheduler service for a plugin (used by tests).
-func getSchedulerService(pluginName string) *schedulerServiceImpl {
-	schedulerRegistry.mu.RLock()
-	defer schedulerRegistry.mu.RUnlock()
-	return schedulerRegistry.services[pluginName]
-}
