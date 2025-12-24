@@ -1,12 +1,15 @@
 // Fake scheduler plugin for Navidrome plugin system integration tests.
+// This plugin was created based on the scheduler_callback.yaml XTP schema.
 // Build with: tinygo build -o ../fake-scheduler.wasm -target wasip1 -buildmode=c-shared .
+//
+// Note: pdk.gen.go contains the domain types from the XTP schema where your plugin will run.
 package main
 
 import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/extism/go-pdk"
+	pdk "github.com/extism/go-pdk"
 )
 
 // Manifest types
@@ -26,19 +29,7 @@ type SchedulerPermission struct {
 	Reason string `json:"reason,omitempty"`
 }
 
-// Scheduler callback input
-type SchedulerCallbackInput struct {
-	ScheduleID  string `json:"schedule_id"`
-	Payload     string `json:"payload"`
-	IsRecurring bool   `json:"is_recurring"`
-}
-
-// Scheduler callback output
-type SchedulerCallbackOutput struct {
-	Error string `json:"error,omitempty"`
-}
-
-// CallRecord stores information about a callback that was received
+// CallRecord stores information about a callback that was received (for testing)
 type CallRecord struct {
 	ScheduleID  string `json:"schedule_id"`
 	Payload     string `json:"payload"`
@@ -73,51 +64,33 @@ func ndManifest() int32 {
 	return 0
 }
 
-//go:wasmexport nd_scheduler_callback
-func ndSchedulerCallback() int32 {
-	var input SchedulerCallbackInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-
-	// Payload is now a plain string, no decoding needed
-	payload := input.Payload
-
+// NdSchedulerCallback implements the scheduler callback logic.
+// Called when a scheduled task fires.
+// This function is called by the generated wrapper in pdk.gen.go.
+func NdSchedulerCallback(input SchedulerCallbackInput) (SchedulerCallbackOutput, error) {
 	// Check for configured error response
 	errCfg, hasErr := pdk.GetConfig("callback_error")
 	if hasErr && errCfg != "" {
-		output := SchedulerCallbackOutput{Error: errCfg}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return 1
-		}
-		return 0
+		return SchedulerCallbackOutput{Error: &errCfg}, nil
 	}
 
 	// Track the callback
 	totalCallCount++
-	if record, exists := callRecords[input.ScheduleID]; exists {
+	if record, exists := callRecords[input.ScheduleId]; exists {
 		record.CallCount++
 	} else {
-		callRecords[input.ScheduleID] = &CallRecord{
-			ScheduleID:  input.ScheduleID,
-			Payload:     payload,
+		callRecords[input.ScheduleId] = &CallRecord{
+			ScheduleID:  input.ScheduleId,
+			Payload:     input.Payload,
 			IsRecurring: input.IsRecurring,
 			CallCount:   1,
 		}
 	}
 
 	// Log the callback for debugging
-	pdk.Log(pdk.LogInfo, "Scheduler callback received: "+input.ScheduleID+" payload="+payload)
+	pdk.Log(pdk.LogInfo, "Scheduler callback received: "+input.ScheduleId+" payload="+input.Payload)
 
-	// Success
-	output := SchedulerCallbackOutput{}
-	if err := pdk.OutputJSON(output); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	return 0
+	return SchedulerCallbackOutput{}, nil
 }
 
 // Helper function to get call records (for testing)
