@@ -12,7 +12,18 @@ import (
 	"github.com/navidrome/navidrome/scheduler"
 )
 
+// CapabilityScheduler indicates the plugin can receive scheduled event callbacks.
+// Detected when the plugin exports the scheduler callback function.
+const CapabilityScheduler Capability = "Scheduler"
+
 const FuncSchedulerCallback = "nd_scheduler_callback"
+
+func init() {
+	registerCapability(
+		CapabilityScheduler,
+		FuncSchedulerCallback,
+	)
+}
 
 // timeAfterFunc is a variable for time.AfterFunc, allowing tests to override it.
 var timeAfterFunc = time.AfterFunc
