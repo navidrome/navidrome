@@ -200,6 +200,106 @@ func main() {}
 
 Scrobbler plugins are automatically discovered and used by Navidrome's PlayTracker alongside built-in scrobblers (Last.fm, ListenBrainz).
 
+### Scheduler
+
+Allows plugins to schedule one-time or recurring tasks. Plugins that use the scheduler host service must export a callback function to receive scheduled events.
+
+| Function                | Input                                        | Output            | Description                        |
+|-------------------------|----------------------------------------------|-------------------|------------------------------------||
+| `nd_scheduler_callback` | `{schedule_id, payload, is_recurring}`       | `{error?}`        | Called when a scheduled task fires |
+
+#### Scheduler Callback Input
+
+```json
+{
+  "schedule_id": "string",
+  "payload": "string",
+  "is_recurring": true
+}
+```
+
+- `schedule_id`: The unique identifier for the scheduled task
+- `payload`: Data passed when the task was scheduled
+- `is_recurring`: `true` for recurring schedules, `false` for one-time
+
+#### Scheduler Callback Output
+
+The output is optional on success. On error, return:
+
+```json
+{
+  "error": "error message"
+}
+```
+
+#### Using the Scheduler Host Service
+
+To schedule tasks, plugins call these host functions (provided by Navidrome):
+
+| Host Function                | Parameters                                    | Description                              |
+|------------------------------|-----------------------------------------------|------------------------------------------|
+| `scheduler_scheduleonetime`  | `delay_seconds, payload, schedule_id`         | Schedule a one-time callback             |
+| `scheduler_schedulerecurring`| `cron_expression, payload, schedule_id`       | Schedule a recurring callback            |
+| `scheduler_cancelschedule`   | `schedule_id`                                 | Cancel a scheduled task                  |
+
+#### Manifest Permissions
+
+Plugins using the scheduler must declare the permission in their manifest:
+
+```json
+{
+  "permissions": {
+    "scheduler": {
+      "reason": "Schedule periodic metadata refresh"
+    }
+  }
+}
+```
+
+#### Example Scheduler Plugin
+
+```go
+package main
+
+import (
+    "github.com/extism/go-pdk"
+)
+
+type SchedulerCallbackInput struct {
+    ScheduleId  string `json:"schedule_id"`
+    Payload     string `json:"payload"`
+    IsRecurring bool   `json:"is_recurring"`
+}
+
+type SchedulerCallbackOutput struct {
+    Error *string `json:"error,omitempty"`
+}
+
+//go:wasmexport nd_scheduler_callback
+func ndSchedulerCallback() int32 {
+    var input SchedulerCallbackInput
+    if err := pdk.InputJSON(&input); err != nil {
+        pdk.SetError(err)
+        return 1
+    }
+    
+    // Handle the scheduled task based on payload
+    pdk.Log(pdk.LogInfo, "Task fired: " + input.ScheduleId)
+    
+    // Return success (empty output)
+    output := SchedulerCallbackOutput{}
+    if err := pdk.OutputJSON(output); err != nil {
+        pdk.SetError(err)
+        return 1
+    }
+    return 0
+}
+
+func main() {}
+```
+
+To schedule a task from your plugin, use the generated SDK functions (see `plugins/host/go/nd_host_scheduler.go`).
+
 ## Developing Plugins
 
 Plugins can be written in any language that compiles to WebAssembly. We recommend using the [Extism PDK](https://extism.org/docs/category/write-a-plug-in) for your language.
