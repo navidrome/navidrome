@@ -2,6 +2,18 @@
 
 A Navidrome plugin that fetches artist metadata from Wikidata, DBpedia, and Wikipedia.
 
+## Generating the Plugin
+
+This plugin was generated using the XTP CLI:
+
+```bash
+xtp plugin init \
+  --schema-file plugins/schemas/metadata_agent.yaml \
+  --template go \
+  --path ./wikimedia \
+  --name wikimedia-plugin
+```
+
 ## Features
 
 - **Artist URL**: Fetches Wikipedia URL for an artist using Wikidata (by MBID or name), DBpedia, or falls back to a Wikipedia search URL
@@ -10,37 +22,32 @@ A Navidrome plugin that fetches artist metadata from Wikidata, DBpedia, and Wiki
 
 ## Building
 
-### Prerequisites
-
-- [TinyGo](https://tinygo.org/getting-started/install/) (recommended) or Go 1.23+
-
-### Build using the Makefile (recommended)
+### Using XTP CLI (recommended)
 
 ```bash
-cd plugins/examples
+xtp plugin build
+```
+
+### Using TinyGo
+
+```bash
+tinygo build -target wasip1 -buildmode=c-shared -o dist/plugin.wasm .
+```
+
+### Using the Makefile
+
+From the `plugins/examples` directory:
+
+```bash
 make wikimedia.wasm
-```
-
-### Build manually with TinyGo
-
-```bash
-cd plugins/examples/wikimedia
-tinygo build -target wasip1 -buildmode=c-shared -o ../wikimedia.wasm .
-```
-
-### Build manually with Go
-
-```bash
-cd plugins/examples/wikimedia
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o ../wikimedia.wasm .
 ```
 
 ## Installation
 
-Copy `wikimedia.wasm` from the examples folder to your Navidrome plugins folder:
+Copy the `.wasm` file to your Navidrome plugins folder:
 
 ```bash
-cp plugins/examples/wikimedia.wasm /path/to/navidrome/plugins/
+cp dist/plugin.wasm /path/to/navidrome/plugins/wikimedia.wasm
 ```
 
 Then enable plugins in your `navidrome.toml`:
@@ -113,6 +120,18 @@ extism call wikimedia.wasm nd_get_artist_images --wasi \
 Expected output:
 ```json
 {"images":[{"url":"http://commons.wikimedia.org/wiki/Special:FilePath/Beatles%20ad%201965%20just%20the%20beatles%20crop.jpg","size":0}]}
+```
+
+## Project Structure
+
+```
+wikimedia/
+├── main.go       # Plugin implementation with Wikimedia API logic
+├── pdk.gen.go    # Generated types and export wrappers (DO NOT EDIT)
+├── go.mod        # Go module file
+├── go.sum        # Go module checksums
+├── prepare.sh    # Build preparation script
+└── xtp.toml      # XTP plugin configuration
 ```
 
 ## API Endpoints Used

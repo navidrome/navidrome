@@ -53,9 +53,9 @@ extism call minimal.wasm nd_get_artist_biography --wasi \
 For plugins that make HTTP requests, use `--allow-host` to permit access:
 
 ```bash
-extism call wikimedia.wasm nd_get_artist_url --wasi \
-  --input '{"id":"1","name":"The Beatles"}' \
-  --allow-host "query.wikidata.org"
+extism call wikimedia.wasm nd_get_artist_biography --wasi \                                                                                      3s   ▼ 
+  --input '{"id":"1","name":"Yussef Dayes"}' \
+  --allow-host "query.wikidata.org" --allow-host "en.wikipedia.org"
 ```
 
 ## Installation
@@ -63,7 +63,7 @@ extism call wikimedia.wasm nd_get_artist_url --wasi \
 Copy any `.wasm` file to your Navidrome plugins folder:
 
 ```bash
-cp minimal.wasm /path/to/navidrome/plugins/
+cp wikimedia.wasm /path/to/navidrome/plugins/
 ```
 
 Then enable plugins in your `navidrome.toml`:
@@ -82,6 +82,25 @@ Agents = "lastfm,spotify,wikimedia"
 
 ## Creating Your Own Plugin
 
-See the [minimal](minimal/) example for the simplest starting point, or [wikimedia](wikimedia/) for a more complete example with HTTP requests.
+See the [minimal](minimal/) example for the simplest starting point, or [wikimedia](wikimedia/) for a more complete 
+example with HTTP requests, created with the [XTP CLI]((https://docs.xtp.dylibso.com/docs/cli).
+
+### Bootstrapping a New Plugin
+Use the XTP CLI to bootstrap a new plugin from a schema:
+
+```bash
+xtp plugin init \
+  --schema-file plugins/schemas/metadata_agent.yaml \
+  --template go \
+  --path ./my-plugin \
+  --name my-plugin
+```
+
+See the [schemas README](../schemas/README.md) for more information about available schemas
+and supported languages.
+
+For the simplest starting point, look at [minimal](minimal/). For a more complete example
+with HTTP requests, see [wikimedia](wikimedia/).
+
 
 For full documentation, see the [Plugin System README](../README.md).
