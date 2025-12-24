@@ -43,6 +43,7 @@ type SchedulerScheduleRecurringResponse struct {
 
 // SchedulerScheduleOneTime calls the scheduler_scheduleonetime host function.
 // ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
+// Plugins that use this function must also implement the SchedulerCallback capability
 //
 // Parameters:
 //   - delaySeconds: Number of seconds to wait before triggering the event
@@ -74,6 +75,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 
 // SchedulerScheduleRecurring calls the scheduler_schedulerecurring host function.
 // ScheduleRecurring schedules a recurring event using a cron expression.
+// Plugins that use this function must also implement the SchedulerCallback capability
 //
 // Parameters:
 //   - cronExpression: Standard cron format expression (e.g., "0 0 * * *" for daily at midnight)
