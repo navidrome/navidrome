@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -39,10 +38,6 @@ func EchoEcho(message string) (*EchoEchoResponse, error) {
 	var response EchoEchoResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
-	}
-
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

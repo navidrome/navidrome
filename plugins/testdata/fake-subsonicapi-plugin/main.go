@@ -66,6 +66,12 @@ func callSubsonicAPIExport() int32 {
 		return 1
 	}
 
+	// Check for error in response
+	if response.Error != "" {
+		pdk.SetErrorString("SubsonicAPI error: " + response.Error)
+		return 1
+	}
+
 	// Return the response
 	pdk.OutputString(response.ResponseJSON)
 	return 0
