@@ -29,7 +29,7 @@ func RegisterWebSocketHostFunctions(service WebSocketService) []extism.HostFunct
 		newWebSocketConnectHostFunction(service),
 		newWebSocketSendTextHostFunction(service),
 		newWebSocketSendBinaryHostFunction(service),
-		newWebSocketCloseHostFunction(service),
+		newWebSocketCloseConnectionHostFunction(service),
 	}
 }
 
@@ -132,9 +132,9 @@ func newWebSocketSendBinaryHostFunction(service WebSocketService) extism.HostFun
 	)
 }
 
-func newWebSocketCloseHostFunction(service WebSocketService) extism.HostFunction {
+func newWebSocketCloseConnectionHostFunction(service WebSocketService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
-		"websocket_close",
+		"websocket_closeconnection",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			// Read parameters from stack
 			connectionID, err := p.ReadString(stack[0])
@@ -148,7 +148,7 @@ func newWebSocketCloseHostFunction(service WebSocketService) extism.HostFunction
 			}
 
 			// Call the service method
-			err = service.Close(ctx, connectionID, code, reason)
+			err = service.CloseConnection(ctx, connectionID, code, reason)
 			if err != nil {
 				// Write error string to plugin memory
 				if ptr, err := p.WriteString(err.Error()); err == nil {

@@ -85,6 +85,9 @@ type Permissions struct {
 
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
+
+	// Websocket corresponds to the JSON schema field "websocket".
+	Websocket *WebSocketPermission `json:"websocket,omitempty" yaml:"websocket,omitempty" mapstructure:"websocket,omitempty"`
 }
 
 // Scheduler service permissions for scheduling tasks
@@ -121,4 +124,14 @@ func (j *SubsonicAPIPermission) UnmarshalJSON(value []byte) error {
 	}
 	*j = SubsonicAPIPermission(plain)
 	return nil
+}
+
+// WebSocket service permissions for establishing WebSocket connections
+type WebSocketPermission struct {
+	// List of allowed host patterns for WebSocket connections (e.g.,
+	// 'api.example.com', '*.spotify.com')
+	AllowedHosts []string `json:"allowedHosts,omitempty" yaml:"allowedHosts,omitempty" mapstructure:"allowedHosts,omitempty"`
+
+	// Explanation for why WebSocket access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }

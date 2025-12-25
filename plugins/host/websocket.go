@@ -46,7 +46,7 @@ type WebSocketService interface {
 	//nd:hostfunc
 	SendBinary(ctx context.Context, connectionID string, data []byte) error
 
-	// Close gracefully closes a WebSocket connection.
+	// CloseConnection gracefully closes a WebSocket connection.
 	//
 	// Parameters:
 	//   - connectionID: The connection identifier returned by Connect
@@ -55,5 +55,11 @@ type WebSocketService interface {
 	//
 	// Returns an error if the connection is not found or if closing fails.
 	//nd:hostfunc
-	Close(ctx context.Context, connectionID string, code int32, reason string) error
+	CloseConnection(ctx context.Context, connectionID string, code int32, reason string) error
+
+	// Close cleans up any resources used by the WebSocketService.
+	//
+	// This should be called when the plugin is unloaded to ensure proper cleanup
+	// of all active WebSocket connections.
+	Close() error
 }
