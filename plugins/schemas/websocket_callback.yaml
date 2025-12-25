@@ -68,7 +68,13 @@ components:
 
     OnTextMessageOutput:
       description: Output from the text message handler
-      properties: {}
+      type: object
+      properties:
+        error:
+          type: string
+          nullable: true
+          description: |
+            Error message if the callback failed. Empty or null indicates success.
 
     OnBinaryMessageInput:
       description: Input provided when a binary message is received
@@ -88,7 +94,13 @@ components:
 
     OnBinaryMessageOutput:
       description: Output from the binary message handler
-      properties: {}
+      type: object
+      properties:
+        error:
+          type: string
+          nullable: true
+          description: |
+            Error message if the callback failed. Empty or null indicates success.
 
     OnErrorInput:
       description: Input provided when an error occurs on a WebSocket connection
@@ -107,7 +119,13 @@ components:
 
     OnErrorOutput:
       description: Output from the error handler
-      properties: {}
+      type: object
+      properties:
+        error:
+          type: string
+          nullable: true
+          description: |
+            Error message if the callback failed. Empty or null indicates success.
 
     OnCloseInput:
       description: Input provided when a WebSocket connection is closed
@@ -133,4 +151,10 @@ components:
 
     OnCloseOutput:
       description: Output from the close handler
-      properties: {}
+      type: object
+      properties:
+        error:
+          type: string
+          nullable: true
+          description: |
+            Error message if the callback failed. Empty or null indicates success.

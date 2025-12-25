@@ -451,6 +451,10 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		closers:      closers,
 	}
 	m.mu.Unlock()
+
+	// Call plugin init function if the plugin has the Lifecycle capability
+	callPluginInit(m.ctx, m.plugins[name])
+
 	return nil
 }
 
