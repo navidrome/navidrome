@@ -49,6 +49,9 @@
         },
         "scheduler": {
           "$ref": "#/$defs/SchedulerPermission"
+        },
+        "websocket": {
+          "$ref": "#/$defs/WebSocketPermission"
         }
       }
     },
@@ -112,6 +115,24 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why scheduler access is needed"
+        }
+      }
+    },
+    "WebSocketPermission": {
+      "type": "object",
+      "description": "WebSocket service permissions for establishing WebSocket connections",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why WebSocket access is needed"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "description": "List of allowed host patterns for WebSocket connections (e.g., 'api.example.com', '*.spotify.com')",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

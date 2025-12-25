@@ -352,11 +352,12 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	}
 
 	// Register stub host functions for initial compilation.
-	// This is necessary because plugins that import host functions will fail to compile
-	// if those functions aren't available at compile time. We use a stub service that
-	// returns an error - the real service will be registered during recompilation.
+	// This is necessary because plugins that import host functions will fail to compile if those
+	// functions aren't available at compile time.
+	// The real service will be registered during recompilation.
 	stubHostFunctions := host.RegisterSubsonicAPIHostFunctions(nil)
 	stubHostFunctions = append(stubHostFunctions, host.RegisterSchedulerHostFunctions(nil)...)
+	stubHostFunctions = append(stubHostFunctions, host.RegisterWebSocketHostFunctions(nil)...)
 
 	// Create initial compiled plugin with stub host functions
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, stubHostFunctions)
@@ -395,14 +396,11 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	capabilities := detectCapabilities(instance)
 	instance.Close(m.ctx)
 
-	// Check if recompilation is needed (AllowedHosts or SubsonicAPI permission)
-	needsRecompile := false
 	var hostFunctions []extism.HostFunction
 	var closers []io.Closer
 
 	if hosts := manifest.AllowedHosts(); len(hosts) > 0 {
 		pluginManifest.AllowedHosts = hosts
-		needsRecompile = true
 	}
 
 	// Register SubsonicAPI host functions if permission is granted
@@ -411,7 +409,6 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		if m.subsonicRouter != nil && m.ds != nil {
 			service := newSubsonicAPIService(name, m.subsonicRouter, m.ds, perm)
 			hostFunctions = append(hostFunctions, host.RegisterSubsonicAPIHostFunctions(service)...)
-			needsRecompile = true
 		} else {
 			log.Warn(m.ctx, "Plugin requires SubsonicAPI but router/datastore not available", "plugin", name)
 		}
@@ -422,10 +419,20 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		service := newSchedulerService(name, m, scheduler.GetInstance())
 		closers = append(closers, service)
 		hostFunctions = append(hostFunctions, host.RegisterSchedulerHostFunctions(service)...)
-		needsRecompile = true
 	}
 
-	// Recompile if needed (AllowedHosts or host functions)
+	// Register WebSocket host functions if permission is granted
+	if manifest.Permissions != nil && manifest.Permissions.Websocket != nil {
+		perm := manifest.Permissions.Websocket
+		service := newWebSocketService(name, m, perm.AllowedHosts)
+		closers = append(closers, service)
+		hostFunctions = append(hostFunctions, host.RegisterWebSocketHostFunctions(service)...)
+	}
+
+	// Check if recompilation is needed (AllowedHosts or host functions)
+	needsRecompile := len(pluginManifest.AllowedHosts) > 0 || len(hostFunctions) > 0
+
+	// Recompile if needed
 	if needsRecompile {
 		compiled.Close(m.ctx)
 		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
@@ -536,6 +543,8 @@ func (m *Manager) ReloadPlugin(name string) error {
 	return nil
 }
 
+var errFunctionNotFound = errors.New("function not found")
+
 // callPluginFunction is a helper to call a plugin function with input and output types.
 // It handles JSON marshalling/unmarshalling and error checking.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstance, funcName string, input I) (O, error) {
@@ -551,7 +560,7 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 	defer p.Close(ctx)
 
 	if !p.FunctionExists(funcName) {
-		return result, fmt.Errorf("%s does not exist", funcName)
+		return result, fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
 	}
 
 	inputBytes, err := json.Marshal(input)

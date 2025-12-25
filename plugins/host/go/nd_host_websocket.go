@@ -29,10 +29,10 @@ func websocket_sendtext(uint64, uint64) uint64
 //go:wasmimport extism:host/user websocket_sendbinary
 func websocket_sendbinary(uint64, uint64) uint64
 
-// websocket_close is the host function provided by Navidrome.
+// websocket_closeconnection is the host function provided by Navidrome.
 //
-//go:wasmimport extism:host/user websocket_close
-func websocket_close(uint64, int32, uint64) uint64
+//go:wasmimport extism:host/user websocket_closeconnection
+func websocket_closeconnection(uint64, int32, uint64) uint64
 
 // WebSocketConnectResponse is the response type for WebSocket.Connect.
 type WebSocketConnectResponse struct {
@@ -137,8 +137,8 @@ func WebSocketSendBinary(connectionID string, data []byte) error {
 	return nil
 }
 
-// WebSocketClose calls the websocket_close host function.
-// Close gracefully closes a WebSocket connection.
+// WebSocketCloseConnection calls the websocket_closeconnection host function.
+// CloseConnection gracefully closes a WebSocket connection.
 //
 // Parameters:
 //   - connectionID: The connection identifier returned by Connect
@@ -146,14 +146,14 @@ func WebSocketSendBinary(connectionID string, data []byte) error {
 //   - reason: Optional human-readable reason for closing
 //
 // Returns an error if the connection is not found or if closing fails.
-func WebSocketClose(connectionID string, code int32, reason string) error {
+func WebSocketCloseConnection(connectionID string, code int32, reason string) error {
 	connectionIDMem := pdk.AllocateString(connectionID)
 	defer connectionIDMem.Free()
 	reasonMem := pdk.AllocateString(reason)
 	defer reasonMem.Free()
 
 	// Call the host function
-	responsePtr := websocket_close(connectionIDMem.Offset(), code, reasonMem.Offset())
+	responsePtr := websocket_closeconnection(connectionIDMem.Offset(), code, reasonMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
