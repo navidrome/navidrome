@@ -29,7 +29,7 @@ type onInitOutput struct {
 
 // callPluginInit calls the plugin's nd_on_init function if it has the Lifecycle capability.
 // This is called after the plugin is fully loaded with all services registered.
-func callPluginInit(ctx context.Context, instance *pluginInstance) {
+func callPluginInit(ctx context.Context, instance *plugin) {
 	if !hasCapability(instance.capabilities, CapabilityLifecycle) {
 		return
 	}

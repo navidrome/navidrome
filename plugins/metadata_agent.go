@@ -41,7 +41,7 @@ func init() {
 // the agents interfaces for metadata retrieval.
 type MetadataAgent struct {
 	name   string
-	plugin *pluginInstance
+	plugin *plugin
 }
 
 // AgentName returns the plugin name

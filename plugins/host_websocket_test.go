@@ -49,7 +49,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 		// Create and start manager
 		manager = &Manager{
-			plugins: make(map[string]*pluginInstance),
+			plugins: make(map[string]*plugin),
 		}
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
