@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -336,7 +335,7 @@ func startPluginManager(ctx context.Context) func() error {
 			return nil
 		}
 		log.Info(ctx, "Starting plugin manager")
-		manager := plugins.GetManager()
+		manager := GetPluginManager(ctx)
 		return manager.Start(ctx)
 	}
 }

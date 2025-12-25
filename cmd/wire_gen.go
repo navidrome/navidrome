@@ -187,6 +187,18 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
+func getPluginManager() *plugins.Manager {
+	manager := plugins.GetManager()
+	return manager
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+
+func GetPluginManager(ctx context.Context) *plugins.Manager {
+	manager := getPluginManager()
+	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
+	manager.SetDataStore(CreateDataStore())
+	return manager
+}
