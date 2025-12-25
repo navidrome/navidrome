@@ -118,3 +118,16 @@ func GetPlaybackServer() playback.PlaybackServer {
 		allProviders,
 	))
 }
+
+func getPluginManager() *plugins.Manager {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func GetPluginManager(ctx context.Context) *plugins.Manager {
+	manager := getPluginManager()
+	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
+	manager.SetDataStore(CreateDataStore())
+	return manager
+}
