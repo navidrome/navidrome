@@ -234,14 +234,14 @@ var _ = Describe("SchedulerService", Ordered, func() {
 
 	Describe("Scheduler Service Isolation", func() {
 		It("should share the same scheduler service across multiple plugin instances", func() {
-			// This test verifies that when we call plugin.create() multiple times
+			// This test verifies that when we call plugin.instance() multiple times
 			// (creating multiple instances from the same compiled plugin), they all
 			// share the same scheduler service. This is the expected behavior since
 			// the scheduler service is registered once per plugin at compile time.
 
-			// Get the plugin instance
+			// Get the plugin
 			manager.mu.RLock()
-			instance, ok := manager.plugins["fake-scheduler"]
+			plugin, ok := manager.plugins["fake-scheduler"]
 			manager.mu.RUnlock()
 			Expect(ok).To(BeTrue())
 
@@ -250,10 +250,10 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(testService.GetScheduleCount()).To(Equal(1))
 
-			// Create a second plugin instance
-			instance2, err := instance.create()
+			// Create a plugin instance
+			instance, err := plugin.instance()
 			Expect(err).ToNot(HaveOccurred())
-			defer instance2.Close(GinkgoT().Context())
+			defer instance.Close(GinkgoT().Context())
 
 			// The scheduler service is shared, so the schedule ID should clash
 			// if another instance tries to use the same ID
@@ -262,7 +262,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(err.Error()).To(ContainSubstring("already exists"))
 
 			// But different IDs should work fine
-			_, err = testService.ScheduleOneTime(GinkgoT().Context(), 60, "instance2-data", "instance2-id")
+			_, err = testService.ScheduleOneTime(GinkgoT().Context(), 60, "instance2-data", "otherx-id")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(testService.GetScheduleCount()).To(Equal(2))
 		})

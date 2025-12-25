@@ -110,7 +110,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("successfully calls the ping endpoint", func() {
-			instance, err := plugin.create()
+			instance, err := plugin.instance()
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
@@ -129,7 +129,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("adds required parameters (c, f, v) to the request", func() {
-			instance, err := plugin.create()
+			instance, err := plugin.instance()
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
@@ -146,7 +146,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("returns error when username is missing", func() {
-			instance, err := plugin.create()
+			instance, err := plugin.instance()
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
