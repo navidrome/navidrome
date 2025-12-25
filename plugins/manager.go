@@ -72,7 +72,7 @@ type pluginInstance struct {
 	closers      []io.Closer  // Cleanup functions to call on unload
 }
 
-func (p *pluginInstance) create() (*extism.Plugin, error) {
+func (p *pluginInstance) instance() (*extism.Plugin, error) {
 	plugin, err := p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
 		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
 	})
@@ -557,7 +557,7 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstanc
 	var result O
 
 	// Create plugin instance
-	p, err := plugin.create()
+	p, err := plugin.instance()
 	if err != nil {
 		return result, fmt.Errorf("failed to create plugin: %w", err)
 	}
