@@ -33,7 +33,7 @@ func init() {
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
 	name   string
-	plugin *pluginInstance
+	plugin *plugin
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler

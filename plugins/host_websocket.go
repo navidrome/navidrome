@@ -427,7 +427,7 @@ func (s *webSocketServiceImpl) invokeOnClose(ctx context.Context, connectionID s
 	}
 }
 
-func (s *webSocketServiceImpl) getPluginInstance() *pluginInstance {
+func (s *webSocketServiceImpl) getPluginInstance() *plugin {
 	s.manager.mu.RLock()
 	instance, ok := s.manager.plugins[s.pluginName]
 	s.manager.mu.RUnlock()

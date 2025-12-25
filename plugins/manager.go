@@ -44,7 +44,7 @@ type SubsonicRouter = http.Handler
 // It implements both agents.PluginLoader and scrobbler.PluginLoader interfaces.
 type Manager struct {
 	mu      sync.RWMutex
-	plugins map[string]*pluginInstance
+	plugins map[string]*plugin
 	ctx     context.Context
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
@@ -62,8 +62,8 @@ type Manager struct {
 	ds             model.DataStore
 }
 
-// pluginInstance represents a loaded plugin
-type pluginInstance struct {
+// plugin represents a loaded plugin
+type plugin struct {
 	name         string // Plugin name (from filename)
 	path         string // Path to the wasm file
 	manifest     *Manifest
@@ -72,18 +72,18 @@ type pluginInstance struct {
 	closers      []io.Closer  // Cleanup functions to call on unload
 }
 
-func (p *pluginInstance) instance() (*extism.Plugin, error) {
-	plugin, err := p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
+func (p *plugin) instance() (*extism.Plugin, error) {
+	instance, err := p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
 		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
 	})
 	if err != nil {
 		return nil, err
 	}
-	plugin.SetLogger(extismLogger(p.name))
-	return plugin, nil
+	instance.SetLogger(extismLogger(p.name))
+	return instance, nil
 }
 
-func (p *pluginInstance) Close() error {
+func (p *plugin) Close() error {
 	var errs []error
 	for _, f := range p.closers {
 		err := f.Close()
@@ -99,7 +99,7 @@ func (p *pluginInstance) Close() error {
 func GetManager() *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
-			plugins: make(map[string]*pluginInstance),
+			plugins: make(map[string]*plugin),
 		}
 	})
 }
@@ -194,14 +194,14 @@ func (m *Manager) Stop() error {
 	defer m.mu.Unlock()
 
 	// Close all plugins
-	for name, instance := range m.plugins {
-		if instance.compiled != nil {
-			if err := instance.compiled.Close(context.Background()); err != nil {
+	for name, plugin := range m.plugins {
+		if plugin.compiled != nil {
+			if err := plugin.compiled.Close(context.Background()); err != nil {
 				log.Error("Error closing plugin", "plugin", name, err)
 			}
 		}
 	}
-	m.plugins = make(map[string]*pluginInstance)
+	m.plugins = make(map[string]*plugin)
 
 	// Close compilation cache
 	if m.cache != nil {
@@ -223,8 +223,8 @@ func (m *Manager) PluginNames(capability string) []string {
 
 	var names []string
 	cap := Capability(capability)
-	for name, instance := range m.plugins {
-		if hasCapability(instance.capabilities, cap) {
+	for name, plugin := range m.plugins {
+		if hasCapability(plugin.capabilities, cap) {
 			names = append(names, name)
 		}
 	}
@@ -235,17 +235,17 @@ func (m *Manager) PluginNames(capability string) []string {
 // Returns false if the plugin is not found or doesn't have the MetadataAgent capability.
 func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 	m.mu.RLock()
-	instance, ok := m.plugins[name]
+	plugin, ok := m.plugins[name]
 	m.mu.RUnlock()
 
-	if !ok || !hasCapability(instance.capabilities, CapabilityMetadataAgent) {
+	if !ok || !hasCapability(plugin.capabilities, CapabilityMetadataAgent) {
 		return nil, false
 	}
 
 	// Create a new metadata agent adapter for this plugin
 	return &MetadataAgent{
-		name:   instance.name,
-		plugin: instance,
+		name:   plugin.name,
+		plugin: plugin,
 	}, true
 }
 
@@ -253,17 +253,17 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 // Returns false if the plugin is not found or doesn't have the Scrobbler capability.
 func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	m.mu.RLock()
-	instance, ok := m.plugins[name]
+	plugin, ok := m.plugins[name]
 	m.mu.RUnlock()
 
-	if !ok || !hasCapability(instance.capabilities, CapabilityScrobbler) {
+	if !ok || !hasCapability(plugin.capabilities, CapabilityScrobbler) {
 		return nil, false
 	}
 
 	// Create a new scrobbler adapter for this plugin
 	return &ScrobblerPlugin{
-		name:   instance.name,
-		plugin: instance,
+		name:   plugin.name,
+		plugin: plugin,
 	}, true
 }
 
@@ -279,10 +279,10 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 	defer m.mu.RUnlock()
 
 	info := make(map[string]PluginInfo, len(m.plugins))
-	for name, instance := range m.plugins {
+	for name, plugin := range m.plugins {
 		info[name] = PluginInfo{
-			Name:    instance.manifest.Name,
-			Version: instance.manifest.Version,
+			Name:    plugin.manifest.Name,
+			Version: plugin.manifest.Version,
 		}
 	}
 	return info
@@ -442,7 +442,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	}
 
 	m.mu.Lock()
-	m.plugins[name] = &pluginInstance{
+	m.plugins[name] = &plugin{
 		name:         name,
 		path:         wasmPath,
 		manifest:     &manifest,
@@ -470,7 +470,7 @@ func (m *Manager) getPluginConfig(name string) map[string]string {
 // Returns an error if the plugin is not found.
 func (m *Manager) UnloadPlugin(name string) error {
 	m.mu.Lock()
-	instance, ok := m.plugins[name]
+	plugin, ok := m.plugins[name]
 	if !ok {
 		m.mu.Unlock()
 		return fmt.Errorf("plugin %q not found", name)
@@ -479,18 +479,18 @@ func (m *Manager) UnloadPlugin(name string) error {
 	m.mu.Unlock()
 
 	// Run cleanup functions
-	err := instance.Close()
+	err := plugin.Close()
 	if err != nil {
 		log.Error("Error during plugin cleanup", "plugin", name, err)
 	}
 
 	// Close the compiled plugin outside the lock with a grace period
 	// to allow in-flight requests to complete
-	if instance.compiled != nil {
+	if plugin.compiled != nil {
 		// Use a brief timeout for cleanup
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := instance.compiled.Close(ctx); err != nil {
+		if err := plugin.compiled.Close(ctx); err != nil {
 			log.Error("Error closing plugin during unload", "plugin", name, err)
 		}
 	}
@@ -551,7 +551,7 @@ var errFunctionNotFound = errors.New("function not found")
 
 // callPluginFunction is a helper to call a plugin function with input and output types.
 // It handles JSON marshalling/unmarshalling and error checking.
-func callPluginFunction[I any, O any](ctx context.Context, plugin *pluginInstance, funcName string, input I) (O, error) {
+func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcName string, input I) (O, error) {
 	start := time.Now()
 
 	var result O
