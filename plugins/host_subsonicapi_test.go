@@ -64,7 +64,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 
 		// Create and configure manager
 		manager = &Manager{
-			plugins: make(map[string]*pluginInstance),
+			plugins: make(map[string]*plugin),
 		}
 		manager.SetSubsonicRouter(router)
 		manager.SetDataStore(dataStore)
@@ -100,7 +100,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	})
 
 	Describe("SubsonicAPI Call", func() {
-		var plugin *pluginInstance
+		var plugin *plugin
 
 		BeforeEach(func() {
 			manager.mu.RLock()

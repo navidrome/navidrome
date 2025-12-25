@@ -89,7 +89,7 @@ var _ = Describe("Watcher Integration", Ordered, func() {
 
 			conf.Server.Plugins.AutoReload = true
 			autoReloadManager := &Manager{
-				plugins: make(map[string]*pluginInstance),
+				plugins: make(map[string]*plugin),
 			}
 			err := autoReloadManager.Start(ctx)
 			Expect(err).ToNot(HaveOccurred())
