@@ -11,6 +11,8 @@
 //	-package     Output package name (default: inferred from output directory)
 //	-host-only   Generate only host-side code (default: false)
 //	-plugin-only Generate only plugin/client-side code (default: false)
+//	-go          Generate Go client wrappers (default: true when not using -python)
+//	-python      Generate Python client wrappers (default: false)
 //	-v           Verbose output
 //	-dry-run     Preview generated code without writing files
 package main
@@ -33,6 +35,8 @@ func main() {
 		pkgName    = flag.String("package", "", "Output package name (default: inferred from output directory)")
 		hostOnly   = flag.Bool("host-only", false, "Generate only host-side code")
 		pluginOnly = flag.Bool("plugin-only", false, "Generate only plugin/client-side code")
+		goClient   = flag.Bool("go", false, "Generate Go client wrappers")
+		pyClient   = flag.Bool("python", false, "Generate Python client wrappers")
 		verbose    = flag.Bool("v", false, "Verbose output")
 		dryRun     = flag.Bool("dry-run", false, "Preview generated code without writing files")
 	)
@@ -67,14 +71,20 @@ func main() {
 
 	// Determine what to generate
 	generateHost := !*pluginOnly
-	generateClient := !*hostOnly
+	// Default: generate Go clients if no language flag is specified
+	// If -python is specified without -go, only generate Python
+	// If -go is specified, generate Go
+	// If both are specified, generate both
+	generateGoClient := !*hostOnly && (*goClient || !*pyClient)
+	generatePyClient := !*hostOnly && *pyClient
 
 	if *verbose {
 		fmt.Printf("Input directory: %s\n", absInput)
 		fmt.Printf("Output directory: %s\n", absOutput)
 		fmt.Printf("Package name: %s\n", *pkgName)
 		fmt.Printf("Generate host code: %v\n", generateHost)
-		fmt.Printf("Generate client code: %v\n", generateClient)
+		fmt.Printf("Generate Go client code: %v\n", generateGoClient)
+		fmt.Printf("Generate Python client code: %v\n", generatePyClient)
 	}
 
 	// Parse source files
@@ -108,10 +118,18 @@ func main() {
 			}
 		}
 
-		// Generate client-side code
-		if generateClient {
-			if err := generateClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
-				fmt.Fprintf(os.Stderr, "Error generating client code for %s: %v\n", svc.Name, err)
+		// Generate Go client-side code
+		if generateGoClient {
+			if err := generateGoClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating Go client code for %s: %v\n", svc.Name, err)
+				os.Exit(1)
+			}
+		}
+
+		// Generate Python client-side code
+		if generatePyClient {
+			if err := generatePythonClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating Python client code for %s: %v\n", svc.Name, err)
 				os.Exit(1)
 			}
 		}
@@ -147,8 +165,8 @@ func generateHostCode(svc internal.Service, pkgName, outputDir string, dryRun, v
 	return nil
 }
 
-// generateClientCode generates client-side code for a service.
-func generateClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
+// generateGoClientCode generates Go client-side code for a service.
+func generateGoClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
 	code, err := internal.GenerateClientGo(svc)
 	if err != nil {
 		return fmt.Errorf("generating code: %w", err)
@@ -178,7 +196,38 @@ func generateClientCode(svc internal.Service, outputDir string, dryRun, verbose 
 	}
 
 	if verbose {
-		fmt.Printf("Generated client code: %s\n", clientFile)
+		fmt.Printf("Generated Go client code: %s\n", clientFile)
+	}
+	return nil
+}
+
+// generatePythonClientCode generates Python client-side code for a service.
+func generatePythonClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateClientPython(svc)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	// Python code goes in python/ subdirectory
+	clientDir := filepath.Join(outputDir, "python")
+	clientFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+".py")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
+		return nil
+	}
+
+	// Create python/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating python client directory: %w", err)
+	}
+
+	if err := os.WriteFile(clientFile, code, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated Python client code: %s\n", clientFile)
 	}
 	return nil
 }
