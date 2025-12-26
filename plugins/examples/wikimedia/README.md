@@ -150,7 +150,3 @@ wikimedia/
 | `nd_get_artist_url`       | Returns Wikipedia URL for an artist           |
 | `nd_get_artist_biography` | Returns artist biography from Wikipedia       |
 | `nd_get_artist_images`    | Returns artist image URLs from Wikidata       |
-
-## License
-
-Same as Navidrome - GPL-3.0
