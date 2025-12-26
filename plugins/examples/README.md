@@ -32,10 +32,12 @@ make clean
 
 ## Available Examples
 
-| Plugin                  | Description                                                   |
-|-------------------------|---------------------------------------------------------------|
-| [minimal](minimal/)     | A minimal example showing the basic plugin structure          |
-| [wikimedia](wikimedia/) | Fetches artist metadata from Wikidata, DBpedia, and Wikipedia |
+| Plugin                                          | Description                                                             |
+|-------------------------------------------------|-------------------------------------------------------------------------|
+| [minimal](minimal/)                             | A minimal example showing the basic plugin structure                    |
+| [wikimedia](wikimedia/)                         | Fetches artist metadata from Wikidata, DBpedia, and Wikipedia           |
+| [crypto-ticker](crypto-ticker/)                 | Real-time cryptocurrency prices from Coinbase using WebSocket           |
+| [discord-rich-presence](discord-rich-presence/) | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
 
 ## Testing with Extism CLI
 
