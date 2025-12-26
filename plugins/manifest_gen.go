@@ -11,6 +11,12 @@ type ArtworkPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
+// Cache service permissions for storing and retrieving data
+type CachePermission struct {
+	// Explanation for why cache access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // Configuration access permissions for a plugin
 type ConfigPermission struct {
 	// Explanation for why config access is needed
@@ -85,6 +91,9 @@ func (j *Manifest) UnmarshalJSON(value []byte) error {
 type Permissions struct {
 	// Artwork corresponds to the JSON schema field "artwork".
 	Artwork *ArtworkPermission `json:"artwork,omitempty" yaml:"artwork,omitempty" mapstructure:"artwork,omitempty"`
+
+	// Cache corresponds to the JSON schema field "cache".
+	Cache *CachePermission `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache,omitempty"`
 
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`

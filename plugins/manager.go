@@ -363,6 +363,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	stubHostFunctions = append(stubHostFunctions, host.RegisterSchedulerHostFunctions(nil)...)
 	stubHostFunctions = append(stubHostFunctions, host.RegisterWebSocketHostFunctions(nil)...)
 	stubHostFunctions = append(stubHostFunctions, host.RegisterArtworkHostFunctions(nil)...)
+	stubHostFunctions = append(stubHostFunctions, host.RegisterCacheHostFunctions(nil)...)
 
 	// Create initial compiled plugin with stub host functions
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, stubHostFunctions)
@@ -438,6 +439,13 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	if manifest.Permissions != nil && manifest.Permissions.Artwork != nil {
 		service := newArtworkService()
 		hostFunctions = append(hostFunctions, host.RegisterArtworkHostFunctions(service)...)
+	}
+
+	// Register Cache host functions if permission is granted
+	if manifest.Permissions != nil && manifest.Permissions.Cache != nil {
+		service := newCacheService(name)
+		closers = append(closers, service)
+		hostFunctions = append(hostFunctions, host.RegisterCacheHostFunctions(service)...)
 	}
 
 	// Check if recompilation is needed (AllowedHosts or host functions)
