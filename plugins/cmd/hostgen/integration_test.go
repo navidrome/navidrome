@@ -205,15 +205,16 @@ type ServiceB interface {
 
 	Describe("code generation", func() {
 		DescribeTable("generates correct host and client output",
-			func(serviceFile, hostExpectedFile, clientExpectedFile string) {
+			func(serviceFile, hostExpectedFile, goClientExpectedFile, pyClientExpectedFile string) {
 				serviceCode := readTestdata(serviceFile)
 				hostExpected := readTestdata(hostExpectedFile)
-				clientExpected := readTestdata(clientExpectedFile)
+				goClientExpected := readTestdata(goClientExpectedFile)
+				pyClientExpected := readTestdata(pyClientExpectedFile)
 
 				Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
 
-				// Generate both host and client code in one run
-				cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg")
+				// Generate host and both Go and Python client code
+				cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-go", "-python")
 				output, err := cmd.CombinedOutput()
 				Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
@@ -223,7 +224,7 @@ type ServiceB interface {
 
 				var hostFiles []string
 				for _, e := range entries {
-					if e.Name() != "go" && !e.IsDir() {
+					if e.Name() != "go" && e.Name() != "python" && !e.IsDir() {
 						hostFiles = append(hostFiles, e.Name())
 					}
 				}
@@ -240,53 +241,64 @@ type ServiceB interface {
 
 				Expect(string(formattedHostActual)).To(Equal(string(formattedHostExpected)), "Host code mismatch")
 
-				// Verify client code
+				// Verify Go client code
 				goDir := filepath.Join(outputDir, "go")
-				clientEntries, err := os.ReadDir(goDir)
+				goClientEntries, err := os.ReadDir(goDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(clientEntries).To(HaveLen(1), "Expected exactly one client file")
+				Expect(goClientEntries).To(HaveLen(1), "Expected exactly one Go client file")
 
-				clientActual, err := os.ReadFile(filepath.Join(goDir, clientEntries[0].Name()))
+				goClientActual, err := os.ReadFile(filepath.Join(goDir, goClientEntries[0].Name()))
 				Expect(err).ToNot(HaveOccurred())
 
-				formattedClientActual, err := format.Source(clientActual)
-				Expect(err).ToNot(HaveOccurred(), "Generated client code is not valid Go:\n%s", clientActual)
+				formattedGoClientActual, err := format.Source(goClientActual)
+				Expect(err).ToNot(HaveOccurred(), "Generated Go client code is not valid Go:\n%s", goClientActual)
 
-				formattedClientExpected, err := format.Source([]byte(clientExpected))
-				Expect(err).ToNot(HaveOccurred(), "Expected client code is not valid Go")
+				formattedGoClientExpected, err := format.Source([]byte(goClientExpected))
+				Expect(err).ToNot(HaveOccurred(), "Expected Go client code is not valid Go")
 
-				Expect(string(formattedClientActual)).To(Equal(string(formattedClientExpected)), "Client code mismatch")
+				Expect(string(formattedGoClientActual)).To(Equal(string(formattedGoClientExpected)), "Go client code mismatch")
+
+				// Verify Python client code
+				pythonDir := filepath.Join(outputDir, "python")
+				pyClientEntries, err := os.ReadDir(pythonDir)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pyClientEntries).To(HaveLen(1), "Expected exactly one Python client file")
+
+				pyClientActual, err := os.ReadFile(filepath.Join(pythonDir, pyClientEntries[0].Name()))
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(string(pyClientActual)).To(Equal(pyClientExpected), "Python client code mismatch")
 			},
 
 			Entry("simple string params",
-				"echo_service.go", "echo_expected.go", "echo_client_expected.go"),
+				"echo_service.go", "echo_expected.go", "echo_client_expected.go", "echo_client_expected.py"),
 
 			Entry("multiple simple params (int32)",
-				"math_service.go", "math_expected.go", "math_client_expected.go"),
+				"math_service.go", "math_expected.go", "math_client_expected.go", "math_client_expected.py"),
 
 			Entry("struct param with request type",
-				"store_service.go", "store_expected.go", "store_client_expected.go"),
+				"store_service.go", "store_expected.go", "store_client_expected.go", "store_client_expected.py"),
 
 			Entry("mixed simple and complex params",
-				"list_service.go", "list_expected.go", "list_client_expected.go"),
+				"list_service.go", "list_expected.go", "list_client_expected.go", "list_client_expected.py"),
 
 			Entry("method without error",
-				"counter_service.go", "counter_expected.go", "counter_client_expected.go"),
+				"counter_service.go", "counter_expected.go", "counter_client_expected.go", "counter_client_expected.py"),
 
 			Entry("no params, error only",
-				"ping_service.go", "ping_expected.go", "ping_client_expected.go"),
+				"ping_service.go", "ping_expected.go", "ping_client_expected.go", "ping_client_expected.py"),
 
 			Entry("map and interface types",
-				"meta_service.go", "meta_expected.go", "meta_client_expected.go"),
+				"meta_service.go", "meta_expected.go", "meta_client_expected.go", "meta_client_expected.py"),
 
 			Entry("pointer types",
-				"users_service.go", "users_expected.go", "users_client_expected.go"),
+				"users_service.go", "users_expected.go", "users_client_expected.go", "users_client_expected.py"),
 
 			Entry("multiple returns",
-				"search_service.go", "search_expected.go", "search_client_expected.go"),
+				"search_service.go", "search_expected.go", "search_client_expected.go", "search_client_expected.py"),
 
 			Entry("bytes",
-				"codec_service.go", "codec_expected.go", "codec_client_expected.go"),
+				"codec_service.go", "codec_expected.go", "codec_client_expected.go", "codec_client_expected.py"),
 		)
 
 		It("generates compilable host code for comprehensive service", func() {
@@ -397,6 +409,120 @@ type Filter2 struct {
 
 			// Verify .wasm file was created
 			Expect(filepath.Join(clientDir, "plugin.wasm")).To(BeAnExistingFile())
+		})
+
+		It("generates Python client code with -python flag", func() {
+			serviceCode := `package testpkg
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc
+	DoAction(ctx context.Context, input string) (output string, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
+
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-python", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			// Verify Python client code exists
+			pythonDir := filepath.Join(outputDir, "python")
+			Expect(pythonDir).To(BeADirectory())
+
+			pythonFile := filepath.Join(pythonDir, "nd_host_test.py")
+			Expect(pythonFile).To(BeAnExistingFile())
+
+			content, err := os.ReadFile(pythonFile)
+			Expect(err).ToNot(HaveOccurred())
+
+			contentStr := string(content)
+			Expect(contentStr).To(ContainSubstring("Code generated by hostgen. DO NOT EDIT."))
+			Expect(contentStr).To(ContainSubstring("class HostFunctionError(Exception):"))
+			Expect(contentStr).To(ContainSubstring(`@extism.import_fn("extism:host/user", "test_doaction")`))
+			Expect(contentStr).To(ContainSubstring("def test_do_action(input: str) -> str:"))
+		})
+
+		It("generates both Go and Python client code with -go -python flags", func() {
+			serviceCode := `package testpkg
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc
+	DoAction(ctx context.Context, input string) (output string, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
+
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-go", "-python", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			// Verify both Go and Python client code exist
+			goDir := filepath.Join(outputDir, "go")
+			Expect(goDir).To(BeADirectory())
+			Expect(filepath.Join(goDir, "nd_host_test.go")).To(BeAnExistingFile())
+
+			pythonDir := filepath.Join(outputDir, "python")
+			Expect(pythonDir).To(BeADirectory())
+			Expect(filepath.Join(pythonDir, "nd_host_test.py")).To(BeAnExistingFile())
+		})
+
+		It("generates Python code with dataclass for multi-value returns", func() {
+			serviceCode := `package testpkg
+
+import "context"
+
+//nd:hostservice name=Cache permission=cache
+type CacheService interface {
+	//nd:hostfunc
+	GetString(ctx context.Context, key string) (value string, exists bool, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
+
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-python", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			content, err := os.ReadFile(filepath.Join(outputDir, "python", "nd_host_cache.py"))
+			Expect(err).ToNot(HaveOccurred())
+
+			contentStr := string(content)
+			Expect(contentStr).To(ContainSubstring("@dataclass"))
+			Expect(contentStr).To(ContainSubstring("class CacheGetStringResult:"))
+			Expect(contentStr).To(ContainSubstring("value: str"))
+			Expect(contentStr).To(ContainSubstring("exists: bool"))
+			Expect(contentStr).To(ContainSubstring("def cache_get_string(key: str) -> CacheGetStringResult:"))
+		})
+
+		It("generates Python code for methods with no parameters", func() {
+			serviceCode := `package testpkg
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc
+	Ping(ctx context.Context) (status string, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
+
+			cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-python", "-plugin-only")
+			output, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
+
+			content, err := os.ReadFile(filepath.Join(outputDir, "python", "nd_host_test.py"))
+			Expect(err).ToNot(HaveOccurred())
+
+			contentStr := string(content)
+			Expect(contentStr).To(ContainSubstring("def test_ping() -> str:"))
+			Expect(contentStr).To(ContainSubstring(`request_bytes = b"{}"`))
 		})
 	})
 })

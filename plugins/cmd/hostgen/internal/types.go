@@ -85,3 +85,58 @@ func toJSONName(name string) string {
 	// Simple conversion: lowercase first letter
 	return strings.ToLower(name[:1]) + name[1:]
 }
+
+// ToPythonType converts a Go type to its Python equivalent.
+func ToPythonType(goType string) string {
+	switch goType {
+	case "string":
+		return "str"
+	case "int", "int32", "int64":
+		return "int"
+	case "float32", "float64":
+		return "float"
+	case "bool":
+		return "bool"
+	case "[]byte":
+		return "bytes"
+	default:
+		return "Any"
+	}
+}
+
+// ToSnakeCase converts a PascalCase or camelCase string to snake_case.
+func ToSnakeCase(s string) string {
+	var result strings.Builder
+	for i, r := range s {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			result.WriteByte('_')
+		}
+		result.WriteRune(r)
+	}
+	return strings.ToLower(result.String())
+}
+
+// PythonFunctionName returns the Python function name for a method.
+func (m Method) PythonFunctionName(servicePrefix string) string {
+	return ToSnakeCase(servicePrefix + m.Name)
+}
+
+// PythonResultTypeName returns the Python dataclass name for multi-value returns.
+func (m Method) PythonResultTypeName(serviceName string) string {
+	return serviceName + m.Name + "Result"
+}
+
+// NeedsResultClass returns true if the method needs a dataclass for returns.
+func (m Method) NeedsResultClass() bool {
+	return len(m.Returns) > 1
+}
+
+// PythonType returns the Python type for this parameter.
+func (p Param) PythonType() string {
+	return ToPythonType(p.Type)
+}
+
+// PythonName returns the snake_case Python name for this parameter.
+func (p Param) PythonName() string {
+	return ToSnakeCase(p.Name)
+}
