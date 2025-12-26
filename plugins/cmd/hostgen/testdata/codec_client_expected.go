@@ -18,6 +18,11 @@ import (
 //go:wasmimport extism:host/user codec_encode
 func codec_encode(uint64) uint64
 
+// CodecEncodeRequest is the request type for Codec.Encode.
+type CodecEncodeRequest struct {
+	Data []byte `json:"data"`
+}
+
 // CodecEncodeResponse is the response type for Codec.Encode.
 type CodecEncodeResponse struct {
 	Result []byte `json:"result,omitempty"`
@@ -26,11 +31,19 @@ type CodecEncodeResponse struct {
 
 // CodecEncode calls the codec_encode host function.
 func CodecEncode(data []byte) (*CodecEncodeResponse, error) {
-	dataMem := pdk.AllocateBytes(data)
-	defer dataMem.Free()
+	// Marshal request to JSON
+	req := CodecEncodeRequest{
+		Data: data,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := codec_encode(dataMem.Offset())
+	responsePtr := codec_encode(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

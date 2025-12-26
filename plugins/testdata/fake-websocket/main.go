@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	pdk "github.com/extism/go-pdk"
 )
@@ -82,18 +81,26 @@ func ndWebSocketOnTextMessage() int32 {
 
 	switch input.Message {
 	case "echo":
-		err := webSocketSendText(input.ConnectionID, "echo:"+input.Message)
+		resp, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
 			return 0
 		}
+		if resp.Error != "" {
+			pdk.OutputJSON(OnTextMessageOutput{Error: &resp.Error})
+			return 0
+		}
 
 	case "close":
-		err := webSocketCloseConnection(input.ConnectionID)
+		resp, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin")
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(OnTextMessageOutput{Error: &resp.Error})
 			return 0
 		}
 
@@ -203,50 +210,6 @@ func storeReceivedMessage(msg string) {
 		msg = string(existingVar) + "\n" + msg
 	}
 	pdk.SetVar("_received_messages", []byte(msg))
-}
-
-// Host function declarations for WebSocket operations
-//
-//go:wasmimport extism:host/user websocket_sendtext
-func websocket_sendtext(connectionID uint64, message uint64) uint64
-
-//go:wasmimport extism:host/user websocket_closeconnection
-func websocket_closeconnection(connectionID uint64, code int32, reason uint64) uint64
-
-// webSocketSendText sends a text message to the specified connection.
-func webSocketSendText(connectionID, message string) error {
-	connMem := pdk.AllocateString(connectionID)
-	defer connMem.Free()
-	msgMem := pdk.AllocateString(message)
-	defer msgMem.Free()
-
-	responsePtr := websocket_sendtext(connMem.Offset(), msgMem.Offset())
-	if responsePtr != 0 {
-		responseMem := pdk.FindMemory(responsePtr)
-		errStr := string(responseMem.ReadBytes())
-		if errStr != "" {
-			return errors.New(errStr)
-		}
-	}
-	return nil
-}
-
-// webSocketCloseConnection closes the specified WebSocket connection.
-func webSocketCloseConnection(connectionID string) error {
-	connMem := pdk.AllocateString(connectionID)
-	defer connMem.Free()
-	reasonMem := pdk.AllocateString("closed by plugin")
-	defer reasonMem.Free()
-
-	responsePtr := websocket_closeconnection(connMem.Offset(), 1000, reasonMem.Offset())
-	if responsePtr != 0 {
-		responseMem := pdk.FindMemory(responsePtr)
-		errStr := string(responseMem.ReadBytes())
-		if errStr != "" {
-			return errors.New(errStr)
-		}
-	}
-	return nil
 }
 
 func main() {}

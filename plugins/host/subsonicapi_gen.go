@@ -9,6 +9,11 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// SubsonicAPICallRequest is the request type for SubsonicAPI.Call.
+type SubsonicAPICallRequest struct {
+	Uri string `json:"uri"`
+}
+
 // SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
 type SubsonicAPICallResponse struct {
 	ResponseJSON string `json:"responseJSON,omitempty"`
@@ -27,18 +32,25 @@ func newSubsonicAPICallHostFunction(service SubsonicAPIService) extism.HostFunct
 	return extism.NewHostFunctionWithStack(
 		"subsonicapi_call",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			uri, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			responsejson, err := service.Call(ctx, uri)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				subsonicapiWriteError(p, stack, err)
 				return
 			}
+			var req SubsonicAPICallRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				subsonicapiWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			responsejson, svcErr := service.Call(ctx, req.Uri)
+			if svcErr != nil {
+				subsonicapiWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := SubsonicAPICallResponse{
 				ResponseJSON: responsejson,

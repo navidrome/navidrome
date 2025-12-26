@@ -9,16 +9,40 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// SchedulerScheduleOneTimeRequest is the request type for Scheduler.ScheduleOneTime.
+type SchedulerScheduleOneTimeRequest struct {
+	DelaySeconds int32  `json:"delaySeconds"`
+	Payload      string `json:"payload"`
+	ScheduleID   string `json:"scheduleID"`
+}
+
 // SchedulerScheduleOneTimeResponse is the response type for Scheduler.ScheduleOneTime.
 type SchedulerScheduleOneTimeResponse struct {
 	NewScheduleID string `json:"newScheduleID,omitempty"`
 	Error         string `json:"error,omitempty"`
 }
 
+// SchedulerScheduleRecurringRequest is the request type for Scheduler.ScheduleRecurring.
+type SchedulerScheduleRecurringRequest struct {
+	CronExpression string `json:"cronExpression"`
+	Payload        string `json:"payload"`
+	ScheduleID     string `json:"scheduleID"`
+}
+
 // SchedulerScheduleRecurringResponse is the response type for Scheduler.ScheduleRecurring.
 type SchedulerScheduleRecurringResponse struct {
 	NewScheduleID string `json:"newScheduleID,omitempty"`
 	Error         string `json:"error,omitempty"`
+}
+
+// SchedulerCancelScheduleRequest is the request type for Scheduler.CancelSchedule.
+type SchedulerCancelScheduleRequest struct {
+	ScheduleID string `json:"scheduleID"`
+}
+
+// SchedulerCancelScheduleResponse is the response type for Scheduler.CancelSchedule.
+type SchedulerCancelScheduleResponse struct {
+	Error string `json:"error,omitempty"`
 }
 
 // RegisterSchedulerHostFunctions registers Scheduler service host functions.
@@ -35,30 +59,32 @@ func newSchedulerScheduleOneTimeHostFunction(service SchedulerService) extism.Ho
 	return extism.NewHostFunctionWithStack(
 		"scheduler_scheduleonetime",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			delaySeconds := extism.DecodeI32(stack[0])
-			payload, err := p.ReadString(stack[1])
-			if err != nil {
-				return
-			}
-			scheduleID, err := p.ReadString(stack[2])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			newscheduleid, err := service.ScheduleOneTime(ctx, delaySeconds, payload, scheduleID)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				schedulerWriteError(p, stack, err)
 				return
 			}
+			var req SchedulerScheduleOneTimeRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				schedulerWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			newscheduleid, svcErr := service.ScheduleOneTime(ctx, req.DelaySeconds, req.Payload, req.ScheduleID)
+			if svcErr != nil {
+				schedulerWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := SchedulerScheduleOneTimeResponse{
 				NewScheduleID: newscheduleid,
 			}
 			schedulerWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypeI32, extism.ValueTypePTR, extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -67,33 +93,32 @@ func newSchedulerScheduleRecurringHostFunction(service SchedulerService) extism.
 	return extism.NewHostFunctionWithStack(
 		"scheduler_schedulerecurring",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			cronExpression, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-			payload, err := p.ReadString(stack[1])
-			if err != nil {
-				return
-			}
-			scheduleID, err := p.ReadString(stack[2])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			newscheduleid, err := service.ScheduleRecurring(ctx, cronExpression, payload, scheduleID)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				schedulerWriteError(p, stack, err)
 				return
 			}
+			var req SchedulerScheduleRecurringRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				schedulerWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			newscheduleid, svcErr := service.ScheduleRecurring(ctx, req.CronExpression, req.Payload, req.ScheduleID)
+			if svcErr != nil {
+				schedulerWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := SchedulerScheduleRecurringResponse{
 				NewScheduleID: newscheduleid,
 			}
 			schedulerWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypePTR, extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -102,25 +127,27 @@ func newSchedulerCancelScheduleHostFunction(service SchedulerService) extism.Hos
 	return extism.NewHostFunctionWithStack(
 		"scheduler_cancelschedule",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			scheduleID, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				schedulerWriteError(p, stack, err)
+				return
+			}
+			var req SchedulerCancelScheduleRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				schedulerWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			err = service.CancelSchedule(ctx, scheduleID)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.CancelSchedule(ctx, req.ScheduleID); svcErr != nil {
+				schedulerWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := SchedulerCancelScheduleResponse{}
+			schedulerWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},

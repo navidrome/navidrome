@@ -16,7 +16,13 @@ import (
 // users_get is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user users_get
-func users_get(uint64, uint64) uint64
+func users_get(uint64) uint64
+
+// UsersGetRequest is the request type for Users.Get.
+type UsersGetRequest struct {
+	Id     *string `json:"id"`
+	Filter *User   `json:"filter"`
+}
 
 // UsersGetResponse is the response type for Users.Get.
 type UsersGetResponse struct {
@@ -26,21 +32,20 @@ type UsersGetResponse struct {
 
 // UsersGet calls the users_get host function.
 func UsersGet(id *string, filter *User) (*UsersGetResponse, error) {
-	idBytes, err := json.Marshal(id)
+	// Marshal request to JSON
+	req := UsersGetRequest{
+		Id:     id,
+		Filter: filter,
+	}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	idMem := pdk.AllocateBytes(idBytes)
-	defer idMem.Free()
-	filterBytes, err := json.Marshal(filter)
-	if err != nil {
-		return nil, err
-	}
-	filterMem := pdk.AllocateBytes(filterBytes)
-	defer filterMem.Free()
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := users_get(idMem.Offset(), filterMem.Offset())
+	responsePtr := users_get(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

@@ -9,6 +9,11 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// SearchFindRequest is the request type for Search.Find.
+type SearchFindRequest struct {
+	Query string `json:"query"`
+}
+
 // SearchFindResponse is the response type for Search.Find.
 type SearchFindResponse struct {
 	Results []Result `json:"results,omitempty"`
@@ -28,18 +33,25 @@ func newSearchFindHostFunction(service SearchService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"search_find",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			query, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			results, total, err := service.Find(ctx, query)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				searchWriteError(p, stack, err)
 				return
 			}
+			var req SearchFindRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				searchWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			results, total, svcErr := service.Find(ctx, req.Query)
+			if svcErr != nil {
+				searchWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := SearchFindResponse{
 				Results: results,

@@ -9,10 +9,22 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// ArtworkGetArtistUrlRequest is the request type for Artwork.GetArtistUrl.
+type ArtworkGetArtistUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
+}
+
 // ArtworkGetArtistUrlResponse is the response type for Artwork.GetArtistUrl.
 type ArtworkGetArtistUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// ArtworkGetAlbumUrlRequest is the request type for Artwork.GetAlbumUrl.
+type ArtworkGetAlbumUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
 }
 
 // ArtworkGetAlbumUrlResponse is the response type for Artwork.GetAlbumUrl.
@@ -21,10 +33,22 @@ type ArtworkGetAlbumUrlResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
+// ArtworkGetTrackUrlRequest is the request type for Artwork.GetTrackUrl.
+type ArtworkGetTrackUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
+}
+
 // ArtworkGetTrackUrlResponse is the response type for Artwork.GetTrackUrl.
 type ArtworkGetTrackUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// ArtworkGetPlaylistUrlRequest is the request type for Artwork.GetPlaylistUrl.
+type ArtworkGetPlaylistUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
 }
 
 // ArtworkGetPlaylistUrlResponse is the response type for Artwork.GetPlaylistUrl.
@@ -48,26 +72,32 @@ func newArtworkGetArtistUrlHostFunction(service ArtworkService) extism.HostFunct
 	return extism.NewHostFunctionWithStack(
 		"artwork_getartisturl",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			id, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-			size := extism.DecodeI32(stack[1])
-
-			// Call the service method
-			url, err := service.GetArtistUrl(ctx, id, size)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				artworkWriteError(p, stack, err)
 				return
 			}
+			var req ArtworkGetArtistUrlRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				artworkWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			url, svcErr := service.GetArtistUrl(ctx, req.Id, req.Size)
+			if svcErr != nil {
+				artworkWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := ArtworkGetArtistUrlResponse{
 				Url: url,
 			}
 			artworkWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -76,26 +106,32 @@ func newArtworkGetAlbumUrlHostFunction(service ArtworkService) extism.HostFuncti
 	return extism.NewHostFunctionWithStack(
 		"artwork_getalbumurl",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			id, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-			size := extism.DecodeI32(stack[1])
-
-			// Call the service method
-			url, err := service.GetAlbumUrl(ctx, id, size)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				artworkWriteError(p, stack, err)
 				return
 			}
+			var req ArtworkGetAlbumUrlRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				artworkWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			url, svcErr := service.GetAlbumUrl(ctx, req.Id, req.Size)
+			if svcErr != nil {
+				artworkWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := ArtworkGetAlbumUrlResponse{
 				Url: url,
 			}
 			artworkWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -104,26 +140,32 @@ func newArtworkGetTrackUrlHostFunction(service ArtworkService) extism.HostFuncti
 	return extism.NewHostFunctionWithStack(
 		"artwork_gettrackurl",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			id, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-			size := extism.DecodeI32(stack[1])
-
-			// Call the service method
-			url, err := service.GetTrackUrl(ctx, id, size)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				artworkWriteError(p, stack, err)
 				return
 			}
+			var req ArtworkGetTrackUrlRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				artworkWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			url, svcErr := service.GetTrackUrl(ctx, req.Id, req.Size)
+			if svcErr != nil {
+				artworkWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := ArtworkGetTrackUrlResponse{
 				Url: url,
 			}
 			artworkWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -132,26 +174,32 @@ func newArtworkGetPlaylistUrlHostFunction(service ArtworkService) extism.HostFun
 	return extism.NewHostFunctionWithStack(
 		"artwork_getplaylisturl",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			id, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-			size := extism.DecodeI32(stack[1])
-
-			// Call the service method
-			url, err := service.GetPlaylistUrl(ctx, id, size)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				artworkWriteError(p, stack, err)
 				return
 			}
+			var req ArtworkGetPlaylistUrlRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				artworkWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			url, svcErr := service.GetPlaylistUrl(ctx, req.Id, req.Size)
+			if svcErr != nil {
+				artworkWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := ArtworkGetPlaylistUrlResponse{
 				Url: url,
 			}
 			artworkWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }

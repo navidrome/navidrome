@@ -18,6 +18,11 @@ import (
 //go:wasmimport extism:host/user search_find
 func search_find(uint64) uint64
 
+// SearchFindRequest is the request type for Search.Find.
+type SearchFindRequest struct {
+	Query string `json:"query"`
+}
+
 // SearchFindResponse is the response type for Search.Find.
 type SearchFindResponse struct {
 	Results []Result `json:"results,omitempty"`
@@ -27,11 +32,19 @@ type SearchFindResponse struct {
 
 // SearchFind calls the search_find host function.
 func SearchFind(query string) (*SearchFindResponse, error) {
-	queryMem := pdk.AllocateString(query)
-	defer queryMem.Free()
+	// Marshal request to JSON
+	req := SearchFindRequest{
+		Query: query,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := search_find(queryMem.Offset())
+	responsePtr := search_find(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

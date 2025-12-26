@@ -46,11 +46,12 @@ func newUsersGetHostFunction(service UsersService) extism.HostFunction {
 			}
 
 			// Call the service method
-			result, err := service.Get(ctx, req.Id, req.Filter)
-			if err != nil {
-				usersWriteError(p, stack, err)
+			result, svcErr := service.Get(ctx, req.Id, req.Filter)
+			if svcErr != nil {
+				usersWriteError(p, stack, svcErr)
 				return
 			}
+
 			// Write JSON response to plugin memory
 			resp := UsersGetResponse{
 				Result: result,
