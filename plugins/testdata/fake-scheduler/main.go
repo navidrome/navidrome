@@ -68,13 +68,10 @@ func NdSchedulerCallback(input SchedulerCallbackInput) (SchedulerCallbackOutput,
 		}
 	case len(input.Payload) > 19 && input.Payload[:19] == "schedule-duplicate:":
 		duplicateID := input.Payload[19:]
-		resp, err := SchedulerScheduleOneTime(60, "duplicate-attempt", duplicateID)
+		_, err := SchedulerScheduleOneTime(60, "duplicate-attempt", duplicateID)
 		if err != nil {
 			errStr := err.Error()
 			return SchedulerCallbackOutput{Error: &errStr}, nil
-		}
-		if resp.Error != "" {
-			return SchedulerCallbackOutput{Error: &resp.Error}, nil
 		}
 	}
 	return SchedulerCallbackOutput{}, nil
