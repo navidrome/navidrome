@@ -21,7 +21,7 @@ const testDataDir = "plugins/testdata"
 
 // Shared test state initialized in BeforeSuite
 var (
-	testdataDir   string // Path to testdata folder with fake-metadata-agent.wasm
+	testdataDir   string // Path to testdata folder with test-metadata-agent.wasm
 	tmpPluginsDir string // Temp directory for plugin tests that modify files
 	testManager   *Manager
 )
@@ -46,10 +46,10 @@ func buildTestPlugins(t *testing.T, path string) {
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
-// It creates a temp directory, copies the fake-metadata-agent plugin, and starts the manager.
+// It creates a temp directory, copies the test-metadata-agent plugin, and starts the manager.
 // Returns the manager, temp directory path, and a cleanup function.
 func createTestManager(pluginConfig map[string]map[string]string) (*Manager, string) {
-	return createTestManagerWithPlugins(pluginConfig, "fake-metadata-agent.wasm")
+	return createTestManagerWithPlugins(pluginConfig, "test-metadata-agent.wasm")
 }
 
 // createTestManagerWithPlugins creates a new plugin Manager with the given plugin config
@@ -94,7 +94,7 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 }
 
 var _ = BeforeSuite(func() {
-	// Get testdata directory (where fake-metadata-agent.wasm lives)
+	// Get testdata directory (where test-metadata-agent.wasm lives)
 	_, currentFile, _, ok := runtime.Caller(0)
 	Expect(ok).To(BeTrue())
 	testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")

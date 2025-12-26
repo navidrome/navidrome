@@ -32,9 +32,9 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "websocket-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy the fake-websocket plugin
-		srcPath := filepath.Join(testdataDir, "fake-websocket.wasm")
-		destPath := filepath.Join(tmpDir, "fake-websocket.wasm")
+		// Copy the test-websocket plugin
+		srcPath := filepath.Join(testdataDir, "test-websocket.wasm")
+		destPath := filepath.Join(tmpDir, "test-websocket.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -55,7 +55,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Get WebSocket service from plugin's closers and wrap it for testing
-		service := findWebSocketService(manager, "fake-websocket")
+		service := findWebSocketService(manager, "test-websocket")
 		Expect(service).ToNot(BeNil())
 		testService = &testableWebSocketService{webSocketServiceImpl: service}
 
@@ -73,11 +73,11 @@ var _ = Describe("WebSocketService", Ordered, func() {
 	Describe("Plugin Loading", func() {
 		It("should detect WebSocket capability", func() {
 			names := manager.PluginNames(string(CapabilityWebSocket))
-			Expect(names).To(ContainElement("fake-websocket"))
+			Expect(names).To(ContainElement("test-websocket"))
 		})
 
 		It("should register WebSocket service for plugin", func() {
-			service := findWebSocketService(manager, "fake-websocket")
+			service := findWebSocketService(manager, "test-websocket")
 			Expect(service).ToNot(BeNil())
 		})
 	})
@@ -98,7 +98,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		})
 
 		It("should allow hosts matching wildcard patterns", func() {
-			// fake-websocket manifest allows *.example.com
+			// test-websocket manifest allows *.example.com
 			// The pattern *.example.com matches any host ending with .example.com
 			ctx := context.Background()
 			allowed := testService.isHostAllowed("api.example.com")
@@ -115,7 +115,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		})
 
 		It("should allow exact host matches", func() {
-			// fake-websocket manifest allows echo.websocket.org
+			// test-websocket manifest allows echo.websocket.org
 			allowed := testService.isHostAllowed("echo.websocket.org")
 			Expect(allowed).To(BeTrue())
 
@@ -125,7 +125,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 		It("should strip port before checking host", func() {
 			// Implementation strips port before matching against patterns
-			// fake-websocket manifest has "localhost:*" which matches "localhost"
+			// test-websocket manifest has "localhost:*" which matches "localhost"
 			// after port stripping
 			// Note: The port wildcard pattern isn't actually implemented, but
 			// since port is stripped, "localhost:*" is compared against "localhost"

@@ -16,13 +16,13 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 		ctx = GinkgoT().Context()
 		// Load the agent via shared manager
 		var ok bool
-		agent, ok = testManager.LoadMediaAgent("fake-metadata-agent")
+		agent, ok = testManager.LoadMediaAgent("test-metadata-agent")
 		Expect(ok).To(BeTrue())
 	})
 
 	Describe("AgentName", func() {
 		It("returns the plugin name", func() {
-			Expect(agent.AgentName()).To(Equal("fake-metadata-agent"))
+			Expect(agent.AgentName()).To(Equal("test-metadata-agent"))
 		})
 	})
 
@@ -127,14 +127,14 @@ var _ = Describe("MetadataAgent error handling", Ordered, func() {
 
 		// Create manager with error injection config
 		errorManager, _ = createTestManager(map[string]map[string]string{
-			"fake-metadata-agent": {
+			"test-metadata-agent": {
 				"error": "simulated plugin error",
 			},
 		})
 
 		// Load the agent
 		var ok bool
-		errorAgent, ok = errorManager.LoadMediaAgent("fake-metadata-agent")
+		errorAgent, ok = errorManager.LoadMediaAgent("test-metadata-agent")
 		Expect(ok).To(BeTrue())
 	})
 

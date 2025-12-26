@@ -1,4 +1,4 @@
-module fake-websocket
+module test-scheduler
 
 go 1.23
 

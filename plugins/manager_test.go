@@ -17,16 +17,16 @@ var _ = Describe("Manager", Ordered, func() {
 	// Ensure plugin is loaded at the start (might have been unloaded by previous tests)
 	BeforeAll(func() {
 		ctx = GinkgoT().Context()
-		if _, ok := testManager.plugins["fake-metadata-agent"]; !ok {
-			err := testManager.LoadPlugin("fake-metadata-agent")
+		if _, ok := testManager.plugins["test-metadata-agent"]; !ok {
+			err := testManager.LoadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 		}
 	})
 
 	// Ensure plugin is restored after all tests in this block
 	AfterAll(func() {
-		if _, ok := testManager.plugins["fake-metadata-agent"]; !ok {
-			_ = testManager.LoadPlugin("fake-metadata-agent")
+		if _, ok := testManager.plugins["test-metadata-agent"]; !ok {
+			_ = testManager.LoadPlugin("test-metadata-agent")
 		}
 	})
 
@@ -34,7 +34,7 @@ var _ = Describe("Manager", Ordered, func() {
 		It("auto-loads plugins from folder on Start", func() {
 			// Plugin is already loaded by testManager.Start() via discoverPlugins
 			names := testManager.PluginNames(string(CapabilityMetadataAgent))
-			Expect(names).To(ContainElement("fake-metadata-agent"))
+			Expect(names).To(ContainElement("test-metadata-agent"))
 		})
 
 		It("returns error when plugin file does not exist", func() {
@@ -45,7 +45,7 @@ var _ = Describe("Manager", Ordered, func() {
 
 		It("returns error when plugin is already loaded", func() {
 			// Plugin was loaded on Start, try to load again
-			err := testManager.LoadPlugin("fake-metadata-agent")
+			err := testManager.LoadPlugin("test-metadata-agent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("already loaded"))
 		})
@@ -69,20 +69,20 @@ var _ = Describe("Manager", Ordered, func() {
 	Describe("UnloadPlugin", func() {
 		It("removes a loaded plugin", func() {
 			// Plugin is already loaded from Start
-			err := testManager.UnloadPlugin("fake-metadata-agent")
+			err := testManager.UnloadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
 			names := testManager.PluginNames(string(CapabilityMetadataAgent))
-			Expect(names).ToNot(ContainElement("fake-metadata-agent"))
+			Expect(names).ToNot(ContainElement("test-metadata-agent"))
 		})
 
 		It("can reload after unload", func() {
 			// Reload the plugin we just unloaded
-			err := testManager.LoadPlugin("fake-metadata-agent")
+			err := testManager.LoadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
 			names := testManager.PluginNames(string(CapabilityMetadataAgent))
-			Expect(names).To(ContainElement("fake-metadata-agent"))
+			Expect(names).To(ContainElement("test-metadata-agent"))
 		})
 
 		It("returns error when plugin not found", func() {
@@ -94,11 +94,11 @@ var _ = Describe("Manager", Ordered, func() {
 
 	Describe("ReloadPlugin", func() {
 		It("unloads and reloads a plugin", func() {
-			err := testManager.ReloadPlugin("fake-metadata-agent")
+			err := testManager.ReloadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
 			names := testManager.PluginNames(string(CapabilityMetadataAgent))
-			Expect(names).To(ContainElement("fake-metadata-agent"))
+			Expect(names).To(ContainElement("test-metadata-agent"))
 		})
 
 		It("returns error when plugin not found", func() {
@@ -111,9 +111,9 @@ var _ = Describe("Manager", Ordered, func() {
 	Describe("GetPluginInfo", func() {
 		It("returns information about all loaded plugins", func() {
 			info := testManager.GetPluginInfo()
-			Expect(info).To(HaveKey("fake-metadata-agent"))
-			Expect(info["fake-metadata-agent"].Name).To(Equal("Test Plugin"))
-			Expect(info["fake-metadata-agent"].Version).To(Equal("1.0.0"))
+			Expect(info).To(HaveKey("test-metadata-agent"))
+			Expect(info["test-metadata-agent"].Name).To(Equal("Test Plugin"))
+			Expect(info["test-metadata-agent"].Version).To(Equal("1.0.0"))
 		})
 	})
 
@@ -129,7 +129,7 @@ var _ = Describe("Manager", Ordered, func() {
 		for i := range concurrency {
 			go func(i int) {
 				defer g.Done()
-				a, ok := testManager.LoadMediaAgent("fake-metadata-agent")
+				a, ok := testManager.LoadMediaAgent("test-metadata-agent")
 				Expect(ok).To(BeTrue())
 				agent := a.(agents.ArtistBiographyRetriever)
 				bio, err := agent.GetArtistBiography(ctx, fmt.Sprintf("artist-%d", i), fmt.Sprintf("Artist %d", i), "")

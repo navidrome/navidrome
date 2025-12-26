@@ -30,14 +30,14 @@ var _ = Describe("Watcher Integration", Ordered, func() {
 		manager, tmpDir = createTestManager(nil)
 
 		// Remove the auto-loaded plugin so tests can control loading
-		_ = manager.UnloadPlugin("fake-metadata-agent")
-		_ = os.Remove(filepath.Join(tmpDir, "fake-metadata-agent.wasm"))
+		_ = manager.UnloadPlugin("test-metadata-agent")
+		_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
 	})
 
 	// Helper to copy test plugin into the temp folder
 	copyTestPlugin := func() {
-		srcPath := filepath.Join(testdataDir, "fake-metadata-agent.wasm")
-		destPath := filepath.Join(tmpDir, "fake-metadata-agent.wasm")
+		srcPath := filepath.Join(testdataDir, "test-metadata-agent.wasm")
+		destPath := filepath.Join(tmpDir, "test-metadata-agent.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -49,32 +49,32 @@ var _ = Describe("Watcher Integration", Ordered, func() {
 
 		AfterEach(func() {
 			// Clean up: unload plugin if loaded, remove copied file
-			_ = manager.UnloadPlugin("fake-metadata-agent")
-			_ = os.Remove(filepath.Join(tmpDir, "fake-metadata-agent.wasm"))
+			_ = manager.UnloadPlugin("test-metadata-agent")
+			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
 		})
 
 		It("loads a plugin on CREATE event", func() {
 			copyTestPlugin()
-			manager.processPluginEvent("fake-metadata-agent", notify.Create)
-			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("fake-metadata-agent"))
+			manager.processPluginEvent("test-metadata-agent", notify.Create)
+			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
 		})
 
 		It("reloads a plugin on WRITE event", func() {
 			copyTestPlugin()
-			err := manager.LoadPlugin("fake-metadata-agent")
+			err := manager.LoadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
-			manager.processPluginEvent("fake-metadata-agent", notify.Write)
-			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("fake-metadata-agent"))
+			manager.processPluginEvent("test-metadata-agent", notify.Write)
+			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
 		})
 
 		It("unloads a plugin on REMOVE event", func() {
 			copyTestPlugin()
-			err := manager.LoadPlugin("fake-metadata-agent")
+			err := manager.LoadPlugin("test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
-			manager.processPluginEvent("fake-metadata-agent", notify.Remove)
-			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("fake-metadata-agent"))
+			manager.processPluginEvent("test-metadata-agent", notify.Remove)
+			Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
 		})
 	})
 
