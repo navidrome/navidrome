@@ -56,10 +56,4 @@ type WebSocketService interface {
 	// Returns an error if the connection is not found or if closing fails.
 	//nd:hostfunc
 	CloseConnection(ctx context.Context, connectionID string, code int32, reason string) error
-
-	// Close cleans up any resources used by the WebSocketService.
-	//
-	// This should be called when the plugin is unloaded to ensure proper cleanup
-	// of all active WebSocket connections.
-	Close() error
 }

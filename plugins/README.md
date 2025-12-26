@@ -300,6 +300,96 @@ func main() {}
 
 To schedule a task from your plugin, use the generated SDK functions (see `plugins/host/go/nd_host_scheduler.go`).
 
+### Cache
+
+Allows plugins to store and retrieve data in an in-memory TTL-based cache. This is useful for caching API responses, storing session tokens, or persisting state across plugin invocations.
+
+**Important:** The cache is in-memory only and will be lost on server restart. Plugins should handle cache misses gracefully.
+
+#### Using the Cache Host Service
+
+To use the cache, plugins call these host functions (provided by Navidrome):
+
+| Host Function        | Parameters                     | Description                                    |
+|----------------------|--------------------------------|------------------------------------------------|
+| `cache_setstring`    | `key, value, ttl_seconds`      | Store a string value                           |
+| `cache_getstring`    | `key`                          | Retrieve a string value                        |
+| `cache_setint`       | `key, value, ttl_seconds`      | Store an integer value                         |
+| `cache_getint`       | `key`                          | Retrieve an integer value                      |
+| `cache_setfloat`     | `key, value, ttl_seconds`      | Store a float value                            |
+| `cache_getfloat`     | `key`                          | Retrieve a float value                         |
+| `cache_setbytes`     | `key, value, ttl_seconds`      | Store a byte slice                             |
+| `cache_getbytes`     | `key`                          | Retrieve a byte slice                          |
+| `cache_has`          | `key`                          | Check if a key exists                          |
+| `cache_remove`       | `key`                          | Delete a cached value                          |
+
+**TTL (Time-to-Live):** Pass `0` to use the default TTL of 24 hours, or specify seconds.
+
+**Key Isolation:** Each plugin's cache keys are automatically namespaced, so different plugins can use the same key names without conflicts.
+
+#### Get Response Format
+
+Get operations return a JSON response:
+
+```json
+{
+  "value": "...",
+  "exists": true,
+  "error": ""
+}
+```
+
+- `value`: The cached value (type matches the operation: string, int64, float64, or base64-encoded bytes)
+- `exists`: `true` if the key was found and the type matched, `false` otherwise
+- `error`: Error message if something went wrong
+
+#### Manifest Permissions
+
+Plugins using the cache must declare the permission in their manifest:
+
+```json
+{
+  "permissions": {
+    "cache": {
+      "reason": "Cache API responses to reduce external requests"
+    }
+  }
+}
+```
+
+#### Example Cache Usage
+
+```go
+package main
+
+import (
+    "github.com/extism/go-pdk"
+)
+
+// Import the generated cache SDK (from plugins/host/go/nd_host_cache.go)
+
+func fetchWithCache(key string) (string, error) {
+    // Try to get from cache first
+    resp, err := CacheGetString(key)
+    if err != nil {
+        return "", err
+    }
+    if resp.Exists {
+        return resp.Value, nil
+    }
+    
+    // Cache miss - fetch from external API
+    value := fetchFromAPI()
+    
+    // Cache for 1 hour (3600 seconds)
+    CacheSetString(key, value, 3600)
+    
+    return value, nil
+}
+```
+
+To use the cache from your plugin, copy the generated SDK file `plugins/host/go/nd_host_cache.go` to your plugin directory.
+
 ## Developing Plugins
 
 Plugins can be written in any language that compiles to WebAssembly. We recommend using the [Extism PDK](https://extism.org/docs/category/write-a-plug-in) for your language.

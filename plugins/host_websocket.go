@@ -59,7 +59,7 @@ type webSocketServiceImpl struct {
 }
 
 // newWebSocketService creates a new WebSocketService for a plugin.
-func newWebSocketService(pluginName string, manager *Manager, allowedHosts []string) host.WebSocketService {
+func newWebSocketService(pluginName string, manager *Manager, allowedHosts []string) *webSocketServiceImpl {
 	return &webSocketServiceImpl{
 		pluginName:   pluginName,
 		manager:      manager,
