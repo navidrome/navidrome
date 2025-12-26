@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -146,10 +147,7 @@ func (s *schedulerServiceImpl) CancelSchedule(ctx context.Context, scheduleID st
 // This is called when the plugin is unloaded.
 func (s *schedulerServiceImpl) Close() error {
 	s.mu.Lock()
-	schedules := make(map[string]*scheduleEntry, len(s.schedules))
-	for k, v := range s.schedules {
-		schedules[k] = v
-	}
+	schedules := maps.Clone(s.schedules)
 	s.schedules = make(map[string]*scheduleEntry)
 	s.mu.Unlock()
 
