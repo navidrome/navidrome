@@ -583,6 +583,7 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 	defer p.Close(ctx)
 
 	if !p.FunctionExists(funcName) {
+		log.Trace(ctx, "Plugin function not found", "plugin", plugin.name, "function", funcName)
 		return result, fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
 	}
 
