@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -115,6 +116,11 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -150,6 +156,11 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 	var response ArtworkGetAlbumUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -189,6 +200,11 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -224,6 +240,11 @@ func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlRespons
 	var response ArtworkGetPlaylistUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

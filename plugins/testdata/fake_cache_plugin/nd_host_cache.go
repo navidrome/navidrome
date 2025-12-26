@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -216,6 +217,11 @@ func CacheSetString(key string, value string, ttlSeconds int64) (*CacheSetString
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -250,6 +256,11 @@ func CacheGetString(key string) (*CacheGetStringResponse, error) {
 	var response CacheGetStringResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -291,6 +302,11 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) (*CacheSetIntRespons
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -325,6 +341,11 @@ func CacheGetInt(key string) (*CacheGetIntResponse, error) {
 	var response CacheGetIntResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -366,6 +387,11 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) (*CacheSetFloatR
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -400,6 +426,11 @@ func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
 	var response CacheGetFloatResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -441,6 +472,11 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) (*CacheSetBytesRe
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -475,6 +511,11 @@ func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
 	var response CacheGetBytesResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -512,6 +553,11 @@ func CacheHas(key string) (*CacheHasResponse, error) {
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -545,6 +591,11 @@ func CacheRemove(key string) (*CacheRemoveResponse, error) {
 	var response CacheRemoveResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

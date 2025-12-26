@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -57,6 +58,11 @@ func SubsonicAPICall(uri string) (*SubsonicAPICallResponse, error) {
 	var response SubsonicAPICallResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

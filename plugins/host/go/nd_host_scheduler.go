@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -101,6 +102,11 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -141,6 +147,11 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -174,6 +185,11 @@ func SchedulerCancelSchedule(scheduleID string) (*SchedulerCancelScheduleRespons
 	var response SchedulerCancelScheduleResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
