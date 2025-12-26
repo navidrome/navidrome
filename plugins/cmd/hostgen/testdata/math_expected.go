@@ -9,6 +9,12 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// MathAddRequest is the request type for Math.Add.
+type MathAddRequest struct {
+	A int32 `json:"a"`
+	B int32 `json:"b"`
+}
+
 // MathAddResponse is the response type for Math.Add.
 type MathAddResponse struct {
 	Result int32  `json:"result,omitempty"`
@@ -27,23 +33,32 @@ func newMathAddHostFunction(service MathService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"math_add",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			a := extism.DecodeI32(stack[0])
-			b := extism.DecodeI32(stack[1])
-
-			// Call the service method
-			result, err := service.Add(ctx, a, b)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				mathWriteError(p, stack, err)
 				return
 			}
+			var req MathAddRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				mathWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.Add(ctx, req.A, req.B)
+			if svcErr != nil {
+				mathWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := MathAddResponse{
 				Result: result,
 			}
 			mathWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypeI32, extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }

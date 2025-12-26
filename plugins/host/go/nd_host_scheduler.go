@@ -9,7 +9,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -17,17 +16,24 @@ import (
 // scheduler_scheduleonetime is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user scheduler_scheduleonetime
-func scheduler_scheduleonetime(int32, uint64, uint64) uint64
+func scheduler_scheduleonetime(uint64) uint64
 
 // scheduler_schedulerecurring is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user scheduler_schedulerecurring
-func scheduler_schedulerecurring(uint64, uint64, uint64) uint64
+func scheduler_schedulerecurring(uint64) uint64
 
 // scheduler_cancelschedule is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user scheduler_cancelschedule
 func scheduler_cancelschedule(uint64) uint64
+
+// SchedulerScheduleOneTimeRequest is the request type for Scheduler.ScheduleOneTime.
+type SchedulerScheduleOneTimeRequest struct {
+	DelaySeconds int32  `json:"delaySeconds"`
+	Payload      string `json:"payload"`
+	ScheduleID   string `json:"scheduleID"`
+}
 
 // SchedulerScheduleOneTimeResponse is the response type for Scheduler.ScheduleOneTime.
 type SchedulerScheduleOneTimeResponse struct {
@@ -35,10 +41,27 @@ type SchedulerScheduleOneTimeResponse struct {
 	Error         string `json:"error,omitempty"`
 }
 
+// SchedulerScheduleRecurringRequest is the request type for Scheduler.ScheduleRecurring.
+type SchedulerScheduleRecurringRequest struct {
+	CronExpression string `json:"cronExpression"`
+	Payload        string `json:"payload"`
+	ScheduleID     string `json:"scheduleID"`
+}
+
 // SchedulerScheduleRecurringResponse is the response type for Scheduler.ScheduleRecurring.
 type SchedulerScheduleRecurringResponse struct {
 	NewScheduleID string `json:"newScheduleID,omitempty"`
 	Error         string `json:"error,omitempty"`
+}
+
+// SchedulerCancelScheduleRequest is the request type for Scheduler.CancelSchedule.
+type SchedulerCancelScheduleRequest struct {
+	ScheduleID string `json:"scheduleID"`
+}
+
+// SchedulerCancelScheduleResponse is the response type for Scheduler.CancelSchedule.
+type SchedulerCancelScheduleResponse struct {
+	Error string `json:"error,omitempty"`
 }
 
 // SchedulerScheduleOneTime calls the scheduler_scheduleonetime host function.
@@ -52,13 +75,21 @@ type SchedulerScheduleRecurringResponse struct {
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (*SchedulerScheduleOneTimeResponse, error) {
-	payloadMem := pdk.AllocateString(payload)
-	defer payloadMem.Free()
-	scheduleIDMem := pdk.AllocateString(scheduleID)
-	defer scheduleIDMem.Free()
+	// Marshal request to JSON
+	req := SchedulerScheduleOneTimeRequest{
+		DelaySeconds: delaySeconds,
+		Payload:      payload,
+		ScheduleID:   scheduleID,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := scheduler_scheduleonetime(delaySeconds, payloadMem.Offset(), scheduleIDMem.Offset())
+	responsePtr := scheduler_scheduleonetime(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -84,15 +115,21 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (*SchedulerScheduleRecurringResponse, error) {
-	cronExpressionMem := pdk.AllocateString(cronExpression)
-	defer cronExpressionMem.Free()
-	payloadMem := pdk.AllocateString(payload)
-	defer payloadMem.Free()
-	scheduleIDMem := pdk.AllocateString(scheduleID)
-	defer scheduleIDMem.Free()
+	// Marshal request to JSON
+	req := SchedulerScheduleRecurringRequest{
+		CronExpression: cronExpression,
+		Payload:        payload,
+		ScheduleID:     scheduleID,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := scheduler_schedulerecurring(cronExpressionMem.Offset(), payloadMem.Offset(), scheduleIDMem.Offset())
+	responsePtr := scheduler_schedulerecurring(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -114,20 +151,30 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 // any future events.
 //
 // Returns an error if the schedule ID is not found or if cancellation fails.
-func SchedulerCancelSchedule(scheduleID string) error {
-	scheduleIDMem := pdk.AllocateString(scheduleID)
-	defer scheduleIDMem.Free()
+func SchedulerCancelSchedule(scheduleID string) (*SchedulerCancelScheduleResponse, error) {
+	// Marshal request to JSON
+	req := SchedulerCancelScheduleRequest{
+		ScheduleID: scheduleID,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := scheduler_cancelschedule(scheduleIDMem.Offset())
+	responsePtr := scheduler_cancelschedule(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response SchedulerCancelScheduleResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }

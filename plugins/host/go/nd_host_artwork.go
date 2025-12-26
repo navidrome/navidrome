@@ -16,27 +16,39 @@ import (
 // artwork_getartisturl is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user artwork_getartisturl
-func artwork_getartisturl(uint64, int32) uint64
+func artwork_getartisturl(uint64) uint64
 
 // artwork_getalbumurl is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user artwork_getalbumurl
-func artwork_getalbumurl(uint64, int32) uint64
+func artwork_getalbumurl(uint64) uint64
 
 // artwork_gettrackurl is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user artwork_gettrackurl
-func artwork_gettrackurl(uint64, int32) uint64
+func artwork_gettrackurl(uint64) uint64
 
 // artwork_getplaylisturl is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user artwork_getplaylisturl
-func artwork_getplaylisturl(uint64, int32) uint64
+func artwork_getplaylisturl(uint64) uint64
+
+// ArtworkGetArtistUrlRequest is the request type for Artwork.GetArtistUrl.
+type ArtworkGetArtistUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
+}
 
 // ArtworkGetArtistUrlResponse is the response type for Artwork.GetArtistUrl.
 type ArtworkGetArtistUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// ArtworkGetAlbumUrlRequest is the request type for Artwork.GetAlbumUrl.
+type ArtworkGetAlbumUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
 }
 
 // ArtworkGetAlbumUrlResponse is the response type for Artwork.GetAlbumUrl.
@@ -45,10 +57,22 @@ type ArtworkGetAlbumUrlResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
+// ArtworkGetTrackUrlRequest is the request type for Artwork.GetTrackUrl.
+type ArtworkGetTrackUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
+}
+
 // ArtworkGetTrackUrlResponse is the response type for Artwork.GetTrackUrl.
 type ArtworkGetTrackUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// ArtworkGetPlaylistUrlRequest is the request type for Artwork.GetPlaylistUrl.
+type ArtworkGetPlaylistUrlRequest struct {
+	Id   string `json:"id"`
+	Size int32  `json:"size"`
 }
 
 // ArtworkGetPlaylistUrlResponse is the response type for Artwork.GetPlaylistUrl.
@@ -66,11 +90,20 @@ type ArtworkGetPlaylistUrlResponse struct {
 //
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, error) {
-	idMem := pdk.AllocateString(id)
-	defer idMem.Free()
+	// Marshal request to JSON
+	req := ArtworkGetArtistUrlRequest{
+		Id:   id,
+		Size: size,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := artwork_getartisturl(idMem.Offset(), size)
+	responsePtr := artwork_getartisturl(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -94,11 +127,20 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 //
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, error) {
-	idMem := pdk.AllocateString(id)
-	defer idMem.Free()
+	// Marshal request to JSON
+	req := ArtworkGetAlbumUrlRequest{
+		Id:   id,
+		Size: size,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := artwork_getalbumurl(idMem.Offset(), size)
+	responsePtr := artwork_getalbumurl(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -122,11 +164,20 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 //
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, error) {
-	idMem := pdk.AllocateString(id)
-	defer idMem.Free()
+	// Marshal request to JSON
+	req := ArtworkGetTrackUrlRequest{
+		Id:   id,
+		Size: size,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := artwork_gettrackurl(idMem.Offset(), size)
+	responsePtr := artwork_gettrackurl(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -150,11 +201,20 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 //
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlResponse, error) {
-	idMem := pdk.AllocateString(id)
-	defer idMem.Free()
+	// Marshal request to JSON
+	req := ArtworkGetPlaylistUrlRequest{
+		Id:   id,
+		Size: size,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := artwork_getplaylisturl(idMem.Offset(), size)
+	responsePtr := artwork_getplaylisturl(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

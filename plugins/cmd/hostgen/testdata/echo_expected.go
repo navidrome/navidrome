@@ -9,6 +9,11 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// EchoEchoRequest is the request type for Echo.Echo.
+type EchoEchoRequest struct {
+	Message string `json:"message"`
+}
+
 // EchoEchoResponse is the response type for Echo.Echo.
 type EchoEchoResponse struct {
 	Reply string `json:"reply,omitempty"`
@@ -27,18 +32,25 @@ func newEchoEchoHostFunction(service EchoService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"echo_echo",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			message, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			reply, err := service.Echo(ctx, message)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				echoWriteError(p, stack, err)
 				return
 			}
+			var req EchoEchoRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				echoWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			reply, svcErr := service.Echo(ctx, req.Message)
+			if svcErr != nil {
+				echoWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := EchoEchoResponse{
 				Reply: reply,

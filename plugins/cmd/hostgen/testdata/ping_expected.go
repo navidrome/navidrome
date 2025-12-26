@@ -4,9 +4,15 @@ package testpkg
 
 import (
 	"context"
+	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
 )
+
+// PingPingResponse is the response type for Ping.Ping.
+type PingPingResponse struct {
+	Error string `json:"error,omitempty"`
+}
 
 // RegisterPingHostFunctions registers Ping service host functions.
 // The returned host functions should be added to the plugin's configuration.
@@ -22,20 +28,41 @@ func newPingPingHostFunction(service PingService) extism.HostFunction {
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 
 			// Call the service method
-			err := service.Ping(ctx)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.Ping(ctx); svcErr != nil {
+				pingWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := PingPingResponse{}
+			pingWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
+}
+
+// pingWriteResponse writes a JSON response to plugin memory.
+func pingWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		pingWriteError(p, stack, err)
+		return
+	}
+	respPtr, err := p.WriteBytes(respBytes)
+	if err != nil {
+		stack[0] = 0
+		return
+	}
+	stack[0] = respPtr
+}
+
+// pingWriteError writes an error response to plugin memory.
+func pingWriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
+	errResp := struct {
+		Error string `json:"error"`
+	}{Error: err.Error()}
+	respBytes, _ := json.Marshal(errResp)
+	respPtr, _ := p.WriteBytes(respBytes)
+	stack[0] = respPtr
 }

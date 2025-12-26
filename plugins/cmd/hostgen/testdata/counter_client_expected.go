@@ -8,20 +8,52 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/extism/go-pdk"
 )
 
 // counter_count is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user counter_count
-func counter_count(uint64) int32
+func counter_count(uint64) uint64
+
+// CounterCountRequest is the request type for Counter.Count.
+type CounterCountRequest struct {
+	Name string `json:"name"`
+}
+
+// CounterCountResponse is the response type for Counter.Count.
+type CounterCountResponse struct {
+	Value int32  `json:"value,omitempty"`
+	Error string `json:"error,omitempty"`
+}
 
 // CounterCount calls the counter_count host function.
-func CounterCount(name string) int32 {
-	nameMem := pdk.AllocateString(name)
-	defer nameMem.Free()
+func CounterCount(name string) (*CounterCountResponse, error) {
+	// Marshal request to JSON
+	req := CounterCountRequest{
+		Name: name,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	result := counter_count(nameMem.Offset())
-	return int32(result)
+	responsePtr := counter_count(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response CounterCountResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	return &response, nil
 }

@@ -81,10 +81,14 @@ func ndTestCache() int32 {
 
 	switch input.Operation {
 	case "set_string":
-		err := CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
+		resp, err := CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(TestCacheOutput{Error: &resp.Error})
 			return 0
 		}
 		pdk.OutputJSON(TestCacheOutput{})
@@ -105,10 +109,14 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_int":
-		err := CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
+		resp, err := CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(TestCacheOutput{Error: &resp.Error})
 			return 0
 		}
 		pdk.OutputJSON(TestCacheOutput{})
@@ -129,10 +137,14 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_float":
-		err := CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
+		resp, err := CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(TestCacheOutput{Error: &resp.Error})
 			return 0
 		}
 		pdk.OutputJSON(TestCacheOutput{})
@@ -153,10 +165,14 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_bytes":
-		err := CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
+		resp, err := CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(TestCacheOutput{Error: &resp.Error})
 			return 0
 		}
 		pdk.OutputJSON(TestCacheOutput{})
@@ -191,10 +207,14 @@ func ndTestCache() int32 {
 		return 0
 
 	case "remove":
-		err := CacheRemove(input.Key)
+		resp, err := CacheRemove(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
+			return 0
+		}
+		if resp.Error != "" {
+			pdk.OutputJSON(TestCacheOutput{Error: &resp.Error})
 			return 0
 		}
 		pdk.OutputJSON(TestCacheOutput{})

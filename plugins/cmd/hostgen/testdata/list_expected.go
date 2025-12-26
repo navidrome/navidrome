@@ -46,11 +46,12 @@ func newListItemsHostFunction(service ListService) extism.HostFunction {
 			}
 
 			// Call the service method
-			count, err := service.Items(ctx, req.Name, req.Filter)
-			if err != nil {
-				listWriteError(p, stack, err)
+			count, svcErr := service.Items(ctx, req.Name, req.Filter)
+			if svcErr != nil {
+				listWriteError(p, stack, svcErr)
 				return
 			}
+
 			// Write JSON response to plugin memory
 			resp := ListItemsResponse{
 				Count: count,

@@ -18,6 +18,11 @@ import (
 //go:wasmimport extism:host/user echo_echo
 func echo_echo(uint64) uint64
 
+// EchoEchoRequest is the request type for Echo.Echo.
+type EchoEchoRequest struct {
+	Message string `json:"message"`
+}
+
 // EchoEchoResponse is the response type for Echo.Echo.
 type EchoEchoResponse struct {
 	Reply string `json:"reply,omitempty"`
@@ -26,11 +31,19 @@ type EchoEchoResponse struct {
 
 // EchoEcho calls the echo_echo host function.
 func EchoEcho(message string) (*EchoEchoResponse, error) {
-	messageMem := pdk.AllocateString(message)
-	defer messageMem.Free()
+	// Marshal request to JSON
+	req := EchoEchoRequest{
+		Message: message,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := echo_echo(messageMem.Offset())
+	responsePtr := echo_echo(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

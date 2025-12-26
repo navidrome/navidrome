@@ -9,11 +9,45 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// CacheSetStringRequest is the request type for Cache.SetString.
+type CacheSetStringRequest struct {
+	Key        string `json:"key"`
+	Value      string `json:"value"`
+	TtlSeconds int64  `json:"ttlSeconds"`
+}
+
+// CacheSetStringResponse is the response type for Cache.SetString.
+type CacheSetStringResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// CacheGetStringRequest is the request type for Cache.GetString.
+type CacheGetStringRequest struct {
+	Key string `json:"key"`
+}
+
 // CacheGetStringResponse is the response type for Cache.GetString.
 type CacheGetStringResponse struct {
 	Value  string `json:"value,omitempty"`
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
+}
+
+// CacheSetIntRequest is the request type for Cache.SetInt.
+type CacheSetIntRequest struct {
+	Key        string `json:"key"`
+	Value      int64  `json:"value"`
+	TtlSeconds int64  `json:"ttlSeconds"`
+}
+
+// CacheSetIntResponse is the response type for Cache.SetInt.
+type CacheSetIntResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// CacheGetIntRequest is the request type for Cache.GetInt.
+type CacheGetIntRequest struct {
+	Key string `json:"key"`
 }
 
 // CacheGetIntResponse is the response type for Cache.GetInt.
@@ -23,11 +57,45 @@ type CacheGetIntResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// CacheSetFloatRequest is the request type for Cache.SetFloat.
+type CacheSetFloatRequest struct {
+	Key        string  `json:"key"`
+	Value      float64 `json:"value"`
+	TtlSeconds int64   `json:"ttlSeconds"`
+}
+
+// CacheSetFloatResponse is the response type for Cache.SetFloat.
+type CacheSetFloatResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// CacheGetFloatRequest is the request type for Cache.GetFloat.
+type CacheGetFloatRequest struct {
+	Key string `json:"key"`
+}
+
 // CacheGetFloatResponse is the response type for Cache.GetFloat.
 type CacheGetFloatResponse struct {
 	Value  float64 `json:"value,omitempty"`
 	Exists bool    `json:"exists,omitempty"`
 	Error  string  `json:"error,omitempty"`
+}
+
+// CacheSetBytesRequest is the request type for Cache.SetBytes.
+type CacheSetBytesRequest struct {
+	Key        string `json:"key"`
+	Value      []byte `json:"value"`
+	TtlSeconds int64  `json:"ttlSeconds"`
+}
+
+// CacheSetBytesResponse is the response type for Cache.SetBytes.
+type CacheSetBytesResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// CacheGetBytesRequest is the request type for Cache.GetBytes.
+type CacheGetBytesRequest struct {
+	Key string `json:"key"`
 }
 
 // CacheGetBytesResponse is the response type for Cache.GetBytes.
@@ -37,10 +105,25 @@ type CacheGetBytesResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// CacheHasRequest is the request type for Cache.Has.
+type CacheHasRequest struct {
+	Key string `json:"key"`
+}
+
 // CacheHasResponse is the response type for Cache.Has.
 type CacheHasResponse struct {
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
+}
+
+// CacheRemoveRequest is the request type for Cache.Remove.
+type CacheRemoveRequest struct {
+	Key string `json:"key"`
+}
+
+// CacheRemoveResponse is the response type for Cache.Remove.
+type CacheRemoveResponse struct {
+	Error string `json:"error,omitempty"`
 }
 
 // RegisterCacheHostFunctions registers Cache service host functions.
@@ -64,32 +147,29 @@ func newCacheSetStringHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_setstring",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			value, err := p.ReadString(stack[1])
-			if err != nil {
+			var req CacheSetStringRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			ttlSeconds := int64(stack[2])
 
 			// Call the service method
-			err = service.SetString(ctx, key, value, ttlSeconds)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SetString(ctx, req.Key, req.Value, req.TtlSeconds); svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := CacheSetStringResponse{}
+			cacheWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypePTR, extism.ValueTypeI64},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -98,18 +178,25 @@ func newCacheGetStringHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_getstring",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			value, exists, err := service.GetString(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				cacheWriteError(p, stack, err)
 				return
 			}
+			var req CacheGetStringRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			value, exists, svcErr := service.GetString(ctx, req.Key)
+			if svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CacheGetStringResponse{
 				Value:  value,
@@ -126,29 +213,29 @@ func newCacheSetIntHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_setint",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			value := int64(stack[1])
-			ttlSeconds := int64(stack[2])
+			var req CacheSetIntRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
 
 			// Call the service method
-			err = service.SetInt(ctx, key, value, ttlSeconds)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SetInt(ctx, req.Key, req.Value, req.TtlSeconds); svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := CacheSetIntResponse{}
+			cacheWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI64, extism.ValueTypeI64},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -157,18 +244,25 @@ func newCacheGetIntHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_getint",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			value, exists, err := service.GetInt(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				cacheWriteError(p, stack, err)
 				return
 			}
+			var req CacheGetIntRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			value, exists, svcErr := service.GetInt(ctx, req.Key)
+			if svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CacheGetIntResponse{
 				Value:  value,
@@ -185,29 +279,29 @@ func newCacheSetFloatHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_setfloat",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			value := extism.DecodeF64(stack[1])
-			ttlSeconds := int64(stack[2])
+			var req CacheSetFloatRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
 
 			// Call the service method
-			err = service.SetFloat(ctx, key, value, ttlSeconds)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SetFloat(ctx, req.Key, req.Value, req.TtlSeconds); svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := CacheSetFloatResponse{}
+			cacheWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeF64, extism.ValueTypeI64},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -216,18 +310,25 @@ func newCacheGetFloatHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_getfloat",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			value, exists, err := service.GetFloat(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				cacheWriteError(p, stack, err)
 				return
 			}
+			var req CacheGetFloatRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			value, exists, svcErr := service.GetFloat(ctx, req.Key)
+			if svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CacheGetFloatResponse{
 				Value:  value,
@@ -244,32 +345,29 @@ func newCacheSetBytesHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_setbytes",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			value, err := p.ReadBytes(stack[1])
-			if err != nil {
+			var req CacheSetBytesRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
-			ttlSeconds := int64(stack[2])
 
 			// Call the service method
-			err = service.SetBytes(ctx, key, value, ttlSeconds)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SetBytes(ctx, req.Key, req.Value, req.TtlSeconds); svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := CacheSetBytesResponse{}
+			cacheWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypePTR, extism.ValueTypeI64},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -278,18 +376,25 @@ func newCacheGetBytesHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_getbytes",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			value, exists, err := service.GetBytes(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				cacheWriteError(p, stack, err)
 				return
 			}
+			var req CacheGetBytesRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			value, exists, svcErr := service.GetBytes(ctx, req.Key)
+			if svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CacheGetBytesResponse{
 				Value:  value,
@@ -306,18 +411,25 @@ func newCacheHasHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_has",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			exists, err := service.Has(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				cacheWriteError(p, stack, err)
 				return
 			}
+			var req CacheHasRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			exists, svcErr := service.Has(ctx, req.Key)
+			if svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CacheHasResponse{
 				Exists: exists,
@@ -333,25 +445,27 @@ func newCacheRemoveHostFunction(service CacheService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"cache_remove",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				cacheWriteError(p, stack, err)
+				return
+			}
+			var req CacheRemoveRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				cacheWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			err = service.Remove(ctx, key)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.Remove(ctx, req.Key); svcErr != nil {
+				cacheWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := CacheRemoveResponse{}
+			cacheWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},

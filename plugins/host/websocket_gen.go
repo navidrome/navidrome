@@ -22,6 +22,40 @@ type WebSocketConnectResponse struct {
 	Error           string `json:"error,omitempty"`
 }
 
+// WebSocketSendTextRequest is the request type for WebSocket.SendText.
+type WebSocketSendTextRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Message      string `json:"message"`
+}
+
+// WebSocketSendTextResponse is the response type for WebSocket.SendText.
+type WebSocketSendTextResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
+type WebSocketSendBinaryRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Data         []byte `json:"data"`
+}
+
+// WebSocketSendBinaryResponse is the response type for WebSocket.SendBinary.
+type WebSocketSendBinaryResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
+type WebSocketCloseConnectionRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Code         int32  `json:"code"`
+	Reason       string `json:"reason"`
+}
+
+// WebSocketCloseConnectionResponse is the response type for WebSocket.CloseConnection.
+type WebSocketCloseConnectionResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
 // RegisterWebSocketHostFunctions registers WebSocket service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterWebSocketHostFunctions(service WebSocketService) []extism.HostFunction {
@@ -50,11 +84,12 @@ func newWebSocketConnectHostFunction(service WebSocketService) extism.HostFuncti
 			}
 
 			// Call the service method
-			newconnectionid, err := service.Connect(ctx, req.Url, req.Headers, req.ConnectionID)
-			if err != nil {
-				websocketWriteError(p, stack, err)
+			newconnectionid, svcErr := service.Connect(ctx, req.Url, req.Headers, req.ConnectionID)
+			if svcErr != nil {
+				websocketWriteError(p, stack, svcErr)
 				return
 			}
+
 			// Write JSON response to plugin memory
 			resp := WebSocketConnectResponse{
 				NewConnectionID: newconnectionid,
@@ -70,31 +105,29 @@ func newWebSocketSendTextHostFunction(service WebSocketService) extism.HostFunct
 	return extism.NewHostFunctionWithStack(
 		"websocket_sendtext",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			connectionID, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
-			message, err := p.ReadString(stack[1])
-			if err != nil {
+			var req WebSocketSendTextRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			err = service.SendText(ctx, connectionID, message)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SendText(ctx, req.ConnectionID, req.Message); svcErr != nil {
+				websocketWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := WebSocketSendTextResponse{}
+			websocketWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -103,31 +136,29 @@ func newWebSocketSendBinaryHostFunction(service WebSocketService) extism.HostFun
 	return extism.NewHostFunctionWithStack(
 		"websocket_sendbinary",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			connectionID, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
-			data, err := p.ReadBytes(stack[1])
-			if err != nil {
+			var req WebSocketSendBinaryRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			err = service.SendBinary(ctx, connectionID, data)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.SendBinary(ctx, req.ConnectionID, req.Data); svcErr != nil {
+				websocketWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := WebSocketSendBinaryResponse{}
+			websocketWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
@@ -136,32 +167,29 @@ func newWebSocketCloseConnectionHostFunction(service WebSocketService) extism.Ho
 	return extism.NewHostFunctionWithStack(
 		"websocket_closeconnection",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			connectionID, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
-			code := extism.DecodeI32(stack[1])
-			reason, err := p.ReadString(stack[2])
-			if err != nil {
+			var req WebSocketCloseConnectionRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				websocketWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			err = service.CloseConnection(ctx, connectionID, code, reason)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.CloseConnection(ctx, req.ConnectionID, req.Code, req.Reason); svcErr != nil {
+				websocketWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := WebSocketCloseConnectionResponse{}
+			websocketWriteResponse(p, stack, resp)
 		},
-		[]extism.ValueType{extism.ValueTypePTR, extism.ValueTypeI32, extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }

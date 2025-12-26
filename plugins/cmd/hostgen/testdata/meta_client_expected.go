@@ -9,7 +9,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -24,19 +23,42 @@ func meta_get(uint64) uint64
 //go:wasmimport extism:host/user meta_set
 func meta_set(uint64) uint64
 
+// MetaGetRequest is the request type for Meta.Get.
+type MetaGetRequest struct {
+	Key string `json:"key"`
+}
+
 // MetaGetResponse is the response type for Meta.Get.
 type MetaGetResponse struct {
 	Value any    `json:"value,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
+// MetaSetRequest is the request type for Meta.Set.
+type MetaSetRequest struct {
+	Data map[string]any `json:"data"`
+}
+
+// MetaSetResponse is the response type for Meta.Set.
+type MetaSetResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
 // MetaGet calls the meta_get host function.
 func MetaGet(key string) (*MetaGetResponse, error) {
-	keyMem := pdk.AllocateString(key)
-	defer keyMem.Free()
+	// Marshal request to JSON
+	req := MetaGetRequest{
+		Key: key,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := meta_get(keyMem.Offset())
+	responsePtr := meta_get(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -52,24 +74,30 @@ func MetaGet(key string) (*MetaGetResponse, error) {
 }
 
 // MetaSet calls the meta_set host function.
-func MetaSet(data map[string]any) error {
-	dataBytes, err := json.Marshal(data)
-	if err != nil {
-		return err
+func MetaSet(data map[string]any) (*MetaSetResponse, error) {
+	// Marshal request to JSON
+	req := MetaSetRequest{
+		Data: data,
 	}
-	dataMem := pdk.AllocateBytes(dataBytes)
-	defer dataMem.Free()
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := meta_set(dataMem.Offset())
+	responsePtr := meta_set(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response MetaSetResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }

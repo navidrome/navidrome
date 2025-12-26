@@ -16,7 +16,13 @@ import (
 // math_add is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user math_add
-func math_add(int32, int32) uint64
+func math_add(uint64) uint64
+
+// MathAddRequest is the request type for Math.Add.
+type MathAddRequest struct {
+	A int32 `json:"a"`
+	B int32 `json:"b"`
+}
 
 // MathAddResponse is the response type for Math.Add.
 type MathAddResponse struct {
@@ -26,9 +32,20 @@ type MathAddResponse struct {
 
 // MathAdd calls the math_add host function.
 func MathAdd(a int32, b int32) (*MathAddResponse, error) {
+	// Marshal request to JSON
+	req := MathAddRequest{
+		A: a,
+		B: b,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := math_add(a, b)
+	responsePtr := math_add(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

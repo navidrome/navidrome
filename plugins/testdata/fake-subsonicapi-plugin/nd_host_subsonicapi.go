@@ -2,6 +2,8 @@
 //
 // This file contains client wrappers for the SubsonicAPI host service.
 // It is intended for use in Navidrome plugins built with TinyGo.
+//
+//go:build wasip1
 
 package main
 
@@ -16,6 +18,11 @@ import (
 //go:wasmimport extism:host/user subsonicapi_call
 func subsonicapi_call(uint64) uint64
 
+// SubsonicAPICallRequest is the request type for SubsonicAPI.Call.
+type SubsonicAPICallRequest struct {
+	Uri string `json:"uri"`
+}
+
 // SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
 type SubsonicAPICallResponse struct {
 	ResponseJSON string `json:"responseJSON,omitempty"`
@@ -28,11 +35,19 @@ type SubsonicAPICallResponse struct {
 // The uri parameter should be the Subsonic API path without the server prefix,
 // e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
 func SubsonicAPICall(uri string) (*SubsonicAPICallResponse, error) {
-	uriMem := pdk.AllocateString(uri)
-	defer uriMem.Free()
+	// Marshal request to JSON
+	req := SubsonicAPICallRequest{
+		Uri: uri,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := subsonicapi_call(uriMem.Offset())
+	responsePtr := subsonicapi_call(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

@@ -8,12 +8,7 @@
 package main
 
 import (
-{{- if .NeedsJSON}}
 	"encoding/json"
-{{- end}}
-{{- if .NeedsErrors}}
-	"errors"
-{{- end}}
 
 	"github.com/extism/go-pdk"
 )
@@ -24,12 +19,20 @@ import (
 // {{exportName .}} is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user {{exportName .}}
-func {{exportName .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{wasmParamType $p}}{{end}}) {{wasmReturnType .}}
+func {{exportName .}}(uint64) uint64
 {{- end}}
 
-{{- /* Generate response types for methods that need them */ -}}
+{{- /* Generate request/response types for all methods */ -}}
 {{range .Service.Methods}}
-{{- if needsRespType .}}
+{{- if .HasParams}}
+
+// {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
+type {{requestType .}} struct {
+{{- range .Params}}
+	{{title .Name}} {{.Type}} `json:"{{.JSONName}}"`
+{{- end}}
+}
+{{- end}}
 
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
@@ -39,7 +42,6 @@ type {{responseType .}} struct {
 	Error string `json:"error,omitempty"`
 }
 {{- end}}
-{{- end}}
 
 {{- /* Generate wrapper functions */ -}}
 {{range .Service.Methods}}
@@ -48,28 +50,28 @@ type {{responseType .}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc}}
 {{- end}}
-func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{wrapperReturnType . $.Service.Name}} {
-{{- if needsRespType .}}
-{{- /* Complex response - use JSON */}}
+func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) (*{{responseType .}}, error) {
+{{- if .HasParams}}
+	// Marshal request to JSON
+	req := {{requestType .}}{
 {{- range .Params}}
-{{- if isString .Type}}
-	{{.Name}}Mem := pdk.AllocateString({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- else if isBytes .Type}}
-	{{.Name}}Mem := pdk.AllocateBytes({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- else if needsJSON .Type}}
-	{{.Name}}Bytes, err := json.Marshal({{.Name}})
+		{{title .Name}}: {{.Name}},
+{{- end}}
+	}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	{{.Name}}Mem := pdk.AllocateBytes({{.Name}}Bytes)
-	defer {{.Name}}Mem.Free()
-{{- end}}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+{{- else}}
+	// No parameters - allocate empty JSON object
+	reqMem := pdk.AllocateBytes([]byte("{}"))
+	defer reqMem.Free()
 {{- end}}
 
 	// Call the host function
-	responsePtr := {{exportName .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{clientCallArg $p}}{{end}})
+	responsePtr := {{exportName .}}(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
@@ -82,56 +84,5 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	}
 
 	return &response, nil
-{{- else if isErrorOnly .}}
-{{- /* Error-only response - string result */}}
-{{- range .Params}}
-{{- if isString .Type}}
-	{{.Name}}Mem := pdk.AllocateString({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- else if isBytes .Type}}
-	{{.Name}}Mem := pdk.AllocateBytes({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- else if needsJSON .Type}}
-	{{.Name}}Bytes, err := json.Marshal({{.Name}})
-	if err != nil {
-		return err
-	}
-	{{.Name}}Mem := pdk.AllocateBytes({{.Name}}Bytes)
-	defer {{.Name}}Mem.Free()
-{{- end}}
-{{- end}}
-
-	// Call the host function
-	responsePtr := {{exportName .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{clientCallArg $p}}{{end}})
-
-	// Read the response from memory
-	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
-
-	if errStr != "" {
-		return errors.New(errStr)
-	}
-
-	return nil
-{{- else}}
-{{- /* Simple return types - direct stack values */}}
-{{- range .Params}}
-{{- if isString .Type}}
-	{{.Name}}Mem := pdk.AllocateString({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- else if isBytes .Type}}
-	{{.Name}}Mem := pdk.AllocateBytes({{.Name}})
-	defer {{.Name}}Mem.Free()
-{{- end}}
-{{- end}}
-
-	// Call the host function
-{{- if .HasReturns}}
-	result := {{exportName .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{clientCallArg $p}}{{end}})
-	return {{decodeResult (index .Returns 0) "result"}}
-{{- else}}
-	{{exportName .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{clientCallArg $p}}{{end}})
-{{- end}}
-{{- end}}
 }
 {{- end}}

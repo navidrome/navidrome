@@ -9,6 +9,11 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// MetaGetRequest is the request type for Meta.Get.
+type MetaGetRequest struct {
+	Key string `json:"key"`
+}
+
 // MetaGetResponse is the response type for Meta.Get.
 type MetaGetResponse struct {
 	Value any    `json:"value,omitempty"`
@@ -18,6 +23,11 @@ type MetaGetResponse struct {
 // MetaSetRequest is the request type for Meta.Set.
 type MetaSetRequest struct {
 	Data map[string]any `json:"data"`
+}
+
+// MetaSetResponse is the response type for Meta.Set.
+type MetaSetResponse struct {
+	Error string `json:"error,omitempty"`
 }
 
 // RegisterMetaHostFunctions registers Meta service host functions.
@@ -33,18 +43,25 @@ func newMetaGetHostFunction(service MetaService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"meta_get",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			key, err := p.ReadString(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			value, err := service.Get(ctx, key)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				metaWriteError(p, stack, err)
 				return
 			}
+			var req MetaGetRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				metaWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			value, svcErr := service.Get(ctx, req.Key)
+			if svcErr != nil {
+				metaWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := MetaGetResponse{
 				Value: value,
@@ -73,18 +90,14 @@ func newMetaSetHostFunction(service MetaService) extism.HostFunction {
 			}
 
 			// Call the service method
-			err = service.Set(ctx, req.Data)
-			if err != nil {
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
+			if svcErr := service.Set(ctx, req.Data); svcErr != nil {
+				metaWriteError(p, stack, svcErr)
 				return
 			}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
+
+			// Write JSON response to plugin memory
+			resp := MetaSetResponse{}
+			metaWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},

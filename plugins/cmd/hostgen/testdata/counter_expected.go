@@ -4,9 +4,21 @@ package testpkg
 
 import (
 	"context"
+	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
 )
+
+// CounterCountRequest is the request type for Counter.Count.
+type CounterCountRequest struct {
+	Name string `json:"name"`
+}
+
+// CounterCountResponse is the response type for Counter.Count.
+type CounterCountResponse struct {
+	Value int32  `json:"value,omitempty"`
+	Error string `json:"error,omitempty"`
+}
 
 // RegisterCounterHostFunctions registers Counter service host functions.
 // The returned host functions should be added to the plugin's configuration.
@@ -20,18 +32,53 @@ func newCounterCountHostFunction(service CounterService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"counter_count",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			name, err := p.ReadString(stack[0])
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
+				counterWriteError(p, stack, err)
+				return
+			}
+			var req CounterCountRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				counterWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			value := service.Count(ctx, name)
-			// Write return values to stack
-			stack[0] = extism.EncodeI32(value)
+			value := service.Count(ctx, req.Name)
+
+			// Write JSON response to plugin memory
+			resp := CounterCountResponse{
+				Value: value,
+			}
+			counterWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
-		[]extism.ValueType{extism.ValueTypeI32},
+		[]extism.ValueType{extism.ValueTypePTR},
 	)
+}
+
+// counterWriteResponse writes a JSON response to plugin memory.
+func counterWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		counterWriteError(p, stack, err)
+		return
+	}
+	respPtr, err := p.WriteBytes(respBytes)
+	if err != nil {
+		stack[0] = 0
+		return
+	}
+	stack[0] = respPtr
+}
+
+// counterWriteError writes an error response to plugin memory.
+func counterWriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
+	errResp := struct {
+		Error string `json:"error"`
+	}{Error: err.Error()}
+	respBytes, _ := json.Marshal(errResp)
+	respPtr, _ := p.WriteBytes(respBytes)
+	stack[0] = respPtr
 }
