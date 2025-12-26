@@ -52,6 +52,20 @@
         },
         "websocket": {
           "$ref": "#/$defs/WebSocketPermission"
+        },
+        "artwork": {
+          "$ref": "#/$defs/ArtworkPermission"
+        }
+      }
+    },
+    "ArtworkPermission": {
+      "type": "object",
+      "description": "Artwork service permissions for generating artwork URLs",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why artwork access is needed"
         }
       }
     },
