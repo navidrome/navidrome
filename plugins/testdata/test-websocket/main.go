@@ -1,5 +1,5 @@
-// Fake WebSocket plugin for Navidrome plugin system integration tests.
-// Build with: tinygo build -o ../fake-websocket.wasm -target wasip1 -buildmode=c-shared .
+// Test WebSocket plugin for Navidrome plugin system integration tests.
+// Build with: tinygo build -o ../test-websocket.wasm -target wasip1 -buildmode=c-shared .
 package main
 
 import (
@@ -29,10 +29,10 @@ type WebSocketPermission struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake WebSocket",
+		Name:        "Test WebSocket",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
-		Description: "A fake WebSocket plugin for integration testing",
+		Description: "A test WebSocket plugin for integration testing",
 		Permissions: &Permissions{
 			WebSocket: &WebSocketPermission{
 				Reason:       "For testing WebSocket callbacks",

@@ -1,4 +1,4 @@
-# Build fake sample plugins used for testing
+# Build test plugins used for integration testing
 # Auto-discover all plugin folders (folders containing go.mod)
 PLUGINS := $(patsubst %/go.mod,%,$(wildcard */go.mod))
 

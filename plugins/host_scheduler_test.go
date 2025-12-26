@@ -31,9 +31,9 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "scheduler-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy the fake-scheduler plugin
-		srcPath := filepath.Join(testdataDir, "fake-scheduler.wasm")
-		destPath := filepath.Join(tmpDir, "fake-scheduler.wasm")
+		// Copy the test-scheduler plugin
+		srcPath := filepath.Join(testdataDir, "test-scheduler.wasm")
+		destPath := filepath.Join(tmpDir, "test-scheduler.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -62,7 +62,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Get scheduler service from plugin's closers and wrap it for testing
-		service := findSchedulerService(manager, "fake-scheduler")
+		service := findSchedulerService(manager, "test-scheduler")
 		Expect(service).ToNot(BeNil())
 		testService = &testableSchedulerService{schedulerServiceImpl: service}
 		testService.scheduler = mockSched
@@ -83,11 +83,11 @@ var _ = Describe("SchedulerService", Ordered, func() {
 	Describe("Plugin Loading", func() {
 		It("should detect scheduler capability", func() {
 			names := manager.PluginNames(string(CapabilityScheduler))
-			Expect(names).To(ContainElement("fake-scheduler"))
+			Expect(names).To(ContainElement("test-scheduler"))
 		})
 
 		It("should register scheduler service for plugin", func() {
-			service := findSchedulerService(manager, "fake-scheduler")
+			service := findSchedulerService(manager, "test-scheduler")
 			Expect(service).ToNot(BeNil())
 		})
 	})
@@ -241,7 +241,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 
 			// Get the plugin
 			manager.mu.RLock()
-			plugin, ok := manager.plugins["fake-scheduler"]
+			plugin, ok := manager.plugins["test-scheduler"]
 			manager.mu.RUnlock()
 			Expect(ok).To(BeTrue())
 
@@ -278,10 +278,10 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(mockSched.GetCallbackCount()).To(Equal(1)) // Only recurring task uses scheduler
 			Expect(mockTimers.GetTimerCount()).To(Equal(1))   // Only one-time task uses timer
 
-			err = manager.UnloadPlugin("fake-scheduler")
+			err = manager.UnloadPlugin("test-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(findSchedulerService(manager, "fake-scheduler")).To(BeNil())
+			Expect(findSchedulerService(manager, "test-scheduler")).To(BeNil())
 			Expect(mockSched.GetCallbackCount()).To(Equal(0)) // Recurring task removed
 		})
 	})

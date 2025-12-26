@@ -1,5 +1,5 @@
-// Fake scheduler plugin for Navidrome plugin system integration tests.
-// Build with: tinygo build -o ../fake-scheduler.wasm -target wasip1 -buildmode=c-shared .
+// Test scheduler plugin for Navidrome plugin system integration tests.
+// Build with: tinygo build -o ../test-scheduler.wasm -target wasip1 -buildmode=c-shared .
 package main
 
 import (
@@ -28,10 +28,10 @@ type SchedulerPermission struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake Scheduler",
+		Name:        "Test Scheduler",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
-		Description: "A fake scheduler plugin for integration testing",
+		Description: "A test scheduler plugin for integration testing",
 		Permissions: &Permissions{
 			Scheduler: &SchedulerPermission{
 				Reason: "For testing scheduler callbacks",

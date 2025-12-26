@@ -25,11 +25,11 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		// Add user to context for username extraction
 		ctx = request.WithUser(ctx, model.User{ID: "user-1", UserName: "testuser"})
 
-		// Load the scrobbler via a new manager with the fake-scrobbler plugin
-		scrobblerManager, _ = createTestManagerWithPlugins(nil, "fake-scrobbler.wasm")
+		// Load the scrobbler via a new manager with the test-scrobbler plugin
+		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler.wasm")
 
 		var ok bool
-		s, ok = scrobblerManager.LoadScrobbler("fake-scrobbler")
+		s, ok = scrobblerManager.LoadScrobbler("test-scrobbler")
 		Expect(ok).To(BeTrue())
 	})
 
@@ -39,7 +39,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		})
 
 		It("returns false for a plugin without Scrobbler capability", func() {
-			_, ok := testManager.LoadScrobbler("fake-metadata-agent")
+			_, ok := testManager.LoadScrobbler("test-metadata-agent")
 			Expect(ok).To(BeFalse())
 		})
 
@@ -57,10 +57,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns false when plugin is configured to not authorize", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"fake-scrobbler": {"authorized": "false"},
-			}, "fake-scrobbler.wasm")
+				"test-scrobbler": {"authorized": "false"},
+			}, "test-scrobbler.wasm")
 
-			sc, ok := manager.LoadScrobbler("fake-scrobbler")
+			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
 
 			result := sc.IsAuthorized(ctx, "user-1")
@@ -87,10 +87,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns error when plugin returns error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"fake-scrobbler": {"error": "service unavailable", "error_type": "retry_later"},
-			}, "fake-scrobbler.wasm")
+				"test-scrobbler": {"error": "service unavailable", "error_type": "retry_later"},
+			}, "test-scrobbler.wasm")
 
-			sc, ok := manager.LoadScrobbler("fake-scrobbler")
+			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
 
 			track := &model.MediaFile{ID: "track-1", Title: "Test Song"}
@@ -122,10 +122,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns error when plugin returns not_authorized error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"fake-scrobbler": {"error": "user not linked", "error_type": "not_authorized"},
-			}, "fake-scrobbler.wasm")
+				"test-scrobbler": {"error": "user not linked", "error_type": "not_authorized"},
+			}, "test-scrobbler.wasm")
 
-			sc, ok := manager.LoadScrobbler("fake-scrobbler")
+			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
 
 			scrobble := scrobbler.Scrobble{
@@ -139,10 +139,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns error when plugin returns unrecoverable error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"fake-scrobbler": {"error": "track rejected", "error_type": "unrecoverable"},
-			}, "fake-scrobbler.wasm")
+				"test-scrobbler": {"error": "track rejected", "error_type": "unrecoverable"},
+			}, "test-scrobbler.wasm")
 
-			sc, ok := manager.LoadScrobbler("fake-scrobbler")
+			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
 
 			scrobble := scrobbler.Scrobble{
@@ -158,12 +158,12 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 	Describe("PluginNames", func() {
 		It("returns plugin names with Scrobbler capability", func() {
 			names := scrobblerManager.PluginNames("Scrobbler")
-			Expect(names).To(ContainElement("fake-scrobbler"))
+			Expect(names).To(ContainElement("test-scrobbler"))
 		})
 
 		It("does not return metadata agent plugins for Scrobbler capability", func() {
 			names := testManager.PluginNames("Scrobbler")
-			Expect(names).ToNot(ContainElement("fake-metadata-agent"))
+			Expect(names).ToNot(ContainElement("test-metadata-agent"))
 		})
 	})
 })

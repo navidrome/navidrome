@@ -1,4 +1,4 @@
-module fake-artwork
+module test-artwork
 
 go 1.23
 
