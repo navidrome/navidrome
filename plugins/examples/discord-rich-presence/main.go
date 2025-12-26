@@ -129,10 +129,6 @@ func getImageURL(trackID string) string {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to get artwork URL: %v", err))
 		return ""
 	}
-	if resp.Error != "" {
-		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to get artwork URL: %s", resp.Error))
-		return ""
-	}
 
 	// Don't use localhost URLs
 	if strings.HasPrefix(resp.Url, "http://localhost") {

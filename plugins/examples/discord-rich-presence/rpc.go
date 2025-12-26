@@ -183,12 +183,9 @@ func sendMessage(username string, opCode int, payload any) error {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	resp, err := WebSocketSendText(username, string(b))
+	_, err = WebSocketSendText(username, string(b))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
-	}
-	if resp.Error != "" {
-		return fmt.Errorf("failed to send message: %s", resp.Error)
 	}
 	return nil
 }
@@ -224,17 +221,13 @@ func cleanupFailedConnection(username string) {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Cleaning up failed connection for user %s", username))
 
 	// Cancel the heartbeat schedule
-	if resp, err := SchedulerCancelSchedule(username); err != nil {
+	if _, err := SchedulerCancelSchedule(username); err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to cancel heartbeat schedule for user %s: %v", username, err))
-	} else if resp.Error != "" {
-		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to cancel heartbeat schedule for user %s: %s", username, resp.Error))
 	}
 
 	// Close the WebSocket connection
-	if resp, err := WebSocketCloseConnection(username, 1000, "Connection lost"); err != nil {
+	if _, err := WebSocketCloseConnection(username, 1000, "Connection lost"); err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to close WebSocket connection for user %s: %v", username, err))
-	} else if resp.Error != "" {
-		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to close WebSocket connection for user %s: %s", username, resp.Error))
 	}
 
 	// Clean up cache entries
@@ -269,12 +262,9 @@ func connect(username, token string) error {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("Using gateway: %s", gateway))
 
 	// Connect to Discord Gateway
-	resp, err := WebSocketConnect(gateway, nil, username)
+	_, err = WebSocketConnect(gateway, nil, username)
 	if err != nil {
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
-	}
-	if resp.Error != "" {
-		return fmt.Errorf("failed to connect to WebSocket: %s", resp.Error)
 	}
 
 	// Send identify payload
@@ -305,16 +295,12 @@ func connect(username, token string) error {
 
 // disconnect closes the Discord connection for a user.
 func disconnect(username string) error {
-	if resp, err := SchedulerCancelSchedule(username); err != nil {
+	if _, err := SchedulerCancelSchedule(username); err != nil {
 		return fmt.Errorf("failed to cancel schedule: %w", err)
-	} else if resp.Error != "" {
-		return fmt.Errorf("failed to cancel schedule: %s", resp.Error)
 	}
 
-	if resp, err := WebSocketCloseConnection(username, 1000, "Navidrome disconnect"); err != nil {
+	if _, err := WebSocketCloseConnection(username, 1000, "Navidrome disconnect"); err != nil {
 		return fmt.Errorf("failed to close WebSocket connection: %w", err)
-	} else if resp.Error != "" {
-		return fmt.Errorf("failed to close WebSocket connection: %s", resp.Error)
 	}
 	return nil
 }
@@ -337,10 +323,8 @@ func handleWebSocketMessage(connectionID, message string) error {
 	if v := msg["s"]; v != nil {
 		seq := int64(v.(float64))
 		pdk.Log(pdk.LogTrace, fmt.Sprintf("Received sequence number for connection '%s': %d", connectionID, seq))
-		if resp, err := CacheSetInt(fmt.Sprintf("discord.seq.%s", connectionID), seq, int64(heartbeatInterval*2)); err != nil {
+		if _, err := CacheSetInt(fmt.Sprintf("discord.seq.%s", connectionID), seq, int64(heartbeatInterval*2)); err != nil {
 			return fmt.Errorf("failed to store sequence number for user %s: %w", connectionID, err)
-		} else if resp.Error != "" {
-			return fmt.Errorf("failed to store sequence number for user %s: %s", connectionID, resp.Error)
 		}
 	}
 	return nil

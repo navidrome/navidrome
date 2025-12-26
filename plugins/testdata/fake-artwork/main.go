@@ -80,10 +80,6 @@ func ndTestArtwork() int32 {
 		resp, e := ArtworkGetArtistUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
-		} else if resp.Error != "" {
-			errStr := resp.Error
-			pdk.OutputJSON(TestOutput{Error: &errStr})
-			return 0
 		} else {
 			url = resp.Url
 		}
@@ -91,10 +87,6 @@ func ndTestArtwork() int32 {
 		resp, e := ArtworkGetAlbumUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
-		} else if resp.Error != "" {
-			errStr := resp.Error
-			pdk.OutputJSON(TestOutput{Error: &errStr})
-			return 0
 		} else {
 			url = resp.Url
 		}
@@ -102,10 +94,6 @@ func ndTestArtwork() int32 {
 		resp, e := ArtworkGetTrackUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
-		} else if resp.Error != "" {
-			errStr := resp.Error
-			pdk.OutputJSON(TestOutput{Error: &errStr})
-			return 0
 		} else {
 			url = resp.Url
 		}
@@ -113,10 +101,6 @@ func ndTestArtwork() int32 {
 		resp, e := ArtworkGetPlaylistUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
-		} else if resp.Error != "" {
-			errStr := resp.Error
-			pdk.OutputJSON(TestOutput{Error: &errStr})
-			return 0
 		} else {
 			url = resp.Url
 		}

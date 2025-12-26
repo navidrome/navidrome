@@ -81,26 +81,18 @@ func ndWebSocketOnTextMessage() int32 {
 
 	switch input.Message {
 	case "echo":
-		resp, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message)
+		_, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-			return 0
-		}
-		if resp.Error != "" {
-			pdk.OutputJSON(OnTextMessageOutput{Error: &resp.Error})
 			return 0
 		}
 
 	case "close":
-		resp, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin")
+		_, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin")
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-			return 0
-		}
-		if resp.Error != "" {
-			pdk.OutputJSON(OnTextMessageOutput{Error: &resp.Error})
 			return 0
 		}
 

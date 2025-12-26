@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -55,6 +56,11 @@ func ListItems(name string, filter Filter) (*ListItemsResponse, error) {
 	var response ListItemsResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

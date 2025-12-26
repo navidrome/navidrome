@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -70,6 +71,11 @@ func MetaGet(key string) (*MetaGetResponse, error) {
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -97,6 +103,11 @@ func MetaSet(data map[string]any) (*MetaSetResponse, error) {
 	var response MetaSetResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

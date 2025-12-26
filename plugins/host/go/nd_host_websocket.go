@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/extism/go-pdk"
 )
@@ -120,6 +121,11 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -155,6 +161,11 @@ func WebSocketSendText(connectionID string, message string) (*WebSocketSendTextR
 	var response WebSocketSendTextResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil
@@ -194,6 +205,11 @@ func WebSocketSendBinary(connectionID string, data []byte) (*WebSocketSendBinary
 		return nil, err
 	}
 
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
 	return &response, nil
 }
 
@@ -231,6 +247,11 @@ func WebSocketCloseConnection(connectionID string, code int32, reason string) (*
 	var response WebSocketCloseConnectionResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
 	}
 
 	return &response, nil

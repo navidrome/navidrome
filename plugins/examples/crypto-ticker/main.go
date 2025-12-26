@@ -178,10 +178,7 @@ func connectAndSubscribe(tickers []string) error {
 	// Connect to WebSocket using host function
 	resp, err := WebSocketConnect(coinbaseWSEndpoint, nil, connectionID)
 	if err != nil {
-		return fmt.Errorf("WebSocket connection error: %v", err)
-	}
-	if resp.Error != "" {
-		return fmt.Errorf("WebSocket connection error: %s", resp.Error)
+		return fmt.Errorf("WebSocket connection error: %w", err)
 	}
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Connected to Coinbase WebSocket API (connection: %s)", resp.NewConnectionID))
 
@@ -198,12 +195,9 @@ func connectAndSubscribe(tickers []string) error {
 	}
 
 	// Send subscription message
-	sendResp, err := WebSocketSendText(connectionID, string(subscriptionJSON))
+	_, err = WebSocketSendText(connectionID, string(subscriptionJSON))
 	if err != nil {
-		return fmt.Errorf("WebSocket send error: %v", err)
-	}
-	if sendResp.Error != "" {
-		return fmt.Errorf("WebSocket send error: %s", sendResp.Error)
+		return fmt.Errorf("WebSocket send error: %w", err)
 	}
 
 	pdk.Log(pdk.LogInfo, "Subscription message sent to Coinbase WebSocket API")
@@ -272,11 +266,9 @@ func NdWebsocketOnClose(input OnCloseInput) (OnCloseOutput, error) {
 		pdk.Log(pdk.LogInfo, "Scheduling reconnection attempt in 5 seconds...")
 
 		// Schedule a one-time reconnection attempt
-		resp, err := SchedulerScheduleOneTime(5, "reconnect", reconnectScheduleID)
+		_, err := SchedulerScheduleOneTime(5, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule reconnection: %v", err))
-		} else if resp.Error != "" {
-			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule reconnection: %s", resp.Error))
 		}
 	}
 
@@ -325,11 +317,9 @@ func ndSchedulerCallback() int32 {
 		pdk.Log(pdk.LogError, fmt.Sprintf("Reconnection failed: %v - will retry in 10 seconds", err))
 
 		// Schedule another attempt
-		resp, err := SchedulerScheduleOneTime(10, "reconnect", reconnectScheduleID)
+		_, err := SchedulerScheduleOneTime(10, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule retry: %v", err))
-		} else if resp.Error != "" {
-			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule retry: %s", resp.Error))
 		}
 	} else {
 		pdk.Log(pdk.LogInfo, "Successfully reconnected!")
