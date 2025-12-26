@@ -1,50 +1,54 @@
 # Cover Art Archive Plugin (Python)
 
-This plugin provides album cover images for Navidrome by querying the [Cover Art Archive](https://coverartarchive.org/) API using the MusicBrainz Release MBID.
-
-**This is a Python example** demonstrating that Navidrome's plugin system supports multiple programming languages.
+A Python example plugin that fetches album cover images from the [Cover Art Archive](https://coverartarchive.org/) API using the MusicBrainz Release MBID.
 
 ## Features
 
 - Implements the `nd_get_album_images` method of the MetadataAgent plugin interface
 - Returns front cover images for a given release MBID
 - Returns `not found` if no MBID is provided or no images are found
+- Demonstrates Python plugin development for Navidrome
 
 ## Prerequisites
 
-1. **extism-py** - Python to WASM compiler
+- [extism-py](https://github.com/extism/python-pdk) - Python PDK compiler
+  ```bash
+  curl -Ls https://raw.githubusercontent.com/extism/python-pdk/main/install.sh | bash
+  ```
 
-   Install using the official script:
-   ```bash
-   curl -Ls https://raw.githubusercontent.com/extism/python-pdk/main/install.sh | bash
-   ```
+> **Note:** `extism-py` requires [Binaryen](https://github.com/WebAssembly/binaryen/) (`wasm-merge`, `wasm-opt`) to be installed.
 
-   Or download from [extism/python-pdk releases](https://github.com/extism/python-pdk/releases).
+## Building
 
-2. **Extism CLI** (optional, for testing)
-
-   ```bash
-   # macOS
-   brew install extism/tap/extism
-
-   # Or see https://extism.org/docs/install
-   ```
-
-## How to Build
+From the `plugins/examples` directory:
 
 ```bash
-make build
+make coverartarchive-py.wasm
 ```
 
-Or manually:
+Or directly:
 
 ```bash
 extism-py plugin/__init__.py -o coverartarchive-py.wasm
 ```
 
-This produces `coverartarchive-py.wasm` in this directory.
+## Installation
 
-## Testing with Extism CLI
+1. Copy `coverartarchive-py.wasm` to your Navidrome plugins folder
+
+2. Enable plugins in `navidrome.toml`:
+   ```toml
+   [Plugins]
+   Enabled = true
+   Folder = "/path/to/plugins"
+   ```
+
+3. Add to your agents list:
+   ```toml
+   Agents = "coverartarchive-py,spotify,lastfm"
+   ```
+
+## Testing
 
 Test the manifest:
 
@@ -60,37 +64,14 @@ extism call coverartarchive-py.wasm nd_get_album_images --wasi \
   --allow-host "coverartarchive.org" --allow-host "archive.org"
 ```
 
-Run all tests:
+## How It Works
 
-```bash
-make test
-```
+1. **Album Image Request (`nd_get_album_images`)**: Receives album metadata including the MusicBrainz Release MBID.
 
-## Installation in Navidrome
+2. **API Query**: Fetches cover art metadata from `https://coverartarchive.org/release/{mbid}`.
 
-1. Build the plugin:
-   ```bash
-   make build
-   ```
-
-2. Copy to your Navidrome plugins folder:
-   ```bash
-   cp coverartarchive-py.wasm /path/to/navidrome/plugins/
-   ```
-
-3. Enable plugins in `navidrome.toml`:
-   ```toml
-   [Plugins]
-   Enabled = true
-   Folder = "/path/to/navidrome/plugins"
-   ```
-
-4. Add to your agents list:
-   ```toml
-   Agents = "coverartarchive-py,spotify,lastfm"
-   ```
+3. **Response**: Returns the front cover image URL if found.
 
 ## API Reference
 
 - [Cover Art Archive API](https://musicbrainz.org/doc/Cover_Art_Archive/API)
-- Endpoint used: `https://coverartarchive.org/release/{mbid}`

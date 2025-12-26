@@ -40,6 +40,7 @@ make clean
 | [crypto-ticker](crypto-ticker/)                 | Go       | Real-time cryptocurrency prices from Coinbase using WebSocket           |
 | [discord-rich-presence](discord-rich-presence/) | Go       | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
 | [coverartarchive-py](coverartarchive-py/)       | Python   | Album cover art from Cover Art Archive (Python example)                 |
+| [nowplaying-py](nowplaying-py/)                 | Python   | Logs currently playing tracks using Scheduler and SubsonicAPI           |
 
 ## Testing with Extism CLI
 
