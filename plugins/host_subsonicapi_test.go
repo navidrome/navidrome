@@ -31,8 +31,8 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy test plugin to temp dir
-		srcPath := filepath.Join(testdataDir, "fake-subsonicapi-plugin.wasm")
-		destPath := filepath.Join(tmpDir, "fake-subsonicapi-plugin.wasm")
+		srcPath := filepath.Join(testdataDir, "test-subsonicapi-plugin.wasm")
+		destPath := filepath.Join(tmpDir, "test-subsonicapi-plugin.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -82,7 +82,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	Describe("Plugin Loading", func() {
 		It("loads the plugin with SubsonicAPI permission", func() {
 			manager.mu.RLock()
-			plugin := manager.plugins["fake-subsonicapi-plugin"]
+			plugin := manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
 
 			Expect(plugin).ToNot(BeNil())
@@ -90,11 +90,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 
 		It("has the correct manifest", func() {
 			manager.mu.RLock()
-			plugin := manager.plugins["fake-subsonicapi-plugin"]
+			plugin := manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
 
 			Expect(plugin).ToNot(BeNil())
-			Expect(plugin.manifest.Name).To(Equal("Fake SubsonicAPI Plugin"))
+			Expect(plugin.manifest.Name).To(Equal("Test SubsonicAPI Plugin"))
 			Expect(plugin.manifest.Permissions.Subsonicapi).ToNot(BeNil())
 		})
 	})
@@ -104,7 +104,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 
 		BeforeEach(func() {
 			manager.mu.RLock()
-			plugin = manager.plugins["fake-subsonicapi-plugin"]
+			plugin = manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
 			Expect(plugin).ToNot(BeNil())
 		})
@@ -139,7 +139,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			// Verify the parameters were added
 			Expect(router.lastRequest).ToNot(BeNil())
 			query := router.lastRequest.URL.Query()
-			Expect(query.Get("c")).To(Equal("fake-subsonicapi-plugin"))
+			Expect(query.Get("c")).To(Equal("test-subsonicapi-plugin"))
 			Expect(query.Get("f")).To(Equal("json"))
 			Expect(query.Get("v")).To(Equal("1.16.1"))
 			Expect(query.Get("type")).To(Equal("newest"))

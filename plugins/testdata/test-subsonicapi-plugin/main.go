@@ -1,5 +1,5 @@
 // Test plugin for SubsonicAPI host function integration tests.
-// Build with: tinygo build -o ../fake-subsonicapi-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
+// Build with: tinygo build -o ../test-subsonicapi-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
 package main
 
 import (
@@ -29,7 +29,7 @@ type SubsonicAPIPermission struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake SubsonicAPI Plugin",
+		Name:        "Test SubsonicAPI Plugin",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
 		Description: "Test plugin for SubsonicAPI host function",

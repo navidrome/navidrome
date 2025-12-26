@@ -1,4 +1,4 @@
-module fake-scrobbler
+module test-cache-plugin
 
 go 1.23
 

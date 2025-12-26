@@ -323,9 +323,9 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "cache-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy the fake_cache_plugin
-		srcPath := filepath.Join(testdataDir, "fake_cache_plugin.wasm")
-		destPath := filepath.Join(tmpDir, "fake_cache_plugin.wasm")
+		// Copy the test-cache-plugin
+		srcPath := filepath.Join(testdataDir, "test-cache-plugin.wasm")
+		destPath := filepath.Join(tmpDir, "test-cache-plugin.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -354,7 +354,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 	Describe("Plugin Loading", func() {
 		It("should load plugin with cache permission", func() {
 			manager.mu.RLock()
-			p, ok := manager.plugins["fake_cache_plugin"]
+			p, ok := manager.plugins["test-cache-plugin"]
 			manager.mu.RUnlock()
 			Expect(ok).To(BeTrue())
 			Expect(p.manifest.Permissions).ToNot(BeNil())
@@ -383,7 +383,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 
 		callTestCache := func(ctx context.Context, input testCacheInput) (*testCacheOutput, error) {
 			manager.mu.RLock()
-			p := manager.plugins["fake_cache_plugin"]
+			p := manager.plugins["test-cache-plugin"]
 			manager.mu.RUnlock()
 
 			instance, err := p.instance()

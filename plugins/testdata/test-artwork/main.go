@@ -1,5 +1,5 @@
-// Fake Artwork plugin for Navidrome plugin system integration tests.
-// Build with: tinygo build -o ../fake-artwork.wasm -target wasip1 -buildmode=c-shared .
+// Test Artwork plugin for Navidrome plugin system integration tests.
+// Build with: tinygo build -o ../test-artwork.wasm -target wasip1 -buildmode=c-shared .
 package main
 
 import (
@@ -29,10 +29,10 @@ type ArtworkPermission struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake Artwork",
+		Name:        "Test Artwork",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
-		Description: "A fake artwork plugin for integration testing",
+		Description: "A test artwork plugin for integration testing",
 		Permissions: &Permissions{
 			Artwork: &ArtworkPermission{
 				Reason: "For testing artwork URL generation",

@@ -1,5 +1,5 @@
-// Fake Cache plugin for Navidrome plugin system integration tests.
-// Build with: tinygo build -o ../fake_cache_plugin.wasm -target wasip1 -buildmode=c-shared .
+// Test Cache plugin for Navidrome plugin system integration tests.
+// Build with: tinygo build -o ../test-cache-plugin.wasm -target wasip1 -buildmode=c-shared .
 package main
 
 import (
@@ -28,10 +28,10 @@ type CachePermission struct {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake Cache Plugin",
+		Name:        "Test Cache Plugin",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
-		Description: "A fake cache plugin for integration testing",
+		Description: "A test cache plugin for integration testing",
 		Permissions: &Permissions{
 			Cache: &CachePermission{
 				Reason: "For testing cache operations",

@@ -1,5 +1,5 @@
-// Fake scrobbler plugin for Navidrome plugin system integration tests.
-// Build with: tinygo build -o ../fake-scrobbler.wasm -target wasip1 -buildmode=c-shared ./main.go
+// Test scrobbler plugin for Navidrome plugin system integration tests.
+// Build with: tinygo build -o ../test-scrobbler.wasm -target wasip1 -buildmode=c-shared ./main.go
 package main
 
 import (
@@ -94,10 +94,10 @@ func checkAuthConfig() bool {
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
 	manifest := Manifest{
-		Name:        "Fake Scrobbler",
+		Name:        "Test Scrobbler",
 		Author:      "Navidrome Test",
 		Version:     "1.0.0",
-		Description: "A fake scrobbler plugin for integration testing",
+		Description: "A test scrobbler plugin for integration testing",
 	}
 	out, err := json.Marshal(manifest)
 	if err != nil {

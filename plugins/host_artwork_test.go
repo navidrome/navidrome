@@ -29,9 +29,9 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "artwork-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy the fake-artwork plugin
-		srcPath := filepath.Join(testdataDir, "fake-artwork.wasm")
-		destPath := filepath.Join(tmpDir, "fake-artwork.wasm")
+		// Copy the test-artwork plugin
+		srcPath := filepath.Join(testdataDir, "test-artwork.wasm")
+		destPath := filepath.Join(tmpDir, "test-artwork.wasm")
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -64,7 +64,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 	Describe("Plugin Loading", func() {
 		It("should load plugin with artwork permission", func() {
 			manager.mu.RLock()
-			p, ok := manager.plugins["fake-artwork"]
+			p, ok := manager.plugins["test-artwork"]
 			manager.mu.RUnlock()
 			Expect(ok).To(BeTrue())
 			Expect(p.manifest.Permissions).ToNot(BeNil())
@@ -85,7 +85,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 
 		callTestArtwork := func(ctx context.Context, artworkType, id string, size int32) (string, error) {
 			manager.mu.RLock()
-			p := manager.plugins["fake-artwork"]
+			p := manager.plugins["test-artwork"]
 			manager.mu.RUnlock()
 
 			instance, err := p.instance()
