@@ -13,10 +13,10 @@ This folder contains example plugins for Navidrome that demonstrate how to build
 ### Build all plugins
 
 ```bash
-make
+make all
 ```
 
-This will compile all example plugins and place the `.wasm` files in this directory.
+This will compile all (Go) example plugins and place the `.wasm` files in this directory.
 
 ### Build a specific plugin
 
