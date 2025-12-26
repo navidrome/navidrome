@@ -316,7 +316,7 @@ func (m *Manager) discoverPlugins(folder string) error {
 			continue
 		}
 
-		log.Info(m.ctx, "Loaded plugin", "plugin", pluginName, "manifest", m.plugins[pluginName].manifest.Name)
+		log.Info(m.ctx, "Loaded plugin", "plugin", pluginName, "manifest", m.plugins[pluginName].manifest.Name, "capabilities", m.plugins[pluginName].capabilities)
 	}
 
 	return nil
