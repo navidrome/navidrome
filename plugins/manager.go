@@ -195,6 +195,10 @@ func (m *Manager) Stop() error {
 
 	// Close all plugins
 	for name, plugin := range m.plugins {
+		err := plugin.Close()
+		if err != nil {
+			log.Error("Error during plugin cleanup", "plugin", name, err)
+		}
 		if plugin.compiled != nil {
 			if err := plugin.compiled.Close(context.Background()); err != nil {
 				log.Error("Error closing plugin", "plugin", name, err)
