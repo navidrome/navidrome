@@ -362,6 +362,7 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 	stubHostFunctions := host.RegisterSubsonicAPIHostFunctions(nil)
 	stubHostFunctions = append(stubHostFunctions, host.RegisterSchedulerHostFunctions(nil)...)
 	stubHostFunctions = append(stubHostFunctions, host.RegisterWebSocketHostFunctions(nil)...)
+	stubHostFunctions = append(stubHostFunctions, host.RegisterArtworkHostFunctions(nil)...)
 
 	// Create initial compiled plugin with stub host functions
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, stubHostFunctions)
@@ -431,6 +432,12 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		service := newWebSocketService(name, m, perm.AllowedHosts)
 		closers = append(closers, service)
 		hostFunctions = append(hostFunctions, host.RegisterWebSocketHostFunctions(service)...)
+	}
+
+	// Register Artwork host functions if permission is granted
+	if manifest.Permissions != nil && manifest.Permissions.Artwork != nil {
+		service := newArtworkService()
+		hostFunctions = append(hostFunctions, host.RegisterArtworkHostFunctions(service)...)
 	}
 
 	// Check if recompilation is needed (AllowedHosts or host functions)

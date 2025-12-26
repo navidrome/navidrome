@@ -5,6 +5,12 @@ package plugins
 import "encoding/json"
 import "fmt"
 
+// Artwork service permissions for generating artwork URLs
+type ArtworkPermission struct {
+	// Explanation for why artwork access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // Configuration access permissions for a plugin
 type ConfigPermission struct {
 	// Explanation for why config access is needed
@@ -77,6 +83,9 @@ func (j *Manifest) UnmarshalJSON(value []byte) error {
 
 // Permissions required by the plugin
 type Permissions struct {
+	// Artwork corresponds to the JSON schema field "artwork".
+	Artwork *ArtworkPermission `json:"artwork,omitempty" yaml:"artwork,omitempty" mapstructure:"artwork,omitempty"`
+
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
 
