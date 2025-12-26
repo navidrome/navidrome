@@ -50,7 +50,7 @@ type schedulerServiceImpl struct {
 }
 
 // newSchedulerService creates a new SchedulerService for a plugin.
-func newSchedulerService(pluginName string, manager *Manager, sched scheduler.Scheduler) host.SchedulerService {
+func newSchedulerService(pluginName string, manager *Manager, sched scheduler.Scheduler) *schedulerServiceImpl {
 	return &schedulerServiceImpl{
 		pluginName: pluginName,
 		manager:    manager,
