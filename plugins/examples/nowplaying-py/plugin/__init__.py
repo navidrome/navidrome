@@ -17,85 +17,28 @@
 import extism
 import json
 
+# Import generated host function wrappers
+from nd_host_scheduler import scheduler_schedule_recurring, HostFunctionError
+from nd_host_subsonicapi import subsonicapi_call as _subsonicapi_call_raw
+
 # Schedule ID for our recurring task
 SCHEDULE_ID = "nowplaying-check"
 
 
-# =============================================================================
-# Host Function Imports
-# =============================================================================
-# These are custom host functions provided by Navidrome.
-# We import them using the extism:host/user namespace.
-
-
-@extism.import_fn("extism:host/user", "scheduler_schedulerecurring")
-def _scheduler_schedulerecurring(offset: int) -> int:
-    """Raw host function - do not call directly."""
-    ...
-
-
-@extism.import_fn("extism:host/user", "subsonicapi_call")
-def _subsonicapi_call(offset: int) -> int:
-    """Raw host function - do not call directly."""
-    ...
-
-
-# =============================================================================
-# Host Function Wrappers
-# =============================================================================
-# These wrappers handle JSON marshalling/unmarshalling and memory management.
-
-
-def scheduler_schedule_recurring(cron_expression: str, payload: str, schedule_id: str) -> str:
-    """Schedule a recurring task using a cron expression.
-    
-    Args:
-        cron_expression: Cron format (e.g., "*/1 * * * *" for every minute)
-        payload: Data to pass to the callback
-        schedule_id: Unique identifier for the schedule
-        
-    Returns:
-        The schedule ID (same as input or auto-generated)
-    """
-    request = {
-        "cronExpression": cron_expression,
-        "payload": payload,
-        "scheduleID": schedule_id
-    }
-    request_bytes = json.dumps(request).encode('utf-8')
-    request_mem = extism.memory.alloc(request_bytes)
-    response_offset = _scheduler_schedulerecurring(request_mem.offset)
-    response_mem = extism.memory.find(response_offset)
-    response = json.loads(extism.memory.string(response_mem))
-    
-    if response.get("error"):
-        raise Exception(response["error"])
-    
-    return response.get("newScheduleID", schedule_id)
-
-
 def subsonicapi_call(uri: str) -> dict:
-    """Call a Subsonic API endpoint.
-    
+    """Call a Subsonic API endpoint and parse the response.
+
+    This is a convenience wrapper around the generated subsonicapi_call
+    that parses the JSON response string into a dict.
+
     Args:
         uri: API path (e.g., "getNowPlaying")
-        
+
     Returns:
         Parsed JSON response from the API
     """
-    request = {"uri": uri}
-    request_bytes = json.dumps(request).encode('utf-8')
-    request_mem = extism.memory.alloc(request_bytes)
-    response_offset = _subsonicapi_call(request_mem.offset)
-    response_mem = extism.memory.find(response_offset)
-    response = json.loads(extism.memory.string(response_mem))
-    
-    if response.get("error"):
-        raise Exception(response["error"])
-    
-    # Parse the nested JSON response
-    response_json = response.get("responseJSON", "{}")
-    return json.loads(response_json)
+    response_json = _subsonicapi_call_raw(uri)
+    return json.loads(response_json) if response_json else {}
 
 
 # =============================================================================
