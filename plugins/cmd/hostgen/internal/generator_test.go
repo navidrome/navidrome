@@ -11,7 +11,7 @@ import (
 var _ = Describe("Generator", func() {
 	Describe("GenerateHost", func() {
 		It("should generate valid Go code for a simple service with strings", func() {
-			// String params/returns don't need JSON - they use direct memory read/write
+			// All methods use JSON request/response types
 			svc := Service{
 				Name:       "SubsonicAPI",
 				Permission: "subsonicapi",
@@ -41,10 +41,11 @@ var _ = Describe("Generator", func() {
 			// Check for package declaration
 			Expect(codeStr).To(ContainSubstring("package host"))
 
-			// String params don't need request type - read directly from memory
-			Expect(codeStr).NotTo(ContainSubstring("type SubsonicAPICallRequest struct"))
+			// All methods now use request type for JSON protocol
+			Expect(codeStr).To(ContainSubstring("type SubsonicAPICallRequest struct"))
+			Expect(codeStr).To(ContainSubstring(`Uri string `))
 
-			// String return with error needs response type for error handling
+			// Response type with error handling
 			Expect(codeStr).To(ContainSubstring("type SubsonicAPICallResponse struct"))
 			Expect(codeStr).To(ContainSubstring(`Response string `))
 			Expect(codeStr).To(ContainSubstring(`Error string `))
@@ -55,8 +56,8 @@ var _ = Describe("Generator", func() {
 			// Check for host function name
 			Expect(codeStr).To(ContainSubstring(`"subsonicapi_call"`))
 
-			// Check for direct string read (not JSON unmarshal)
-			Expect(codeStr).To(ContainSubstring("p.ReadString(stack[0])"))
+			// Check for JSON unmarshal (all methods use JSON now)
+			Expect(codeStr).To(ContainSubstring("json.Unmarshal"))
 		})
 
 		It("should generate code for methods without parameters", func() {
@@ -80,8 +81,10 @@ var _ = Describe("Generator", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
-			// Should not have request type for methods without params
+			// Methods without params don't need a request type - no params to serialize
 			Expect(codeStr).NotTo(ContainSubstring("type TestNoParamsRequest struct"))
+			// But still uses PTR input/output for consistency
+			Expect(codeStr).To(MatchRegexp(`\[\]extism\.ValueType\{extism\.ValueTypePTR\},\s*\[\]extism\.ValueType\{extism\.ValueTypePTR\}`))
 		})
 
 		It("should generate code for methods without return values", func() {
@@ -144,8 +147,8 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring("scheduler_cancelschedule"))
 		})
 
-		It("should handle multiple simple parameters without JSON", func() {
-			// All simple params (string, int32, bool) can be passed on stack directly
+		It("should handle multiple simple parameters with JSON", func() {
+			// All params use JSON - single PTR input
 			svc := Service{
 				Name:       "Test",
 				Permission: "test",
@@ -171,14 +174,12 @@ var _ = Describe("Generator", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
-			// No request type for simple params - they're read directly from stack
-			Expect(codeStr).NotTo(ContainSubstring("type TestMultiParamRequest struct"))
-			// Check for direct stack reads
-			Expect(codeStr).To(ContainSubstring("p.ReadString(stack[0])"))
-			Expect(codeStr).To(ContainSubstring("extism.DecodeI32(stack[1])"))
-			Expect(codeStr).To(ContainSubstring("extism.DecodeI32(stack[2])"))
-			// Check that input ValueType slice has correct entries (3 params: PTR for string, I32 for int32, I32 for bool)
-			Expect(codeStr).To(ContainSubstring("extism.ValueTypePTR, extism.ValueTypeI32, extism.ValueTypeI32"))
+			// All methods use request type with JSON protocol
+			Expect(codeStr).To(ContainSubstring("type TestMultiParamRequest struct"))
+			// Check for JSON unmarshal (all methods use JSON now)
+			Expect(codeStr).To(ContainSubstring("json.Unmarshal"))
+			// Check that input/output ValueType both use PTR (JSON)
+			Expect(codeStr).To(MatchRegexp(`\[\]extism\.ValueType\{extism\.ValueTypePTR\},\s*\[\]extism\.ValueType\{extism\.ValueTypePTR\}`))
 		})
 
 		It("should use single PTR for mixed simple and complex params", func() {
@@ -263,8 +264,8 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring(`extism "github.com/extism/go-sdk"`))
 		})
 
-		It("should not include json import when not needed", func() {
-			// Service with only simple types doesn't need JSON import
+		It("should always include json import for JSON protocol", func() {
+			// All services use JSON protocol, so json import is always needed
 			svc := Service{
 				Name:       "Test",
 				Permission: "test",
@@ -283,7 +284,7 @@ var _ = Describe("Generator", func() {
 
 			codeStr := string(code)
 			Expect(codeStr).To(ContainSubstring(`"context"`))
-			Expect(codeStr).NotTo(ContainSubstring(`"encoding/json"`))
+			Expect(codeStr).To(ContainSubstring(`"encoding/json"`))
 			Expect(codeStr).To(ContainSubstring(`extism "github.com/extism/go-sdk"`))
 		})
 	})

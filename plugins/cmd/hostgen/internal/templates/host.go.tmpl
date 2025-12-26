@@ -4,16 +4,14 @@ package {{.Package}}
 
 import (
 	"context"
-{{- if .NeedsJSON}}
 	"encoding/json"
-{{- end}}
 
 	extism "github.com/extism/go-sdk"
 )
 
-{{- /* Generate request/response types only when needed */ -}}
+{{- /* Generate request/response types for all methods */ -}}
 {{range .Service.Methods}}
-{{- if needsRequestType .}}
+{{- if .HasParams}}
 
 // {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
 type {{requestType .}} struct {
@@ -22,7 +20,6 @@ type {{requestType .}} struct {
 {{- end}}
 }
 {{- end}}
-{{- if needsRespType .}}
 
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
@@ -31,7 +28,6 @@ type {{responseType .}} struct {
 {{- end}}
 	Error string `json:"error,omitempty"`
 }
-{{- end}}
 {{end}}
 
 // Register{{.Service.Name}}HostFunctions registers {{.Service.Name}} service host functions.
@@ -50,7 +46,6 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 		"{{exportName .}}",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 {{- if .HasParams}}
-{{- if needsRequestType .}}
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -62,47 +57,28 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 				return
 			}
-{{- else}}
-			// Read parameters from stack
-{{- range $i, $p := .Params}}
-			{{readParam $p $i}}
-{{- end}}
-{{- end}}
 {{- end}}
 
 			// Call the service method
-{{- $m := .}}
 {{- if .HasReturns}}
 {{- if .HasError}}
-			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, err := service.{{.Name}}(ctx{{range .Params}}, {{if needsRequestType $m}}req.{{title .Name}}{{else}}{{.Name}}{{end}}{{end}})
-{{- else}}
-			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}} := service.{{.Name}}(ctx{{range .Params}}, {{if needsRequestType $m}}req.{{title .Name}}{{else}}{{.Name}}{{end}}{{end}})
-{{- end}}
-{{- else if .HasError}}
-			err {{if hasErrFromRead .}}={{else}}:={{end}} service.{{.Name}}(ctx{{range .Params}}, {{if needsRequestType $m}}req.{{title .Name}}{{else}}{{.Name}}{{end}}{{end}})
-{{- else}}
-			service.{{.Name}}(ctx{{range .Params}}, {{if needsRequestType $m}}req.{{title .Name}}{{else}}{{.Name}}{{end}}{{end}})
-{{- end}}
-{{- if .HasError}}
-			if err != nil {
-{{- if isErrorOnly .}}
-				// Write error string to plugin memory
-				if ptr, err := p.WriteString(err.Error()); err == nil {
-					stack[0] = ptr
-				}
-{{- else if needsRespType .}}
-				{{$.Service.Name | lower}}WriteError(p, stack, err)
-{{- end}}
+			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
+			if svcErr != nil {
+				{{$.Service.Name | lower}}WriteError(p, stack, svcErr)
 				return
 			}
+{{- else}}
+			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}} := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
+{{- end}}
+{{- else if .HasError}}
+			if svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}}); svcErr != nil {
+				{{$.Service.Name | lower}}WriteError(p, stack, svcErr)
+				return
+			}
+{{- else}}
+			service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
 {{- end}}
 
-{{- if isErrorOnly .}}
-			// Write empty string to indicate success
-			if ptr, err := p.WriteString(""); err == nil {
-				stack[0] = ptr
-			}
-{{- else if needsRespType .}}
 			// Write JSON response to plugin memory
 			resp := {{responseType .}}{
 {{- range .Returns}}
@@ -110,27 +86,12 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 {{- end}}
 			}
 			{{$.Service.Name | lower}}WriteResponse(p, stack, resp)
-{{- else if .HasReturns}}
-			// Write return values to stack
-{{- range $i, $r := .Returns}}
-			{{writeReturn $r $i (lower $r.Name)}}
-{{- end}}
-{{- end}}
 		},
-{{- if needsRequestType $m}}
 		[]extism.ValueType{extism.ValueTypePTR},
-{{- else}}
-		[]extism.ValueType{ {{- range $i, $p := .Params}}{{if $i}}, {{end}}{{valueType $p.Type}}{{end}}{{if not .HasParams}}{{end}} },
-{{- end}}
-{{- if or (needsRespType .) (isErrorOnly .)}}
 		[]extism.ValueType{extism.ValueTypePTR},
-{{- else}}
-		[]extism.ValueType{ {{- range $i, $r := .Returns}}{{if $i}}, {{end}}{{valueType $r.Type}}{{end}}{{if not .HasReturns}}{{end}} },
-{{- end}}
 	)
 }
 {{end}}
-{{- if .NeedsWriteHelper}}
 
 // {{.Service.Name | lower}}WriteResponse writes a JSON response to plugin memory.
 func {{.Service.Name | lower}}WriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
@@ -146,8 +107,6 @@ func {{.Service.Name | lower}}WriteResponse(p *extism.CurrentPlugin, stack []uin
 	}
 	stack[0] = respPtr
 }
-{{- end}}
-{{- if .NeedsErrorHelper}}
 
 // {{.Service.Name | lower}}WriteError writes an error response to plugin memory.
 func {{.Service.Name | lower}}WriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
@@ -158,4 +117,3 @@ func {{.Service.Name | lower}}WriteError(p *extism.CurrentPlugin, stack []uint64
 	respPtr, _ := p.WriteBytes(respBytes)
 	stack[0] = respPtr
 }
-{{- end}}

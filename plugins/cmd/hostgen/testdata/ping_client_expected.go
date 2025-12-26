@@ -8,7 +8,7 @@
 package main
 
 import (
-	"errors"
+	"encoding/json"
 
 	"github.com/extism/go-pdk"
 )
@@ -16,21 +16,31 @@ import (
 // ping_ping is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user ping_ping
-func ping_ping() uint64
+func ping_ping(uint64) uint64
+
+// PingPingResponse is the response type for Ping.Ping.
+type PingPingResponse struct {
+	Error string `json:"error,omitempty"`
+}
 
 // PingPing calls the ping_ping host function.
-func PingPing() error {
+func PingPing() (*PingPingResponse, error) {
+	// No parameters - allocate empty JSON object
+	reqMem := pdk.AllocateBytes([]byte("{}"))
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := ping_ping()
+	responsePtr := ping_ping(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response PingPingResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }

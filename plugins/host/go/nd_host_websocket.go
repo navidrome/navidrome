@@ -9,13 +9,11 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/extism/go-pdk"
 )
 
 // websocket_connect is the host function provided by Navidrome.
-// Takes a single JSON request pointer containing url, headers, and connectionID.
 //
 //go:wasmimport extism:host/user websocket_connect
 func websocket_connect(uint64) uint64
@@ -23,17 +21,17 @@ func websocket_connect(uint64) uint64
 // websocket_sendtext is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user websocket_sendtext
-func websocket_sendtext(uint64, uint64) uint64
+func websocket_sendtext(uint64) uint64
 
 // websocket_sendbinary is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user websocket_sendbinary
-func websocket_sendbinary(uint64, uint64) uint64
+func websocket_sendbinary(uint64) uint64
 
 // websocket_closeconnection is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user websocket_closeconnection
-func websocket_closeconnection(uint64, int32, uint64) uint64
+func websocket_closeconnection(uint64) uint64
 
 // WebSocketConnectRequest is the request type for WebSocket.Connect.
 type WebSocketConnectRequest struct {
@@ -46,6 +44,40 @@ type WebSocketConnectRequest struct {
 type WebSocketConnectResponse struct {
 	NewConnectionID string `json:"newConnectionID,omitempty"`
 	Error           string `json:"error,omitempty"`
+}
+
+// WebSocketSendTextRequest is the request type for WebSocket.SendText.
+type WebSocketSendTextRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Message      string `json:"message"`
+}
+
+// WebSocketSendTextResponse is the response type for WebSocket.SendText.
+type WebSocketSendTextResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
+type WebSocketSendBinaryRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Data         []byte `json:"data"`
+}
+
+// WebSocketSendBinaryResponse is the response type for WebSocket.SendBinary.
+type WebSocketSendBinaryResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
+type WebSocketCloseConnectionRequest struct {
+	ConnectionID string `json:"connectionID"`
+	Code         int32  `json:"code"`
+	Reason       string `json:"reason"`
+}
+
+// WebSocketCloseConnectionResponse is the response type for WebSocket.CloseConnection.
+type WebSocketCloseConnectionResponse struct {
+	Error string `json:"error,omitempty"`
 }
 
 // WebSocketConnect calls the websocket_connect host function.
@@ -62,7 +94,7 @@ type WebSocketConnectResponse struct {
 // Returns the connection ID that can be used to send messages or close the connection,
 // or an error if the connection fails.
 func WebSocketConnect(url string, headers map[string]string, connectionID string) (*WebSocketConnectResponse, error) {
-	// Create JSON request with all parameters
+	// Marshal request to JSON
 	req := WebSocketConnectRequest{
 		Url:          url,
 		Headers:      headers,
@@ -75,7 +107,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
 
-	// Call the host function with single JSON request
+	// Call the host function
 	responsePtr := websocket_connect(reqMem.Offset())
 
 	// Read the response from memory
@@ -99,24 +131,33 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 //   - message: The text message to send
 //
 // Returns an error if the connection is not found or if sending fails.
-func WebSocketSendText(connectionID string, message string) error {
-	connectionIDMem := pdk.AllocateString(connectionID)
-	defer connectionIDMem.Free()
-	messageMem := pdk.AllocateString(message)
-	defer messageMem.Free()
+func WebSocketSendText(connectionID string, message string) (*WebSocketSendTextResponse, error) {
+	// Marshal request to JSON
+	req := WebSocketSendTextRequest{
+		ConnectionID: connectionID,
+		Message:      message,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := websocket_sendtext(connectionIDMem.Offset(), messageMem.Offset())
+	responsePtr := websocket_sendtext(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response WebSocketSendTextResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }
 
 // WebSocketSendBinary calls the websocket_sendbinary host function.
@@ -127,24 +168,33 @@ func WebSocketSendText(connectionID string, message string) error {
 //   - data: The binary data to send
 //
 // Returns an error if the connection is not found or if sending fails.
-func WebSocketSendBinary(connectionID string, data []byte) error {
-	connectionIDMem := pdk.AllocateString(connectionID)
-	defer connectionIDMem.Free()
-	dataMem := pdk.AllocateBytes(data)
-	defer dataMem.Free()
+func WebSocketSendBinary(connectionID string, data []byte) (*WebSocketSendBinaryResponse, error) {
+	// Marshal request to JSON
+	req := WebSocketSendBinaryRequest{
+		ConnectionID: connectionID,
+		Data:         data,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := websocket_sendbinary(connectionIDMem.Offset(), dataMem.Offset())
+	responsePtr := websocket_sendbinary(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response WebSocketSendBinaryResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }
 
 // WebSocketCloseConnection calls the websocket_closeconnection host function.
@@ -156,22 +206,32 @@ func WebSocketSendBinary(connectionID string, data []byte) error {
 //   - reason: Optional human-readable reason for closing
 //
 // Returns an error if the connection is not found or if closing fails.
-func WebSocketCloseConnection(connectionID string, code int32, reason string) error {
-	connectionIDMem := pdk.AllocateString(connectionID)
-	defer connectionIDMem.Free()
-	reasonMem := pdk.AllocateString(reason)
-	defer reasonMem.Free()
+func WebSocketCloseConnection(connectionID string, code int32, reason string) (*WebSocketCloseConnectionResponse, error) {
+	// Marshal request to JSON
+	req := WebSocketCloseConnectionRequest{
+		ConnectionID: connectionID,
+		Code:         code,
+		Reason:       reason,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := websocket_closeconnection(connectionIDMem.Offset(), code, reasonMem.Offset())
+	responsePtr := websocket_closeconnection(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
-	errStr := string(responseMem.ReadBytes())
+	responseBytes := responseMem.ReadBytes()
 
-	if errStr != "" {
-		return errors.New(errStr)
+	// Parse the response
+	var response WebSocketCloseConnectionResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &response, nil
 }

@@ -181,7 +181,7 @@ func NdScrobblerNowPlaying(input NowPlayingInput) (ScrobblerOutput, error) {
 	}
 
 	// Cancel any existing completion schedule
-	_ = SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
+	_, _ = SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
 
 	// Calculate timestamps
 	now := time.Now().Unix()

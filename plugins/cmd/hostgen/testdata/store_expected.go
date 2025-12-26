@@ -45,11 +45,12 @@ func newStoreSaveHostFunction(service StoreService) extism.HostFunction {
 			}
 
 			// Call the service method
-			id, err := service.Save(ctx, req.Item)
-			if err != nil {
-				storeWriteError(p, stack, err)
+			id, svcErr := service.Save(ctx, req.Item)
+			if svcErr != nil {
+				storeWriteError(p, stack, svcErr)
 				return
 			}
+
 			// Write JSON response to plugin memory
 			resp := StoreSaveResponse{
 				Id: id,

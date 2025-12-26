@@ -16,7 +16,13 @@ import (
 // list_items is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user list_items
-func list_items(uint64, uint64) uint64
+func list_items(uint64) uint64
+
+// ListItemsRequest is the request type for List.Items.
+type ListItemsRequest struct {
+	Name   string `json:"name"`
+	Filter Filter `json:"filter"`
+}
 
 // ListItemsResponse is the response type for List.Items.
 type ListItemsResponse struct {
@@ -26,17 +32,20 @@ type ListItemsResponse struct {
 
 // ListItems calls the list_items host function.
 func ListItems(name string, filter Filter) (*ListItemsResponse, error) {
-	nameMem := pdk.AllocateString(name)
-	defer nameMem.Free()
-	filterBytes, err := json.Marshal(filter)
+	// Marshal request to JSON
+	req := ListItemsRequest{
+		Name:   name,
+		Filter: filter,
+	}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	filterMem := pdk.AllocateBytes(filterBytes)
-	defer filterMem.Free()
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := list_items(nameMem.Offset(), filterMem.Offset())
+	responsePtr := list_items(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

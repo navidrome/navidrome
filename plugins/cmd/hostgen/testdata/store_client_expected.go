@@ -18,6 +18,11 @@ import (
 //go:wasmimport extism:host/user store_save
 func store_save(uint64) uint64
 
+// StoreSaveRequest is the request type for Store.Save.
+type StoreSaveRequest struct {
+	Item Item `json:"item"`
+}
+
 // StoreSaveResponse is the response type for Store.Save.
 type StoreSaveResponse struct {
 	Id    string `json:"id,omitempty"`
@@ -26,15 +31,19 @@ type StoreSaveResponse struct {
 
 // StoreSave calls the store_save host function.
 func StoreSave(item Item) (*StoreSaveResponse, error) {
-	itemBytes, err := json.Marshal(item)
+	// Marshal request to JSON
+	req := StoreSaveRequest{
+		Item: item,
+	}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	itemMem := pdk.AllocateBytes(itemBytes)
-	defer itemMem.Free()
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := store_save(itemMem.Offset())
+	responsePtr := store_save(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)

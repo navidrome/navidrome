@@ -9,6 +9,11 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
+// CodecEncodeRequest is the request type for Codec.Encode.
+type CodecEncodeRequest struct {
+	Data []byte `json:"data"`
+}
+
 // CodecEncodeResponse is the response type for Codec.Encode.
 type CodecEncodeResponse struct {
 	Result []byte `json:"result,omitempty"`
@@ -27,18 +32,25 @@ func newCodecEncodeHostFunction(service CodecService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"codec_encode",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read parameters from stack
-			data, err := p.ReadBytes(stack[0])
-			if err != nil {
-				return
-			}
-
-			// Call the service method
-			result, err := service.Encode(ctx, data)
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
 				codecWriteError(p, stack, err)
 				return
 			}
+			var req CodecEncodeRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				codecWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.Encode(ctx, req.Data)
+			if svcErr != nil {
+				codecWriteError(p, stack, svcErr)
+				return
+			}
+
 			// Write JSON response to plugin memory
 			resp := CodecEncodeResponse{
 				Result: result,
