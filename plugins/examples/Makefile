@@ -9,12 +9,12 @@ TINYGO := $(shell command -v tinygo 2> /dev/null)
 .DEFAULT_GOAL := help
 
 help:
-	@echo "Available plugins:"
+	@echo "Available Go plugins:"
 	@$(foreach p,$(PLUGINS),echo "  $(p)";)
 	@echo ""
 	@echo "Usage:"
-	@echo "  make <plugin>    Build a specific plugin (e.g., make $(firstword $(PLUGINS)))"
-	@echo "  make all         Build all plugins"
+	@echo "  make <plugin>.wasm    Build a specific plugin (e.g., make $(firstword $(PLUGINS)).wasm)"
+	@echo "  make all         Build all Go plugins"
 	@echo "  make clean       Remove all built plugins"
 
 all: $(PLUGINS:%=%.wasm)
