@@ -6,7 +6,8 @@ This folder contains example plugins for Navidrome that demonstrate how to build
 
 ### Prerequisites
 
-- [TinyGo](https://tinygo.org/getting-started/install/) (recommended) or Go 1.23+
+- [TinyGo](https://tinygo.org/getting-started/install/) (recommended) or Go 1.23+ (for Go plugins)
+- [extism-py](https://github.com/extism/python-pdk) (for Python plugins)
 - [Extism CLI](https://extism.org/docs/install) (optional, for testing)
 
 ### Build all plugins
@@ -32,12 +33,13 @@ make clean
 
 ## Available Examples
 
-| Plugin                                          | Description                                                             |
-|-------------------------------------------------|-------------------------------------------------------------------------|
-| [minimal](minimal/)                             | A minimal example showing the basic plugin structure                    |
-| [wikimedia](wikimedia/)                         | Fetches artist metadata from Wikidata, DBpedia, and Wikipedia           |
-| [crypto-ticker](crypto-ticker/)                 | Real-time cryptocurrency prices from Coinbase using WebSocket           |
-| [discord-rich-presence](discord-rich-presence/) | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
+| Plugin                                          | Language | Description                                                             |
+|-------------------------------------------------|----------|-------------------------------------------------------------------------|
+| [minimal](minimal/)                             | Go       | A minimal example showing the basic plugin structure                    |
+| [wikimedia](wikimedia/)                         | Go       | Fetches artist metadata from Wikidata, DBpedia, and Wikipedia           |
+| [crypto-ticker](crypto-ticker/)                 | Go       | Real-time cryptocurrency prices from Coinbase using WebSocket           |
+| [discord-rich-presence](discord-rich-presence/) | Go       | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
+| [coverartarchive-py](coverartarchive-py/)       | Python   | Album cover art from Cover Art Archive (Python example)                 |
 
 ## Testing with Extism CLI
 
@@ -84,8 +86,9 @@ Agents = "lastfm,spotify,wikimedia"
 
 ## Creating Your Own Plugin
 
-See the [minimal](minimal/) example for the simplest starting point, or [wikimedia](wikimedia/) for a more complete 
-example with HTTP requests, created with the [XTP CLI]((https://docs.xtp.dylibso.com/docs/cli).
+The plugin system supports multiple languages. See the [minimal](minimal/) example for the simplest Go starting point, 
+[discord-rich-presence](discord-rich-presence/) for a more complete Go example with HTTP requests, or [coverartarchive-py](coverartarchive-py/) 
+for a Python example.
 
 ### Bootstrapping a New Plugin
 Use the XTP CLI to bootstrap a new plugin from a schema:
