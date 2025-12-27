@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rjeczalik/notify"
@@ -42,7 +43,7 @@ var _ = Describe("Plugin Watcher", func() {
 		}
 
 		Describe("Plugin event processing (integration)", func() {
-			// These tests verify the full flow with actual WASM plugin loading.
+			// These tests verify the DB-driven flow with actual WASM plugin loading.
 
 			AfterEach(func() {
 				// Clean up: unload plugin if loaded, remove copied file
@@ -50,28 +51,70 @@ var _ = Describe("Plugin Watcher", func() {
 				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
 			})
 
-			It("loads a plugin on CREATE event", func() {
+			It("adds plugin to DB on CREATE event", func() {
 				copyTestPlugin()
 				manager.processPluginEvent("test-metadata-agent", notify.Create)
-				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
-			})
 
-			It("reloads a plugin on WRITE event", func() {
-				copyTestPlugin()
-				err := manager.LoadPlugin("test-metadata-agent")
-				Expect(err).ToNot(HaveOccurred())
-
-				manager.processPluginEvent("test-metadata-agent", notify.Write)
-				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
-			})
-
-			It("unloads a plugin on REMOVE event", func() {
-				copyTestPlugin()
-				err := manager.LoadPlugin("test-metadata-agent")
-				Expect(err).ToNot(HaveOccurred())
-
-				manager.processPluginEvent("test-metadata-agent", notify.Remove)
+				// Plugin should be in DB but not loaded (starts disabled)
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
+
+				// Verify it was added to DB
+				repo := manager.ds.Plugin(ctx)
+				plugin, err := repo.Get("test-metadata-agent")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plugin.ID).To(Equal("test-metadata-agent"))
+				Expect(plugin.Enabled).To(BeFalse())
+			})
+
+			It("updates DB and disables plugin on WRITE event when file changes", func() {
+				copyTestPlugin()
+
+				// First add and enable the plugin
+				manager.processPluginEvent("test-metadata-agent", notify.Create)
+				err := manager.EnablePlugin(ctx, "test-metadata-agent")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
+
+				// Modify the stored SHA256 in DB to simulate a file change
+				// (In reality, the file would have different content)
+				repo := manager.ds.Plugin(ctx)
+				plugin, err := repo.Get("test-metadata-agent")
+				Expect(err).ToNot(HaveOccurred())
+				plugin.SHA256 = "different-hash-to-simulate-change"
+				err = repo.Put(plugin)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Simulate modification - the plugin should be disabled and unloaded
+				manager.processPluginEvent("test-metadata-agent", notify.Write)
+
+				// Should be unloaded
+				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
+
+				// But still in DB (just disabled)
+				plugin, err = repo.Get("test-metadata-agent")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plugin.Enabled).To(BeFalse())
+			})
+
+			It("removes plugin from DB on REMOVE event", func() {
+				copyTestPlugin()
+
+				// First add and enable the plugin
+				manager.processPluginEvent("test-metadata-agent", notify.Create)
+				err := manager.EnablePlugin(ctx, "test-metadata-agent")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Simulate removal - plugin should be unloaded and removed from DB
+				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
+				manager.processPluginEvent("test-metadata-agent", notify.Remove)
+
+				// Should be unloaded
+				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
+
+				// And removed from DB
+				repo := manager.ds.Plugin(ctx)
+				_, err = repo.Get("test-metadata-agent")
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -85,9 +128,16 @@ var _ = Describe("Plugin Watcher", func() {
 				_ = manager.Stop()
 
 				conf.Server.Plugins.AutoReload = true
+
+				// Set up a mock DataStore for the auto-reload manager
+				mockPluginRepo := tests.CreateMockPluginRepo()
+				mockPluginRepo.Permitted = true
+				dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+
 				autoReloadManager := &Manager{
 					plugins: make(map[string]*plugin),
 				}
+				autoReloadManager.SetDataStore(dataStore)
 				err := autoReloadManager.Start(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(autoReloadManager.Stop)
@@ -102,31 +152,26 @@ var _ = Describe("Plugin Watcher", func() {
 		// These are fast unit tests for the pure routing logic.
 		// No WASM compilation, no file I/O - runs in microseconds.
 
-		DescribeTable("returns correct action for event type and loaded state",
-			func(eventType notify.Event, isLoaded bool, expected pluginAction) {
-				Expect(determinePluginAction(eventType, isLoaded)).To(Equal(expected))
+		DescribeTable("returns correct action for event type",
+			func(eventType notify.Event, expected pluginAction) {
+				Expect(determinePluginAction(eventType)).To(Equal(expected))
 			},
-			// CREATE events - always load
-			Entry("CREATE when not loaded", notify.Create, false, actionLoad),
-			Entry("CREATE when loaded", notify.Create, true, actionLoad),
+			// CREATE events - add to DB
+			Entry("CREATE", notify.Create, actionAdd),
 
-			// WRITE events - reload if loaded, load if not
-			Entry("WRITE when not loaded", notify.Write, false, actionLoad),
-			Entry("WRITE when loaded", notify.Write, true, actionReload),
+			// WRITE events - update in DB
+			Entry("WRITE", notify.Write, actionUpdate),
 
-			// REMOVE events - always unload
-			Entry("REMOVE when not loaded", notify.Remove, false, actionUnload),
-			Entry("REMOVE when loaded", notify.Remove, true, actionUnload),
+			// REMOVE events - remove from DB
+			Entry("REMOVE", notify.Remove, actionRemove),
 
 			// RENAME events - treated same as REMOVE
-			Entry("RENAME when not loaded", notify.Rename, false, actionUnload),
-			Entry("RENAME when loaded", notify.Rename, true, actionUnload),
+			Entry("RENAME", notify.Rename, actionRemove),
 		)
 
 		It("returns actionNone for unknown event types", func() {
 			// Event type 0 or other unknown values
-			Expect(determinePluginAction(0, false)).To(Equal(actionNone))
-			Expect(determinePluginAction(0, true)).To(Equal(actionNone))
+			Expect(determinePluginAction(0)).To(Equal(actionNone))
 		})
 	})
 })

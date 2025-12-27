@@ -3,6 +3,8 @@
 package plugins
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -68,6 +70,24 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		}
 		manager.SetSubsonicRouter(router)
 		manager.SetDataStore(dataStore)
+
+		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Compute SHA256 of the plugin file to match what SyncPlugins will compute
+		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin.wasm")
+		wasmData, err := os.ReadFile(pluginPath)
+		Expect(err).ToNot(HaveOccurred())
+		hash := sha256.Sum256(wasmData)
+		hashHex := hex.EncodeToString(hash[:])
+
+		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo.Permitted = true
+		enabledPlugin := model.Plugin{
+			ID:      "test-subsonicapi-plugin",
+			Path:    pluginPath,
+			SHA256:  hashHex,
+			Enabled: true,
+		}
+		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())

@@ -4,6 +4,8 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -37,6 +39,10 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		err = os.WriteFile(destPath, data, 0600)
 		Expect(err).ToNot(HaveOccurred())
 
+		// Compute SHA256 for the plugin
+		hash := sha256.Sum256(data)
+		hashHex := hex.EncodeToString(hash[:])
+
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
@@ -48,10 +54,25 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		ds := &tests.MockDataStore{MockedProperty: &tests.MockedPropertyRepo{}}
 		auth.Init(ds)
 
+		// Setup mock DataStore with pre-enabled plugin
+		mockPluginRepo := tests.CreateMockPluginRepo()
+		mockPluginRepo.Permitted = true
+		mockPluginRepo.SetData(model.Plugins{{
+			ID:      "test-artwork",
+			Path:    destPath,
+			SHA256:  hashHex,
+			Enabled: true,
+		}})
+		dataStore := &tests.MockDataStore{
+			MockedProperty: &tests.MockedPropertyRepo{},
+			MockedPlugin:   mockPluginRepo,
+		}
+
 		// Create and start manager
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
 		}
+		manager.SetDataStore(dataStore)
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
