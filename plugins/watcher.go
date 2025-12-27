@@ -110,34 +110,28 @@ type pluginAction int
 
 const (
 	actionNone   pluginAction = iota // No action needed
-	actionLoad                       // Load the plugin
-	actionUnload                     // Unload the plugin
-	actionReload                     // Reload the plugin
+	actionAdd                        // Add new plugin to DB (disabled)
+	actionUpdate                     // Update existing plugin in DB (disable if enabled)
+	actionRemove                     // Remove plugin from DB (unload if enabled)
 )
 
-// determinePluginAction decides what action to take based on the file event type
-// and whether the plugin is currently loaded. This is a pure function with no side effects.
-func determinePluginAction(eventType notify.Event, isLoaded bool) pluginAction {
+// determinePluginAction decides what action to take based on the file event type.
+func determinePluginAction(eventType notify.Event) pluginAction {
 	switch {
 	case eventType&notify.Remove != 0 || eventType&notify.Rename != 0:
-		// File removed or renamed away - unload if loaded
-		return actionUnload
-
+		return actionRemove
 	case eventType&notify.Create != 0:
-		// New file - load it
-		return actionLoad
-
+		return actionAdd
 	case eventType&notify.Write != 0:
-		// File modified - reload if loaded, otherwise load
-		if isLoaded {
-			return actionReload
-		}
-		return actionLoad
+		return actionUpdate
 	}
 	return actionNone
 }
 
-// processPluginEvent handles the actual plugin load/unload/reload after debouncing
+// processPluginEvent handles the actual plugin load/unload/reload after debouncing.
+// - On file add: extract manifest, create DB record as disabled
+// - On file change: extract manifest, update DB, disable if was enabled
+// - On file remove: unload if enabled, delete DB record
 func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) {
 	// Don't process if manager is stopping/stopped (atomic check to avoid race with Stop())
 	if m.stopped.Load() {
@@ -149,29 +143,72 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 	delete(m.debounceTimers, pluginName)
 	m.debounceMu.Unlock()
 
-	// Check if plugin is currently loaded
-	m.mu.RLock()
-	_, isLoaded := m.plugins[pluginName]
-	m.mu.RUnlock()
+	action := determinePluginAction(eventType)
+	log.Debug(m.ctx, "Plugin event action (DB mode)", "plugin", pluginName, "action", action)
 
-	// Determine and execute the appropriate action
-	action := determinePluginAction(eventType, isLoaded)
-	log.Debug("Plugin event action", "plugin", pluginName, "action", action)
+	ctx := adminContext(m.ctx)
+	repo := m.ds.Plugin(ctx)
+	folder := conf.Server.Plugins.Folder
+	wasmPath := filepath.Join(folder, pluginName+".wasm")
+
 	switch action {
-	case actionLoad:
-		log.Debug("Loading new Plugin", "plugin", pluginName)
-		if err := m.LoadPlugin(pluginName); err != nil {
-			log.Error(m.ctx, "Failed to load plugin", "plugin", pluginName, err)
+	case actionAdd:
+		// New file - extract manifest and add to DB as disabled
+		metadata, err := m.ExtractManifest(wasmPath)
+		if err != nil {
+			log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, err)
+			return
 		}
-	case actionUnload:
-		log.Debug("Unloading removed Plugin", "plugin", pluginName)
-		if err := m.UnloadPlugin(pluginName); err != nil {
-			log.Debug(m.ctx, "Plugin not loaded, skipping unload", "plugin", pluginName, err)
+		if err := m.addPluginToDB(m.ctx, repo, pluginName, wasmPath, metadata); err != nil {
+			log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, err)
 		}
-	case actionReload:
-		log.Debug("Reloading modified Plugin", "plugin", pluginName)
-		if err := m.ReloadPlugin(pluginName); err != nil {
-			log.Error(m.ctx, "Failed to reload plugin", "plugin", pluginName, err)
+
+	case actionUpdate:
+		// File changed - extract manifest, update DB, disable if enabled
+		metadata, err := m.ExtractManifest(wasmPath)
+		if err != nil {
+			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
+			// Try to update error in DB if plugin exists
+			if dbPlugin, getErr := repo.Get(pluginName); getErr == nil {
+				dbPlugin.LastError = err.Error()
+				dbPlugin.UpdatedAt = time.Now()
+				if dbPlugin.Enabled {
+					_ = m.UnloadPlugin(pluginName)
+					dbPlugin.Enabled = false
+				}
+				_ = repo.Put(dbPlugin)
+			}
+			return
+		}
+
+		dbPlugin, err := repo.Get(pluginName)
+		if err != nil {
+			// Plugin not in DB yet, add it
+			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, wasmPath, metadata); addErr != nil {
+				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
+			}
+			return
+		}
+
+		// Check if actually changed
+		if dbPlugin.SHA256 == metadata.SHA256 {
+			return // No actual change
+		}
+
+		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, wasmPath, metadata); err != nil {
+			log.Error(m.ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
+		}
+
+	case actionRemove:
+		// File removed - unload if enabled, delete from DB
+		dbPlugin, err := repo.Get(pluginName)
+		if err != nil {
+			log.Debug(m.ctx, "Removed plugin not in DB", "plugin", pluginName)
+			return
+		}
+
+		if err := m.removePluginFromDB(m.ctx, repo, dbPlugin); err != nil {
+			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
 	}
 }
