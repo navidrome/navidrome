@@ -13,7 +13,7 @@ import (
 
 // debounceDuration is the time to wait before acting on file events
 // to handle multiple rapid events for the same file.
-const debounceDuration = 500 * time.Millisecond
+const debounceDuration = 2 * time.Second
 
 // startWatcher starts the file watcher for the plugins folder.
 // It watches for CREATE, WRITE, and REMOVE events on .wasm files.
@@ -156,16 +156,20 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 
 	// Determine and execute the appropriate action
 	action := determinePluginAction(eventType, isLoaded)
+	log.Debug("Plugin event action", "plugin", pluginName, "action", action)
 	switch action {
 	case actionLoad:
+		log.Debug("Loading new Plugin", "plugin", pluginName)
 		if err := m.LoadPlugin(pluginName); err != nil {
 			log.Error(m.ctx, "Failed to load plugin", "plugin", pluginName, err)
 		}
 	case actionUnload:
+		log.Debug("Unloading removed Plugin", "plugin", pluginName)
 		if err := m.UnloadPlugin(pluginName); err != nil {
 			log.Debug(m.ctx, "Plugin not loaded, skipping unload", "plugin", pluginName, err)
 		}
 	case actionReload:
+		log.Debug("Reloading modified Plugin", "plugin", pluginName)
 		if err := m.ReloadPlugin(pluginName); err != nil {
 			log.Error(m.ctx, "Failed to reload plugin", "plugin", pluginName, err)
 		}
