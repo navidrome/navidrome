@@ -37,5 +37,5 @@
 // Generated files follow the pattern <servicename>_gen.go and include a header comment
 // indicating they should not be edited manually.
 //
-//go:generate go run ../cmd/hostgen -input=. -output=.
+//go:generate go run ../cmd/hostgen -input=. -output=. -python -go
 package host

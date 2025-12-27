@@ -43,8 +43,10 @@ else
 endif
 
 # Python plugin builds (generic rule for any folder with plugin/__init__.py)
-$(PYTHON_PLUGINS:%=%.wasm): %.wasm: %/plugin/__init__.py
+# Use secondary expansion to get all .py files in the plugin directory as dependencies
+.SECONDEXPANSION:
+$(PYTHON_PLUGINS:%=%.wasm): %.wasm: $$(wildcard %/plugin/*.py)
 ifndef EXTISM_PY
 	$(error extism-py is not installed. Install from https://github.com/extism/python-pdk)
 endif
-	cd $* && extism-py plugin/__init__.py -o ../$@
+	cd $* && PYTHONPATH=plugin extism-py plugin/__init__.py -o ../$@
