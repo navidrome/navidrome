@@ -3,6 +3,9 @@
 package plugins
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -60,7 +64,8 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
 
-	// Copy test plugins to temp dir
+	// Copy test plugins to temp dir and build plugin list with SHA256
+	var enabledPlugins model.Plugins
 	for _, plugin := range plugins {
 		srcPath := filepath.Join(testdataDir, plugin)
 		destPath := filepath.Join(tmpDir, plugin)
@@ -68,6 +73,28 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
 		Expect(err).ToNot(HaveOccurred())
+
+		// Compute SHA256 for the plugin
+		hash := sha256.Sum256(data)
+		hashHex := hex.EncodeToString(hash[:])
+		pluginName := plugin[:len(plugin)-5] // Remove .wasm extension
+
+		// Build config JSON if provided
+		configJSON := ""
+		if pluginConfig != nil && pluginConfig[pluginName] != nil {
+			// Encode config to JSON
+			configBytes, err := json.Marshal(pluginConfig[pluginName])
+			Expect(err).ToNot(HaveOccurred())
+			configJSON = string(configBytes)
+		}
+
+		enabledPlugins = append(enabledPlugins, model.Plugin{
+			ID:      pluginName,
+			Path:    destPath,
+			SHA256:  hashHex,
+			Enabled: true,
+			Config:  configJSON,
+		})
 	}
 
 	// Setup config
@@ -78,10 +105,17 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 	conf.Server.PluginConfig = pluginConfig
 
+	// Setup mock DataStore with pre-enabled plugins
+	mockPluginRepo := tests.CreateMockPluginRepo()
+	mockPluginRepo.Permitted = true
+	mockPluginRepo.SetData(enabledPlugins)
+	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+
 	// Create and start manager
 	manager := &Manager{
 		plugins: make(map[string]*plugin),
 	}
+	manager.SetDataStore(dataStore)
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
 

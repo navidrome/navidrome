@@ -4,6 +4,8 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,7 +13,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scheduler"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -39,6 +43,10 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		err = os.WriteFile(destPath, data, 0600)
 		Expect(err).ToNot(HaveOccurred())
 
+		// Compute SHA256 for the plugin
+		hash := sha256.Sum256(data)
+		hashHex := hex.EncodeToString(hash[:])
+
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
@@ -54,10 +62,22 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		origAfterFn = timeAfterFunc
 		timeAfterFunc = mockTimers.AfterFunc
 
+		// Setup mock DataStore with pre-enabled plugin
+		mockPluginRepo := tests.CreateMockPluginRepo()
+		mockPluginRepo.Permitted = true
+		mockPluginRepo.SetData(model.Plugins{{
+			ID:      "test-scheduler",
+			Path:    destPath,
+			SHA256:  hashHex,
+			Enabled: true,
+		}})
+		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+
 		// Create and start manager
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
 		}
+		manager.SetDataStore(dataStore)
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
