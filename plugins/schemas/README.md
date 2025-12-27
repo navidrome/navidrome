@@ -6,11 +6,13 @@ new plugins using the `xtp` CLI tool.
 
 ## Available Schemas
 
-| Schema                                               | Description                                                     |
-|------------------------------------------------------|-----------------------------------------------------------------|
-| [metadata_agent.yaml](metadata_agent.yaml)           | Metadata agent for retrieving artist/album information          |
-| [scheduler_callback.yaml](scheduler_callback.yaml)   | Scheduler callback for plugins using the scheduler host service |
-| [scrobbler.yaml](scrobbler.yaml)                     | Scrobbler capability for sending play data to external services |
+| Schema                                             | Description                                                         |
+|----------------------------------------------------|---------------------------------------------------------------------|
+| [lifecycle.yaml](lifecycle.yaml)                   | Lifecycle callbacks (init) for plugin initialization                |
+| [metadata_agent.yaml](metadata_agent.yaml)         | Metadata agent for retrieving artist/album information              |
+| [scheduler_callback.yaml](scheduler_callback.yaml) | Scheduler callback for plugins using the scheduler host service     |
+| [scrobbler.yaml](scrobbler.yaml)                   | Scrobbler capability for sending play data to external services     |
+| [websocket_callback.yaml](websocket_callback.yaml) | WebSocket callbacks for handling messages, errors, and close events |
 
 ## Prerequisites
 
@@ -173,5 +175,5 @@ which is based on JSON Schema with extensions for defining plugin exports and im
 
 - [XTP Documentation](https://docs.xtp.dylibso.com/)
 - [XTP Bindgen Repository](https://github.com/dylibso/xtp-bindgen)
-- [Extism Plugin Development Kit](https://extism.org/docs/concepts/pdk)
 - [XTP Schema Definition](https://raw.githubusercontent.com/dylibso/xtp-bindgen/5090518dd86ba5e734dc225a33066ecc0ed2e12d/plugin/schema.json)
+- [Extism Plugin Development Kit](https://extism.org/docs/concepts/pdk)
