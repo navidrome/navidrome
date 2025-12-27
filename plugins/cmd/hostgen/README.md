@@ -248,16 +248,36 @@ def cache_get_string(key: str) -> CacheGetStringResult:
     ...
 ```
 
-#### Example Python Plugin Usage
+#### Python Plugin Usage
+
+> **Important:** Due to a limitation in extism-py, you cannot directly import the generated Python wrappers.
+> The `@extism.import_fn` decorators are only detected when defined in the plugin's main `__init__.py` file.
+> Generated Python files serve as **reference/template code** - copy the needed functions into your plugin.
+
+Example of copying the generated wrapper into your plugin's `__init__.py`:
 
 ```python
-from nd_host_subsonicapi import subsonicapi_call, HostFunctionError
+import extism
+import json
 
-try:
-    response = subsonicapi_call("getAlbumList2?type=random&size=10")
-    data = json.loads(response)
-except HostFunctionError as e:
-    print(f"API error: {e}")
+# Copy host function declarations from generated files into your __init__.py
+@extism.import_fn("extism:host/user", "subsonicapi_call")
+def _host_subsonicapi_call(input_ptr: extism.JsonI64) -> extism.JsonI64:
+    pass
+
+def subsonicapi_call(endpoint: str) -> str:
+    """Call the SubsonicAPI with the given endpoint."""
+    result = _host_subsonicapi_call(endpoint)
+    return result
+
+# Now use it in your plugin
+@extism.plugin_fn
+def my_plugin_function():
+    try:
+        response = subsonicapi_call("getAlbumList2?type=random&size=10")
+        data = json.loads(response)
+    except Exception as e:
+        extism.log(extism.LogLevel.Error, f"API error: {e}")
 ```
 
 ## Troubleshooting

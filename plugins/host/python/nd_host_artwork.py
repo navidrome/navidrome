@@ -3,8 +3,9 @@
 # This file contains client wrappers for the Artwork host service.
 # It is intended for use in Navidrome plugins built with extism-py.
 #
-# Usage:
-#   from nd_host_artwork import artwork_get_artist_url, artwork_get_album_url, artwork_get_track_url, artwork_get_playlist_url
+# IMPORTANT: Due to a limitation in extism-py, you cannot import this file directly.
+# The @extism.import_fn decorators are only detected when defined in the plugin's
+# main __init__.py file. Copy the needed functions from this file into your plugin.
 
 from dataclasses import dataclass
 from typing import Any
