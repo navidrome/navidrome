@@ -8,6 +8,7 @@ This folder contains example plugins for Navidrome that demonstrate how to build
 
 - [TinyGo](https://tinygo.org/getting-started/install/) (recommended) or Go 1.23+ (for Go plugins)
 - [extism-py](https://github.com/extism/python-pdk) (for Python plugins)
+- [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target (for Rust plugins)
 - [Extism CLI](https://extism.org/docs/install) (optional, for testing)
 
 ### Build all plugins
@@ -41,6 +42,7 @@ make clean
 | [discord-rich-presence](discord-rich-presence/) | Go       | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
 | [coverartarchive-py](coverartarchive-py/)       | Python   | Album cover art from Cover Art Archive (Python example)                 |
 | [nowplaying-py](nowplaying-py/)                 | Python   | Logs currently playing tracks using Scheduler and SubsonicAPI           |
+| [webhook-rs](webhook-rs/)                       | Rust     | Sends HTTP webhooks on scrobble events (Rust example)                   |
 
 ## Testing with Extism CLI
 
@@ -88,8 +90,8 @@ Agents = "lastfm,spotify,wikimedia"
 ## Creating Your Own Plugin
 
 The plugin system supports multiple languages. See the [minimal](minimal/) example for the simplest Go starting point, 
-[discord-rich-presence](discord-rich-presence/) for a more complete Go example with HTTP requests, or [coverartarchive-py](coverartarchive-py/) 
-for a Python example.
+[discord-rich-presence](discord-rich-presence/) for a more complete Go example with HTTP requests, [coverartarchive-py](coverartarchive-py/) 
+for a Python example, or [webhook-rs](webhook-rs/) for a Rust example.
 
 ### Bootstrapping a New Plugin
 Use the XTP CLI to bootstrap a new plugin from a schema:

@@ -5,6 +5,9 @@ PLUGINS := $(patsubst %/go.mod,%,$(wildcard */go.mod))
 # Auto-discover Python plugins (folders containing plugin/__init__.py)
 PYTHON_PLUGINS := $(patsubst %/plugin/__init__.py,%,$(wildcard */plugin/__init__.py))
 
+# Auto-discover Rust plugins (folders containing Cargo.toml)
+RUST_PLUGINS := $(patsubst %/Cargo.toml,%,$(wildcard */Cargo.toml))
+
 # Prefer tinygo if available, it produces smaller wasm binaries.
 TINYGO := $(shell command -v tinygo 2> /dev/null)
 EXTISM_PY := $(shell command -v extism-py 2> /dev/null)
@@ -19,21 +22,28 @@ help:
 	@echo "Available Python plugins:"
 	@$(foreach p,$(PYTHON_PLUGINS),echo "  $(p)";)
 	@echo ""
+	@echo "Available Rust plugins:"
+	@$(foreach p,$(RUST_PLUGINS),echo "  $(p)";)
+	@echo ""
 	@echo "Usage:"
 	@echo "  make <plugin>.wasm    Build a specific plugin (e.g., make $(firstword $(PLUGINS)).wasm)"
 	@echo "  make all              Build all plugins"
 	@echo "  make all-go           Build all Go plugins"
 	@echo "  make all-python       Build all Python plugins (requires extism-py)"
+	@echo "  make all-rust         Build all Rust plugins (requires cargo)"
 	@echo "  make clean            Remove all built plugins"
 
-all: all-go all-python
+all: all-go all-python all-rust
 
 all-go: $(PLUGINS:%=%.wasm)
 
 all-python: $(PYTHON_PLUGINS:%=%.wasm)
 
+all-rust: $(RUST_PLUGINS:%=%.wasm)
+
 clean:
-	rm -f $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm)
+	rm -f $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm) $(RUST_PLUGINS:%=%.wasm)
+	$(foreach p,$(RUST_PLUGINS),cd $(p) && cargo clean 2>/dev/null || true;)
 
 %.wasm: %/*.go %/go.mod
 ifdef TINYGO
@@ -50,3 +60,12 @@ ifndef EXTISM_PY
 	$(error extism-py is not installed. Install from https://github.com/extism/python-pdk)
 endif
 	cd $* && PYTHONPATH=plugin extism-py plugin/__init__.py -o ../$@
+
+# Rust plugin builds (generic rule for any folder with Cargo.toml)
+# Note: Rust crate names use underscores, but plugin names use hyphens
+# Uses rustup's toolchain to ensure wasm32-unknown-unknown target is available
+RUSTUP_CARGO := $(shell rustup which cargo 2>/dev/null || echo cargo)
+RUSTUP_RUSTC := $(shell rustup which rustc 2>/dev/null)
+$(RUST_PLUGINS:%=%.wasm): %.wasm: %/Cargo.toml $$(wildcard %/src/*.rs)
+	cd $* && CARGO_BUILD_RUSTC=$(RUSTUP_RUSTC) $(RUSTUP_CARGO) build --release --target wasm32-unknown-unknown
+	cp $*/target/wasm32-unknown-unknown/release/$(subst -,_,$*).wasm $@
