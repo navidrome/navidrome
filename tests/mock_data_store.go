@@ -243,7 +243,7 @@ func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
 		if db.RealDS != nil {
 			db.MockedPlugin = db.RealDS.Plugin(ctx)
 		} else {
-			db.MockedPlugin = struct{ model.PluginRepository }{}
+			db.MockedPlugin = CreateMockPluginRepo()
 		}
 	}
 	return db.MockedPlugin
