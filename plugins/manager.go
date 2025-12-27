@@ -26,6 +26,7 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -35,6 +36,10 @@ const (
 
 	// defaultTimeout is the default timeout for plugin function calls
 	defaultTimeout = 30 * time.Second
+
+	// maxPluginLoadConcurrency is the maximum number of plugins that can be
+	// compiled/loaded in parallel during startup
+	maxPluginLoadConcurrency = 3
 )
 
 // SubsonicRouter is an http.Handler that serves Subsonic API requests.
@@ -292,7 +297,7 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 	return info
 }
 
-// discoverPlugins scans the plugins folder and loads all .wasm files
+// discoverPlugins scans the plugins folder and loads all .wasm files in parallel
 func (m *Manager) discoverPlugins(folder string) error {
 	entries, err := os.ReadDir(folder)
 	if err != nil {
@@ -303,23 +308,61 @@ func (m *Manager) discoverPlugins(folder string) error {
 		return err
 	}
 
+	// Collect all plugin files to load
+	type pluginFile struct {
+		name string
+		path string
+	}
+	var pluginFiles []pluginFile
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".wasm") {
 			continue
 		}
-
-		wasmPath := filepath.Join(folder, entry.Name())
-		pluginName := strings.TrimSuffix(entry.Name(), ".wasm")
-
-		if err := m.loadPlugin(pluginName, wasmPath); err != nil {
-			log.Error(m.ctx, "Failed to load plugin", "plugin", pluginName, "path", wasmPath, err)
-			continue
-		}
-
-		log.Info(m.ctx, "Loaded plugin", "plugin", pluginName, "manifest", m.plugins[pluginName].manifest.Name, "capabilities", m.plugins[pluginName].capabilities)
+		pluginFiles = append(pluginFiles, pluginFile{
+			name: strings.TrimSuffix(entry.Name(), ".wasm"),
+			path: filepath.Join(folder, entry.Name()),
+		})
 	}
 
-	return nil
+	if len(pluginFiles) == 0 {
+		log.Trace(m.ctx, "No plugins found", "folder", folder)
+		return nil
+	}
+
+	g := errgroup.Group{}
+	g.SetLimit(maxPluginLoadConcurrency)
+
+	for _, pf := range pluginFiles {
+		g.Go(func() error {
+			start := time.Now()
+			log.Debug(m.ctx, "Loading plugin", "plugin", pf.name, "path", pf.path)
+			defer func() {
+				log.Debug(m.ctx, "Finished loading plugin", "plugin", pf.name, "duration", time.Since(start))
+			}()
+
+			// Panic recovery to prevent one plugin from crashing the loading process
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error(m.ctx, "Panic while loading plugin", "plugin", pf.name, "panic", r)
+				}
+			}()
+
+			if err := m.loadPlugin(pf.name, pf.path); err != nil {
+				log.Error(m.ctx, "Failed to load plugin", "plugin", pf.name, "path", pf.path, err)
+				return nil
+			}
+
+			m.mu.RLock()
+			p := m.plugins[pf.name]
+			m.mu.RUnlock()
+			if p != nil {
+				log.Info(m.ctx, "Loaded plugin", "plugin", pf.name, "manifest", p.manifest.Name, "capabilities", p.capabilities)
+			}
+			return nil
+		})
+	}
+
+	return g.Wait()
 }
 
 // loadPlugin loads a single plugin from a wasm file
