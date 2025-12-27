@@ -491,11 +491,13 @@ func (m *Manager) loadPlugin(name, wasmPath string) error {
 		hostFunctions = append(hostFunctions, host.RegisterCacheHostFunctions(service)...)
 	}
 
-	// Check if recompilation is needed (AllowedHosts or host functions)
+	// Check if the plugin needs to be recompiled with real host functions
 	needsRecompile := len(pluginManifest.AllowedHosts) > 0 || len(hostFunctions) > 0
 
-	// Recompile if needed
+	// Recompile if needed. It is actually not a "recompile" since the first compilation
+	// should be cached by wazero. We just need to do it this way to provide the real host functions.
 	if needsRecompile {
+		log.Trace(m.ctx, "Recompiling plugin", "plugin", name)
 		compiled.Close(m.ctx)
 		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
 		if err != nil {

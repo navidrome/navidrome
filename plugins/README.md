@@ -236,11 +236,11 @@ The output is optional on success. On error, return:
 
 To schedule tasks, plugins call these host functions (provided by Navidrome):
 
-| Host Function                | Parameters                                    | Description                              |
-|------------------------------|-----------------------------------------------|------------------------------------------|
-| `scheduler_scheduleonetime`  | `delay_seconds, payload, schedule_id`         | Schedule a one-time callback             |
-| `scheduler_schedulerecurring`| `cron_expression, payload, schedule_id`       | Schedule a recurring callback            |
-| `scheduler_cancelschedule`   | `schedule_id`                                 | Cancel a scheduled task                  |
+| Host Function                 | Parameters                              | Description                   |
+|-------------------------------|-----------------------------------------|-------------------------------|
+| `scheduler_scheduleonetime`   | `delay_seconds, payload, schedule_id`   | Schedule a one-time callback  |
+| `scheduler_schedulerecurring` | `cron_expression, payload, schedule_id` | Schedule a recurring callback |
+| `scheduler_cancelschedule`    | `schedule_id`                           | Cancel a scheduled task       |
 
 #### Manifest Permissions
 
