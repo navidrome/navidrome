@@ -15,6 +15,7 @@ Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugi
   - [Scheduler](#scheduler)
   - [Cache](#cache)
   - [WebSocket](#websocket)
+  - [Library](#library)
   - [Artwork](#artwork)
   - [SubsonicAPI](#subsonicapi)
 - [Configuration](#configuration)
@@ -404,6 +405,100 @@ Establish persistent WebSocket connections to external services.
 | `nd_websocket_on_error`          | `{connection_id, error}`        | Connection error                 |
 | `nd_websocket_on_close`          | `{connection_id, code, reason}` | Connection closed                |
 
+### Library
+
+Access music library metadata and optionally read files from library directories.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "library": {
+      "reason": "Access library metadata for analysis",
+      "filesystem": false
+    }
+  }
+}
+```
+
+- `filesystem` – Set to `true` to enable read-only access to library directories (default: `false`)
+
+**Host functions:**
+
+| Function                   | Parameters | Returns                   |
+|----------------------------|------------|---------------------------|
+| `library_getlibrary`       | `id`       | Library metadata          |
+| `library_getalllibraries`  | (none)     | Array of library metadata |
+
+**Library metadata:**
+
+```json
+{
+  "id": 1,
+  "name": "My Music",
+  "path": "/music/collection",
+  "mountPoint": "/libraries/1",
+  "lastScanAt": 1703270400,
+  "totalSongs": 5000,
+  "totalAlbums": 500,
+  "totalArtists": 200,
+  "totalSize": 50000000000,
+  "totalDuration": 1500000.5
+}
+```
+
+> **Note:** The `path` and `mountPoint` fields are only included when `filesystem: true` is set in the permission.
+
+**Filesystem access:**
+
+When `filesystem: true`, your plugin can read files from library directories via WASI filesystem APIs. Each library is mounted at `/libraries/<id>`:
+
+```go
+import "os"
+
+// Read a file from library 1
+content, err := os.ReadFile("/libraries/1/Artist/Album/track.mp3")
+
+// List directory contents
+entries, err := os.ReadDir("/libraries/1/Artist")
+```
+
+> **Security:** Filesystem access is read-only and restricted to configured library paths only. Plugins cannot access other parts of the host filesystem.
+
+**Usage (with generated SDK):**
+
+Copy `plugins/host/go/nd_host_library.go` to your plugin. You'll also need to add the `Library` struct definition:
+
+```go
+// Library represents a music library with metadata.
+type Library struct {
+    ID            int32   `json:"id"`
+    Name          string  `json:"name"`
+    Path          string  `json:"path,omitempty"`
+    MountPoint    string  `json:"mountPoint,omitempty"`
+    LastScanAt    int64   `json:"lastScanAt"`
+    TotalSongs    int32   `json:"totalSongs"`
+    TotalAlbums   int32   `json:"totalAlbums"`
+    TotalArtists  int32   `json:"totalArtists"`
+    TotalSize     int64   `json:"totalSize"`
+    TotalDuration float64 `json:"totalDuration"`
+}
+
+// Get a specific library
+resp, err := LibraryGetLibrary(1)
+if err != nil {
+    // Handle error
+}
+library := resp.Result
+
+// Get all libraries
+resp, err := LibraryGetAllLibraries()
+for _, lib := range resp.Result {
+    fmt.Printf("Library: %s (%d songs)\n", lib.Name, lib.TotalSongs)
+}
+```
+
 ### Artwork
 
 Generate public URLs for Navidrome artwork (albums, artists, tracks, playlists).
@@ -565,7 +660,7 @@ See [examples/](examples/) for complete working plugins:
 Plugins run in a secure WebAssembly sandbox:
 
 1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
-2. **No File System** – Plugins cannot access the file system
+2. **Limited File System** – Plugins can only access library directories when explicitly granted the `library.filesystem` permission, and access is read-only
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
