@@ -63,9 +63,10 @@ endif
 
 # Rust plugin builds (generic rule for any folder with Cargo.toml)
 # Note: Rust crate names use underscores, but plugin names use hyphens
-# Uses rustup's toolchain to ensure wasm32-unknown-unknown target is available
+# Uses the target specified in each plugin's .cargo/config.toml (defaults to wasm32-unknown-unknown)
 RUSTUP_CARGO := $(shell rustup which cargo 2>/dev/null || echo cargo)
 RUSTUP_RUSTC := $(shell rustup which rustc 2>/dev/null)
 $(RUST_PLUGINS:%=%.wasm): %.wasm: %/Cargo.toml $$(wildcard %/src/*.rs)
-	cd $* && CARGO_BUILD_RUSTC=$(RUSTUP_RUSTC) $(RUSTUP_CARGO) build --release --target wasm32-unknown-unknown
-	cp $*/target/wasm32-unknown-unknown/release/$(subst -,_,$*).wasm $@
+	$(eval RUST_TARGET := $(shell grep -A1 '^\[build\]' $*/.cargo/config.toml 2>/dev/null | grep 'target' | sed 's/.*= *"\([^"]*\)".*/\1/' || echo "wasm32-unknown-unknown"))
+	cd $* && CARGO_BUILD_RUSTC=$(RUSTUP_RUSTC) $(RUSTUP_CARGO) build --release --target $(RUST_TARGET)
+	cp $*/target/$(RUST_TARGET)/release/$(subst -,_,$*).wasm $@
