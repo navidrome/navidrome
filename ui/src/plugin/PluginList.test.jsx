@@ -11,18 +11,17 @@ vi.mock('react-admin', async () => {
     useNotify: vi.fn(() => vi.fn()),
     useRefresh: vi.fn(() => vi.fn()),
     useTranslate: vi.fn(() => (key) => key),
+    useResourceContext: vi.fn(() => 'plugin'),
     useRecordContext: vi.fn(() => ({
       id: 'test-plugin',
       manifest: JSON.stringify({
+        name: 'Test Plugin',
         version: '1.0.0',
         description: 'Test plugin',
       }),
       enabled: true,
       lastError: null,
     })),
-    FunctionField: ({ render, label }) => (
-      <span data-testid={`field-${label}`}>{render && render()}</span>
-    ),
     Datagrid: ({ children }) => (
       <table data-testid="datagrid">{children}</table>
     ),
@@ -53,6 +52,11 @@ vi.mock('@material-ui/core', async () => {
     useMediaQuery: vi.fn(() => false),
   }
 })
+
+// Mock ToggleEnabledSwitch
+vi.mock('./ToggleEnabledSwitch', () => ({
+  default: () => <span data-testid="toggle-switch" />,
+}))
 
 import PluginList from './PluginList'
 
