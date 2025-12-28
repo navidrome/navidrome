@@ -129,6 +129,5 @@ func getPluginManager() *plugins.Manager {
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
-	manager.SetDataStore(CreateDataStore())
 	return manager
 }

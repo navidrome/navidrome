@@ -136,8 +136,8 @@ var _ = Describe("Plugin Watcher", func() {
 
 				autoReloadManager := &Manager{
 					plugins: make(map[string]*plugin),
+					ds:      dataStore,
 				}
-				autoReloadManager.SetDataStore(dataStore)
 				err := autoReloadManager.Start(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(autoReloadManager.Stop)

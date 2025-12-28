@@ -114,8 +114,8 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	// Create and start manager
 	manager := &Manager{
 		plugins: make(map[string]*plugin),
+		ds:      dataStore,
 	}
-	manager.SetDataStore(dataStore)
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
 
