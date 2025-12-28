@@ -162,6 +162,7 @@ const PluginList = (props) => {
       ) : (
         <Datagrid rowClick="show">
           <TextField source="id" />
+          <ManifestField source="name" />
           {!isXsmall && <ManifestField source="description" />}
           <ManifestField source="version" />
           <ToggleEnabledInput source={'enabled'} />
