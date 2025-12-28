@@ -1,48 +1,102 @@
 # Navidrome Plugin System
 
-Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugins are loaded from the configured plugins folder and can provide additional metadata agents for fetching artist/album information.
+Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugins run in a secure sandbox and can provide metadata agents, scrobblers, and other integrations through host services like scheduling, caching, WebSockets, and Subsonic API access.
 
-## Configuration
+## Table of Contents
 
-Enable plugins in your `navidrome.toml`:
+- [Quick Start](#quick-start)
+- [Plugin Basics](#plugin-basics)
+- [Capabilities](#capabilities)
+  - [MetadataAgent](#metadataagent)
+  - [Scrobbler](#scrobbler)
+  - [Lifecycle](#lifecycle)
+- [Host Services](#host-services)
+  - [HTTP Requests](#http-requests)
+  - [Scheduler](#scheduler)
+  - [Cache](#cache)
+  - [WebSocket](#websocket)
+  - [Artwork](#artwork)
+  - [SubsonicAPI](#subsonicapi)
+- [Configuration](#configuration)
+- [Building Plugins](#building-plugins)
+- [Examples](#examples)
+- [Security](#security)
+
+---
+
+## Quick Start
+
+### 1. Create a minimal plugin
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "github.com/extism/go-pdk"
+)
+
+//go:wasmexport nd_manifest
+func ndManifest() int32 {
+    manifest := map[string]string{
+        "name":    "My Plugin",
+        "author":  "Your Name",
+        "version": "1.0.0",
+    }
+    out, _ := json.Marshal(manifest)
+    pdk.Output(out)
+    return 0
+}
+
+func main() {}
+```
+
+### 2. Build with TinyGo
+
+```bash
+tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+```
+
+### 3. Install
+
+Copy `my-plugin.wasm` to your Navidrome plugins folder and enable plugins in your config:
 
 ```toml
 [Plugins]
 Enabled = true
-Folder = "/path/to/plugins"   # Default: DataFolder/plugins
-
-# Plugin-specific configuration (passed to plugins via Extism Config)
-[PluginConfig.my-plugin]
-api_key = "your-api-key"
-custom_option = "value"
+Folder = "/path/to/plugins"
 ```
 
-## Plugin Structure
+---
+
+## Plugin Basics
+
+### What is a Plugin?
 
 A Navidrome plugin is a WebAssembly (`.wasm`) file that:
 
-1. **Exports `nd_manifest`**: Returns a JSON manifest describing the plugin
-2. **Exports capability functions**: Implements the functions for its declared capabilities
+1. **Exports `nd_manifest`** – Returns JSON describing the plugin
+2. **Exports capability functions** – Implements one or more capabilities
 
 ### Plugin Naming
 
-Plugins are identified by their **filename** (without `.wasm` extension), not the manifest `name` field. This allows:
-- Users to resolve name conflicts by renaming files
-- Multiple instances of the same plugin with different names/configs
-- Simple, predictable naming
+Plugins are identified by their **filename** (without `.wasm` extension), not the manifest `name` field:
 
-Example: `my-musicbrainz.wasm` → plugin name is `my-musicbrainz`
+- `my-plugin.wasm` → plugin ID is `my-plugin`
+- The manifest `name` is the display name shown in the UI
 
-### Plugin Manifest
+This allows users to have multiple instances of the same plugin with different configs by renaming the files.
 
-Plugins must export an `nd_manifest` function that returns JSON:
+### The Manifest
+
+Every plugin must export `nd_manifest` returning JSON:
 
 ```json
 {
   "name": "My Plugin",
   "author": "Author Name",
   "version": "1.0.0",
-  "description": "Plugin description",
+  "description": "What this plugin does",
   "website": "https://example.com",
   "permissions": {
     "http": {
@@ -53,15 +107,19 @@ Plugins must export an `nd_manifest` function that returns JSON:
 }
 ```
 
-**Note**: Capabilities are auto-detected based on which functions the plugin exports. You don't need to declare them in the manifest.
+**Required fields:** `name`, `author`, `version`
+
+**Capabilities are auto-detected** from which functions your plugin exports. You don't declare them in the manifest.
+
+---
 
 ## Capabilities
 
-Capabilities are automatically detected by examining which functions a plugin exports. There's no need to declare capabilities in the manifest.
+Capabilities define what your plugin can do. They're automatically detected based on which functions you export.
 
 ### MetadataAgent
 
-Provides artist and album metadata. A plugin has this capability if it exports one or more of these functions:
+Provides artist and album metadata. Export one or more of these functions:
 
 | Function                  | Input                      | Output                           | Description          |
 |---------------------------|----------------------------|----------------------------------|----------------------|
@@ -74,357 +132,13 @@ Provides artist and album metadata. A plugin has this capability if it exports o
 | `nd_get_album_info`       | `{name, artist, mbid?}`    | `{name, mbid, description, url}` | Get album info       |
 | `nd_get_album_images`     | `{name, artist, mbid?}`    | `{images: [{url, size}]}`        | Get album images     |
 
-### Scrobbler
-
-Provides scrobbling (listening history) integration with external services. A plugin has this capability if it exports one or more of these functions:
-
-| Function                     | Input                 | Output                  | Description                   |
-|------------------------------|-----------------------|-------------------------|-------------------------------|
-| `nd_scrobbler_is_authorized` | `{user_id, username}` | `{authorized}`          | Check if user is authorized   |
-| `nd_scrobbler_now_playing`   | See NowPlaying Input  | `{error?, error_type?}` | Send now playing notification |
-| `nd_scrobbler_scrobble`      | See Scrobble Input    | `{error?, error_type?}` | Submit a scrobble             |
-
-#### NowPlaying Input
-
-```json
-{
-  "user_id": "string",
-  "username": "string",
-  "track": {
-    "id": "string",
-    "title": "string",
-    "album": "string",
-    "artist": "string",
-    "album_artist": "string",
-    "duration": 180.5,
-    "track_number": 1,
-    "disc_number": 1,
-    "mbz_recording_id": "string",
-    "mbz_album_id": "string",
-    "mbz_artist_id": "string",
-    "mbz_release_group_id": "string",
-    "mbz_album_artist_id": "string",
-    "mbz_release_track_id": "string"
-  },
-  "position": 30
-}
-```
-
-#### Scrobble Input
-
-```json
-{
-  "user_id": "string",
-  "username": "string",
-  "track": { /* same as NowPlaying */ },
-  "timestamp": 1703270400
-}
-```
-
-#### Scrobbler Output
-
-The output for `nd_scrobbler_now_playing` and `nd_scrobbler_scrobble` is **optional on success**. If there is no error, the plugin can return nothing (empty output).
-
-On error, return:
-
-```json
-{
-  "error": "error message",
-  "error_type": "not_authorized|retry_later|unrecoverable"
-}
-```
-
-**Error types:**
-- `not_authorized`: User needs to re-authorize with the scrobbling service
-- `retry_later`: Temporary failure, Navidrome will retry the scrobble later
-- `unrecoverable`: Permanent failure, scrobble will be discarded
-
-#### Example Scrobbler Plugin
+**Example:**
 
 ```go
-package main
-
-import (
-    "encoding/json"
-    "github.com/extism/go-pdk"
-)
-
-type AuthInput struct {
-    UserID   string `json:"user_id"`
-    Username string `json:"username"`
-}
-
-type AuthOutput struct {
-    Authorized bool `json:"authorized"`
-}
-
-type ScrobblerOutput struct {
-    Error     string `json:"error,omitempty"`
-    ErrorType string `json:"error_type,omitempty"`
-}
-
-//go:wasmexport nd_scrobbler_is_authorized
-func ndScrobblerIsAuthorized() int32 {
-    var input AuthInput
-    if err := pdk.InputJSON(&input); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
-    
-    // Check if user is authorized with your scrobbling service
-    // This could check a session key stored in plugin config
-    sessionKey, hasKey := pdk.GetConfig("session_key_" + input.UserID)
-    
-    output := AuthOutput{Authorized: hasKey && sessionKey != ""}
-    if err := pdk.OutputJSON(output); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
-    return 0
-}
-
-//go:wasmexport nd_scrobbler_scrobble
-func ndScrobblerScrobble() int32 {
-    // Read input, send to external service...
-    
-    output := ScrobblerOutput{ErrorType: "none"}
-    if err := pdk.OutputJSON(output); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
-    return 0
-}
-
-func main() {}
-```
-
-Scrobbler plugins are automatically discovered and used by Navidrome's PlayTracker alongside built-in scrobblers (Last.fm, ListenBrainz).
-
-### Scheduler
-
-Allows plugins to schedule one-time or recurring tasks. Plugins that use the scheduler host service must export a callback function to receive scheduled events.
-
-| Function                | Input                                        | Output            | Description                        |
-|-------------------------|----------------------------------------------|-------------------|------------------------------------||
-| `nd_scheduler_callback` | `{schedule_id, payload, is_recurring}`       | `{error?}`        | Called when a scheduled task fires |
-
-#### Scheduler Callback Input
-
-```json
-{
-  "schedule_id": "string",
-  "payload": "string",
-  "is_recurring": true
-}
-```
-
-- `schedule_id`: The unique identifier for the scheduled task
-- `payload`: Data passed when the task was scheduled
-- `is_recurring`: `true` for recurring schedules, `false` for one-time
-
-#### Scheduler Callback Output
-
-The output is optional on success. On error, return:
-
-```json
-{
-  "error": "error message"
-}
-```
-
-#### Using the Scheduler Host Service
-
-To schedule tasks, plugins call these host functions (provided by Navidrome):
-
-| Host Function                 | Parameters                              | Description                   |
-|-------------------------------|-----------------------------------------|-------------------------------|
-| `scheduler_scheduleonetime`   | `delay_seconds, payload, schedule_id`   | Schedule a one-time callback  |
-| `scheduler_schedulerecurring` | `cron_expression, payload, schedule_id` | Schedule a recurring callback |
-| `scheduler_cancelschedule`    | `schedule_id`                           | Cancel a scheduled task       |
-
-#### Manifest Permissions
-
-Plugins using the scheduler must declare the permission in their manifest:
-
-```json
-{
-  "permissions": {
-    "scheduler": {
-      "reason": "Schedule periodic metadata refresh"
-    }
-  }
-}
-```
-
-#### Example Scheduler Plugin
-
-```go
-package main
-
-import (
-    "github.com/extism/go-pdk"
-)
-
-type SchedulerCallbackInput struct {
-    ScheduleId  string `json:"schedule_id"`
-    Payload     string `json:"payload"`
-    IsRecurring bool   `json:"is_recurring"`
-}
-
-type SchedulerCallbackOutput struct {
-    Error *string `json:"error,omitempty"`
-}
-
-//go:wasmexport nd_scheduler_callback
-func ndSchedulerCallback() int32 {
-    var input SchedulerCallbackInput
-    if err := pdk.InputJSON(&input); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
-    
-    // Handle the scheduled task based on payload
-    pdk.Log(pdk.LogInfo, "Task fired: " + input.ScheduleId)
-    
-    // Return success (empty output)
-    output := SchedulerCallbackOutput{}
-    if err := pdk.OutputJSON(output); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
-    return 0
-}
-
-func main() {}
-```
-
-To schedule a task from your plugin, use the generated SDK functions (see `plugins/host/go/nd_host_scheduler.go`).
-
-### Cache
-
-Allows plugins to store and retrieve data in an in-memory TTL-based cache. This is useful for caching API responses, storing session tokens, or persisting state across plugin invocations.
-
-**Important:** The cache is in-memory only and will be lost on server restart. Plugins should handle cache misses gracefully.
-
-#### Using the Cache Host Service
-
-To use the cache, plugins call these host functions (provided by Navidrome):
-
-| Host Function        | Parameters                     | Description                                    |
-|----------------------|--------------------------------|------------------------------------------------|
-| `cache_setstring`    | `key, value, ttl_seconds`      | Store a string value                           |
-| `cache_getstring`    | `key`                          | Retrieve a string value                        |
-| `cache_setint`       | `key, value, ttl_seconds`      | Store an integer value                         |
-| `cache_getint`       | `key`                          | Retrieve an integer value                      |
-| `cache_setfloat`     | `key, value, ttl_seconds`      | Store a float value                            |
-| `cache_getfloat`     | `key`                          | Retrieve a float value                         |
-| `cache_setbytes`     | `key, value, ttl_seconds`      | Store a byte slice                             |
-| `cache_getbytes`     | `key`                          | Retrieve a byte slice                          |
-| `cache_has`          | `key`                          | Check if a key exists                          |
-| `cache_remove`       | `key`                          | Delete a cached value                          |
-
-**TTL (Time-to-Live):** Pass `0` to use the default TTL of 24 hours, or specify seconds.
-
-**Key Isolation:** Each plugin's cache keys are automatically namespaced, so different plugins can use the same key names without conflicts.
-
-#### Get Response Format
-
-Get operations return a JSON response:
-
-```json
-{
-  "value": "...",
-  "exists": true,
-  "error": ""
-}
-```
-
-- `value`: The cached value (type matches the operation: string, int64, float64, or base64-encoded bytes)
-- `exists`: `true` if the key was found and the type matched, `false` otherwise
-- `error`: Error message if something went wrong
-
-#### Manifest Permissions
-
-Plugins using the cache must declare the permission in their manifest:
-
-```json
-{
-  "permissions": {
-    "cache": {
-      "reason": "Cache API responses to reduce external requests"
-    }
-  }
-}
-```
-
-#### Example Cache Usage
-
-```go
-package main
-
-import (
-    "github.com/extism/go-pdk"
-)
-
-// Import the generated cache SDK (from plugins/host/go/nd_host_cache.go)
-
-func fetchWithCache(key string) (string, error) {
-    // Try to get from cache first
-    resp, err := CacheGetString(key)
-    if err != nil {
-        return "", err
-    }
-    if resp.Exists {
-        return resp.Value, nil
-    }
-    
-    // Cache miss - fetch from external API
-    value := fetchFromAPI()
-    
-    // Cache for 1 hour (3600 seconds)
-    CacheSetString(key, value, 3600)
-    
-    return value, nil
-}
-```
-
-To use the cache from your plugin, copy the generated SDK file `plugins/host/go/nd_host_cache.go` to your plugin directory.
-
-## Developing Plugins
-
-Plugins can be written in any language that compiles to WebAssembly. We recommend using the [Extism PDK](https://extism.org/docs/category/write-a-plug-in) for your language.
-
-### Go Example
-
-```go
-package main
-
-import (
-    "encoding/json"
-    "github.com/extism/go-pdk"
-)
-
-type Manifest struct {
-    Name    string `json:"name"`
-    Author  string `json:"author"`
-    Version string `json:"version"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-    manifest := Manifest{
-        Name:    "My Plugin",
-        Author:  "Me",
-        Version: "1.0.0",
-    }
-    out, _ := json.Marshal(manifest)
-    pdk.Output(out)
-    return 0
-}
-
 type ArtistInput struct {
     ID   string `json:"id"`
     Name string `json:"name"`
+    MBID string `json:"mbid,omitempty"`
 }
 
 type BiographyOutput struct {
@@ -438,47 +152,339 @@ func ndGetArtistBiography() int32 {
         pdk.SetError(err)
         return 1
     }
-    
+
     // Fetch biography from your data source...
     output := BiographyOutput{Biography: "Artist biography..."}
-    if err := pdk.OutputJSON(output); err != nil {
-        pdk.SetError(err)
-        return 1
-    }
+    pdk.OutputJSON(output)
     return 0
 }
-
-func main() {}
 ```
 
-Build with TinyGo:
-```bash
-tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
+To use the plugin as a metadata agent, add it to your config:
+
+```toml
+Agents = "lastfm,spotify,my-plugin"
 ```
 
-### Using HTTP
+### Scrobbler
 
-Plugins can make HTTP requests using the Extism PDK. The host controls which hosts are allowed via the `permissions.http.allowedHosts` manifest field.
+Integrates with external scrobbling services. Export one or more of these functions:
+
+| Function                     | Input                 | Output                  | Description                 |
+|------------------------------|-----------------------|-------------------------|-----------------------------|
+| `nd_scrobbler_is_authorized` | `{user_id, username}` | `{authorized}`          | Check if user is authorized |
+| `nd_scrobbler_now_playing`   | See below             | `{error?, error_type?}` | Send now playing            |
+| `nd_scrobbler_scrobble`      | See below             | `{error?, error_type?}` | Submit a scrobble           |
+
+**NowPlaying/Scrobble Input:**
+
+```json
+{
+  "user_id": "abc123",
+  "username": "john",
+  "track": {
+    "id": "track-id",
+    "title": "Song Title",
+    "album": "Album Name",
+    "artist": "Artist Name",
+    "album_artist": "Album Artist",
+    "duration": 180.5,
+    "track_number": 1,
+    "disc_number": 1,
+    "mbz_recording_id": "...",
+    "mbz_album_id": "...",
+    "mbz_artist_id": "..."
+  },
+  "timestamp": 1703270400
+}
+```
+
+**Error Output (on failure):**
+
+```json
+{
+  "error": "error message",
+  "error_type": "not_authorized|retry_later|unrecoverable"
+}
+```
+
+- `not_authorized` – User needs to re-authorize
+- `retry_later` – Temporary failure, Navidrome will retry
+- `unrecoverable` – Permanent failure, scrobble discarded
+
+On success, return empty JSON `{}` or omit output entirely.
+
+### Lifecycle
+
+Optional initialization callback. Export this function to run code when your plugin loads:
+
+| Function     | Input | Output     | Description                    |
+|--------------|-------|------------|--------------------------------|
+| `nd_on_init` | `{}`  | `{error?}` | Called once after plugin loads |
+
+Useful for initializing connections, scheduling recurring tasks, etc.
+
+---
+
+## Host Services
+
+Host services let your plugin call back into Navidrome for advanced functionality. Each service requires declaring the permission in your manifest.
+
+### HTTP Requests
+
+Make HTTP requests using the [Extism PDK](https://extism.org/docs/concepts/pdk). Navidrome controls which hosts are accessible.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "http": {
+      "reason": "Fetch metadata from external API",
+      "allowedHosts": ["api.example.com", "*.musicbrainz.org"]
+    }
+  }
+}
+```
+
+**Usage:**
 
 ```go
-//go:wasmexport nd_get_artist_biography
-func ndGetArtistBiography() int32 {
-    var input ArtistInput
-    pdk.InputJSON(&input)
-    
-    req := pdk.NewHTTPRequest(pdk.MethodGet, 
-        "https://api.example.com/artist/" + input.Name)
-    resp := req.Send()
-    
+req := pdk.NewHTTPRequest(pdk.MethodGet, "https://api.example.com/data")
+req.SetHeader("Authorization", "Bearer " + apiKey)
+resp := req.Send()
+
+if resp.Status() == 200 {
+    data := resp.Body()
     // Process response...
-    pdk.Output(resp.Body())
+}
+```
+
+### Scheduler
+
+Schedule one-time or recurring tasks. Your plugin must export `nd_scheduler_callback` to receive events.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "scheduler": {
+      "reason": "Schedule periodic metadata refresh"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function                      | Parameters                               | Description                 |
+|-------------------------------|------------------------------------------|-----------------------------|
+| `scheduler_scheduleonetime`   | `delay_seconds, payload, schedule_id?`   | Schedule one-time callback  |
+| `scheduler_schedulerecurring` | `cron_expression, payload, schedule_id?` | Schedule recurring callback |
+| `scheduler_cancelschedule`    | `schedule_id`                            | Cancel a scheduled task     |
+
+**Callback function:**
+
+```go
+type SchedulerCallbackInput struct {
+    ScheduleID  string `json:"schedule_id"`
+    Payload     string `json:"payload"`
+    IsRecurring bool   `json:"is_recurring"`
+}
+
+//go:wasmexport nd_scheduler_callback
+func ndSchedulerCallback() int32 {
+    var input SchedulerCallbackInput
+    pdk.InputJSON(&input)
+
+    // Handle the scheduled task based on payload
+    pdk.Log(pdk.LogInfo, "Task fired: " + input.ScheduleID)
     return 0
 }
 ```
 
-### Using Configuration
+**Scheduling tasks (using generated SDK):**
 
-Plugins can read configuration values passed from `navidrome.toml`:
+Copy `plugins/host/go/nd_host_scheduler.go` to your plugin and use:
+
+```go
+// Schedule one-time task in 60 seconds
+scheduleID, err := SchedulerScheduleOneTime(60, "my-payload", "")
+
+// Schedule recurring task with cron expression (every hour)
+scheduleID, err := SchedulerScheduleRecurring("0 * * * *", "hourly-task", "")
+
+// Cancel a task
+err := SchedulerCancelSchedule(scheduleID)
+```
+
+### Cache
+
+Store and retrieve data in an in-memory TTL-based cache. Each plugin has its own isolated namespace.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "cache": {
+      "reason": "Cache API responses to reduce external requests"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function          | Parameters                | Description           |
+|-------------------|---------------------------|-----------------------|
+| `cache_setstring` | `key, value, ttl_seconds` | Store a string        |
+| `cache_getstring` | `key`                     | Get a string          |
+| `cache_setint`    | `key, value, ttl_seconds` | Store an integer      |
+| `cache_getint`    | `key`                     | Get an integer        |
+| `cache_setfloat`  | `key, value, ttl_seconds` | Store a float         |
+| `cache_getfloat`  | `key`                     | Get a float           |
+| `cache_setbytes`  | `key, value, ttl_seconds` | Store bytes           |
+| `cache_getbytes`  | `key`                     | Get bytes             |
+| `cache_has`       | `key`                     | Check if key exists   |
+| `cache_remove`    | `key`                     | Delete a cached value |
+
+**TTL:** Pass `0` for the default (24 hours), or specify seconds.
+
+**Usage (with generated SDK):**
+
+Copy `plugins/host/go/nd_host_cache.go` to your plugin:
+
+```go
+// Cache a value for 1 hour
+CacheSetString("api-response", responseData, 3600)
+
+// Retrieve (check Exists before using Value)
+result, err := CacheGetString("api-response")
+if result.Exists {
+    data := result.Value
+}
+```
+
+> **Note:** Cache is in-memory only and cleared on server restart.
+
+### WebSocket
+
+Establish persistent WebSocket connections to external services.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "websocket": {
+      "reason": "Real-time connection to service",
+      "allowedHosts": ["gateway.example.com", "*.discord.gg"]
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function               | Parameters                      | Description       |
+|------------------------|---------------------------------|-------------------|
+| `websocket_connect`    | `url, headers?, connection_id?` | Open a connection |
+| `websocket_sendtext`   | `connection_id, message`        | Send text message |
+| `websocket_sendbinary` | `connection_id, data`           | Send binary data  |
+| `websocket_close`      | `connection_id, code?, reason?` | Close connection  |
+
+**Callback functions (export these to receive events):**
+
+| Function                         | Input                           | Description                      |
+|----------------------------------|---------------------------------|----------------------------------|
+| `nd_websocket_on_text_message`   | `{connection_id, message}`      | Text message received            |
+| `nd_websocket_on_binary_message` | `{connection_id, data}`         | Binary message received (base64) |
+| `nd_websocket_on_error`          | `{connection_id, error}`        | Connection error                 |
+| `nd_websocket_on_close`          | `{connection_id, code, reason}` | Connection closed                |
+
+### Artwork
+
+Generate public URLs for Navidrome artwork (albums, artists, tracks, playlists).
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "artwork": {
+      "reason": "Get artwork URLs for display"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function                 | Parameters | Returns     |
+|--------------------------|------------|-------------|
+| `artwork_getartisturl`   | `id, size` | Artwork URL |
+| `artwork_getalbumurl`    | `id, size` | Artwork URL |
+| `artwork_gettrackurl`    | `id, size` | Artwork URL |
+| `artwork_getplaylisturl` | `id, size` | Artwork URL |
+
+### SubsonicAPI
+
+Call Navidrome's Subsonic API internally (no network round-trip).
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "subsonicapi": {
+      "reason": "Access library data",
+      "allowedUsernames": ["user1", "user2"],
+      "allowAdmins": false
+    }
+  }
+}
+```
+
+- `allowedUsernames` – Restrict which users the plugin can act as (empty = any user)
+- `allowAdmins` – Whether plugin can call API as admin users (default: false)
+
+**Host function:**
+
+| Function           | Parameters | Returns       |
+|--------------------|------------|---------------|
+| `subsonicapi_call` | `uri`      | JSON response |
+
+**Usage:**
+
+```go
+// The URI must include the 'u' parameter with the username
+response, err := SubsonicAPICall("getAlbumList2?type=random&size=10&u=username")
+```
+
+---
+
+## Configuration
+
+### Server Configuration
+
+Enable plugins in `navidrome.toml`:
+
+```toml
+[Plugins]
+Enabled = true
+Folder = "/path/to/plugins"   # Default: DataFolder/plugins
+AutoReload = true             # Auto-reload on file changes (dev mode)
+LogLevel = "debug"            # Plugin-specific log level
+CacheSize = "100MB"           # Compilation cache size limit
+```
+
+### Plugin Configuration
+
+Plugin configuration is managed through the Navidrome web UI. Navigate to the Plugins page, select a plugin, and edit its configuration as a JSON object with string key-value pairs.
+
+Access configuration values in your plugin:
 
 ```go
 apiKey, ok := pdk.GetConfig("api_key")
@@ -488,178 +494,97 @@ if !ok {
 }
 ```
 
-## Runtime Loading
+---
 
-Navidrome supports loading, unloading, and reloading plugins at runtime without restarting the server.
+## Building Plugins
 
-### Auto-Reload (File Watcher)
+### Supported Languages
 
-Enable automatic plugin reloading when files change:
+Plugins can be written in any language that compiles to WebAssembly. We recommend:
 
-```toml
-[Plugins]
-Enabled = true
-AutoReload = true   # Default: false
-```
+- **Go** – Best experience with TinyGo
+- **Rust** – Excellent performance
+- **Python** – Via extism-py (experimental)
+- **TypeScript** – Via extism-js
 
-When enabled, Navidrome watches the plugins folder and automatically:
-- **Loads** new `.wasm` files when they are created
-- **Reloads** plugins when their `.wasm` file is modified  
-- **Unloads** plugins when their `.wasm` file is removed
-
-This is especially useful during plugin development - just rebuild your plugin and it will be automatically reloaded.
-
-### Programmatic API
-
-The plugin Manager exposes methods for runtime plugin management:
-
-```go
-manager := plugins.GetManager()
-
-// Load a new plugin (file must exist at <plugins_folder>/<name>.wasm)
-err := manager.LoadPlugin("my-plugin")
-
-// Unload a running plugin
-err := manager.unloadPlugin("my-plugin")
-
-// Reload a plugin (unload + load)
-err := manager.ReloadPlugin("my-plugin")
-```
-
-### Notes on Runtime Loading
-
-- **In-flight requests**: When a plugin is unloaded, existing plugin instances continue working until their request completes. New requests use the reloaded version.
-- **Config changes**: Plugin configuration (`PluginConfig.<name>`) is read at load time. Changes require a reload.
-- **Failed reloads**: If loading fails after unloading, the plugin remains unloaded. Check logs for errors.
-
-## Host Services (Internal Development)
-
-This section is for Navidrome developers who want to add new host services that plugins can call.
-
-### Overview
-
-Host services allow plugins to call back into Navidrome for functionality like Subsonic API access, scheduling, and other internal services. The `hostgen` tool generates Extism host function wrappers from annotated Go interfaces, automating the boilerplate of memory management, JSON marshalling, and error handling.
-
-### Adding a New Host Service
-
-1. **Create an annotated interface** in `plugins/host/`:
-
-```go
-// MyService provides some functionality to plugins.
-//nd:hostservice name=MyService permission=myservice
-type MyService interface {
-    // DoSomething performs an action.
-    //nd:hostfunc
-    DoSomething(ctx context.Context, input string) (output string, err error)
-}
-```
-
-2. **Run the generator**:
+### Go with TinyGo (Recommended)
 
 ```bash
-make gen
-# Or directly:
-go run ./plugins/cmd/hostgen -input=./plugins/host -output=./plugins/host
+# Install TinyGo: https://tinygo.org/getting-started/install/
+
+# Build
+tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
 ```
 
-3. **Implement the interface** and wire it up in `plugins/manager.go`.
+### Using XTP CLI (Scaffolding)
 
-### Annotation Format
+Bootstrap a new plugin from a schema:
 
-#### Service-level (`//nd:hostservice`)
+```bash
+# Install XTP CLI: https://docs.xtp.dylibso.com/docs/cli
 
-Marks an interface as a host service:
-- `name=<ServiceName>` - Service identifier used in generated code
-- `permission=<key>` - Manifest permission key (e.g., "subsonicapi", "scheduler")
+# Create a metadata agent plugin
+xtp plugin init \
+  --schema-file plugins/schemas/metadata_agent.yaml \
+  --template go \
+  --path ./my-agent \
+  --name my-agent
 
-#### Method-level (`//nd:hostfunc`)
-
-Marks a method for host function wrapper generation:
-- `name=<CustomName>` - (Optional) Override the export name
-
-### Method Signature Requirements
-
-- First parameter must be `context.Context`
-- Last return value must be `error`
-- All parameter types must be JSON-serializable
-- Supported types: primitives, structs, slices, maps
-
-### Generated Code
-
-The generator creates `<servicename>_gen.go` with:
-- Request/response structs for each method
-- `Register<Service>HostFunctions()` - Returns Extism host functions to register
-- Helper functions for memory operations and error handling
-
-Example generated function name: `subsonicapi_call` for `SubsonicAPIService.Call`
-
-### Important: Annotation Placement
-
-**The annotation line must immediately precede the type/method declaration without an empty comment line between them.**
-
-✅ **Correct** (annotation directly before type):
-```go
-// MyService provides functionality.
-// More documentation here.
-//nd:hostservice name=MyService permission=myservice
-type MyService interface { ... }
+# Build
+cd my-agent && xtp plugin build
 ```
 
-❌ **Incorrect** (empty comment line separates annotation):
-```go
-// MyService provides functionality.
-//
-//nd:hostservice name=MyService permission=myservice
-type MyService interface { ... }
-```
+See [schemas/README.md](schemas/README.md) for available schemas.
 
-This is due to how Go's AST parser groups comments. An empty `//` line creates a new comment group, causing the annotation to be separated from the type's doc comment.
+### Using Host Service SDKs
 
-### Troubleshooting
+Generated SDKs for calling host services are in `plugins/host/go/` and `plugins/host/python/`.
 
-#### "No host services found" when running generator
+**For Go plugins:** Copy the needed `nd_host_*.go` file to your plugin directory.
 
-1. **Check annotation placement**: Ensure `//nd:hostservice` is on the line immediately before the `type` declaration (no blank `//` line between doc text and annotation).
+**For Python plugins:** Copy functions from `nd_host_*.py` into your `__init__.py` (see comments in those files for extism-py limitations).
 
-2. **Check file naming**: The generator skips files ending in `_gen.go` or `_test.go`.
+---
 
-3. **Check interface syntax**: The type must be an interface, not a struct.
+## Examples
 
-4. **Run with verbose flag**: Use `-v` to see what the generator is finding:
-   ```bash
-   go run ./plugins/cmd/hostgen -input=./plugins/host -output=./plugins/host -v
-   ```
+See [examples/](examples/) for complete working plugins:
 
-#### Generated code doesn't compile
+| Plugin                                                   | Language | Capabilities                    | Description                    |
+|----------------------------------------------------------|----------|---------------------------------|--------------------------------|
+| [minimal](examples/minimal/)                             | Go       | MetadataAgent                   | Basic structure example        |
+| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent                   | Wikidata/Wikipedia integration |
+| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket | Discord integration            |
+| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent                   | Cover Art Archive              |
+| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler                       | HTTP webhooks                  |
 
-1. **Check method signatures**: First parameter must be `context.Context`, last return must be `error`.
-
-2. **Check parameter types**: All types must be JSON-serializable. Avoid channels, functions, and unexported types.
-
-3. **Review raw output**: Use `-dry-run` to see the generated code without writing files.
-
-#### Methods not being generated
-
-1. **Check `//nd:hostfunc` annotation**: It must be in the method's doc comment, immediately before the method signature.
-
-2. **Check method visibility**: Only methods with names (not embedded interfaces) are processed.
+---
 
 ## Security
 
-Plugins run in a secure WebAssembly sandbox with these restrictions:
+Plugins run in a secure WebAssembly sandbox:
 
-1. **Host Allowlisting**: Only hosts listed in `permissions.http.allowedHosts` are accessible
-2. **No File System Access**: Plugins cannot access the file system
-3. **No Network Listeners**: Plugins cannot bind ports or create servers
-4. **Config Isolation**: Plugins receive only their own config section
-5. **Memory Limits**: Configurable via Extism
+1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
+2. **No File System** – Plugins cannot access the file system
+3. **No Network Listeners** – Plugins cannot bind ports
+4. **Config Isolation** – Plugins only receive their own config section
+5. **Memory Limits** – Controlled by the WebAssembly runtime
+6. **SubsonicAPI Restrictions** – Configurable user/admin access controls
 
-## Using Plugins with Agents
+---
 
-To use a plugin as a metadata agent, add it to the `Agents` configuration:
+## Runtime Management
 
-```toml
-Agents = "lastfm,spotify,my-plugin"  # my-plugin.wasm must be in the plugins folder
-```
+### Auto-Reload (Development)
 
-Plugins are tried in the order specified, just like built-in agents.
+With `AutoReload = true`, Navidrome watches the plugins folder and automatically reloads plugins when files change.
+
+### Programmatic Control
+
+Plugins can be enabled/disabled via the Navidrome UI or API. The plugin state is persisted in the database.
+
+### Important Notes
+
+- **In-flight requests** – When reloading, existing requests complete before the new version takes over
+- **Config changes** – Plugin configuration is read at load time; changes require a reload
+- **Cache persistence** – The in-memory cache is cleared when a plugin is unloaded
