@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -114,6 +115,13 @@ func GetManager() *Manager {
 			plugins: make(map[string]*plugin),
 		}
 	})
+}
+
+// IsConfigured returns true if the manager has been configured with a DataStore.
+// This is useful for API handlers to know if they should use the manager or fall back
+// to direct DB operations (e.g., in test environments).
+func (m *Manager) IsConfigured() bool {
+	return m.ds != nil
 }
 
 // adminContext returns a context with admin privileges for DB operations.
@@ -941,6 +949,7 @@ func (m *Manager) UnloadPlugin(name string) error {
 		}
 	}
 
+	runtime.GC()
 	log.Info(m.ctx, "Unloaded plugin", "plugin", name)
 	return nil
 }
