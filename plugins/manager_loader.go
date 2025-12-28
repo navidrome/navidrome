@@ -63,7 +63,7 @@ var hostServices = []hostServiceEntry{
 		registerStubs: func() []extism.HostFunction { return host.RegisterWebSocketHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Websocket
-			service := newWebSocketService(ctx.pluginName, ctx.manager, perm.AllowedHosts)
+			service := newWebSocketService(ctx.pluginName, ctx.manager, perm)
 			return host.RegisterWebSocketHostFunctions(service), service
 		},
 	},
