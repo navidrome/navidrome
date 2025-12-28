@@ -13,6 +13,7 @@ This folder contains example plugins demonstrating various capabilities and lang
 | [coverartarchive-py](coverartarchive-py/)       | Python   | MetadataAgent                                   | Cover Art Archive              |
 | [nowplaying-py](nowplaying-py/)                 | Python   | Scheduler, SubsonicAPI                          | Now playing logger             |
 | [webhook-rs](webhook-rs/)                       | Rust     | Scrobbler                                       | HTTP webhook on scrobble       |
+| [library-inspector](library-inspector/)         | Rust     | Library, Scheduler                              | Periodic library stats logging |
 
 ## Building
 
