@@ -72,7 +72,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		manager.SetSubsonicRouter(router)
 
 		// Pre-enable the plugin in the mock repo so it loads on startup
-		// Compute SHA256 of the plugin file to match what SyncPlugins will compute
+		// Compute SHA256 of the plugin file to match what syncPlugins will compute
 		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin.wasm")
 		wasmData, err := os.ReadFile(pluginPath)
 		Expect(err).ToNot(HaveOccurred())

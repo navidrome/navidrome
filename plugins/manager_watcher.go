@@ -154,7 +154,7 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 	switch action {
 	case actionAdd:
 		// New file - extract manifest and add to DB as disabled
-		metadata, err := m.ExtractManifest(wasmPath)
+		metadata, err := m.extractManifest(wasmPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, err)
 			return
@@ -174,7 +174,7 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 		dbPlugin, err := repo.Get(pluginName)
 		if err != nil {
 			// Plugin not in DB yet, need full manifest extraction to add it
-			metadata, extractErr := m.ExtractManifest(wasmPath)
+			metadata, extractErr := m.extractManifest(wasmPath)
 			if extractErr != nil {
 				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
 				return
@@ -191,14 +191,14 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 		}
 
 		// Plugin changed - now extract full manifest
-		metadata, err := m.ExtractManifest(wasmPath)
+		metadata, err := m.extractManifest(wasmPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
 			// Update error in DB
 			dbPlugin.LastError = err.Error()
 			dbPlugin.UpdatedAt = time.Now()
 			if dbPlugin.Enabled {
-				_ = m.UnloadPlugin(pluginName)
+				_ = m.unloadPlugin(pluginName)
 				dbPlugin.Enabled = false
 			}
 			_ = repo.Put(dbPlugin)

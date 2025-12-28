@@ -300,7 +300,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(mockSched.GetCallbackCount()).To(Equal(1)) // Only recurring task uses scheduler
 			Expect(mockTimers.GetTimerCount()).To(Equal(1))   // Only one-time task uses timer
 
-			err = manager.UnloadPlugin("test-scheduler")
+			err = manager.unloadPlugin("test-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(findSchedulerService(manager, "test-scheduler")).To(BeNil())
