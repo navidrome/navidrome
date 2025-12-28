@@ -29,7 +29,7 @@ var _ = Describe("Plugin Watcher", func() {
 			manager, tmpDir = createTestManager(nil)
 
 			// Remove the auto-loaded plugin so tests can control loading
-			_ = manager.UnloadPlugin("test-metadata-agent")
+			_ = manager.unloadPlugin("test-metadata-agent")
 			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
 		})
 
@@ -48,7 +48,7 @@ var _ = Describe("Plugin Watcher", func() {
 
 			AfterEach(func() {
 				// Clean up: unload plugin if loaded, remove copied file
-				_ = manager.UnloadPlugin("test-metadata-agent")
+				_ = manager.unloadPlugin("test-metadata-agent")
 				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
 			})
 

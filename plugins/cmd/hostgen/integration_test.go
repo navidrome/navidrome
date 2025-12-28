@@ -10,14 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var testdataDir string
-
-func readTestdata(filename string) string {
-	content, err := os.ReadFile(filepath.Join(testdataDir, filename))
-	Expect(err).ToNot(HaveOccurred(), "Failed to read testdata file: %s", filename)
-	return string(content)
-}
-
 var _ = Describe("hostgen CLI", Ordered, func() {
 	var (
 		testDir    string
@@ -526,6 +518,14 @@ type TestService interface {
 		})
 	})
 })
+
+var testdataDir string
+
+func readTestdata(filename string) string {
+	content, err := os.ReadFile(filepath.Join(testdataDir, filename))
+	Expect(err).ToNot(HaveOccurred(), "Failed to read testdata file: %s", filename)
+	return string(content)
+}
 
 func mustGetWd(t FullGinkgoTInterface) string {
 	dir, err := os.Getwd()
