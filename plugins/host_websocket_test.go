@@ -68,8 +68,9 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 		// Create and start manager
 		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
+			plugins:        make(map[string]*plugin),
+			ds:             dataStore,
+			subsonicRouter: http.NotFoundHandler(),
 		}
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
