@@ -334,6 +334,7 @@
     "plugin": {
       "name": "Plugin |||| Plugins",
       "fields": {
+        "id": "ID",
         "name": "Name",
         "description": "Description",
         "version": "Version",

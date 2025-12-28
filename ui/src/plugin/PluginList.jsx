@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useCallback } from 'react'
 import {
   Datagrid,
   TextField,
@@ -8,10 +8,11 @@ import {
   useRecordContext,
   useTranslate,
   FunctionField,
+  useResourceContext,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
-import { useMediaQuery, Tooltip, Chip } from '@material-ui/core'
+import { useMediaQuery, Tooltip, Chip, Typography } from '@material-ui/core'
 import { MdError } from 'react-icons/md'
 import { List, DateField, SimpleList } from '../common'
 
@@ -36,8 +37,9 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const ToggleEnabledInput = ({ resource }) => {
-  const record = useRecordContext()
+const ToggleEnabledInput = ({ props }) => {
+  const resource = useResourceContext(props)
+  const record = useRecordContext(props)
   const notify = useNotify()
   const refresh = useRefresh()
   const translate = useTranslate()
@@ -118,73 +120,24 @@ const ErrorIndicator = () => {
   )
 }
 
-const VersionField = () => {
+const ManifestField = ({ source }) => {
   const record = useRecordContext()
 
-  if (!record.manifest) {
+  if (!record?.manifest) {
     return null
   }
 
   try {
     const manifest = JSON.parse(record.manifest)
-    return <span>{manifest.version || '-'}</span>
+    return <Typography source>{manifest[source] || '-'}</Typography>
   } catch {
-    return <span>-</span>
-  }
-}
-
-const DescriptionField = () => {
-  const record = useRecordContext()
-
-  if (!record.manifest) {
-    return null
-  }
-
-  try {
-    const manifest = JSON.parse(record.manifest)
-    return <span>{manifest.description || '-'}</span>
-  } catch {
-    return <span>-</span>
+    return <Typography source>-</Typography>
   }
 }
 
 const PluginList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
-
-  const toggleableFields = useMemo(
-    () => ({
-      description: !isXsmall && (
-        <FunctionField
-          source="manifest"
-          label="resources.plugin.fields.description"
-          render={() => <DescriptionField />}
-        />
-      ),
-      version: (
-        <FunctionField
-          source="manifest"
-          label="resources.plugin.fields.version"
-          render={() => <VersionField />}
-        />
-      ),
-      enabled: (
-        <FunctionField
-          source="enabled"
-          label="resources.plugin.fields.enabled"
-          render={() => <ToggleEnabledInput resource="plugin" />}
-        />
-      ),
-      error: (
-        <FunctionField
-          source="lastError"
-          label="resources.plugin.fields.status"
-          render={() => <ErrorIndicator />}
-        />
-      ),
-    }),
-    [isXsmall],
-  )
 
   return (
     <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false}>
@@ -208,11 +161,11 @@ const PluginList = (props) => {
         />
       ) : (
         <Datagrid rowClick="show">
-          <TextField source="id" label="resources.plugin.fields.name" />
-          {toggleableFields['description']}
-          {toggleableFields['version']}
-          {toggleableFields['enabled']}
-          {toggleableFields['error']}
+          <TextField source="id" />
+          {!isXsmall && <ManifestField source="description" />}
+          <ManifestField source="version" />
+          <ToggleEnabledInput source={'enabled'} />
+          <ErrorIndicator source="lastError" />
           <DateField source="updatedAt" sortByOrder={'DESC'} />
         </Datagrid>
       )}
