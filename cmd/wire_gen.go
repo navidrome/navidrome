@@ -60,7 +60,7 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	insights := metrics.GetInstance(dataStore)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -80,7 +80,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -105,7 +105,7 @@ func CreatePublicRouter() *public.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -150,7 +150,7 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -167,7 +167,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -188,7 +188,9 @@ func GetPlaybackServer() playback.PlaybackServer {
 }
 
 func getPluginManager() *plugins.Manager {
-	manager := plugins.GetManager()
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	manager := plugins.GetManager(dataStore)
 	return manager
 }
 
@@ -199,6 +201,5 @@ var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
-	manager.SetDataStore(CreateDataStore())
 	return manager
 }
