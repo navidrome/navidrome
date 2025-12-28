@@ -352,7 +352,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 	wasEnabled := dbPlugin.Enabled
 	if wasEnabled {
 		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
-			log.Debug(ctx, "Plugin not loaded during change", "plugin", dbPlugin.ID)
+			log.Debug(ctx, "Plugin not loaded during change", "plugin", dbPlugin.ID, err)
 		}
 	}
 	dbPlugin.Path = path
@@ -373,7 +373,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin) error {
 	if dbPlugin.Enabled {
 		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
-			log.Debug(ctx, "Plugin not loaded during removal", "plugin", dbPlugin.ID)
+			log.Debug(ctx, "Plugin not loaded during removal", "plugin", dbPlugin.ID, err)
 		}
 	}
 	if err := repo.Delete(dbPlugin.ID); err != nil {
@@ -838,6 +838,8 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 	compiled := info.compiled
 	needsRecompile := len(pluginManifest.AllowedHosts) > 0 || len(hostFunctions) > 0
 
+	// Recompile if needed. It is actually not a "recompile" since the first compilation
+	// should be cached by wazero. We just need to do it this way to provide the real host functions.
 	if needsRecompile {
 		log.Trace(m.ctx, "Recompiling plugin with host functions", "plugin", name)
 		info.compiled.Close(m.ctx)

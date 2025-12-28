@@ -144,7 +144,7 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 	m.debounceMu.Unlock()
 
 	action := determinePluginAction(eventType)
-	log.Debug(m.ctx, "Plugin event action (DB mode)", "plugin", pluginName, "action", action)
+	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action)
 
 	ctx := adminContext(m.ctx)
 	repo := m.ds.Plugin(ctx)
