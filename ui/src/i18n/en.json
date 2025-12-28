@@ -373,7 +373,8 @@
         "invalidJson": "Configuration must be valid JSON"
       },
       "messages": {
-        "configHelp": "Enter plugin configuration as a JSON object. Leave empty if the plugin requires no configuration."
+        "configHelp": "Enter plugin configuration as a JSON object. Leave empty if the plugin requires no configuration.",
+        "clickPermissions": "Click a permission for details"
       }
     }
   },
