@@ -136,6 +136,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		return nil
 	}
 
+	if m.subsonicRouter == nil {
+		log.Fatal(ctx, "Plugin manager requires DataStore to be configured")
+	}
+
 	// Set extism log level based on plugin-specific config or global log level
 	pluginLogLevel := conf.Server.Plugins.LogLevel
 	if pluginLogLevel == "" {
@@ -411,13 +415,79 @@ type compiledPluginInfo struct {
 	compiled  *extism.CompiledPlugin
 }
 
+// serviceContext provides dependencies needed by host service factories.
+type serviceContext struct {
+	pluginName  string
+	manager     *Manager
+	permissions *Permissions
+}
+
+// hostServiceEntry defines a host service for table-driven registration.
+type hostServiceEntry struct {
+	name          string
+	hasPermission func(*Permissions) bool
+	registerStubs func() []extism.HostFunction
+	create        func(*serviceContext) ([]extism.HostFunction, io.Closer)
+}
+
+// hostServices defines all available host services.
+// Adding a new host service only requires adding an entry here.
+var hostServices = []hostServiceEntry{
+	{
+		name:          "SubsonicAPI",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterSubsonicAPIHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Subsonicapi
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, perm)
+			return host.RegisterSubsonicAPIHostFunctions(service), nil
+		},
+	},
+	{
+		name:          "Scheduler",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Scheduler != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterSchedulerHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			service := newSchedulerService(ctx.pluginName, ctx.manager, scheduler.GetInstance())
+			return host.RegisterSchedulerHostFunctions(service), service
+		},
+	},
+	{
+		name:          "WebSocket",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterWebSocketHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Websocket
+			service := newWebSocketService(ctx.pluginName, ctx.manager, perm.AllowedHosts)
+			return host.RegisterWebSocketHostFunctions(service), service
+		},
+	},
+	{
+		name:          "Artwork",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Artwork != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterArtworkHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			service := newArtworkService()
+			return host.RegisterArtworkHostFunctions(service), nil
+		},
+	},
+	{
+		name:          "Cache",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Cache != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterCacheHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			service := newCacheService(ctx.pluginName)
+			return host.RegisterCacheHostFunctions(service), service
+		},
+	},
+}
+
 // stubHostFunctions returns the list of stub host functions needed for initial plugin compilation.
 func stubHostFunctions() []extism.HostFunction {
-	stubs := host.RegisterSubsonicAPIHostFunctions(nil)
-	stubs = append(stubs, host.RegisterSchedulerHostFunctions(nil)...)
-	stubs = append(stubs, host.RegisterWebSocketHostFunctions(nil)...)
-	stubs = append(stubs, host.RegisterArtworkHostFunctions(nil)...)
-	stubs = append(stubs, host.RegisterCacheHostFunctions(nil)...)
+	var stubs []extism.HostFunction
+	for _, entry := range hostServices {
+		stubs = append(stubs, entry.registerStubs()...)
+	}
 	return stubs
 }
 
@@ -748,43 +818,20 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 		pluginManifest.AllowedHosts = hosts
 	}
 
-	// Register SubsonicAPI host functions if permission is granted
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Subsonicapi != nil {
-		perm := info.manifest.Permissions.Subsonicapi
-		if m.subsonicRouter != nil && m.ds != nil {
-			service := newSubsonicAPIService(name, m.subsonicRouter, m.ds, perm)
-			hostFunctions = append(hostFunctions, host.RegisterSubsonicAPIHostFunctions(service)...)
-		} else {
-			log.Warn(m.ctx, "Plugin requires SubsonicAPI but router/datastore not available", "plugin", name)
+	// Register host functions based on permissions using table-driven approach
+	svcCtx := &serviceContext{
+		pluginName:  name,
+		manager:     m,
+		permissions: info.manifest.Permissions,
+	}
+	for _, entry := range hostServices {
+		if entry.hasPermission(info.manifest.Permissions) {
+			funcs, closer := entry.create(svcCtx)
+			hostFunctions = append(hostFunctions, funcs...)
+			if closer != nil {
+				closers = append(closers, closer)
+			}
 		}
-	}
-
-	// Register Scheduler host functions if permission is granted
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Scheduler != nil {
-		service := newSchedulerService(name, m, scheduler.GetInstance())
-		closers = append(closers, service)
-		hostFunctions = append(hostFunctions, host.RegisterSchedulerHostFunctions(service)...)
-	}
-
-	// Register WebSocket host functions if permission is granted
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Websocket != nil {
-		perm := info.manifest.Permissions.Websocket
-		service := newWebSocketService(name, m, perm.AllowedHosts)
-		closers = append(closers, service)
-		hostFunctions = append(hostFunctions, host.RegisterWebSocketHostFunctions(service)...)
-	}
-
-	// Register Artwork host functions if permission is granted
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Artwork != nil {
-		service := newArtworkService()
-		hostFunctions = append(hostFunctions, host.RegisterArtworkHostFunctions(service)...)
-	}
-
-	// Register Cache host functions if permission is granted
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Cache != nil {
-		service := newCacheService(name)
-		closers = append(closers, service)
-		hostFunctions = append(hostFunctions, host.RegisterCacheHostFunctions(service)...)
 	}
 
 	// Check if the plugin needs to be recompiled with real host functions

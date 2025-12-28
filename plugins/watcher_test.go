@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -135,8 +136,9 @@ var _ = Describe("Plugin Watcher", func() {
 				dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
 
 				autoReloadManager := &Manager{
-					plugins: make(map[string]*plugin),
-					ds:      dataStore,
+					plugins:        make(map[string]*plugin),
+					ds:             dataStore,
+					subsonicRouter: http.NotFoundHandler(),
 				}
 				err := autoReloadManager.Start(ctx)
 				Expect(err).ToNot(HaveOccurred())
