@@ -398,6 +398,22 @@ type PluginMetadata struct {
 	SHA256   string
 }
 
+// computeFileSHA256 computes the SHA-256 hash of a file without loading it into memory.
+// This is used for quick change detection before full plugin compilation.
+func computeFileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 // compiledPluginInfo holds the intermediate compilation result used by both
 // ExtractManifest and loadPluginWithConfig.
 type compiledPluginInfo struct {
@@ -549,11 +565,35 @@ func (m *Manager) SyncPlugins(ctx context.Context, folder string) error {
 
 	// Process files on disk
 	for name, path := range filesOnDisk {
+		dbPlugin, exists := pluginsInDB[name]
+
+		// Compute SHA256 first (lightweight operation) to check if plugin changed
+		sha256Hash, err := computeFileSHA256(path)
+		if err != nil {
+			log.Error(ctx, "Failed to compute SHA256 for plugin", "plugin", name, "path", path, err)
+			continue
+		}
+
+		// If plugin exists in DB with same hash, skip full manifest extraction
+		if exists && dbPlugin.SHA256 == sha256Hash {
+			// Plugin unchanged - just update path in case folder moved
+			if dbPlugin.Path != path {
+				dbPlugin.Path = path
+				dbPlugin.UpdatedAt = now
+				if err := repo.Put(dbPlugin); err != nil {
+					log.Error(ctx, "Failed to update plugin path in DB", "plugin", name, err)
+				}
+			}
+			delete(pluginsInDB, name)
+			continue
+		}
+
+		// Plugin is new or changed - need full manifest extraction
 		metadata, err := m.ExtractManifest(path)
 		if err != nil {
 			log.Error(ctx, "Failed to extract manifest from plugin", "plugin", name, "path", path, err)
 			// Store error in DB if plugin exists
-			if dbPlugin, exists := pluginsInDB[name]; exists {
+			if exists {
 				dbPlugin.LastError = err.Error()
 				dbPlugin.UpdatedAt = now
 				if dbPlugin.Enabled {
@@ -567,28 +607,19 @@ func (m *Manager) SyncPlugins(ctx context.Context, folder string) error {
 					log.Error(ctx, "Failed to update plugin in DB", "plugin", name, err)
 				}
 			}
+			delete(pluginsInDB, name)
 			continue
 		}
 
-		dbPlugin, exists := pluginsInDB[name]
 		if !exists {
 			// New plugin - add to DB as disabled
 			if err := m.addPluginToDB(ctx, repo, name, path, metadata); err != nil {
 				log.Error(ctx, "Failed to add plugin to DB", "plugin", name, err)
 			}
-		} else if dbPlugin.SHA256 != metadata.SHA256 {
+		} else {
 			// Plugin changed - update DB
 			if err := m.updatePluginInDB(ctx, repo, dbPlugin, path, metadata); err != nil {
 				log.Error(ctx, "Failed to update plugin in DB", "plugin", name, err)
-			}
-		} else {
-			// Plugin unchanged - update path in case folder moved
-			if dbPlugin.Path != path {
-				dbPlugin.Path = path
-				dbPlugin.UpdatedAt = now
-				if err := repo.Put(dbPlugin); err != nil {
-					log.Error(ctx, "Failed to update plugin path in DB", "plugin", name, err)
-				}
 			}
 		}
 		// Mark as processed
