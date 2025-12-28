@@ -13,8 +13,6 @@ import {
 import {
   Typography,
   Box,
-  Switch,
-  FormControlLabel,
   Card,
   CardContent,
   TextField as MuiTextField,
@@ -34,6 +32,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { MdExpandMore, MdSave } from 'react-icons/md'
 import { Title, DateField } from '../common'
 import { validateJson } from './jsonValidation'
+import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -215,46 +214,14 @@ const ErrorSection = ({ error, translate }) => {
 }
 
 // Status card with enable/disable toggle
-const StatusCard = ({
-  record,
-  classes,
-  translate,
-  onToggle,
-  loading,
-  hasError,
-}) => {
-  const isDisabled = loading || hasError
-
+const StatusCard = ({ classes, translate }) => {
   return (
     <Card className={classes.section}>
       <CardContent>
         <Typography variant="h6" className={classes.sectionTitle}>
           {translate('resources.plugin.sections.status')}
         </Typography>
-        <Tooltip
-          title={
-            hasError
-              ? translate('resources.plugin.actions.disabledDueToError')
-              : ''
-          }
-          disableHoverListener={!hasError}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                checked={record.enabled}
-                onChange={onToggle}
-                disabled={isDisabled}
-                color="primary"
-              />
-            }
-            label={translate(
-              record.enabled
-                ? 'resources.plugin.actions.disable'
-                : 'resources.plugin.actions.enable',
-            )}
-          />
-        </Tooltip>
+        <ToggleEnabledSwitch showLabel size="medium" />
       </CardContent>
     </Card>
   )
@@ -332,53 +299,32 @@ const InfoCard = ({ record, manifest, classes, translate, isSmall }) => (
           </InfoRow>
         )}
 
-        {manifest?.permissions && (
-          <InfoRow
-            label={translate('resources.plugin.fields.permissions')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            <Box className={classes.permissionsContainer}>
-              <PermissionChip
-                label="HTTP"
-                permission={manifest.permissions.http}
-                classes={classes}
-              />
-              <PermissionChip
-                label="Subsonic API"
-                permission={manifest.permissions.subsonicapi}
-                classes={classes}
-              />
-              <PermissionChip
-                label="Scheduler"
-                permission={manifest.permissions.scheduler}
-                classes={classes}
-              />
-              <PermissionChip
-                label="WebSocket"
-                permission={manifest.permissions.websocket}
-                classes={classes}
-              />
-              <PermissionChip
-                label="Artwork"
-                permission={manifest.permissions.artwork}
-                classes={classes}
-              />
-              <PermissionChip
-                label="Cache"
-                permission={manifest.permissions.cache}
-                classes={classes}
-              />
-            </Box>
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              style={{ marginTop: 4, display: 'block' }}
+        {manifest?.permissions &&
+          Object.keys(manifest.permissions).length > 0 && (
+            <InfoRow
+              label={translate('resources.plugin.fields.permissions')}
+              classes={classes}
+              isSmall={isSmall}
             >
-              {translate('resources.plugin.messages.clickPermissions')}
-            </Typography>
-          </InfoRow>
-        )}
+              <Box className={classes.permissionsContainer}>
+                {Object.entries(manifest.permissions).map(([key, value]) => (
+                  <PermissionChip
+                    key={key}
+                    label={key}
+                    permission={value}
+                    classes={classes}
+                  />
+                ))}
+              </Box>
+              <Typography
+                variant="caption"
+                color="textSecondary"
+                style={{ marginTop: 4, display: 'block' }}
+              >
+                {translate('resources.plugin.messages.clickPermissions')}
+              </Typography>
+            </InfoRow>
+          )}
 
         <InfoRow
           label={translate('resources.plugin.fields.path')}
@@ -515,11 +461,6 @@ const PluginShowLayout = () => {
     },
   )
 
-  const handleToggleEnabled = useCallback(() => {
-    if (!record) return
-    updatePlugin('plugin', record.id, { enabled: !record.enabled }, record)
-  }, [updatePlugin, record])
-
   const handleConfigChange = useCallback(
     (e) => {
       const value = e.target.value
@@ -584,14 +525,7 @@ const PluginShowLayout = () => {
       <Box className={classes.root}>
         <ErrorSection error={record.lastError} translate={translate} />
 
-        <StatusCard
-          record={record}
-          classes={classes}
-          translate={translate}
-          onToggle={handleToggleEnabled}
-          loading={loading}
-          hasError={!!record.lastError}
-        />
+        <StatusCard classes={classes} translate={translate} />
 
         <InfoCard
           record={record}
