@@ -330,6 +330,47 @@
         "scanInProgress": "Scan in progress...",
         "noLibrariesAssigned": "No libraries assigned to this user"
       }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "version": "Version",
+        "enabled": "Enabled",
+        "status": "Status",
+        "path": "Path",
+        "lastError": "Error",
+        "hasError": "Error",
+        "updatedAt": "Updated",
+        "createdAt": "Installed"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Configuration",
+        "manifest": "Manifest"
+      },
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "actions": {
+        "enable": "Enable",
+        "disable": "Disable"
+      },
+      "notifications": {
+        "enabled": "Plugin enabled",
+        "disabled": "Plugin disabled",
+        "updated": "Plugin updated",
+        "error": "Error updating plugin"
+      },
+      "validation": {
+        "invalidJson": "Configuration must be valid JSON"
+      },
+      "messages": {
+        "configHelp": "Enter plugin configuration as a JSON object. Leave empty if the plugin requires no configuration."
+      }
     }
   },
   "ra": {

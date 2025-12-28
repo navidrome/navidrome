@@ -1,0 +1,223 @@
+import React, { useMemo, useCallback } from 'react'
+import {
+  Datagrid,
+  TextField,
+  useUpdate,
+  useNotify,
+  useRefresh,
+  useRecordContext,
+  useTranslate,
+  FunctionField,
+} from 'react-admin'
+import Switch from '@material-ui/core/Switch'
+import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery, Tooltip, Chip } from '@material-ui/core'
+import { MdError } from 'react-icons/md'
+import { List, DateField, SimpleList } from '../common'
+
+const useStyles = makeStyles((theme) => ({
+  errorIcon: {
+    color: theme.palette.error.main,
+    marginRight: theme.spacing(0.5),
+    verticalAlign: 'middle',
+  },
+  errorChip: {
+    backgroundColor: theme.palette.error.light,
+    color: theme.palette.error.contrastText,
+  },
+  enabledSwitch: {
+    '& .MuiSwitch-colorSecondary.Mui-checked': {
+      color: theme.palette.success?.main || theme.palette.primary.main,
+    },
+    '& .MuiSwitch-colorSecondary.Mui-checked + .MuiSwitch-track': {
+      backgroundColor:
+        theme.palette.success?.main || theme.palette.primary.main,
+    },
+  },
+}))
+
+const ToggleEnabledInput = ({ resource }) => {
+  const record = useRecordContext()
+  const notify = useNotify()
+  const refresh = useRefresh()
+  const translate = useTranslate()
+  const classes = useStyles()
+
+  const [toggleEnabled, { loading }] = useUpdate(
+    resource,
+    record.id,
+    { enabled: !record.enabled },
+    record,
+    {
+      undoable: false,
+      onSuccess: () => {
+        refresh()
+        notify(
+          record.enabled
+            ? 'resources.plugin.notifications.disabled'
+            : 'resources.plugin.notifications.enabled',
+          'info',
+        )
+      },
+      onFailure: (error) => {
+        notify(
+          error?.message || 'resources.plugin.notifications.error',
+          'warning',
+        )
+      },
+    },
+  )
+
+  const handleClick = useCallback(
+    (e) => {
+      e.stopPropagation()
+      toggleEnabled()
+    },
+    [toggleEnabled],
+  )
+
+  return (
+    <Tooltip
+      title={translate(
+        record.enabled
+          ? 'resources.plugin.actions.disable'
+          : 'resources.plugin.actions.enable',
+      )}
+    >
+      <span>
+        <Switch
+          checked={record.enabled}
+          onClick={handleClick}
+          disabled={loading}
+          className={classes.enabledSwitch}
+          size="small"
+        />
+      </span>
+    </Tooltip>
+  )
+}
+
+const ErrorIndicator = () => {
+  const record = useRecordContext()
+  const translate = useTranslate()
+  const classes = useStyles()
+
+  if (!record.lastError) {
+    return null
+  }
+
+  return (
+    <Tooltip title={record.lastError}>
+      <Chip
+        size="small"
+        icon={<MdError className={classes.errorIcon} />}
+        label={translate('resources.plugin.fields.hasError')}
+        className={classes.errorChip}
+      />
+    </Tooltip>
+  )
+}
+
+const VersionField = () => {
+  const record = useRecordContext()
+
+  if (!record.manifest) {
+    return null
+  }
+
+  try {
+    const manifest = JSON.parse(record.manifest)
+    return <span>{manifest.version || '-'}</span>
+  } catch {
+    return <span>-</span>
+  }
+}
+
+const DescriptionField = () => {
+  const record = useRecordContext()
+
+  if (!record.manifest) {
+    return null
+  }
+
+  try {
+    const manifest = JSON.parse(record.manifest)
+    return <span>{manifest.description || '-'}</span>
+  } catch {
+    return <span>-</span>
+  }
+}
+
+const PluginList = (props) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const translate = useTranslate()
+
+  const toggleableFields = useMemo(
+    () => ({
+      description: !isXsmall && (
+        <FunctionField
+          source="manifest"
+          label="resources.plugin.fields.description"
+          render={() => <DescriptionField />}
+        />
+      ),
+      version: (
+        <FunctionField
+          source="manifest"
+          label="resources.plugin.fields.version"
+          render={() => <VersionField />}
+        />
+      ),
+      enabled: (
+        <FunctionField
+          source="enabled"
+          label="resources.plugin.fields.enabled"
+          render={() => <ToggleEnabledInput resource="plugin" />}
+        />
+      ),
+      error: (
+        <FunctionField
+          source="lastError"
+          label="resources.plugin.fields.status"
+          render={() => <ErrorIndicator />}
+        />
+      ),
+    }),
+    [isXsmall],
+  )
+
+  return (
+    <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false}>
+      {isXsmall ? (
+        <SimpleList
+          primaryText={(record) => record.id}
+          secondaryText={(record) => {
+            try {
+              const manifest = JSON.parse(record.manifest)
+              return manifest.description || ''
+            } catch {
+              return ''
+            }
+          }}
+          tertiaryText={(record) =>
+            record.enabled
+              ? translate('resources.plugin.status.enabled')
+              : translate('resources.plugin.status.disabled')
+          }
+          linkType="show"
+        />
+      ) : (
+        <Datagrid rowClick="show">
+          <TextField source="id" label="resources.plugin.fields.name" />
+          {toggleableFields['description']}
+          {toggleableFields['version']}
+          {toggleableFields['enabled']}
+          {toggleableFields['error']}
+          <DateField source="updatedAt" sortByOrder={'DESC'} />
+        </Datagrid>
+      )}
+    </List>
+  )
+}
+
+export default PluginList
