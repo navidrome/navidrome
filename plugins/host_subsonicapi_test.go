@@ -67,9 +67,9 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		// Create and configure manager
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
+			ds:      dataStore,
 		}
 		manager.SetSubsonicRouter(router)
-		manager.SetDataStore(dataStore)
 
 		// Pre-enable the plugin in the mock repo so it loads on startup
 		// Compute SHA256 of the plugin file to match what SyncPlugins will compute

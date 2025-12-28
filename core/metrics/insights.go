@@ -313,7 +313,7 @@ func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error)
 
 // collectPlugins collects information about installed plugins
 func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(c.ds)
 	info := manager.GetPluginInfo()
 
 	result := make(map[string]insights.PluginInfo, len(info))

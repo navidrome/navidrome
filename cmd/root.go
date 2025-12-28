@@ -330,12 +330,12 @@ func startPlaybackServer(ctx context.Context) func() error {
 // startPluginManager starts the plugin manager, if configured.
 func startPluginManager(ctx context.Context) func() error {
 	return func() error {
+		manager := GetPluginManager(ctx)
 		if !conf.Server.Plugins.Enabled {
 			log.Debug("Plugin system is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Starting plugin manager")
-		manager := GetPluginManager(ctx)
 		return manager.Start(ctx)
 	}
 }

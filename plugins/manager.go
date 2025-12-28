@@ -109,79 +109,13 @@ func (p *plugin) Close() error {
 
 // GetManager returns a singleton instance of the plugin manager.
 // The manager is not started automatically; call Start() to begin loading plugins.
-func GetManager() *Manager {
+func GetManager(ds model.DataStore) *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
+			ds:      ds,
 			plugins: make(map[string]*plugin),
 		}
 	})
-}
-
-// adminContext returns a context with admin privileges for DB operations.
-func adminContext(ctx context.Context) context.Context {
-	return request.WithUser(ctx, model.User{IsAdmin: true})
-}
-
-// marshalManifest marshals a manifest to JSON string, returning empty string on error.
-func marshalManifest(m *Manifest) string {
-	b, _ := json.Marshal(m)
-	return string(b)
-}
-
-// addPluginToDB adds a new plugin to the database as disabled.
-func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository, name, path string, metadata *PluginMetadata) error {
-	now := time.Now()
-	newPlugin := &model.Plugin{
-		ID:        name,
-		Path:      path,
-		Manifest:  marshalManifest(metadata.Manifest),
-		SHA256:    metadata.SHA256,
-		Enabled:   false,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	if err := repo.Put(newPlugin); err != nil {
-		return fmt.Errorf("adding plugin to DB: %w", err)
-	}
-	log.Info(ctx, "Discovered new plugin", "plugin", name)
-	return nil
-}
-
-// updatePluginInDB updates an existing plugin in the database after a file change.
-// If the plugin was enabled, it will be unloaded and disabled.
-func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin, path string, metadata *PluginMetadata) error {
-	wasEnabled := dbPlugin.Enabled
-	if wasEnabled {
-		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
-			log.Debug(ctx, "Plugin not loaded during change", "plugin", dbPlugin.ID)
-		}
-	}
-	dbPlugin.Path = path
-	dbPlugin.Manifest = marshalManifest(metadata.Manifest)
-	dbPlugin.SHA256 = metadata.SHA256
-	dbPlugin.Enabled = false
-	dbPlugin.LastError = ""
-	dbPlugin.UpdatedAt = time.Now()
-	if err := repo.Put(dbPlugin); err != nil {
-		return fmt.Errorf("updating plugin in DB: %w", err)
-	}
-	log.Info(ctx, "Plugin file changed", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
-	return nil
-}
-
-// removePluginFromDB removes a plugin from the database.
-// If the plugin was enabled, it will be unloaded first.
-func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin) error {
-	if dbPlugin.Enabled {
-		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
-			log.Debug(ctx, "Plugin not loaded during removal", "plugin", dbPlugin.ID)
-		}
-	}
-	if err := repo.Delete(dbPlugin.ID); err != nil {
-		return fmt.Errorf("deleting plugin from DB: %w", err)
-	}
-	log.Info(ctx, "Plugin removed", "plugin", dbPlugin.ID)
-	return nil
 }
 
 // SetSubsonicRouter sets the Subsonic router for SubsonicAPI host functions.
@@ -189,12 +123,6 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 // that require SubsonicAPI access are loaded.
 func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
 	m.subsonicRouter = router
-}
-
-// SetDataStore sets the data store for plugins that need database access.
-// This should be called before plugins are loaded.
-func (m *Manager) SetDataStore(ds model.DataStore) {
-	m.ds = ds
 }
 
 // Start initializes the plugin manager and loads plugins from the configured folder.
@@ -382,6 +310,73 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 		}
 	}
 	return info
+}
+
+// adminContext returns a context with admin privileges for DB operations.
+func adminContext(ctx context.Context) context.Context {
+	return request.WithUser(ctx, model.User{IsAdmin: true})
+}
+
+// marshalManifest marshals a manifest to JSON string, returning empty string on error.
+func marshalManifest(m *Manifest) string {
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
+// addPluginToDB adds a new plugin to the database as disabled.
+func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository, name, path string, metadata *PluginMetadata) error {
+	now := time.Now()
+	newPlugin := &model.Plugin{
+		ID:        name,
+		Path:      path,
+		Manifest:  marshalManifest(metadata.Manifest),
+		SHA256:    metadata.SHA256,
+		Enabled:   false,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := repo.Put(newPlugin); err != nil {
+		return fmt.Errorf("adding plugin to DB: %w", err)
+	}
+	log.Info(ctx, "Discovered new plugin", "plugin", name)
+	return nil
+}
+
+// updatePluginInDB updates an existing plugin in the database after a file change.
+// If the plugin was enabled, it will be unloaded and disabled.
+func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin, path string, metadata *PluginMetadata) error {
+	wasEnabled := dbPlugin.Enabled
+	if wasEnabled {
+		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
+			log.Debug(ctx, "Plugin not loaded during change", "plugin", dbPlugin.ID)
+		}
+	}
+	dbPlugin.Path = path
+	dbPlugin.Manifest = marshalManifest(metadata.Manifest)
+	dbPlugin.SHA256 = metadata.SHA256
+	dbPlugin.Enabled = false
+	dbPlugin.LastError = ""
+	dbPlugin.UpdatedAt = time.Now()
+	if err := repo.Put(dbPlugin); err != nil {
+		return fmt.Errorf("updating plugin in DB: %w", err)
+	}
+	log.Info(ctx, "Plugin file changed", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
+	return nil
+}
+
+// removePluginFromDB removes a plugin from the database.
+// If the plugin was enabled, it will be unloaded first.
+func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin) error {
+	if dbPlugin.Enabled {
+		if err := m.UnloadPlugin(dbPlugin.ID); err != nil {
+			log.Debug(ctx, "Plugin not loaded during removal", "plugin", dbPlugin.ID)
+		}
+	}
+	if err := repo.Delete(dbPlugin.ID); err != nil {
+		return fmt.Errorf("deleting plugin from DB: %w", err)
+	}
+	log.Info(ctx, "Plugin removed", "plugin", dbPlugin.ID)
+	return nil
 }
 
 // PluginMetadata holds the extracted information from a plugin file
