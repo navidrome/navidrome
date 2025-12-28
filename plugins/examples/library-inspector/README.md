@@ -48,11 +48,12 @@ Folder = "/path/to/plugins"
 
 ## Configuration
 
-Configure the inspection interval in the Navidrome UI or via config file:
+Configure the inspection interval in the Navidrome UI (Settings → Plugins → library-inspector):
 
-```toml
-[PluginConfig.library-inspector]
-cron = "@every 5m"
+```json
+{
+  "cron": "@every 5m"
+}
 ```
 
 ### Cron Expression Examples

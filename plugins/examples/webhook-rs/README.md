@@ -37,15 +37,12 @@ Copy `webhook-rs.wasm` to your Navidrome plugins folder (configured via `Plugins
 
 ## Configuration
 
-Add the plugin configuration to your `navidrome.toml`:
+Configure in the Navidrome UI (Settings → Plugins → webhook-rs):
 
-```toml
-[Plugins]
-Enabled = true
-Folder = "/path/to/plugins"
-
-[PluginConfig.webhook-rs]
-urls = "https://example.com/webhook,https://another.example.com/notify"
+```json
+{
+  "urls": "https://example.com/webhook,https://another.example.com/notify"
+}
 ```
 
 ### Configuration Options

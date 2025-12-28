@@ -61,12 +61,13 @@ To work within this model the plugin stores no in-memory state. Connections are 
 
 ## Configuration
 
-Add the following to `navidrome.toml` and adjust for your tokens:
+Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
-```toml
-[PluginConfig.discord-rich-presence]
-ClientID = "123456789012345678"
-Users = "alice:token123,bob:token456"
+```json
+{
+  "clientid": "123456789012345678",
+  "users": "alice:token123,bob:token456"
+}
 ```
 
 - `ClientID` is your Discord application ID

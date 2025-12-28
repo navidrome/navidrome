@@ -43,11 +43,12 @@ extism-py plugin/__init__.py -o nowplaying-py.wasm
    Folder = "/path/to/plugins"
    ```
 
-3. Configure the plugin (optional):
-   ```toml
-   [PluginConfig.nowplaying-py]
-   cron = "*/1 * * * *"  # Check every minute (default)
-   user = "admin"        # Navidrome user for API calls (default)
+3. Configure the plugin in the UI (Settings → Plugins → nowplaying-py):
+   ```json
+   {
+     "cron": "*/1 * * * *",
+     "user": "admin"
+   }
    ```
 
 ### Configuration Options
