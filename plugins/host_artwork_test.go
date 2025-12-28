@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,8 +71,9 @@ var _ = Describe("ArtworkService", Ordered, func() {
 
 		// Create and start manager
 		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
+			plugins:        make(map[string]*plugin),
+			ds:             dataStore,
+			subsonicRouter: http.NotFoundHandler(),
 		}
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())

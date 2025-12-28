@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -359,8 +360,9 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 
 		// Create and start manager
 		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
+			plugins:        make(map[string]*plugin),
+			ds:             dataStore,
+			subsonicRouter: http.NotFoundHandler(),
 		}
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -113,8 +114,9 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 
 	// Create and start manager
 	manager := &Manager{
-		plugins: make(map[string]*plugin),
-		ds:      dataStore,
+		plugins:        make(map[string]*plugin),
+		ds:             dataStore,
+		subsonicRouter: http.NotFoundHandler(), // Stub router for tests
 	}
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
