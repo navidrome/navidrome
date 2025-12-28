@@ -1,0 +1,56 @@
+package tests
+
+import (
+	"context"
+)
+
+// MockPluginManager is a mock implementation of plugins.PluginManager for testing.
+// It implements EnablePlugin, DisablePlugin, and UpdatePluginConfig methods.
+type MockPluginManager struct {
+	// EnablePluginFn is called when EnablePlugin is invoked. If nil, returns EnableError.
+	EnablePluginFn func(ctx context.Context, id string) error
+	// DisablePluginFn is called when DisablePlugin is invoked. If nil, returns DisableError.
+	DisablePluginFn func(ctx context.Context, id string) error
+	// UpdatePluginConfigFn is called when UpdatePluginConfig is invoked. If nil, returns ConfigError.
+	UpdatePluginConfigFn func(ctx context.Context, id, configJSON string) error
+
+	// Default errors to return when Fn callbacks are not set
+	EnableError  error
+	DisableError error
+	ConfigError  error
+
+	// Track calls for assertions
+	EnablePluginCalls       []string
+	DisablePluginCalls      []string
+	UpdatePluginConfigCalls []struct {
+		ID         string
+		ConfigJSON string
+	}
+}
+
+func (m *MockPluginManager) EnablePlugin(ctx context.Context, id string) error {
+	m.EnablePluginCalls = append(m.EnablePluginCalls, id)
+	if m.EnablePluginFn != nil {
+		return m.EnablePluginFn(ctx, id)
+	}
+	return m.EnableError
+}
+
+func (m *MockPluginManager) DisablePlugin(ctx context.Context, id string) error {
+	m.DisablePluginCalls = append(m.DisablePluginCalls, id)
+	if m.DisablePluginFn != nil {
+		return m.DisablePluginFn(ctx, id)
+	}
+	return m.DisableError
+}
+
+func (m *MockPluginManager) UpdatePluginConfig(ctx context.Context, id, configJSON string) error {
+	m.UpdatePluginConfigCalls = append(m.UpdatePluginConfigCalls, struct {
+		ID         string
+		ConfigJSON string
+	}{ID: id, ConfigJSON: configJSON})
+	if m.UpdatePluginConfigFn != nil {
+		return m.UpdatePluginConfigFn(ctx, id, configJSON)
+	}
+	return m.ConfigError
+}

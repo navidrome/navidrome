@@ -11,7 +11,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/server"
 )
 
@@ -52,7 +51,6 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ctx := r.Context()
 	repo := api.ds.Plugin(ctx)
-	manager := plugins.GetManager()
 
 	// Get existing plugin to verify it exists
 	plugin, err := repo.Get(id)
@@ -78,63 +76,38 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If manager is configured, use it to properly load/unload plugins
-	// Otherwise, fall back to direct DB operations (e.g., in tests)
-	if manager.IsConfigured() {
-		// Handle config update first (if provided)
-		if req.Config != nil {
-			// Validate JSON if not empty
-			if *req.Config != "" && !isValidJSON(*req.Config) {
-				http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
-				return
-			}
-			if err := manager.UpdatePluginConfig(ctx, id, *req.Config); err != nil {
-				log.Error(ctx, "Error updating plugin config", "id", id, err)
-				http.Error(w, "Error updating plugin configuration: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		// Handle enable/disable
-		if req.Enabled != nil {
-			if *req.Enabled {
-				if err := manager.EnablePlugin(ctx, id); err != nil {
-					log.Error(ctx, "Error enabling plugin", "id", id, err)
-					// Refresh plugin from DB to get the error
-					plugin, _ = repo.Get(id)
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusUnprocessableEntity)
-					_ = json.NewEncoder(w).Encode(plugin)
-					return
-				}
-			} else {
-				if err := manager.DisablePlugin(ctx, id); err != nil {
-					log.Error(ctx, "Error disabling plugin", "id", id, err)
-					http.Error(w, "Error disabling plugin: "+err.Error(), http.StatusInternalServerError)
-					return
-				}
-			}
-		}
-	} else {
-		// Fallback: direct DB operations (for tests or when manager is not started)
-		if req.Config != nil {
-			if *req.Config != "" && !isValidJSON(*req.Config) {
-				http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
-				return
-			}
-			plugin.Config = *req.Config
-		}
-		if req.Enabled != nil {
-			plugin.Enabled = *req.Enabled
-		}
-		if err := repo.Put(plugin); err != nil {
-			if errors.Is(err, rest.ErrPermissionDenied) {
-				http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
-				return
-			}
-			log.Error(ctx, "Error updating plugin", "id", id, err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// Handle config update first (if provided)
+	if req.Config != nil {
+		// Validate JSON if not empty
+		if *req.Config != "" && !isValidJSON(*req.Config) {
+			http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
 			return
+		}
+		if err := api.pluginManager.UpdatePluginConfig(ctx, id, *req.Config); err != nil {
+			log.Error(ctx, "Error updating plugin config", "id", id, err)
+			http.Error(w, "Error updating plugin configuration: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Handle enable/disable
+	if req.Enabled != nil {
+		if *req.Enabled {
+			if err := api.pluginManager.EnablePlugin(ctx, id); err != nil {
+				log.Error(ctx, "Error enabling plugin", "id", id, err)
+				// Refresh plugin from DB to get the error
+				plugin, _ = repo.Get(id)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				_ = json.NewEncoder(w).Encode(plugin)
+				return
+			}
+		} else {
+			if err := api.pluginManager.DisablePlugin(ctx, id); err != nil {
+				log.Error(ctx, "Error disabling plugin", "id", id, err)
+				http.Error(w, "Error disabling plugin: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 

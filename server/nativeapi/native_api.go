@@ -20,18 +20,27 @@ import (
 	"github.com/navidrome/navidrome/server"
 )
 
-type Router struct {
-	http.Handler
-	ds          model.DataStore
-	share       core.Share
-	playlists   core.Playlists
-	insights    metrics.Insights
-	libs        core.Library
-	maintenance core.Maintenance
+// PluginManager defines the interface for plugin management operations.
+// This interface is used by the API handlers to enable/disable plugins and update configuration.
+type PluginManager interface {
+	EnablePlugin(ctx context.Context, id string) error
+	DisablePlugin(ctx context.Context, id string) error
+	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, maintenance core.Maintenance) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, maintenance: maintenance}
+type Router struct {
+	http.Handler
+	ds            model.DataStore
+	share         core.Share
+	playlists     core.Playlists
+	insights      metrics.Insights
+	libs          core.Library
+	maintenance   core.Maintenance
+	pluginManager PluginManager
+}
+
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, maintenance core.Maintenance, pluginManager PluginManager) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, maintenance: maintenance, pluginManager: pluginManager}
 	r.Handler = r.routes()
 	return r
 }
