@@ -347,7 +347,9 @@
         "lastError": "Error",
         "hasError": "Error",
         "updatedAt": "Updated",
-        "createdAt": "Installed"
+        "createdAt": "Installed",
+        "configKey": "Key",
+        "configValue": "Value"
       },
       "sections": {
         "status": "Status",
@@ -362,7 +364,8 @@
       "actions": {
         "enable": "Enable",
         "disable": "Disable",
-        "disabledDueToError": "Fix the error before enabling"
+        "disabledDueToError": "Fix the error before enabling",
+        "addConfig": "Add Configuration"
       },
       "notifications": {
         "enabled": "Plugin enabled",
@@ -374,8 +377,13 @@
         "invalidJson": "Configuration must be valid JSON"
       },
       "messages": {
-        "configHelp": "Enter plugin configuration as a JSON object. Leave empty if the plugin requires no configuration.",
-        "clickPermissions": "Click a permission for details"
+        "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
+        "clickPermissions": "Click a permission for details",
+        "noConfig": "No configuration set"
+      },
+      "placeholders": {
+        "configKey": "key",
+        "configValue": "value"
       }
     }
   },

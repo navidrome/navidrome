@@ -10,435 +10,77 @@ import {
   Title as RaTitle,
   Loading,
 } from 'react-admin'
-import {
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  TextField as MuiTextField,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-  Tooltip,
-  Link,
-  Grid,
-  useMediaQuery,
-  Button,
-  ClickAwayListener,
-} from '@material-ui/core'
+import { Box, useMediaQuery } from '@material-ui/core'
 import Alert from '@material-ui/lab/Alert'
-import { makeStyles } from '@material-ui/core/styles'
-import { MdExpandMore, MdSave } from 'react-icons/md'
-import { Title, DateField } from '../common'
-import { validateJson } from './jsonValidation'
-import ToggleEnabledSwitch from './ToggleEnabledSwitch'
-
-const useStyles = makeStyles(
-  (theme) => ({
-    root: {
-      padding: theme.spacing(2),
-      maxWidth: 900,
-    },
-    section: {
-      marginBottom: theme.spacing(3),
-    },
-    sectionTitle: {
-      marginBottom: theme.spacing(1),
-      fontWeight: 600,
-    },
-    manifestBox: {
-      backgroundColor:
-        theme.palette.type === 'dark'
-          ? theme.palette.grey[900]
-          : theme.palette.grey[100],
-      padding: theme.spacing(2),
-      borderRadius: theme.shape.borderRadius,
-      fontFamily: 'monospace',
-      fontSize: '0.85rem',
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      overflow: 'auto',
-      maxHeight: 400,
-    },
-    configInput: {
-      fontFamily: 'monospace',
-      fontSize: '0.85rem',
-    },
-    saveButton: {
-      marginTop: theme.spacing(2),
-    },
-    infoGrid: {
-      '& .MuiGrid-item': {
-        paddingTop: theme.spacing(0.5),
-        paddingBottom: theme.spacing(0.5),
-      },
-    },
-    infoLabel: {
-      fontWeight: 500,
-      color: theme.palette.text.secondary,
-    },
-    pathField: {
-      fontFamily: 'monospace',
-      fontSize: '0.85rem',
-      wordBreak: 'break-all',
-    },
-    permissionsContainer: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: theme.spacing(0.5),
-    },
-    permissionChip: {
-      fontSize: '0.75rem',
-    },
-    tooltipContent: {
-      '& code': {
-        fontFamily: 'monospace',
-        fontSize: '0.8em',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        padding: '1px 4px',
-        borderRadius: 2,
-      },
-    },
-  }),
-  { name: 'NDPluginShow' },
-)
-
-// Helper component for permission chips with clickable persistent tooltips
-const PermissionChip = ({ label, permission, classes }) => {
-  const [open, setOpen] = React.useState(false)
-
-  if (!permission) return null
-
-  const hasHosts = permission.allowedHosts?.length > 0
-  const hasTooltip = permission.reason || hasHosts
-
-  const handleClick = () => {
-    if (hasTooltip) {
-      setOpen((prev) => !prev)
-    }
-  }
-
-  const handleClose = () => {
-    setOpen(false)
-  }
-
-  const tooltipContent = (
-    <Box className={classes.tooltipContent}>
-      {permission.reason && (
-        <Typography variant="body2">{permission.reason}</Typography>
-      )}
-      {hasHosts && (
-        <Box mt={permission.reason ? 0.5 : 0}>
-          <Typography variant="caption" component="div">
-            Allowed hosts:{' '}
-            {permission.allowedHosts.map((host, i) => (
-              <span key={host}>
-                {i > 0 && ', '}
-                <code>{host}</code>
-              </span>
-            ))}
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  )
-
-  const chip = (
-    <Chip
-      size="small"
-      label={label}
-      className={classes.permissionChip}
-      onClick={hasTooltip ? handleClick : undefined}
-      clickable={hasTooltip}
-    />
-  )
-
-  if (!hasTooltip) {
-    return chip
-  }
-
-  return (
-    <ClickAwayListener onClickAway={handleClose}>
-      <div>
-        <Tooltip
-          title={tooltipContent}
-          arrow
-          open={open}
-          disableFocusListener
-          disableHoverListener
-          disableTouchListener
-          PopperProps={{
-            disablePortal: true,
-          }}
-        >
-          {chip}
-        </Tooltip>
-      </div>
-    </ClickAwayListener>
-  )
-}
-
-// Info row component for responsive grid
-const InfoRow = ({ label, children, classes, isSmall }) => (
-  <>
-    <Grid item xs={12} sm={4}>
-      <Typography
-        variant="body2"
-        className={classes.infoLabel}
-        component={isSmall ? 'div' : 'span'}
-      >
-        {label}
-      </Typography>
-    </Grid>
-    <Grid item xs={12} sm={8}>
-      <Typography variant="body2" component="div">
-        {children}
-      </Typography>
-    </Grid>
-  </>
-)
-
-// Error display section
-const ErrorSection = ({ error, translate }) => {
-  if (!error) return null
-
-  return (
-    <Alert severity="error" style={{ marginBottom: 16 }}>
-      <Typography variant="subtitle2">
-        {translate('resources.plugin.fields.lastError')}
-      </Typography>
-      <Typography variant="body2">{error}</Typography>
-    </Alert>
-  )
-}
-
-// Status card with enable/disable toggle
-const StatusCard = ({ classes, translate }) => {
-  return (
-    <Card className={classes.section}>
-      <CardContent>
-        <Typography variant="h6" className={classes.sectionTitle}>
-          {translate('resources.plugin.sections.status')}
-        </Typography>
-        <ToggleEnabledSwitch showLabel size="medium" />
-      </CardContent>
-    </Card>
-  )
-}
-
-// Plugin information card
-const InfoCard = ({ record, manifest, classes, translate, isSmall }) => (
-  <Card className={classes.section}>
-    <CardContent>
-      <Typography variant="h6" className={classes.sectionTitle}>
-        {translate('resources.plugin.sections.info')}
-      </Typography>
-      <Grid container spacing={1} className={classes.infoGrid}>
-        <InfoRow
-          label={translate('resources.plugin.fields.id')}
-          classes={classes}
-          isSmall={isSmall}
-        >
-          {record.id}
-        </InfoRow>
-
-        {manifest?.name && (
-          <InfoRow
-            label={translate('resources.plugin.fields.name')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            {manifest.name}
-          </InfoRow>
-        )}
-
-        {manifest?.version && (
-          <InfoRow
-            label={translate('resources.plugin.fields.version')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            {manifest.version}
-          </InfoRow>
-        )}
-
-        {manifest?.description && (
-          <InfoRow
-            label={translate('resources.plugin.fields.description')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            {manifest.description}
-          </InfoRow>
-        )}
-
-        {manifest?.author && (
-          <InfoRow
-            label={translate('resources.plugin.fields.author')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            {manifest.author}
-          </InfoRow>
-        )}
-
-        {manifest?.website && (
-          <InfoRow
-            label={translate('resources.plugin.fields.website')}
-            classes={classes}
-            isSmall={isSmall}
-          >
-            <Link
-              href={manifest.website}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {manifest.website}
-            </Link>
-          </InfoRow>
-        )}
-
-        {manifest?.permissions &&
-          Object.keys(manifest.permissions).length > 0 && (
-            <InfoRow
-              label={translate('resources.plugin.fields.permissions')}
-              classes={classes}
-              isSmall={isSmall}
-            >
-              <Box className={classes.permissionsContainer}>
-                {Object.entries(manifest.permissions).map(([key, value]) => (
-                  <PermissionChip
-                    key={key}
-                    label={key}
-                    permission={value}
-                    classes={classes}
-                  />
-                ))}
-              </Box>
-              <Typography
-                variant="caption"
-                color="textSecondary"
-                style={{ marginTop: 4, display: 'block' }}
-              >
-                {translate('resources.plugin.messages.clickPermissions')}
-              </Typography>
-            </InfoRow>
-          )}
-
-        <InfoRow
-          label={translate('resources.plugin.fields.path')}
-          classes={classes}
-          isSmall={isSmall}
-        >
-          <span className={classes.pathField}>{record.path}</span>
-        </InfoRow>
-
-        <InfoRow
-          label={translate('resources.plugin.fields.updatedAt')}
-          classes={classes}
-          isSmall={isSmall}
-        >
-          <DateField record={record} source="updatedAt" showTime />
-        </InfoRow>
-
-        <InfoRow
-          label={translate('resources.plugin.fields.createdAt')}
-          classes={classes}
-          isSmall={isSmall}
-        >
-          <DateField record={record} source="createdAt" showTime />
-        </InfoRow>
-      </Grid>
-    </CardContent>
-  </Card>
-)
-
-// Manifest accordion
-const ManifestSection = ({ manifestJson, classes, translate }) => (
-  <Accordion className={classes.section}>
-    <AccordionSummary expandIcon={<MdExpandMore />}>
-      <Typography variant="h6">
-        {translate('resources.plugin.sections.manifest')}
-      </Typography>
-    </AccordionSummary>
-    <AccordionDetails>
-      <Box className={classes.manifestBox} width="100%">
-        {manifestJson}
-      </Box>
-    </AccordionDetails>
-  </Accordion>
-)
-
-// Configuration editor card
-const ConfigCard = ({
-  config,
-  configError,
-  isDirty,
-  loading,
-  classes,
-  translate,
-  onConfigChange,
-  onSave,
-}) => (
-  <Card className={classes.section}>
-    <CardContent>
-      <Typography variant="h6" className={classes.sectionTitle}>
-        {translate('resources.plugin.sections.configuration')}
-      </Typography>
-      <Typography variant="body2" color="textSecondary" gutterBottom>
-        {translate('resources.plugin.messages.configHelp')}
-      </Typography>
-      <MuiTextField
-        multiline
-        fullWidth
-        minRows={4}
-        maxRows={15}
-        variant="outlined"
-        value={config}
-        onChange={onConfigChange}
-        error={!!configError}
-        helperText={configError}
-        placeholder="{}"
-        InputProps={{
-          className: classes.configInput,
-        }}
-      />
-      <Button
-        variant="contained"
-        color="primary"
-        startIcon={<MdSave />}
-        onClick={onSave}
-        disabled={!isDirty || !!configError || loading}
-        className={classes.saveButton}
-      >
-        {translate('ra.action.save')}
-      </Button>
-    </CardContent>
-  </Card>
-)
+import { Title } from '../common'
+import { usePluginShowStyles } from './styles.js'
+import { ErrorSection } from './ErrorSection'
+import { StatusCard } from './StatusCard'
+import { InfoCard } from './InfoCard'
+import { ManifestSection } from './ManifestSection'
+import { ConfigCard } from './ConfigCard'
 
 // Main show layout component
 const PluginShowLayout = () => {
   const { record, isPending, error } = useShowContext()
-  const classes = useStyles()
+  const classes = usePluginShowStyles()
   const translate = useTranslate()
   const notify = useNotify()
   const refresh = useRefresh()
   const isSmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
-  const [config, setConfig] = useState('')
-  const [configError, setConfigError] = useState(null)
+  const [configPairs, setConfigPairs] = useState([])
   const [isDirty, setIsDirty] = useState(false)
   const [configInitialized, setConfigInitialized] = useState(false)
+
+  // Convert JSON config to key-value pairs
+  const jsonToPairs = useCallback((jsonString) => {
+    if (!jsonString || jsonString.trim() === '') return []
+    try {
+      const obj = JSON.parse(jsonString)
+      return Object.entries(obj).map(([key, value]) => ({
+        key,
+        value: typeof value === 'string' ? value : JSON.stringify(value),
+      }))
+    } catch {
+      return []
+    }
+  }, [])
+
+  // Convert key-value pairs to JSON config
+  const pairsToJson = useCallback((pairs) => {
+    if (pairs.length === 0) return ''
+    const obj = {}
+    pairs.forEach((pair) => {
+      if (pair.key.trim()) {
+        // Try to parse value as JSON, otherwise use as string
+        try {
+          obj[pair.key] = JSON.parse(pair.value)
+        } catch {
+          obj[pair.key] = pair.value
+        }
+      }
+    })
+    return JSON.stringify(obj)
+  }, [])
 
   // Initialize config when record loads
   React.useEffect(() => {
     if (record && !configInitialized) {
-      setConfig(record.config || '')
+      setConfigPairs(jsonToPairs(record.config || ''))
       setConfigInitialized(true)
     }
-  }, [record, configInitialized])
+  }, [record, configInitialized, jsonToPairs])
+
+  const handleConfigPairsChange = useCallback(
+    (newPairs) => {
+      setConfigPairs(newPairs)
+      const newJson = pairsToJson(newPairs)
+      const originalJson = record?.config || ''
+      setIsDirty(newJson !== originalJson)
+    },
+    [record?.config, pairsToJson],
+  )
 
   const [updatePlugin, { loading }] = useUpdate(
     'plugin',
@@ -450,6 +92,7 @@ const PluginShowLayout = () => {
       onSuccess: () => {
         refresh()
         setIsDirty(false)
+        setConfigInitialized(false) // Reset to reinitialize from server
         notify('resources.plugin.notifications.updated', 'info')
       },
       onFailure: (err) => {
@@ -461,29 +104,11 @@ const PluginShowLayout = () => {
     },
   )
 
-  const handleConfigChange = useCallback(
-    (e) => {
-      const value = e.target.value
-      setConfig(value)
-      setIsDirty(value !== (record?.config || ''))
-
-      if (value === '') {
-        setConfigError(null)
-      } else {
-        const validation = validateJson(value)
-        setConfigError(validation.error)
-      }
-    },
-    [record?.config],
-  )
-
   const handleSaveConfig = useCallback(() => {
-    if (configError || !record) {
-      notify('resources.plugin.validation.invalidJson', 'warning')
-      return
-    }
+    if (!record) return
+    const config = pairsToJson(configPairs)
     updatePlugin('plugin', record.id, { config }, record)
-  }, [updatePlugin, record, config, configError, notify])
+  }, [updatePlugin, record, configPairs, pairsToJson])
 
   // Parse manifest
   const { manifest, manifestJson } = useMemo(() => {
@@ -542,13 +167,12 @@ const PluginShowLayout = () => {
         />
 
         <ConfigCard
-          config={config}
-          configError={configError}
+          configPairs={configPairs}
+          onConfigPairsChange={handleConfigPairsChange}
           isDirty={isDirty}
           loading={loading}
           classes={classes}
           translate={translate}
-          onConfigChange={handleConfigChange}
           onSave={handleSaveConfig}
         />
       </Box>
