@@ -44,6 +44,7 @@ var allProviders = wire.NewSet(
 	plugins.GetManager,
 	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )
 

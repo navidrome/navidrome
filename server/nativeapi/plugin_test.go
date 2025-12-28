@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +22,7 @@ import (
 
 var _ = Describe("Plugin API", func() {
 	var ds *tests.MockDataStore
+	var mockManager *tests.MockPluginManager
 	var router http.Handler
 	var adminUser, regularUser model.User
 	var testPlugin1, testPlugin2 model.Plugin
@@ -29,8 +31,9 @@ var _ = Describe("Plugin API", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
 		ds = &tests.MockDataStore{}
+		mockManager = &tests.MockPluginManager{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, core.NewMockLibraryService(), nil)
+		nativeRouter := New(ds, nil, nil, nil, core.NewMockLibraryService(), nil, mockManager)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -153,6 +156,14 @@ var _ = Describe("Plugin API", func() {
 
 			Describe("PUT /api/plugin/{id}", func() {
 				It("updates plugin enabled state", func() {
+					// Configure mock to update the repo when EnablePlugin is called
+					mockManager.EnablePluginFn = func(ctx context.Context, id string) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Enabled = true
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
 					body := bytes.NewBufferString(`{"enabled":true}`)
 					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
@@ -167,9 +178,18 @@ var _ = Describe("Plugin API", func() {
 					err := json.Unmarshal(w.Body.Bytes(), &plugin)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(plugin.Enabled).To(BeTrue())
+					Expect(mockManager.EnablePluginCalls).To(ContainElement("test-plugin-1"))
 				})
 
 				It("updates plugin config with valid JSON", func() {
+					// Configure mock to update the repo when UpdatePluginConfig is called
+					mockManager.UpdatePluginConfigFn = func(ctx context.Context, id, configJSON string) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Config = configJSON
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
 					body := bytes.NewBufferString(`{"config":"{\"key\":\"value\"}"}`)
 					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
@@ -184,6 +204,8 @@ var _ = Describe("Plugin API", func() {
 					err := json.Unmarshal(w.Body.Bytes(), &plugin)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(plugin.Config).To(Equal(`{"key":"value"}`))
+					Expect(mockManager.UpdatePluginConfigCalls).To(HaveLen(1))
+					Expect(mockManager.UpdatePluginConfigCalls[0].ConfigJSON).To(Equal(`{"key":"value"}`))
 				})
 
 				It("rejects invalid JSON in config field", func() {
@@ -200,6 +222,14 @@ var _ = Describe("Plugin API", func() {
 				})
 
 				It("allows empty config", func() {
+					// Configure mock to update the repo when UpdatePluginConfig is called
+					mockManager.UpdatePluginConfigFn = func(ctx context.Context, id, configJSON string) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Config = configJSON
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
 					body := bytes.NewBufferString(`{"config":""}`)
 					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
