@@ -90,7 +90,7 @@ const PermissionChip = ({ label, permission, classes }) => {
 // Info row component for responsive grid
 const InfoRow = ({ label, children, classes, isSmall }) => (
   <>
-    <Grid item xs={12} sm={4}>
+    <Grid item xs={12} sm={3}>
       <Typography
         variant="body2"
         className={classes.infoLabel}
@@ -99,7 +99,7 @@ const InfoRow = ({ label, children, classes, isSmall }) => (
         {label}
       </Typography>
     </Grid>
-    <Grid item xs={12} sm={8}>
+    <Grid item xs={12} sm={9}>
       <Typography variant="body2" component="div">
         {children}
       </Typography>
