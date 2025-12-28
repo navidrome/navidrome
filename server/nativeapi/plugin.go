@@ -53,8 +53,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	repo := api.ds.Plugin(ctx)
 
 	// Get existing plugin to verify it exists
-	plugin, err := repo.Get(id)
-	if err != nil {
+	if _, err := repo.Get(id); err != nil {
 		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
 			return
@@ -96,7 +95,12 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 			if err := api.pluginManager.EnablePlugin(ctx, id); err != nil {
 				log.Error(ctx, "Error enabling plugin", "id", id, err)
 				// Refresh plugin from DB to get the error
-				plugin, _ = repo.Get(id)
+				plugin, err := repo.Get(id)
+				if err != nil {
+					log.Error(ctx, "Error getting updated plugin after enable failure", "id", id, err)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				_ = json.NewEncoder(w).Encode(plugin)
@@ -112,7 +116,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refresh and return updated plugin
-	plugin, err = repo.Get(id)
+	plugin, err := repo.Get(id)
 	if err != nil {
 		log.Error(ctx, "Error getting updated plugin", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
