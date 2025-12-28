@@ -23,25 +23,25 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const ErrorIndicator = () => {
+const EnabledOrErrorField = () => {
   const record = useRecordContext()
   const translate = useTranslate()
   const classes = useStyles()
 
-  if (!record.lastError) {
-    return null
+  if (record.lastError) {
+    return (
+      <Tooltip title={record.lastError}>
+        <Chip
+          size="small"
+          icon={<MdError className={classes.errorIcon} />}
+          label={translate('resources.plugin.fields.hasError')}
+          className={classes.errorChip}
+        />
+      </Tooltip>
+    )
   }
 
-  return (
-    <Tooltip title={record.lastError}>
-      <Chip
-        size="small"
-        icon={<MdError className={classes.errorIcon} />}
-        label={translate('resources.plugin.fields.hasError')}
-        className={classes.errorChip}
-      />
-    </Tooltip>
-  )
+  return <ToggleEnabledSwitch source={'enabled'} />
 }
 
 const useManifest = () => {
@@ -96,8 +96,7 @@ const PluginList = (props) => {
           <ManifestField source="name" />
           {!isXsmall && <ManifestField source="description" />}
           <ManifestField source="version" />
-          <ToggleEnabledSwitch source={'enabled'} />
-          <ErrorIndicator source="lastError" />
+          <EnabledOrErrorField source={'enabled'} />
           <DateField source="updatedAt" sortByOrder={'DESC'} />
         </Datagrid>
       )}
