@@ -215,30 +215,50 @@ const ErrorSection = ({ error, translate }) => {
 }
 
 // Status card with enable/disable toggle
-const StatusCard = ({ record, classes, translate, onToggle, loading }) => (
-  <Card className={classes.section}>
-    <CardContent>
-      <Typography variant="h6" className={classes.sectionTitle}>
-        {translate('resources.plugin.sections.status')}
-      </Typography>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={record.enabled}
-            onChange={onToggle}
-            disabled={loading}
-            color="primary"
+const StatusCard = ({
+  record,
+  classes,
+  translate,
+  onToggle,
+  loading,
+  hasError,
+}) => {
+  const isDisabled = loading || hasError
+
+  return (
+    <Card className={classes.section}>
+      <CardContent>
+        <Typography variant="h6" className={classes.sectionTitle}>
+          {translate('resources.plugin.sections.status')}
+        </Typography>
+        <Tooltip
+          title={
+            hasError
+              ? translate('resources.plugin.actions.disabledDueToError')
+              : ''
+          }
+          disableHoverListener={!hasError}
+        >
+          <FormControlLabel
+            control={
+              <Switch
+                checked={record.enabled}
+                onChange={onToggle}
+                disabled={isDisabled}
+                color="primary"
+              />
+            }
+            label={translate(
+              record.enabled
+                ? 'resources.plugin.actions.disable'
+                : 'resources.plugin.actions.enable',
+            )}
           />
-        }
-        label={translate(
-          record.enabled
-            ? 'resources.plugin.actions.disable'
-            : 'resources.plugin.actions.enable',
-        )}
-      />
-    </CardContent>
-  </Card>
-)
+        </Tooltip>
+      </CardContent>
+    </Card>
+  )
+}
 
 // Plugin information card
 const InfoCard = ({ record, manifest, classes, translate, isSmall }) => (
@@ -570,6 +590,7 @@ const PluginShowLayout = () => {
           translate={translate}
           onToggle={handleToggleEnabled}
           loading={loading}
+          hasError={!!record.lastError}
         />
 
         <InfoCard

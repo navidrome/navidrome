@@ -361,7 +361,8 @@
       },
       "actions": {
         "enable": "Enable",
-        "disable": "Disable"
+        "disable": "Disable",
+        "disabledDueToError": "Fix the error before enabling"
       },
       "notifications": {
         "enabled": "Plugin enabled",
