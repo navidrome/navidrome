@@ -85,6 +85,16 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterCacheHostFunctions(service), service
 		},
 	},
+	{
+		name:          "Library",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
+		registerStubs: func() []extism.HostFunction { return host.RegisterLibraryHostFunctions(nil) },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Library
+			service := newLibraryService(ctx.manager.ds, perm)
+			return host.RegisterLibraryHostFunctions(service), nil
+		},
+	},
 }
 
 // stubHostFunctions returns the list of stub host functions needed for initial plugin compilation.
@@ -312,6 +322,21 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 
 	if hosts := info.manifest.AllowedHosts(); len(hosts) > 0 {
 		pluginManifest.AllowedHosts = hosts
+	}
+
+	// Configure filesystem access for library permission
+	if info.manifest.Permissions != nil && info.manifest.Permissions.Library != nil && info.manifest.Permissions.Library.Filesystem {
+		adminCtx := adminContext(m.ctx)
+		libraries, err := m.ds.Library(adminCtx).GetAll()
+		if err != nil {
+			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+		}
+
+		allowedPaths := make(map[string]string)
+		for _, lib := range libraries {
+			allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
+		}
+		pluginManifest.AllowedPaths = allowedPaths
 	}
 
 	// Register host functions based on permissions using table-driven approach
