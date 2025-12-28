@@ -164,35 +164,45 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 		}
 
 	case actionUpdate:
-		// File changed - extract manifest, update DB, disable if enabled
-		metadata, err := m.ExtractManifest(wasmPath)
+		// File changed - check SHA256 first, then extract manifest if needed
+		sha256Hash, err := computeFileSHA256(wasmPath)
 		if err != nil {
-			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
-			// Try to update error in DB if plugin exists
-			if dbPlugin, getErr := repo.Get(pluginName); getErr == nil {
-				dbPlugin.LastError = err.Error()
-				dbPlugin.UpdatedAt = time.Now()
-				if dbPlugin.Enabled {
-					_ = m.UnloadPlugin(pluginName)
-					dbPlugin.Enabled = false
-				}
-				_ = repo.Put(dbPlugin)
-			}
+			log.Error(m.ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
 			return
 		}
 
 		dbPlugin, err := repo.Get(pluginName)
 		if err != nil {
-			// Plugin not in DB yet, add it
+			// Plugin not in DB yet, need full manifest extraction to add it
+			metadata, extractErr := m.ExtractManifest(wasmPath)
+			if extractErr != nil {
+				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
+				return
+			}
 			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, wasmPath, metadata); addErr != nil {
 				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
 			}
 			return
 		}
 
-		// Check if actually changed
-		if dbPlugin.SHA256 == metadata.SHA256 {
+		// Check if actually changed using lightweight SHA256 comparison
+		if dbPlugin.SHA256 == sha256Hash {
 			return // No actual change
+		}
+
+		// Plugin changed - now extract full manifest
+		metadata, err := m.ExtractManifest(wasmPath)
+		if err != nil {
+			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
+			// Update error in DB
+			dbPlugin.LastError = err.Error()
+			dbPlugin.UpdatedAt = time.Now()
+			if dbPlugin.Enabled {
+				_ = m.UnloadPlugin(pluginName)
+				dbPlugin.Enabled = false
+			}
+			_ = repo.Put(dbPlugin)
+			return
 		}
 
 		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, wasmPath, metadata); err != nil {
