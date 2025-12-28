@@ -78,19 +78,24 @@ const ToggleEnabledInput = ({ props }) => {
     [toggleEnabled],
   )
 
+  const hasError = !!record.lastError
+  const isDisabled = loading || hasError
+
   return (
     <Tooltip
       title={translate(
-        record.enabled
-          ? 'resources.plugin.actions.disable'
-          : 'resources.plugin.actions.enable',
+        hasError
+          ? 'resources.plugin.actions.disabledDueToError'
+          : record.enabled
+            ? 'resources.plugin.actions.disable'
+            : 'resources.plugin.actions.enable',
       )}
     >
       <span>
         <Switch
           checked={record.enabled}
           onClick={handleClick}
-          disabled={loading}
+          disabled={isDisabled}
           className={classes.enabledSwitch}
           size="small"
         />
