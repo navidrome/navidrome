@@ -104,7 +104,6 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	conf.Server.Plugins.Folder = tmpDir
 	conf.Server.Plugins.AutoReload = false
 	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
-	conf.Server.PluginConfig = pluginConfig
 
 	// Setup mock DataStore with pre-enabled plugins
 	mockPluginRepo := tests.CreateMockPluginRepo()

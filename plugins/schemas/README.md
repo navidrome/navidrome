@@ -1,66 +1,72 @@
 # Navidrome Plugin Schemas
 
-This directory contains [XTP schemas](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema) 
-that define the plugin capabilities for Navidrome. These schemas can be used to bootstrap 
-new plugins using the `xtp` CLI tool.
+This directory contains [XTP schemas](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema) that define plugin capabilities. Use these schemas to bootstrap new plugins with the `xtp` CLI.
 
 ## Available Schemas
 
-| Schema                                             | Description                                                         |
-|----------------------------------------------------|---------------------------------------------------------------------|
-| [lifecycle.yaml](lifecycle.yaml)                   | Lifecycle callbacks (init) for plugin initialization                |
-| [metadata_agent.yaml](metadata_agent.yaml)         | Metadata agent for retrieving artist/album information              |
-| [scheduler_callback.yaml](scheduler_callback.yaml) | Scheduler callback for plugins using the scheduler host service     |
-| [scrobbler.yaml](scrobbler.yaml)                   | Scrobbler capability for sending play data to external services     |
-| [websocket_callback.yaml](websocket_callback.yaml) | WebSocket callbacks for handling messages, errors, and close events |
+| Schema                                             | Description                     |
+|----------------------------------------------------|---------------------------------|
+| [metadata_agent.yaml](metadata_agent.yaml)         | Artist/album metadata retrieval |
+| [scrobbler.yaml](scrobbler.yaml)                   | Scrobbling to external services |
+| [lifecycle.yaml](lifecycle.yaml)                   | Plugin initialization callback  |
+| [scheduler_callback.yaml](scheduler_callback.yaml) | Scheduled task callbacks        |
+| [websocket_callback.yaml](websocket_callback.yaml) | WebSocket event callbacks       |
 
 ## Prerequisites
 
-Install the `xtp` CLI tool. See the [XTP CLI documentation](https://docs.xtp.dylibso.com/docs/cli) 
-for installation instructions, or install via:
+Install the XTP CLI:
 
 ```bash
 curl -fsSL https://static.dylibso.com/cli/install.sh | bash
 ```
 
+Or see [XTP CLI documentation](https://docs.xtp.dylibso.com/docs/cli) for other methods.
+
 ## Bootstrapping a Plugin
 
-Use the `xtp plugin init` command to generate boilerplate code from a schema.
-
-### Supported Languages
-
-The XTP CLI supports multiple languages via bindgen templates:
-- Go
-- Rust  
-- TypeScript
-- Python
-- C#
-- Zig
-- C++
-
-### Examples
-
-**Create a Go scrobbler plugin:**
+### Basic Usage
 
 ```bash
 xtp plugin init \
-  --schema-file plugins/schemas/scrobbler.yaml \
-  --template go \
-  --path ./my-scrobbler \
-  --name my-scrobbler
+  --schema-file <schema> \
+  --template <language> \
+  --path <output-dir> \
+  --name <plugin-name>
 ```
 
-**Create a Rust metadata agent plugin:**
+### Supported Languages
+
+- `go` – Go (recommended, use with TinyGo)
+- `rust` – Rust
+- `typescript` – TypeScript
+- `python` – Python
+- `csharp` – C#
+- `zig` – Zig
+- `cpp` – C++
+
+### Examples
+
+**Go metadata agent:**
 
 ```bash
 xtp plugin init \
   --schema-file plugins/schemas/metadata_agent.yaml \
-  --template rust \
+  --template go \
   --path ./my-agent \
   --name my-agent
 ```
 
-**Create a TypeScript scrobbler plugin:**
+**Rust scrobbler:**
+
+```bash
+xtp plugin init \
+  --schema-file plugins/schemas/scrobbler.yaml \
+  --template rust \
+  --path ./my-scrobbler \
+  --name my-scrobbler
+```
+
+**TypeScript scrobbler:**
 
 ```bash
 xtp plugin init \
@@ -70,30 +76,23 @@ xtp plugin init \
   --name ts-scrobbler
 ```
 
-### Generated Files
+## Generated Files
 
-After running `xtp plugin init`, you'll get a project structure with:
+After running `xtp plugin init`, you'll get:
 
-- `main.go` (or equivalent for your language) - Plugin implementation with stub functions
-- `pdk.gen.go` - Generated types from the schema
-- `xtp.toml` - Plugin configuration
-- Build scripts for your language
+```
+my-plugin/
+├── main.go          # Plugin implementation (stubs)
+├── pdk.gen.go       # Generated types from schema
+├── xtp.toml         # Plugin configuration
+└── go.mod           # Go module (for Go plugins)
+```
 
-### Implementing the Plugin
+## Implementing Your Plugin
 
-Edit the generated `main.go` file and replace the `panic()` calls with your implementation.
+### 1. Add the Manifest
 
-> **Note:** You don't need to implement all generated functions. Remove any functions that 
-> your plugin doesn't need. Navidrome will only call the functions that are exported by your
-> plugin, and will gracefully handle missing capabilities.
-
-#### Required: The `nd_manifest` Function
-
-In addition to the capability functions generated from the schema, **every plugin must 
-implement the `nd_manifest` function**. This function returns metadata about your plugin
-that Navidrome uses to identify and describe it.
-
-**Go example:**
+Every plugin **must** implement `nd_manifest`. This is not in the schemas—add it manually:
 
 ```go
 import (
@@ -102,78 +101,82 @@ import (
 )
 
 type Manifest struct {
-    Name        string `json:"name"`
-    Author      string `json:"author"`
-    Version     string `json:"version"`
-    Description string `json:"description"`
+    Name        string       `json:"name"`
+    Author      string       `json:"author"`
+    Version     string       `json:"version"`
+    Description string       `json:"description,omitempty"`
+    Website     string       `json:"website,omitempty"`
+    Permissions *Permissions `json:"permissions,omitempty"`
 }
 
 //go:wasmexport nd_manifest
 func ndManifest() int32 {
     manifest := Manifest{
-        Name:        "My Scrobbler Plugin",
+        Name:        "My Plugin",
         Author:      "Your Name",
         Version:     "1.0.0",
-        Description: "A custom scrobbler for My Service",
+        Description: "What this plugin does",
     }
-    out, err := json.Marshal(manifest)
-    if err != nil {
-        pdk.SetError(err)
-        return 1
-    }
+    out, _ := json.Marshal(manifest)
     pdk.Output(out)
     return 0
 }
 ```
 
-**Python example:**
+### 2. Implement Capability Functions
 
-```python
-import extism
-
-@extism.plugin_fn
-def nd_manifest():
-    import json
-    manifest = {
-        "name": "My Scrobbler Plugin",
-        "author": "Your Name",
-        "version": "1.0.0",
-        "description": "A custom scrobbler for My Service"
-    }
-    extism.output_str(json.dumps(manifest))
-```
-
-#### Implementing Capability Functions
-
-Replace the `panic()` calls in the generated stubs with your implementation:
+Replace the generated `panic()` stubs with your implementation:
 
 ```go
-// Example: Implement the IsAuthorized function
-func NdScrobblerIsAuthorized(input AuthInput) (AuthOutput, error) {
-    // Your authorization logic here
-    authorized := checkUserAuthorization(input.UserID, input.Username)
-    return AuthOutput{Authorized: authorized}, nil
+// Generated stub:
+func NdGetArtistBiography(input ArtistInput) (BiographyOutput, error) {
+    panic("not implemented")
+}
+
+// Your implementation:
+func NdGetArtistBiography(input ArtistInput) (BiographyOutput, error) {
+    bio := fetchBiography(input.Name)
+    return BiographyOutput{Biography: bio}, nil
 }
 ```
 
-### Building the Plugin
+### 3. Remove Unused Functions
 
-Build the plugin to WebAssembly:
+You don't need to implement all functions from a schema. Delete any you don't need—Navidrome only calls functions that exist.
+
+### 4. Build
 
 ```bash
 xtp plugin build
 ```
 
-This creates a `.wasm` file that can be loaded by Navidrome.
+Or manually with TinyGo:
+
+```bash
+tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+```
+
+## Combining Capabilities
+
+A single plugin can implement multiple capabilities. Generate from one schema, then manually add functions from others:
+
+```bash
+# Start with metadata agent
+xtp plugin init --schema-file metadata_agent.yaml --template go --path ./my-plugin --name my-plugin
+
+# Manually add scrobbler functions from scrobbler.yaml
+# Manually add scheduler callback from scheduler_callback.yaml
+```
+
+Or combine schemas manually before generating (advanced).
 
 ## Schema Format
 
-These schemas use the [XTP Schema v1-draft](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema) format,
-which is based on JSON Schema with extensions for defining plugin exports and imports.
+These schemas use [XTP Schema v1-draft](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema) format, which extends JSON Schema with plugin-specific extensions for exports and imports.
 
 ## Resources
 
+- [Plugin System Documentation](../README.md)
 - [XTP Documentation](https://docs.xtp.dylibso.com/)
-- [XTP Bindgen Repository](https://github.com/dylibso/xtp-bindgen)
-- [XTP Schema Definition](https://raw.githubusercontent.com/dylibso/xtp-bindgen/5090518dd86ba5e734dc225a33066ecc0ed2e12d/plugin/schema.json)
-- [Extism Plugin Development Kit](https://extism.org/docs/concepts/pdk)
+- [XTP Schema Reference](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema)
+- [Extism PDK](https://extism.org/docs/concepts/pdk)

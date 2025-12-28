@@ -89,7 +89,6 @@ type configOptions struct {
 	PasswordEncryptionKey           string
 	ExtAuth                         extAuthOptions
 	Plugins                         pluginsOptions
-	PluginConfig                    map[string]map[string]string
 	HTTPHeaders                     httpHeaderOptions   `json:",omitzero"`
 	Prometheus                      prometheusOptions   `json:",omitzero"`
 	Scanner                         scannerOptions      `json:",omitzero"`

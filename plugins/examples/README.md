@@ -1,55 +1,57 @@
 # Navidrome Plugin Examples
 
-This folder contains example plugins for Navidrome that demonstrate how to build metadata agents using the plugin system.
+This folder contains example plugins demonstrating various capabilities and languages supported by Navidrome's plugin system.
+
+## Available Examples
+
+| Plugin                                          | Language | Capabilities                                    | Description                    |
+|-------------------------------------------------|----------|-------------------------------------------------|--------------------------------|
+| [minimal](minimal/)                             | Go       | MetadataAgent                                   | Basic plugin structure         |
+| [wikimedia](wikimedia/)                         | Go       | MetadataAgent                                   | Wikidata/Wikipedia metadata    |
+| [crypto-ticker](crypto-ticker/)                 | Go       | Scheduler, WebSocket, Cache                     | Real-time crypto prices (demo) |
+| [discord-rich-presence](discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket, Cache, Artwork | Discord integration            |
+| [coverartarchive-py](coverartarchive-py/)       | Python   | MetadataAgent                                   | Cover Art Archive              |
+| [nowplaying-py](nowplaying-py/)                 | Python   | Scheduler, SubsonicAPI                          | Now playing logger             |
+| [webhook-rs](webhook-rs/)                       | Rust     | Scrobbler                                       | HTTP webhook on scrobble       |
 
 ## Building
 
 ### Prerequisites
 
-- [TinyGo](https://tinygo.org/getting-started/install/) (recommended) or Go 1.23+ (for Go plugins)
-- [extism-py](https://github.com/extism/python-pdk) (for Python plugins)
-- [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target (for Rust plugins)
-- [Extism CLI](https://extism.org/docs/install) (optional, for testing)
+- **Go plugins:** [TinyGo](https://tinygo.org/getting-started/install/) 0.30+
+- **Python plugins:** [extism-py](https://github.com/extism/python-pdk)
+- **Rust plugins:** [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target
 
-### Build all plugins
+### Build All (Go plugins)
 
 ```bash
 make all
 ```
 
-This will compile all (Go) example plugins and place the `.wasm` files in this directory.
-
-### Build a specific plugin
+### Build Individual Plugin
 
 ```bash
 make minimal.wasm
 make wikimedia.wasm
+make discord-rich-presence.wasm
 ```
 
-### Clean build artifacts
+### Clean
 
 ```bash
 make clean
 ```
 
-## Available Examples
+## Testing Plugins
 
-| Plugin                                          | Language | Description                                                             |
-|-------------------------------------------------|----------|-------------------------------------------------------------------------|
-| [minimal](minimal/)                             | Go       | A minimal example showing the basic plugin structure                    |
-| [wikimedia](wikimedia/)                         | Go       | Fetches artist metadata from Wikidata, DBpedia, and Wikipedia           |
-| [crypto-ticker](crypto-ticker/)                 | Go       | Real-time cryptocurrency prices from Coinbase using WebSocket           |
-| [discord-rich-presence](discord-rich-presence/) | Go       | Discord Rich Presence integration using Scrobbler, WebSocket, Scheduler |
-| [coverartarchive-py](coverartarchive-py/)       | Python   | Album cover art from Cover Art Archive (Python example)                 |
-| [nowplaying-py](nowplaying-py/)                 | Python   | Logs currently playing tracks using Scheduler and SubsonicAPI           |
-| [webhook-rs](webhook-rs/)                       | Rust     | Sends HTTP webhooks on scrobble events (Rust example)                   |
+### With Extism CLI
 
-## Testing with Extism CLI
-
-You can test any plugin using the Extism CLI:
+Test any plugin without running Navidrome:
 
 ```bash
-# Test the manifest
+# Install: https://extism.org/docs/install
+
+# Test manifest
 extism call minimal.wasm nd_manifest --wasi
 
 # Test with input
@@ -57,58 +59,112 @@ extism call minimal.wasm nd_get_artist_biography --wasi \
   --input '{"id":"1","name":"The Beatles"}'
 ```
 
-For plugins that make HTTP requests, use `--allow-host` to permit access:
+For plugins that make HTTP requests, allow the hosts:
 
 ```bash
-extism call wikimedia.wasm nd_get_artist_biography --wasi \                                                                                      3s   ▼ 
+extism call wikimedia.wasm nd_get_artist_biography --wasi \
   --input '{"id":"1","name":"Yussef Dayes"}' \
-  --allow-host "query.wikidata.org" --allow-host "en.wikipedia.org"
+  --allow-host "query.wikidata.org" \
+  --allow-host "en.wikipedia.org"
 ```
 
-## Installation
+### With Navidrome
 
-Copy any `.wasm` file to your Navidrome plugins folder:
-
-```bash
-cp wikimedia.wasm /path/to/navidrome/plugins/
-```
-
-Then enable plugins in your `navidrome.toml`:
-
-```toml
-[Plugins]
-Enabled = true
-Folder = "/path/to/navidrome/plugins"
-```
-
-And add the plugin to your agents list:
-
-```toml
-Agents = "lastfm,spotify,wikimedia"
-```
+1. Copy the `.wasm` file to your plugins folder
+2. Enable plugins in `navidrome.toml`:
+   ```toml
+   [Plugins]
+   Enabled = true
+   Folder = "/path/to/plugins"
+   ```
+3. For metadata agents, add to your agents list:
+   ```toml
+   Agents = "lastfm,spotify,wikimedia"
+   ```
 
 ## Creating Your Own Plugin
 
-The plugin system supports multiple languages. See the [minimal](minimal/) example for the simplest Go starting point, 
-[discord-rich-presence](discord-rich-presence/) for a more complete Go example with HTTP requests, [coverartarchive-py](coverartarchive-py/) 
-for a Python example, or [webhook-rs](webhook-rs/) for a Rust example.
+### Option 1: Start from Minimal
 
-### Bootstrapping a New Plugin
-Use the XTP CLI to bootstrap a new plugin from a schema:
+Copy the [minimal](minimal/) example and modify:
 
 ```bash
+cp -r minimal my-plugin
+cd my-plugin
+# Edit main.go
+tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+```
+
+### Option 2: Bootstrap with XTP CLI
+
+Generate boilerplate from a schema:
+
+```bash
+# Install XTP: https://docs.xtp.dylibso.com/docs/cli
+
 xtp plugin init \
-  --schema-file plugins/schemas/metadata_agent.yaml \
+  --schema-file ../schemas/metadata_agent.yaml \
   --template go \
   --path ./my-plugin \
   --name my-plugin
 ```
 
-See the [schemas README](../schemas/README.md) for more information about available schemas
-and supported languages.
+Available schemas in [../schemas/](../schemas/):
+- `metadata_agent.yaml` – Artist/album metadata
+- `scrobbler.yaml` – Scrobbling integration
+- `lifecycle.yaml` – Init callbacks
+- `scheduler_callback.yaml` – Scheduled tasks
+- `websocket_callback.yaml` – WebSocket events
 
-For the simplest starting point, look at [minimal](minimal/). For a more complete example
-with HTTP requests, see [wikimedia](wikimedia/).
+### Option 3: Different Language
 
+See language-specific examples:
+- **Python:** [coverartarchive-py](coverartarchive-py/)
+- **Rust:** [webhook-rs](webhook-rs/)
 
-For full documentation, see the [Plugin System README](../README.md).
+## Example Breakdown
+
+### Minimal (Go)
+
+The simplest possible plugin. Shows:
+- Manifest export
+- Single capability function
+- Basic input/output handling
+
+### Wikimedia (Go)
+
+Real-world metadata agent. Shows:
+- HTTP requests to external APIs
+- SPARQL queries (Wikidata)
+- Error handling
+- Host allowlisting
+
+### Discord Rich Presence (Go)
+
+Complex multi-capability plugin. Shows:
+- **Scrobbler** – Receives play events
+- **WebSocket** – Maintains Discord gateway connection
+- **Scheduler** – Heartbeat and timeout management
+- **Cache** – Connection state storage
+- **Artwork** – Getting album art URLs
+
+### Cover Art Archive (Python)
+
+Python metadata agent. Shows:
+- extism-py plugin structure
+- HTTP requests
+- JSON handling
+
+### Webhook (Rust)
+
+Rust scrobbler. Shows:
+- extism-rs plugin structure
+- HTTP POST requests
+- Minimal dependencies
+
+## Resources
+
+- [Plugin System Documentation](../README.md)
+- [Extism PDK Docs](https://extism.org/docs/concepts/pdk)
+- [TinyGo WebAssembly](https://tinygo.org/docs/guides/webassembly/)
+- [XTP CLI](https://docs.xtp.dylibso.com/docs/cli)
