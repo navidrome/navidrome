@@ -520,7 +520,7 @@ manager := plugins.GetManager()
 err := manager.LoadPlugin("my-plugin")
 
 // Unload a running plugin
-err := manager.UnloadPlugin("my-plugin")
+err := manager.unloadPlugin("my-plugin")
 
 // Reload a plugin (unload + load)
 err := manager.ReloadPlugin("my-plugin")
