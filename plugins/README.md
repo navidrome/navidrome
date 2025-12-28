@@ -645,13 +645,14 @@ Generated SDKs for calling host services are in `plugins/host/go/` and `plugins/
 
 See [examples/](examples/) for complete working plugins:
 
-| Plugin                                                   | Language | Capabilities                    | Description                    |
-|----------------------------------------------------------|----------|---------------------------------|--------------------------------|
-| [minimal](examples/minimal/)                             | Go       | MetadataAgent                   | Basic structure example        |
-| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent                   | Wikidata/Wikipedia integration |
-| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket | Discord integration            |
-| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent                   | Cover Art Archive              |
-| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler                       | HTTP webhooks                  |
+| Plugin                                                   | Language | Capabilities                             | Description                    |
+|----------------------------------------------------------|----------|------------------------------------------|--------------------------------|
+| [minimal](examples/minimal/)                             | Go       | MetadataAgent                            | Basic structure example        |
+| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent                            | Wikidata/Wikipedia integration |
+| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket          | Discord integration            |
+| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent                            | Cover Art Archive              |
+| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler                                | HTTP webhooks                  |
+| [library-inspector](examples/library-inspector/)         | Rust     | Library, Scheduler                       | Periodic library stats logging |
 
 ---
 
