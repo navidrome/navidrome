@@ -22,9 +22,12 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Chip,
+  Tooltip,
+  Link,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { MdExpandMore, MdError, MdCheckCircle } from 'react-icons/md'
+import { MdExpandMore, MdError } from 'react-icons/md'
 import { Title, DateField } from '../common'
 import { validateJson } from './jsonValidation'
 
@@ -71,15 +74,6 @@ const useStyles = makeStyles((theme) => ({
     fontFamily: 'monospace',
     fontSize: '0.85rem',
   },
-  statusEnabled: {
-    color: theme.palette.success?.main || theme.palette.primary.main,
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-  },
-  statusDisabled: {
-    color: theme.palette.text.secondary,
-  },
   toolbar: {
     display: 'flex',
     justifyContent: 'flex-start',
@@ -104,7 +98,62 @@ const useStyles = makeStyles((theme) => ({
     fontSize: '0.85rem',
     wordBreak: 'break-all',
   },
+  permissionsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(0.5),
+  },
+  permissionChip: {
+    fontSize: '0.75rem',
+  },
+  tooltipContent: {
+    '& code': {
+      fontFamily: 'monospace',
+      fontSize: '0.8em',
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      padding: '1px 4px',
+      borderRadius: 2,
+    },
+  },
 }))
+
+const PermissionChip = ({ label, permission }) => {
+  const classes = useStyles()
+
+  if (!permission) return null
+
+  const hasHosts = permission.allowedHosts?.length > 0
+  const tooltipContent = (
+    <Box className={classes.tooltipContent}>
+      {permission.reason && <Typography variant="body2">{permission.reason}</Typography>}
+      {hasHosts && (
+        <Box mt={permission.reason ? 0.5 : 0}>
+          <Typography variant="caption" component="div">
+            Allowed hosts: {permission.allowedHosts.map((host, i) => (
+              <span key={host}>{i > 0 && ', '}<code>{host}</code></span>
+            ))}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  )
+
+  const hasTooltip = permission.reason || hasHosts
+
+  const chip = (
+    <Chip
+      size="small"
+      label={label}
+      className={classes.permissionChip}
+    />
+  )
+
+  return hasTooltip ? (
+    <Tooltip title={tooltipContent} arrow>
+      {chip}
+    </Tooltip>
+  ) : chip
+}
 
 const PluginTitle = ({ record }) => {
   const translate = useTranslate()
@@ -202,46 +251,27 @@ const PluginShowContent = () => {
         </Box>
       )}
 
-      {/* Status and Enable/Disable */}
+      {/* Status - Enable/Disable Switch Only */}
       <Card className={classes.section}>
         <CardContent>
           <Typography variant="h6" className={classes.sectionTitle}>
             {translate('resources.plugin.sections.status')}
           </Typography>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <Box>
-              {record.enabled ? (
-                <Typography className={classes.statusEnabled}>
-                  <MdCheckCircle />
-                  {translate('resources.plugin.status.enabled')}
-                </Typography>
-              ) : (
-                <Typography className={classes.statusDisabled}>
-                  {translate('resources.plugin.status.disabled')}
-                </Typography>
-              )}
-            </Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={record.enabled}
-                  onChange={handleToggleEnabled}
-                  disabled={loading}
-                  color="primary"
-                />
-              }
-              label={translate(
-                record.enabled
-                  ? 'resources.plugin.actions.disable'
-                  : 'resources.plugin.actions.enable',
-              )}
-              labelPlacement="start"
-            />
-          </Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={record.enabled}
+                onChange={handleToggleEnabled}
+                disabled={loading}
+                color="primary"
+              />
+            }
+            label={translate(
+              record.enabled
+                ? 'resources.plugin.actions.disable'
+                : 'resources.plugin.actions.enable',
+            )}
+          />
         </CardContent>
       </Card>
 
@@ -252,8 +282,15 @@ const PluginShowContent = () => {
             {translate('resources.plugin.sections.info')}
           </Typography>
           <dl className={classes.infoGrid}>
-            <dt>{translate('resources.plugin.fields.name')}</dt>
+            <dt>{translate('resources.plugin.fields.id')}</dt>
             <dd>{record.id}</dd>
+
+            {manifest?.name && (
+              <>
+                <dt>{translate('resources.plugin.fields.name')}</dt>
+                <dd>{manifest.name}</dd>
+              </>
+            )}
 
             {manifest?.version && (
               <>
@@ -266,6 +303,42 @@ const PluginShowContent = () => {
               <>
                 <dt>{translate('resources.plugin.fields.description')}</dt>
                 <dd>{manifest.description}</dd>
+              </>
+            )}
+
+            {manifest?.author && (
+              <>
+                <dt>{translate('resources.plugin.fields.author')}</dt>
+                <dd>{manifest.author}</dd>
+              </>
+            )}
+
+            {manifest?.website && (
+              <>
+                <dt>{translate('resources.plugin.fields.website')}</dt>
+                <dd>
+                  <Link
+                    href={manifest.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {manifest.website}
+                  </Link>
+                </dd>
+              </>
+            )}
+
+            {manifest?.permissions && (
+              <>
+                <dt>{translate('resources.plugin.fields.permissions')}</dt>
+                <dd className={classes.permissionsContainer}>
+                  <PermissionChip label="HTTP" permission={manifest.permissions.http} />
+                  <PermissionChip label="Subsonic API" permission={manifest.permissions.subsonicapi} />
+                  <PermissionChip label="Scheduler" permission={manifest.permissions.scheduler} />
+                  <PermissionChip label="WebSocket" permission={manifest.permissions.websocket} />
+                  <PermissionChip label="Artwork" permission={manifest.permissions.artwork} />
+                  <PermissionChip label="Cache" permission={manifest.permissions.cache} />
+                </dd>
               </>
             )}
 
@@ -284,6 +357,20 @@ const PluginShowContent = () => {
           </dl>
         </CardContent>
       </Card>
+
+      {/* Manifest (Collapsible) */}
+      <Accordion className={classes.section}>
+        <AccordionSummary expandIcon={<MdExpandMore />}>
+          <Typography variant="h6">
+            {translate('resources.plugin.sections.manifest')}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box className={classes.manifestBox} width="100%">
+            {manifestJson}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Configuration */}
       <Card className={classes.section}>
@@ -318,20 +405,6 @@ const PluginShowContent = () => {
           </Toolbar>
         </CardContent>
       </Card>
-
-      {/* Manifest */}
-      <Accordion>
-        <AccordionSummary expandIcon={<MdExpandMore />}>
-          <Typography variant="h6">
-            {translate('resources.plugin.sections.manifest')}
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box className={classes.manifestBox} width="100%">
-            {manifestJson}
-          </Box>
-        </AccordionDetails>
-      </Accordion>
     </Box>
   )
 }
