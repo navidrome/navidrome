@@ -33,6 +33,34 @@ type HTTPPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
+// Library service permissions for accessing library metadata and optionally
+// filesystem
+type LibraryPermission struct {
+	// Whether the plugin requires read-only filesystem access to library directories
+	Filesystem bool `json:"filesystem,omitempty" yaml:"filesystem,omitempty" mapstructure:"filesystem,omitempty"`
+
+	// Explanation for why library access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *LibraryPermission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	type Plain LibraryPermission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if v, ok := raw["filesystem"]; !ok || v == nil {
+		plain.Filesystem = false
+	}
+	*j = LibraryPermission(plain)
+	return nil
+}
+
 // Plugin manifest for Navidrome plugins
 type Manifest struct {
 	// The author of the plugin
@@ -97,6 +125,9 @@ type Permissions struct {
 
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
+
+	// Library corresponds to the JSON schema field "library".
+	Library *LibraryPermission `json:"library,omitempty" yaml:"library,omitempty" mapstructure:"library,omitempty"`
 
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`

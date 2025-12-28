@@ -58,6 +58,9 @@
         },
         "cache": {
           "$ref": "#/$defs/CachePermission"
+        },
+        "library": {
+          "$ref": "#/$defs/LibraryPermission"
         }
       }
     },
@@ -161,6 +164,22 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "LibraryPermission": {
+      "type": "object",
+      "description": "Library service permissions for accessing library metadata and optionally filesystem",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why library access is needed"
+        },
+        "filesystem": {
+          "type": "boolean",
+          "description": "Whether the plugin requires read-only filesystem access to library directories",
+          "default": false
         }
       }
     }
