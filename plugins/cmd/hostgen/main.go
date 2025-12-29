@@ -242,6 +242,43 @@ func generateGoClientCode(svc internal.Service, outputDir string, dryRun, verbos
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", clientFile, formatted)
+	} else {
+		// Create go/ subdirectory if needed
+		if err := os.MkdirAll(clientDir, 0755); err != nil {
+			return fmt.Errorf("creating client directory: %w", err)
+		}
+
+		if err := os.WriteFile(clientFile, formatted, 0600); err != nil {
+			return fmt.Errorf("writing file: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated Go client code: %s\n", clientFile)
+		}
+	}
+
+	// Also generate stub file for non-WASM platforms
+	return generateGoClientStubCode(svc, outputDir, dryRun, verbose)
+}
+
+// generateGoClientStubCode generates stub code for non-WASM platforms.
+func generateGoClientStubCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateClientGoStub(svc)
+	if err != nil {
+		return fmt.Errorf("generating stub code: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting stub code: %w\nRaw code:\n%s", err, code)
+	}
+
+	// Stub code goes in go/ subdirectory with _stub suffix
+	clientDir := filepath.Join(outputDir, "go")
+	stubFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+"_stub.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", stubFile, formatted)
 		return nil
 	}
 
@@ -250,12 +287,12 @@ func generateGoClientCode(svc internal.Service, outputDir string, dryRun, verbos
 		return fmt.Errorf("creating client directory: %w", err)
 	}
 
-	if err := os.WriteFile(clientFile, formatted, 0600); err != nil {
-		return fmt.Errorf("writing file: %w", err)
+	if err := os.WriteFile(stubFile, formatted, 0600); err != nil {
+		return fmt.Errorf("writing stub file: %w", err)
 	}
 
 	if verbose {
-		fmt.Printf("Generated Go client code: %s\n", clientFile)
+		fmt.Printf("Generated Go client stub: %s\n", stubFile)
 	}
 	return nil
 }

@@ -27,14 +27,14 @@ const (
 	reconnectScheduleID = "crypto-ticker-reconnect"
 )
 
-// Coinbase subscription message structure
+// CoinbaseSubscription message structure
 type CoinbaseSubscription struct {
 	Type       string   `json:"type"`
 	ProductIDs []string `json:"product_ids"`
 	Channels   []string `json:"channels"`
 }
 
-// Coinbase ticker message structure
+// CoinbaseTicker message structure
 type CoinbaseTicker struct {
 	Type      string `json:"type"`
 	Sequence  int64  `json:"sequence"`
