@@ -33,6 +33,15 @@ type HTTPPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
+// Key-value store permissions for persistent plugin storage
+type KVStorePermission struct {
+	// Maximum storage size (e.g., '1MB', '500KB'). Default: 1MB
+	MaxSize *string `json:"maxSize,omitempty" yaml:"maxSize,omitempty" mapstructure:"maxSize,omitempty"`
+
+	// Explanation for why key-value store access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // Library service permissions for accessing library metadata and optionally
 // filesystem
 type LibraryPermission struct {
@@ -125,6 +134,9 @@ type Permissions struct {
 
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
+
+	// Kvstore corresponds to the JSON schema field "kvstore".
+	Kvstore *KVStorePermission `json:"kvstore,omitempty" yaml:"kvstore,omitempty" mapstructure:"kvstore,omitempty"`
 
 	// Library corresponds to the JSON schema field "library".
 	Library *LibraryPermission `json:"library,omitempty" yaml:"library,omitempty" mapstructure:"library,omitempty"`
