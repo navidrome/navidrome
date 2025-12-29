@@ -61,6 +61,9 @@
         },
         "library": {
           "$ref": "#/$defs/LibraryPermission"
+        },
+        "kvstore": {
+          "$ref": "#/$defs/KVStorePermission"
         }
       }
     },
@@ -180,6 +183,21 @@
           "type": "boolean",
           "description": "Whether the plugin requires read-only filesystem access to library directories",
           "default": false
+        }
+      }
+    },
+    "KVStorePermission": {
+      "type": "object",
+      "description": "Key-value store permissions for persistent plugin storage",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why key-value store access is needed"
+        },
+        "maxSize": {
+          "type": "string",
+          "description": "Maximum storage size (e.g., '1MB', '500KB'). Default: 1MB"
         }
       }
     }

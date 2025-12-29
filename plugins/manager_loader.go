@@ -83,6 +83,19 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterLibraryHostFunctions(service), nil
 		},
 	},
+	{
+		name:          "KVStore",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Kvstore
+			service, err := newKVStoreService(ctx.pluginName, perm)
+			if err != nil {
+				log.Error("Failed to create KVStore service", "plugin", ctx.pluginName, err)
+				return nil, nil
+			}
+			return host.RegisterKVStoreHostFunctions(service), service
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.

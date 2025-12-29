@@ -14,6 +14,7 @@ Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugi
   - [HTTP Requests](#http-requests)
   - [Scheduler](#scheduler)
   - [Cache](#cache)
+  - [KVStore](#kvstore)
   - [WebSocket](#websocket)
   - [Library](#library)
   - [Artwork](#artwork)
@@ -378,6 +379,73 @@ if result.Exists {
 ```
 
 > **Note:** Cache is in-memory only and cleared on server restart.
+
+### KVStore
+
+Persistent key-value storage that survives server restarts. Each plugin has its own isolated SQLite database.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "kvstore": {
+      "reason": "Store OAuth tokens and plugin state",
+      "maxSize": "1MB"
+    }
+  }
+}
+```
+
+**Permission options:**
+- `maxSize`: Maximum storage size (e.g., `"1MB"`, `"500KB"`). Default: 1MB
+
+**Host functions:**
+
+| Function                 | Parameters   | Description                       |
+|--------------------------|--------------|-----------------------------------|
+| `kvstore_set`            | `key, value` | Store a byte value                |
+| `kvstore_get`            | `key`        | Retrieve a byte value             |
+| `kvstore_delete`         | `key`        | Delete a value                    |
+| `kvstore_has`            | `key`        | Check if key exists               |
+| `kvstore_list`           | `prefix`     | List keys matching prefix         |
+| `kvstore_getstorageused` | -            | Get current storage usage (bytes) |
+
+**Key constraints:**
+- Maximum key length: 256 bytes
+- Keys must be valid UTF-8 strings
+
+**Usage (with generated SDK):**
+
+Copy `plugins/host/go/nd_host_kvstore.go` to your plugin:
+
+```go
+// Store a value (as raw bytes)
+token := []byte(`{"access_token": "xyz", "refresh_token": "abc"}`)
+_, err := KVStoreSet("oauth:spotify", token)
+
+// Retrieve a value
+result, err := KVStoreGet("oauth:spotify")
+if result.Exists {
+    var tokenData map[string]string
+    json.Unmarshal(result.Value, &tokenData)
+}
+
+// List all keys with prefix
+keysResult, err := KVStoreList("user:")
+for _, key := range keysResult.Keys {
+    // Process each key
+}
+
+// Check storage usage
+usageResult, err := KVStoreGetStorageUsed()
+fmt.Printf("Using %d bytes\n", usageResult.Bytes)
+
+// Delete a value
+KVStoreDelete("oauth:spotify")
+```
+
+> **Note:** Unlike Cache, KVStore data persists across server restarts. Storage is located at `${DataFolder}/plugins/${pluginID}/kvstore.db`.
 
 ### WebSocket
 
