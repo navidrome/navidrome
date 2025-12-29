@@ -195,7 +195,7 @@ func _NdWebsocketOnClose() int32 {
 // AuthInput is the input for authorization check
 type AuthInput struct {
 	// The internal Navidrome user ID
-	UserId string `json:"user_id"`
+	UserId string `json:"userId"`
 	// The username of the user
 	Username string `json:"username"`
 }
@@ -213,7 +213,7 @@ type NowPlayingInput struct {
 	// The track currently playing
 	Track TrackInfo `json:"track"`
 	// The internal Navidrome user ID
-	UserId string `json:"user_id"`
+	UserId string `json:"userId"`
 	// The username of the user
 	Username string `json:"username"`
 }
@@ -225,7 +225,7 @@ type ScrobbleInput struct {
 	// The track that was played
 	Track TrackInfo `json:"track"`
 	// The internal Navidrome user ID
-	UserId string `json:"user_id"`
+	UserId string `json:"userId"`
 	// The username of the user
 	Username string `json:"username"`
 }
@@ -275,7 +275,7 @@ type ScrobblerOutput struct {
 	// Error message if the operation failed
 	Error *string `json:"error,omitempty"`
 	// Type of error for handling
-	ErrorType ScrobblerErrorType `json:"error_type,omitempty"`
+	ErrorType ScrobblerErrorType `json:"errorType,omitempty"`
 }
 
 // TrackInfo contains track metadata for scrobbling
@@ -283,31 +283,31 @@ type TrackInfo struct {
 	// Album name
 	Album string `json:"album"`
 	// Album artist
-	AlbumArtist string `json:"album_artist"`
+	AlbumArtist string `json:"albumArtist"`
 	// Track artist
 	Artist string `json:"artist"`
 	// Disc number
-	DiscNumber int32 `json:"disc_number"`
+	DiscNumber int32 `json:"discNumber"`
 	// Track duration in seconds
 	Duration float32 `json:"duration"`
 	// The internal Navidrome track ID
 	Id string `json:"id"`
 	// MusicBrainz album artist ID
-	MbzAlbumArtistId *string `json:"mbz_album_artist_id,omitempty"`
+	MbzAlbumArtistId *string `json:"mbzAlbumArtistId,omitempty"`
 	// MusicBrainz album/release ID
-	MbzAlbumId *string `json:"mbz_album_id,omitempty"`
+	MbzAlbumId *string `json:"mbzAlbumId,omitempty"`
 	// MusicBrainz artist ID
-	MbzArtistId *string `json:"mbz_artist_id,omitempty"`
+	MbzArtistId *string `json:"mbzArtistId,omitempty"`
 	// MusicBrainz recording ID
-	MbzRecordingId *string `json:"mbz_recording_id,omitempty"`
+	MbzRecordingId *string `json:"mbzRecordingId,omitempty"`
 	// MusicBrainz release group ID
-	MbzReleaseGroupId *string `json:"mbz_release_group_id,omitempty"`
+	MbzReleaseGroupId *string `json:"mbzReleaseGroupId,omitempty"`
 	// MusicBrainz release track ID
-	MbzReleaseTrackId *string `json:"mbz_release_track_id,omitempty"`
+	MbzReleaseTrackId *string `json:"mbzReleaseTrackId,omitempty"`
 	// Track title
 	Title string `json:"title"`
 	// Track number on the album
-	TrackNumber int32 `json:"track_number"`
+	TrackNumber int32 `json:"trackNumber"`
 }
 
 // ============================================================================
@@ -318,13 +318,13 @@ type TrackInfo struct {
 type SchedulerCallbackInput struct {
 	// True if this is a recurring schedule (created via ScheduleRecurring),
 	// false if it's a one-time schedule (created via ScheduleOneTime).
-	IsRecurring bool `json:"is_recurring"`
+	IsRecurring bool `json:"isRecurring"`
 	// The payload data that was provided when the task was scheduled.
 	// Can be used to pass context or parameters to the callback handler.
 	Payload string `json:"payload"`
 	// The unique identifier for this scheduled task. This is either the ID
 	// provided when scheduling, or an auto-generated UUID if none was specified.
-	ScheduleId string `json:"schedule_id"`
+	ScheduleId string `json:"scheduleId"`
 }
 
 // SchedulerCallbackOutput is the output from the scheduler callback
@@ -342,7 +342,7 @@ type SchedulerCallbackOutput struct {
 // OnTextMessageInput is provided when a text message is received
 type OnTextMessageInput struct {
 	// The unique identifier for the WebSocket connection that received the message.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The text message content received from the WebSocket.
 	Message string `json:"message"`
 }
@@ -356,7 +356,7 @@ type OnTextMessageOutput struct {
 // OnBinaryMessageInput is provided when a binary message is received
 type OnBinaryMessageInput struct {
 	// The unique identifier for the WebSocket connection that received the message.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The binary data received from the WebSocket, encoded as base64.
 	Data string `json:"data"`
 }
@@ -370,7 +370,7 @@ type OnBinaryMessageOutput struct {
 // OnErrorInput is provided when an error occurs on a WebSocket connection
 type OnErrorInput struct {
 	// The unique identifier for the WebSocket connection where the error occurred.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The error message describing what went wrong.
 	Error string `json:"error"`
 }
@@ -387,7 +387,7 @@ type OnCloseInput struct {
 	// 1001 for going away, 1006 for abnormal closure).
 	Code int32 `json:"code"`
 	// The unique identifier for the WebSocket connection that was closed.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The human-readable reason for the connection closure, if provided.
 	Reason string `json:"reason"`
 }

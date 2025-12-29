@@ -17,7 +17,7 @@ components:
     SchedulerCallbackInput:
       description: Input provided to the scheduler callback when a scheduled task fires
       properties:
-        schedule_id:
+        scheduleId:
           type: string
           description: |
             The unique identifier for this scheduled task. This is either the ID
@@ -27,15 +27,15 @@ components:
           description: |
             The payload data that was provided when the task was scheduled.
             Can be used to pass context or parameters to the callback handler.
-        is_recurring:
+        isRecurring:
           type: boolean
           description: |
             True if this is a recurring schedule (created via ScheduleRecurring),
             false if it's a one-time schedule (created via ScheduleOneTime).
       required:
-        - schedule_id
+        - scheduleId
         - payload
-        - is_recurring
+        - isRecurring
 
     SchedulerCallbackOutput:
       description: Output from the scheduler callback

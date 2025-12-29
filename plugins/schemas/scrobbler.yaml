@@ -33,14 +33,14 @@ components:
     AuthInput:
       description: Input for authorization check
       properties:
-        user_id:
+        userId:
           type: string
           description: The internal Navidrome user ID
         username:
           type: string
           description: The username of the user
       required:
-        - user_id
+        - userId
         - username
 
     AuthOutput:
@@ -67,42 +67,42 @@ components:
         artist:
           type: string
           description: Track artist
-        album_artist:
+        albumArtist:
           type: string
           description: Album artist
         duration:
           type: number
           format: float
           description: Track duration in seconds
-        track_number:
+        trackNumber:
           type: integer
           format: int32
           description: Track number on the album
-        disc_number:
+        discNumber:
           type: integer
           format: int32
           description: Disc number
-        mbz_recording_id:
+        mbzRecordingId:
           type: string
           nullable: true
           description: MusicBrainz recording ID
-        mbz_album_id:
+        mbzAlbumId:
           type: string
           nullable: true
           description: MusicBrainz album/release ID
-        mbz_artist_id:
+        mbzArtistId:
           type: string
           nullable: true
           description: MusicBrainz artist ID
-        mbz_release_group_id:
+        mbzReleaseGroupId:
           type: string
           nullable: true
           description: MusicBrainz release group ID
-        mbz_album_artist_id:
+        mbzAlbumArtistId:
           type: string
           nullable: true
           description: MusicBrainz album artist ID
-        mbz_release_track_id:
+        mbzReleaseTrackId:
           type: string
           nullable: true
           description: MusicBrainz release track ID
@@ -111,15 +111,15 @@ components:
         - title
         - album
         - artist
-        - album_artist
+        - albumArtist
         - duration
-        - track_number
-        - disc_number
+        - trackNumber
+        - discNumber
 
     NowPlayingInput:
       description: Input for now playing notification
       properties:
-        user_id:
+        userId:
           type: string
           description: The internal Navidrome user ID
         username:
@@ -133,7 +133,7 @@ components:
           format: int32
           description: Current playback position in seconds
       required:
-        - user_id
+        - userId
         - username
         - track
         - position
@@ -141,7 +141,7 @@ components:
     ScrobbleInput:
       description: Input for submitting a scrobble
       properties:
-        user_id:
+        userId:
           type: string
           description: The internal Navidrome user ID
         username:
@@ -155,7 +155,7 @@ components:
           format: int64
           description: Unix timestamp when the track started playing
       required:
-        - user_id
+        - userId
         - username
         - track
         - timestamp
@@ -167,7 +167,7 @@ components:
           type: string
           nullable: true
           description: Error message if the operation failed
-        error_type:
+        errorType:
           $ref: "#/components/schemas/ScrobblerErrorType"
           nullable: true
           description: Type of error for handling

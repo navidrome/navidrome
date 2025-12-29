@@ -38,18 +38,6 @@ struct Library {
     total_duration: f64,
 }
 
-#[derive(Serialize)]
-struct LibraryGetLibraryRequest {
-    id: i32,
-}
-
-#[derive(Deserialize)]
-struct LibraryGetLibraryResponse {
-    result: Option<Library>,
-    #[serde(default)]
-    error: Option<String>,
-}
-
 #[derive(Deserialize)]
 struct LibraryGetAllLibrariesResponse {
     result: Option<Vec<Library>>,
@@ -79,6 +67,7 @@ struct SchedulerScheduleRecurringResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SchedulerCallbackInput {
     schedule_id: String,
     payload: String,

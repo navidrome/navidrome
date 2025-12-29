@@ -320,22 +320,22 @@ func (s *webSocketServiceImpl) readLoop(ctx context.Context, connectionID string
 // Callback input/output types
 
 type onTextMessageInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Message      string `json:"message"`
 }
 
 type onBinaryMessageInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Data         string `json:"data"` // base64 encoded
 }
 
 type onErrorInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Error        string `json:"error"`
 }
 
 type onCloseInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Code         int32  `json:"code"`
 	Reason       string `json:"reason"`
 }

@@ -39,13 +39,13 @@ func _NdSchedulerCallback() int32 {
 type SchedulerCallbackInput struct {
 	// True if this is a recurring schedule (created via ScheduleRecurring),
 	// false if it's a one-time schedule (created via ScheduleOneTime).
-	IsRecurring bool `json:"is_recurring"`
+	IsRecurring bool `json:"isRecurring"`
 	// The payload data that was provided when the task was scheduled.
 	// Can be used to pass context or parameters to the callback handler.
 	Payload string `json:"payload"`
 	// The unique identifier for this scheduled task. This is either the ID
 	// provided when scheduling, or an auto-generated UUID if none was specified.
-	ScheduleId string `json:"schedule_id"`
+	ScheduleId string `json:"scheduleId"`
 }
 
 // Output from the scheduler callback

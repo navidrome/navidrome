@@ -77,6 +77,7 @@ fn get_image_url(track_id: &str) -> String {
 // ============================================================================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AuthInput {
     #[allow(dead_code)]
     user_id: String,
@@ -89,6 +90,7 @@ struct AuthOutput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct TrackInfo {
     id: String,
@@ -108,6 +110,7 @@ struct TrackInfo {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct NowPlayingInput {
     user_id: String,
@@ -117,6 +120,7 @@ struct NowPlayingInput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct ScrobbleInput {
     user_id: String,
@@ -126,6 +130,7 @@ struct ScrobbleInput {
 }
 
 #[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 struct ScrobblerOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
@@ -141,6 +146,7 @@ const ERROR_TYPE_RETRY_LATER: &str = "retry_later";
 // ============================================================================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct SchedulerCallbackInput {
     schedule_id: String,
@@ -159,6 +165,7 @@ struct SchedulerCallbackOutput {
 // ============================================================================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct OnTextMessageInput {
     connection_id: String,
@@ -172,6 +179,7 @@ struct OnTextMessageOutput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct OnBinaryMessageInput {
     connection_id: String,
@@ -185,6 +193,7 @@ struct OnBinaryMessageOutput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct OnErrorInput {
     connection_id: String,
@@ -198,6 +207,7 @@ struct OnErrorOutput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct OnCloseInput {
     connection_id: String,

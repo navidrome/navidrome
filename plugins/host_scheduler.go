@@ -164,9 +164,9 @@ func (s *schedulerServiceImpl) Close() error {
 
 // schedulerCallbackInput is the input format for the nd_scheduler_callback function.
 type schedulerCallbackInput struct {
-	ScheduleID  string `json:"schedule_id"`
+	ScheduleID  string `json:"scheduleId"`
 	Payload     string `json:"payload"`
-	IsRecurring bool   `json:"is_recurring"`
+	IsRecurring bool   `json:"isRecurring"`
 }
 
 // schedulerCallbackOutput is the output format for the nd_scheduler_callback function.

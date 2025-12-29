@@ -193,28 +193,28 @@ Integrates with external scrobbling services. Export one or more of these functi
 
 | Function                     | Input                 | Output                  | Description                 |
 |------------------------------|-----------------------|-------------------------|-----------------------------|
-| `nd_scrobbler_is_authorized` | `{user_id, username}` | `{authorized}`          | Check if user is authorized |
-| `nd_scrobbler_now_playing`   | See below             | `{error?, error_type?}` | Send now playing            |
-| `nd_scrobbler_scrobble`      | See below             | `{error?, error_type?}` | Submit a scrobble           |
+| `nd_scrobbler_is_authorized` | `{userId, username}`  | `{authorized}`          | Check if user is authorized |
+| `nd_scrobbler_now_playing`   | See below             | `{error?, errorType?}`  | Send now playing            |
+| `nd_scrobbler_scrobble`      | See below             | `{error?, errorType?}`  | Submit a scrobble           |
 
 **NowPlaying/Scrobble Input:**
 
 ```json
 {
-  "user_id": "abc123",
+  "userId": "abc123",
   "username": "john",
   "track": {
     "id": "track-id",
     "title": "Song Title",
     "album": "Album Name",
     "artist": "Artist Name",
-    "album_artist": "Album Artist",
+    "albumArtist": "Album Artist",
     "duration": 180.5,
-    "track_number": 1,
-    "disc_number": 1,
-    "mbz_recording_id": "...",
-    "mbz_album_id": "...",
-    "mbz_artist_id": "..."
+    "trackNumber": 1,
+    "discNumber": 1,
+    "mbzRecordingId": "...",
+    "mbzAlbumId": "...",
+    "mbzArtistId": "..."
   },
   "timestamp": 1703270400
 }
@@ -225,12 +225,12 @@ Integrates with external scrobbling services. Export one or more of these functi
 ```json
 {
   "error": "error message",
-  "error_type": "not_authorized|retry_later|unrecoverable"
+  "errorType": "notAuthorized|retryLater|unrecoverable"
 }
 ```
 
-- `not_authorized` – User needs to re-authorize
-- `retry_later` – Temporary failure, Navidrome will retry
+- `notAuthorized` – User needs to re-authorize
+- `retryLater` – Temporary failure, Navidrome will retry
 - `unrecoverable` – Permanent failure, scrobble discarded
 
 On success, return empty JSON `{}` or omit output entirely.
@@ -301,17 +301,17 @@ Schedule one-time or recurring tasks. Your plugin must export `nd_scheduler_call
 
 | Function                      | Parameters                               | Description                 |
 |-------------------------------|------------------------------------------|-----------------------------|
-| `scheduler_scheduleonetime`   | `delay_seconds, payload, schedule_id?`   | Schedule one-time callback  |
-| `scheduler_schedulerecurring` | `cron_expression, payload, schedule_id?` | Schedule recurring callback |
-| `scheduler_cancelschedule`    | `schedule_id`                            | Cancel a scheduled task     |
+| `scheduler_scheduleonetime`   | `delaySeconds, payload, scheduleId?`     | Schedule one-time callback  |
+| `scheduler_schedulerecurring` | `cronExpression, payload, scheduleId?`   | Schedule recurring callback |
+| `scheduler_cancelschedule`    | `scheduleId`                             | Cancel a scheduled task     |
 
 **Callback function:**
 
 ```go
 type SchedulerCallbackInput struct {
-    ScheduleID  string `json:"schedule_id"`
+    ScheduleID  string `json:"scheduleId"`
     Payload     string `json:"payload"`
-    IsRecurring bool   `json:"is_recurring"`
+    IsRecurring bool   `json:"isRecurring"`
 }
 
 //go:wasmexport nd_scheduler_callback
@@ -478,19 +478,19 @@ Establish persistent WebSocket connections to external services.
 
 | Function               | Parameters                      | Description       |
 |------------------------|---------------------------------|-------------------|
-| `websocket_connect`    | `url, headers?, connection_id?` | Open a connection |
-| `websocket_sendtext`   | `connection_id, message`        | Send text message |
-| `websocket_sendbinary` | `connection_id, data`           | Send binary data  |
-| `websocket_close`      | `connection_id, code?, reason?` | Close connection  |
+| `websocket_connect`    | `url, headers?, connectionId?`  | Open a connection |
+| `websocket_sendtext`   | `connectionId, message`         | Send text message |
+| `websocket_sendbinary` | `connectionId, data`            | Send binary data  |
+| `websocket_close`      | `connectionId, code?, reason?`  | Close connection  |
 
 **Callback functions (export these to receive events):**
 
 | Function                         | Input                           | Description                      |
 |----------------------------------|---------------------------------|----------------------------------|
-| `nd_websocket_on_text_message`   | `{connection_id, message}`      | Text message received            |
-| `nd_websocket_on_binary_message` | `{connection_id, data}`         | Binary message received (base64) |
-| `nd_websocket_on_error`          | `{connection_id, error}`        | Connection error                 |
-| `nd_websocket_on_close`          | `{connection_id, code, reason}` | Connection closed                |
+| `nd_websocket_on_text_message`   | `{connectionId, message}`       | Text message received            |
+| `nd_websocket_on_binary_message` | `{connectionId, data}`          | Binary message received (base64) |
+| `nd_websocket_on_error`          | `{connectionId, error}`         | Connection error                 |
+| `nd_websocket_on_close`          | `{connectionId, code, reason}`  | Connection closed                |
 
 ### Library
 
