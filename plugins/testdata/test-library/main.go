@@ -5,53 +5,11 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 
 	pdk "github.com/extism/go-pdk"
 )
-
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	Library *LibraryPermission `json:"library,omitempty"`
-}
-
-type LibraryPermission struct {
-	Reason     string `json:"reason,omitempty"`
-	Filesystem bool   `json:"filesystem,omitempty"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test Library Plugin",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test library plugin for integration testing",
-		Permissions: &Permissions{
-			Library: &LibraryPermission{
-				Reason:     "For testing library metadata and filesystem access",
-				Filesystem: true,
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
 
 // TestLibraryInput is the input for nd_test_library callback.
 type TestLibraryInput struct {

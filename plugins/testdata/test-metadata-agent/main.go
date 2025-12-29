@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"strconv"
 
 	"github.com/extism/go-pdk"
@@ -25,24 +24,6 @@ func checkConfigError() (bool, int32) {
 	}
 	pdk.SetErrorString(errMsg)
 	return true, exitCode
-}
-
-type Manifest struct {
-	Name         string       `json:"name"`
-	Author       string       `json:"author"`
-	Version      string       `json:"version"`
-	Description  string       `json:"description"`
-	Capabilities []string     `json:"capabilities"`
-	Permissions  *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	HTTP *HTTPPermission `json:"http,omitempty"`
-}
-
-type HTTPPermission struct {
-	Reason      string              `json:"reason,omitempty"`
-	AllowedURLs map[string][]string `json:"allowedUrls,omitempty"`
 }
 
 type ArtistInput struct {
@@ -119,32 +100,6 @@ type AlbumInfoOutput struct {
 
 type AlbumImagesOutput struct {
 	Images []ArtistImage `json:"images"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:         "Test Plugin",
-		Author:       "Navidrome Test",
-		Version:      "1.0.0",
-		Description:  "A test plugin for integration testing",
-		Capabilities: []string{"MetadataAgent"},
-		Permissions: &Permissions{
-			HTTP: &HTTPPermission{
-				Reason: "Test HTTP access",
-				AllowedURLs: map[string][]string{
-					"https://test.example.com/*": {"GET"},
-				},
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
 }
 
 //go:wasmexport nd_get_artist_mbid

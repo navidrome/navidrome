@@ -33,4 +33,5 @@ AGENTS.md
 *.exe
 *.test
 *.wasm
+*.ndp
 openspec/

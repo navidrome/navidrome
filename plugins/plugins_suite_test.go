@@ -26,7 +26,7 @@ const testDataDir = "plugins/testdata"
 
 // Shared test state initialized in BeforeSuite
 var (
-	testdataDir   string // Path to testdata folder with test-metadata-agent.wasm
+	testdataDir   string // Path to testdata folder with test plugin .ndp packages
 	tmpPluginsDir string // Temp directory for plugin tests that modify files
 	testManager   *Manager
 )
@@ -54,7 +54,7 @@ func buildTestPlugins(t *testing.T, path string) {
 // It creates a temp directory, copies the test-metadata-agent plugin, and starts the manager.
 // Returns the manager, temp directory path, and a cleanup function.
 func createTestManager(pluginConfig map[string]map[string]string) (*Manager, string) {
-	return createTestManagerWithPlugins(pluginConfig, "test-metadata-agent.wasm")
+	return createTestManagerWithPlugins(pluginConfig, "test-metadata-agent"+PackageExtension)
 }
 
 // createTestManagerWithPlugins creates a new plugin Manager with the given plugin config
@@ -78,7 +78,7 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 		// Compute SHA256 for the plugin
 		hash := sha256.Sum256(data)
 		hashHex := hex.EncodeToString(hash[:])
-		pluginName := plugin[:len(plugin)-5] // Remove .wasm extension
+		pluginName := plugin[:len(plugin)-len(PackageExtension)] // Remove .ndp extension
 
 		// Build config JSON if provided
 		configJSON := ""
@@ -129,7 +129,7 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 }
 
 var _ = BeforeSuite(func() {
-	// Get testdata directory (where test-metadata-agent.wasm lives)
+	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)
 	Expect(ok).To(BeTrue())
 	testdataDir = filepath.Join(filepath.Dir(currentFile), "testdata")

@@ -26,35 +26,6 @@ const (
 	reconnectScheduleID = "crypto-ticker-reconnect"
 )
 
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Website     string       `json:"website,omitempty"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	Config    *ConfigPermission    `json:"config,omitempty"`
-	WebSocket *WebSocketPermission `json:"websocket,omitempty"`
-	Scheduler *SchedulerPermission `json:"scheduler,omitempty"`
-}
-
-type ConfigPermission struct {
-	Reason string `json:"reason,omitempty"`
-}
-
-type WebSocketPermission struct {
-	Reason       string   `json:"reason,omitempty"`
-	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
-
-type SchedulerPermission struct {
-	Reason string `json:"reason,omitempty"`
-}
-
 // Coinbase subscription message structure
 type CoinbaseSubscription struct {
 	Type       string   `json:"type"`
@@ -75,38 +46,6 @@ type CoinbaseTicker struct {
 	BestBid   string `json:"best_bid"`
 	BestAsk   string `json:"best_ask"`
 	Time      string `json:"time"`
-}
-
-// nd_manifest is required by Navidrome to identify the plugin.
-//
-//export nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Crypto Ticker",
-		Author:      "Navidrome",
-		Version:     "1.0.0",
-		Description: "Real-time cryptocurrency price ticker using Coinbase WebSocket API",
-		Website:     "https://github.com/navidrome/navidrome/tree/master/plugins/examples/crypto-ticker",
-		Permissions: &Permissions{
-			Config: &ConfigPermission{
-				Reason: "To read ticker symbols configuration",
-			},
-			WebSocket: &WebSocketPermission{
-				Reason:       "To connect to Coinbase WebSocket API for real-time prices",
-				AllowedHosts: []string{"ws-feed.exchange.coinbase.com"},
-			},
-			Scheduler: &SchedulerPermission{
-				Reason: "To schedule reconnection attempts on connection loss",
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
 }
 
 // OnInitInput is the input for nd_on_init (currently empty, reserved for future use)

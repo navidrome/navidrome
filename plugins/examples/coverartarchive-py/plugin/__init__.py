@@ -7,35 +7,12 @@
 #   extism-py plugin/__init__.py -o coverartarchive-py.wasm
 #
 # Test with:
-#   extism call coverartarchive-py.wasm nd_manifest --wasi
 #   extism call coverartarchive-py.wasm nd_get_album_images --wasi \
 #     --input '{"name":"Dummy","artist":"Portishead","mbid":"76df3287-6cda-33eb-8e9a-044b5e15ffdd"}' \
 #     --allow-host "coverartarchive.org" --allow-host "archive.org"
 
 import extism
 import json
-
-
-# Plugin manifest - identifies this plugin to Navidrome
-@extism.plugin_fn
-def nd_manifest():
-    manifest = {
-        "name": "Cover Art Archive (Python)",
-        "author": "Navidrome",
-        "version": "1.0.0",
-        "description": "Album cover art from the Cover Art Archive - Python example",
-        "website": "https://coverartarchive.org",
-        "permissions": {
-            "http": {
-                "reason": "Fetch album cover art from Cover Art Archive API",
-                "allowedHosts": [
-                    "coverartarchive.org",
-                    "*.archive.org"
-                ]
-            }
-        }
-    }
-    extism.output_str(json.dumps(manifest))
 
 
 @extism.plugin_fn

@@ -1,0 +1,11 @@
+{
+  "name": "Test Artwork",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test artwork plugin for integration testing",
+  "permissions": {
+    "artwork": {
+      "reason": "For testing artwork URL generation"
+    }
+  }
+}

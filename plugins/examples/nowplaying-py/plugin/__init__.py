@@ -6,9 +6,6 @@
 # Build with:
 #   extism-py plugin/__init__.py -o nowplaying-py.wasm
 #
-# Test manifest with:
-#   extism call nowplaying-py.wasm nd_manifest --wasi
-#
 # Configuration:
 #   [PluginConfig.nowplaying-py]
 #   cron = "*/1 * * * *"  # Every minute (default)
@@ -102,28 +99,6 @@ def subsonicapi_call(uri: str) -> dict:
 # =============================================================================
 # Plugin Exports
 # =============================================================================
-
-
-@extism.plugin_fn
-def nd_manifest():
-    """Return the plugin manifest with metadata and permissions."""
-    manifest = {
-        "name": "Now Playing Logger (Python)",
-        "author": "Navidrome",
-        "version": "1.0.0",
-        "description": "Periodically logs currently playing tracks - Python example demonstrating Scheduler and SubsonicAPI host services",
-        "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/nowplaying-py",
-        "permissions": {
-            "scheduler": {
-                "reason": "Schedule periodic checks for now playing status"
-            },
-            "subsonicapi": {
-                "reason": "Query the getNowPlaying API endpoint",
-                "allowAdmins": True
-            }
-        }
-    }
-    extism.output_str(json.dumps(manifest))
 
 
 @extism.plugin_fn

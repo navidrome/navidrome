@@ -23,10 +23,6 @@ import (
 )
 
 const (
-	// manifestFunction is the name of the function that plugins must export
-	// to provide their manifest.
-	manifestFunction = "nd_manifest"
-
 	// defaultTimeout is the default timeout for plugin function calls
 	defaultTimeout = 30 * time.Second
 

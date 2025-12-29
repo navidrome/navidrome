@@ -33,8 +33,8 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy test plugin to temp dir
-		srcPath := filepath.Join(testdataDir, "test-subsonicapi-plugin.wasm")
-		destPath := filepath.Join(tmpDir, "test-subsonicapi-plugin.wasm")
+		srcPath := filepath.Join(testdataDir, "test-subsonicapi-plugin"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-subsonicapi-plugin"+PackageExtension)
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)
@@ -73,7 +73,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 
 		// Pre-enable the plugin in the mock repo so it loads on startup
 		// Compute SHA256 of the plugin file to match what syncPlugins will compute
-		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin.wasm")
+		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin"+PackageExtension)
 		wasmData, err := os.ReadFile(pluginPath)
 		Expect(err).ToNot(HaveOccurred())
 		hash := sha256.Sum256(wasmData)

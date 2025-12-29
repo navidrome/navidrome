@@ -37,8 +37,8 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy the test-scheduler plugin
-		srcPath := filepath.Join(testdataDir, "test-scheduler.wasm")
-		destPath := filepath.Join(tmpDir, "test-scheduler.wasm")
+		srcPath := filepath.Join(testdataDir, "test-scheduler"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-scheduler"+PackageExtension)
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)

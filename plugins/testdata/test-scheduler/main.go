@@ -2,51 +2,6 @@
 // Build with: tinygo build -o ../test-scheduler.wasm -target wasip1 -buildmode=c-shared .
 package main
 
-import (
-	"encoding/json"
-
-	pdk "github.com/extism/go-pdk"
-)
-
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	Scheduler *SchedulerPermission `json:"scheduler,omitempty"`
-}
-
-type SchedulerPermission struct {
-	Reason string `json:"reason,omitempty"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test Scheduler",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test scheduler plugin for integration testing",
-		Permissions: &Permissions{
-			Scheduler: &SchedulerPermission{
-				Reason: "For testing scheduler callbacks",
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
-
 // NdSchedulerCallback is called when a scheduled task fires.
 // Magic payloads trigger specific behaviors to test host functions:
 //   - "schedule-followup": schedules a one-time task via host function

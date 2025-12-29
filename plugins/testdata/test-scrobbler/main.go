@@ -3,19 +3,10 @@
 package main
 
 import (
-	"encoding/json"
 	"strconv"
 
 	"github.com/extism/go-pdk"
 )
-
-// Manifest types
-type Manifest struct {
-	Name        string `json:"name"`
-	Author      string `json:"author"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-}
 
 // Scrobbler input/output types
 
@@ -89,23 +80,6 @@ func checkAuthConfig() bool {
 		return true // Default on parse error
 	}
 	return auth
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test Scrobbler",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test scrobbler plugin for integration testing",
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
 }
 
 //go:wasmexport nd_scrobbler_is_authorized

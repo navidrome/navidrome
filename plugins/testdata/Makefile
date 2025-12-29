@@ -6,11 +6,20 @@ PLUGINS := $(patsubst %/go.mod,%,$(wildcard */go.mod))
 # makes the tests faster.
 TINYGO := $(shell command -v tinygo 2> /dev/null)
 
-all: $(PLUGINS:%=%.wasm)
+all: $(PLUGINS:%=%.ndp)
 
 clean:
-	rm -f $(PLUGINS:%=%.wasm)
+	rm -f $(PLUGINS:%=%.ndp) $(PLUGINS:%=%.wasm)
 
+# Build the .ndp package (zip containing manifest.json + plugin.wasm)
+%.ndp: %.wasm %/manifest.json
+	@rm -f $@
+	@cp $< plugin.wasm
+	zip -j $@ $*/manifest.json plugin.wasm
+	@rm -f plugin.wasm
+	@mv $< $<.tmp && mv $<.tmp $<  # Touch wasm to ensure it's older than ndp
+
+# Build the wasm binary
 %.wasm: %/*.go %/go.mod
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .

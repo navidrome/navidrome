@@ -17,37 +17,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 
 // ============================================================================
-// Manifest Types
-// ============================================================================
-
-#[derive(Serialize)]
-struct Manifest {
-    name: String,
-    author: String,
-    version: String,
-    description: String,
-    website: Option<String>,
-    permissions: Option<Permissions>,
-}
-
-#[derive(Serialize)]
-struct Permissions {
-    library: Option<LibraryPermission>,
-    scheduler: Option<SchedulerPermission>,
-}
-
-#[derive(Serialize)]
-struct LibraryPermission {
-    reason: String,
-    filesystem: bool,
-}
-
-#[derive(Serialize)]
-struct SchedulerPermission {
-    reason: String,
-}
-
-// ============================================================================
 // Library Types
 // ============================================================================
 
@@ -302,31 +271,6 @@ fn inspect_libraries() {
 // ============================================================================
 // Plugin Exports
 // ============================================================================
-
-/// Returns the plugin manifest with metadata and permissions.
-#[plugin_fn]
-pub fn nd_manifest() -> FnResult<Json<Manifest>> {
-    let manifest = Manifest {
-        name: "Library Inspector".to_string(),
-        author: "Navidrome Team".to_string(),
-        version: "1.0.0".to_string(),
-        description: "Periodically logs library details and finds largest files".to_string(),
-        website: Some(
-            "https://github.com/navidrome/navidrome/tree/master/plugins/examples/library-inspector"
-                .to_string(),
-        ),
-        permissions: Some(Permissions {
-            library: Some(LibraryPermission {
-                reason: "To read library metadata and scan directories for file sizes".to_string(),
-                filesystem: true,
-            }),
-            scheduler: Some(SchedulerPermission {
-                reason: "To schedule periodic library inspections".to_string(),
-            }),
-        }),
-    };
-    Ok(Json(manifest))
-}
 
 /// Called when the plugin is initialized. Schedules the recurring inspection task.
 #[plugin_fn]
