@@ -96,12 +96,27 @@ Folder = "/path/to/plugins"
 
 ## Files
 
-| File           | Description                                             |
-|----------------|---------------------------------------------------------|
-| `main.go`      | Plugin entry point, manifest, scrobbler implementation  |
-| `rpc.go`       | Discord gateway communication and RPC logic             |
-| `pdk.gen.go`   | Generated types from XTP schemas (combined)             |
-| `nd_host_*.go` | Host function wrappers (copied from `plugins/host/go/`) |
+| File         | Description                                            |
+|--------------|--------------------------------------------------------|
+| `main.go`    | Plugin entry point, manifest, scrobbler implementation |
+| `rpc.go`     | Discord gateway communication and RPC logic            |
+| `pdk.gen.go` | Generated types from XTP schemas (combined)            |
+| `go.mod`     | Go module file (imports `ndhost` SDK)                  |
+
+## Host SDK
+
+This plugin imports the Go host SDK directly:
+
+```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+```
+
+The `go.mod` file uses a `replace` directive to point to the local SDK:
+
+```
+require github.com/navidrome/navidrome/plugins/host/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+```
 
 ## Host Services Used
 

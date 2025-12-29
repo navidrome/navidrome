@@ -236,3 +236,40 @@ func GenerateRustLib(services []Service) ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+// GenerateGoDoc generates the doc.go file that provides package documentation.
+func GenerateGoDoc(services []Service) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/doc_go.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading Go doc template: %w", err)
+	}
+
+	tmpl, err := template.New("doc_go").Funcs(template.FuncMap{
+		"firstLine": firstLine,
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := struct {
+		Services []Service
+	}{
+		Services: services,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// GenerateGoMod generates the go.mod file for the Go client library.
+func GenerateGoMod() ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/go.mod.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading go.mod template: %w", err)
+	}
+	return tmplContent, nil
+}

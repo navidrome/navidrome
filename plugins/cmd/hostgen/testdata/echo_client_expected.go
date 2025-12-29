@@ -5,7 +5,7 @@
 //
 //go:build wasip1
 
-package main
+package ndhost
 
 import (
 	"encoding/json"

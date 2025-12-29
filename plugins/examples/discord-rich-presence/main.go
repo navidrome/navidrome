@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/extism/go-pdk"
+	ndhost "github.com/navidrome/navidrome/plugins/host/go"
 )
 
 // Configuration keys
@@ -51,7 +52,7 @@ func getConfig() (clientID string, users map[string]string, err error) {
 
 // getImageURL retrieves the track artwork URL.
 func getImageURL(trackID string) string {
-	resp, err := ArtworkGetTrackUrl(trackID, 300)
+	resp, err := ndhost.ArtworkGetTrackUrl(trackID, 300)
 	if err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to get artwork URL: %v", err))
 		return ""
@@ -104,7 +105,7 @@ func NdScrobblerNowPlaying(input NowPlayingInput) (ScrobblerOutput, error) {
 	}
 
 	// Cancel any existing completion schedule
-	_, _ = SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
+	_, _ = ndhost.SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
 
 	// Calculate timestamps
 	now := time.Now().Unix()
@@ -133,7 +134,7 @@ func NdScrobblerNowPlaying(input NowPlayingInput) (ScrobblerOutput, error) {
 
 	// Schedule a timer to clear the activity after the track completes
 	remainingSeconds := int32(input.Track.Duration) - input.Position + 5
-	_, err = SchedulerScheduleOneTime(remainingSeconds, payloadClearActivity, fmt.Sprintf("%s-clear", input.Username))
+	_, err = ndhost.SchedulerScheduleOneTime(remainingSeconds, payloadClearActivity, fmt.Sprintf("%s-clear", input.Username))
 	if err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to schedule completion timer: %v", err))
 	}

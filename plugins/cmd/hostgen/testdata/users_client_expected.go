@@ -5,7 +5,7 @@
 //
 //go:build wasip1
 
-package main
+package ndhost
 
 import (
 	"encoding/json"
@@ -13,6 +13,12 @@ import (
 
 	"github.com/extism/go-pdk"
 )
+
+// User represents the User data structure.
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
 // users_get is the host function provided by Navidrome.
 //

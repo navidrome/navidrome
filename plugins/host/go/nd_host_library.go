@@ -5,7 +5,7 @@
 //
 //go:build wasip1
 
-package main
+package ndhost
 
 import (
 	"encoding/json"
@@ -13,6 +13,21 @@ import (
 
 	"github.com/extism/go-pdk"
 )
+
+// Library represents the Library data structure.
+// Library represents a music library with metadata.
+type Library struct {
+	ID            int32   `json:"id"`
+	Name          string  `json:"name"`
+	Path          string  `json:"path"`
+	MountPoint    string  `json:"mountPoint"`
+	LastScanAt    int64   `json:"lastScanAt"`
+	TotalSongs    int32   `json:"totalSongs"`
+	TotalAlbums   int32   `json:"totalAlbums"`
+	TotalArtists  int32   `json:"totalArtists"`
+	TotalSize     int64   `json:"totalSize"`
+	TotalDuration float64 `json:"totalDuration"`
+}
 
 // library_getlibrary is the host function provided by Navidrome.
 //

@@ -327,17 +327,26 @@ func ndSchedulerCallback() int32 {
 
 **Scheduling tasks (using generated SDK):**
 
-Copy `plugins/host/go/nd_host_scheduler.go` to your plugin and use:
+Add the generated SDK to your `go.mod`:
+
+```
+require github.com/navidrome/navidrome/plugins/host/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+```
+
+Then import and use:
 
 ```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+
 // Schedule one-time task in 60 seconds
-scheduleID, err := SchedulerScheduleOneTime(60, "my-payload", "")
+scheduleID, err := ndhost.SchedulerScheduleOneTime(60, "my-payload", "")
 
 // Schedule recurring task with cron expression (every hour)
-scheduleID, err := SchedulerScheduleRecurring("0 * * * *", "hourly-task", "")
+scheduleID, err := ndhost.SchedulerScheduleRecurring("0 * * * *", "hourly-task", "")
 
 // Cancel a task
-err := SchedulerCancelSchedule(scheduleID)
+err := ndhost.SchedulerCancelSchedule(scheduleID)
 ```
 
 ### Cache
@@ -375,14 +384,16 @@ Store and retrieve data in an in-memory TTL-based cache. Each plugin has its own
 
 **Usage (with generated SDK):**
 
-Copy `plugins/host/go/nd_host_cache.go` to your plugin:
+Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup):
 
 ```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+
 // Cache a value for 1 hour
-CacheSetString("api-response", responseData, 3600)
+ndhost.CacheSetString("api-response", responseData, 3600)
 
 // Retrieve (check Exists before using Value)
-result, err := CacheGetString("api-response")
+result, err := ndhost.CacheGetString("api-response")
 if result.Exists {
     data := result.Value
 }
@@ -427,22 +438,24 @@ Persistent key-value storage that survives server restarts. Each plugin has its 
 
 **Usage (with generated SDK):**
 
-Copy `plugins/host/go/nd_host_kvstore.go` to your plugin:
+Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup):
 
 ```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+
 // Store a value (as raw bytes)
 token := []byte(`{"access_token": "xyz", "refresh_token": "abc"}`)
-_, err := KVStoreSet("oauth:spotify", token)
+_, err := ndhost.KVStoreSet("oauth:spotify", token)
 
 // Retrieve a value
-result, err := KVStoreGet("oauth:spotify")
+result, err := ndhost.KVStoreGet("oauth:spotify")
 if result.Exists {
     var tokenData map[string]string
     json.Unmarshal(result.Value, &tokenData)
 }
 
 // List all keys with prefix
-keysResult, err := KVStoreList("user:")
+keysResult, err := ndhost.KVStoreList("user:")
 for _, key := range keysResult.Keys {
     // Process each key
 }
@@ -555,33 +568,22 @@ entries, err := os.ReadDir("/libraries/1/Artist")
 
 **Usage (with generated SDK):**
 
-Copy `plugins/host/go/nd_host_library.go` to your plugin. You'll also need to add the `Library` struct definition:
+Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup). The `Library` struct is provided by the SDK:
 
 ```go
-// Library represents a music library with metadata.
-type Library struct {
-    ID            int32   `json:"id"`
-    Name          string  `json:"name"`
-    Path          string  `json:"path,omitempty"`
-    MountPoint    string  `json:"mountPoint,omitempty"`
-    LastScanAt    int64   `json:"lastScanAt"`
-    TotalSongs    int32   `json:"totalSongs"`
-    TotalAlbums   int32   `json:"totalAlbums"`
-    TotalArtists  int32   `json:"totalArtists"`
-    TotalSize     int64   `json:"totalSize"`
-    TotalDuration float64 `json:"totalDuration"`
-}
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
 
 // Get a specific library
-resp, err := LibraryGetLibrary(1)
+resp, err := ndhost.LibraryGetLibrary(1)
 if err != nil {
     // Handle error
 }
 library := resp.Result
 
 // Get all libraries
-resp, err := LibraryGetAllLibraries()
+resp, err := ndhost.LibraryGetAllLibraries()
 for _, lib := range resp.Result {
+    // lib is of type ndhost.Library
     fmt.Printf("Library: %s (%d songs)\n", lib.Name, lib.TotalSongs)
 }
 ```
@@ -746,9 +748,22 @@ See [schemas/README.md](schemas/README.md) for available schemas.
 
 ### Using Host Service SDKs
 
-Generated SDKs for calling host services are in `plugins/host/go/` and `plugins/host/python/`.
+Generated SDKs for calling host services are in `plugins/host/go/`, `plugins/host/python/` and `plugins/host/rust`.
 
-**For Go plugins:** Copy the needed `nd_host_*.go` file to your plugin directory.
+**For Go plugins:** Import the SDK as a Go module:
+
+```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+```
+
+Add to your `go.mod`:
+
+```
+require github.com/navidrome/navidrome/plugins/host/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+```
+
+See [plugins/host/go/README.md](host/go/README.md) for detailed documentation.
 
 **For Python plugins:** Copy functions from `nd_host_*.py` into your `__init__.py` (see comments in those files for extism-py limitations).
 

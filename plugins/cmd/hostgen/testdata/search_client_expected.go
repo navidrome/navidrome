@@ -5,7 +5,7 @@
 //
 //go:build wasip1
 
-package main
+package ndhost
 
 import (
 	"encoding/json"
@@ -13,6 +13,11 @@ import (
 
 	"github.com/extism/go-pdk"
 )
+
+// Result represents the Result data structure.
+type Result struct {
+	ID string `json:"id"`
+}
 
 // search_find is the host function provided by Navidrome.
 //
