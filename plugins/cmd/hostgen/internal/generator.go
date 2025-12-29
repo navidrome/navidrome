@@ -94,6 +94,32 @@ func GenerateClientGo(svc Service) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// GenerateClientGoStub generates stub code for non-WASM platforms.
+// These stubs provide type definitions and function signatures for IDE support,
+// but panic at runtime since host functions are only available in WASM plugins.
+func GenerateClientGoStub(svc Service) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/client_go_stub.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading client stub template: %w", err)
+	}
+
+	tmpl, err := template.New("client_stub").Funcs(clientFuncMap(svc)).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := templateData{
+		Service: svc,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
 type templateData struct {
 	Package string
 	Service Service
