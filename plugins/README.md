@@ -2,6 +2,16 @@
 
 Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugins run in a secure sandbox and can provide metadata agents, scrobblers, and other integrations through host services like scheduling, caching, WebSockets, and Subsonic API access.
 
+The plugin system is built on **[Extism](https://extism.org/)**, a cross-language framework for building WebAssembly plugins. This means you can write plugins in any language that Extism supports (Go, Rust, Python, TypeScript, and more) using their Plugin Development Kits (PDKs).
+
+**Essential Extism Resources:**
+- [Extism Documentation](https://extism.org/docs/overview) – Core concepts and architecture
+- [Plugin Development Kits (PDKs)](https://extism.org/docs/concepts/pdk) – Language-specific libraries for writing plugins
+- [Go PDK](https://github.com/extism/go-pdk) – Recommended for Go plugins with TinyGo
+- [Rust PDK](https://github.com/extism/rust-pdk) – For Rust plugins
+- [Python PDK](https://github.com/extism/python-pdk) – Experimental Python support
+- [JavaScript PDK](https://github.com/extism/js-pdk) – For TypeScript/JavaScript plugins
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -243,7 +253,7 @@ Host services let your plugin call back into Navidrome for advanced functionalit
 
 ### HTTP Requests
 
-Make HTTP requests using the [Extism PDK](https://extism.org/docs/concepts/pdk). Navidrome controls which hosts are accessible.
+Make HTTP requests using the Extism PDK's built-in HTTP support. See your [Extism PDK documentation](https://extism.org/docs/concepts/pdk) for more details on making requests.
 
 **Manifest permission:**
 
@@ -672,12 +682,14 @@ if !ok {
 
 ### Supported Languages
 
-Plugins can be written in any language that compiles to WebAssembly. We recommend:
+Plugins can be written in any language that Extism supports. Each language has its own PDK (Plugin Development Kit) that provides the APIs for I/O, logging, configuration, and HTTP requests. See the [Extism PDK documentation](https://extism.org/docs/concepts/pdk) for details.
 
-- **Go** – Best experience with TinyGo
-- **Rust** – Excellent performance
-- **Python** – Via extism-py (experimental)
-- **TypeScript** – Via extism-js
+We recommend:
+
+- **Go** – Best experience with [TinyGo](https://tinygo.org/) and the [Go PDK](https://github.com/extism/go-pdk)
+- **Rust** – Excellent performance with the [Rust PDK](https://github.com/extism/rust-pdk)
+- **Python** – Experimental support via [extism-py](https://github.com/extism/python-pdk)
+- **TypeScript** – Experimental support via [extism-js](https://github.com/extism/js-pdk)
 
 ### Go with TinyGo (Recommended)
 
@@ -746,20 +758,22 @@ Generated SDKs for calling host services are in `plugins/host/go/` and `plugins/
 
 See [examples/](examples/) for complete working plugins:
 
-| Plugin                                                   | Language | Capabilities                             | Description                    |
-|----------------------------------------------------------|----------|------------------------------------------|--------------------------------|
-| [minimal](examples/minimal/)                             | Go       | MetadataAgent                            | Basic structure example        |
-| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent                            | Wikidata/Wikipedia integration |
-| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket          | Discord integration            |
-| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent                            | Cover Art Archive              |
-| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler                                | HTTP webhooks                  |
-| [library-inspector](examples/library-inspector/)         | Rust     | Library, Scheduler                       | Periodic library stats logging |
+| Plugin                                                   | Language | Capabilities            | Host Services                               | Description                    |
+|----------------------------------------------------------|----------|-------------------------|---------------------------------------------|--------------------------------|
+| [minimal](examples/minimal/)                             | Go       | MetadataAgent           | –                                           | Basic structure example        |
+| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent           | HTTP                                        | Wikidata/Wikipedia integration |
+| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent           | HTTP                                        | Cover Art Archive              |
+| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler               | HTTP                                        | HTTP webhooks                  |
+| [nowplaying-py](examples/nowplaying-py/)                 | Python   | Lifecycle               | Scheduler, SubsonicAPI                      | Periodic now-playing logger    |
+| [library-inspector](examples/library-inspector/)         | Rust     | Lifecycle               | Library, Scheduler                          | Periodic library stats logging |
+| [crypto-ticker](examples/crypto-ticker/)                 | Go       | Lifecycle               | WebSocket, Scheduler                        | Real-time crypto prices demo   |
+| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler               | HTTP, WebSocket, Cache, Scheduler, Artwork  | Discord integration            |
 
 ---
 
 ## Security
 
-Plugins run in a secure WebAssembly sandbox:
+Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.org/) and the [Wazero](https://wazero.io/) runtime:
 
 1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
 2. **Limited File System** – Plugins can only access library directories when explicitly granted the `library.filesystem` permission, and access is read-only
@@ -767,6 +781,7 @@ Plugins run in a secure WebAssembly sandbox:
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
 6. **SubsonicAPI Restrictions** – Configurable user/admin access controls
+
 
 ---
 

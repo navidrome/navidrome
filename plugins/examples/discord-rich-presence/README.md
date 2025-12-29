@@ -22,7 +22,7 @@ It relies on several host services declared in the manifest:
 
 ## Architecture
 
-Each call from Navidrome creates a new plugin instance. The plugin registers capabilities by exporting the required functions:
+The plugin registers capabilities by exporting the required functions:
 
 ```go
 // Scrobbler capability
