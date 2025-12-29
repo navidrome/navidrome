@@ -29,38 +29,41 @@ Navidrome supports WebAssembly (Wasm) plugins for extending functionality. Plugi
 
 ### 1. Create a minimal plugin
 
+Create `main.go`:
+
 ```go
 package main
 
-import (
-    "encoding/json"
-    "github.com/extism/go-pdk"
-)
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-    manifest := map[string]string{
-        "name":    "My Plugin",
-        "author":  "Your Name",
-        "version": "1.0.0",
-    }
-    out, _ := json.Marshal(manifest)
-    pdk.Output(out)
-    return 0
-}
+import "github.com/extism/go-pdk"
 
 func main() {}
+
+// Implement your capability functions here
 ```
 
-### 2. Build with TinyGo
+Create `manifest.json`:
+
+```json
+{
+    "name": "My Plugin",
+    "author": "Your Name",
+    "version": "1.0.0"
+}
+```
+
+### 2. Build with TinyGo and package as .ndp
 
 ```bash
-tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+# Compile to WebAssembly
+tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
+
+# Package as .ndp (zip archive)
+zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
 
 ### 3. Install
 
-Copy `my-plugin.wasm` to your Navidrome plugins folder and enable plugins in your config:
+Copy `my-plugin.ndp` to your Navidrome plugins folder and enable plugins in your config:
 
 ```toml
 [Plugins]
@@ -74,23 +77,31 @@ Folder = "/path/to/plugins"
 
 ### What is a Plugin?
 
-A Navidrome plugin is a WebAssembly (`.wasm`) file that:
+A Navidrome plugin is an `.ndp` package file (zip archive) containing:
 
-1. **Exports `nd_manifest`** – Returns JSON describing the plugin
-2. **Exports capability functions** – Implements one or more capabilities
+1. **`manifest.json`** – Plugin metadata (name, author, version, permissions)
+2. **`plugin.wasm`** – Compiled WebAssembly module with capability functions
+
+### Plugin Package Structure
+
+```
+my-plugin.ndp (zip archive)
+├── manifest.json    # Required: Plugin metadata
+└── plugin.wasm      # Required: Compiled WebAssembly module
+```
 
 ### Plugin Naming
 
-Plugins are identified by their **filename** (without `.wasm` extension), not the manifest `name` field:
+Plugins are identified by their **filename** (without `.ndp` extension), not the manifest `name` field:
 
-- `my-plugin.wasm` → plugin ID is `my-plugin`
+- `my-plugin.ndp` → plugin ID is `my-plugin`
 - The manifest `name` is the display name shown in the UI
 
 This allows users to have multiple instances of the same plugin with different configs by renaming the files.
 
 ### The Manifest
 
-Every plugin must export `nd_manifest` returning JSON:
+Every plugin must include a `manifest.json` file. Example:
 
 ```json
 {
@@ -109,8 +120,6 @@ Every plugin must export `nd_manifest` returning JSON:
 ```
 
 **Required fields:** `name`, `author`, `version`
-
-**Capabilities are auto-detected** from which functions your plugin exports. You don't declare them in the manifest.
 
 ---
 
@@ -572,12 +581,12 @@ Enabled = true
 Folder = "/path/to/plugins"   # Default: DataFolder/plugins
 AutoReload = true             # Auto-reload on file changes (dev mode)
 LogLevel = "debug"            # Plugin-specific log level
-CacheSize = "100MB"           # Compilation cache size limit
+CacheSize = "200MB"           # Compilation cache size limit
 ```
 
 ### Plugin Configuration
 
-Plugin configuration is managed through the Navidrome web UI. Navigate to the Plugins page, select a plugin, and edit its configuration as a JSON object with string key-value pairs.
+Plugin configuration is managed through the Navidrome web UI. Navigate to the Plugins page, select a plugin, and edit its configuration as key-value pairs.
 
 Access configuration values in your plugin:
 
@@ -607,8 +616,31 @@ Plugins can be written in any language that compiles to WebAssembly. We recommen
 ```bash
 # Install TinyGo: https://tinygo.org/getting-started/install/
 
-# Build
-tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+# Build WebAssembly module
+tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
+
+# Package as .ndp
+zip -j my-plugin.ndp manifest.json plugin.wasm
+```
+
+### Rust
+
+```bash
+# Build WebAssembly module
+cargo build --release --target wasm32-unknown-unknown
+
+# Package as .ndp
+zip -j my-plugin.ndp manifest.json target/wasm32-unknown-unknown/release/plugin.wasm
+```
+
+### Python (with extism-py)
+
+```bash
+# Build WebAssembly module (requires extism-py installed)
+extism-py plugin.wasm -o plugin.wasm *.py
+
+# Package as .ndp
+zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
 
 ### Using XTP CLI (Scaffolding)
@@ -625,8 +657,9 @@ xtp plugin init \
   --path ./my-agent \
   --name my-agent
 
-# Build
+# Build and package
 cd my-agent && xtp plugin build
+zip -j my-agent.ndp manifest.json dist/plugin.wasm
 ```
 
 See [schemas/README.md](schemas/README.md) for available schemas.
@@ -671,16 +704,18 @@ Plugins run in a secure WebAssembly sandbox:
 
 ## Runtime Management
 
-### Auto-Reload (Development)
+### Auto-Reload
 
-With `AutoReload = true`, Navidrome watches the plugins folder and automatically reloads plugins when files change.
+With `AutoReload = true`, Navidrome watches the plugins folder and automatically detects when `.ndp` files are added, modified, or removed. When a plugin file changes, the plugin is disabled and its metadata is re-read from the archive.
 
-### Programmatic Control
+If the `AutoReload` setting is disabled, Navidrome needs to be restarted to pick up plugin changes.
 
-Plugins can be enabled/disabled via the Navidrome UI or API. The plugin state is persisted in the database.
+### Enabling/Disabling Plugins
+
+Plugins can be enabled/disabled via the Navidrome UI. The plugin state is persisted in the database.
 
 ### Important Notes
 
 - **In-flight requests** – When reloading, existing requests complete before the new version takes over
-- **Config changes** – Plugin configuration is read at load time; changes require a reload
+- **Config changes** – Changes to the plugin configuration in the UI are applied immediately
 - **Cache persistence** – The in-memory cache is cleared when a plugin is unloaded

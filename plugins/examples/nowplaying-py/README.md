@@ -23,18 +23,19 @@ A Python example plugin that demonstrates the **Scheduler** and **SubsonicAPI** 
 From the `plugins/examples` directory:
 
 ```bash
-make nowplaying-py.wasm
+make nowplaying-py.ndp
 ```
 
 Or directly:
 
 ```bash
-extism-py plugin/__init__.py -o nowplaying-py.wasm
+extism-py plugin/__init__.py -o plugin.wasm
+zip -j nowplaying-py.ndp manifest.json plugin.wasm
 ```
 
 ## Installation
 
-1. Copy `nowplaying-py.wasm` to your Navidrome plugins folder
+1. Copy `nowplaying-py.ndp` to your Navidrome plugins folder
 
 2. Enable plugins in `navidrome.toml`:
    ```toml
@@ -43,20 +44,14 @@ extism-py plugin/__init__.py -o nowplaying-py.wasm
    Folder = "/path/to/plugins"
    ```
 
-3. Configure the plugin in the UI (Settings → Plugins → nowplaying-py):
-   ```json
-   {
-     "cron": "*/1 * * * *",
-     "user": "admin"
-   }
-   ```
+3. Configure the plugin in the UI (Settings → Plugins → nowplaying-py)
 
-### Configuration Options
+## Configuration
 
-| Key    | Description                         | Default                      |
-|--------|-------------------------------------|------------------------------|
-| `cron` | Cron expression for check frequency | `*/1 * * * *` (every minute) |
-| `user` | Navidrome user for SubsonicAPI      | `admin`                      |
+| Key    | Description                         | Default       |
+|--------|-------------------------------------|---------------|
+| `cron` | Cron expression for check frequency | `*/1 * * * *` |
+| `user` | Navidrome user for SubsonicAPI      | `admin`       |
 
 ## Testing
 

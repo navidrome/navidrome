@@ -23,18 +23,20 @@ This folder contains example plugins demonstrating various capabilities and lang
 - **Python plugins:** [extism-py](https://github.com/extism/python-pdk)
 - **Rust plugins:** [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target
 
-### Build All (Go plugins)
+### Build All Plugins
 
 ```bash
 make all
 ```
 
+This creates `.ndp` package files for each plugin.
+
 ### Build Individual Plugin
 
 ```bash
-make minimal.wasm
-make wikimedia.wasm
-make discord-rich-presence.wasm
+make minimal.ndp
+make wikimedia.ndp
+make discord-rich-presence.ndp
 ```
 
 ### Clean
@@ -47,15 +49,15 @@ make clean
 
 ### With Extism CLI
 
-Test any plugin without running Navidrome:
+Test any plugin without running Navidrome. First extract the `.wasm` file from the `.ndp` package:
 
 ```bash
 # Install: https://extism.org/docs/install
 
-# Test manifest
-extism call minimal.wasm nd_manifest --wasi
+# Extract the wasm file from the package
+unzip -p minimal.ndp plugin.wasm > minimal.wasm
 
-# Test with input
+# Test a capability function
 extism call minimal.wasm nd_get_artist_biography --wasi \
   --input '{"id":"1","name":"The Beatles"}'
 ```
@@ -63,6 +65,7 @@ extism call minimal.wasm nd_get_artist_biography --wasi \
 For plugins that make HTTP requests, allow the hosts:
 
 ```bash
+unzip -p wikimedia.ndp plugin.wasm > wikimedia.wasm
 extism call wikimedia.wasm nd_get_artist_biography --wasi \
   --input '{"id":"1","name":"Yussef Dayes"}' \
   --allow-host "query.wikidata.org" \
@@ -71,7 +74,7 @@ extism call wikimedia.wasm nd_get_artist_biography --wasi \
 
 ### With Navidrome
 
-1. Copy the `.wasm` file to your plugins folder
+1. Copy the `.ndp` file to your plugins folder
 2. Enable plugins in `navidrome.toml`:
    ```toml
    [Plugins]
@@ -92,8 +95,9 @@ Copy the [minimal](minimal/) example and modify:
 ```bash
 cp -r minimal my-plugin
 cd my-plugin
-# Edit main.go
-tinygo build -o my-plugin.wasm -target wasip1 -buildmode=c-shared .
+# Edit main.go and manifest.json
+tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
+zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
 
 ### Option 2: Bootstrap with XTP CLI
@@ -108,6 +112,11 @@ xtp plugin init \
   --template go \
   --path ./my-plugin \
   --name my-plugin
+
+# Then create manifest.json and package
+cd my-plugin
+xtp plugin build
+zip -j my-plugin.ndp manifest.json dist/plugin.wasm
 ```
 
 Available schemas in [../schemas/](../schemas/):

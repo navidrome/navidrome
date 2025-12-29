@@ -22,16 +22,11 @@ xtp plugin init \
 
 ## Building
 
-### Using XTP CLI (recommended)
-
-```bash
-xtp plugin build
-```
-
 ### Using TinyGo
 
 ```bash
-tinygo build -target wasip1 -buildmode=c-shared -o dist/plugin.wasm .
+tinygo build -target wasip1 -buildmode=c-shared -o plugin.wasm .
+zip -j wikimedia.ndp manifest.json plugin.wasm
 ```
 
 ### Using the Makefile
@@ -39,15 +34,22 @@ tinygo build -target wasip1 -buildmode=c-shared -o dist/plugin.wasm .
 From the `plugins/examples` directory:
 
 ```bash
-make wikimedia.wasm
+make wikimedia.ndp
+```
+
+### Using XTP CLI
+
+```bash
+xtp plugin build
+zip -j wikimedia.ndp manifest.json dist/plugin.wasm
 ```
 
 ## Installation
 
-Copy the `.wasm` file to your Navidrome plugins folder:
+Copy the `.ndp` file to your Navidrome plugins folder:
 
 ```bash
-cp dist/plugin.wasm /path/to/navidrome/plugins/wikimedia.wasm
+cp wikimedia.ndp /path/to/navidrome/plugins/
 ```
 
 Then enable plugins in your `navidrome.toml`:
@@ -73,23 +75,13 @@ brew install extism/tap/extism  # macOS
 # or see https://extism.org/docs/install for other platforms
 ```
 
-Run these commands from the `plugins/examples` directory.
-
-### Test the manifest
+Extract the wasm file from the package and test:
 
 ```bash
-extism call wikimedia.wasm nd_manifest --wasi
-```
+# Extract wasm from package
+unzip -p wikimedia.ndp plugin.wasm > wikimedia.wasm
 
-Expected output:
-```json
-{"name":"Wikimedia","author":"Navidrome","version":"1.0.0","description":"Fetches artist metadata from Wikidata, DBpedia and Wikipedia","website":"https://navidrome.org","permissions":{"http":{"reason":"Fetch metadata from Wikimedia APIs","allowedHosts":["query.wikidata.org","dbpedia.org","en.wikipedia.org"]}}}
-```
-
-### Test artist URL lookup
-
-```bash
-# With MBID (The Beatles)
+# Test artist URL lookup with MBID (The Beatles)
 extism call wikimedia.wasm nd_get_artist_url --wasi \
   --input '{"id":"1","name":"The Beatles","mbid":"b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"}' \
   --allow-host "query.wikidata.org"
