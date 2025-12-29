@@ -43,7 +43,7 @@ def _websocket_closeconnection(offset: int) -> int:
     ...
 
 
-def websocket_connect(url: str, headers: Any, connection_i_d: str) -> str:
+def websocket_connect(url: str, headers: Any, connection_id: str) -> str:
     """Connect establishes a WebSocket connection to the specified URL.
 
 Plugins that use this function must also implement the WebSocketCallback capability
@@ -60,7 +60,7 @@ or an error if the connection fails.
     Args:
         url: str parameter.
         headers: Any parameter.
-        connection_i_d: str parameter.
+        connection_id: str parameter.
 
     Returns:
         str: The result value.
@@ -71,7 +71,7 @@ or an error if the connection fails.
     request = {
         "url": url,
         "headers": headers,
-        "connectionID": connection_i_d,
+        "connectionId": connection_id,
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
@@ -82,10 +82,10 @@ or an error if the connection fails.
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
-    return response.get("newConnectionID", "")
+    return response.get("newConnectionId", "")
 
 
-def websocket_send_text(connection_i_d: str, message: str) -> None:
+def websocket_send_text(connection_id: str, message: str) -> None:
     """SendText sends a text message over an established WebSocket connection.
 
 Parameters:
@@ -95,14 +95,14 @@ Parameters:
 Returns an error if the connection is not found or if sending fails.
 
     Args:
-        connection_i_d: str parameter.
+        connection_id: str parameter.
         message: str parameter.
 
     Raises:
         HostFunctionError: If the host function returns an error.
     """
     request = {
-        "connectionID": connection_i_d,
+        "connectionId": connection_id,
         "message": message,
     }
     request_bytes = json.dumps(request).encode("utf-8")
@@ -116,7 +116,7 @@ Returns an error if the connection is not found or if sending fails.
 
 
 
-def websocket_send_binary(connection_i_d: str, data: bytes) -> None:
+def websocket_send_binary(connection_id: str, data: bytes) -> None:
     """SendBinary sends binary data over an established WebSocket connection.
 
 Parameters:
@@ -126,14 +126,14 @@ Parameters:
 Returns an error if the connection is not found or if sending fails.
 
     Args:
-        connection_i_d: str parameter.
+        connection_id: str parameter.
         data: bytes parameter.
 
     Raises:
         HostFunctionError: If the host function returns an error.
     """
     request = {
-        "connectionID": connection_i_d,
+        "connectionId": connection_id,
         "data": data,
     }
     request_bytes = json.dumps(request).encode("utf-8")
@@ -147,7 +147,7 @@ Returns an error if the connection is not found or if sending fails.
 
 
 
-def websocket_close_connection(connection_i_d: str, code: int, reason: str) -> None:
+def websocket_close_connection(connection_id: str, code: int, reason: str) -> None:
     """CloseConnection gracefully closes a WebSocket connection.
 
 Parameters:
@@ -158,7 +158,7 @@ Parameters:
 Returns an error if the connection is not found or if closing fails.
 
     Args:
-        connection_i_d: str parameter.
+        connection_id: str parameter.
         code: int parameter.
         reason: str parameter.
 
@@ -166,7 +166,7 @@ Returns an error if the connection is not found or if closing fails.
         HostFunctionError: If the host function returns an error.
     """
     request = {
-        "connectionID": connection_i_d,
+        "connectionId": connection_id,
         "code": code,
         "reason": reason,
     }

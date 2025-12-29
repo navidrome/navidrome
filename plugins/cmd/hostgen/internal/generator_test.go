@@ -290,10 +290,15 @@ var _ = Describe("Generator", func() {
 	})
 
 	Describe("toJSONName", func() {
-		It("should convert to camelCase", func() {
+		It("should convert to camelCase matching Rust serde behavior", func() {
 			Expect(toJSONName("InputValue")).To(Equal("inputValue"))
-			Expect(toJSONName("URI")).To(Equal("uRI"))
+			Expect(toJSONName("URI")).To(Equal("uri"))
 			Expect(toJSONName("id")).To(Equal("id"))
+			Expect(toJSONName("ID")).To(Equal("id"))
+			Expect(toJSONName("ConnectionID")).To(Equal("connectionId"))
+			Expect(toJSONName("NewConnectionID")).To(Equal("newConnectionId"))
+			Expect(toJSONName("XMLHTTPRequest")).To(Equal("xmlhttpRequest"))
+			Expect(toJSONName("APIKey")).To(Equal("apiKey"))
 		})
 
 		It("should handle empty string", func() {
@@ -329,8 +334,15 @@ var _ = Describe("Generator", func() {
 			It("should convert PascalCase to snake_case", func() {
 				Expect(ToSnakeCase("ScheduleRecurring")).To(Equal("schedule_recurring"))
 				Expect(ToSnakeCase("GetString")).To(Equal("get_string"))
-				Expect(ToSnakeCase("ID")).To(Equal("i_d"))
 				Expect(ToSnakeCase("simple")).To(Equal("simple"))
+			})
+
+			It("should handle acronyms correctly", func() {
+				Expect(ToSnakeCase("ID")).To(Equal("id"))
+				Expect(ToSnakeCase("ScheduleID")).To(Equal("schedule_id"))
+				Expect(ToSnakeCase("NewScheduleID")).To(Equal("new_schedule_id"))
+				Expect(ToSnakeCase("XMLParser")).To(Equal("xml_parser"))
+				Expect(ToSnakeCase("GetHTTPResponse")).To(Equal("get_http_response"))
 			})
 		})
 

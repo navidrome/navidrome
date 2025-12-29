@@ -154,3 +154,39 @@ func pythonDefaultValue(p Param) string {
 		return ", None"
 	}
 }
+
+// rustFuncMap returns the template functions for Rust client code generation.
+func rustFuncMap(svc Service) template.FuncMap {
+	return template.FuncMap{
+		"lower":          strings.ToLower,
+		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":    func(m Method) string { return m.RequestTypeName(svc.Name) },
+		"responseType":   func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"rustFunc":       func(m Method) string { return m.RustFunctionName(svc.ExportPrefix()) },
+		"rustDocComment": RustDocComment,
+	}
+}
+
+// GenerateClientRust generates Rust client wrapper code for plugins.
+func GenerateClientRust(svc Service) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/client_rs.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading Rust client template: %w", err)
+	}
+
+	tmpl, err := template.New("client_rs").Funcs(rustFuncMap(svc)).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := templateData{
+		Service: svc,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

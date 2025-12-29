@@ -4,16 +4,17 @@ This folder contains example plugins demonstrating various capabilities and lang
 
 ## Available Examples
 
-| Plugin                                          | Language | Capabilities                                    | Description                    |
-|-------------------------------------------------|----------|-------------------------------------------------|--------------------------------|
-| [minimal](minimal/)                             | Go       | MetadataAgent                                   | Basic plugin structure         |
-| [wikimedia](wikimedia/)                         | Go       | MetadataAgent                                   | Wikidata/Wikipedia metadata    |
-| [crypto-ticker](crypto-ticker/)                 | Go       | Scheduler, WebSocket, Cache                     | Real-time crypto prices (demo) |
-| [discord-rich-presence](discord-rich-presence/) | Go       | Scrobbler, Scheduler, WebSocket, Cache, Artwork | Discord integration            |
-| [coverartarchive-py](coverartarchive-py/)       | Python   | MetadataAgent                                   | Cover Art Archive              |
-| [nowplaying-py](nowplaying-py/)                 | Python   | Scheduler, SubsonicAPI                          | Now playing logger             |
-| [webhook-rs](webhook-rs/)                       | Rust     | Scrobbler                                       | HTTP webhook on scrobble       |
-| [library-inspector](library-inspector/)         | Rust     | Library, Scheduler                              | Periodic library stats logging |
+| Plugin                                                | Language | Capabilities                                    | Description                    |
+|-------------------------------------------------------|----------|-------------------------------------------------|--------------------------------|
+| [minimal](minimal/)                                   | Go       | MetadataAgent                                   | Basic plugin structure         |
+| [wikimedia](wikimedia/)                               | Go       | MetadataAgent                                   | Wikidata/Wikipedia metadata    |
+| [crypto-ticker](crypto-ticker/)                       | Go       | Scheduler, WebSocket, Cache                     | Real-time crypto prices (demo) |
+| [discord-rich-presence](discord-rich-presence/)       | Go       | Scrobbler, Scheduler, WebSocket, Cache, Artwork | Discord integration            |
+| [coverartarchive-py](coverartarchive-py/)             | Python   | MetadataAgent                                   | Cover Art Archive              |
+| [nowplaying-py](nowplaying-py/)                       | Python   | Scheduler, SubsonicAPI                          | Now playing logger             |
+| [webhook-rs](webhook-rs/)                             | Rust     | Scrobbler                                       | HTTP webhook on scrobble       |
+| [library-inspector](library-inspector/)               | Rust     | Library, Scheduler                              | Periodic library stats logging |
+| [discord-rich-presence-rs](discord-rich-presence-rs/) | Rust     | Scrobbler, Scheduler, WebSocket, Cache, Artwork | Discord integration (Rust)     |
 
 ## Building
 
