@@ -14,15 +14,11 @@ This is a WebSocket-based WASM plugin for Navidrome that displays real-time cryp
 
 Configure in the Navidrome UI (Settings → Plugins → crypto-ticker):
 
-```json
-{
-  "tickers": "BTC,ETH,SOL,MATIC"
-}
-```
+| Key       | Description                                                          | Default   |
+|-----------|----------------------------------------------------------------------|-----------|
+| `tickers` | Comma-separated list of cryptocurrency symbols (e.g., `BTC,ETH,SOL`) | `BTC,ETH` |
 
-- `tickers` is a comma-separated list of cryptocurrency symbols
-- The plugin will append `-USD` to any symbol without a trading pair specified
-- Default: `BTC,ETH` if not configured
+The plugin will append `-USD` to any symbol without a trading pair specified.
 
 ## How it Works
 
@@ -40,19 +36,23 @@ This plugin was scaffolded using XTP CLI:
 xtp plugin init --schema-file ../schemas/websocket_callback.yaml --template go --path ./crypto-ticker --name crypto-ticker
 ```
 
-To build the plugin to WASM:
+To build the plugin and package as `.ndp`:
 
 ```bash
 # Using TinyGo (recommended - smaller binary)
-tinygo build -o crypto-ticker.wasm -target wasip1 -buildmode=c-shared .
+tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
+zip -j crypto-ticker.ndp manifest.json plugin.wasm
+```
 
-# Or using standard Go
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o crypto-ticker.wasm .
+Or from the `plugins/examples/` directory:
+
+```bash
+make crypto-ticker.ndp
 ```
 
 ## Installation
 
-Copy the resulting `crypto-ticker.wasm` to your Navidrome plugins folder.
+Copy the resulting `crypto-ticker.ndp` to your Navidrome plugins folder.
 
 ## Example Output
 

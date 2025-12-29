@@ -23,18 +23,19 @@ A Python example plugin that fetches album cover images from the [Cover Art Arch
 From the `plugins/examples` directory:
 
 ```bash
-make coverartarchive-py.wasm
+make coverartarchive-py.ndp
 ```
 
 Or directly:
 
 ```bash
-extism-py plugin/__init__.py -o coverartarchive-py.wasm
+extism-py plugin/__init__.py -o plugin.wasm
+zip -j coverartarchive-py.ndp manifest.json plugin.wasm
 ```
 
 ## Installation
 
-1. Copy `coverartarchive-py.wasm` to your Navidrome plugins folder
+1. Copy `coverartarchive-py.ndp` to your Navidrome plugins folder
 
 2. Enable plugins in `navidrome.toml`:
    ```toml
@@ -50,15 +51,10 @@ extism-py plugin/__init__.py -o coverartarchive-py.wasm
 
 ## Testing
 
-Test the manifest:
+Extract the wasm file and test:
 
 ```bash
-extism call coverartarchive-py.wasm nd_manifest --wasi
-```
-
-Test album image retrieval (using Portishead's "Dummy" MBID):
-
-```bash
+unzip -p coverartarchive-py.ndp plugin.wasm > coverartarchive-py.wasm
 extism call coverartarchive-py.wasm nd_get_album_images --wasi \
   --input '{"name":"Dummy","artist":"Portishead","mbid":"76df3287-6cda-33eb-8e9a-044b5e15ffdd"}' \
   --allow-host "coverartarchive.org" --allow-host "archive.org"
