@@ -29,7 +29,43 @@ import (
 	"github.com/navidrome/navidrome/plugins/cmd/hostgen/internal"
 )
 
+// config holds the parsed command-line configuration.
+type config struct {
+	inputDir         string
+	outputDir        string
+	pkgName          string
+	generateHost     bool
+	generateGoClient bool
+	generatePyClient bool
+	generateRsClient bool
+	verbose          bool
+	dryRun           bool
+}
+
 func main() {
+	cfg, err := parseConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	services, err := parseServices(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if len(services) == 0 {
+		return
+	}
+
+	if err := generateAllCode(cfg, services); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// parseConfig parses command-line flags and returns the configuration.
+func parseConfig() (*config, error) {
 	var (
 		inputDir   = flag.String("input", ".", "Input directory containing Go source files")
 		outputDir  = flag.String("output", "", "Output directory for generated files (default: same as input)")
@@ -44,117 +80,110 @@ func main() {
 	)
 	flag.Parse()
 
-	// Validate conflicting flags
 	if *hostOnly && *pluginOnly {
-		fmt.Fprintf(os.Stderr, "Error: -host-only and -plugin-only cannot be used together\n")
-		os.Exit(1)
+		return nil, fmt.Errorf("-host-only and -plugin-only cannot be used together")
 	}
 
 	if *outputDir == "" {
 		*outputDir = *inputDir
 	}
 
-	// Resolve absolute paths
 	absInput, err := filepath.Abs(*inputDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error resolving input path: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("resolving input path: %w", err)
 	}
 	absOutput, err := filepath.Abs(*outputDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error resolving output path: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("resolving output path: %w", err)
 	}
 
-	// Infer package name if not provided
 	if *pkgName == "" {
 		*pkgName = filepath.Base(absOutput)
 	}
 
 	// Determine what to generate
-	generateHost := !*pluginOnly
 	// Default: generate Go clients if no language flag is specified
-	// If -python or -rust is specified without -go, only generate those
-	// If -go is specified, generate Go
-	// If multiple are specified, generate all specified
 	anyLangFlag := *goClient || *pyClient || *rsClient
-	generateGoClient := !*hostOnly && (*goClient || !anyLangFlag)
-	generatePyClient := !*hostOnly && *pyClient
-	generateRsClient := !*hostOnly && *rsClient
 
-	if *verbose {
-		fmt.Printf("Input directory: %s\n", absInput)
-		fmt.Printf("Output directory: %s\n", absOutput)
-		fmt.Printf("Package name: %s\n", *pkgName)
-		fmt.Printf("Generate host code: %v\n", generateHost)
-		fmt.Printf("Generate Go client code: %v\n", generateGoClient)
-		fmt.Printf("Generate Python client code: %v\n", generatePyClient)
-		fmt.Printf("Generate Rust client code: %v\n", generateRsClient)
+	return &config{
+		inputDir:         absInput,
+		outputDir:        absOutput,
+		pkgName:          *pkgName,
+		generateHost:     !*pluginOnly,
+		generateGoClient: !*hostOnly && (*goClient || !anyLangFlag),
+		generatePyClient: !*hostOnly && *pyClient,
+		generateRsClient: !*hostOnly && *rsClient,
+		verbose:          *verbose,
+		dryRun:           *dryRun,
+	}, nil
+}
+
+// parseServices parses source files and returns discovered services.
+func parseServices(cfg *config) ([]internal.Service, error) {
+	if cfg.verbose {
+		fmt.Printf("Input directory: %s\n", cfg.inputDir)
+		fmt.Printf("Output directory: %s\n", cfg.outputDir)
+		fmt.Printf("Package name: %s\n", cfg.pkgName)
+		fmt.Printf("Generate host code: %v\n", cfg.generateHost)
+		fmt.Printf("Generate Go client code: %v\n", cfg.generateGoClient)
+		fmt.Printf("Generate Python client code: %v\n", cfg.generatePyClient)
+		fmt.Printf("Generate Rust client code: %v\n", cfg.generateRsClient)
 	}
 
-	// Parse source files
-	services, err := internal.ParseDirectory(absInput)
+	services, err := internal.ParseDirectory(cfg.inputDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing source files: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("parsing source files: %w", err)
 	}
 
 	if len(services) == 0 {
-		if *verbose {
+		if cfg.verbose {
 			fmt.Println("No host services found")
 		}
-		return
+		return nil, nil
 	}
 
-	if *verbose {
+	if cfg.verbose {
 		fmt.Printf("Found %d host service(s)\n", len(services))
 		for _, svc := range services {
 			fmt.Printf("  - %s (%d methods)\n", svc.Name, len(svc.Methods))
 		}
 	}
 
-	// Generate code for each service
+	return services, nil
+}
+
+// generateAllCode generates all requested code for the services.
+func generateAllCode(cfg *config, services []internal.Service) error {
 	for _, svc := range services {
-		// Generate host-side code
-		if generateHost {
-			if err := generateHostCode(svc, *pkgName, absOutput, *dryRun, *verbose); err != nil {
-				fmt.Fprintf(os.Stderr, "Error generating host code for %s: %v\n", svc.Name, err)
-				os.Exit(1)
+		if cfg.generateHost {
+			if err := generateHostCode(svc, cfg.pkgName, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+				return fmt.Errorf("generating host code for %s: %w", svc.Name, err)
 			}
 		}
-
-		// Generate Go client-side code
-		if generateGoClient {
-			if err := generateGoClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
-				fmt.Fprintf(os.Stderr, "Error generating Go client code for %s: %v\n", svc.Name, err)
-				os.Exit(1)
+		if cfg.generateGoClient {
+			if err := generateGoClientCode(svc, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+				return fmt.Errorf("generating Go client code for %s: %w", svc.Name, err)
 			}
 		}
-
-		// Generate Python client-side code
-		if generatePyClient {
-			if err := generatePythonClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
-				fmt.Fprintf(os.Stderr, "Error generating Python client code for %s: %v\n", svc.Name, err)
-				os.Exit(1)
+		if cfg.generatePyClient {
+			if err := generatePythonClientCode(svc, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+				return fmt.Errorf("generating Python client code for %s: %w", svc.Name, err)
 			}
 		}
-
-		// Generate Rust client-side code
-		if generateRsClient {
-			if err := generateRustClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
-				fmt.Fprintf(os.Stderr, "Error generating Rust client code for %s: %v\n", svc.Name, err)
-				os.Exit(1)
+		if cfg.generateRsClient {
+			if err := generateRustClientCode(svc, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+				return fmt.Errorf("generating Rust client code for %s: %w", svc.Name, err)
 			}
 		}
 	}
 
-	// Generate Rust lib.rs to expose all modules
-	if generateRsClient && len(services) > 0 {
-		if err := generateRustLibFile(services, absOutput, *dryRun, *verbose); err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating Rust lib.rs: %v\n", err)
-			os.Exit(1)
+	if cfg.generateRsClient && len(services) > 0 {
+		if err := generateRustLibFile(services, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating Rust lib.rs: %w", err)
 		}
 	}
+
+	return nil
 }
 
 // generateHostCode generates host-side code for a service.
