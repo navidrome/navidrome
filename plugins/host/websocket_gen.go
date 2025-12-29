@@ -13,18 +13,18 @@ import (
 type WebSocketConnectRequest struct {
 	Url          string            `json:"url"`
 	Headers      map[string]string `json:"headers"`
-	ConnectionID string            `json:"connectionID"`
+	ConnectionID string            `json:"connectionId"`
 }
 
 // WebSocketConnectResponse is the response type for WebSocket.Connect.
 type WebSocketConnectResponse struct {
-	NewConnectionID string `json:"newConnectionID,omitempty"`
+	NewConnectionID string `json:"newConnectionId,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
 
 // WebSocketSendTextRequest is the request type for WebSocket.SendText.
 type WebSocketSendTextRequest struct {
-	ConnectionID string `json:"connectionID"`
+	ConnectionID string `json:"connectionId"`
 	Message      string `json:"message"`
 }
 
@@ -35,7 +35,7 @@ type WebSocketSendTextResponse struct {
 
 // WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
 type WebSocketSendBinaryRequest struct {
-	ConnectionID string `json:"connectionID"`
+	ConnectionID string `json:"connectionId"`
 	Data         []byte `json:"data"`
 }
 
@@ -46,7 +46,7 @@ type WebSocketSendBinaryResponse struct {
 
 // WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
 type WebSocketCloseConnectionRequest struct {
-	ConnectionID string `json:"connectionID"`
+	ConnectionID string `json:"connectionId"`
 	Code         int32  `json:"code"`
 	Reason       string `json:"reason"`
 }

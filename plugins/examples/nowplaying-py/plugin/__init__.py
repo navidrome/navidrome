@@ -58,7 +58,7 @@ def scheduler_schedule_recurring(cron_expression: str, payload: str, schedule_id
     request = {
         "cronExpression": cron_expression,
         "payload": payload,
-        "scheduleID": schedule_id
+        "scheduleId": schedule_id
     }
     request_bytes = json.dumps(request).encode('utf-8')
     request_mem = extism.memory.alloc(request_bytes)
@@ -69,7 +69,7 @@ def scheduler_schedule_recurring(cron_expression: str, payload: str, schedule_id
     if response.get("error"):
         raise Exception(response["error"])
     
-    return response.get("newScheduleID", schedule_id)
+    return response.get("newScheduleId", schedule_id)
 
 
 def subsonicapi_call(uri: str) -> dict:
@@ -92,7 +92,7 @@ def subsonicapi_call(uri: str) -> dict:
         raise Exception(response["error"])
     
     # Parse the nested JSON response
-    response_json = response.get("responseJSON", "{}")
+    response_json = response.get("responseJson", "{}")
     return json.loads(response_json)
 
 

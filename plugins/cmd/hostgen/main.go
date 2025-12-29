@@ -11,8 +11,9 @@
 //	-package     Output package name (default: inferred from output directory)
 //	-host-only   Generate only host-side code (default: false)
 //	-plugin-only Generate only plugin/client-side code (default: false)
-//	-go          Generate Go client wrappers (default: true when not using -python)
+//	-go          Generate Go client wrappers (default: true when not using -python/-rust)
 //	-python      Generate Python client wrappers (default: false)
+//	-rust        Generate Rust client wrappers (default: false)
 //	-v           Verbose output
 //	-dry-run     Preview generated code without writing files
 package main
@@ -37,6 +38,7 @@ func main() {
 		pluginOnly = flag.Bool("plugin-only", false, "Generate only plugin/client-side code")
 		goClient   = flag.Bool("go", false, "Generate Go client wrappers")
 		pyClient   = flag.Bool("python", false, "Generate Python client wrappers")
+		rsClient   = flag.Bool("rust", false, "Generate Rust client wrappers")
 		verbose    = flag.Bool("v", false, "Verbose output")
 		dryRun     = flag.Bool("dry-run", false, "Preview generated code without writing files")
 	)
@@ -72,11 +74,13 @@ func main() {
 	// Determine what to generate
 	generateHost := !*pluginOnly
 	// Default: generate Go clients if no language flag is specified
-	// If -python is specified without -go, only generate Python
+	// If -python or -rust is specified without -go, only generate those
 	// If -go is specified, generate Go
-	// If both are specified, generate both
-	generateGoClient := !*hostOnly && (*goClient || !*pyClient)
+	// If multiple are specified, generate all specified
+	anyLangFlag := *goClient || *pyClient || *rsClient
+	generateGoClient := !*hostOnly && (*goClient || !anyLangFlag)
 	generatePyClient := !*hostOnly && *pyClient
+	generateRsClient := !*hostOnly && *rsClient
 
 	if *verbose {
 		fmt.Printf("Input directory: %s\n", absInput)
@@ -85,6 +89,7 @@ func main() {
 		fmt.Printf("Generate host code: %v\n", generateHost)
 		fmt.Printf("Generate Go client code: %v\n", generateGoClient)
 		fmt.Printf("Generate Python client code: %v\n", generatePyClient)
+		fmt.Printf("Generate Rust client code: %v\n", generateRsClient)
 	}
 
 	// Parse source files
@@ -130,6 +135,14 @@ func main() {
 		if generatePyClient {
 			if err := generatePythonClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
 				fmt.Fprintf(os.Stderr, "Error generating Python client code for %s: %v\n", svc.Name, err)
+				os.Exit(1)
+			}
+		}
+
+		// Generate Rust client-side code
+		if generateRsClient {
+			if err := generateRustClientCode(svc, absOutput, *dryRun, *verbose); err != nil {
+				fmt.Fprintf(os.Stderr, "Error generating Rust client code for %s: %v\n", svc.Name, err)
 				os.Exit(1)
 			}
 		}
@@ -228,6 +241,37 @@ func generatePythonClientCode(svc internal.Service, outputDir string, dryRun, ve
 
 	if verbose {
 		fmt.Printf("Generated Python client code: %s\n", clientFile)
+	}
+	return nil
+}
+
+// generateRustClientCode generates Rust client-side code for a service.
+func generateRustClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateClientRust(svc)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	// Rust code goes in rust/ subdirectory
+	clientDir := filepath.Join(outputDir, "rust")
+	clientFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+".rs")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
+		return nil
+	}
+
+	// Create rust/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating rust client directory: %w", err)
+	}
+
+	if err := os.WriteFile(clientFile, code, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated Rust client code: %s\n", clientFile)
 	}
 	return nil
 }

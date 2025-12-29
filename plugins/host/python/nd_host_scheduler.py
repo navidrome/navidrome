@@ -37,7 +37,7 @@ def _scheduler_cancelschedule(offset: int) -> int:
     ...
 
 
-def scheduler_schedule_one_time(delay_seconds: int, payload: str, schedule_i_d: str) -> str:
+def scheduler_schedule_one_time(delay_seconds: int, payload: str, schedule_id: str) -> str:
     """ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
 Plugins that use this function must also implement the SchedulerCallback capability
 
@@ -51,7 +51,7 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     Args:
         delay_seconds: int parameter.
         payload: str parameter.
-        schedule_i_d: str parameter.
+        schedule_id: str parameter.
 
     Returns:
         str: The result value.
@@ -62,7 +62,7 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     request = {
         "delaySeconds": delay_seconds,
         "payload": payload,
-        "scheduleID": schedule_i_d,
+        "scheduleId": schedule_id,
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
@@ -73,10 +73,10 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
-    return response.get("newScheduleID", "")
+    return response.get("newScheduleId", "")
 
 
-def scheduler_schedule_recurring(cron_expression: str, payload: str, schedule_i_d: str) -> str:
+def scheduler_schedule_recurring(cron_expression: str, payload: str, schedule_id: str) -> str:
     """ScheduleRecurring schedules a recurring event using a cron expression.
 Plugins that use this function must also implement the SchedulerCallback capability
 
@@ -90,7 +90,7 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     Args:
         cron_expression: str parameter.
         payload: str parameter.
-        schedule_i_d: str parameter.
+        schedule_id: str parameter.
 
     Returns:
         str: The result value.
@@ -101,7 +101,7 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     request = {
         "cronExpression": cron_expression,
         "payload": payload,
-        "scheduleID": schedule_i_d,
+        "scheduleId": schedule_id,
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
@@ -112,10 +112,10 @@ Returns the schedule ID that can be used to cancel the job, or an error if sched
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
-    return response.get("newScheduleID", "")
+    return response.get("newScheduleId", "")
 
 
-def scheduler_cancel_schedule(schedule_i_d: str) -> None:
+def scheduler_cancel_schedule(schedule_id: str) -> None:
     """CancelSchedule cancels a scheduled job identified by its schedule ID.
 
 This works for both one-time and recurring schedules. Once cancelled, the job will not trigger
@@ -124,13 +124,13 @@ any future events.
 Returns an error if the schedule ID is not found or if cancellation fails.
 
     Args:
-        schedule_i_d: str parameter.
+        schedule_id: str parameter.
 
     Raises:
         HostFunctionError: If the host function returns an error.
     """
     request = {
-        "scheduleID": schedule_i_d,
+        "scheduleId": schedule_id,
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)

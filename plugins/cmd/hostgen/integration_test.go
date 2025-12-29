@@ -197,16 +197,17 @@ type ServiceB interface {
 
 	Describe("code generation", func() {
 		DescribeTable("generates correct host and client output",
-			func(serviceFile, hostExpectedFile, goClientExpectedFile, pyClientExpectedFile string) {
+			func(serviceFile, hostExpectedFile, goClientExpectedFile, pyClientExpectedFile, rsClientExpectedFile string) {
 				serviceCode := readTestdata(serviceFile)
 				hostExpected := readTestdata(hostExpectedFile)
 				goClientExpected := readTestdata(goClientExpectedFile)
 				pyClientExpected := readTestdata(pyClientExpectedFile)
+				rsClientExpected := readTestdata(rsClientExpectedFile)
 
 				Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
 
-				// Generate host and both Go and Python client code
-				cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-go", "-python")
+				// Generate host and all client code (Go, Python, Rust)
+				cmd := exec.Command(hostgenBin, "-input", testDir, "-output", outputDir, "-package", "testpkg", "-go", "-python", "-rust")
 				output, err := cmd.CombinedOutput()
 				Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
@@ -216,7 +217,7 @@ type ServiceB interface {
 
 				var hostFiles []string
 				for _, e := range entries {
-					if e.Name() != "go" && e.Name() != "python" && !e.IsDir() {
+					if e.Name() != "go" && e.Name() != "python" && e.Name() != "rust" && !e.IsDir() {
 						hostFiles = append(hostFiles, e.Name())
 					}
 				}
@@ -260,37 +261,48 @@ type ServiceB interface {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(pyClientActual)).To(Equal(pyClientExpected), "Python client code mismatch")
+
+				// Verify Rust client code
+				rustDir := filepath.Join(outputDir, "rust")
+				rsClientEntries, err := os.ReadDir(rustDir)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rsClientEntries).To(HaveLen(1), "Expected exactly one Rust client file")
+
+				rsClientActual, err := os.ReadFile(filepath.Join(rustDir, rsClientEntries[0].Name()))
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(string(rsClientActual)).To(Equal(rsClientExpected), "Rust client code mismatch")
 			},
 
 			Entry("simple string params",
-				"echo_service.go", "echo_expected.go", "echo_client_expected.go", "echo_client_expected.py"),
+				"echo_service.go", "echo_expected.go", "echo_client_expected.go", "echo_client_expected.py", "echo_client_expected.rs"),
 
 			Entry("multiple simple params (int32)",
-				"math_service.go", "math_expected.go", "math_client_expected.go", "math_client_expected.py"),
+				"math_service.go", "math_expected.go", "math_client_expected.go", "math_client_expected.py", "math_client_expected.rs"),
 
 			Entry("struct param with request type",
-				"store_service.go", "store_expected.go", "store_client_expected.go", "store_client_expected.py"),
+				"store_service.go", "store_expected.go", "store_client_expected.go", "store_client_expected.py", "store_client_expected.rs"),
 
 			Entry("mixed simple and complex params",
-				"list_service.go", "list_expected.go", "list_client_expected.go", "list_client_expected.py"),
+				"list_service.go", "list_expected.go", "list_client_expected.go", "list_client_expected.py", "list_client_expected.rs"),
 
 			Entry("method without error",
-				"counter_service.go", "counter_expected.go", "counter_client_expected.go", "counter_client_expected.py"),
+				"counter_service.go", "counter_expected.go", "counter_client_expected.go", "counter_client_expected.py", "counter_client_expected.rs"),
 
 			Entry("no params, error only",
-				"ping_service.go", "ping_expected.go", "ping_client_expected.go", "ping_client_expected.py"),
+				"ping_service.go", "ping_expected.go", "ping_client_expected.go", "ping_client_expected.py", "ping_client_expected.rs"),
 
 			Entry("map and interface types",
-				"meta_service.go", "meta_expected.go", "meta_client_expected.go", "meta_client_expected.py"),
+				"meta_service.go", "meta_expected.go", "meta_client_expected.go", "meta_client_expected.py", "meta_client_expected.rs"),
 
 			Entry("pointer types",
-				"users_service.go", "users_expected.go", "users_client_expected.go", "users_client_expected.py"),
+				"users_service.go", "users_expected.go", "users_client_expected.go", "users_client_expected.py", "users_client_expected.rs"),
 
 			Entry("multiple returns",
-				"search_service.go", "search_expected.go", "search_client_expected.go", "search_client_expected.py"),
+				"search_service.go", "search_expected.go", "search_client_expected.go", "search_client_expected.py", "search_client_expected.rs"),
 
 			Entry("bytes",
-				"codec_service.go", "codec_expected.go", "codec_client_expected.go", "codec_client_expected.py"),
+				"codec_service.go", "codec_expected.go", "codec_client_expected.go", "codec_client_expected.py", "codec_client_expected.rs"),
 		)
 
 		It("generates compilable host code for comprehensive service", func() {
