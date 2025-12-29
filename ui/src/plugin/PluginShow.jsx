@@ -12,7 +12,7 @@ import {
 } from 'react-admin'
 import { Box, useMediaQuery } from '@material-ui/core'
 import Alert from '@material-ui/lab/Alert'
-import { Title } from '../common'
+import { Title, useResourceRefresh } from '../common'
 import { usePluginShowStyles } from './styles.js'
 import { ErrorSection } from './ErrorSection'
 import { StatusCard } from './StatusCard'
@@ -28,6 +28,7 @@ const PluginShowLayout = () => {
   const notify = useNotify()
   const refresh = useRefresh()
   const isSmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  useResourceRefresh('plugin')
 
   const [configPairs, setConfigPairs] = useState([])
   const [isDirty, setIsDirty] = useState(false)
