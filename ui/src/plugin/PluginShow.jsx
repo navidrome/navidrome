@@ -32,7 +32,7 @@ const PluginShowLayout = () => {
 
   const [configPairs, setConfigPairs] = useState([])
   const [isDirty, setIsDirty] = useState(false)
-  const [configInitialized, setConfigInitialized] = useState(false)
+  const [lastRecordConfig, setLastRecordConfig] = useState(null)
 
   // Convert JSON config to key-value pairs
   const jsonToPairs = useCallback((jsonString) => {
@@ -65,13 +65,14 @@ const PluginShowLayout = () => {
     return JSON.stringify(obj)
   }, [])
 
-  // Initialize config when record loads
+  // Initialize/update config when record loads or changes (e.g., from SSE refresh)
   React.useEffect(() => {
-    if (record && !configInitialized) {
-      setConfigPairs(jsonToPairs(record.config || ''))
-      setConfigInitialized(true)
+    const recordConfig = record?.config || ''
+    if (record && recordConfig !== lastRecordConfig && !isDirty) {
+      setConfigPairs(jsonToPairs(recordConfig))
+      setLastRecordConfig(recordConfig)
     }
-  }, [record, configInitialized, jsonToPairs])
+  }, [record, lastRecordConfig, isDirty, jsonToPairs])
 
   const handleConfigPairsChange = useCallback(
     (newPairs) => {
@@ -93,7 +94,7 @@ const PluginShowLayout = () => {
       onSuccess: () => {
         refresh()
         setIsDirty(false)
-        setConfigInitialized(false) // Reset to reinitialize from server
+        setLastRecordConfig(null) // Reset to reinitialize from server
         notify('resources.plugin.notifications.updated', 'info')
       },
       onFailure: (err) => {

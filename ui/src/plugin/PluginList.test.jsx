@@ -41,6 +41,7 @@ vi.mock('../common', async () => {
     SimpleList: ({ primaryText, secondaryText }) => (
       <div data-testid="simple-list" />
     ),
+    useResourceRefresh: vi.fn(),
   }
 })
 
