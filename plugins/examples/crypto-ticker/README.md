@@ -76,7 +76,22 @@ Copy the resulting `crypto-ticker.ndp` to your Navidrome plugins folder.
 
 - `main.go` - Main plugin implementation
 - `pdk.gen.go` - Generated WebSocket callback types (from XTP)
-- `nd_host.go` - Host function wrappers for WebSocket and Scheduler services
+- `go.mod` - Go module file (imports `ndhost` SDK)
+
+## Host SDK
+
+This plugin imports the Go host SDK directly:
+
+```go
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+```
+
+The `go.mod` file uses a `replace` directive to point to the local SDK:
+
+```
+require github.com/navidrome/navidrome/plugins/host/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+```
 
 ---
 

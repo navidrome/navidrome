@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	pdk "github.com/extism/go-pdk"
+	ndhost "github.com/navidrome/navidrome/plugins/host/go"
 )
 
 const (
@@ -115,7 +116,7 @@ func parseTickerSymbols(tickerConfig string) []string {
 // connectAndSubscribe connects to Coinbase WebSocket and subscribes to tickers
 func connectAndSubscribe(tickers []string) error {
 	// Connect to WebSocket using host function
-	resp, err := WebSocketConnect(coinbaseWSEndpoint, nil, connectionID)
+	resp, err := ndhost.WebSocketConnect(coinbaseWSEndpoint, nil, connectionID)
 	if err != nil {
 		return fmt.Errorf("WebSocket connection error: %w", err)
 	}
@@ -134,7 +135,7 @@ func connectAndSubscribe(tickers []string) error {
 	}
 
 	// Send subscription message
-	_, err = WebSocketSendText(connectionID, string(subscriptionJSON))
+	_, err = ndhost.WebSocketSendText(connectionID, string(subscriptionJSON))
 	if err != nil {
 		return fmt.Errorf("WebSocket send error: %w", err)
 	}
@@ -205,7 +206,7 @@ func NdWebsocketOnClose(input OnCloseInput) (OnCloseOutput, error) {
 		pdk.Log(pdk.LogInfo, "Scheduling reconnection attempt in 5 seconds...")
 
 		// Schedule a one-time reconnection attempt
-		_, err := SchedulerScheduleOneTime(5, "reconnect", reconnectScheduleID)
+		_, err := ndhost.SchedulerScheduleOneTime(5, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule reconnection: %v", err))
 		}
@@ -256,7 +257,7 @@ func ndSchedulerCallback() int32 {
 		pdk.Log(pdk.LogError, fmt.Sprintf("Reconnection failed: %v - will retry in 10 seconds", err))
 
 		// Schedule another attempt
-		_, err := SchedulerScheduleOneTime(10, "reconnect", reconnectScheduleID)
+		_, err := ndhost.SchedulerScheduleOneTime(10, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule retry: %v", err))
 		}
