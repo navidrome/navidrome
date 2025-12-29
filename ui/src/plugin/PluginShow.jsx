@@ -54,12 +54,8 @@ const PluginShowLayout = () => {
     const obj = {}
     pairs.forEach((pair) => {
       if (pair.key.trim()) {
-        // Try to parse value as JSON, otherwise use as string
-        try {
-          obj[pair.key] = JSON.parse(pair.value)
-        } catch {
-          obj[pair.key] = pair.value
-        }
+        // Always store values as strings (backend expects map[string]string)
+        obj[pair.key] = pair.value
       }
     })
     return JSON.stringify(obj)

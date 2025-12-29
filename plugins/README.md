@@ -758,16 +758,17 @@ Generated SDKs for calling host services are in `plugins/host/go/` and `plugins/
 
 See [examples/](examples/) for complete working plugins:
 
-| Plugin                                                   | Language | Capabilities            | Host Services                               | Description                    |
-|----------------------------------------------------------|----------|-------------------------|---------------------------------------------|--------------------------------|
-| [minimal](examples/minimal/)                             | Go       | MetadataAgent           | –                                           | Basic structure example        |
-| [wikimedia](examples/wikimedia/)                         | Go       | MetadataAgent           | HTTP                                        | Wikidata/Wikipedia integration |
-| [coverartarchive-py](examples/coverartarchive-py/)       | Python   | MetadataAgent           | HTTP                                        | Cover Art Archive              |
-| [webhook-rs](examples/webhook-rs/)                       | Rust     | Scrobbler               | HTTP                                        | HTTP webhooks                  |
-| [nowplaying-py](examples/nowplaying-py/)                 | Python   | Lifecycle               | Scheduler, SubsonicAPI                      | Periodic now-playing logger    |
-| [library-inspector](examples/library-inspector/)         | Rust     | Lifecycle               | Library, Scheduler                          | Periodic library stats logging |
-| [crypto-ticker](examples/crypto-ticker/)                 | Go       | Lifecycle               | WebSocket, Scheduler                        | Real-time crypto prices demo   |
-| [discord-rich-presence](examples/discord-rich-presence/) | Go       | Scrobbler               | HTTP, WebSocket, Cache, Scheduler, Artwork  | Discord integration            |
+| Plugin                                                         | Language | Capabilities  | Host Services                              | Description                    |
+|----------------------------------------------------------------|----------|---------------|--------------------------------------------|--------------------------------|
+| [minimal](examples/minimal/)                                   | Go       | MetadataAgent | –                                          | Basic structure example        |
+| [wikimedia](examples/wikimedia/)                               | Go       | MetadataAgent | HTTP                                       | Wikidata/Wikipedia integration |
+| [coverartarchive-py](examples/coverartarchive-py/)             | Python   | MetadataAgent | HTTP                                       | Cover Art Archive              |
+| [webhook-rs](examples/webhook-rs/)                             | Rust     | Scrobbler     | HTTP                                       | HTTP webhooks                  |
+| [nowplaying-py](examples/nowplaying-py/)                       | Python   | Lifecycle     | Scheduler, SubsonicAPI                     | Periodic now-playing logger    |
+| [library-inspector](examples/library-inspector/)               | Rust     | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
+| [crypto-ticker](examples/crypto-ticker/)                       | Go       | Lifecycle     | WebSocket, Scheduler                       | Real-time crypto prices demo   |
+| [discord-rich-presence](examples/discord-rich-presence/)       | Go       | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration            |
+| [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust     | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration (Rust)     |
 
 ---
 

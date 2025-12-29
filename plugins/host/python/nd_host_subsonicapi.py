@@ -52,4 +52,4 @@ e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
-    return response.get("responseJSON", "")
+    return response.get("responseJson", "")

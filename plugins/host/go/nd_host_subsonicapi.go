@@ -26,7 +26,7 @@ type SubsonicAPICallRequest struct {
 
 // SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
 type SubsonicAPICallResponse struct {
-	ResponseJSON string `json:"responseJSON,omitempty"`
+	ResponseJSON string `json:"responseJson,omitempty"`
 	Error        string `json:"error,omitempty"`
 }
 
