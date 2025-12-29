@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 )
 
 // PluginMetadata holds the extracted information from a plugin file
@@ -67,6 +68,7 @@ func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository
 		return fmt.Errorf("adding plugin to DB: %w", err)
 	}
 	log.Info(ctx, "Discovered new plugin", "plugin", name)
+	m.sendPluginRefreshEvent(ctx, events.Any)
 	return nil
 }
 
@@ -89,21 +91,24 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 	log.Info(ctx, "Plugin file changed", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
+	m.sendPluginRefreshEvent(ctx, dbPlugin.ID)
 	return nil
 }
 
 // removePluginFromDB removes a plugin from the database.
 // If the plugin was enabled, it will be unloaded first.
 func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin) error {
+	pluginID := dbPlugin.ID
 	if dbPlugin.Enabled {
-		if err := m.unloadPlugin(dbPlugin.ID); err != nil {
-			log.Debug(ctx, "Plugin not loaded during removal", "plugin", dbPlugin.ID, err)
+		if err := m.unloadPlugin(pluginID); err != nil {
+			log.Debug(ctx, "Plugin not loaded during removal", "plugin", pluginID, err)
 		}
 	}
-	if err := repo.Delete(dbPlugin.ID); err != nil {
+	if err := repo.Delete(pluginID); err != nil {
 		return fmt.Errorf("deleting plugin from DB: %w", err)
 	}
-	log.Info(ctx, "Plugin removed", "plugin", dbPlugin.ID)
+	log.Info(ctx, "Plugin removed", "plugin", pluginID)
+	m.sendPluginRefreshEvent(ctx, events.Any)
 	return nil
 }
 

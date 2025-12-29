@@ -8,7 +8,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery, Tooltip, Chip, Typography } from '@material-ui/core'
 import { MdError } from 'react-icons/md'
-import { List, DateField, SimpleList } from '../common'
+import { List, DateField, SimpleList, useResourceRefresh } from '../common'
 import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
 const useStyles = makeStyles((theme) => ({
@@ -69,6 +69,7 @@ const ManifestField = ({ source }) => {
 const PluginList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
+  useResourceRefresh('plugin')
 
   return (
     <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false}>

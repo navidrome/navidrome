@@ -3,9 +3,11 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/server/events"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -121,4 +123,74 @@ var _ = Describe("Manager", Ordered, func() {
 			}
 		}
 	})
+
+	Describe("sendPluginRefreshEvent", func() {
+		var broker *testBroker
+		var manager *Manager
+
+		BeforeEach(func() {
+			broker = &testBroker{}
+			manager = &Manager{
+				broker: broker,
+			}
+		})
+
+		It("sends refresh event with single plugin ID", func() {
+			manager.sendPluginRefreshEvent(ctx, "test-plugin")
+
+			Expect(broker.broadcastCalled).To(BeTrue())
+			Expect(broker.lastEvent).ToNot(BeNil())
+			Expect(broker.lastEventCtx).To(Equal(ctx))
+
+			refreshEvent, ok := broker.lastEvent.(*events.RefreshResource)
+			Expect(ok).To(BeTrue(), "event should be a RefreshResource")
+			Expect(refreshEvent.Data(refreshEvent)).To(Equal(`{"plugin":["test-plugin"]}`))
+		})
+
+		It("sends refresh event with multiple plugin IDs", func() {
+			manager.sendPluginRefreshEvent(ctx, "plugin-1", "plugin-2", "plugin-3")
+
+			Expect(broker.broadcastCalled).To(BeTrue())
+			refreshEvent, ok := broker.lastEvent.(*events.RefreshResource)
+			Expect(ok).To(BeTrue())
+			Expect(refreshEvent.Data(refreshEvent)).To(Equal(`{"plugin":["plugin-1","plugin-2","plugin-3"]}`))
+		})
+
+		It("sends refresh event with wildcard when using events.Any", func() {
+			manager.sendPluginRefreshEvent(ctx, events.Any)
+
+			Expect(broker.broadcastCalled).To(BeTrue())
+			refreshEvent, ok := broker.lastEvent.(*events.RefreshResource)
+			Expect(ok).To(BeTrue())
+			Expect(refreshEvent.Data(refreshEvent)).To(Equal(`{"plugin":["*"]}`))
+		})
+
+		It("does not panic when broker is nil", func() {
+			manager.broker = nil
+			Expect(func() {
+				manager.sendPluginRefreshEvent(ctx, "test-plugin")
+			}).ToNot(Panic())
+		})
+	})
 })
+
+// testBroker is a simple mock implementation of events.Broker for testing
+type testBroker struct {
+	lastEvent       events.Event
+	lastEventCtx    context.Context
+	broadcastCalled bool
+}
+
+func (m *testBroker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Not used in tests
+}
+
+func (m *testBroker) SendMessage(ctx context.Context, event events.Event) {
+	// Not used in tests
+}
+
+func (m *testBroker) SendBroadcastMessage(ctx context.Context, event events.Event) {
+	m.lastEvent = event
+	m.lastEventCtx = ctx
+	m.broadcastCalled = true
+}

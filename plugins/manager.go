@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
@@ -54,17 +55,29 @@ type Manager struct {
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
 	ds             model.DataStore
+	broker         events.Broker
 }
 
 // GetManager returns a singleton instance of the plugin manager.
 // The manager is not started automatically; call Start() to begin loading plugins.
-func GetManager(ds model.DataStore) *Manager {
+func GetManager(ds model.DataStore, broker events.Broker) *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
 			ds:      ds,
+			broker:  broker,
 			plugins: make(map[string]*plugin),
 		}
 	})
+}
+
+// sendPluginRefreshEvent broadcasts a refresh event for the plugin resource.
+// This notifies connected UI clients that plugin data has changed.
+func (m *Manager) sendPluginRefreshEvent(ctx context.Context, pluginIDs ...string) {
+	if m.broker == nil {
+		return
+	}
+	event := (&events.RefreshResource{}).With("plugin", pluginIDs...)
+	m.broker.SendBroadcastMessage(ctx, event)
 }
 
 // SetSubsonicRouter sets the Subsonic router for SubsonicAPI host functions.
@@ -304,6 +317,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	}
 
 	log.Info(ctx, "Enabled plugin", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
 	return nil
 }
 
@@ -339,6 +353,7 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	}
 
 	log.Info(ctx, "Disabled plugin", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
 	return nil
 }
 
@@ -380,6 +395,7 @@ func (m *Manager) UpdatePluginConfig(ctx context.Context, id, configJSON string)
 	}
 
 	log.Info(ctx, "Updated plugin config", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
 	return nil
 }
 
