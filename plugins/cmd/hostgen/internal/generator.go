@@ -190,3 +190,45 @@ func GenerateClientRust(svc Service) ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+// firstLine returns the first line of a multi-line string, with the first word removed.
+func firstLine(s string) string {
+	line := s
+	if idx := strings.Index(s, "\n"); idx >= 0 {
+		line = s[:idx]
+	}
+	// Remove the first word (service name like "ArtworkService")
+	if idx := strings.Index(line, " "); idx >= 0 {
+		line = line[idx+1:]
+	}
+	return line
+}
+
+// GenerateRustLib generates the lib.rs file that exposes all service modules.
+func GenerateRustLib(services []Service) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/lib_rs.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading Rust lib template: %w", err)
+	}
+
+	tmpl, err := template.New("lib_rs").Funcs(template.FuncMap{
+		"lower":     strings.ToLower,
+		"firstLine": firstLine,
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := struct {
+		Services []Service
+	}{
+		Services: services,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

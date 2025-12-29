@@ -147,6 +147,14 @@ func main() {
 			}
 		}
 	}
+
+	// Generate Rust lib.rs to expose all modules
+	if generateRsClient && len(services) > 0 {
+		if err := generateRustLibFile(services, absOutput, *dryRun, *verbose); err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating Rust lib.rs: %v\n", err)
+			os.Exit(1)
+		}
+	}
 }
 
 // generateHostCode generates host-side code for a service.
@@ -272,6 +280,36 @@ func generateRustClientCode(svc internal.Service, outputDir string, dryRun, verb
 
 	if verbose {
 		fmt.Printf("Generated Rust client code: %s\n", clientFile)
+	}
+	return nil
+}
+
+// generateRustLibFile generates the lib.rs file that exposes all Rust modules.
+func generateRustLibFile(services []internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateRustLib(services)
+	if err != nil {
+		return fmt.Errorf("generating lib.rs: %w", err)
+	}
+
+	clientDir := filepath.Join(outputDir, "rust")
+	libFile := filepath.Join(clientDir, "lib.rs")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", libFile, code)
+		return nil
+	}
+
+	// Create rust/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating rust client directory: %w", err)
+	}
+
+	if err := os.WriteFile(libFile, code, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated Rust lib.rs: %s\n", libFile)
 	}
 	return nil
 }

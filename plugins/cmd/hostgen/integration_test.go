@@ -266,9 +266,19 @@ type ServiceB interface {
 				rustDir := filepath.Join(outputDir, "rust")
 				rsClientEntries, err := os.ReadDir(rustDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rsClientEntries).To(HaveLen(1), "Expected exactly one Rust client file")
+				Expect(rsClientEntries).To(HaveLen(2), "Expected Rust client file and lib.rs")
 
-				rsClientActual, err := os.ReadFile(filepath.Join(rustDir, rsClientEntries[0].Name()))
+				// Find the client file (not lib.rs)
+				var rsClientName string
+				for _, entry := range rsClientEntries {
+					if entry.Name() != "lib.rs" {
+						rsClientName = entry.Name()
+						break
+					}
+				}
+				Expect(rsClientName).ToNot(BeEmpty(), "Expected to find Rust client file")
+
+				rsClientActual, err := os.ReadFile(filepath.Join(rustDir, rsClientName))
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(rsClientActual)).To(Equal(rsClientExpected), "Rust client code mismatch")
