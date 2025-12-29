@@ -26,31 +26,56 @@ nd-host = { path = "../../host/rust" }
 Then import the services you need:
 
 ```rust
-use nd_host::{cache, scheduler, kvstore};
+use nd_host::{cache, scheduler, library};
+use nd_host::library::Library; // Import the typed struct
 
 #[plugin_fn]
 pub fn my_callback(input: String) -> FnResult<String> {
     // Use the cache service
-    cache::cache_set("my_key", b"my_value", 3600)?;
+    cache::set("my_key", b"my_value", 3600)?;
 
     // Schedule a recurring task  
-    scheduler::scheduler_schedule_recurring("@every 5m", "payload", "task_id")?;
+    scheduler::schedule_recurring("@every 5m", "payload", "task_id")?;
+
+    // Access library data with typed structs
+    let libraries: Vec<Library> = library::get_all_libraries()?;
+    for lib in &libraries {
+        info!("Library: {} with {} songs", lib.name, lib.total_songs);
+    }
 
     Ok("done".to_string())
 }
 ```
 
+## Typed Structs
+
+Services that work with domain objects provide typed Rust structs instead of
+`serde_json::Value`. This enables compile-time type checking and IDE
+autocompletion.
+
+For example, the `library` module provides a `Library` struct:
+
+```rust
+use nd_host::library::Library;
+
+let libs: Vec<Library> = library::get_all_libraries()?;
+println!("First library: {} ({} songs)", libs[0].name, libs[0].total_songs);
+```
+
+All structs derive `Debug`, `Clone`, `Serialize`, and `Deserialize` for
+convenient use with logging and serialization.
+
 ## Available Services
 
-| Module | Description |
-|--------|-------------|
-| `artwork` | Access album and artist artwork |
-| `cache` | Temporary key-value storage with TTL |
-| `kvstore` | Persistent key-value storage |
-| `library` | Access the music library (albums, artists, tracks) |
-| `scheduler` | Schedule one-time and recurring tasks |
-| `subsonicapi` | Make Subsonic API calls |
-| `websocket` | Send real-time messages to clients |
+| Module        | Description                                        |
+|---------------|----------------------------------------------------|
+| `artwork`     | Access album and artist artwork                    |
+| `cache`       | Temporary key-value storage with TTL               |
+| `kvstore`     | Persistent key-value storage                       |
+| `library`     | Access the music library (albums, artists, tracks) |
+| `scheduler`   | Schedule one-time and recurring tasks              |
+| `subsonicapi` | Make Subsonic API calls                            |
+| `websocket`   | Send real-time messages to clients                 |
 
 ## Building Plugins
 

@@ -6,6 +6,12 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Result {
+    pub id: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SearchFindRequest {
@@ -16,7 +22,7 @@ struct SearchFindRequest {
 #[serde(rename_all = "camelCase")]
 struct SearchFindResponse {
     #[serde(default)]
-    results: Vec<serde_json::Value>,
+    results: Vec<Result>,
     #[serde(default)]
     total: i32,
     #[serde(default)]
@@ -38,7 +44,7 @@ extern "ExtismHost" {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn find(query: &str) -> Result<(Vec<serde_json::Value>, i32), Error> {
+pub fn find(query: &str) -> Result<(Vec<Result>, i32), Error> {
     let response = unsafe {
         search_find(Json(SearchFindRequest {
             query: query.to_owned(),

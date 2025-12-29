@@ -5,6 +5,23 @@
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+{{- /* Generate struct definitions */ -}}
+{{- range .Service.Structs}}
+{{if .Doc}}
+{{rustDocComment .Doc}}
+{{else}}
+{{end}}#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct {{.Name}} {
+{{- range .Fields}}
+{{- if .NeedsDefault}}
+    #[serde(default)]
+{{- end}}
+    pub {{.RustName}}: {{fieldRustType .}},
+{{- end}}
+}
+{{- end}}
+{{- /* Generate request/response types */ -}}
 {{- range .Service.Methods}}
 {{- if .HasParams}}
 
@@ -12,7 +29,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 struct {{requestType .}} {
 {{- range .Params}}
-    {{.RustName}}: {{.RustType}},
+    {{.RustName}}: {{rustType .}},
 {{- end}}
 }
 {{- end}}
@@ -22,7 +39,7 @@ struct {{requestType .}} {
 struct {{responseType .}} {
 {{- range .Returns}}
     #[serde(default)]
-    {{.RustName}}: {{.RustType}},
+    {{.RustName}}: {{rustType .}},
 {{- end}}
     #[serde(default)]
     error: Option<String>,
@@ -44,7 +61,7 @@ extern "ExtismHost" {
 ///
 /// # Arguments
 {{- range .Params}}
-/// * `{{.RustName}}` - {{.RustType}} parameter.
+/// * `{{.RustName}}` - {{rustType .}} parameter.
 {{- end}}
 {{- end}}
 {{- if .HasReturns}}
@@ -59,7 +76,7 @@ extern "ExtismHost" {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{$p.RustParamType}}{{end}}) -> Result<{{if eq (len .Returns) 0}}(){{else if eq (len .Returns) 1}}{{(index .Returns 0).RustType}}{{else}}({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r.RustType}}{{end}}){{end}}, Error> {
+pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<{{if eq (len .Returns) 0}}(){{else if eq (len .Returns) 1}}{{rustType (index .Returns 0)}}{{else}}({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{rustType $r}}{{end}}){{end}}, Error> {
     let response = unsafe {
 {{- if .HasParams}}
         {{exportName .}}(Json({{requestType .}} {

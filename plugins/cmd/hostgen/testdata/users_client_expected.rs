@@ -6,18 +6,25 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct User {
+    pub id: String,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UsersGetRequest {
     id: Option<String>,
-    filter: Option<serde_json::Value>,
+    filter: Option<User>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct UsersGetResponse {
     #[serde(default)]
-    result: Option<serde_json::Value>,
+    result: Option<User>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -31,14 +38,14 @@ extern "ExtismHost" {
 ///
 /// # Arguments
 /// * `id` - Option<String> parameter.
-/// * `filter` - Option<serde_json::Value> parameter.
+/// * `filter` - Option<User> parameter.
 ///
 /// # Returns
 /// The result value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get(id: Option<String>, filter: Option<serde_json::Value>) -> Result<Option<serde_json::Value>, Error> {
+pub fn get(id: Option<String>, filter: Option<User>) -> Result<Option<User>, Error> {
     let response = unsafe {
         users_get(Json(UsersGetRequest {
             id: id,

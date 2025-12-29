@@ -157,6 +157,7 @@ func pythonDefaultValue(p Param) string {
 
 // rustFuncMap returns the template functions for Rust client code generation.
 func rustFuncMap(svc Service) template.FuncMap {
+	knownStructs := svc.KnownStructs()
 	return template.FuncMap{
 		"lower":          strings.ToLower,
 		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
@@ -164,6 +165,9 @@ func rustFuncMap(svc Service) template.FuncMap {
 		"responseType":   func(m Method) string { return m.ResponseTypeName(svc.Name) },
 		"rustFunc":       func(m Method) string { return m.RustFunctionName(svc.ExportPrefix()) },
 		"rustDocComment": RustDocComment,
+		"rustType":       func(p Param) string { return p.RustTypeWithStructs(knownStructs) },
+		"rustParamType":  func(p Param) string { return p.RustParamTypeWithStructs(knownStructs) },
+		"fieldRustType":  func(f FieldDef) string { return f.RustType(knownStructs) },
 	}
 }
 
