@@ -8,12 +8,19 @@ This is a minimal example demonstrating how to create a Navidrome plugin using G
 2. Build the plugin:
    ```bash
    go mod tidy
-   tinygo build -o minimal.wasm -target wasip1 -buildmode=c-shared ./main.go
+   tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
+   zip -j minimal.ndp manifest.json plugin.wasm
+   ```
+
+Or using the examples Makefile:
+   ```bash
+   cd plugins/examples
+   make minimal.ndp
    ```
 
 ## Installing
 
-Copy `minimal.wasm` to your Navidrome plugins folder (default: `<data-folder>/plugins/`).
+Copy `minimal.ndp` to your Navidrome plugins folder (default: `<data-folder>/plugins/`).
 
 ## Configuration
 
@@ -29,7 +36,7 @@ Agents = "lastfm,spotify,minimal"
 
 ## What This Example Demonstrates
 
-- Exporting the required `nd_manifest` function
+- Plugin package structure (`.ndp` = zip with `manifest.json` + `plugin.wasm`)
 - Implementing `nd_get_artist_biography` as a MetadataAgent capability
 - Basic JSON input/output handling with the Extism PDK
 

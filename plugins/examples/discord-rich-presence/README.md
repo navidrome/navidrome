@@ -63,34 +63,30 @@ To work within this model the plugin stores no in-memory state. Connections are 
 
 Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
-```json
-{
-  "clientid": "123456789012345678",
-  "users": "alice:token123,bob:token456"
-}
-```
-
-- `ClientID` is your Discord application ID
-- `Users` is a comma-separated list of `username:token` pairs used for authorization
+| Key        | Description                                              | Example                        |
+|------------|----------------------------------------------------------|--------------------------------|
+| `clientid` | Your Discord application ID                              | `123456789012345678`           |
+| `users`    | Comma-separated list of `username:token` pairs           | `alice:token123,bob:token456`  |
 
 ## Building
 
 From the `plugins/examples/` directory:
 
 ```sh
-make discord-rich-presence.wasm
+make discord-rich-presence.ndp
 ```
 
 Or manually:
 
 ```sh
 cd discord-rich-presence
-tinygo build -target wasip1 -buildmode=c-shared -o ../discord-rich-presence.wasm .
+tinygo build -target wasip1 -buildmode=c-shared -o plugin.wasm .
+zip -j discord-rich-presence.ndp manifest.json plugin.wasm
 ```
 
 ## Installation
 
-Place the resulting `discord-rich-presence.wasm` in your Navidrome plugins folder and enable plugins in your configuration:
+Place the resulting `discord-rich-presence.ndp` in your Navidrome plugins folder and enable plugins in your configuration:
 
 ```toml
 [Plugins]
@@ -100,21 +96,21 @@ Folder = "/path/to/plugins"
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `main.go` | Plugin entry point, manifest, scrobbler implementation |
-| `rpc.go` | Discord gateway communication and RPC logic |
-| `pdk.gen.go` | Generated types from XTP schemas (combined) |
+| File           | Description                                             |
+|----------------|---------------------------------------------------------|
+| `main.go`      | Plugin entry point, manifest, scrobbler implementation  |
+| `rpc.go`       | Discord gateway communication and RPC logic             |
+| `pdk.gen.go`   | Generated types from XTP schemas (combined)             |
 | `nd_host_*.go` | Host function wrappers (copied from `plugins/host/go/`) |
 
 ## Host Services Used
 
-| Service | Purpose |
-|---------|---------|
-| Cache | Store Discord sequence numbers and processed image URLs |
+| Service   | Purpose                                                          |
+|-----------|------------------------------------------------------------------|
+| Cache     | Store Discord sequence numbers and processed image URLs          |
 | Scheduler | Schedule heartbeats (recurring) and activity clearing (one-time) |
-| WebSocket | Maintain persistent connection to Discord gateway |
-| Artwork | Get track artwork URLs for rich presence display |
+| WebSocket | Maintain persistent connection to Discord gateway                |
+| Artwork   | Get track artwork URLs for rich presence display                 |
 
 ## Implementation Details
 

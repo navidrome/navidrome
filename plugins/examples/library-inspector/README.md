@@ -23,19 +23,20 @@ rustup target add wasm32-wasip1
 # Build the plugin
 cargo build --target wasm32-wasip1 --release
 
-# The output will be at target/wasm32-wasip1/release/library_inspector.wasm
+# Package as .ndp
+zip -j library-inspector.ndp manifest.json target/wasm32-wasip1/release/library_inspector.wasm
 ```
 
 Or use the provided Makefile from the examples directory:
 
 ```bash
 cd plugins/examples
-make library-inspector.wasm
+make library-inspector.ndp
 ```
 
 ## Installation
 
-1. Copy the `.wasm` file to your Navidrome plugins folder
+1. Copy the `.ndp` file to your Navidrome plugins folder
 2. Enable plugins in your Navidrome configuration:
 
 ```toml
@@ -50,11 +51,9 @@ Folder = "/path/to/plugins"
 
 Configure the inspection interval in the Navidrome UI (Settings → Plugins → library-inspector):
 
-```json
-{
-  "cron": "@every 5m"
-}
-```
+| Key    | Description                              | Default      |
+|--------|------------------------------------------|--------------|
+| `cron` | Cron expression for inspection interval  | `@every 1m`  |
 
 ### Cron Expression Examples
 

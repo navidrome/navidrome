@@ -20,7 +20,7 @@ A Navidrome plugin written in Rust that sends HTTP webhook notifications when tr
 From the `plugins/examples` directory:
 
 ```bash
-make webhook-rs.wasm
+make webhook-rs.ndp
 ```
 
 Or build directly with cargo:
@@ -28,28 +28,20 @@ Or build directly with cargo:
 ```bash
 cd webhook-rs
 cargo build --release
-cp target/wasm32-unknown-unknown/release/webhook_rs.wasm ../webhook-rs.wasm
+zip -j webhook-rs.ndp manifest.json target/wasm32-unknown-unknown/release/webhook_rs.wasm
 ```
 
 ## Installation
 
-Copy `webhook-rs.wasm` to your Navidrome plugins folder (configured via `Plugins.Folder` in your config).
+Copy `webhook-rs.ndp` to your Navidrome plugins folder (configured via `Plugins.Folder` in your config).
 
 ## Configuration
 
 Configure in the Navidrome UI (Settings → Plugins → webhook-rs):
 
-```json
-{
-  "urls": "https://example.com/webhook,https://another.example.com/notify"
-}
-```
-
-### Configuration Options
-
-| Key    | Description                          | Example                                                 |
-|--------|--------------------------------------|---------------------------------------------------------|
-| `urls` | Comma-separated list of webhook URLs | `"https://example.com/hook1,https://example.com/hook2"` |
+| Key    | Description                          | Example                                                   |
+|--------|--------------------------------------|-----------------------------------------------------------|
+| `urls` | Comma-separated list of webhook URLs | `https://example.com/hook1,https://example.com/hook2`     |
 
 ## Webhook Request Format
 
