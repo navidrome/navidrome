@@ -183,6 +183,15 @@ func generateAllCode(cfg *config, services []internal.Service) error {
 		}
 	}
 
+	if cfg.generateGoClient && len(services) > 0 {
+		if err := generateGoDocFile(services, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating Go doc.go: %w", err)
+		}
+		if err := generateGoModFile(cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating Go go.mod: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -339,6 +348,71 @@ func generateRustLibFile(services []internal.Service, outputDir string, dryRun, 
 
 	if verbose {
 		fmt.Printf("Generated Rust lib.rs: %s\n", libFile)
+	}
+	return nil
+}
+
+// generateGoDocFile generates the doc.go file for the Go library.
+func generateGoDocFile(services []internal.Service, outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateGoDoc(services)
+	if err != nil {
+		return fmt.Errorf("generating doc.go: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting doc.go: %w\nRaw code:\n%s", err, code)
+	}
+
+	clientDir := filepath.Join(outputDir, "go")
+	docFile := filepath.Join(clientDir, "doc.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", docFile, formatted)
+		return nil
+	}
+
+	// Create go/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating go client directory: %w", err)
+	}
+
+	if err := os.WriteFile(docFile, formatted, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated Go doc.go: %s\n", docFile)
+	}
+	return nil
+}
+
+// generateGoModFile generates the go.mod file for the Go library.
+func generateGoModFile(outputDir string, dryRun, verbose bool) error {
+	code, err := internal.GenerateGoMod()
+	if err != nil {
+		return fmt.Errorf("generating go.mod: %w", err)
+	}
+
+	clientDir := filepath.Join(outputDir, "go")
+	modFile := filepath.Join(clientDir, "go.mod")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", modFile, code)
+		return nil
+	}
+
+	// Create go/ subdirectory if needed
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		return fmt.Errorf("creating go client directory: %w", err)
+	}
+
+	if err := os.WriteFile(modFile, code, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated Go go.mod: %s\n", modFile)
 	}
 	return nil
 }

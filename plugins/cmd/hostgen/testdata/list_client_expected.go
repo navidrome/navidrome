@@ -5,7 +5,7 @@
 //
 //go:build wasip1
 
-package main
+package ndhost
 
 import (
 	"encoding/json"
@@ -13,6 +13,11 @@ import (
 
 	"github.com/extism/go-pdk"
 )
+
+// Filter represents the Filter data structure.
+type Filter struct {
+	Active bool `json:"active"`
+}
 
 // list_items is the host function provided by Navidrome.
 //

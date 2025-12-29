@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/format"
 	"os"
 	"os/exec"
@@ -238,9 +239,19 @@ type ServiceB interface {
 				goDir := filepath.Join(outputDir, "go")
 				goClientEntries, err := os.ReadDir(goDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(goClientEntries).To(HaveLen(1), "Expected exactly one Go client file")
+				Expect(goClientEntries).To(HaveLen(3), "Expected Go client file, doc.go, and go.mod")
 
-				goClientActual, err := os.ReadFile(filepath.Join(goDir, goClientEntries[0].Name()))
+				// Find the client file (not doc.go or go.mod)
+				var goClientName string
+				for _, entry := range goClientEntries {
+					if entry.Name() != "doc.go" && entry.Name() != "go.mod" {
+						goClientName = entry.Name()
+						break
+					}
+				}
+				Expect(goClientName).ToNot(BeEmpty(), "Expected to find Go client file")
+
+				goClientActual, err := os.ReadFile(filepath.Join(goDir, goClientName))
 				Expect(err).ToNot(HaveOccurred())
 
 				formattedGoClientActual, err := format.Source(goClientActual)
@@ -357,9 +368,19 @@ type ServiceB interface {
 			goDir := filepath.Join(clientDir, "go")
 			entries, err := os.ReadDir(goDir)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(entries).To(HaveLen(1), "Expected exactly one generated client file")
+			Expect(entries).To(HaveLen(3), "Expected Go client file, doc.go, and go.mod")
 
-			content, err := os.ReadFile(filepath.Join(goDir, entries[0].Name()))
+			// Find the client file (not doc.go or go.mod)
+			var clientFileName string
+			for _, entry := range entries {
+				if entry.Name() != "doc.go" && entry.Name() != "go.mod" {
+					clientFileName = entry.Name()
+					break
+				}
+			}
+			Expect(clientFileName).ToNot(BeEmpty(), "Expected to find Go client file")
+
+			content, err := os.ReadFile(filepath.Join(goDir, clientFileName))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify key expected content first
@@ -380,49 +401,55 @@ type ServiceB interface {
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParams()"))
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParamsNoReturns()"))
 
-			// Move generated file to clientDir root for compilation
-			Expect(os.Rename(filepath.Join(goDir, entries[0].Name()), filepath.Join(clientDir, "nd_host.go"))).To(Succeed())
+			// The generated code is now package ndhost, so we need to import it
+			// Create a plugin directory with proper import structure
+			pluginDir := filepath.Join(clientDir, "plugin")
+			Expect(os.MkdirAll(pluginDir, 0750)).To(Succeed())
 
-			// Create go.mod for client code
-			goMod := "module main\n\ngo 1.23\n\nrequire github.com/extism/go-pdk v1.1.1\n"
-			Expect(os.WriteFile(filepath.Join(clientDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
+			// Create go.mod for the plugin that imports the generated library
+			goMod := fmt.Sprintf(`module testplugin
 
-			// Add a simple main function for the plugin
+go 1.24
+
+require github.com/navidrome/navidrome/plugins/host/go v0.0.0
+
+replace github.com/navidrome/navidrome/plugins/host/go => %s
+`, goDir)
+			Expect(os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
+
+			// Add a simple main function that imports and uses the ndhost package
 			mainGo := `package main
 
+import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+
 func main() {}
+
+// Use some functions to ensure import is not unused
+var _ = ndhost.ComprehensiveNoParams
 `
-			Expect(os.WriteFile(filepath.Join(clientDir, "main.go"), []byte(mainGo), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "main.go"), []byte(mainGo), 0600)).To(Succeed())
 
-			// Add type definitions needed by the generated code
-			typesGo := `package main
+			// Tidy dependencies for the generated go library
+			goTidyLibCmd := exec.Command("go", "mod", "tidy")
+			goTidyLibCmd.Dir = goDir
+			goTidyLibOutput, err := goTidyLibCmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "go mod tidy (library) failed: %s", goTidyLibOutput)
 
-type User2 struct {
-	ID   string
-	Name string
-}
-
-type Filter2 struct {
-	Active bool
-}
-`
-			Expect(os.WriteFile(filepath.Join(clientDir, "types.go"), []byte(typesGo), 0600)).To(Succeed())
-
-			// Tidy dependencies
+			// Tidy dependencies for the plugin
 			goTidyCmd := exec.Command("go", "mod", "tidy")
-			goTidyCmd.Dir = clientDir
+			goTidyCmd.Dir = pluginDir
 			goTidyOutput, err := goTidyCmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "go mod tidy failed: %s", goTidyOutput)
+			Expect(err).ToNot(HaveOccurred(), "go mod tidy (plugin) failed: %s", goTidyOutput)
 
 			// Build as WASM plugin - this validates the client code compiles correctly
 			buildCmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", "plugin.wasm", ".")
-			buildCmd.Dir = clientDir
+			buildCmd.Dir = pluginDir
 			buildCmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
 			buildOutput, err := buildCmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "WASM build failed: %s", buildOutput)
 
 			// Verify .wasm file was created
-			Expect(filepath.Join(clientDir, "plugin.wasm")).To(BeAnExistingFile())
+			Expect(filepath.Join(pluginDir, "plugin.wasm")).To(BeAnExistingFile())
 		})
 
 		It("generates Python client code with -python flag", func() {
