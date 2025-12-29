@@ -33,8 +33,8 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy the test-artwork plugin
-		srcPath := filepath.Join(testdataDir, "test-artwork.wasm")
-		destPath := filepath.Join(tmpDir, "test-artwork.wasm")
+		srcPath := filepath.Join(testdataDir, "test-artwork"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-artwork"+PackageExtension)
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)

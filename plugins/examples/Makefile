@@ -26,7 +26,7 @@ help:
 	@$(foreach p,$(RUST_PLUGINS),echo "  $(p)";)
 	@echo ""
 	@echo "Usage:"
-	@echo "  make <plugin>.wasm    Build a specific plugin (e.g., make $(firstword $(PLUGINS)).wasm)"
+	@echo "  make <plugin>.ndp     Build a specific plugin (e.g., make $(firstword $(PLUGINS)).ndp)"
 	@echo "  make all              Build all plugins"
 	@echo "  make all-go           Build all Go plugins"
 	@echo "  make all-python       Build all Python plugins (requires extism-py)"
@@ -35,15 +35,25 @@ help:
 
 all: all-go all-python all-rust
 
-all-go: $(PLUGINS:%=%.wasm)
+all-go: $(PLUGINS:%=%.ndp)
 
-all-python: $(PYTHON_PLUGINS:%=%.wasm)
+all-python: $(PYTHON_PLUGINS:%=%.ndp)
 
-all-rust: $(RUST_PLUGINS:%=%.wasm)
+all-rust: $(RUST_PLUGINS:%=%.ndp)
 
 clean:
+	rm -f $(PLUGINS:%=%.ndp) $(PYTHON_PLUGINS:%=%.ndp) $(RUST_PLUGINS:%=%.ndp)
 	rm -f $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm) $(RUST_PLUGINS:%=%.wasm)
 	$(foreach p,$(RUST_PLUGINS),cd $(p) && cargo clean 2>/dev/null || true;)
+
+# Build .ndp package from .wasm and manifest.json
+# Go plugins
+%.ndp: %.wasm %/manifest.json
+	@rm -f $@
+	@cp $< plugin.wasm
+	zip -j $@ $*/manifest.json plugin.wasm
+	@rm -f plugin.wasm
+	@rm -f $<
 
 %.wasm: %/*.go %/go.mod
 ifdef TINYGO

@@ -12,7 +12,7 @@
 //
 //	tinygo build -o wikimedia.wasm -target wasip1 -buildmode=c-shared .
 //
-// Install by copying the .wasm file to your Navidrome plugins folder.
+// Install by copying the .ndp file to your Navidrome plugins folder.
 package main
 
 import (
@@ -30,25 +30,6 @@ const (
 	dbpediaEndpoint      = "https://dbpedia.org/sparql"
 	mediawikiAPIEndpoint = "https://en.wikipedia.org/w/api.php"
 )
-
-// Plugin manifest containing metadata about this plugin
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Website     string       `json:"website,omitempty"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	HTTP *HTTPPermission `json:"http,omitempty"`
-}
-
-type HTTPPermission struct {
-	Reason       string   `json:"reason,omitempty"`
-	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
 
 // SPARQL response types
 type SPARQLResult struct {
@@ -81,36 +62,6 @@ type MediaWikiPage struct {
 	Title   string `json:"title"`
 	Extract string `json:"extract"`
 	Missing bool   `json:"missing"`
-}
-
-// nd_manifest is required by Navidrome to identify the plugin.
-//
-//export nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Wikimedia",
-		Author:      "Navidrome",
-		Version:     "1.0.0",
-		Description: "Fetches artist metadata from Wikidata, DBpedia and Wikipedia",
-		Website:     "https://navidrome.org",
-		Permissions: &Permissions{
-			HTTP: &HTTPPermission{
-				Reason: "Fetch metadata from Wikimedia APIs",
-				AllowedHosts: []string{
-					"query.wikidata.org",
-					"dbpedia.org",
-					"en.wikipedia.org",
-				},
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
 }
 
 // sparqlQuery executes a SPARQL query and returns the result

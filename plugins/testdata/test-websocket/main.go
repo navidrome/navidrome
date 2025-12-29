@@ -3,51 +3,8 @@
 package main
 
 import (
-	"encoding/json"
-
 	pdk "github.com/extism/go-pdk"
 )
-
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	WebSocket *WebSocketPermission `json:"websocket,omitempty"`
-}
-
-type WebSocketPermission struct {
-	Reason       string   `json:"reason,omitempty"`
-	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test WebSocket",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test WebSocket plugin for integration testing",
-		Permissions: &Permissions{
-			WebSocket: &WebSocketPermission{
-				Reason:       "For testing WebSocket callbacks",
-				AllowedHosts: []string{"*.example.com", "localhost:*", "echo.websocket.org"},
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
 
 // OnTextMessageInput is the input for nd_websocket_on_text_message callback.
 type OnTextMessageInput struct {

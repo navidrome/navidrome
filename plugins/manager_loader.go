@@ -2,14 +2,9 @@ package plugins
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -31,7 +26,6 @@ type serviceContext struct {
 type hostServiceEntry struct {
 	name          string
 	hasPermission func(*Permissions) bool
-	registerStubs func() []extism.HostFunction
 	create        func(*serviceContext) ([]extism.HostFunction, io.Closer)
 }
 
@@ -41,7 +35,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterSubsonicAPIHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Subsonicapi
 			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, perm)
@@ -51,7 +44,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Scheduler",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Scheduler != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterSchedulerHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			service := newSchedulerService(ctx.pluginName, ctx.manager, scheduler.GetInstance())
 			return host.RegisterSchedulerHostFunctions(service), service
@@ -60,7 +52,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "WebSocket",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterWebSocketHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Websocket
 			service := newWebSocketService(ctx.pluginName, ctx.manager, perm)
@@ -70,7 +61,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Artwork",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Artwork != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterArtworkHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			service := newArtworkService()
 			return host.RegisterArtworkHostFunctions(service), nil
@@ -79,7 +69,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Cache",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Cache != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterCacheHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			service := newCacheService(ctx.pluginName)
 			return host.RegisterCacheHostFunctions(service), service
@@ -88,7 +77,6 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Library",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
-		registerStubs: func() []extism.HostFunction { return host.RegisterLibraryHostFunctions(nil) },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Library
 			service := newLibraryService(ctx.manager.ds, perm)
@@ -97,106 +85,27 @@ var hostServices = []hostServiceEntry{
 	},
 }
 
-// stubHostFunctions returns the list of stub host functions needed for initial plugin compilation.
-func stubHostFunctions() []extism.HostFunction {
-	var stubs []extism.HostFunction
-	for _, entry := range hostServices {
-		stubs = append(stubs, entry.registerStubs()...)
-	}
-	return stubs
-}
-
-// compiledPluginInfo holds the intermediate compilation result used by both
-// extractManifest and loadPluginWithConfig.
-type compiledPluginInfo struct {
-	wasmBytes []byte
-	sha256    string
-	manifest  *Manifest
-	compiled  *extism.CompiledPlugin
-}
-
-// compileAndExtractManifest reads a wasm file, compiles it with cache, and extracts the manifest.
-// The caller is responsible for closing the returned compiled plugin when done.
-func (m *Manager) compileAndExtractManifest(ctx context.Context, wasmPath string, config map[string]string) (*compiledPluginInfo, error) {
-	wasmBytes, err := os.ReadFile(wasmPath)
-	if err != nil {
-		return nil, fmt.Errorf("reading wasm file: %w", err)
-	}
-
-	// Compute SHA-256 hash
-	hash := sha256.Sum256(wasmBytes)
-	hashHex := hex.EncodeToString(hash[:])
-
-	// Extract plugin name from path for logging
-	pluginName := strings.TrimSuffix(filepath.Base(wasmPath), ".wasm")
-
-	pluginManifest := extism.Manifest{
-		Wasm: []extism.Wasm{
-			extism.WasmData{Data: wasmBytes, Name: "main"},
-		},
-		Config:  config,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
-	}
-	extismConfig := extism.PluginConfig{
-		EnableWasi:    true,
-		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
-	}
-
-	compiled, err := extism.NewCompiledPlugin(ctx, pluginManifest, extismConfig, stubHostFunctions())
-	if err != nil {
-		return nil, fmt.Errorf("compiling plugin: %w", err)
-	}
-
-	instance, err := compiled.Instance(ctx, extism.PluginInstanceConfig{})
-	if err != nil {
-		compiled.Close(ctx)
-		return nil, fmt.Errorf("creating instance: %w", err)
-	}
-	defer instance.Close(ctx)
-	instance.SetLogger(extismLogger(pluginName))
-
-	exit, manifestBytes, err := instance.Call(manifestFunction, nil)
-	if err != nil {
-		compiled.Close(ctx)
-		return nil, fmt.Errorf("calling manifest function: %w", err)
-	}
-	if exit != 0 {
-		compiled.Close(ctx)
-		return nil, fmt.Errorf("manifest function exited with code %d", exit)
-	}
-
-	var manifest Manifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		compiled.Close(ctx)
-		return nil, fmt.Errorf("parsing manifest: %w", err)
-	}
-
-	return &compiledPluginInfo{
-		wasmBytes: wasmBytes,
-		sha256:    hashHex,
-		manifest:  &manifest,
-		compiled:  compiled,
-	}, nil
-}
-
-// extractManifest loads a wasm file, computes its SHA-256 hash, extracts the manifest,
-// and immediately closes without full plugin initialization.
+// extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
 // This is a lightweight operation used for plugin discovery and change detection.
-// The compilation is cached to speed up subsequent EnablePlugin calls.
-func (m *Manager) extractManifest(wasmPath string) (*PluginMetadata, error) {
+// Unlike the old implementation, this does NOT compile the wasm - just reads the manifest JSON.
+func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 	if m.stopped.Load() {
 		return nil, fmt.Errorf("manager is stopped")
 	}
 
-	info, err := m.compileAndExtractManifest(context.Background(), wasmPath, nil)
+	manifest, err := readManifest(ndpPath)
 	if err != nil {
 		return nil, err
 	}
-	defer info.compiled.Close(context.Background())
+
+	sha256Hash, err := computeFileSHA256(ndpPath)
+	if err != nil {
+		return nil, fmt.Errorf("computing hash: %w", err)
+	}
 
 	return &PluginMetadata{
-		Manifest: info.manifest,
-		SHA256:   info.sha256,
+		Manifest: manifest,
+		SHA256:   sha256Hash,
 	}, nil
 }
 
@@ -270,7 +179,8 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 }
 
 // loadPluginWithConfig loads a plugin with configuration from DB.
-func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error {
+// The ndpPath should point to an .ndp package file.
+func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 	if m.stopped.Load() {
 		return fmt.Errorf("manager is stopped")
 	}
@@ -291,41 +201,27 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 		}
 	}
 
-	// Compile and extract manifest using shared helper
-	info, err := m.compileAndExtractManifest(m.ctx, wasmPath, pluginConfig)
+	// Open the .ndp package to get manifest and wasm bytes
+	pkg, err := openPackage(ndpPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening package: %w", err)
 	}
 
-	// Create instance to detect capabilities
-	instance, err := info.compiled.Instance(m.ctx, extism.PluginInstanceConfig{})
-	if err != nil {
-		info.compiled.Close(m.ctx)
-		return fmt.Errorf("creating instance: %w", err)
-	}
-	instance.SetLogger(extismLogger(name))
-	capabilities := detectCapabilities(instance)
-	instance.Close(m.ctx)
-
-	// Build host functions based on permissions
-	var hostFunctions []extism.HostFunction
-	var closers []io.Closer
-
-	// Build extism manifest for potential recompilation
+	// Build extism manifest
 	pluginManifest := extism.Manifest{
 		Wasm: []extism.Wasm{
-			extism.WasmData{Data: info.wasmBytes, Name: "main"},
+			extism.WasmData{Data: pkg.WasmBytes, Name: "main"},
 		},
 		Config:  pluginConfig,
 		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
 
-	if hosts := info.manifest.AllowedHosts(); len(hosts) > 0 {
+	if hosts := pkg.Manifest.AllowedHosts(); len(hosts) > 0 {
 		pluginManifest.AllowedHosts = hosts
 	}
 
 	// Configure filesystem access for library permission
-	if info.manifest.Permissions != nil && info.manifest.Permissions.Library != nil && info.manifest.Permissions.Library.Filesystem {
+	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Library != nil && pkg.Manifest.Permissions.Library.Filesystem {
 		adminCtx := adminContext(m.ctx)
 		libraries, err := m.ds.Library(adminCtx).GetAll()
 		if err != nil {
@@ -339,14 +235,17 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 		pluginManifest.AllowedPaths = allowedPaths
 	}
 
-	// Register host functions based on permissions using table-driven approach
+	// Build host functions based on permissions from manifest
+	var hostFunctions []extism.HostFunction
+	var closers []io.Closer
+
 	svcCtx := &serviceContext{
 		pluginName:  name,
 		manager:     m,
-		permissions: info.manifest.Permissions,
+		permissions: pkg.Manifest.Permissions,
 	}
 	for _, entry := range hostServices {
-		if entry.hasPermission(info.manifest.Permissions) {
+		if entry.hasPermission(pkg.Manifest.Permissions) {
 			funcs, closer := entry.create(svcCtx)
 			hostFunctions = append(hostFunctions, funcs...)
 			if closer != nil {
@@ -355,30 +254,31 @@ func (m *Manager) loadPluginWithConfig(name, wasmPath, configJSON string) error 
 		}
 	}
 
-	// Check if the plugin needs to be recompiled with real host functions
-	compiled := info.compiled
-	needsRecompile := len(pluginManifest.AllowedHosts) > 0 || len(hostFunctions) > 0
-
-	// Recompile if needed. It is actually not a "recompile" since the first compilation
-	// should be cached by wazero. We just need to do it this way to provide the real host functions.
-	if needsRecompile {
-		log.Trace(m.ctx, "Recompiling plugin with host functions", "plugin", name)
-		info.compiled.Close(m.ctx)
-		extismConfig := extism.PluginConfig{
-			EnableWasi:    true,
-			RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
-		}
-		compiled, err = extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
-		if err != nil {
-			return err
-		}
+	// Compile the plugin with all host functions
+	extismConfig := extism.PluginConfig{
+		EnableWasi:    true,
+		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
 	}
+	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
+	if err != nil {
+		return fmt.Errorf("compiling plugin: %w", err)
+	}
+
+	// Create instance to detect capabilities
+	instance, err := compiled.Instance(m.ctx, extism.PluginInstanceConfig{})
+	if err != nil {
+		compiled.Close(m.ctx)
+		return fmt.Errorf("creating instance: %w", err)
+	}
+	instance.SetLogger(extismLogger(name))
+	capabilities := detectCapabilities(instance)
+	instance.Close(m.ctx)
 
 	m.mu.Lock()
 	m.plugins[name] = &plugin{
 		name:         name,
-		path:         wasmPath,
-		manifest:     info.manifest,
+		path:         ndpPath,
+		manifest:     pkg.Manifest,
 		compiled:     compiled,
 		capabilities: capabilities,
 		closers:      closers,

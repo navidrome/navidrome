@@ -16,32 +16,6 @@ use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// Manifest Types
-// ============================================================================
-
-#[derive(Serialize)]
-struct Manifest {
-    name: String,
-    author: String,
-    version: String,
-    description: String,
-    website: Option<String>,
-    permissions: Option<Permissions>,
-}
-
-#[derive(Serialize)]
-struct Permissions {
-    http: Option<HttpPermission>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct HttpPermission {
-    reason: String,
-    allowed_hosts: Vec<String>,
-}
-
-// ============================================================================
 // Scrobbler Types
 // ============================================================================
 
@@ -104,28 +78,6 @@ struct ScrobblerOutput {
 // ============================================================================
 // Plugin Exports
 // ============================================================================
-
-/// Returns the plugin manifest with metadata and permissions.
-#[plugin_fn]
-pub fn nd_manifest() -> FnResult<Json<Manifest>> {
-    let manifest = Manifest {
-        name: "Webhook Scrobbler".to_string(),
-        author: "Navidrome Team".to_string(),
-        version: "1.0.0".to_string(),
-        description: "Sends HTTP webhooks on scrobble events".to_string(),
-        website: Some(
-            "https://github.com/navidrome/navidrome/tree/master/plugins/examples/webhook-rs"
-                .to_string(),
-        ),
-        permissions: Some(Permissions {
-            http: Some(HttpPermission {
-                reason: "To send webhook notifications to configured URLs".to_string(),
-                allowed_hosts: vec!["*".to_string()],
-            }),
-        }),
-    };
-    Ok(Json(manifest))
-}
 
 /// Checks if a user is authorized. This plugin authorizes all users.
 #[plugin_fn]

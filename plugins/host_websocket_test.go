@@ -37,8 +37,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy the test-websocket plugin
-		srcPath := filepath.Join(testdataDir, "test-websocket.wasm")
-		destPath := filepath.Join(tmpDir, "test-websocket.wasm")
+		srcPath := filepath.Join(testdataDir, "test-websocket"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-websocket"+PackageExtension)
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)

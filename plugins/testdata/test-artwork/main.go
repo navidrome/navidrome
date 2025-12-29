@@ -3,50 +3,10 @@
 package main
 
 import (
-	"encoding/json"
 	"strings"
 
 	pdk "github.com/extism/go-pdk"
 )
-
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	Artwork *ArtworkPermission `json:"artwork,omitempty"`
-}
-
-type ArtworkPermission struct {
-	Reason string `json:"reason,omitempty"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test Artwork",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test artwork plugin for integration testing",
-		Permissions: &Permissions{
-			Artwork: &ArtworkPermission{
-				Reason: "For testing artwork URL generation",
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
 
 // TestInput is the input for nd_test_artwork callback.
 type TestInput struct {

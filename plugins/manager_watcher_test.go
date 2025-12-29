@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rjeczalik/notify"
 )
 
 var _ = Describe("Plugin Watcher", func() {
@@ -30,13 +29,15 @@ var _ = Describe("Plugin Watcher", func() {
 
 			// Remove the auto-loaded plugin so tests can control loading
 			_ = manager.unloadPlugin("test-metadata-agent")
-			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
+			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+			// Also remove from DB so tests start with a clean slate
+			_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
 		})
 
 		// Helper to copy test plugin into the temp folder
 		copyTestPlugin := func() {
-			srcPath := filepath.Join(testdataDir, "test-metadata-agent.wasm")
-			destPath := filepath.Join(tmpDir, "test-metadata-agent.wasm")
+			srcPath := filepath.Join(testdataDir, "test-metadata-agent"+PackageExtension)
+			destPath := filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension)
 			data, err := os.ReadFile(srcPath)
 			Expect(err).ToNot(HaveOccurred())
 			err = os.WriteFile(destPath, data, 0600)
@@ -47,14 +48,15 @@ var _ = Describe("Plugin Watcher", func() {
 			// These tests verify the DB-driven flow with actual WASM plugin loading.
 
 			AfterEach(func() {
-				// Clean up: unload plugin if loaded, remove copied file
+				// Clean up: unload plugin if loaded, remove copied file, delete from DB
 				_ = manager.unloadPlugin("test-metadata-agent")
-				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
+				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+				_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
 			})
 
-			It("adds plugin to DB on CREATE event", func() {
+			It("adds plugin to DB when file exists", func() {
 				copyTestPlugin()
-				manager.processPluginEvent("test-metadata-agent", notify.Create)
+				manager.processPluginEvent("test-metadata-agent")
 
 				// Plugin should be in DB but not loaded (starts disabled)
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -67,11 +69,11 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(plugin.Enabled).To(BeFalse())
 			})
 
-			It("updates DB and disables plugin on WRITE event when file changes", func() {
+			It("updates DB and disables plugin when file changes", func() {
 				copyTestPlugin()
 
 				// First add and enable the plugin
-				manager.processPluginEvent("test-metadata-agent", notify.Create)
+				manager.processPluginEvent("test-metadata-agent")
 				err := manager.EnablePlugin(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
@@ -86,7 +88,7 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Simulate modification - the plugin should be disabled and unloaded
-				manager.processPluginEvent("test-metadata-agent", notify.Write)
+				manager.processPluginEvent("test-metadata-agent")
 
 				// Should be unloaded
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -97,17 +99,17 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(plugin.Enabled).To(BeFalse())
 			})
 
-			It("removes plugin from DB on REMOVE event", func() {
+			It("removes plugin from DB when file is removed", func() {
 				copyTestPlugin()
 
 				// First add and enable the plugin
-				manager.processPluginEvent("test-metadata-agent", notify.Create)
+				manager.processPluginEvent("test-metadata-agent")
 				err := manager.EnablePlugin(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 
-				// Simulate removal - plugin should be unloaded and removed from DB
-				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent.wasm"))
-				manager.processPluginEvent("test-metadata-agent", notify.Remove)
+				// Remove the file - plugin should be unloaded and removed from DB
+				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
+				manager.processPluginEvent("test-metadata-agent")
 
 				// Should be unloaded
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -151,29 +153,29 @@ var _ = Describe("Plugin Watcher", func() {
 	})
 
 	Describe("determinePluginAction", func() {
-		// These are fast unit tests for the pure routing logic.
-		// No WASM compilation, no file I/O - runs in microseconds.
+		var tmpDir string
 
-		DescribeTable("returns correct action for event type",
-			func(eventType notify.Event, expected pluginAction) {
-				Expect(determinePluginAction(eventType)).To(Equal(expected))
-			},
-			// CREATE events - add to DB
-			Entry("CREATE", notify.Create, actionAdd),
+		BeforeEach(func() {
+			var err error
+			tmpDir, err = os.MkdirTemp("", "plugin-action-test-*")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-			// WRITE events - update in DB
-			Entry("WRITE", notify.Write, actionUpdate),
+		AfterEach(func() {
+			os.RemoveAll(tmpDir)
+		})
 
-			// REMOVE events - remove from DB
-			Entry("REMOVE", notify.Remove, actionRemove),
+		It("returns actionUpdate when file exists", func() {
+			filePath := filepath.Join(tmpDir, "test.ndp")
+			err := os.WriteFile(filePath, []byte("test"), 0600)
+			Expect(err).ToNot(HaveOccurred())
 
-			// RENAME events - treated same as REMOVE
-			Entry("RENAME", notify.Rename, actionRemove),
-		)
+			Expect(determinePluginAction(filePath)).To(Equal(actionUpdate))
+		})
 
-		It("returns actionNone for unknown event types", func() {
-			// Event type 0 or other unknown values
-			Expect(determinePluginAction(0)).To(Equal(actionNone))
+		It("returns actionRemove when file does not exist", func() {
+			filePath := filepath.Join(tmpDir, "nonexistent.ndp")
+			Expect(determinePluginAction(filePath)).To(Equal(actionRemove))
 		})
 	})
 })

@@ -1,0 +1,15 @@
+{
+  "name": "Test Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for integration testing",
+  "capabilities": ["MetadataAgent"],
+  "permissions": {
+    "http": {
+      "reason": "Test HTTP access",
+      "allowedURLs": {
+        "https://test.example.com/*": ["GET"]
+      }
+    }
+  }
+}

@@ -26,7 +26,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		ctx = request.WithUser(ctx, model.User{ID: "user-1", UserName: "testuser"})
 
 		// Load the scrobbler via a new manager with the test-scrobbler plugin
-		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler.wasm")
+		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler"+PackageExtension)
 
 		var ok bool
 		s, ok = scrobblerManager.LoadScrobbler("test-scrobbler")
@@ -58,7 +58,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		It("returns false when plugin is configured to not authorize", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-scrobbler": {"authorized": "false"},
-			}, "test-scrobbler.wasm")
+			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
@@ -88,7 +88,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		It("returns error when plugin returns error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-scrobbler": {"error": "service unavailable", "error_type": "retry_later"},
-			}, "test-scrobbler.wasm")
+			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
@@ -123,7 +123,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		It("returns error when plugin returns not_authorized error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-scrobbler": {"error": "user not linked", "error_type": "not_authorized"},
-			}, "test-scrobbler.wasm")
+			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
@@ -140,7 +140,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		It("returns error when plugin returns unrecoverable error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-scrobbler": {"error": "track rejected", "error_type": "unrecoverable"},
-			}, "test-scrobbler.wasm")
+			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())

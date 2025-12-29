@@ -329,8 +329,8 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Copy the test-cache-plugin
-		srcPath := filepath.Join(testdataDir, "test-cache-plugin.wasm")
-		destPath := filepath.Join(tmpDir, "test-cache-plugin.wasm")
+		srcPath := filepath.Join(testdataDir, "test-cache-plugin"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-cache-plugin"+PackageExtension)
 		data, err := os.ReadFile(srcPath)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.WriteFile(destPath, data, 0600)

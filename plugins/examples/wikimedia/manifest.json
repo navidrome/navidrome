@@ -1,0 +1,17 @@
+{
+  "name": "Wikimedia",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Fetches artist metadata from Wikidata, DBpedia and Wikipedia",
+  "website": "https://navidrome.org",
+  "permissions": {
+    "http": {
+      "reason": "Fetch metadata from Wikimedia APIs",
+      "allowedHosts": [
+        "query.wikidata.org",
+        "dbpedia.org",
+        "en.wikipedia.org"
+      ]
+    }
+  }
+}
