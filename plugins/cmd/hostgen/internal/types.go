@@ -7,11 +7,28 @@ import (
 
 // Service represents a parsed host service interface.
 type Service struct {
-	Name       string   // Service name from annotation (e.g., "SubsonicAPI")
-	Permission string   // Manifest permission key (e.g., "subsonicapi")
-	Interface  string   // Go interface name (e.g., "SubsonicAPIService")
-	Methods    []Method // Methods marked with //nd:hostfunc
-	Doc        string   // Documentation comment for the service
+	Name       string      // Service name from annotation (e.g., "SubsonicAPI")
+	Permission string      // Manifest permission key (e.g., "subsonicapi")
+	Interface  string      // Go interface name (e.g., "SubsonicAPIService")
+	Methods    []Method    // Methods marked with //nd:hostfunc
+	Doc        string      // Documentation comment for the service
+	Structs    []StructDef // Structs used by this service
+}
+
+// StructDef represents a Go struct type definition.
+type StructDef struct {
+	Name   string     // Go struct name (e.g., "Library")
+	Fields []FieldDef // Struct fields
+	Doc    string     // Documentation comment
+}
+
+// FieldDef represents a field within a struct.
+type FieldDef struct {
+	Name      string // Go field name (e.g., "TotalSongs")
+	Type      string // Go type (e.g., "int32", "*string", "[]User")
+	JSONTag   string // JSON tag value (e.g., "totalSongs,omitempty")
+	OmitEmpty bool   // Whether the field has omitempty tag
+	Doc       string // Field documentation
 }
 
 // OutputFileName returns the generated file name for this service.
@@ -22,6 +39,15 @@ func (s Service) OutputFileName() string {
 // ExportPrefix returns the prefix for exported host function names.
 func (s Service) ExportPrefix() string {
 	return strings.ToLower(s.Name)
+}
+
+// KnownStructs returns a map of struct names defined in this service.
+func (s Service) KnownStructs() map[string]bool {
+	result := make(map[string]bool)
+	for _, st := range s.Structs {
+		result[st.Name] = true
+	}
+	return result
 }
 
 // Method represents a host function method within a service.
@@ -187,60 +213,7 @@ func (p Param) PythonName() string {
 
 // ToRustType converts a Go type to its Rust equivalent.
 func ToRustType(goType string) string {
-	// Handle pointer types
-	if strings.HasPrefix(goType, "*") {
-		inner := ToRustType(goType[1:])
-		return "Option<" + inner + ">"
-	}
-	// Handle slice types
-	if strings.HasPrefix(goType, "[]") {
-		if goType == "[]byte" {
-			return "Vec<u8>"
-		}
-		inner := ToRustType(goType[2:])
-		return "Vec<" + inner + ">"
-	}
-	// Handle map types
-	if strings.HasPrefix(goType, "map[") {
-		// Extract key and value types from map[K]V
-		rest := goType[4:] // Remove "map["
-		depth := 1
-		keyEnd := 0
-		for i, r := range rest {
-			if r == '[' {
-				depth++
-			} else if r == ']' {
-				depth--
-				if depth == 0 {
-					keyEnd = i
-					break
-				}
-			}
-		}
-		keyType := rest[:keyEnd]
-		valueType := rest[keyEnd+1:]
-		return "std::collections::HashMap<" + ToRustType(keyType) + ", " + ToRustType(valueType) + ">"
-	}
-
-	switch goType {
-	case "string":
-		return "String"
-	case "int", "int32":
-		return "i32"
-	case "int64":
-		return "i64"
-	case "float32":
-		return "f32"
-	case "float64":
-		return "f64"
-	case "bool":
-		return "bool"
-	case "interface{}", "any":
-		return "serde_json::Value"
-	default:
-		// For custom struct types, use Value as they need custom definition
-		return "serde_json::Value"
-	}
+	return ToRustTypeWithStructs(goType, nil)
 }
 
 // RustParamType returns the Rust type for a function parameter (uses &str for strings).
@@ -303,9 +276,22 @@ func (p Param) RustType() string {
 	return ToRustType(p.Type)
 }
 
+// RustTypeWithStructs returns the Rust type using known struct names.
+func (p Param) RustTypeWithStructs(knownStructs map[string]bool) string {
+	return ToRustTypeWithStructs(p.Type, knownStructs)
+}
+
 // RustParamType returns the Rust type for this parameter when used as a function argument.
 func (p Param) RustParamType() string {
 	return RustParamType(p.Type)
+}
+
+// RustParamTypeWithStructs returns the Rust param type using known struct names.
+func (p Param) RustParamTypeWithStructs(knownStructs map[string]bool) string {
+	if p.Type == "string" {
+		return "&str"
+	}
+	return ToRustTypeWithStructs(p.Type, knownStructs)
 }
 
 // RustName returns the snake_case Rust name for this parameter.
@@ -316,4 +302,83 @@ func (p Param) RustName() string {
 // NeedsToOwned returns true if the parameter needs .to_owned() when used.
 func (p Param) NeedsToOwned() bool {
 	return p.Type == "string"
+}
+
+// RustType returns the Rust type for this field, using known struct names.
+func (f FieldDef) RustType(knownStructs map[string]bool) string {
+	return ToRustTypeWithStructs(f.Type, knownStructs)
+}
+
+// RustName returns the snake_case Rust name for this field.
+func (f FieldDef) RustName() string {
+	return ToSnakeCase(f.Name)
+}
+
+// NeedsDefault returns true if the field needs #[serde(default)] attribute.
+// This is true for fields with omitempty tag.
+func (f FieldDef) NeedsDefault() bool {
+	return f.OmitEmpty
+}
+
+// ToRustTypeWithStructs converts a Go type to its Rust equivalent,
+// using known struct names instead of serde_json::Value.
+func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
+	// Handle pointer types
+	if strings.HasPrefix(goType, "*") {
+		inner := ToRustTypeWithStructs(goType[1:], knownStructs)
+		return "Option<" + inner + ">"
+	}
+	// Handle slice types
+	if strings.HasPrefix(goType, "[]") {
+		if goType == "[]byte" {
+			return "Vec<u8>"
+		}
+		inner := ToRustTypeWithStructs(goType[2:], knownStructs)
+		return "Vec<" + inner + ">"
+	}
+	// Handle map types
+	if strings.HasPrefix(goType, "map[") {
+		// Extract key and value types from map[K]V
+		rest := goType[4:] // Remove "map["
+		depth := 1
+		keyEnd := 0
+		for i, r := range rest {
+			if r == '[' {
+				depth++
+			} else if r == ']' {
+				depth--
+				if depth == 0 {
+					keyEnd = i
+					break
+				}
+			}
+		}
+		keyType := rest[:keyEnd]
+		valueType := rest[keyEnd+1:]
+		return "std::collections::HashMap<" + ToRustTypeWithStructs(keyType, knownStructs) + ", " + ToRustTypeWithStructs(valueType, knownStructs) + ">"
+	}
+
+	switch goType {
+	case "string":
+		return "String"
+	case "int", "int32":
+		return "i32"
+	case "int64":
+		return "i64"
+	case "float32":
+		return "f32"
+	case "float64":
+		return "f64"
+	case "bool":
+		return "bool"
+	case "interface{}", "any":
+		return "serde_json::Value"
+	default:
+		// Check if this is a known struct type
+		if knownStructs != nil && knownStructs[goType] {
+			return goType
+		}
+		// For unknown custom types, fall back to Value
+		return "serde_json::Value"
+	}
 }

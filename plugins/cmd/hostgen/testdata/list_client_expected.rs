@@ -6,11 +6,17 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Filter {
+    pub active: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ListItemsRequest {
     name: String,
-    filter: serde_json::Value,
+    filter: Filter,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -31,14 +37,14 @@ extern "ExtismHost" {
 ///
 /// # Arguments
 /// * `name` - String parameter.
-/// * `filter` - serde_json::Value parameter.
+/// * `filter` - Filter parameter.
 ///
 /// # Returns
 /// The count value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn items(name: &str, filter: serde_json::Value) -> Result<i32, Error> {
+pub fn items(name: &str, filter: Filter) -> Result<i32, Error> {
     let response = unsafe {
         list_items(Json(ListItemsRequest {
             name: name.to_owned(),

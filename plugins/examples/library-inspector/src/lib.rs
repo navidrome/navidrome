@@ -1,8 +1,8 @@
 //! Library Inspector Plugin for Navidrome
 //!
-//! This plugin demonstrates how to use the Library host service in Rust.
-//! It periodically logs details about all music libraries and finds the largest
-//! file in the root of each library directory.
+//! This plugin demonstrates how to use the nd-host library for accessing Navidrome
+//! host services in Rust. It periodically logs details about all music libraries
+//! and finds the largest file in the root of each library directory.
 //!
 //! ## Configuration
 //!
@@ -13,58 +13,13 @@
 //! ```
 
 use extism_pdk::*;
+use nd_host::{library, scheduler};
 use serde::{Deserialize, Serialize};
 use std::fs;
 
 // ============================================================================
-// Library Types
-// ============================================================================
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct Library {
-    id: i32,
-    name: String,
-    #[serde(default)]
-    path: Option<String>,
-    #[serde(default)]
-    mount_point: Option<String>,
-    last_scan_at: i64,
-    total_songs: i32,
-    total_albums: i32,
-    total_artists: i32,
-    total_size: i64,
-    total_duration: f64,
-}
-
-#[derive(Deserialize)]
-struct LibraryGetAllLibrariesResponse {
-    result: Option<Vec<Library>>,
-    #[serde(default)]
-    error: Option<String>,
-}
-
-// ============================================================================
 // Scheduler Types
 // ============================================================================
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SchedulerScheduleRecurringRequest {
-    cron_expression: String,
-    payload: String,
-    schedule_id: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SchedulerScheduleRecurringResponse {
-    #[serde(default)]
-    new_schedule_id: Option<String>,
-    #[serde(default)]
-    error: Option<String>,
-}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,52 +40,8 @@ struct InitOutput {
 }
 
 // ============================================================================
-// Host Function Imports
-// ============================================================================
-
-#[host_fn]
-extern "ExtismHost" {
-    fn library_getalllibraries(input: Json<serde_json::Value>) -> Json<LibraryGetAllLibrariesResponse>;
-    fn scheduler_schedulerecurring(input: Json<SchedulerScheduleRecurringRequest>) -> Json<SchedulerScheduleRecurringResponse>;
-}
-
-// ============================================================================
 // Helper Functions
 // ============================================================================
-
-/// Get all libraries from Navidrome
-fn get_all_libraries() -> Result<Vec<Library>, String> {
-    let response: Json<LibraryGetAllLibrariesResponse> = unsafe {
-        library_getalllibraries(Json(serde_json::json!({})))
-            .map_err(|e| format!("Failed to call library_getalllibraries: {:?}", e))?
-    };
-
-    if let Some(err) = response.0.error {
-        return Err(err);
-    }
-
-    Ok(response.0.result.unwrap_or_default())
-}
-
-/// Schedule a recurring task
-fn schedule_recurring(cron: &str, payload: &str, id: &str) -> Result<String, String> {
-    let request = SchedulerScheduleRecurringRequest {
-        cron_expression: cron.to_string(),
-        payload: payload.to_string(),
-        schedule_id: id.to_string(),
-    };
-
-    let response: Json<SchedulerScheduleRecurringResponse> = unsafe {
-        scheduler_schedulerecurring(Json(request))
-            .map_err(|e| format!("Failed to schedule task: {:?}", e))?
-    };
-
-    if let Some(err) = response.0.error {
-        return Err(err);
-    }
-
-    Ok(response.0.new_schedule_id.unwrap_or_default())
-}
 
 /// Format bytes into human-readable size
 fn format_size(bytes: i64) -> String {
@@ -209,7 +120,7 @@ fn find_largest_file(mount_point: &str) -> Option<(String, u64)> {
 fn inspect_libraries() {
     info!("=== Library Inspection Started ===");
 
-    let libraries = match get_all_libraries() {
+    let libraries = match library::get_all_libraries() {
         Ok(libs) => libs,
         Err(e) => {
             error!("Failed to get libraries: {}", e);
@@ -234,10 +145,10 @@ fn inspect_libraries() {
         info!("  Duration: {}", format_duration(lib.total_duration));
 
         // If we have filesystem access, find the largest file
-        if let Some(mount_point) = &lib.mount_point {
-            info!("  Mount:    {}", mount_point);
+        if !lib.mount_point.is_empty() {
+            info!("  Mount:    {}", lib.mount_point);
 
-            match find_largest_file(mount_point) {
+            match find_largest_file(&lib.mount_point) {
                 Some((name, size)) => {
                     info!(
                         "  Largest file in root: {} ({})",
@@ -274,8 +185,8 @@ pub fn nd_on_init() -> FnResult<Json<InitOutput>> {
 
     info!("Scheduling library inspection with cron: {}", cron);
 
-    // Schedule the recurring task
-    match schedule_recurring(&cron, "inspect", "library-inspect") {
+    // Schedule the recurring task using nd-host scheduler
+    match scheduler::schedule_recurring(&cron, "inspect", "library-inspect") {
         Ok(schedule_id) => {
             info!("Scheduled inspection task with ID: {}", schedule_id);
         }

@@ -55,18 +55,6 @@ Configure the inspection interval in the Navidrome UI (Settings → Plugins → 
 |--------|------------------------------------------|--------------|
 | `cron` | Cron expression for inspection interval  | `@every 1m`  |
 
-### Cron Expression Examples
-
-| Expression | Description |
-|------------|-------------|
-| `@every 1m` | Every minute (default) |
-| `@every 5m` | Every 5 minutes |
-| `@every 1h` | Every hour |
-| `@hourly` | Every hour at minute 0 |
-| `@daily` | Every day at midnight |
-| `0 */6 * * *` | Every 6 hours |
-| `0 9 * * *` | Daily at 9:00 AM |
-
 ## Permissions
 
 This plugin requires:

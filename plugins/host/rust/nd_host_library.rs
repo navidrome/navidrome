@@ -6,6 +6,24 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+/// Library represents a music library with metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Library {
+    pub id: i32,
+    pub name: String,
+    #[serde(default)]
+    pub path: String,
+    #[serde(default)]
+    pub mount_point: String,
+    pub last_scan_at: i64,
+    pub total_songs: i32,
+    pub total_albums: i32,
+    pub total_artists: i32,
+    pub total_size: i64,
+    pub total_duration: f64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LibraryGetLibraryRequest {
@@ -16,7 +34,7 @@ struct LibraryGetLibraryRequest {
 #[serde(rename_all = "camelCase")]
 struct LibraryGetLibraryResponse {
     #[serde(default)]
-    result: Option<serde_json::Value>,
+    result: Option<Library>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -25,7 +43,7 @@ struct LibraryGetLibraryResponse {
 #[serde(rename_all = "camelCase")]
 struct LibraryGetAllLibrariesResponse {
     #[serde(default)]
-    result: Vec<serde_json::Value>,
+    result: Vec<Library>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -51,7 +69,7 @@ extern "ExtismHost" {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_library(id: i32) -> Result<Option<serde_json::Value>, Error> {
+pub fn get_library(id: i32) -> Result<Option<Library>, Error> {
     let response = unsafe {
         library_getlibrary(Json(LibraryGetLibraryRequest {
             id: id,
@@ -74,7 +92,7 @@ pub fn get_library(id: i32) -> Result<Option<serde_json::Value>, Error> {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_all_libraries() -> Result<Vec<serde_json::Value>, Error> {
+pub fn get_all_libraries() -> Result<Vec<Library>, Error> {
     let response = unsafe {
         library_getalllibraries(Json(serde_json::json!({})))?
     };
