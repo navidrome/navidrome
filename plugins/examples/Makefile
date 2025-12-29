@@ -12,6 +12,12 @@ RUST_PLUGINS := $(patsubst %/Cargo.toml,%,$(wildcard */Cargo.toml))
 TINYGO := $(shell command -v tinygo 2> /dev/null)
 EXTISM_PY := $(shell command -v extism-py 2> /dev/null)
 
+# Allow building plugins without .ndp extension (e.g., make minimal instead of make minimal.ndp)
+.PHONY: $(PLUGINS) $(PYTHON_PLUGINS) $(RUST_PLUGINS)
+$(PLUGINS): %: %.ndp
+$(PYTHON_PLUGINS): %: %.ndp
+$(RUST_PLUGINS): %: %.ndp
+
 # Default target: show available plugins
 .DEFAULT_GOAL := help
 
@@ -26,12 +32,12 @@ help:
 	@$(foreach p,$(RUST_PLUGINS),echo "  $(p)";)
 	@echo ""
 	@echo "Usage:"
-	@echo "  make <plugin>.ndp     Build a specific plugin (e.g., make $(firstword $(PLUGINS)).ndp)"
+	@echo "  make <plugin>         Build a specific plugin (e.g., make $(firstword $(PLUGINS)))"
 	@echo "  make all              Build all plugins"
 	@echo "  make all-go           Build all Go plugins"
 	@echo "  make all-python       Build all Python plugins (requires extism-py)"
 	@echo "  make all-rust         Build all Rust plugins (requires cargo)"
-	@echo "  make clean            Remove all built plugins"
+	@echo "  make clean            Remove all built plugins (.ndp and .wasm files)"
 
 all: all-go all-python all-rust
 
@@ -44,7 +50,7 @@ all-rust: $(RUST_PLUGINS:%=%.ndp)
 clean:
 	rm -f $(PLUGINS:%=%.ndp) $(PYTHON_PLUGINS:%=%.ndp) $(RUST_PLUGINS:%=%.ndp)
 	rm -f $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm) $(RUST_PLUGINS:%=%.wasm)
-	$(foreach p,$(RUST_PLUGINS),cd $(p) && cargo clean 2>/dev/null || true;)
+	@$(foreach p,$(RUST_PLUGINS),(cd $(p) && cargo clean 2>/dev/null) || true;)
 
 # Build .ndp package from .wasm and manifest.json
 # Go plugins
@@ -53,9 +59,10 @@ clean:
 	@cp $< plugin.wasm
 	zip -j $@ $*/manifest.json plugin.wasm
 	@rm -f plugin.wasm
-	@rm -f $<
 
-%.wasm: %/*.go %/go.mod
+# Use secondary expansion to properly track all Go source files
+.SECONDEXPANSION:
+$(PLUGINS:%=%.wasm): %.wasm: $$(shell find % -name '*.go' 2>/dev/null) %/go.mod
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else

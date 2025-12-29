@@ -6,10 +6,17 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Item {
+    pub id: String,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct StoreSaveRequest {
-    item: serde_json::Value,
+    item: Item,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -29,14 +36,14 @@ extern "ExtismHost" {
 /// Calls the store_save host function.
 ///
 /// # Arguments
-/// * `item` - serde_json::Value parameter.
+/// * `item` - Item parameter.
 ///
 /// # Returns
 /// The id value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn save(item: serde_json::Value) -> Result<String, Error> {
+pub fn save(item: Item) -> Result<String, Error> {
     let response = unsafe {
         store_save(Json(StoreSaveRequest {
             item: item,

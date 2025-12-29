@@ -6,6 +6,19 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct User2 {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Filter2 {
+    pub active: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ComprehensiveSimpleParamsRequest {
@@ -25,7 +38,7 @@ struct ComprehensiveSimpleParamsResponse {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ComprehensiveStructParamRequest {
-    user: serde_json::Value,
+    user: User2,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -39,7 +52,7 @@ struct ComprehensiveStructParamResponse {
 #[serde(rename_all = "camelCase")]
 struct ComprehensiveMixedParamsRequest {
     id: String,
-    filter: serde_json::Value,
+    filter: Filter2,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -84,14 +97,14 @@ struct ComprehensiveNoParamsNoReturnsResponse {
 #[serde(rename_all = "camelCase")]
 struct ComprehensivePointerParamsRequest {
     id: Option<String>,
-    user: Option<serde_json::Value>,
+    user: Option<User2>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ComprehensivePointerParamsResponse {
     #[serde(default)]
-    result: Option<serde_json::Value>,
+    result: Option<User2>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -121,7 +134,7 @@ struct ComprehensiveMultipleReturnsRequest {
 #[serde(rename_all = "camelCase")]
 struct ComprehensiveMultipleReturnsResponse {
     #[serde(default)]
-    results: Vec<serde_json::Value>,
+    results: Vec<User2>,
     #[serde(default)]
     total: i32,
     #[serde(default)]
@@ -186,11 +199,11 @@ pub fn simple_params(name: &str, count: i32) -> Result<String, Error> {
 /// Calls the comprehensive_structparam host function.
 ///
 /// # Arguments
-/// * `user` - serde_json::Value parameter.
+/// * `user` - User2 parameter.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn struct_param(user: serde_json::Value) -> Result<(), Error> {
+pub fn struct_param(user: User2) -> Result<(), Error> {
     let response = unsafe {
         comprehensive_structparam(Json(ComprehensiveStructParamRequest {
             user: user,
@@ -208,14 +221,14 @@ pub fn struct_param(user: serde_json::Value) -> Result<(), Error> {
 ///
 /// # Arguments
 /// * `id` - String parameter.
-/// * `filter` - serde_json::Value parameter.
+/// * `filter` - Filter2 parameter.
 ///
 /// # Returns
 /// The result value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn mixed_params(id: &str, filter: serde_json::Value) -> Result<i32, Error> {
+pub fn mixed_params(id: &str, filter: Filter2) -> Result<i32, Error> {
     let response = unsafe {
         comprehensive_mixedparams(Json(ComprehensiveMixedParamsRequest {
             id: id.to_owned(),
@@ -290,14 +303,14 @@ pub fn no_params_no_returns() -> Result<(), Error> {
 ///
 /// # Arguments
 /// * `id` - Option<String> parameter.
-/// * `user` - Option<serde_json::Value> parameter.
+/// * `user` - Option<User2> parameter.
 ///
 /// # Returns
 /// The result value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn pointer_params(id: Option<String>, user: Option<serde_json::Value>) -> Result<Option<serde_json::Value>, Error> {
+pub fn pointer_params(id: Option<String>, user: Option<User2>) -> Result<Option<User2>, Error> {
     let response = unsafe {
         comprehensive_pointerparams(Json(ComprehensivePointerParamsRequest {
             id: id,
@@ -346,7 +359,7 @@ pub fn map_params(data: std::collections::HashMap<String, serde_json::Value>) ->
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn multiple_returns(query: &str) -> Result<(Vec<serde_json::Value>, i32), Error> {
+pub fn multiple_returns(query: &str) -> Result<(Vec<User2>, i32), Error> {
     let response = unsafe {
         comprehensive_multiplereturns(Json(ComprehensiveMultipleReturnsRequest {
             query: query.to_owned(),
