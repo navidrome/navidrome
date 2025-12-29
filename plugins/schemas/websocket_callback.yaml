@@ -54,7 +54,7 @@ components:
     OnTextMessageInput:
       description: Input provided when a text message is received
       properties:
-        connection_id:
+        connectionId:
           type: string
           description: |
             The unique identifier for the WebSocket connection that received the message.
@@ -63,7 +63,7 @@ components:
           description: |
             The text message content received from the WebSocket.
       required:
-        - connection_id
+        - connectionId
         - message
 
     OnTextMessageOutput:
@@ -79,7 +79,7 @@ components:
     OnBinaryMessageInput:
       description: Input provided when a binary message is received
       properties:
-        connection_id:
+        connectionId:
           type: string
           description: |
             The unique identifier for the WebSocket connection that received the message.
@@ -89,7 +89,7 @@ components:
           description: |
             The binary data received from the WebSocket, encoded as base64.
       required:
-        - connection_id
+        - connectionId
         - data
 
     OnBinaryMessageOutput:
@@ -105,7 +105,7 @@ components:
     OnErrorInput:
       description: Input provided when an error occurs on a WebSocket connection
       properties:
-        connection_id:
+        connectionId:
           type: string
           description: |
             The unique identifier for the WebSocket connection where the error occurred.
@@ -114,7 +114,7 @@ components:
           description: |
             The error message describing what went wrong.
       required:
-        - connection_id
+        - connectionId
         - error
 
     OnErrorOutput:
@@ -130,7 +130,7 @@ components:
     OnCloseInput:
       description: Input provided when a WebSocket connection is closed
       properties:
-        connection_id:
+        connectionId:
           type: string
           description: |
             The unique identifier for the WebSocket connection that was closed.
@@ -145,7 +145,7 @@ components:
           description: |
             The human-readable reason for the connection closure, if provided.
       required:
-        - connection_id
+        - connectionId
         - code
         - reason
 

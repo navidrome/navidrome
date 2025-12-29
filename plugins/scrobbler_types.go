@@ -4,7 +4,7 @@ package plugins
 
 // scrobblerAuthInput is the input for IsAuthorized
 type scrobblerAuthInput struct {
-	UserID   string `json:"user_id"`
+	UserID   string `json:"userId"`
 	Username string `json:"username"`
 }
 
@@ -19,21 +19,21 @@ type scrobblerTrackInfo struct {
 	Title             string  `json:"title"`
 	Album             string  `json:"album"`
 	Artist            string  `json:"artist"`
-	AlbumArtist       string  `json:"album_artist"`
+	AlbumArtist       string  `json:"albumArtist"`
 	Duration          float32 `json:"duration"`
-	TrackNumber       int     `json:"track_number"`
-	DiscNumber        int     `json:"disc_number"`
-	MbzRecordingID    string  `json:"mbz_recording_id,omitempty"`
-	MbzAlbumID        string  `json:"mbz_album_id,omitempty"`
-	MbzArtistID       string  `json:"mbz_artist_id,omitempty"`
-	MbzReleaseGroupID string  `json:"mbz_release_group_id,omitempty"`
-	MbzAlbumArtistID  string  `json:"mbz_album_artist_id,omitempty"`
-	MbzReleaseTrackID string  `json:"mbz_release_track_id,omitempty"`
+	TrackNumber       int     `json:"trackNumber"`
+	DiscNumber        int     `json:"discNumber"`
+	MbzRecordingID    string  `json:"mbzRecordingId,omitempty"`
+	MbzAlbumID        string  `json:"mbzAlbumId,omitempty"`
+	MbzArtistID       string  `json:"mbzArtistId,omitempty"`
+	MbzReleaseGroupID string  `json:"mbzReleaseGroupId,omitempty"`
+	MbzAlbumArtistID  string  `json:"mbzAlbumArtistId,omitempty"`
+	MbzReleaseTrackID string  `json:"mbzReleaseTrackId,omitempty"`
 }
 
 // scrobblerNowPlayingInput is the input for NowPlaying
 type scrobblerNowPlayingInput struct {
-	UserID   string             `json:"user_id"`
+	UserID   string             `json:"userId"`
 	Username string             `json:"username"`
 	Track    scrobblerTrackInfo `json:"track"`
 	Position int                `json:"position"`
@@ -41,7 +41,7 @@ type scrobblerNowPlayingInput struct {
 
 // scrobblerScrobbleInput is the input for Scrobble
 type scrobblerScrobbleInput struct {
-	UserID    string             `json:"user_id"`
+	UserID    string             `json:"userId"`
 	Username  string             `json:"username"`
 	Track     scrobblerTrackInfo `json:"track"`
 	Timestamp int64              `json:"timestamp"`
@@ -50,7 +50,7 @@ type scrobblerScrobbleInput struct {
 // scrobblerOutput is the output for NowPlaying and Scrobble
 type scrobblerOutput struct {
 	Error     string `json:"error,omitempty"`
-	ErrorType string `json:"error_type,omitempty"` // "none", "not_authorized", "retry_later", "unrecoverable"
+	ErrorType string `json:"errorType,omitempty"` // "none", "notAuthorized", "retryLater", "unrecoverable"
 }
 
 // scrobbler error type constants

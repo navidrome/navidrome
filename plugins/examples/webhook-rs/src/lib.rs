@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 // ============================================================================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AuthInput {
     user_id: String,
     username: String,
@@ -31,6 +32,7 @@ struct AuthOutput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Fields are deserialized from JSON but not all are used
 struct TrackInfo {
     id: String,
@@ -50,6 +52,7 @@ struct TrackInfo {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Fields are deserialized from JSON but not all are used
 struct NowPlayingInput {
     user_id: String,
@@ -59,6 +62,7 @@ struct NowPlayingInput {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Fields are deserialized from JSON but not all are used
 struct ScrobbleInput {
     user_id: String,
@@ -68,6 +72,7 @@ struct ScrobbleInput {
 }
 
 #[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 struct ScrobblerOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,

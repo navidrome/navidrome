@@ -216,9 +216,9 @@ func NdWebsocketOnClose(input OnCloseInput) (OnCloseOutput, error) {
 
 // Scheduler callback input/output types
 type SchedulerCallbackInput struct {
-	ScheduleId  string `json:"schedule_id"`
+	ScheduleId  string `json:"scheduleId"`
 	Payload     string `json:"payload"`
-	IsRecurring bool   `json:"is_recurring"`
+	IsRecurring bool   `json:"isRecurring"`
 }
 
 type SchedulerCallbackOutput struct {
