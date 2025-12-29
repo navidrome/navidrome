@@ -1,0 +1,19 @@
+{
+  "name": "Crypto Ticker",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Real-time cryptocurrency price ticker using Coinbase WebSocket API",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/crypto-ticker",
+  "permissions": {
+    "config": {
+      "reason": "To read ticker symbols configuration"
+    },
+    "scheduler": {
+      "reason": "To schedule reconnection attempts on connection loss"
+    },
+    "websocket": {
+      "reason": "To connect to Coinbase WebSocket API for real-time prices",
+      "allowedHosts": ["ws-feed.exchange.coinbase.com"]
+    }
+  }
+}

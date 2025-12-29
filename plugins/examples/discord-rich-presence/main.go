@@ -11,85 +11,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/extism/go-pdk"
 )
-
-// Manifest contains plugin metadata.
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Website     string       `json:"website,omitempty"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	HTTP      *HTTPPermission      `json:"http,omitempty"`
-	WebSocket *WebSocketPermission `json:"websocket,omitempty"`
-	Cache     *PermissionReason    `json:"cache,omitempty"`
-	Scheduler *PermissionReason    `json:"scheduler,omitempty"`
-	Artwork   *PermissionReason    `json:"artwork,omitempty"`
-}
-
-type HTTPPermission struct {
-	Reason       string   `json:"reason,omitempty"`
-	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
-
-type WebSocketPermission struct {
-	Reason       string   `json:"reason,omitempty"`
-	AllowedHosts []string `json:"allowedHosts,omitempty"`
-}
-
-type PermissionReason struct {
-	Reason string `json:"reason,omitempty"`
-}
-
-// nd_manifest returns the plugin manifest.
-//
-//export nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Discord Rich Presence",
-		Author:      "Navidrome Team",
-		Version:     "1.0.0",
-		Description: "Discord Rich Presence integration for Navidrome",
-		Website:     "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence",
-		Permissions: &Permissions{
-			HTTP: &HTTPPermission{
-				Reason:       "To communicate with Discord API for gateway discovery and image uploads",
-				AllowedHosts: []string{"discord.com"},
-			},
-			WebSocket: &WebSocketPermission{
-				Reason:       "To maintain real-time connection with Discord gateway",
-				AllowedHosts: []string{"gateway.discord.gg"},
-			},
-			Cache: &PermissionReason{
-				Reason: "To store connection state and sequence numbers",
-			},
-			Scheduler: &PermissionReason{
-				Reason: "To schedule heartbeat messages and activity clearing",
-			},
-			Artwork: &PermissionReason{
-				Reason: "To get track artwork URLs for rich presence display",
-			},
-		},
-	}
-
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
 
 // Configuration keys
 const (

@@ -132,10 +132,10 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	// Build map of files in folder
 	filesOnDisk := make(map[string]string) // name -> path
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".wasm") {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), PackageExtension) {
 			continue
 		}
-		name := strings.TrimSuffix(entry.Name(), ".wasm")
+		name := strings.TrimSuffix(entry.Name(), PackageExtension)
 		filesOnDisk[name] = filepath.Join(folder, entry.Name())
 	}
 

@@ -3,49 +3,8 @@
 package main
 
 import (
-	"encoding/json"
-
 	pdk "github.com/extism/go-pdk"
 )
-
-// Manifest types
-type Manifest struct {
-	Name        string       `json:"name"`
-	Author      string       `json:"author"`
-	Version     string       `json:"version"`
-	Description string       `json:"description"`
-	Permissions *Permissions `json:"permissions,omitempty"`
-}
-
-type Permissions struct {
-	Cache *CachePermission `json:"cache,omitempty"`
-}
-
-type CachePermission struct {
-	Reason string `json:"reason,omitempty"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Test Cache Plugin",
-		Author:      "Navidrome Test",
-		Version:     "1.0.0",
-		Description: "A test cache plugin for integration testing",
-		Permissions: &Permissions{
-			Cache: &CachePermission{
-				Reason: "For testing cache operations",
-			},
-		},
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
-}
 
 // TestCacheInput is the input for nd_test_cache callback.
 type TestCacheInput struct {

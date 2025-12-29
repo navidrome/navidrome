@@ -4,21 +4,12 @@
 //
 //	tinygo build -o minimal.wasm -target wasip1 -buildmode=c-shared ./main.go
 //
-// Install by copying minimal.wasm to your Navidrome plugins folder.
+// Install by copying minimal.ndp to your Navidrome plugins folder.
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/extism/go-pdk"
 )
-
-type Manifest struct {
-	Name        string `json:"name"`
-	Author      string `json:"author"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-}
 
 type ArtistInput struct {
 	ID   string `json:"id"`
@@ -28,23 +19,6 @@ type ArtistInput struct {
 
 type BiographyOutput struct {
 	Biography string `json:"biography"`
-}
-
-//go:wasmexport nd_manifest
-func ndManifest() int32 {
-	manifest := Manifest{
-		Name:        "Minimal Example",
-		Author:      "Navidrome",
-		Version:     "1.0.0",
-		Description: "A minimal example plugin",
-	}
-	out, err := json.Marshal(manifest)
-	if err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	pdk.Output(out)
-	return 0
 }
 
 //go:wasmexport nd_get_artist_biography

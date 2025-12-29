@@ -1,0 +1,6 @@
+{
+  "name": "Test Scrobbler",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test scrobbler plugin for integration testing"
+}

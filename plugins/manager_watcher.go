@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -83,12 +84,12 @@ func (m *Manager) watcherLoop() {
 func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 	path := event.Path()
 
-	// Only process .wasm files
-	if !strings.HasSuffix(path, ".wasm") {
+	// Only process .ndp package files
+	if !strings.HasSuffix(path, PackageExtension) {
 		return
 	}
 
-	pluginName := strings.TrimSuffix(filepath.Base(path), ".wasm")
+	pluginName := strings.TrimSuffix(filepath.Base(path), PackageExtension)
 
 	log.Debug(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
 
@@ -98,41 +99,43 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 		timer.Stop()
 	}
 
-	eventType := event.Event()
+	// Note: We don't capture the event type here. Instead, processPluginEvent
+	// checks if the file exists when the timer fires. This handles sequences like
+	// Remove+Create+Rename correctly by checking actual file state after debounce.
 	m.debounceTimers[pluginName] = time.AfterFunc(debounceDuration, func() {
-		m.processPluginEvent(pluginName, eventType)
+		m.processPluginEvent(pluginName)
 	})
 	m.debounceMu.Unlock()
 }
 
-// pluginAction represents the action to take on a plugin based on a file event
+// pluginAction represents the action to take on a plugin based on file state
 type pluginAction int
 
 const (
 	actionNone   pluginAction = iota // No action needed
-	actionAdd                        // Add new plugin to DB (disabled)
-	actionUpdate                     // Update existing plugin in DB (disable if enabled)
-	actionRemove                     // Remove plugin from DB (unload if enabled)
+	actionUpdate                     // File exists: add new or update existing plugin in DB
+	actionRemove                     // File gone: remove plugin from DB (unload if enabled)
 )
 
-// determinePluginAction decides what action to take based on the file event type.
-func determinePluginAction(eventType notify.Event) pluginAction {
-	switch {
-	case eventType&notify.Remove != 0 || eventType&notify.Rename != 0:
-		return actionRemove
-	case eventType&notify.Create != 0:
-		return actionAdd
-	case eventType&notify.Write != 0:
+// determinePluginAction decides what action to take based on file existence.
+// We check file existence rather than relying on event type because:
+// 1. Events can be coalesced on some systems (macOS FSEvents)
+// 2. Rename events can mean either "renamed away" (remove) or "renamed to" (add)
+// 3. Build tools often do atomic writes (write temp file, rename to target)
+// By checking existence, we handle all these cases correctly.
+func determinePluginAction(path string) pluginAction {
+	if _, err := os.Stat(path); err == nil {
+		// File exists - treat as add/update
 		return actionUpdate
 	}
-	return actionNone
+	// File doesn't exist - it was removed
+	return actionRemove
 }
 
 // processPluginEvent handles the actual plugin load/unload/reload after debouncing.
-// - On file add: extract manifest, create DB record as disabled
-// - On file change: extract manifest, update DB, disable if was enabled
-// - On file remove: unload if enabled, delete DB record
-func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) {
+// - If file exists: extract manifest, add or update plugin in DB
+// - If file gone: unload if enabled, delete from DB
+func (m *Manager) processPluginEvent(pluginName string) {
 	// Don't process if manager is stopping/stopped (atomic check to avoid race with Stop())
 	if m.stopped.Load() {
 		return
@@ -143,29 +146,19 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 	delete(m.debounceTimers, pluginName)
 	m.debounceMu.Unlock()
 
-	action := determinePluginAction(eventType)
-	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action)
+	folder := conf.Server.Plugins.Folder
+	ndpPath := filepath.Join(folder, pluginName+PackageExtension)
+
+	action := determinePluginAction(ndpPath)
+	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action, "path", ndpPath)
 
 	ctx := adminContext(m.ctx)
 	repo := m.ds.Plugin(ctx)
-	folder := conf.Server.Plugins.Folder
-	wasmPath := filepath.Join(folder, pluginName+".wasm")
 
 	switch action {
-	case actionAdd:
-		// New file - extract manifest and add to DB as disabled
-		metadata, err := m.extractManifest(wasmPath)
-		if err != nil {
-			log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, err)
-			return
-		}
-		if err := m.addPluginToDB(m.ctx, repo, pluginName, wasmPath, metadata); err != nil {
-			log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, err)
-		}
-
 	case actionUpdate:
 		// File changed - check SHA256 first, then extract manifest if needed
-		sha256Hash, err := computeFileSHA256(wasmPath)
+		sha256Hash, err := computeFileSHA256(ndpPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
 			return
@@ -174,12 +167,12 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 		dbPlugin, err := repo.Get(pluginName)
 		if err != nil {
 			// Plugin not in DB yet, need full manifest extraction to add it
-			metadata, extractErr := m.extractManifest(wasmPath)
+			metadata, extractErr := m.extractManifest(ndpPath)
 			if extractErr != nil {
 				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
 				return
 			}
-			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, wasmPath, metadata); addErr != nil {
+			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
 				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
 			}
 			return
@@ -191,7 +184,7 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 		}
 
 		// Plugin changed - now extract full manifest
-		metadata, err := m.extractManifest(wasmPath)
+		metadata, err := m.extractManifest(ndpPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
 			// Update error in DB
@@ -205,7 +198,7 @@ func (m *Manager) processPluginEvent(pluginName string, eventType notify.Event) 
 			return
 		}
 
-		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, wasmPath, metadata); err != nil {
+		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
 			log.Error(m.ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
 		}
 
