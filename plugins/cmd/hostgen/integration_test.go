@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -239,13 +240,14 @@ type ServiceB interface {
 				goDir := filepath.Join(outputDir, "go")
 				goClientEntries, err := os.ReadDir(goDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(goClientEntries).To(HaveLen(3), "Expected Go client file, doc.go, and go.mod")
+				Expect(goClientEntries).To(HaveLen(4), "Expected Go client file, stub file, doc.go, and go.mod")
 
-				// Find the client file (not doc.go or go.mod)
+				// Find the client file (not doc.go, go.mod, or stub)
 				var goClientName string
 				for _, entry := range goClientEntries {
-					if entry.Name() != "doc.go" && entry.Name() != "go.mod" {
-						goClientName = entry.Name()
+					name := entry.Name()
+					if name != "doc.go" && name != "go.mod" && !strings.HasSuffix(name, "_stub.go") {
+						goClientName = name
 						break
 					}
 				}
@@ -368,13 +370,14 @@ type ServiceB interface {
 			goDir := filepath.Join(clientDir, "go")
 			entries, err := os.ReadDir(goDir)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(entries).To(HaveLen(3), "Expected Go client file, doc.go, and go.mod")
+			Expect(entries).To(HaveLen(4), "Expected Go client file, stub file, doc.go, and go.mod")
 
-			// Find the client file (not doc.go or go.mod)
+			// Find the client file (not doc.go, go.mod, or stub)
 			var clientFileName string
 			for _, entry := range entries {
-				if entry.Name() != "doc.go" && entry.Name() != "go.mod" {
-					clientFileName = entry.Name()
+				name := entry.Name()
+				if name != "doc.go" && name != "go.mod" && !strings.HasSuffix(name, "_stub.go") {
+					clientFileName = name
 					break
 				}
 			}

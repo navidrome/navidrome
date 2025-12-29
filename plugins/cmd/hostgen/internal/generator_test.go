@@ -557,9 +557,6 @@ var _ = Describe("Generator", func() {
 			// Check for package declaration
 			Expect(codeStr).To(ContainSubstring("package ndhost"))
 
-			// Check for build tag
-			Expect(codeStr).To(ContainSubstring("//go:build wasip1"))
-
 			// Check for package documentation
 			Expect(codeStr).To(ContainSubstring("Package ndhost provides Navidrome host function wrappers"))
 
@@ -584,6 +581,54 @@ var _ = Describe("Generator", func() {
 
 			// Check for extism-go-pdk dependency
 			Expect(codeStr).To(ContainSubstring("github.com/extism/go-pdk"))
+		})
+	})
+
+	Describe("GenerateClientGoStub", func() {
+		It("should generate valid stub code with panic functions", func() {
+			svc := Service{
+				Name:       "Cache",
+				Permission: "cache",
+				Interface:  "CacheService",
+				Doc:        "CacheService provides caching capabilities.",
+				Methods: []Method{
+					{
+						Name: "Get",
+						Doc:  "Get retrieves a value from the cache.",
+						Params: []Param{
+							{Name: "key", Type: "string"},
+						},
+						Returns: []Param{
+							{Name: "value", Type: "string"},
+							{Name: "exists", Type: "bool"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateClientGoStub(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify it's valid Go code
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check for build tag (non-WASM)
+			Expect(codeStr).To(ContainSubstring("//go:build !wasip1"))
+
+			// Check for package declaration
+			Expect(codeStr).To(ContainSubstring("package ndhost"))
+
+			// Check for stub comment
+			Expect(codeStr).To(ContainSubstring("stub implementations for non-WASM builds"))
+
+			// Check for panic in function body
+			Expect(codeStr).To(ContainSubstring(`panic("ndhost: CacheGet is only available in WASM plugins")`))
+
+			// Check that types are defined (needed for IDE support)
+			Expect(codeStr).To(ContainSubstring("type CacheGetResponse struct"))
 		})
 	})
 
