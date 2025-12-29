@@ -126,7 +126,7 @@ def nd_on_init():
 def nd_scheduler_callback():
     """Handle scheduler callback - check and log now playing tracks."""
     input_data = extism.input_json()
-    schedule_id = input_data.get("schedule_id", "")
+    schedule_id = input_data.get("scheduleId", "")
     
     # Only handle our schedule
     if schedule_id != SCHEDULE_ID:

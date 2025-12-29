@@ -128,7 +128,7 @@ func _NdWebsocketOnTextMessage() int32 {
 // Input provided when a binary message is received
 type OnBinaryMessageInput struct {
 	// The unique identifier for the WebSocket connection that received the message.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The binary data received from the WebSocket, encoded as base64.
 	Data string `json:"data"`
 }
@@ -145,7 +145,7 @@ type OnCloseInput struct {
 	// 1001 for going away, 1006 for abnormal closure).
 	Code int32 `json:"code"`
 	// The unique identifier for the WebSocket connection that was closed.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The human-readable reason for the connection closure, if provided.
 	Reason string `json:"reason"`
 }
@@ -159,7 +159,7 @@ type OnCloseOutput struct {
 // Input provided when an error occurs on a WebSocket connection
 type OnErrorInput struct {
 	// The unique identifier for the WebSocket connection where the error occurred.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The error message describing what went wrong.
 	Error string `json:"error"`
 }
@@ -173,7 +173,7 @@ type OnErrorOutput struct {
 // Input provided when a text message is received
 type OnTextMessageInput struct {
 	// The unique identifier for the WebSocket connection that received the message.
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 	// The text message content received from the WebSocket.
 	Message string `json:"message"`
 }

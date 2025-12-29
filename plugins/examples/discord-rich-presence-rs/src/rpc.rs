@@ -86,6 +86,7 @@ struct HelloMessage {
 struct GatewayResponse {
     op: i32,
     #[serde(default)]
+    #[allow(dead_code)]
     d: Option<serde_json::Value>,
     #[serde(default)]
     s: Option<i64>,

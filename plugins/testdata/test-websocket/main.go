@@ -8,7 +8,7 @@ import (
 
 // OnTextMessageInput is the input for nd_websocket_on_text_message callback.
 type OnTextMessageInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Message      string `json:"message"`
 }
 
@@ -65,7 +65,7 @@ func ndWebSocketOnTextMessage() int32 {
 
 // OnBinaryMessageInput is the input for nd_websocket_on_binary_message callback.
 type OnBinaryMessageInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Data         string `json:"data"` // Base64 encoded
 }
 
@@ -94,7 +94,7 @@ func ndWebSocketOnBinaryMessage() int32 {
 
 // OnErrorInput is the input for nd_websocket_on_error callback.
 type OnErrorInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Error        string `json:"error"`
 }
 
@@ -123,7 +123,7 @@ func ndWebSocketOnError() int32 {
 
 // OnCloseInput is the input for nd_websocket_on_close callback.
 type OnCloseInput struct {
-	ConnectionID string `json:"connection_id"`
+	ConnectionID string `json:"connectionId"`
 	Code         int    `json:"code"`
 	Reason       string `json:"reason"`
 }

@@ -11,7 +11,7 @@ import (
 // Scrobbler input/output types
 
 type AuthInput struct {
-	UserID   string `json:"user_id"`
+	UserID   string `json:"userId"`
 	Username string `json:"username"`
 }
 
@@ -24,25 +24,25 @@ type TrackInfo struct {
 	Title             string  `json:"title"`
 	Album             string  `json:"album"`
 	Artist            string  `json:"artist"`
-	AlbumArtist       string  `json:"album_artist"`
+	AlbumArtist       string  `json:"albumArtist"`
 	Duration          float32 `json:"duration"`
-	TrackNumber       int     `json:"track_number"`
-	DiscNumber        int     `json:"disc_number"`
-	MbzRecordingID    string  `json:"mbz_recording_id,omitempty"`
-	MbzAlbumID        string  `json:"mbz_album_id,omitempty"`
-	MbzArtistID       string  `json:"mbz_artist_id,omitempty"`
-	MbzReleaseGroupID string  `json:"mbz_release_group_id,omitempty"`
+	TrackNumber       int     `json:"trackNumber"`
+	DiscNumber        int     `json:"discNumber"`
+	MbzRecordingID    string  `json:"mbzRecordingId,omitempty"`
+	MbzAlbumID        string  `json:"mbzAlbumId,omitempty"`
+	MbzArtistID       string  `json:"mbzArtistId,omitempty"`
+	MbzReleaseGroupID string  `json:"mbzReleaseGroupId,omitempty"`
 }
 
 type NowPlayingInput struct {
-	UserID   string    `json:"user_id"`
+	UserID   string    `json:"userId"`
 	Username string    `json:"username"`
 	Track    TrackInfo `json:"track"`
 	Position int       `json:"position"`
 }
 
 type ScrobbleInput struct {
-	UserID    string    `json:"user_id"`
+	UserID    string    `json:"userId"`
 	Username  string    `json:"username"`
 	Track     TrackInfo `json:"track"`
 	Timestamp int64     `json:"timestamp"`
@@ -50,7 +50,7 @@ type ScrobbleInput struct {
 
 type ScrobblerOutput struct {
 	Error     string `json:"error,omitempty"`
-	ErrorType string `json:"error_type,omitempty"`
+	ErrorType string `json:"errorType,omitempty"`
 }
 
 // checkConfigError checks if the plugin is configured to return an error.
