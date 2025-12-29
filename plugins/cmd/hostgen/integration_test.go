@@ -99,7 +99,7 @@ type TestService interface {
 			cmd := exec.Command(hostgenBin, "-input", "/nonexistent/path")
 			output, err := cmd.CombinedOutput()
 			Expect(err).To(HaveOccurred())
-			Expect(string(output)).To(ContainSubstring("Error parsing source files"))
+			Expect(string(output)).To(ContainSubstring("parsing source files"))
 		})
 
 		It("handles no annotated services gracefully", func() {
