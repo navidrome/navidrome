@@ -72,7 +72,7 @@ func GenerateHost(svc Service, pkgName string) ([]byte, error) {
 
 // GenerateClientGo generates client wrapper code for plugins to call host functions.
 func GenerateClientGo(svc Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/client_go.go.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/client.go.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading client template: %w", err)
 	}
@@ -98,7 +98,7 @@ func GenerateClientGo(svc Service) ([]byte, error) {
 // These stubs provide type definitions and function signatures for IDE support,
 // but panic at runtime since host functions are only available in WASM plugins.
 func GenerateClientGoStub(svc Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/client_go_stub.go.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/client_stub.go.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading client stub template: %w", err)
 	}
@@ -141,7 +141,7 @@ func formatDoc(doc string) string {
 
 // GenerateClientPython generates Python client wrapper code for plugins.
 func GenerateClientPython(svc Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/client_py.py.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/client.py.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading Python client template: %w", err)
 	}
@@ -199,7 +199,7 @@ func rustFuncMap(svc Service) template.FuncMap {
 
 // GenerateClientRust generates Rust client wrapper code for plugins.
 func GenerateClientRust(svc Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/client_rs.rs.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/client.rs.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading Rust client template: %w", err)
 	}
@@ -236,7 +236,7 @@ func firstLine(s string) string {
 
 // GenerateRustLib generates the lib.rs file that exposes all service modules.
 func GenerateRustLib(services []Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/lib_rs.rs.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/lib.rs.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading Rust lib template: %w", err)
 	}
@@ -265,7 +265,7 @@ func GenerateRustLib(services []Service) ([]byte, error) {
 
 // GenerateGoDoc generates the doc.go file that provides package documentation.
 func GenerateGoDoc(services []Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/doc_go.go.tmpl")
+	tmplContent, err := templatesFS.ReadFile("templates/doc.go.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("reading Go doc template: %w", err)
 	}
