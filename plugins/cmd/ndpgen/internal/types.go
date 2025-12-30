@@ -25,6 +25,7 @@ type Capability struct {
 	Structs     []StructDef  // Structs used by this capability
 	TypeAliases []TypeAlias  // Type aliases used by this capability
 	Consts      []ConstGroup // Const groups used by this capability
+	SourceFile  string       // Base name of source file without extension (e.g., "websocket_callback")
 }
 
 // TypeAlias represents a type alias definition (e.g., type ScrobblerErrorType string).

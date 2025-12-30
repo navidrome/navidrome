@@ -11,9 +11,13 @@
 //	# Generate capability wrappers (from plugins/capabilities to plugins/pdk)
 //	ndpgen -capability-only -input=./plugins/capabilities -output=./plugins/pdk
 //
+//	# Generate XTP schemas from capabilities (output to input directory)
+//	ndpgen -schemas -input=./plugins/capabilities
+//
 // Output directories:
 //   - Host functions:  $output/go/host/, $output/python/host/, $output/rust/host/
 //   - Capabilities:    $output/go/<capability>/ (e.g., $output/go/metadata/)
+//   - Schemas:         $input/<capability>.yaml (co-located with Go sources)
 //
 // Flags:
 //
@@ -22,6 +26,7 @@
 //	-package         Output package name for Go (default: host for host-only, auto for capabilities)
 //	-host-only       Generate only host function wrappers
 //	-capability-only Generate only capability export wrappers
+//	-schemas         Generate XTP YAML schemas from capabilities
 //	-go              Generate Go client wrappers (default: true when not using -python/-rust)
 //	-python          Generate Python client wrappers (default: false)
 //	-rust            Generate Rust client wrappers (default: false)
@@ -50,6 +55,7 @@ type config struct {
 	pkgName          string
 	hostOnly         bool
 	capabilityOnly   bool
+	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
 	generateGoClient bool
 	generatePyClient bool
 	generateRsClient bool
@@ -62,6 +68,14 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	if cfg.schemasOnly {
+		if err := runSchemaGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	if cfg.capabilityOnly {
@@ -104,6 +118,22 @@ func runCapabilityGeneration(cfg *config) error {
 	return generateCapabilityCode(cfg, capabilities)
 }
 
+// runSchemaGeneration handles XTP schema generation from capabilities.
+func runSchemaGeneration(cfg *config) error {
+	capabilities, err := parseCapabilities(cfg)
+	if err != nil {
+		return err
+	}
+	if len(capabilities) == 0 {
+		if cfg.verbose {
+			fmt.Println("No capabilities found")
+		}
+		return nil
+	}
+
+	return generateSchemas(cfg, capabilities)
+}
+
 // parseConfig parses command-line flags and returns the configuration.
 func parseConfig() (*config, error) {
 	var (
@@ -112,6 +142,7 @@ func parseConfig() (*config, error) {
 		pkgName        = flag.String("package", "", "Output package name for Go (default: host for host-only, auto for capabilities)")
 		hostOnly       = flag.Bool("host-only", false, "Generate only host function wrappers")
 		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
+		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
 		pyClient       = flag.Bool("python", false, "Generate Python client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
@@ -120,14 +151,26 @@ func parseConfig() (*config, error) {
 	)
 	flag.Parse()
 
-	// Default to host-only if neither mode is specified
-	if !*hostOnly && !*capabilityOnly {
+	// Count how many mode flags are specified
+	modeCount := 0
+	if *hostOnly {
+		modeCount++
+	}
+	if *capabilityOnly {
+		modeCount++
+	}
+	if *schemasOnly {
+		modeCount++
+	}
+
+	// Default to host-only if no mode is specified
+	if modeCount == 0 {
 		*hostOnly = true
 	}
 
-	// Cannot specify both modes
-	if *hostOnly && *capabilityOnly {
-		return nil, fmt.Errorf("cannot specify both -host-only and -capability-only")
+	// Cannot specify multiple modes
+	if modeCount > 1 {
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -capability-only, -schemas)")
 	}
 
 	if *outputDir == "" {
@@ -169,6 +212,7 @@ func parseConfig() (*config, error) {
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
 		capabilityOnly:   *capabilityOnly,
+		schemasOnly:      *schemasOnly,
 		generateGoClient: *goClient || !anyLangFlag,
 		generatePyClient: *pyClient,
 		generateRsClient: *rsClient,
@@ -581,6 +625,41 @@ func generateGoModFile(outputDir string, dryRun, verbose bool) error {
 
 	if verbose {
 		fmt.Printf("Generated Go go.mod: %s\n", modFile)
+	}
+	return nil
+}
+
+// generateSchemas generates XTP YAML schemas from capabilities.
+func generateSchemas(cfg *config, capabilities []internal.Capability) error {
+	for _, cap := range capabilities {
+		if err := generateSchemaFile(cap, cfg.inputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating schema for %s: %w", cap.Name, err)
+		}
+	}
+	return nil
+}
+
+// generateSchemaFile generates an XTP YAML schema file for a capability.
+func generateSchemaFile(cap internal.Capability, outputDir string, dryRun, verbose bool) error {
+	schema, err := internal.GenerateSchema(cap)
+	if err != nil {
+		return fmt.Errorf("generating schema: %w", err)
+	}
+
+	// Use the source file name: websocket_callback.go -> websocket_callback.yaml
+	schemaFile := filepath.Join(outputDir, cap.SourceFile+".yaml")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", schemaFile, schema)
+		return nil
+	}
+
+	if err := os.WriteFile(schemaFile, schema, 0600); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Generated XTP schema: %s\n", schemaFile)
 	}
 	return nil
 }

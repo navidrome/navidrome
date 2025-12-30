@@ -1,0 +1,46 @@
+version: v1-draft
+exports:
+    nd_scheduler_callback:
+        description: OnSchedulerCallback is called when a scheduled task fires.
+        input:
+            $ref: '#/components/schemas/SchedulerCallbackInput'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SchedulerCallbackOutput'
+            contentType: application/json
+components:
+    schemas:
+        SchedulerCallbackInput:
+            description: SchedulerCallbackInput is the input provided when a scheduled task fires.
+            type: object
+            properties:
+                scheduleId:
+                    type: string
+                    description: |-
+                        ScheduleID is the unique identifier for this scheduled task.
+                        This is either the ID provided when scheduling, or an auto-generated UUID if none was specified.
+                payload:
+                    type: string
+                    description: |-
+                        Payload is the payload data that was provided when the task was scheduled.
+                        Can be used to pass context or parameters to the callback handler.
+                isRecurring:
+                    type: boolean
+                    description: |-
+                        IsRecurring is true if this is a recurring schedule (created via ScheduleRecurring),
+                        false if it's a one-time schedule (created via ScheduleOneTime).
+            required:
+                - scheduleId
+                - payload
+                - isRecurring
+        SchedulerCallbackOutput:
+            description: SchedulerCallbackOutput is the output from the scheduler callback.
+            type: object
+            properties:
+                error:
+                    type: string
+                    description: |-
+                        Error is the error message if the callback failed to process the scheduled task.
+                        Empty or null indicates success. The error is logged but does not
+                        affect the scheduling system.
+                    nullable: true

@@ -1,0 +1,33 @@
+version: v1-draft
+exports:
+    nd_on_init:
+        description: |-
+            OnInit is called after a plugin is fully loaded with all services registered.
+            Plugins can use this function to perform one-time initialization tasks.
+            The output can contain an error string if initialization failed, which will be
+            logged but will not prevent the plugin from being loaded.
+        input:
+            $ref: '#/components/schemas/OnInitInput'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/OnInitOutput'
+            contentType: application/json
+components:
+    schemas:
+        OnInitInput:
+            description: |-
+                OnInitInput is the input provided to the init callback.
+                Currently empty, reserved for future use.
+            type: object
+            properties: {}
+        OnInitOutput:
+            description: OnInitOutput is the output from the init callback.
+            type: object
+            properties:
+                error:
+                    type: string
+                    description: |-
+                        Error is the error message if initialization failed.
+                        Empty or null indicates success.
+                        The error is logged but does not prevent the plugin from being loaded.
+                    nullable: true
