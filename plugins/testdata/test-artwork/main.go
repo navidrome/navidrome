@@ -38,33 +38,13 @@ func ndTestArtwork() int32 {
 
 	switch strings.ToLower(input.ArtworkType) {
 	case "artist":
-		resp, e := host.ArtworkGetArtistUrl(input.ID, input.Size)
-		if e != nil {
-			err = e
-		} else {
-			url = resp.Url
-		}
+		url, err = host.ArtworkGetArtistUrl(input.ID, input.Size)
 	case "album":
-		resp, e := host.ArtworkGetAlbumUrl(input.ID, input.Size)
-		if e != nil {
-			err = e
-		} else {
-			url = resp.Url
-		}
+		url, err = host.ArtworkGetAlbumUrl(input.ID, input.Size)
 	case "track":
-		resp, e := host.ArtworkGetTrackUrl(input.ID, input.Size)
-		if e != nil {
-			err = e
-		} else {
-			url = resp.Url
-		}
+		url, err = host.ArtworkGetTrackUrl(input.ID, input.Size)
 	case "playlist":
-		resp, e := host.ArtworkGetPlaylistUrl(input.ID, input.Size)
-		if e != nil {
-			err = e
-		} else {
-			url = resp.Url
-		}
+		url, err = host.ArtworkGetPlaylistUrl(input.ID, input.Size)
 	default:
 		errStr := "unknown artwork type: " + input.ArtworkType
 		pdk.OutputJSON(TestOutput{Error: &errStr})

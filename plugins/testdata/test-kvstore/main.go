@@ -47,13 +47,13 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "get":
-		resp, err := host.KVStoreGet(input.Key)
+		value, exists, err := host.KVStoreGet(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestKVStoreOutput{Value: resp.Value, Exists: resp.Exists})
+		pdk.OutputJSON(TestKVStoreOutput{Value: value, Exists: exists})
 		return 0
 
 	case "delete":
@@ -67,33 +67,33 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "has":
-		resp, err := host.KVStoreHas(input.Key)
+		exists, err := host.KVStoreHas(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestKVStoreOutput{Exists: resp.Exists})
+		pdk.OutputJSON(TestKVStoreOutput{Exists: exists})
 		return 0
 
 	case "list":
-		resp, err := host.KVStoreList(input.Prefix)
+		keys, err := host.KVStoreList(input.Prefix)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestKVStoreOutput{Keys: resp.Keys})
+		pdk.OutputJSON(TestKVStoreOutput{Keys: keys})
 		return 0
 
 	case "get_storage_used":
-		resp, err := host.KVStoreGetStorageUsed()
+		bytesUsed, err := host.KVStoreGetStorageUsed()
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestKVStoreOutput{StorageUsed: resp.Bytes})
+		pdk.OutputJSON(TestKVStoreOutput{StorageUsed: bytesUsed})
 		return 0
 
 	default:

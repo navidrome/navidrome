@@ -31,7 +31,7 @@ type CodecEncodeResponse struct {
 }
 
 // CodecEncode calls the codec_encode host function.
-func CodecEncode(data []byte) (*CodecEncodeResponse, error) {
+func CodecEncode(data []byte) ([]byte, error) {
 	// Marshal request to JSON
 	req := CodecEncodeRequest{
 		Data: data,
@@ -61,5 +61,5 @@ func CodecEncode(data []byte) (*CodecEncodeResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Result, nil
 }

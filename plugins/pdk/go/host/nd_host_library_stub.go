@@ -47,7 +47,7 @@ type LibraryGetAllLibrariesResponse struct {
 //   - id: The library's unique identifier
 //
 // Returns the library metadata, or an error if the library is not found.
-func LibraryGetLibrary(id int32) (*LibraryGetLibraryResponse, error) {
+func LibraryGetLibrary(id int32) (*Library, error) {
 	panic("host: LibraryGetLibrary is only available in WASM plugins")
 }
 
@@ -55,6 +55,6 @@ func LibraryGetLibrary(id int32) (*LibraryGetLibraryResponse, error) {
 // GetAllLibraries retrieves metadata for all configured libraries.
 //
 // Returns a slice of all libraries with their metadata.
-func LibraryGetAllLibraries() (*LibraryGetAllLibrariesResponse, error) {
+func LibraryGetAllLibraries() ([]Library, error) {
 	panic("host: LibraryGetAllLibraries is only available in WASM plugins")
 }

@@ -63,7 +63,7 @@ type LibraryGetAllLibrariesResponse struct {
 //   - id: The library's unique identifier
 //
 // Returns the library metadata, or an error if the library is not found.
-func LibraryGetLibrary(id int32) (*LibraryGetLibraryResponse, error) {
+func LibraryGetLibrary(id int32) (*Library, error) {
 	// Marshal request to JSON
 	req := LibraryGetLibraryRequest{
 		Id: id,
@@ -93,14 +93,14 @@ func LibraryGetLibrary(id int32) (*LibraryGetLibraryResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Result, nil
 }
 
 // LibraryGetAllLibraries calls the library_getalllibraries host function.
 // GetAllLibraries retrieves metadata for all configured libraries.
 //
 // Returns a slice of all libraries with their metadata.
-func LibraryGetAllLibraries() (*LibraryGetAllLibrariesResponse, error) {
+func LibraryGetAllLibraries() ([]Library, error) {
 	// No parameters - allocate empty JSON object
 	reqMem := pdk.AllocateBytes([]byte("{}"))
 	defer reqMem.Free()
@@ -123,5 +123,5 @@ func LibraryGetAllLibraries() (*LibraryGetAllLibrariesResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Result, nil
 }

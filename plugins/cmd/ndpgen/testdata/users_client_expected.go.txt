@@ -38,7 +38,7 @@ type UsersGetResponse struct {
 }
 
 // UsersGet calls the users_get host function.
-func UsersGet(id *string, filter *User) (*UsersGetResponse, error) {
+func UsersGet(id *string, filter *User) (*User, error) {
 	// Marshal request to JSON
 	req := UsersGetRequest{
 		Id:     id,
@@ -69,5 +69,5 @@ func UsersGet(id *string, filter *User) (*UsersGetResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Result, nil
 }

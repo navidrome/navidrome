@@ -70,7 +70,7 @@ type SchedulerCancelScheduleRequest struct {
 //   - scheduleID: Optional unique identifier for the scheduled job. If empty, one will be generated
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
-func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (*SchedulerScheduleOneTimeResponse, error) {
+func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (string, error) {
 	// Marshal request to JSON
 	req := SchedulerScheduleOneTimeRequest{
 		DelaySeconds: delaySeconds,
@@ -79,7 +79,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -94,15 +94,15 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 	// Parse the response
 	var response SchedulerScheduleOneTimeResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.NewScheduleID, nil
 }
 
 // SchedulerScheduleRecurring calls the scheduler_schedulerecurring host function.
@@ -115,7 +115,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 //   - scheduleID: Optional unique identifier for the scheduled job. If empty, one will be generated
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
-func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (*SchedulerScheduleRecurringResponse, error) {
+func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (string, error) {
 	// Marshal request to JSON
 	req := SchedulerScheduleRecurringRequest{
 		CronExpression: cronExpression,
@@ -124,7 +124,7 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -139,15 +139,15 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 	// Parse the response
 	var response SchedulerScheduleRecurringResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.NewScheduleID, nil
 }
 
 // SchedulerCancelSchedule calls the scheduler_cancelschedule host function.

@@ -109,11 +109,11 @@ func parseTickerSymbols(tickerConfig string) []string {
 // connectAndSubscribe connects to Coinbase WebSocket and subscribes to tickers
 func connectAndSubscribe(tickers []string) error {
 	// Connect to WebSocket using host function
-	resp, err := host.WebSocketConnect(coinbaseWSEndpoint, nil, connectionID)
+	newConnID, err := host.WebSocketConnect(coinbaseWSEndpoint, nil, connectionID)
 	if err != nil {
 		return fmt.Errorf("WebSocket connection error: %w", err)
 	}
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("Connected to Coinbase WebSocket API (connection: %s)", resp.NewConnectionID))
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("Connected to Coinbase WebSocket API (connection: %s)", newConnID))
 
 	// Subscribe to ticker channel
 	subscription := CoinbaseSubscription{

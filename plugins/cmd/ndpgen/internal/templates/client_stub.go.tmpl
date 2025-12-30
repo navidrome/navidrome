@@ -52,13 +52,7 @@ type {{responseType .}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc}}
 {{- end}}
-{{- if .IsErrorOnly}}
-func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) error {
+func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{.ReturnSignature}} {
 	panic("{{$.Package}}: {{$.Service.Name}}{{.Name}} is only available in WASM plugins")
 }
-{{- else}}
-func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) (*{{responseType .}}, error) {
-	panic("{{$.Package}}: {{$.Service.Name}}{{.Name}} is only available in WASM plugins")
-}
-{{- end}}
 {{- end}}

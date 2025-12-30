@@ -37,14 +37,14 @@ type StoreSaveResponse struct {
 }
 
 // StoreSave calls the store_save host function.
-func StoreSave(item Item) (*StoreSaveResponse, error) {
+func StoreSave(item Item) (string, error) {
 	// Marshal request to JSON
 	req := StoreSaveRequest{
 		Item: item,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -59,13 +59,13 @@ func StoreSave(item Item) (*StoreSaveResponse, error) {
 	// Parse the response
 	var response StoreSaveResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Id, nil
 }

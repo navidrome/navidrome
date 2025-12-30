@@ -78,7 +78,7 @@ func KVStoreSet(key string, value []byte) error {
 //   - key: The storage key
 //
 // Returns the value and whether the key exists.
-func KVStoreGet(key string) (*KVStoreGetResponse, error) {
+func KVStoreGet(key string) ([]byte, bool, error) {
 	panic("host: KVStoreGet is only available in WASM plugins")
 }
 
@@ -100,7 +100,7 @@ func KVStoreDelete(key string) error {
 //   - key: The storage key
 //
 // Returns true if the key exists.
-func KVStoreHas(key string) (*KVStoreHasResponse, error) {
+func KVStoreHas(key string) (bool, error) {
 	panic("host: KVStoreHas is only available in WASM plugins")
 }
 
@@ -111,12 +111,12 @@ func KVStoreHas(key string) (*KVStoreHasResponse, error) {
 //   - prefix: Key prefix to filter by (empty string returns all keys)
 //
 // Returns a slice of matching keys.
-func KVStoreList(prefix string) (*KVStoreListResponse, error) {
+func KVStoreList(prefix string) ([]string, error) {
 	panic("host: KVStoreList is only available in WASM plugins")
 }
 
 // KVStoreGetStorageUsed is a stub that panics on non-WASM platforms.
 // GetStorageUsed returns the total storage used by this plugin in bytes.
-func KVStoreGetStorageUsed() (*KVStoreGetStorageUsedResponse, error) {
+func KVStoreGetStorageUsed() (int64, error) {
 	panic("host: KVStoreGetStorageUsed is only available in WASM plugins")
 }

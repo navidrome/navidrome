@@ -24,6 +24,6 @@ type SubsonicAPICallResponse struct {
 //
 // The uri parameter should be the Subsonic API path without the server prefix,
 // e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
-func SubsonicAPICall(uri string) (*SubsonicAPICallResponse, error) {
+func SubsonicAPICall(uri string) (string, error) {
 	panic("host: SubsonicAPICall is only available in WASM plugins")
 }

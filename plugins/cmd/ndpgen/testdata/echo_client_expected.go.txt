@@ -31,14 +31,14 @@ type EchoEchoResponse struct {
 }
 
 // EchoEcho calls the echo_echo host function.
-func EchoEcho(message string) (*EchoEchoResponse, error) {
+func EchoEcho(message string) (string, error) {
 	// Marshal request to JSON
 	req := EchoEchoRequest{
 		Message: message,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -53,13 +53,13 @@ func EchoEcho(message string) (*EchoEchoResponse, error) {
 	// Parse the response
 	var response EchoEchoResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Reply, nil
 }
