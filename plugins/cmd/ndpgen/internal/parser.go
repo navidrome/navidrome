@@ -135,11 +135,16 @@ func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error)
 				continue
 			}
 
+			// Extract source file base name (e.g., "websocket_callback" from "websocket_callback.go")
+			baseName := filepath.Base(path)
+			sourceFile := strings.TrimSuffix(baseName, ".go")
+
 			capability := Capability{
-				Name:      capAnnotation["name"],
-				Interface: typeSpec.Name.Name,
-				Required:  capAnnotation["required"] == "true",
-				Doc:       cleanDoc(docText),
+				Name:       capAnnotation["name"],
+				Interface:  typeSpec.Name.Name,
+				Required:   capAnnotation["required"] == "true",
+				Doc:        cleanDoc(docText),
+				SourceFile: sourceFile,
 			}
 
 			// Parse methods and collect referenced types
