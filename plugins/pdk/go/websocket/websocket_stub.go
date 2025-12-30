@@ -8,11 +8,12 @@
 
 package websocket
 
-// OnErrorResponse is the response from the error handler.
-type OnErrorResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
+// OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
+type OnErrorRequest struct {
+	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
+	ConnectionID string `json:"connectionId"`
+	// Error is the error message describing what went wrong.
+	Error string `json:"error"`
 }
 
 // OnCloseRequest is the request provided when a WebSocket connection is closed.
@@ -26,13 +27,6 @@ type OnCloseRequest struct {
 	Reason string `json:"reason"`
 }
 
-// OnCloseResponse is the response from the close handler.
-type OnCloseResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
-}
-
 // OnTextMessageRequest is the request provided when a text message is received.
 type OnTextMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
@@ -41,34 +35,12 @@ type OnTextMessageRequest struct {
 	Message string `json:"message"`
 }
 
-// OnTextMessageResponse is the response from the text message handler.
-type OnTextMessageResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
-}
-
 // OnBinaryMessageRequest is the request provided when a binary message is received.
 type OnBinaryMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
 	ConnectionID string `json:"connectionId"`
 	// Data is the binary data received from the WebSocket, encoded as base64.
 	Data string `json:"data"`
-}
-
-// OnBinaryMessageResponse is the response from the binary message handler.
-type OnBinaryMessageResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
-}
-
-// OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
-type OnErrorRequest struct {
-	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
-	ConnectionID string `json:"connectionId"`
-	// Error is the error message describing what went wrong.
-	Error string `json:"error"`
 }
 
 // WebSocket is the marker interface for websocket plugins.
@@ -82,22 +54,22 @@ type WebSocket interface{}
 
 // TextMessageProvider provides the OnTextMessage function.
 type TextMessageProvider interface {
-	OnTextMessage(OnTextMessageRequest) (OnTextMessageResponse, error)
+	OnTextMessage(OnTextMessageRequest) error
 }
 
 // BinaryMessageProvider provides the OnBinaryMessage function.
 type BinaryMessageProvider interface {
-	OnBinaryMessage(OnBinaryMessageRequest) (OnBinaryMessageResponse, error)
+	OnBinaryMessage(OnBinaryMessageRequest) error
 }
 
 // ErrorProvider provides the OnError function.
 type ErrorProvider interface {
-	OnError(OnErrorRequest) (OnErrorResponse, error)
+	OnError(OnErrorRequest) error
 }
 
 // CloseProvider provides the OnClose function.
 type CloseProvider interface {
-	OnClose(OnCloseRequest) (OnCloseResponse, error)
+	OnClose(OnCloseRequest) error
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

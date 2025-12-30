@@ -4,29 +4,4 @@ exports:
         description: |-
             OnInit is called after a plugin is fully loaded with all services registered.
             Plugins can use this function to perform one-time initialization tasks.
-            The output can contain an error string if initialization failed, which will be
-            logged but will not prevent the plugin from being loaded.
-        input:
-            $ref: '#/components/schemas/InitRequest'
-            contentType: application/json
-        output:
-            $ref: '#/components/schemas/InitResponse'
-            contentType: application/json
-components:
-    schemas:
-        InitRequest:
-            description: |-
-                InitRequest is the request provided to the init callback.
-                Currently empty, reserved for future use.
-            type: object
-            properties: {}
-        InitResponse:
-            description: InitResponse is the response from the init callback.
-            type: object
-            properties:
-                error:
-                    type: string
-                    description: |-
-                        Error is the error message if initialization failed.
-                        Empty string indicates success.
-                        The error is logged but does not prevent the plugin from being loaded.
+            Errors are logged but will not prevent the plugin from being loaded.

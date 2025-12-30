@@ -13,20 +13,7 @@ package capabilities
 type Lifecycle interface {
 	// OnInit is called after a plugin is fully loaded with all services registered.
 	// Plugins can use this function to perform one-time initialization tasks.
-	// The output can contain an error string if initialization failed, which will be
-	// logged but will not prevent the plugin from being loaded.
+	// Errors are logged but will not prevent the plugin from being loaded.
 	//nd:export name=nd_on_init
-	OnInit(InitRequest) (InitResponse, error)
-}
-
-// InitRequest is the request provided to the init callback.
-// Currently empty, reserved for future use.
-type InitRequest struct{}
-
-// InitResponse is the response from the init callback.
-type InitResponse struct {
-	// Error is the error message if initialization failed.
-	// Empty string indicates success.
-	// The error is logged but does not prevent the plugin from being loaded.
-	Error string `json:"error,omitempty"`
+	OnInit() error
 }

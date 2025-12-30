@@ -8,8 +8,9 @@ package capabilities
 //nd:capability name=scheduler
 type SchedulerCallback interface {
 	// OnSchedulerCallback is called when a scheduled task fires.
+	// Errors are logged but do not affect the scheduling system.
 	//nd:export name=nd_scheduler_callback
-	OnSchedulerCallback(SchedulerCallbackRequest) (SchedulerCallbackResponse, error)
+	OnSchedulerCallback(SchedulerCallbackRequest) error
 }
 
 // SchedulerCallbackRequest is the request provided when a scheduled task fires.
@@ -23,12 +24,4 @@ type SchedulerCallbackRequest struct {
 	// IsRecurring is true if this is a recurring schedule (created via ScheduleRecurring),
 	// false if it's a one-time schedule (created via ScheduleOneTime).
 	IsRecurring bool `json:"isRecurring"`
-}
-
-// SchedulerCallbackResponse is the response from the scheduler callback.
-type SchedulerCallbackResponse struct {
-	// Error is the error message if the callback failed to process the scheduled task.
-	// Empty string indicates success. The error is logged but does not
-	// affect the scheduling system.
-	Error string `json:"error,omitempty"`
 }

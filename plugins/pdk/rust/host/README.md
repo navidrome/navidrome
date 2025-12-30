@@ -10,7 +10,7 @@ These wrappers provide idiomatic Rust APIs for interacting with Navidrome from W
 To regenerate:
 
 ```bash
-make generate-pdk
+make gen
 ```
 
 ## Usage

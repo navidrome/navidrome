@@ -112,16 +112,16 @@ type TrackInfo struct {
 // all three functions: IsAuthorized, NowPlaying, and Scrobble.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
-	IsAuthorized(IsAuthorizedRequest) (IsAuthorizedResponse, error)
+	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
 	// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
-	NowPlaying(NowPlayingRequest) (ScrobblerResponse, error)
+	NowPlaying(NowPlayingRequest) (*ScrobblerResponse, error)
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
-	Scrobble(ScrobbleRequest) (ScrobblerResponse, error)
+	Scrobble(ScrobbleRequest) (*ScrobblerResponse, error)
 } // Internal implementation holders
 var (
-	isAuthorizedImpl func(IsAuthorizedRequest) (IsAuthorizedResponse, error)
-	nowPlayingImpl   func(NowPlayingRequest) (ScrobblerResponse, error)
-	scrobbleImpl     func(ScrobbleRequest) (ScrobblerResponse, error)
+	isAuthorizedImpl func(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
+	nowPlayingImpl   func(NowPlayingRequest) (*ScrobblerResponse, error)
+	scrobbleImpl     func(ScrobbleRequest) (*ScrobblerResponse, error)
 )
 
 // Register registers a scrobbler implementation.

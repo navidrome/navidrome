@@ -330,7 +330,7 @@ func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connecti
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[capabilities.OnTextMessageRequest, capabilities.OnTextMessageResponse](ctx, instance, FuncWebSocketOnTextMessage, input)
+	err := callPluginFunctionNoOutput(ctx, instance, FuncWebSocketOnTextMessage, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -351,7 +351,7 @@ func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connec
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[capabilities.OnBinaryMessageRequest, capabilities.OnBinaryMessageResponse](ctx, instance, FuncWebSocketOnBinaryMessage, input)
+	err := callPluginFunctionNoOutput(ctx, instance, FuncWebSocketOnBinaryMessage, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -372,7 +372,7 @@ func (s *webSocketServiceImpl) invokeOnError(ctx context.Context, connectionID, 
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[capabilities.OnErrorRequest, capabilities.OnErrorResponse](ctx, instance, FuncWebSocketOnError, input)
+	err := callPluginFunctionNoOutput(ctx, instance, FuncWebSocketOnError, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -394,7 +394,7 @@ func (s *webSocketServiceImpl) invokeOnClose(ctx context.Context, connectionID s
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[capabilities.OnCloseRequest, capabilities.OnCloseResponse](ctx, instance, FuncWebSocketOnClose, input)
+	err := callPluginFunctionNoOutput(ctx, instance, FuncWebSocketOnClose, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {

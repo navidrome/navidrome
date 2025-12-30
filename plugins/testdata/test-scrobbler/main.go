@@ -48,6 +48,8 @@ type ScrobbleInput struct {
 	Timestamp int64     `json:"timestamp"`
 }
 
+// ScrobblerOutput contains error information from scrobble operations.
+// A nil pointer indicates success, non-nil indicates an error with details.
 type ScrobblerOutput struct {
 	Error     string `json:"error,omitempty"`
 	ErrorType string `json:"errorType,omitempty"`
@@ -87,16 +89,17 @@ func ndScrobblerIsAuthorized() int32 {
 	var input AuthInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
-		return 1
+		return -1
 	}
 
-	output := AuthOutput{
+	// Return pointer to output
+	output := &AuthOutput{
 		Authorized: checkAuthConfig(),
 	}
 
 	if err := pdk.OutputJSON(output); err != nil {
 		pdk.SetError(err)
-		return 1
+		return -1
 	}
 	return 0
 }
@@ -106,19 +109,19 @@ func ndScrobblerNowPlaying() int32 {
 	var input NowPlayingInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
-		return 1
+		return -1
 	}
 
-	// Check for configured error
+	// Check for configured error - return pointer to error output
 	hasErr, errMsg, errType := checkConfigError()
 	if hasErr {
-		output := ScrobblerOutput{
+		output := &ScrobblerOutput{
 			Error:     errMsg,
 			ErrorType: errType,
 		}
 		if err := pdk.OutputJSON(output); err != nil {
 			pdk.SetError(err)
-			return 1
+			return -1
 		}
 		return 0
 	}
@@ -127,7 +130,11 @@ func ndScrobblerNowPlaying() int32 {
 	// In a real plugin, this would send to an external service
 	pdk.Log(pdk.LogInfo, "NowPlaying: "+input.Track.Title+" by "+input.Track.Artist)
 
-	// Success - no output needed
+	// Success - output nil (empty response)
+	if err := pdk.OutputJSON(nil); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
 	return 0
 }
 
@@ -136,19 +143,19 @@ func ndScrobblerScrobble() int32 {
 	var input ScrobbleInput
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
-		return 1
+		return -1
 	}
 
-	// Check for configured error
+	// Check for configured error - return pointer to error output
 	hasErr, errMsg, errType := checkConfigError()
 	if hasErr {
-		output := ScrobblerOutput{
+		output := &ScrobblerOutput{
 			Error:     errMsg,
 			ErrorType: errType,
 		}
 		if err := pdk.OutputJSON(output); err != nil {
 			pdk.SetError(err)
-			return 1
+			return -1
 		}
 		return 0
 	}
@@ -157,7 +164,11 @@ func ndScrobblerScrobble() int32 {
 	// In a real plugin, this would send to an external service
 	pdk.Log(pdk.LogInfo, "Scrobble: "+input.Track.Title+" by "+input.Track.Artist)
 
-	// Success - no output needed
+	// Success - output nil (empty response)
+	if err := pdk.OutputJSON(nil); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
 	return 0
 }
 

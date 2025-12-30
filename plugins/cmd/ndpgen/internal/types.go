@@ -113,6 +113,21 @@ func (e Export) ExportFuncName() string {
 	return result.String()
 }
 
+// HasInput returns true if the method has an input parameter.
+func (e Export) HasInput() bool {
+	return e.Input.Type != ""
+}
+
+// HasOutput returns true if the method has a non-error return value.
+func (e Export) HasOutput() bool {
+	return e.Output.Type != ""
+}
+
+// IsPointerOutput returns true if the output type is a pointer.
+func (e Export) IsPointerOutput() bool {
+	return strings.HasPrefix(e.Output.Type, "*")
+}
+
 // StructDef represents a Go struct type definition.
 type StructDef struct {
 	Name   string     // Go struct name (e.g., "Library")

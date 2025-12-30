@@ -7,31 +7,17 @@ import (
 
 //go:wasmexport nd_scheduler_callback
 func _NdSchedulerCallback() int32 {
-	var err error
-	_ = err
-	pdk.Log(pdk.LogDebug, "NdSchedulerCallback: getting JSON input")
 	var input SchedulerCallbackInput
-	err = pdk.InputJSON(&input)
-	if err != nil {
+	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
 
-	pdk.Log(pdk.LogDebug, "NdSchedulerCallback: calling implementation function")
-	output, err := NdSchedulerCallback(input)
-	if err != nil {
+	if err := NdSchedulerCallback(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
 
-	pdk.Log(pdk.LogDebug, "NdSchedulerCallback: setting JSON output")
-	err = pdk.OutputJSON(output)
-	if err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	pdk.Log(pdk.LogDebug, "NdSchedulerCallback: returning")
 	return 0
 }
 
@@ -46,12 +32,4 @@ type SchedulerCallbackInput struct {
 	// The unique identifier for this scheduled task. This is either the ID
 	// provided when scheduling, or an auto-generated UUID if none was specified.
 	ScheduleId string `json:"scheduleId"`
-}
-
-// Output from the scheduler callback
-type SchedulerCallbackOutput struct {
-	// Error message if the callback failed to process the scheduled task.
-	// Empty or null indicates success. The error is logged but does not
-	// affect the scheduling system.
-	Error *string `json:"error,omitempty"`
 }
