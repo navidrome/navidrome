@@ -22,23 +22,25 @@ It relies on several host services declared in the manifest:
 
 ## Architecture
 
-The plugin registers capabilities by exporting the required functions:
+The plugin registers capabilities using the PDK Register pattern:
 
 ```go
-// Scrobbler capability
-//export nd_scrobbler_is_authorized
-//export nd_scrobbler_now_playing
-//export nd_scrobbler_scrobble
+import (
+    "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
+    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
+    "github.com/navidrome/navidrome/plugins/pdk/go/websocket"
+)
 
-// WebSocket callback capability
-//export nd_websocket_on_text_message
-//export nd_websocket_on_binary_message
-//export nd_websocket_on_error
-//export nd_websocket_on_close
+type discordPlugin struct{}
 
-// Scheduler callback capability
-//export nd_scheduler_callback
+func init() {
+    scrobbler.Register(&discordPlugin{})
+    scheduler.Register(&discordPlugin{})
+    websocket.Register(&discordPlugin{})
+}
 ```
+
+The PDK generates the appropriate export wrappers automatically.
 
 When `NowPlaying` is invoked the plugin:
 
@@ -96,11 +98,11 @@ Folder = "/path/to/plugins"
 
 ## Files
 
-| File         | Description                                            |
-|--------------|--------------------------------------------------------|
-| `main.go`    | Plugin entry point, capability registration, and implementations |
-| `rpc.go`     | Discord gateway communication and RPC logic            |
-| `go.mod`     | Go module file                                         |
+| File      | Description                                                      |
+|-----------|------------------------------------------------------------------|
+| `main.go` | Plugin entry point, capability registration, and implementations |
+| `rpc.go`  | Discord gateway communication and RPC logic                      |
+| `go.mod`  | Go module file                                                   |
 
 ## PDK
 

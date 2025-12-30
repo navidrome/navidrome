@@ -52,8 +52,8 @@ func init() {
     metadata.Register(&myPlugin{})
 }
 
-func (p *myPlugin) GetArtistBiography(input metadata.ArtistInput) (metadata.ArtistBiographyOutput, error) {
-    return metadata.ArtistBiographyOutput{Biography: "..."}, nil
+func (p *myPlugin) GetArtistBiography(input metadata.ArtistRequest) (metadata.ArtistBiographyResponse, error) {
+    return metadata.ArtistBiographyResponse{Biography: "..."}, nil
 }
 ```
 
