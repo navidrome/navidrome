@@ -19,7 +19,7 @@ use nd_pdk::scheduler::{Error as SchedulerError, SchedulerCallbackProvider, Sche
 use std::fs;
 
 // Register capabilities using PDK macros
-nd_pdk::register_init!(LibraryInspector);
+nd_pdk::register_lifecycle_init!(LibraryInspector);
 nd_pdk::register_scheduler_callback!(LibraryInspector);
 
 // ============================================================================
