@@ -3,6 +3,8 @@
 package main
 
 import (
+	"errors"
+
 	pdk "github.com/extism/go-pdk"
 )
 
@@ -10,11 +12,6 @@ import (
 type OnTextMessageInput struct {
 	ConnectionID string `json:"connectionId"`
 	Message      string `json:"message"`
-}
-
-// OnTextMessageOutput is the output from nd_websocket_on_text_message callback.
-type OnTextMessageOutput struct {
-	Error *string `json:"error,omitempty"`
 }
 
 // nd_websocket_on_text_message is called when a text message is received.
@@ -28,9 +25,8 @@ type OnTextMessageOutput struct {
 func ndWebSocketOnTextMessage() int32 {
 	var input OnTextMessageInput
 	if err := pdk.InputJSON(&input); err != nil {
-		errStr := err.Error()
-		pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-		return 0
+		pdk.SetError(err)
+		return -1
 	}
 
 	// Store all received messages for test verification
@@ -38,28 +34,22 @@ func ndWebSocketOnTextMessage() int32 {
 
 	switch input.Message {
 	case "echo":
-		_, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message)
-		if err != nil {
-			errStr := err.Error()
-			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-			return 0
+		if _, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message); err != nil {
+			pdk.SetError(err)
+			return -1
 		}
 
 	case "close":
-		_, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin")
-		if err != nil {
-			errStr := err.Error()
-			pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-			return 0
+		if _, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin"); err != nil {
+			pdk.SetError(err)
+			return -1
 		}
 
 	case "fail":
-		errStr := "intentional test failure"
-		pdk.OutputJSON(OnTextMessageOutput{Error: &errStr})
-		return 0
+		pdk.SetError(errors.New("intentional test failure"))
+		return -1
 	}
 
-	pdk.OutputJSON(OnTextMessageOutput{})
 	return 0
 }
 
@@ -69,26 +59,19 @@ type OnBinaryMessageInput struct {
 	Data         string `json:"data"` // Base64 encoded
 }
 
-// OnBinaryMessageOutput is the output from nd_websocket_on_binary_message callback.
-type OnBinaryMessageOutput struct {
-	Error *string `json:"error,omitempty"`
-}
-
 // nd_websocket_on_binary_message is called when a binary message is received.
 //
 //go:wasmexport nd_websocket_on_binary_message
 func ndWebSocketOnBinaryMessage() int32 {
 	var input OnBinaryMessageInput
 	if err := pdk.InputJSON(&input); err != nil {
-		errStr := err.Error()
-		pdk.OutputJSON(OnBinaryMessageOutput{Error: &errStr})
-		return 0
+		pdk.SetError(err)
+		return -1
 	}
 
 	// Store received binary data for test verification
 	storeReceivedMessage("binary:" + input.Data)
 
-	pdk.OutputJSON(OnBinaryMessageOutput{})
 	return 0
 }
 
@@ -98,26 +81,19 @@ type OnErrorInput struct {
 	Error        string `json:"error"`
 }
 
-// OnErrorOutput is the output from nd_websocket_on_error callback.
-type OnErrorOutput struct {
-	Error *string `json:"error,omitempty"`
-}
-
 // nd_websocket_on_error is called when an error occurs on a WebSocket connection.
 //
 //go:wasmexport nd_websocket_on_error
 func ndWebSocketOnError() int32 {
 	var input OnErrorInput
 	if err := pdk.InputJSON(&input); err != nil {
-		errStr := err.Error()
-		pdk.OutputJSON(OnErrorOutput{Error: &errStr})
-		return 0
+		pdk.SetError(err)
+		return -1
 	}
 
 	// Store error for test verification
 	storeReceivedMessage("error:" + input.Error)
 
-	pdk.OutputJSON(OnErrorOutput{})
 	return 0
 }
 
@@ -128,26 +104,19 @@ type OnCloseInput struct {
 	Reason       string `json:"reason"`
 }
 
-// OnCloseOutput is the output from nd_websocket_on_close callback.
-type OnCloseOutput struct {
-	Error *string `json:"error,omitempty"`
-}
-
 // nd_websocket_on_close is called when a WebSocket connection is closed.
 //
 //go:wasmexport nd_websocket_on_close
 func ndWebSocketOnClose() int32 {
 	var input OnCloseInput
 	if err := pdk.InputJSON(&input); err != nil {
-		errStr := err.Error()
-		pdk.OutputJSON(OnCloseOutput{Error: &errStr})
-		return 0
+		pdk.SetError(err)
+		return -1
 	}
 
 	// Store close event for test verification
 	storeReceivedMessage("close:" + input.Reason)
 
-	pdk.OutputJSON(OnCloseOutput{})
 	return 0
 }
 

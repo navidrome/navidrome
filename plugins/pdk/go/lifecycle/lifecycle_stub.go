@@ -8,19 +8,6 @@
 
 package lifecycle
 
-// InitRequest is the request provided to the init callback.
-// Currently empty, reserved for future use.
-type InitRequest struct {
-}
-
-// InitResponse is the response from the init callback.
-type InitResponse struct {
-	// Error is the error message if initialization failed.
-	// Empty string indicates success.
-	// The error is logged but does not prevent the plugin from being loaded.
-	Error string `json:"error,omitempty"`
-}
-
 // Lifecycle is the marker interface for lifecycle plugins.
 // Implement one or more of the provider interfaces below.
 // Lifecycle provides plugin lifecycle hooks.
@@ -35,7 +22,7 @@ type Lifecycle interface{}
 
 // InitProvider provides the OnInit function.
 type InitProvider interface {
-	OnInit(InitRequest) (InitResponse, error)
+	OnInit() error
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

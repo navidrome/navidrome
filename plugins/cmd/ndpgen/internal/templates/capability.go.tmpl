@@ -68,7 +68,15 @@ type {{.Name}} struct {
 type {{agentName .Capability}} interface {
 {{- range .Capability.Methods}}
 	// {{.Name}}{{if .Doc}} - {{.Doc}}{{end}}
+	{{- if and .HasInput .HasOutput}}
 	{{.Name}}({{.Input.Type}}) ({{.Output.Type}}, error)
+	{{- else if .HasInput}}
+	{{.Name}}({{.Input.Type}}) error
+	{{- else if .HasOutput}}
+	{{.Name}}() ({{.Output.Type}}, error)
+	{{- else}}
+	{{.Name}}() error
+	{{- end}}
 {{- end}}
 }
 {{- else}}
@@ -87,7 +95,15 @@ type {{agentName .Capability}} interface{}
 
 // {{providerInterface .}} provides the {{.Name}} function.
 type {{providerInterface .}} interface {
+	{{- if and .HasInput .HasOutput}}
 	{{.Name}}({{.Input.Type}}) ({{.Output.Type}}, error)
+	{{- else if .HasInput}}
+	{{.Name}}({{.Input.Type}}) error
+	{{- else if .HasOutput}}
+	{{.Name}}() ({{.Output.Type}}, error)
+	{{- else}}
+	{{.Name}}() error
+	{{- end}}
 }
 {{- end}}
 {{- end}}
@@ -97,7 +113,15 @@ type {{providerInterface .}} interface {
 // Internal implementation holders
 var (
 {{- range .Capability.Methods}}
+	{{- if and .HasInput .HasOutput}}
 	{{implVar .}} func({{.Input.Type}}) ({{.Output.Type}}, error)
+	{{- else if .HasInput}}
+	{{implVar .}} func({{.Input.Type}}) error
+	{{- else if .HasOutput}}
+	{{implVar .}} func() ({{.Output.Type}}, error)
+	{{- else}}
+	{{implVar .}} func() error
+	{{- end}}
 {{- end}}
 )
 
@@ -133,12 +157,15 @@ func {{exportFunc .}}() int32 {
 		// Return standard code - host will skip this plugin gracefully
 		return NotImplementedCode
 	}
+{{- if .HasInput}}
 
 	var input {{.Input.Type}}
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
+{{- end}}
+{{- if and .HasInput .HasOutput}}
 
 	output, err := {{implVar .}}(input)
 	if err != nil {
@@ -150,6 +177,31 @@ func {{exportFunc .}}() int32 {
 		pdk.SetError(err)
 		return -1
 	}
+{{- else if .HasInput}}
+
+	if err := {{implVar .}}(input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+{{- else if .HasOutput}}
+
+	output, err := {{implVar .}}()
+	if err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	if err := pdk.OutputJSON(output); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+{{- else}}
+
+	if err := {{implVar .}}(); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+{{- end}}
 
 	return 0
 }

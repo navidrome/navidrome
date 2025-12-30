@@ -202,14 +202,9 @@ func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID st
 	}
 
 	start := time.Now()
-	result, err := callPluginFunction[capabilities.SchedulerCallbackRequest, capabilities.SchedulerCallbackResponse](ctx, instance, FuncSchedulerCallback, input)
+	err := callPluginFunctionNoOutput(ctx, instance, FuncSchedulerCallback, input)
 	if err != nil {
 		log.Error(ctx, "Scheduler callback failed", "plugin", s.pluginName, "scheduleID", scheduleID, "duration", time.Since(start), err)
-		return
-	}
-
-	if result.Error != "" {
-		log.Error(ctx, "Scheduler callback returned error", "plugin", s.pluginName, "scheduleID", scheduleID, "error", result.Error, "duration", time.Since(start))
 		return
 	}
 

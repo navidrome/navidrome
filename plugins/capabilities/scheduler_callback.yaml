@@ -1,12 +1,11 @@
 version: v1-draft
 exports:
     nd_scheduler_callback:
-        description: OnSchedulerCallback is called when a scheduled task fires.
+        description: |-
+            OnSchedulerCallback is called when a scheduled task fires.
+            Errors are logged but do not affect the scheduling system.
         input:
             $ref: '#/components/schemas/SchedulerCallbackRequest'
-            contentType: application/json
-        output:
-            $ref: '#/components/schemas/SchedulerCallbackResponse'
             contentType: application/json
 components:
     schemas:
@@ -33,13 +32,3 @@ components:
                 - scheduleId
                 - payload
                 - isRecurring
-        SchedulerCallbackResponse:
-            description: SchedulerCallbackResponse is the response from the scheduler callback.
-            type: object
-            properties:
-                error:
-                    type: string
-                    description: |-
-                        Error is the error message if the callback failed to process the scheduled task.
-                        Empty string indicates success. The error is logged but does not
-                        affect the scheduling system.

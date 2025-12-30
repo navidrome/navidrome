@@ -154,12 +154,6 @@ struct SchedulerCallbackInput {
     is_recurring: bool,
 }
 
-#[derive(Serialize, Default)]
-struct SchedulerCallbackOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
-
 // ============================================================================
 // WebSocket Callback Types
 // ============================================================================
@@ -172,24 +166,12 @@ struct OnTextMessageInput {
     message: String,
 }
 
-#[derive(Serialize, Default)]
-struct OnTextMessageOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct OnBinaryMessageInput {
     connection_id: String,
     message: Vec<u8>,
-}
-
-#[derive(Serialize, Default)]
-struct OnBinaryMessageOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -200,12 +182,6 @@ struct OnErrorInput {
     error: String,
 }
 
-#[derive(Serialize, Default)]
-struct OnErrorOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
@@ -213,12 +189,6 @@ struct OnCloseInput {
     connection_id: String,
     code: i32,
     reason: String,
-}
-
-#[derive(Serialize, Default)]
-struct OnCloseOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
 }
 
 // ============================================================================
@@ -248,7 +218,7 @@ pub fn nd_scrobbler_is_authorized(Json(input): Json<AuthInput>) -> FnResult<Json
 #[plugin_fn]
 pub fn nd_scrobbler_now_playing(
     Json(input): Json<NowPlayingInput>,
-) -> FnResult<Json<ScrobblerOutput>> {
+) -> FnResult<Json<Option<ScrobblerOutput>>> {
     info!(
         "Setting presence for user {}, track: {}",
         input.username, input.track.title
@@ -259,10 +229,10 @@ pub fn nd_scrobbler_now_playing(
         Ok(config) => config,
         Err(e) => {
             let err_msg = format!("failed to get config: {:?}", e);
-            return Ok(Json(ScrobblerOutput {
+            return Ok(Json(Some(ScrobblerOutput {
                 error: Some(err_msg),
                 error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-            }));
+            })));
         }
     };
 
@@ -271,20 +241,20 @@ pub fn nd_scrobbler_now_playing(
         Some(token) => token.clone(),
         None => {
             let err_msg = format!("user '{}' not authorized", input.username);
-            return Ok(Json(ScrobblerOutput {
+            return Ok(Json(Some(ScrobblerOutput {
                 error: Some(err_msg),
                 error_type: Some(ERROR_TYPE_NOT_AUTHORIZED.to_string()),
-            }));
+            })));
         }
     };
 
     // Connect to Discord
     if let Err(e) = rpc::connect(&input.username, &user_token) {
         let err_msg = format!("failed to connect to Discord: {:?}", e);
-        return Ok(Json(ScrobblerOutput {
+        return Ok(Json(Some(ScrobblerOutput {
             error: Some(err_msg),
             error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-        }));
+        })));
     }
 
     // Cancel any existing completion schedule
@@ -320,10 +290,10 @@ pub fn nd_scrobbler_now_playing(
         },
     ) {
         let err_msg = format!("failed to send activity: {:?}", e);
-        return Ok(Json(ScrobblerOutput {
+        return Ok(Json(Some(ScrobblerOutput {
             error: Some(err_msg),
             error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-        }));
+        })));
     }
 
     // Schedule a timer to clear the activity after the track completes
@@ -336,14 +306,15 @@ pub fn nd_scrobbler_now_playing(
         warn!("Failed to schedule completion timer: {:?}", e);
     }
 
-    Ok(Json(ScrobblerOutput::default()))
+    // Success - return None to indicate no error
+    Ok(Json(None))
 }
 
 /// Handles scrobble requests (no-op for Discord Rich Presence).
 #[plugin_fn]
-pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<Json<ScrobblerOutput>> {
-    // Discord Rich Presence doesn't need scrobble events
-    Ok(Json(ScrobblerOutput::default()))
+pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<Json<Option<ScrobblerOutput>>> {
+    // Discord Rich Presence doesn't need scrobble events - success
+    Ok(Json(None))
 }
 
 // ============================================================================
@@ -352,34 +323,23 @@ pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<Json<Scrob
 
 /// Handles scheduler callbacks for heartbeat and activity clearing.
 #[plugin_fn]
-pub fn nd_scheduler_callback(
-    Json(input): Json<SchedulerCallbackInput>,
-) -> FnResult<Json<SchedulerCallbackOutput>> {
-
+pub fn nd_scheduler_callback(Json(input): Json<SchedulerCallbackInput>) -> FnResult<()> {
     match input.payload.as_str() {
         PAYLOAD_HEARTBEAT => {
             // Heartbeat callback - schedule_id is the username
-            if let Err(e) = rpc::handle_heartbeat_callback(&input.schedule_id) {
-                return Ok(Json(SchedulerCallbackOutput {
-                    error: Some(e.to_string()),
-                }));
-            }
+            rpc::handle_heartbeat_callback(&input.schedule_id)?;
         }
         PAYLOAD_CLEAR_ACTIVITY => {
             // Clear activity callback - schedule_id is "username-clear"
             let username = input.schedule_id.trim_end_matches("-clear");
-            if let Err(e) = rpc::handle_clear_activity_callback(username) {
-                return Ok(Json(SchedulerCallbackOutput {
-                    error: Some(e.to_string()),
-                }));
-            }
+            rpc::handle_clear_activity_callback(username)?;
         }
         _ => {
             warn!("Unknown scheduler callback payload: {}", input.payload);
         }
     }
 
-    Ok(Json(SchedulerCallbackOutput::default()))
+    Ok(())
 }
 
 // ============================================================================
@@ -388,42 +348,34 @@ pub fn nd_scheduler_callback(
 
 /// Handles incoming WebSocket text messages.
 #[plugin_fn]
-pub fn nd_websocket_on_text_message(
-    Json(input): Json<OnTextMessageInput>,
-) -> FnResult<Json<OnTextMessageOutput>> {
-    if let Err(e) = rpc::handle_websocket_message(&input.connection_id, &input.message) {
-        return Ok(Json(OnTextMessageOutput {
-            error: Some(e.to_string()),
-        }));
-    }
-    Ok(Json(OnTextMessageOutput::default()))
+pub fn nd_websocket_on_text_message(Json(input): Json<OnTextMessageInput>) -> FnResult<()> {
+    rpc::handle_websocket_message(&input.connection_id, &input.message)?;
+    Ok(())
 }
 
 /// Handles incoming WebSocket binary messages.
 #[plugin_fn]
-pub fn nd_websocket_on_binary_message(
-    Json(_input): Json<OnBinaryMessageInput>,
-) -> FnResult<Json<OnBinaryMessageOutput>> {
+pub fn nd_websocket_on_binary_message(Json(_input): Json<OnBinaryMessageInput>) -> FnResult<()> {
     // Binary messages are not expected from Discord
-    Ok(Json(OnBinaryMessageOutput::default()))
+    Ok(())
 }
 
 /// Handles WebSocket errors.
 #[plugin_fn]
-pub fn nd_websocket_on_error(Json(input): Json<OnErrorInput>) -> FnResult<Json<OnErrorOutput>> {
+pub fn nd_websocket_on_error(Json(input): Json<OnErrorInput>) -> FnResult<()> {
     warn!(
         "WebSocket error for connection '{}': {}",
         input.connection_id, input.error
     );
-    Ok(Json(OnErrorOutput::default()))
+    Ok(())
 }
 
 /// Handles WebSocket connection closure.
 #[plugin_fn]
-pub fn nd_websocket_on_close(Json(input): Json<OnCloseInput>) -> FnResult<Json<OnCloseOutput>> {
+pub fn nd_websocket_on_close(Json(input): Json<OnCloseInput>) -> FnResult<()> {
     info!(
         "WebSocket connection '{}' closed with code {}: {}",
         input.connection_id, input.code, input.reason
     );
-    Ok(Json(OnCloseOutput::default()))
+    Ok(())
 }

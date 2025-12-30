@@ -117,9 +117,7 @@ def nd_on_init():
     except Exception as e:
         extism.log(extism.LogLevel.Error, f"Failed to schedule task: {e}")
         raise
-    
-    # Return empty success response
-    extism.output_str(json.dumps({}))
+    # No output - lifecycle callbacks don't return responses
 
 
 @extism.plugin_fn
@@ -130,7 +128,6 @@ def nd_scheduler_callback():
     
     # Only handle our schedule
     if schedule_id != SCHEDULE_ID:
-        extism.output_str(json.dumps({}))
         return
     
     try:
@@ -164,10 +161,8 @@ def nd_scheduler_callback():
                     extism.LogLevel.Info,
                     f"🎵 {username} is playing: {artist} - {title} ({album})"
                 )
-        
-        extism.output_str(json.dumps({}))
+        # No output - scheduler callbacks don't return responses
         
     except Exception as e:
-        error_msg = str(e)
-        extism.log(extism.LogLevel.Error, f"Failed to get now playing: {error_msg}")
-        extism.output_str(json.dumps({"error": error_msg}))
+        extism.log(extism.LogLevel.Error, f"Failed to get now playing: {e}")
+        # Errors are logged but scheduler callbacks don't return responses

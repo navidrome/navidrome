@@ -24,14 +24,6 @@ type SchedulerCallbackRequest struct {
 	IsRecurring bool `json:"isRecurring"`
 }
 
-// SchedulerCallbackResponse is the response from the scheduler callback.
-type SchedulerCallbackResponse struct {
-	// Error is the error message if the callback failed to process the scheduled task.
-	// Empty string indicates success. The error is logged but does not
-	// affect the scheduling system.
-	Error string `json:"error,omitempty"`
-}
-
 // Scheduler is the marker interface for scheduler plugins.
 // Implement one or more of the provider interfaces below.
 // SchedulerCallback provides scheduled task handling.
@@ -42,10 +34,10 @@ type Scheduler interface{}
 
 // SchedulerCallbackProvider provides the OnSchedulerCallback function.
 type SchedulerCallbackProvider interface {
-	OnSchedulerCallback(SchedulerCallbackRequest) (SchedulerCallbackResponse, error)
+	OnSchedulerCallback(SchedulerCallbackRequest) error
 } // Internal implementation holders
 var (
-	schedulerCallbackImpl func(SchedulerCallbackRequest) (SchedulerCallbackResponse, error)
+	schedulerCallbackImpl func(SchedulerCallbackRequest) error
 )
 
 // Register registers a scheduler implementation.
@@ -73,13 +65,7 @@ func _NdSchedulerCallback() int32 {
 		return -1
 	}
 
-	output, err := schedulerCallbackImpl(input)
-	if err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	if err := pdk.OutputJSON(output); err != nil {
+	if err := schedulerCallbackImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}

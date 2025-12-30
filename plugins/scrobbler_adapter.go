@@ -45,8 +45,8 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 		Username: username,
 	}
 
-	result, err := callPluginFunction[capabilities.IsAuthorizedRequest, capabilities.IsAuthorizedResponse](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
-	if err != nil {
+	result, err := callPluginFunction[capabilities.IsAuthorizedRequest, *capabilities.IsAuthorizedResponse](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
+	if err != nil || result == nil {
 		return false
 	}
 
@@ -63,7 +63,7 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 		Position: int32(position),
 	}
 
-	result, err := callPluginFunction[capabilities.NowPlayingRequest, capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerNowPlaying, input)
+	result, err := callPluginFunction[capabilities.NowPlayingRequest, *capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerNowPlaying, input)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
-	result, err := callPluginFunction[capabilities.ScrobbleRequest, capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerScrobble, input)
+	result, err := callPluginFunction[capabilities.ScrobbleRequest, *capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerScrobble, input)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,10 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 }
 
 // mapScrobblerError converts the plugin output error to a scrobbler error
-func mapScrobblerError(output capabilities.ScrobblerResponse) error {
+func mapScrobblerError(output *capabilities.ScrobblerResponse) error {
+	if output == nil {
+		return nil
+	}
 	switch output.ErrorType {
 	case capabilities.ScrobblerErrorNone, "":
 		return nil

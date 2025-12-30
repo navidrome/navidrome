@@ -109,11 +109,11 @@ type TrackInfo struct {
 // all three functions: IsAuthorized, NowPlaying, and Scrobble.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
-	IsAuthorized(IsAuthorizedRequest) (IsAuthorizedResponse, error)
+	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
 	// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
-	NowPlaying(NowPlayingRequest) (ScrobblerResponse, error)
+	NowPlaying(NowPlayingRequest) (*ScrobblerResponse, error)
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
-	Scrobble(ScrobbleRequest) (ScrobblerResponse, error)
+	Scrobble(ScrobbleRequest) (*ScrobblerResponse, error)
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

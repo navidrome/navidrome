@@ -93,31 +93,31 @@ func getImageURL(trackID string) string {
 // ============================================================================
 
 // IsAuthorized checks if a user is authorized for Discord Rich Presence.
-func (p *discordPlugin) IsAuthorized(input scrobbler.IsAuthorizedRequest) (scrobbler.IsAuthorizedResponse, error) {
+func (p *discordPlugin) IsAuthorized(input scrobbler.IsAuthorizedRequest) (*scrobbler.IsAuthorizedResponse, error) {
 	_, users, err := getConfig()
 	if err != nil {
-		return scrobbler.IsAuthorizedResponse{}, fmt.Errorf("failed to check user authorization: %w", err)
+		return nil, fmt.Errorf("failed to check user authorization: %w", err)
 	}
 
 	_, authorized := users[input.Username]
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("IsAuthorized for user %s: %v", input.Username, authorized))
-	return scrobbler.IsAuthorizedResponse{Authorized: authorized}, nil
+	return &scrobbler.IsAuthorizedResponse{Authorized: authorized}, nil
 }
 
 // NowPlaying sends a now playing notification to Discord.
-func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (scrobbler.ScrobblerResponse, error) {
+func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (*scrobbler.ScrobblerResponse, error) {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Setting presence for user %s, track: %s", input.Username, input.Track.Title))
 
 	// Load configuration
 	clientID, users, err := getConfig()
 	if err != nil {
-		return scrobbler.ScrobblerResponse{}, fmt.Errorf("failed to get config: %w", err)
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
 	// Check authorization
 	userToken, authorized := users[input.Username]
 	if !authorized {
-		return scrobbler.ScrobblerResponse{
+		return &scrobbler.ScrobblerResponse{
 			Error:     fmt.Sprintf("user '%s' not authorized", input.Username),
 			ErrorType: scrobbler.ScrobblerErrorNotAuthorized,
 		}, nil
@@ -125,7 +125,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (scrobbler
 
 	// Connect to Discord
 	if err := connect(input.Username, userToken); err != nil {
-		return scrobbler.ScrobblerResponse{
+		return &scrobbler.ScrobblerResponse{
 			Error:     fmt.Sprintf("failed to connect to Discord: %v", err),
 			ErrorType: scrobbler.ScrobblerErrorRetryLater,
 		}, nil
@@ -155,7 +155,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (scrobbler
 			LargeText:  input.Track.Album,
 		},
 	}); err != nil {
-		return scrobbler.ScrobblerResponse{
+		return &scrobbler.ScrobblerResponse{
 			Error:     fmt.Sprintf("failed to send activity: %v", err),
 			ErrorType: scrobbler.ScrobblerErrorRetryLater,
 		}, nil
@@ -168,13 +168,13 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (scrobbler
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to schedule completion timer: %v", err))
 	}
 
-	return scrobbler.ScrobblerResponse{}, nil
+	return &scrobbler.ScrobblerResponse{}, nil
 }
 
 // Scrobble handles scrobble requests (no-op for Discord).
-func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) (scrobbler.ScrobblerResponse, error) {
+func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) (*scrobbler.ScrobblerResponse, error) {
 	// Discord Rich Presence doesn't need scrobble events
-	return scrobbler.ScrobblerResponse{}, nil
+	return &scrobbler.ScrobblerResponse{}, nil
 }
 
 // ============================================================================
@@ -182,7 +182,7 @@ func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) (scrobbler.Scrobbl
 // ============================================================================
 
 // OnSchedulerCallback handles scheduler callbacks.
-func (p *discordPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) (scheduler.SchedulerCallbackResponse, error) {
+func (p *discordPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) error {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("Scheduler callback: id=%s, payload=%s, recurring=%v", input.ScheduleID, input.Payload, input.IsRecurring))
 
 	// Route based on payload
@@ -190,21 +190,21 @@ func (p *discordPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackReq
 	case payloadHeartbeat:
 		// Heartbeat callback - scheduleId is the username
 		if err := handleHeartbeatCallback(input.ScheduleID); err != nil {
-			return scheduler.SchedulerCallbackResponse{Error: err.Error()}, nil
+			return err
 		}
 
 	case payloadClearActivity:
 		// Clear activity callback - scheduleId is "username-clear"
 		username := strings.TrimSuffix(input.ScheduleID, "-clear")
 		if err := handleClearActivityCallback(username); err != nil {
-			return scheduler.SchedulerCallbackResponse{Error: err.Error()}, nil
+			return err
 		}
 
 	default:
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Unknown scheduler callback payload: %s", input.Payload))
 	}
 
-	return scheduler.SchedulerCallbackResponse{}, nil
+	return nil
 }
 
 // ============================================================================
@@ -212,29 +212,26 @@ func (p *discordPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackReq
 // ============================================================================
 
 // OnTextMessage handles incoming WebSocket text messages.
-func (p *discordPlugin) OnTextMessage(input websocket.OnTextMessageRequest) (websocket.OnTextMessageResponse, error) {
-	if err := handleWebSocketMessage(input.ConnectionID, input.Message); err != nil {
-		return websocket.OnTextMessageResponse{Error: err.Error()}, nil
-	}
-	return websocket.OnTextMessageResponse{}, nil
+func (p *discordPlugin) OnTextMessage(input websocket.OnTextMessageRequest) error {
+	return handleWebSocketMessage(input.ConnectionID, input.Message)
 }
 
 // OnBinaryMessage handles incoming WebSocket binary messages.
-func (p *discordPlugin) OnBinaryMessage(input websocket.OnBinaryMessageRequest) (websocket.OnBinaryMessageResponse, error) {
+func (p *discordPlugin) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("Received unexpected binary message for connection '%s'", input.ConnectionID))
-	return websocket.OnBinaryMessageResponse{}, nil
+	return nil
 }
 
 // OnError handles WebSocket errors.
-func (p *discordPlugin) OnError(input websocket.OnErrorRequest) (websocket.OnErrorResponse, error) {
+func (p *discordPlugin) OnError(input websocket.OnErrorRequest) error {
 	pdk.Log(pdk.LogWarn, fmt.Sprintf("WebSocket error for connection '%s': %s", input.ConnectionID, input.Error))
-	return websocket.OnErrorResponse{}, nil
+	return nil
 }
 
 // OnClose handles WebSocket connection closure.
-func (p *discordPlugin) OnClose(input websocket.OnCloseRequest) (websocket.OnCloseResponse, error) {
+func (p *discordPlugin) OnClose(input websocket.OnCloseRequest) error {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("WebSocket connection '%s' closed with code %d: %s", input.ConnectionID, input.Code, input.Reason))
-	return websocket.OnCloseResponse{}, nil
+	return nil
 }
 
 func main() {}
