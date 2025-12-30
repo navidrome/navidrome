@@ -419,7 +419,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"hasHashMap":          hasHashMap,
 		"agentName":           capabilityAgentName,
 		"providerInterface":   func(e Export) string { return e.ProviderInterfaceName() },
-		"registerMacroName":   registerMacroName,
+		"registerMacroName":   func(name string) string { return registerMacroName(cap.Name, name) },
 		"snakeCase":           ToSnakeCase,
 		"indent": func(spaces int, s string) string {
 			indent := strings.Repeat(" ", spaces)
@@ -509,16 +509,23 @@ func hasHashMap(cap Capability) bool {
 }
 
 // registerMacroName returns the macro name for registering an optional method.
-// For "GetArtistBiography", returns "register_artist_biography".
-func registerMacroName(name string) string {
-	// Remove common prefixes
+// For package "websocket" and method "OnClose", returns "register_websocket_close".
+// Also handles deduplication when method name starts with package name (e.g., "scheduler" + "OnSchedulerCallback" → "register_scheduler_callback").
+func registerMacroName(pkg, name string) string {
+	// Remove common prefixes from method name
 	for _, prefix := range []string{"Get", "On"} {
 		if strings.HasPrefix(name, prefix) {
 			name = name[len(prefix):]
 			break
 		}
 	}
-	return "register_" + ToSnakeCase(name)
+	// Check if the method name starts with the package name to avoid duplication
+	// e.g., package="scheduler", method="SchedulerCallback" → just "register_scheduler_callback"
+	pkgTitle := strings.Title(pkg) //nolint:staticcheck
+	if strings.HasPrefix(name, pkgTitle) {
+		return "register_" + ToSnakeCase(name)
+	}
+	return "register_" + ToSnakeCase(pkg) + "_" + ToSnakeCase(name)
 }
 
 // GenerateCapabilityRust generates Rust export wrapper code for a capability.
