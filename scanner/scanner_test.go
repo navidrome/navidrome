@@ -3,11 +3,16 @@ package scanner_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing/fstest"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -24,8 +29,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 // Easy aliases for the storagetest package
@@ -53,7 +56,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
-		//conf.Server.DbPath = ":memory:"
+		// conf.Server.DbPath = ":memory:"
 		db.Db().SetMaxOpenConns(1)
 	})
 
@@ -914,6 +917,355 @@ var _ = Describe("Scanner", Ordered, func() {
 			albumArtistStats := updatedArtist.Stats[model.RoleAlbumArtist]
 			Expect(albumArtistStats.AlbumCount).To(Equal(1)) // 1 album
 			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
+		})
+	})
+
+	Describe("External CUE Sheet Support", func() {
+		var album func(...map[string]any) *fstest.MapFile
+
+		BeforeEach(func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEExternal
+
+			album = template(_t{
+				"albumArtist": "Test Artist",
+				"album":       "Test Album",
+				"year":        2023,
+				"duration":    20 * time.Minute.Milliseconds(),
+			})
+
+			// Create a CUE file content as raw text
+			cueContent := []byte(`FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track 1"
+    PERFORMER "Test Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2"
+    PERFORMER "Test Artist"
+    INDEX 01 03:30:00
+  TRACK 03 AUDIO
+    TITLE "Track 3"
+    PERFORMER "Test Artist"
+    INDEX 01 07:15:00`)
+
+			createFS(fstest.MapFS{
+				"music/Test Artist/Test Album/album.cue":  {Data: cueContent},
+				"music/Test Artist/Test Album/album.flac": album(),
+				"music/Test Artist/Test Album/cover.jpg":  {Data: []byte{0xFF, 0xD8, 0xFF}},
+			})
+		})
+
+		It("should detect CUE files during scan", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify folder was created
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Find folder by checking all folders
+			var foundFolder *model.Folder
+			for i := range folders {
+				if folders[i].Name == "Test Album" {
+					foundFolder = &folders[i]
+					break
+				}
+			}
+			Expect(foundFolder).ToNot(BeNil(), "Test Album folder should exist")
+			// Folder should have 1 audio file
+			Expect(foundFolder.NumAudioFiles).To(BeNumerically(">=", 1))
+
+			// Get all tracks
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			// Should have 3 tracks from the CUE sheet
+			Expect(allTracks).To(HaveLen(3))
+
+			// Verify each track has CUEFile field set
+			for i, track := range allTracks {
+				Expect(track.Duration).To(BeNumerically(">=", float32(1)))
+				Expect(track.Title).To(Equal(fmt.Sprintf("Track %d", i+1)))
+				Expect(track.Artist).To(Equal(fmt.Sprintf("Test Artist")))
+				Expect(track.Album).To(Equal(fmt.Sprintf("Test Album")))
+				Expect(track.SubTrack).To(BeNumerically("==", i))
+				Expect(track.CUEFile).To(ContainSubstring("album.cue"))
+			}
+		})
+
+		It("should not scan CUE files when external support is disabled", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEDisable
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Get all tracks
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should have at least 1 track (the FLAC file itself)
+			Expect(allTracks).To(HaveLen(1))
+			Expect(allTracks[0].CUEFile).To(BeEmpty())
+		})
+
+		It("should not scan CUE files when embedded support enabled", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEEmbedded
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Get all tracks
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should have at least 1 track (the FLAC file itself)
+			Expect(allTracks).To(HaveLen(1))
+			Expect(allTracks[0].CUEFile).To(BeEmpty())
+		})
+	})
+
+	Describe("CUE Sheet Support", func() {
+		var image1 func(...map[string]any) *fstest.MapFile
+		var image2 func(...map[string]any) *fstest.MapFile
+
+		BeforeEach(func() {
+			image1 = template(_t{
+				"albumArtist": "Test Artist",
+				"album":       "Test Album",
+				"year":        2023,
+				"duration":    10 * time.Minute.Milliseconds(),
+				"suffix":      "flac",
+				"cuesheet": `REM GENRE Folk
+REM DATE 2005
+REM DISCID 9A0D690B
+REM COMMENT ExactAudioCopy v0.99pb1
+PERFORMER "Thanateros"
+TITLE "Into The Otherworld"
+FILE "disc1.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track 1"
+    PERFORMER "Test Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2"
+    PERFORMER "Test Artist"
+    INDEX 01 03:30:00
+  TRACK 03 AUDIO
+    TITLE "Track 3"
+    PERFORMER "Test Artist"
+    INDEX 01 07:15:00`,
+			})
+
+			image2 = template(_t{
+				"albumArtist": "Test Artist",
+				"album":       "Test Album",
+				"year":        2023,
+				"duration":    5 * time.Minute.Milliseconds(),
+				"suffix":      "flac",
+				"cuesheet": `REM GENRE Folk
+REM DATE 2005
+REM DISCID 9A0D690B
+REM COMMENT ExactAudioCopy v0.99pb1
+PERFORMER "Thanateros"
+TITLE "Into The Otherworld"
+FILE "disc2.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track 1"
+    PERFORMER "Test Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2"
+    PERFORMER "Test Artist"
+    INDEX 01 03:30:00`,
+			})
+
+			cueContent1 := []byte(`REM GENRE Folk
+REM DATE 2005
+REM DISCID 9A0D690B
+REM COMMENT ExactAudioCopy v0.99pb1
+PERFORMER "Thanateros External"
+TITLE "Into The Otherworld External"
+FILE "disc1.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Crimson, Part 1"
+    PERFORMER "Test Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2 External"
+    PERFORMER "Test Artist"
+    INDEX 01 03:30:00
+  TRACK 03 AUDIO
+    TITLE "Track 3 External"
+    PERFORMER "Test Artist"
+    INDEX 01 07:15:00`)
+
+			cueContent2 := []byte(`REM GENRE Folk
+REM DATE 2005
+REM DISCID 9A0D690B
+REM COMMENT ExactAudioCopy v0.99pb1
+PERFORMER "Thanateros External"
+TITLE "Into The Otherworld External"
+FILE "disc2.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track 1 External"
+    PERFORMER "Test Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track 2 External"
+    PERFORMER "Test Artist"
+    INDEX 01 03:30:00`)
+
+			createFS(fstest.MapFS{
+				"music/Test Artist/Test Album/disc1.cue":  {Data: cueContent1},
+				"music/Test Artist/Test Album/disc1.flac": image1(),
+				"music/Test Artist/Test Album/disc2.cue":  {Data: cueContent2},
+				"music/Test Artist/Test Album/disc2.flac": image2(),
+				"music/Test Artist/Test Album/cover.jpg":  {Data: []byte{0xFF, 0xD8, 0xFF}},
+			})
+		})
+
+		It("should handle folders with multiple audio files and CUE sheets (only external)", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEExternal
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify folder exists and has audio files
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundFolder *model.Folder
+			for i := range folders {
+				if folders[i].Name == "Test Album" {
+					foundFolder = &folders[i]
+					break
+				}
+			}
+			Expect(foundFolder).ToNot(BeNil(), "Test Album folder should exist")
+			Expect(foundFolder.NumAudioFiles).To(Equal(2))
+
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(allTracks).To(HaveLen(5))
+
+			allTracks, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Crimson, Part 1"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(allTracks).To(HaveLen(1))
+			Expect(allTracks[0].Tags).ToNot(HaveKey("cuesheet"), "Tags should not contain embedded cuesheet data")
+			Expect(allTracks[0].CUEFile).To(
+				Equal("disc1.cue"),
+				"CUEFile should reference the correct CUE sheet",
+			)
+		})
+
+		It("should handle folders with multiple audio files and CUE sheets (external,embedded)", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEPreferExternal
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify folder exists and has audio files
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundFolder *model.Folder
+			for i := range folders {
+				if folders[i].Name == "Test Album" {
+					foundFolder = &folders[i]
+					break
+				}
+			}
+			Expect(foundFolder).ToNot(BeNil(), "Test Album folder should exist")
+			Expect(foundFolder.NumAudioFiles).To(Equal(2))
+
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(allTracks).To(HaveLen(5))
+
+			allTracks, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Crimson, Part 1"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(allTracks).To(HaveLen(1))
+			Expect(allTracks[0].Tags).ToNot(HaveKey("cuesheet"), "Tags should not contain embedded cuesheet data")
+			Expect(allTracks[0].CUEFile).To(
+				Equal("disc1.cue"),
+				"CUEFile should reference the correct CUE sheet",
+			)
+		})
+
+		It("should handle folders with multiple audio files and CUE sheets (only embedded)", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEEmbedded
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify folder exists and has audio files
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundFolder *model.Folder
+			for i := range folders {
+				if folders[i].Name == "Test Album" {
+					foundFolder = &folders[i]
+					break
+				}
+			}
+			Expect(foundFolder).ToNot(BeNil(), "Test Album folder should exist")
+			Expect(foundFolder.NumAudioFiles).To(Equal(2))
+
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(allTracks).To(HaveLen(5))
+
+			allTracks, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Track 1", "artist": "Test Artist"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(allTracks).To(HaveLen(2))
+			for _, track := range allTracks {
+				Expect(track.Tags).ToNot(HaveKey("cuesheet"), "Tags should not contain embedded cuesheet data")
+				Expect(track.CUEFile).To(BeEmpty(), "CUEFile should be empty for embedded CUE support")
+				Expect(track.SubTrack).To(BeNumerically(">=", 0))
+				Expect(track.AlbumArtist).To(ContainSubstring("Test Artist"))
+				Expect(track.AlbumArtist).To(ContainSubstring("Thanateros"))
+			}
+		})
+
+		It("should handle folders with multiple audio files and CUE sheets (embedded,external)", func() {
+			conf.Server.Scanner.CUESheetSupport = consts.CUEPreferEmbedded
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Verify folder exists and has audio files
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundFolder *model.Folder
+			for i := range folders {
+				if folders[i].Name == "Test Album" {
+					foundFolder = &folders[i]
+					break
+				}
+			}
+			Expect(foundFolder).ToNot(BeNil(), "Test Album folder should exist")
+			Expect(foundFolder.NumAudioFiles).To(Equal(2))
+
+			allTracks, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(allTracks).To(HaveLen(5))
+
+			allTracks, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Track 1", "artist": "Test Artist"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(allTracks).To(HaveLen(2))
+			for _, track := range allTracks {
+				Expect(track.Tags).ToNot(HaveKey("cuesheet"), "Tags should not contain embedded cuesheet data")
+				Expect(track.CUEFile).To(BeEmpty(), "CUEFile should be empty for embedded CUE support")
+				Expect(track.SubTrack).To(BeNumerically(">=", 0))
+				Expect(track.AlbumArtist).To(ContainSubstring("Test Artist"))
+				Expect(track.AlbumArtist).To(ContainSubstring("Thanateros"))
+			}
 		})
 	})
 })

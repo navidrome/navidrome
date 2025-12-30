@@ -6,10 +6,12 @@ import (
 	"io"
 	"mime"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	intMime "github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
@@ -45,7 +47,7 @@ type streamJob struct {
 }
 
 func (j *streamJob) Key() string {
-	return fmt.Sprintf("%s.%s.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.format, j.offset)
+	return fmt.Sprintf("%s.%s.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.mf.SubTrack, j.bitRate, j.format, j.offset)
 }
 
 func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
@@ -57,13 +59,32 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqOffset)
 }
 
+func (ms *mediaStreamer) rawStream(stream *Stream, mf *model.MediaFile) (*Stream, error) {
+	f, err := os.Open(mf.Path)
+	if err != nil {
+		return nil, err
+	}
+	stream.ReadCloser = f
+	stream.Seeker = f
+	stream.format = mf.Suffix
+	return stream, nil
+}
+
+func (ms *mediaStreamer) allowStreaming(mf *model.MediaFile) bool {
+	if mf.SubTrack > -1 {
+		return false
+	}
+	// TODO: Decide on information from players supported format
+	return mf.Suffix != "ape" && mf.Suffix != "wv"
+}
+
 func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
 	defer func() {
 		log.Info(ctx, "Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
-			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
+			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != mf.Suffix,
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
@@ -71,19 +92,12 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 	filePath := mf.AbsolutePath()
 
-	if format == "raw" {
+	if format == "raw" && ms.allowStreaming(mf) {
 		log.Debug(ctx, "Streaming RAW file", "id", mf.ID, "path", filePath,
 			"requestBitrate", reqBitRate, "requestFormat", reqFormat, "requestOffset", reqOffset,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 			"selectedBitrate", bitRate, "selectedFormat", format)
-		f, err := os.Open(filePath)
-		if err != nil {
-			return nil, err
-		}
-		s.ReadCloser = f
-		s.Seeker = f
-		s.format = mf.Suffix
-		return s, nil
+		return ms.rawStream(s, mf)
 	}
 
 	job := &streamJob{
@@ -199,10 +213,30 @@ func NewTranscodingCache() TranscodingCache {
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
-			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
-			if err != nil {
-				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
-				return nil, os.ErrInvalid
+
+			command := ""
+			var targetFormat string
+
+			if job.mf.SubTrack > -1 {
+				// If the source format is lossless, transcode to WAV
+				// to preserve quality when no specific target format is set.
+				// This is a temporary measure until we can determine
+				// the player's supported lossless formats.
+				if slices.Contains(intMime.LosslessFormats, job.mf.Suffix) {
+					targetFormat = "wav"
+				} else {
+					targetFormat = conf.Server.DefaultDownsamplingFormat
+				}
+				command = model.RawTranscodeCmd
+				log.Trace("Raw transcoding", "sourceFormat", job.mf.Suffix, "targetFormat", targetFormat)
+			} else {
+				t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
+				if err != nil {
+					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
+					return nil, os.ErrInvalid
+				}
+				targetFormat = t.TargetFormat
+				command = t.Command
 			}
 
 			// Choose the appropriate context based on EnableTranscodingCancellation configuration.
@@ -217,7 +251,7 @@ func NewTranscodingCache() TranscodingCache {
 				transcodingCtx = request.AddValues(context.Background(), ctx)
 			}
 
-			out, err := job.ms.transcoder.Transcode(transcodingCtx, t.Command, job.filePath, job.bitRate, job.offset)
+			out, err := job.ms.transcoder.Transcode(transcodingCtx, command, targetFormat, job.mf, job.bitRate, job.offset)
 			if err != nil {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid

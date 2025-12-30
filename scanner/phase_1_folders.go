@@ -1,19 +1,23 @@
 package scanner
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -21,6 +25,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/navidrome/navidrome/model/metadata/cue"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -216,39 +221,89 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		log.Error(p.ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
 		return entry, err
 	}
-	dbTracks := make(map[string]*model.MediaFile)
+	tracksFromDB := make(map[string][]*model.MediaFile)
 	for mf, err := range cursor {
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
 			return entry, err
 		}
-		dbTracks[mf.Path] = &mf
+		tracksFromDB[mf.Path] = append(tracksFromDB[mf.Path], &mf)
 	}
 
 	// Get list of files to import, based on modtime (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
-	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
+	filesToImport := make(map[string][]*model.MediaFile, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
-		dbTrack, foundInDB := dbTracks[fullPath]
+		dbTracks, foundInDB := tracksFromDB[fullPath]
 		if !foundInDB || p.state.fullScan {
-			filesToImport[fullPath] = dbTrack
+			filesToImport[fullPath] = dbTracks
 		} else {
+			if len(dbTracks) == 0 {
+				filesToImport[fullPath] = nil
+				continue
+			}
+			dbTrack := dbTracks[0] // Take the first track if multiple (CUE sheets). All subtracks share the same modtime.
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
 				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
 				return entry, nil
 			}
+			added := false
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
-				filesToImport[fullPath] = dbTrack
+				filesToImport[fullPath] = dbTracks
+				added = true
+			}
+			// Check associated CUE sheet files for updates if any exist
+			if !added && len(dbTracks) > 1 {
+				for cuePath, cueInfo := range entry.cueFiles {
+					if dbTrack.CUEFile != cuePath {
+						continue
+					}
+					cueFileInfo, err := cueInfo.Info()
+					if err != nil {
+						log.Warn(p.ctx, "Scanner: Error getting CUE file info", "folder", entry.path, "file", cueInfo.Name(), err)
+						p.state.sendWarning(fmt.Sprintf("Error getting CUE file info for %s/%s: %v", entry.path, cueInfo.Name(), err))
+						return entry, nil
+					}
+					if cueFileInfo.ModTime().After(dbTrack.UpdatedAt) {
+						filesToImport[fullPath] = dbTracks
+					}
+				}
 			}
 		}
-		delete(dbTracks, fullPath)
+		delete(tracksFromDB, fullPath)
 	}
 
-	// Remaining dbTracks are tracks that were not found in the FS, so they should be marked as missing
-	entry.missingTracks = slices.Collect(maps.Values(dbTracks))
+	// Process CUE sheets (if any)
+	for cfPath, af := range entry.cueFiles {
+		fullPath := path.Join(entry.path, cfPath)
+		cueSheet, err := cue.ReadFromFileFS(entry.job.fs.(fs.FS), fullPath)
+		if err != nil {
+			log.Warn(p.ctx, "Scanner: Error reading CUE sheet", "folder", entry.path, "file", af.Name(), err)
+			p.state.sendWarning(fmt.Sprintf("Error reading CUE sheet %s/%s: %v", entry.path, af.Name(), err))
+			continue
+		}
+		for afPath := range entry.audioFiles {
+			fullMediaPath := path.Join(entry.path, afPath)
+			for _, mediaFile := range cueSheet.File {
+				if mediaFile.FileName == afPath {
+					if _, found := filesToImport[fullMediaPath]; !found {
+						filesToImport[fullMediaPath] = nil
+					}
+					entry.cueSheets[fullMediaPath] = &cueSheetInfo{
+						CUEFile:  path.Base(fullPath),
+						CueSheet: cueSheet}
+				}
+			}
+		}
+	}
+
+	// Remaining tracksFromDB are tracks that were not found in the FS, so they should be marked as missing
+	for _, tracks := range tracksFromDB {
+		entry.missingTracks = append(entry.missingTracks, tracks...)
+	}
 
 	// Load metadata from files that need to be imported
 	if len(filesToImport) > 0 {
@@ -266,12 +321,89 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	return entry, nil
 }
 
+func (p *phaseFolders) extractTagsFromCUE(md metadata.Metadata, entry *folderEntry) []model.RawTags {
+	cueStr := md.String(model.TagCUESheet)
+	if conf.Server.Scanner.CUESheetSupport == consts.CUEDisable {
+		return nil
+	}
+
+	if cueStr == "" && strings.ToLower(conf.Server.Scanner.CUESheetSupport) == consts.CUEEmbedded {
+		return nil
+	}
+
+	extractor, err := cue.NewExtractor(&md)
+	if err != nil {
+		log.Error("Can't create CUE tags extractor", "filePath", md.FilePath(), err)
+		return nil
+	}
+
+	modes := strings.Split(conf.Server.Scanner.CUESheetSupport, ",")
+	for _, mode := range modes {
+		var tracks []model.RawTags
+
+		switch strings.TrimSpace(strings.ToLower(mode)) {
+		case consts.CUEEmbedded:
+			if cueStr == "" {
+				continue
+			}
+			cueSheet, err := cue.ReadCue(bytes.NewBuffer([]byte(cueStr)))
+			if err != nil {
+				log.Error("Can't read embedded CUE", "filePath", md.FilePath(), "cue", cueStr, err)
+				continue
+			}
+			tracks, err = extractor.Extract(cueSheet, "")
+			if err != nil {
+				log.Error("Can't extract tags from embedded CUE", "filePath", md.FilePath(), err)
+				continue
+			}
+		case consts.CUEExternal:
+			if cueSheetInfo, ok := entry.cueSheets[md.FilePath()]; ok {
+				tracks, err = extractor.Extract(cueSheetInfo.CueSheet, cueSheetInfo.CUEFile)
+				if err != nil {
+					log.Error("Can't extract tags from external CUE", "filePath", md.FilePath(), err)
+					continue
+				}
+			}
+		}
+
+		if len(tracks) > 0 {
+			return tracks
+		}
+	}
+
+	return nil
+}
+
 const filesBatchSize = 200
+
+func (p *phaseFolders) trackProcess(md metadata.Metadata, entry *folderEntry, newMf, prevMf *model.MediaFile, uniqueTags map[string]model.Tag) {
+	for _, t := range newMf.Tags.FlattenAll() {
+		uniqueTags[t.ID] = t
+	}
+
+	// Keep track of any album ID changes, to reassign annotations later
+	prevAlbumID := ""
+	if prevMf != nil {
+		prevAlbumID = prevMf.AlbumID
+	} else {
+		prevAlbumID = md.AlbumID(*newMf, p.prevAlbumPIDConf)
+	}
+	_, ok := entry.albumIDMap[newMf.AlbumID]
+	if prevAlbumID != newMf.AlbumID && !ok {
+		entry.albumIDMap[newMf.AlbumID] = prevAlbumID
+	}
+}
+
+func getPrevMediaFile(toImport []*model.MediaFile, index int) *model.MediaFile {
+	if index < len(toImport) {
+		return toImport[index]
+	}
+	return nil
+}
 
 // loadTagsFromFiles reads metadata from the files in the given list and populates
 // the entry's tracks and tags with the results.
-func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string]*model.MediaFile) error {
-	tracks := make([]model.MediaFile, 0, len(toImport))
+func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string][]*model.MediaFile) error {
 	uniqueTags := make(map[string]model.Tag, len(toImport))
 	for chunk := range slice.CollectChunks(maps.Keys(toImport), filesBatchSize) {
 		allInfo, err := entry.job.fs.ReadTags(chunk...)
@@ -281,26 +413,22 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 		}
 		for filePath, info := range allInfo {
 			md := metadata.New(filePath, info)
-			track := md.ToMediaFile(entry.job.lib.ID, entry.id)
-			tracks = append(tracks, track)
-			for _, t := range track.Tags.FlattenAll() {
-				uniqueTags[t.ID] = t
+			cueRawTags := p.extractTagsFromCUE(md, entry)
+			if len(cueRawTags) > 0 {
+				for i, rawTags := range cueRawTags {
+					trackMd := md.WithCUERawTags(rawTags)
+					track := trackMd.ToMediaFile(entry.job.lib.ID, entry.id)
+					entry.tracks = append(entry.tracks, track)
+					p.trackProcess(trackMd, entry, &track, getPrevMediaFile(toImport[filePath], i), uniqueTags)
+				}
+				continue
 			}
 
-			// Keep track of any album ID changes, to reassign annotations later
-			prevAlbumID := ""
-			if prev := toImport[filePath]; prev != nil {
-				prevAlbumID = prev.AlbumID
-			} else {
-				prevAlbumID = md.AlbumID(track, p.prevAlbumPIDConf)
-			}
-			_, ok := entry.albumIDMap[track.AlbumID]
-			if prevAlbumID != track.AlbumID && !ok {
-				entry.albumIDMap[track.AlbumID] = prevAlbumID
-			}
+			track := md.ToMediaFile(entry.job.lib.ID, entry.id)
+			entry.tracks = append(entry.tracks, track)
+			p.trackProcess(md, entry, &track, getPrevMediaFile(toImport[filePath], 0), uniqueTags)
 		}
 	}
-	entry.tracks = tracks
 	entry.tags = slices.Collect(maps.Values(uniqueTags))
 	return nil
 }

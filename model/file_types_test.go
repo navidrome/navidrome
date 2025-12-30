@@ -3,9 +3,10 @@ package model_test
 import (
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/navidrome/navidrome/model"
 )
 
 var _ = Describe("File Types()", func() {
@@ -56,6 +57,16 @@ var _ = Describe("File Types()", func() {
 
 		It("returns false for a non-playlist file", func() {
 			Expect(model.IsValidPlaylist("testm3u")).To(BeFalse())
+		})
+	})
+
+	Describe("IsCueSheetFile()", func() {
+		It("returns true for a CUE file", func() {
+			Expect(model.IsCueSheetFile(filepath.Join("path", "to", "test.cue"))).To(BeTrue())
+		})
+
+		It("returns false for a non-CUE file", func() {
+			Expect(model.IsCueSheetFile("test.mp3")).To(BeFalse())
 		})
 	})
 })

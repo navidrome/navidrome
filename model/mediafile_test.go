@@ -89,12 +89,28 @@ var _ = Describe("MediaFiles", func() {
 				})
 			})
 
+			When("we have subtracks", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{
+						{Duration: 100.2, Size: 2024, SubTrack: 0},
+						{Duration: 200.2, Size: 2024, SubTrack: 1},
+						{Duration: 150.6, Size: 2024, SubTrack: 2},
+					}
+				})
+				It("calculates the aggregates correctly", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Duration).To(Equal(float32(451.0)))
+					Expect(album.Size).To(Equal(int64(2024)))
+				})
+			})
+
+
 			When("we have multiple songs with different dates", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
-						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), BirthTime: t("2022-12-19 08:30")},
-						{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 08:30")},
-						{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 07:30")},
+						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), BirthTime: t("2022-12-19 08:30"), SubTrack: -1},
+						{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 08:30"), SubTrack: -1},
+						{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 07:30"), SubTrack: -1},
 					}
 				})
 				It("calculates the aggregates correctly", func() {
