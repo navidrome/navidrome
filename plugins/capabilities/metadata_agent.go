@@ -11,81 +11,81 @@ package capabilities
 type MetadataAgent interface {
 	// GetArtistMBID retrieves the MusicBrainz ID for an artist.
 	//nd:export name=nd_get_artist_mbid
-	GetArtistMBID(ArtistMBIDInput) (ArtistMBIDOutput, error)
+	GetArtistMBID(ArtistMBIDRequest) (ArtistMBIDResponse, error)
 
 	// GetArtistURL retrieves the external URL for an artist.
 	//nd:export name=nd_get_artist_url
-	GetArtistURL(ArtistInput) (ArtistURLOutput, error)
+	GetArtistURL(ArtistRequest) (ArtistURLResponse, error)
 
 	// GetArtistBiography retrieves the biography for an artist.
 	//nd:export name=nd_get_artist_biography
-	GetArtistBiography(ArtistInput) (ArtistBiographyOutput, error)
+	GetArtistBiography(ArtistRequest) (ArtistBiographyResponse, error)
 
 	// GetSimilarArtists retrieves similar artists for a given artist.
 	//nd:export name=nd_get_similar_artists
-	GetSimilarArtists(SimilarArtistsInput) (SimilarArtistsOutput, error)
+	GetSimilarArtists(SimilarArtistsRequest) (SimilarArtistsResponse, error)
 
 	// GetArtistImages retrieves images for an artist.
 	//nd:export name=nd_get_artist_images
-	GetArtistImages(ArtistInput) (ArtistImagesOutput, error)
+	GetArtistImages(ArtistRequest) (ArtistImagesResponse, error)
 
 	// GetArtistTopSongs retrieves top songs for an artist.
 	//nd:export name=nd_get_artist_top_songs
-	GetArtistTopSongs(TopSongsInput) (TopSongsOutput, error)
+	GetArtistTopSongs(TopSongsRequest) (TopSongsResponse, error)
 
 	// GetAlbumInfo retrieves album information.
 	//nd:export name=nd_get_album_info
-	GetAlbumInfo(AlbumInput) (AlbumInfoOutput, error)
+	GetAlbumInfo(AlbumRequest) (AlbumInfoResponse, error)
 
 	// GetAlbumImages retrieves images for an album.
 	//nd:export name=nd_get_album_images
-	GetAlbumImages(AlbumInput) (AlbumImagesOutput, error)
+	GetAlbumImages(AlbumRequest) (AlbumImagesResponse, error)
 }
 
-// ArtistMBIDInput is the input for GetArtistMBID.
-type ArtistMBIDInput struct {
+// ArtistMBIDRequest is the request for GetArtistMBID.
+type ArtistMBIDRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
 }
 
-// ArtistMBIDOutput is the output for GetArtistMBID.
-type ArtistMBIDOutput struct {
+// ArtistMBIDResponse is the response for GetArtistMBID.
+type ArtistMBIDResponse struct {
 	// MBID is the MusicBrainz ID for the artist.
 	MBID string `json:"mbid"`
 }
 
-// ArtistInput is the common input for artist-related functions.
-type ArtistInput struct {
+// ArtistRequest is the common request for artist-related functions.
+type ArtistRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 }
 
-// ArtistURLOutput is the output for GetArtistURL.
-type ArtistURLOutput struct {
+// ArtistURLResponse is the response for GetArtistURL.
+type ArtistURLResponse struct {
 	// URL is the external URL for the artist.
 	URL string `json:"url"`
 }
 
-// ArtistBiographyOutput is the output for GetArtistBiography.
-type ArtistBiographyOutput struct {
+// ArtistBiographyResponse is the response for GetArtistBiography.
+type ArtistBiographyResponse struct {
 	// Biography is the artist biography text.
 	Biography string `json:"biography"`
 }
 
-// SimilarArtistsInput is the input for GetSimilarArtists.
-type SimilarArtistsInput struct {
+// SimilarArtistsRequest is the request for GetSimilarArtists.
+type SimilarArtistsRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 	// Limit is the maximum number of similar artists to return.
 	Limit int32 `json:"limit"`
 }
@@ -95,11 +95,11 @@ type ArtistRef struct {
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist.
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 }
 
-// SimilarArtistsOutput is the output for GetSimilarArtists.
-type SimilarArtistsOutput struct {
+// SimilarArtistsResponse is the response for GetSimilarArtists.
+type SimilarArtistsResponse struct {
 	// Artists is the list of similar artists.
 	Artists []ArtistRef `json:"artists"`
 }
@@ -112,20 +112,20 @@ type ImageInfo struct {
 	Size int32 `json:"size"`
 }
 
-// ArtistImagesOutput is the output for GetArtistImages.
-type ArtistImagesOutput struct {
+// ArtistImagesResponse is the response for GetArtistImages.
+type ArtistImagesResponse struct {
 	// Images is the list of artist images.
 	Images []ImageInfo `json:"images"`
 }
 
-// TopSongsInput is the input for GetArtistTopSongs.
-type TopSongsInput struct {
+// TopSongsRequest is the request for GetArtistTopSongs.
+type TopSongsRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of top songs to return.
 	Count int32 `json:"count"`
 }
@@ -135,27 +135,27 @@ type SongRef struct {
 	// Name is the song name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 }
 
-// TopSongsOutput is the output for GetArtistTopSongs.
-type TopSongsOutput struct {
+// TopSongsResponse is the response for GetArtistTopSongs.
+type TopSongsResponse struct {
 	// Songs is the list of top songs.
 	Songs []SongRef `json:"songs"`
 }
 
-// AlbumInput is the common input for album-related functions.
-type AlbumInput struct {
+// AlbumRequest is the common request for album-related functions.
+type AlbumRequest struct {
 	// Name is the album name.
 	Name string `json:"name"`
 	// Artist is the album artist name.
 	Artist string `json:"artist"`
 	// MBID is the MusicBrainz ID for the album (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 }
 
-// AlbumInfoOutput is the output for GetAlbumInfo.
-type AlbumInfoOutput struct {
+// AlbumInfoResponse is the response for GetAlbumInfo.
+type AlbumInfoResponse struct {
 	// Name is the album name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the album.
@@ -166,8 +166,8 @@ type AlbumInfoOutput struct {
 	URL string `json:"url"`
 }
 
-// AlbumImagesOutput is the output for GetAlbumImages.
-type AlbumImagesOutput struct {
+// AlbumImagesResponse is the response for GetAlbumImages.
+type AlbumImagesResponse struct {
 	// Images is the list of album images.
 	Images []ImageInfo `json:"images"`
 }

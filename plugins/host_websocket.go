@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/plugins/host"
 )
 
@@ -317,44 +318,19 @@ func (s *webSocketServiceImpl) readLoop(ctx context.Context, connectionID string
 	}
 }
 
-// Callback input/output types
-
-type onTextMessageInput struct {
-	ConnectionID string `json:"connectionId"`
-	Message      string `json:"message"`
-}
-
-type onBinaryMessageInput struct {
-	ConnectionID string `json:"connectionId"`
-	Data         string `json:"data"` // base64 encoded
-}
-
-type onErrorInput struct {
-	ConnectionID string `json:"connectionId"`
-	Error        string `json:"error"`
-}
-
-type onCloseInput struct {
-	ConnectionID string `json:"connectionId"`
-	Code         int32  `json:"code"`
-	Reason       string `json:"reason"`
-}
-
-type emptyOutput struct{}
-
 func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connectionID, message string) {
 	instance := s.getPluginInstance()
 	if instance == nil {
 		return
 	}
 
-	input := onTextMessageInput{
+	input := capabilities.OnTextMessageRequest{
 		ConnectionID: connectionID,
 		Message:      message,
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[onTextMessageInput, emptyOutput](ctx, instance, FuncWebSocketOnTextMessage, input)
+	_, err := callPluginFunction[capabilities.OnTextMessageRequest, capabilities.OnTextMessageResponse](ctx, instance, FuncWebSocketOnTextMessage, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -369,13 +345,13 @@ func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connec
 		return
 	}
 
-	input := onBinaryMessageInput{
+	input := capabilities.OnBinaryMessageRequest{
 		ConnectionID: connectionID,
 		Data:         base64.StdEncoding.EncodeToString(data),
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[onBinaryMessageInput, emptyOutput](ctx, instance, FuncWebSocketOnBinaryMessage, input)
+	_, err := callPluginFunction[capabilities.OnBinaryMessageRequest, capabilities.OnBinaryMessageResponse](ctx, instance, FuncWebSocketOnBinaryMessage, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -390,13 +366,13 @@ func (s *webSocketServiceImpl) invokeOnError(ctx context.Context, connectionID, 
 		return
 	}
 
-	input := onErrorInput{
+	input := capabilities.OnErrorRequest{
 		ConnectionID: connectionID,
 		Error:        errorMsg,
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[onErrorInput, emptyOutput](ctx, instance, FuncWebSocketOnError, input)
+	_, err := callPluginFunction[capabilities.OnErrorRequest, capabilities.OnErrorResponse](ctx, instance, FuncWebSocketOnError, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
@@ -411,14 +387,14 @@ func (s *webSocketServiceImpl) invokeOnClose(ctx context.Context, connectionID s
 		return
 	}
 
-	input := onCloseInput{
+	input := capabilities.OnCloseRequest{
 		ConnectionID: connectionID,
 		Code:         code,
 		Reason:       reason,
 	}
 
 	start := time.Now()
-	_, err := callPluginFunction[onCloseInput, emptyOutput](ctx, instance, FuncWebSocketOnClose, input)
+	_, err := callPluginFunction[capabilities.OnCloseRequest, capabilities.OnCloseResponse](ctx, instance, FuncWebSocketOnClose, input)
 	if err != nil {
 		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {

@@ -3,39 +3,39 @@ exports:
     nd_websocket_on_text_message:
         description: OnTextMessage is called when a text message is received on a WebSocket connection.
         input:
-            $ref: '#/components/schemas/OnTextMessageInput'
+            $ref: '#/components/schemas/OnTextMessageRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/OnTextMessageOutput'
+            $ref: '#/components/schemas/OnTextMessageResponse'
             contentType: application/json
     nd_websocket_on_binary_message:
         description: OnBinaryMessage is called when a binary message is received on a WebSocket connection.
         input:
-            $ref: '#/components/schemas/OnBinaryMessageInput'
+            $ref: '#/components/schemas/OnBinaryMessageRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/OnBinaryMessageOutput'
+            $ref: '#/components/schemas/OnBinaryMessageResponse'
             contentType: application/json
     nd_websocket_on_error:
         description: OnError is called when an error occurs on a WebSocket connection.
         input:
-            $ref: '#/components/schemas/OnErrorInput'
+            $ref: '#/components/schemas/OnErrorRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/OnErrorOutput'
+            $ref: '#/components/schemas/OnErrorResponse'
             contentType: application/json
     nd_websocket_on_close:
         description: OnClose is called when a WebSocket connection is closed.
         input:
-            $ref: '#/components/schemas/OnCloseInput'
+            $ref: '#/components/schemas/OnCloseRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/OnCloseOutput'
+            $ref: '#/components/schemas/OnCloseResponse'
             contentType: application/json
 components:
     schemas:
-        OnBinaryMessageInput:
-            description: OnBinaryMessageInput is the input provided when a binary message is received.
+        OnBinaryMessageRequest:
+            description: OnBinaryMessageRequest is the request provided when a binary message is received.
             type: object
             properties:
                 connectionId:
@@ -47,18 +47,17 @@ components:
             required:
                 - connectionId
                 - data
-        OnBinaryMessageOutput:
-            description: OnBinaryMessageOutput is the output from the binary message handler.
+        OnBinaryMessageResponse:
+            description: OnBinaryMessageResponse is the response from the binary message handler.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if the callback failed.
-                        Empty or null indicates success.
-                    nullable: true
-        OnCloseInput:
-            description: OnCloseInput is the input provided when a WebSocket connection is closed.
+                        Empty string indicates success.
+        OnCloseRequest:
+            description: OnCloseRequest is the request provided when a WebSocket connection is closed.
             type: object
             properties:
                 connectionId:
@@ -77,18 +76,17 @@ components:
                 - connectionId
                 - code
                 - reason
-        OnCloseOutput:
-            description: OnCloseOutput is the output from the close handler.
+        OnCloseResponse:
+            description: OnCloseResponse is the response from the close handler.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if the callback failed.
-                        Empty or null indicates success.
-                    nullable: true
-        OnErrorInput:
-            description: OnErrorInput is the input provided when an error occurs on a WebSocket connection.
+                        Empty string indicates success.
+        OnErrorRequest:
+            description: OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
             type: object
             properties:
                 connectionId:
@@ -100,18 +98,17 @@ components:
             required:
                 - connectionId
                 - error
-        OnErrorOutput:
-            description: OnErrorOutput is the output from the error handler.
+        OnErrorResponse:
+            description: OnErrorResponse is the response from the error handler.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if the callback failed.
-                        Empty or null indicates success.
-                    nullable: true
-        OnTextMessageInput:
-            description: OnTextMessageInput is the input provided when a text message is received.
+                        Empty string indicates success.
+        OnTextMessageRequest:
+            description: OnTextMessageRequest is the request provided when a text message is received.
             type: object
             properties:
                 connectionId:
@@ -123,13 +120,12 @@ components:
             required:
                 - connectionId
                 - message
-        OnTextMessageOutput:
-            description: OnTextMessageOutput is the output from the text message handler.
+        OnTextMessageResponse:
+            description: OnTextMessageResponse is the response from the text message handler.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if the callback failed.
-                        Empty or null indicates success.
-                    nullable: true
+                        Empty string indicates success.

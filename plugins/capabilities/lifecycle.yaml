@@ -7,27 +7,26 @@ exports:
             The output can contain an error string if initialization failed, which will be
             logged but will not prevent the plugin from being loaded.
         input:
-            $ref: '#/components/schemas/OnInitInput'
+            $ref: '#/components/schemas/InitRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/OnInitOutput'
+            $ref: '#/components/schemas/InitResponse'
             contentType: application/json
 components:
     schemas:
-        OnInitInput:
+        InitRequest:
             description: |-
-                OnInitInput is the input provided to the init callback.
+                InitRequest is the request provided to the init callback.
                 Currently empty, reserved for future use.
             type: object
             properties: {}
-        OnInitOutput:
-            description: OnInitOutput is the output from the init callback.
+        InitResponse:
+            description: InitResponse is the response from the init callback.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if initialization failed.
-                        Empty or null indicates success.
+                        Empty string indicates success.
                         The error is logged but does not prevent the plugin from being loaded.
-                    nullable: true

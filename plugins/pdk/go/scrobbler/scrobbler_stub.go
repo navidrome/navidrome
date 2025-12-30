@@ -22,8 +22,22 @@ const (
 	ScrobblerErrorUnrecoverable ScrobblerErrorType = "unrecoverable"
 )
 
-// NowPlayingInput is the input for now playing notification.
-type NowPlayingInput struct {
+// IsAuthorizedRequest is the request for authorization check.
+type IsAuthorizedRequest struct {
+	// UserID is the internal Navidrome user ID.
+	UserID string `json:"userId"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+}
+
+// IsAuthorizedResponse is the response for authorization check.
+type IsAuthorizedResponse struct {
+	// Authorized indicates whether the user is authorized to scrobble.
+	Authorized bool `json:"authorized"`
+}
+
+// NowPlayingRequest is the request for now playing notification.
+type NowPlayingRequest struct {
 	// UserID is the internal Navidrome user ID.
 	UserID string `json:"userId"`
 	// Username is the username of the user.
@@ -34,16 +48,16 @@ type NowPlayingInput struct {
 	Position int32 `json:"position"`
 }
 
-// ScrobblerOutput is the output for scrobbler operations.
-type ScrobblerOutput struct {
+// ScrobblerResponse is the response for scrobbler operations.
+type ScrobblerResponse struct {
 	// Error is the error message if the operation failed.
-	Error *string `json:"error,omitempty"`
+	Error string `json:"error,omitempty"`
 	// ErrorType indicates how Navidrome should handle the error.
-	ErrorType *ScrobblerErrorType `json:"errorType,omitempty"`
+	ErrorType ScrobblerErrorType `json:"errorType,omitempty"`
 }
 
-// ScrobbleInput is the input for submitting a scrobble.
-type ScrobbleInput struct {
+// ScrobbleRequest is the request for submitting a scrobble.
+type ScrobbleRequest struct {
 	// UserID is the internal Navidrome user ID.
 	UserID string `json:"userId"`
 	// Username is the username of the user.
@@ -67,37 +81,23 @@ type TrackInfo struct {
 	// AlbumArtist is the album artist.
 	AlbumArtist string `json:"albumArtist"`
 	// Duration is the track duration in seconds.
-	Duration float64 `json:"duration"`
+	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.
 	TrackNumber int32 `json:"trackNumber"`
 	// DiscNumber is the disc number.
 	DiscNumber int32 `json:"discNumber"`
 	// MBZRecordingID is the MusicBrainz recording ID.
-	MBZRecordingID *string `json:"mbzRecordingId,omitempty"`
+	MBZRecordingID string `json:"mbzRecordingId,omitempty"`
 	// MBZAlbumID is the MusicBrainz album/release ID.
-	MBZAlbumID *string `json:"mbzAlbumId,omitempty"`
+	MBZAlbumID string `json:"mbzAlbumId,omitempty"`
 	// MBZArtistID is the MusicBrainz artist ID.
-	MBZArtistID *string `json:"mbzArtistId,omitempty"`
+	MBZArtistID string `json:"mbzArtistId,omitempty"`
 	// MBZReleaseGroupID is the MusicBrainz release group ID.
-	MBZReleaseGroupID *string `json:"mbzReleaseGroupId,omitempty"`
+	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
 	// MBZAlbumArtistID is the MusicBrainz album artist ID.
-	MBZAlbumArtistID *string `json:"mbzAlbumArtistId,omitempty"`
+	MBZAlbumArtistID string `json:"mbzAlbumArtistId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
-	MBZReleaseTrackID *string `json:"mbzReleaseTrackId,omitempty"`
-}
-
-// AuthInput is the input for authorization check.
-type AuthInput struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
-	// Username is the username of the user.
-	Username string `json:"username"`
-}
-
-// AuthOutput is the output for authorization check.
-type AuthOutput struct {
-	// Authorized indicates whether the user is authorized to scrobble.
-	Authorized bool `json:"authorized"`
+	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
 }
 
 // Scrobbler requires all methods to be implemented.
@@ -109,11 +109,11 @@ type AuthOutput struct {
 // all three functions: IsAuthorized, NowPlaying, and Scrobble.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
-	IsAuthorized(AuthInput) (AuthOutput, error)
+	IsAuthorized(IsAuthorizedRequest) (IsAuthorizedResponse, error)
 	// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
-	NowPlaying(NowPlayingInput) (ScrobblerOutput, error)
+	NowPlaying(NowPlayingRequest) (ScrobblerResponse, error)
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
-	Scrobble(ScrobbleInput) (ScrobblerOutput, error)
+	Scrobble(ScrobbleRequest) (ScrobblerResponse, error)
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

@@ -8,8 +8,8 @@
 
 package scheduler
 
-// SchedulerCallbackInput is the input provided when a scheduled task fires.
-type SchedulerCallbackInput struct {
+// SchedulerCallbackRequest is the request provided when a scheduled task fires.
+type SchedulerCallbackRequest struct {
 	// ScheduleID is the unique identifier for this scheduled task.
 	// This is either the ID provided when scheduling, or an auto-generated UUID if none was specified.
 	ScheduleID string `json:"scheduleId"`
@@ -21,12 +21,12 @@ type SchedulerCallbackInput struct {
 	IsRecurring bool `json:"isRecurring"`
 }
 
-// SchedulerCallbackOutput is the output from the scheduler callback.
-type SchedulerCallbackOutput struct {
+// SchedulerCallbackResponse is the response from the scheduler callback.
+type SchedulerCallbackResponse struct {
 	// Error is the error message if the callback failed to process the scheduled task.
-	// Empty or null indicates success. The error is logged but does not
+	// Empty string indicates success. The error is logged but does not
 	// affect the scheduling system.
-	Error *string `json:"error,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // Scheduler is the marker interface for scheduler plugins.
@@ -39,7 +39,7 @@ type Scheduler interface{}
 
 // SchedulerCallbackProvider provides the OnSchedulerCallback function.
 type SchedulerCallbackProvider interface {
-	OnSchedulerCallback(SchedulerCallbackInput) (SchedulerCallbackOutput, error)
+	OnSchedulerCallback(SchedulerCallbackRequest) (SchedulerCallbackResponse, error)
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -170,42 +171,42 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 var _ = Describe("mapScrobblerError", func() {
 	It("returns nil for empty error type", func() {
-		output := scrobblerOutput{ErrorType: ""}
+		output := capabilities.ScrobblerResponse{ErrorType: ""}
 		Expect(mapScrobblerError(output)).ToNot(HaveOccurred())
 	})
 
 	It("returns nil for 'none' error type", func() {
-		output := scrobblerOutput{ErrorType: "none"}
+		output := capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNone}
 		Expect(mapScrobblerError(output)).ToNot(HaveOccurred())
 	})
 
 	It("returns ErrNotAuthorized for 'not_authorized' error type", func() {
-		output := scrobblerOutput{ErrorType: "not_authorized"}
+		output := capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNotAuthorized}
 		err := mapScrobblerError(output)
 		Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 	})
 
 	It("returns ErrNotAuthorized with message", func() {
-		output := scrobblerOutput{ErrorType: "not_authorized", Error: "user not linked"}
+		output := capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNotAuthorized, Error: "user not linked"}
 		err := mapScrobblerError(output)
 		Expect(err).To(MatchError(ContainSubstring("not authorized")))
 		Expect(err).To(MatchError(ContainSubstring("user not linked")))
 	})
 
 	It("returns ErrRetryLater for 'retry_later' error type", func() {
-		output := scrobblerOutput{ErrorType: "retry_later"}
+		output := capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorRetryLater}
 		err := mapScrobblerError(output)
 		Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 	})
 
 	It("returns ErrUnrecoverable for 'unrecoverable' error type", func() {
-		output := scrobblerOutput{ErrorType: "unrecoverable"}
+		output := capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorUnrecoverable}
 		err := mapScrobblerError(output)
 		Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 	})
 
 	It("returns error for unknown error type", func() {
-		output := scrobblerOutput{ErrorType: "unknown"}
+		output := capabilities.ScrobblerResponse{ErrorType: "unknown"}
 		err := mapScrobblerError(output)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unknown error type"))
