@@ -67,11 +67,7 @@ type {{responseType .}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc}}
 {{- end}}
-{{- if .IsErrorOnly}}
-func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) error {
-{{- else}}
-func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) (*{{responseType .}}, error) {
-{{- end}}
+func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{.ReturnSignature}} {
 {{- if .HasParams}}
 	// Marshal request to JSON
 	req := {{requestType .}}{
@@ -81,7 +77,7 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return {{if not .IsErrorOnly}}nil, {{end}}err
+		return {{if .HasReturns}}{{.ZeroValues}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}err{{end}}
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -115,15 +111,17 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	// Parse the response
 	var response {{responseType .}}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return {{if .HasReturns}}{{.ZeroValues}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}err{{end}}
 	}
+{{- if .HasError}}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return {{if .HasReturns}}{{.ZeroValues}}, {{end}}errors.New(response.Error)
 	}
+{{- end}}
 
-	return &response, nil
+	return {{range $i, $r := .Returns}}{{if $i}}, {{end}}response.{{title $r.Name}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}nil{{end}}
 {{- end}}
 }
 {{- end}}

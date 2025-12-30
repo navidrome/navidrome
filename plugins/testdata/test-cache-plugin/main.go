@@ -51,13 +51,13 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_string":
-		resp, err := host.CacheGetString(input.Key)
+		value, exists, err := host.CacheGetString(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestCacheOutput{StringVal: resp.Value, Exists: resp.Exists})
+		pdk.OutputJSON(TestCacheOutput{StringVal: value, Exists: exists})
 		return 0
 
 	case "set_int":
@@ -71,13 +71,13 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_int":
-		resp, err := host.CacheGetInt(input.Key)
+		value, exists, err := host.CacheGetInt(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestCacheOutput{IntVal: resp.Value, Exists: resp.Exists})
+		pdk.OutputJSON(TestCacheOutput{IntVal: value, Exists: exists})
 		return 0
 
 	case "set_float":
@@ -91,13 +91,13 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_float":
-		resp, err := host.CacheGetFloat(input.Key)
+		value, exists, err := host.CacheGetFloat(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestCacheOutput{FloatVal: resp.Value, Exists: resp.Exists})
+		pdk.OutputJSON(TestCacheOutput{FloatVal: value, Exists: exists})
 		return 0
 
 	case "set_bytes":
@@ -111,23 +111,23 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_bytes":
-		resp, err := host.CacheGetBytes(input.Key)
+		value, exists, err := host.CacheGetBytes(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestCacheOutput{BytesVal: resp.Value, Exists: resp.Exists})
+		pdk.OutputJSON(TestCacheOutput{BytesVal: value, Exists: exists})
 		return 0
 
 	case "has":
-		resp, err := host.CacheHas(input.Key)
+		exists, err := host.CacheHas(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestCacheOutput{Exists: resp.Exists})
+		pdk.OutputJSON(TestCacheOutput{Exists: exists})
 		return 0
 
 	case "remove":

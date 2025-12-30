@@ -17,14 +17,14 @@ func callSubsonicAPIExport() int32 {
 	uri := pdk.InputString()
 
 	// Call the Subsonic API via host function
-	response, err := host.SubsonicAPICall(uri)
+	responseJSON, err := host.SubsonicAPICall(uri)
 	if err != nil {
 		pdk.SetErrorString("failed to call SubsonicAPI: " + err.Error())
 		return 1
 	}
 
 	// Return the response
-	pdk.OutputString(response.ResponseJSON)
+	pdk.OutputString(responseJSON)
 	return 0
 }
 

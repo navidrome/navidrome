@@ -35,14 +35,14 @@ type SubsonicAPICallResponse struct {
 //
 // The uri parameter should be the Subsonic API path without the server prefix,
 // e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
-func SubsonicAPICall(uri string) (*SubsonicAPICallResponse, error) {
+func SubsonicAPICall(uri string) (string, error) {
 	// Marshal request to JSON
 	req := SubsonicAPICallRequest{
 		Uri: uri,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -57,13 +57,13 @@ func SubsonicAPICall(uri string) (*SubsonicAPICallResponse, error) {
 	// Parse the response
 	var response SubsonicAPICallResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.ResponseJSON, nil
 }

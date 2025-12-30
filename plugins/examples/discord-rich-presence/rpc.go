@@ -89,10 +89,10 @@ func processImage(imageURL, clientID, token string, isDefaultImage bool) (string
 
 	// Check cache first
 	cacheKey := fmt.Sprintf("discord.image.%x", imageURL)
-	cacheResp, err := host.CacheGetString(cacheKey)
-	if err == nil && cacheResp.Exists {
+	cachedValue, exists, err := host.CacheGetString(cacheKey)
+	if err == nil && exists {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Cache hit for image URL: %s", imageURL))
-		return cacheResp.Value, nil
+		return cachedValue, nil
 	}
 
 	// Process via Discord API
@@ -208,13 +208,13 @@ func getDiscordGateway() (string, error) {
 
 // sendHeartbeat sends a heartbeat to Discord.
 func sendHeartbeat(username string) error {
-	cacheResp, err := host.CacheGetInt(fmt.Sprintf("discord.seq.%s", username))
+	seqNum, _, err := host.CacheGetInt(fmt.Sprintf("discord.seq.%s", username))
 	if err != nil {
 		return fmt.Errorf("failed to get sequence number: %w", err)
 	}
 
-	pdk.Log(pdk.LogDebug, fmt.Sprintf("Sending heartbeat for user %s: %d", username, cacheResp.Value))
-	return sendMessage(username, heartbeatOpCode, cacheResp.Value)
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("Sending heartbeat for user %s: %d", username, seqNum))
+	return sendMessage(username, heartbeatOpCode, seqNum)
 }
 
 // cleanupFailedConnection cleans up a failed Discord connection.
@@ -284,11 +284,11 @@ func connect(username, token string) error {
 
 	// Schedule heartbeats for this user/connection
 	cronExpr := fmt.Sprintf("@every %ds", heartbeatInterval)
-	schedResp, err := host.SchedulerScheduleRecurring(cronExpr, payloadHeartbeat, username)
+	scheduleID, err := host.SchedulerScheduleRecurring(cronExpr, payloadHeartbeat, username)
 	if err != nil {
 		return fmt.Errorf("failed to schedule heartbeat: %w", err)
 	}
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("Scheduled heartbeat for user %s with ID %s", username, schedResp.NewScheduleID))
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("Scheduled heartbeat for user %s with ID %s", username, scheduleID))
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Successfully authenticated user %s", username))
 	return nil

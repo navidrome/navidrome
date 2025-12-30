@@ -42,23 +42,23 @@ func ndTestLibrary() int32 {
 
 	switch input.Operation {
 	case "get_library":
-		resp, err := host.LibraryGetLibrary(input.LibraryID)
+		library, err := host.LibraryGetLibrary(input.LibraryID)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestLibraryOutput{Library: resp.Result})
+		pdk.OutputJSON(TestLibraryOutput{Library: library})
 		return 0
 
 	case "get_all_libraries":
-		resp, err := host.LibraryGetAllLibraries()
+		libraries, err := host.LibraryGetAllLibraries()
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestLibraryOutput{Libraries: resp.Result})
+		pdk.OutputJSON(TestLibraryOutput{Libraries: libraries})
 		return 0
 
 	case "read_file":

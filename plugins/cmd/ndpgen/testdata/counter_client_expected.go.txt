@@ -31,14 +31,14 @@ type CounterCountResponse struct {
 }
 
 // CounterCount calls the counter_count host function.
-func CounterCount(name string) (*CounterCountResponse, error) {
+func CounterCount(name string) int32 {
 	// Marshal request to JSON
 	req := CounterCountRequest{
 		Name: name,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return 0
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -53,13 +53,8 @@ func CounterCount(name string) (*CounterCountResponse, error) {
 	// Parse the response
 	var response CounterCountResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return 0
 	}
 
-	// Convert Error field to Go error
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
-	}
-
-	return &response, nil
+	return response.Value
 }

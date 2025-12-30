@@ -37,7 +37,7 @@ type ListItemsResponse struct {
 }
 
 // ListItems calls the list_items host function.
-func ListItems(name string, filter Filter) (*ListItemsResponse, error) {
+func ListItems(name string, filter Filter) (int32, error) {
 	// Marshal request to JSON
 	req := ListItemsRequest{
 		Name:   name,
@@ -45,7 +45,7 @@ func ListItems(name string, filter Filter) (*ListItemsResponse, error) {
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -60,13 +60,13 @@ func ListItems(name string, filter Filter) (*ListItemsResponse, error) {
 	// Parse the response
 	var response ListItemsResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return 0, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Count, nil
 }

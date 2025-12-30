@@ -37,14 +37,14 @@ type SearchFindResponse struct {
 }
 
 // SearchFind calls the search_find host function.
-func SearchFind(query string) (*SearchFindResponse, error) {
+func SearchFind(query string) ([]Result, int32, error) {
 	// Marshal request to JSON
 	req := SearchFindRequest{
 		Query: query,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -59,13 +59,13 @@ func SearchFind(query string) (*SearchFindResponse, error) {
 	// Parse the response
 	var response SearchFindResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, 0, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Results, response.Total, nil
 }

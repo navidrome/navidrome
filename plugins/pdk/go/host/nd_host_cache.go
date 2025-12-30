@@ -207,14 +207,14 @@ func CacheSetString(key string, value string, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a string, exists will be false.
-func CacheGetString(key string) (*CacheGetStringResponse, error) {
+func CacheGetString(key string) (string, bool, error) {
 	// Marshal request to JSON
 	req := CacheGetStringRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -229,15 +229,15 @@ func CacheGetString(key string) (*CacheGetStringResponse, error) {
 	// Parse the response
 	var response CacheGetStringResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, response.Exists, nil
 }
 
 // CacheSetInt calls the cache_setint host function.
@@ -291,14 +291,14 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not an integer, exists will be false.
-func CacheGetInt(key string) (*CacheGetIntResponse, error) {
+func CacheGetInt(key string) (int64, bool, error) {
 	// Marshal request to JSON
 	req := CacheGetIntRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return 0, false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -313,15 +313,15 @@ func CacheGetInt(key string) (*CacheGetIntResponse, error) {
 	// Parse the response
 	var response CacheGetIntResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return 0, false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return 0, false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, response.Exists, nil
 }
 
 // CacheSetFloat calls the cache_setfloat host function.
@@ -375,14 +375,14 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a float, exists will be false.
-func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
+func CacheGetFloat(key string) (float64, bool, error) {
 	// Marshal request to JSON
 	req := CacheGetFloatRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return 0, false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -397,15 +397,15 @@ func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
 	// Parse the response
 	var response CacheGetFloatResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return 0, false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return 0, false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, response.Exists, nil
 }
 
 // CacheSetBytes calls the cache_setbytes host function.
@@ -459,14 +459,14 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a byte slice, exists will be false.
-func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
+func CacheGetBytes(key string) ([]byte, bool, error) {
 	// Marshal request to JSON
 	req := CacheGetBytesRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -481,15 +481,15 @@ func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
 	// Parse the response
 	var response CacheGetBytesResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, response.Exists, nil
 }
 
 // CacheHas calls the cache_has host function.
@@ -499,14 +499,14 @@ func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
 //   - key: The cache key (will be namespaced with plugin ID)
 //
 // Returns true if the key exists and has not expired.
-func CacheHas(key string) (*CacheHasResponse, error) {
+func CacheHas(key string) (bool, error) {
 	// Marshal request to JSON
 	req := CacheHasRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -521,15 +521,15 @@ func CacheHas(key string) (*CacheHasResponse, error) {
 	// Parse the response
 	var response CacheHasResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Exists, nil
 }
 
 // CacheRemove calls the cache_remove host function.

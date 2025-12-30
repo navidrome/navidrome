@@ -570,6 +570,30 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("storage limit exceeded"))
 		})
+
+		It("should handle binary data with null bytes through WASM", func() {
+			ctx := GinkgoT().Context()
+
+			// Binary data with null bytes, high bytes, and other edge cases
+			binaryData := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE, 0x00, 0x80, 0x7F}
+
+			// Set binary value
+			_, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "set",
+				Key:       "binary_test",
+				Value:     binaryData,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Get binary value and verify exact match
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get",
+				Key:       "binary_test",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeTrue())
+			Expect(output.Value).To(Equal(binaryData))
+		})
 	})
 
 	Describe("Database Isolation", func() {

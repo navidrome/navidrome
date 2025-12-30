@@ -90,7 +90,7 @@ type ArtworkGetPlaylistUrlResponse struct {
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, error) {
+func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
 	req := ArtworkGetArtistUrlRequest{
 		Id:   id,
@@ -98,7 +98,7 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -113,15 +113,15 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 	// Parse the response
 	var response ArtworkGetArtistUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Url, nil
 }
 
 // ArtworkGetAlbumUrl calls the artwork_getalbumurl host function.
@@ -132,7 +132,7 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, error) {
+func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
 	req := ArtworkGetAlbumUrlRequest{
 		Id:   id,
@@ -140,7 +140,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -155,15 +155,15 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 	// Parse the response
 	var response ArtworkGetAlbumUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Url, nil
 }
 
 // ArtworkGetTrackUrl calls the artwork_gettrackurl host function.
@@ -174,7 +174,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, error) {
+func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
 	req := ArtworkGetTrackUrlRequest{
 		Id:   id,
@@ -182,7 +182,7 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -197,15 +197,15 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 	// Parse the response
 	var response ArtworkGetTrackUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Url, nil
 }
 
 // ArtworkGetPlaylistUrl calls the artwork_getplaylisturl host function.
@@ -216,7 +216,7 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlResponse, error) {
+func ArtworkGetPlaylistUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
 	req := ArtworkGetPlaylistUrlRequest{
 		Id:   id,
@@ -224,7 +224,7 @@ func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlRespons
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -239,13 +239,13 @@ func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlRespons
 	// Parse the response
 	var response ArtworkGetPlaylistUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Url, nil
 }

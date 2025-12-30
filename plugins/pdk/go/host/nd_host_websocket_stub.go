@@ -53,7 +53,7 @@ type WebSocketCloseConnectionRequest struct {
 //
 // Returns the connection ID that can be used to send messages or close the connection,
 // or an error if the connection fails.
-func WebSocketConnect(url string, headers map[string]string, connectionID string) (*WebSocketConnectResponse, error) {
+func WebSocketConnect(url string, headers map[string]string, connectionID string) (string, error) {
 	panic("host: WebSocketConnect is only available in WASM plugins")
 }
 

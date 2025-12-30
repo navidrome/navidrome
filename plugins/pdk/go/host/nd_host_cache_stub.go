@@ -121,7 +121,7 @@ func CacheSetString(key string, value string, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a string, exists will be false.
-func CacheGetString(key string) (*CacheGetStringResponse, error) {
+func CacheGetString(key string) (string, bool, error) {
 	panic("host: CacheGetString is only available in WASM plugins")
 }
 
@@ -146,7 +146,7 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not an integer, exists will be false.
-func CacheGetInt(key string) (*CacheGetIntResponse, error) {
+func CacheGetInt(key string) (int64, bool, error) {
 	panic("host: CacheGetInt is only available in WASM plugins")
 }
 
@@ -171,7 +171,7 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a float, exists will be false.
-func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
+func CacheGetFloat(key string) (float64, bool, error) {
 	panic("host: CacheGetFloat is only available in WASM plugins")
 }
 
@@ -196,7 +196,7 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 //
 // Returns the value and whether the key exists. If the key doesn't exist
 // or the stored value is not a byte slice, exists will be false.
-func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
+func CacheGetBytes(key string) ([]byte, bool, error) {
 	panic("host: CacheGetBytes is only available in WASM plugins")
 }
 
@@ -207,7 +207,7 @@ func CacheGetBytes(key string) (*CacheGetBytesResponse, error) {
 //   - key: The cache key (will be namespaced with plugin ID)
 //
 // Returns true if the key exists and has not expired.
-func CacheHas(key string) (*CacheHasResponse, error) {
+func CacheHas(key string) (bool, error) {
 	panic("host: CacheHas is only available in WASM plugins")
 }
 

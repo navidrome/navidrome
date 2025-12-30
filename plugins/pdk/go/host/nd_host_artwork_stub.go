@@ -64,7 +64,7 @@ type ArtworkGetPlaylistUrlResponse struct {
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, error) {
+func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 	panic("host: ArtworkGetArtistUrl is only available in WASM plugins")
 }
 
@@ -76,7 +76,7 @@ func ArtworkGetArtistUrl(id string, size int32) (*ArtworkGetArtistUrlResponse, e
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, error) {
+func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 	panic("host: ArtworkGetAlbumUrl is only available in WASM plugins")
 }
 
@@ -88,7 +88,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (*ArtworkGetAlbumUrlResponse, err
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, error) {
+func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 	panic("host: ArtworkGetTrackUrl is only available in WASM plugins")
 }
 
@@ -100,6 +100,6 @@ func ArtworkGetTrackUrl(id string, size int32) (*ArtworkGetTrackUrlResponse, err
 //   - size: Desired image size in pixels (0 for original size)
 //
 // Returns the public URL for the artwork, or an error if generation fails.
-func ArtworkGetPlaylistUrl(id string, size int32) (*ArtworkGetPlaylistUrlResponse, error) {
+func ArtworkGetPlaylistUrl(id string, size int32) (string, error) {
 	panic("host: ArtworkGetPlaylistUrl is only available in WASM plugins")
 }

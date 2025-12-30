@@ -41,7 +41,7 @@ type MetaSetRequest struct {
 }
 
 // MetaGet calls the meta_get host function.
-func MetaGet(key string) (*MetaGetResponse, error) {
+func MetaGet(key string) (any, error) {
 	// Marshal request to JSON
 	req := MetaGetRequest{
 		Key: key,
@@ -71,7 +71,7 @@ func MetaGet(key string) (*MetaGetResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, nil
 }
 
 // MetaSet calls the meta_set host function.

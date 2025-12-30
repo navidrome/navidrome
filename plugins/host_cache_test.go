@@ -519,6 +519,31 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			Expect(output.BytesVal).To(Equal(testBytes))
 		})
 
+		It("should handle binary data with null bytes through WASM", func() {
+			ctx := GinkgoT().Context()
+
+			// Binary data with null bytes, high bytes, and other edge cases
+			binaryData := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE, 0x00, 0x80, 0x7F}
+
+			// Set binary bytes
+			_, err := callTestCache(ctx, testCacheInput{
+				Operation:  "set_bytes",
+				Key:        "binary_test",
+				BytesVal:   binaryData,
+				TTLSeconds: 300,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Get binary bytes and verify exact match
+			output, err := callTestCache(ctx, testCacheInput{
+				Operation: "get_bytes",
+				Key:       "binary_test",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeTrue())
+			Expect(output.BytesVal).To(Equal(binaryData))
+		})
+
 		It("should check if key exists", func() {
 			ctx := GinkgoT().Context()
 
