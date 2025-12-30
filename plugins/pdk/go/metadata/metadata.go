@@ -234,7 +234,7 @@ func Register(impl Metadata) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//export nd_get_artist_mbid
+//go:wasmexport nd_get_artist_mbid
 func _NdGetArtistMbid() int32 {
 	if artistMBIDImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -261,7 +261,7 @@ func _NdGetArtistMbid() int32 {
 	return 0
 }
 
-//export nd_get_artist_url
+//go:wasmexport nd_get_artist_url
 func _NdGetArtistUrl() int32 {
 	if artistURLImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -288,7 +288,7 @@ func _NdGetArtistUrl() int32 {
 	return 0
 }
 
-//export nd_get_artist_biography
+//go:wasmexport nd_get_artist_biography
 func _NdGetArtistBiography() int32 {
 	if artistBiographyImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -315,7 +315,7 @@ func _NdGetArtistBiography() int32 {
 	return 0
 }
 
-//export nd_get_similar_artists
+//go:wasmexport nd_get_similar_artists
 func _NdGetSimilarArtists() int32 {
 	if similarArtistsImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -342,7 +342,7 @@ func _NdGetSimilarArtists() int32 {
 	return 0
 }
 
-//export nd_get_artist_images
+//go:wasmexport nd_get_artist_images
 func _NdGetArtistImages() int32 {
 	if artistImagesImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -369,7 +369,7 @@ func _NdGetArtistImages() int32 {
 	return 0
 }
 
-//export nd_get_artist_top_songs
+//go:wasmexport nd_get_artist_top_songs
 func _NdGetArtistTopSongs() int32 {
 	if artistTopSongsImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -396,7 +396,7 @@ func _NdGetArtistTopSongs() int32 {
 	return 0
 }
 
-//export nd_get_album_info
+//go:wasmexport nd_get_album_info
 func _NdGetAlbumInfo() int32 {
 	if albumInfoImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -423,7 +423,7 @@ func _NdGetAlbumInfo() int32 {
 	return 0
 }
 
-//export nd_get_album_images
+//go:wasmexport nd_get_album_images
 func _NdGetAlbumImages() int32 {
 	if albumImagesImpl == nil {
 		// Return standard code - host will skip this plugin gracefully

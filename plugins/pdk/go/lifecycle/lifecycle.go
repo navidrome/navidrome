@@ -43,7 +43,7 @@ func Register(impl Lifecycle) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//export nd_on_init
+//go:wasmexport nd_on_init
 func _NdOnInit() int32 {
 	if initImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
