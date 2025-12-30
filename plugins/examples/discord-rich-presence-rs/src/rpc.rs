@@ -4,7 +4,7 @@
 //! presence updates, and heartbeat management.
 
 use extism_pdk::*;
-use nd_host::{cache, scheduler, websocket};
+use nd_pdk::host::{cache, scheduler, websocket};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
