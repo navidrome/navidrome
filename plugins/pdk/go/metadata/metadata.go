@@ -11,22 +11,24 @@ import (
 	pdk "github.com/extism/go-pdk"
 )
 
-// ArtistMBIDInput is the input for GetArtistMBID.
-type ArtistMBIDInput struct {
+// ArtistRequest is the common request for artist-related functions.
+type ArtistRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
+	// MBID is the MusicBrainz ID for the artist (if known).
+	MBID string `json:"mbid,omitempty"`
 }
 
-// ArtistURLOutput is the output for GetArtistURL.
-type ArtistURLOutput struct {
-	// URL is the external URL for the artist.
-	URL string `json:"url"`
+// ArtistBiographyResponse is the response for GetArtistBiography.
+type ArtistBiographyResponse struct {
+	// Biography is the artist biography text.
+	Biography string `json:"biography"`
 }
 
-// AlbumInfoOutput is the output for GetAlbumInfo.
-type AlbumInfoOutput struct {
+// AlbumInfoResponse is the response for GetAlbumInfo.
+type AlbumInfoResponse struct {
 	// Name is the album name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the album.
@@ -37,10 +39,38 @@ type AlbumInfoOutput struct {
 	URL string `json:"url"`
 }
 
-// AlbumImagesOutput is the output for GetAlbumImages.
-type AlbumImagesOutput struct {
-	// Images is the list of album images.
-	Images []ImageInfo `json:"images"`
+// ArtistMBIDRequest is the request for GetArtistMBID.
+type ArtistMBIDRequest struct {
+	// ID is the internal Navidrome artist ID.
+	ID string `json:"id"`
+	// Name is the artist name.
+	Name string `json:"name"`
+}
+
+// TopSongsResponse is the response for GetArtistTopSongs.
+type TopSongsResponse struct {
+	// Songs is the list of top songs.
+	Songs []SongRef `json:"songs"`
+}
+
+// ArtistRef is a reference to an artist with name and optional MBID.
+type ArtistRef struct {
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz ID for the artist.
+	MBID string `json:"mbid,omitempty"`
+}
+
+// ArtistMBIDResponse is the response for GetArtistMBID.
+type ArtistMBIDResponse struct {
+	// MBID is the MusicBrainz ID for the artist.
+	MBID string `json:"mbid"`
+}
+
+// SimilarArtistsResponse is the response for GetSimilarArtists.
+type SimilarArtistsResponse struct {
+	// Artists is the list of similar artists.
+	Artists []ArtistRef `json:"artists"`
 }
 
 // SongRef is a reference to a song with name and optional MBID.
@@ -48,7 +78,7 @@ type SongRef struct {
 	// Name is the song name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 }
 
 // ImageInfo represents an image with URL and size.
@@ -59,86 +89,56 @@ type ImageInfo struct {
 	Size int32 `json:"size"`
 }
 
-// ArtistBiographyOutput is the output for GetArtistBiography.
-type ArtistBiographyOutput struct {
-	// Biography is the artist biography text.
-	Biography string `json:"biography"`
+// ArtistURLResponse is the response for GetArtistURL.
+type ArtistURLResponse struct {
+	// URL is the external URL for the artist.
+	URL string `json:"url"`
 }
 
-// SimilarArtistsOutput is the output for GetSimilarArtists.
-type SimilarArtistsOutput struct {
-	// Artists is the list of similar artists.
-	Artists []ArtistRef `json:"artists"`
-}
-
-// TopSongsInput is the input for GetArtistTopSongs.
-type TopSongsInput struct {
+// SimilarArtistsRequest is the request for GetSimilarArtists.
+type SimilarArtistsRequest struct {
 	// ID is the internal Navidrome artist ID.
 	ID string `json:"id"`
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
-	// Count is the maximum number of top songs to return.
-	Count int32 `json:"count"`
-}
-
-// TopSongsOutput is the output for GetArtistTopSongs.
-type TopSongsOutput struct {
-	// Songs is the list of top songs.
-	Songs []SongRef `json:"songs"`
-}
-
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID *string `json:"mbid,omitempty"`
-}
-
-// ArtistImagesOutput is the output for GetArtistImages.
-type ArtistImagesOutput struct {
-	// Images is the list of artist images.
-	Images []ImageInfo `json:"images"`
-}
-
-// ArtistMBIDOutput is the output for GetArtistMBID.
-type ArtistMBIDOutput struct {
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid"`
-}
-
-// ArtistInput is the common input for artist-related functions.
-type ArtistInput struct {
-	// ID is the internal Navidrome artist ID.
-	ID string `json:"id"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
-}
-
-// SimilarArtistsInput is the input for GetSimilarArtists.
-type SimilarArtistsInput struct {
-	// ID is the internal Navidrome artist ID.
-	ID string `json:"id"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
 	// Limit is the maximum number of similar artists to return.
 	Limit int32 `json:"limit"`
 }
 
-// AlbumInput is the common input for album-related functions.
-type AlbumInput struct {
+// ArtistImagesResponse is the response for GetArtistImages.
+type ArtistImagesResponse struct {
+	// Images is the list of artist images.
+	Images []ImageInfo `json:"images"`
+}
+
+// TopSongsRequest is the request for GetArtistTopSongs.
+type TopSongsRequest struct {
+	// ID is the internal Navidrome artist ID.
+	ID string `json:"id"`
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz ID for the artist (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of top songs to return.
+	Count int32 `json:"count"`
+}
+
+// AlbumRequest is the common request for album-related functions.
+type AlbumRequest struct {
 	// Name is the album name.
 	Name string `json:"name"`
 	// Artist is the album artist name.
 	Artist string `json:"artist"`
 	// MBID is the MusicBrainz ID for the album (if known).
-	MBID *string `json:"mbid,omitempty"`
+	MBID string `json:"mbid,omitempty"`
+}
+
+// AlbumImagesResponse is the response for GetAlbumImages.
+type AlbumImagesResponse struct {
+	// Images is the list of album images.
+	Images []ImageInfo `json:"images"`
 }
 
 // Metadata is the marker interface for metadata plugins.
@@ -153,52 +153,52 @@ type Metadata interface{}
 
 // ArtistMBIDProvider provides the GetArtistMBID function.
 type ArtistMBIDProvider interface {
-	GetArtistMBID(ArtistMBIDInput) (ArtistMBIDOutput, error)
+	GetArtistMBID(ArtistMBIDRequest) (ArtistMBIDResponse, error)
 }
 
 // ArtistURLProvider provides the GetArtistURL function.
 type ArtistURLProvider interface {
-	GetArtistURL(ArtistInput) (ArtistURLOutput, error)
+	GetArtistURL(ArtistRequest) (ArtistURLResponse, error)
 }
 
 // ArtistBiographyProvider provides the GetArtistBiography function.
 type ArtistBiographyProvider interface {
-	GetArtistBiography(ArtistInput) (ArtistBiographyOutput, error)
+	GetArtistBiography(ArtistRequest) (ArtistBiographyResponse, error)
 }
 
 // SimilarArtistsProvider provides the GetSimilarArtists function.
 type SimilarArtistsProvider interface {
-	GetSimilarArtists(SimilarArtistsInput) (SimilarArtistsOutput, error)
+	GetSimilarArtists(SimilarArtistsRequest) (SimilarArtistsResponse, error)
 }
 
 // ArtistImagesProvider provides the GetArtistImages function.
 type ArtistImagesProvider interface {
-	GetArtistImages(ArtistInput) (ArtistImagesOutput, error)
+	GetArtistImages(ArtistRequest) (ArtistImagesResponse, error)
 }
 
 // ArtistTopSongsProvider provides the GetArtistTopSongs function.
 type ArtistTopSongsProvider interface {
-	GetArtistTopSongs(TopSongsInput) (TopSongsOutput, error)
+	GetArtistTopSongs(TopSongsRequest) (TopSongsResponse, error)
 }
 
 // AlbumInfoProvider provides the GetAlbumInfo function.
 type AlbumInfoProvider interface {
-	GetAlbumInfo(AlbumInput) (AlbumInfoOutput, error)
+	GetAlbumInfo(AlbumRequest) (AlbumInfoResponse, error)
 }
 
 // AlbumImagesProvider provides the GetAlbumImages function.
 type AlbumImagesProvider interface {
-	GetAlbumImages(AlbumInput) (AlbumImagesOutput, error)
+	GetAlbumImages(AlbumRequest) (AlbumImagesResponse, error)
 } // Internal implementation holders
 var (
-	artistMBIDImpl      func(ArtistMBIDInput) (ArtistMBIDOutput, error)
-	artistURLImpl       func(ArtistInput) (ArtistURLOutput, error)
-	artistBiographyImpl func(ArtistInput) (ArtistBiographyOutput, error)
-	similarArtistsImpl  func(SimilarArtistsInput) (SimilarArtistsOutput, error)
-	artistImagesImpl    func(ArtistInput) (ArtistImagesOutput, error)
-	artistTopSongsImpl  func(TopSongsInput) (TopSongsOutput, error)
-	albumInfoImpl       func(AlbumInput) (AlbumInfoOutput, error)
-	albumImagesImpl     func(AlbumInput) (AlbumImagesOutput, error)
+	artistMBIDImpl      func(ArtistMBIDRequest) (ArtistMBIDResponse, error)
+	artistURLImpl       func(ArtistRequest) (ArtistURLResponse, error)
+	artistBiographyImpl func(ArtistRequest) (ArtistBiographyResponse, error)
+	similarArtistsImpl  func(SimilarArtistsRequest) (SimilarArtistsResponse, error)
+	artistImagesImpl    func(ArtistRequest) (ArtistImagesResponse, error)
+	artistTopSongsImpl  func(TopSongsRequest) (TopSongsResponse, error)
+	albumInfoImpl       func(AlbumRequest) (AlbumInfoResponse, error)
+	albumImagesImpl     func(AlbumRequest) (AlbumImagesResponse, error)
 )
 
 // Register registers a metadata implementation.
@@ -241,7 +241,7 @@ func _NdGetArtistMbid() int32 {
 		return NotImplementedCode
 	}
 
-	var input ArtistMBIDInput
+	var input ArtistMBIDRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -268,7 +268,7 @@ func _NdGetArtistUrl() int32 {
 		return NotImplementedCode
 	}
 
-	var input ArtistInput
+	var input ArtistRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -295,7 +295,7 @@ func _NdGetArtistBiography() int32 {
 		return NotImplementedCode
 	}
 
-	var input ArtistInput
+	var input ArtistRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -322,7 +322,7 @@ func _NdGetSimilarArtists() int32 {
 		return NotImplementedCode
 	}
 
-	var input SimilarArtistsInput
+	var input SimilarArtistsRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -349,7 +349,7 @@ func _NdGetArtistImages() int32 {
 		return NotImplementedCode
 	}
 
-	var input ArtistInput
+	var input ArtistRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -376,7 +376,7 @@ func _NdGetArtistTopSongs() int32 {
 		return NotImplementedCode
 	}
 
-	var input TopSongsInput
+	var input TopSongsRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -403,7 +403,7 @@ func _NdGetAlbumInfo() int32 {
 		return NotImplementedCode
 	}
 
-	var input AlbumInput
+	var input AlbumRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
@@ -430,7 +430,7 @@ func _NdGetAlbumImages() int32 {
 		return NotImplementedCode
 	}
 
-	var input AlbumInput
+	var input AlbumRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1

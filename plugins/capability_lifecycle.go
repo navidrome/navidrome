@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 )
 
 // CapabilityLifecycle indicates the plugin has lifecycle callback functions.
@@ -19,14 +20,6 @@ func init() {
 	)
 }
 
-// onInitInput is the input for nd_on_init (currently empty, reserved for future use)
-type onInitInput struct{}
-
-// onInitOutput is the output from nd_on_init
-type onInitOutput struct {
-	Error string `json:"error,omitempty"`
-}
-
 // callPluginInit calls the plugin's nd_on_init function if it has the Lifecycle capability.
 // This is called after the plugin is fully loaded with all services registered.
 func callPluginInit(ctx context.Context, instance *plugin) {
@@ -36,7 +29,7 @@ func callPluginInit(ctx context.Context, instance *plugin) {
 
 	log.Debug(ctx, "Calling plugin init function", "plugin", instance.name)
 
-	result, err := callPluginFunction[onInitInput, onInitOutput](ctx, instance, FuncOnInit, onInitInput{})
+	result, err := callPluginFunction[capabilities.InitRequest, capabilities.InitResponse](ctx, instance, FuncOnInit, capabilities.InitRequest{})
 	if err != nil {
 		log.Error(ctx, "Plugin init function failed", "plugin", instance.name, err)
 		return

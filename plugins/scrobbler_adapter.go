@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 )
 
 // CapabilityScrobbler indicates the plugin can receive scrobble events.
@@ -39,12 +40,12 @@ type ScrobblerPlugin struct {
 // IsAuthorized checks if the user is authorized with this scrobbler
 func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
 	username := getUsernameFromContext(ctx)
-	input := scrobblerAuthInput{
+	input := capabilities.IsAuthorizedRequest{
 		UserID:   userId,
 		Username: username,
 	}
 
-	result, err := callPluginFunction[scrobblerAuthInput, scrobblerAuthOutput](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
+	result, err := callPluginFunction[capabilities.IsAuthorizedRequest, capabilities.IsAuthorizedResponse](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
 	if err != nil {
 		return false
 	}
@@ -55,14 +56,14 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 // NowPlaying sends a now playing notification to the scrobbler
 func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	username := getUsernameFromContext(ctx)
-	input := scrobblerNowPlayingInput{
+	input := capabilities.NowPlayingRequest{
 		UserID:   userId,
 		Username: username,
 		Track:    mediaFileToTrackInfo(track),
-		Position: position,
+		Position: int32(position),
 	}
 
-	result, err := callPluginFunction[scrobblerNowPlayingInput, scrobblerOutput](ctx, s.plugin, FuncScrobblerNowPlaying, input)
+	result, err := callPluginFunction[capabilities.NowPlayingRequest, capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerNowPlaying, input)
 	if err != nil {
 		return err
 	}
@@ -73,14 +74,14 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 // Scrobble submits a scrobble to the scrobbler
 func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobbler.Scrobble) error {
 	username := getUsernameFromContext(ctx)
-	input := scrobblerScrobbleInput{
+	input := capabilities.ScrobbleRequest{
 		UserID:    userId,
 		Username:  username,
 		Track:     mediaFileToTrackInfo(&sc.MediaFile),
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
-	result, err := callPluginFunction[scrobblerScrobbleInput, scrobblerOutput](ctx, s.plugin, FuncScrobblerScrobble, input)
+	result, err := callPluginFunction[capabilities.ScrobbleRequest, capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerScrobble, input)
 	if err != nil {
 		return err
 	}
@@ -96,42 +97,42 @@ func getUsernameFromContext(ctx context.Context) string {
 	return ""
 }
 
-// mediaFileToTrackInfo converts a model.MediaFile to scrobblerTrackInfo
-func mediaFileToTrackInfo(mf *model.MediaFile) scrobblerTrackInfo {
-	return scrobblerTrackInfo{
+// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo
+func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
+	return capabilities.TrackInfo{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
 		Artist:            mf.Artist,
 		AlbumArtist:       mf.AlbumArtist,
 		Duration:          mf.Duration,
-		TrackNumber:       mf.TrackNumber,
-		DiscNumber:        mf.DiscNumber,
-		MbzRecordingID:    mf.MbzRecordingID,
-		MbzAlbumID:        mf.MbzAlbumID,
-		MbzArtistID:       mf.MbzArtistID,
-		MbzReleaseGroupID: mf.MbzReleaseGroupID,
-		MbzAlbumArtistID:  mf.MbzAlbumArtistID,
-		MbzReleaseTrackID: mf.MbzReleaseTrackID,
+		TrackNumber:       int32(mf.TrackNumber),
+		DiscNumber:        int32(mf.DiscNumber),
+		MBZRecordingID:    mf.MbzRecordingID,
+		MBZAlbumID:        mf.MbzAlbumID,
+		MBZArtistID:       mf.MbzArtistID,
+		MBZReleaseGroupID: mf.MbzReleaseGroupID,
+		MBZAlbumArtistID:  mf.MbzAlbumArtistID,
+		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
 }
 
 // mapScrobblerError converts the plugin output error to a scrobbler error
-func mapScrobblerError(output scrobblerOutput) error {
+func mapScrobblerError(output capabilities.ScrobblerResponse) error {
 	switch output.ErrorType {
-	case scrobblerErrorNone, "":
+	case capabilities.ScrobblerErrorNone, "":
 		return nil
-	case scrobblerErrorNotAuthorized:
+	case capabilities.ScrobblerErrorNotAuthorized:
 		if output.Error != "" {
 			return fmt.Errorf("%w: %s", scrobbler.ErrNotAuthorized, output.Error)
 		}
 		return scrobbler.ErrNotAuthorized
-	case scrobblerErrorRetryLater:
+	case capabilities.ScrobblerErrorRetryLater:
 		if output.Error != "" {
 			return fmt.Errorf("%w: %s", scrobbler.ErrRetryLater, output.Error)
 		}
 		return scrobbler.ErrRetryLater
-	case scrobblerErrorUnrecoverable:
+	case capabilities.ScrobblerErrorUnrecoverable:
 		if output.Error != "" {
 			return fmt.Errorf("%w: %s", scrobbler.ErrUnrecoverable, output.Error)
 		}

@@ -71,7 +71,7 @@ var (
 
 // OnInit is called when the plugin is loaded.
 // We use this to establish the initial WebSocket connection.
-func (p *cryptoTickerPlugin) OnInit(_ lifecycle.OnInitInput) (lifecycle.OnInitOutput, error) {
+func (p *cryptoTickerPlugin) OnInit(_ lifecycle.InitRequest) (lifecycle.InitResponse, error) {
 	pdk.Log(pdk.LogInfo, "Crypto Ticker Plugin initializing...")
 
 	// Get ticker configuration
@@ -90,7 +90,7 @@ func (p *cryptoTickerPlugin) OnInit(_ lifecycle.OnInitInput) (lifecycle.OnInitOu
 		// Don't fail init - let reconnect logic handle it
 	}
 
-	return lifecycle.OnInitOutput{}, nil
+	return lifecycle.InitResponse{}, nil
 }
 
 // parseTickerSymbols parses a comma-separated list of ticker symbols
@@ -143,10 +143,10 @@ func connectAndSubscribe(tickers []string) error {
 }
 
 // OnTextMessage is called when a text message is received
-func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageInput) (websocket.OnTextMessageOutput, error) {
+func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageRequest) (websocket.OnTextMessageResponse, error) {
 	// Only process messages from our connection
 	if input.ConnectionID != connectionID {
-		return websocket.OnTextMessageOutput{}, nil
+		return websocket.OnTextMessageResponse{}, nil
 	}
 
 	// Try to parse as a ticker message
@@ -154,7 +154,7 @@ func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageInput) (
 	err := json.Unmarshal([]byte(input.Message), &ticker)
 	if err != nil {
 		// Not a valid JSON message, ignore
-		return websocket.OnTextMessageOutput{}, nil
+		return websocket.OnTextMessageResponse{}, nil
 	}
 
 	// Only process ticker messages
@@ -163,7 +163,7 @@ func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageInput) (
 		if ticker.Type != "" {
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("Received %s message", ticker.Type))
 		}
-		return websocket.OnTextMessageOutput{}, nil
+		return websocket.OnTextMessageResponse{}, nil
 	}
 
 	// Calculate 24h change percentage
@@ -178,24 +178,24 @@ func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageInput) (
 		ticker.BestAsk,
 	))
 
-	return websocket.OnTextMessageOutput{}, nil
+	return websocket.OnTextMessageResponse{}, nil
 }
 
 // OnBinaryMessage is called when a binary message is received
-func (p *cryptoTickerPlugin) OnBinaryMessage(input websocket.OnBinaryMessageInput) (websocket.OnBinaryMessageOutput, error) {
+func (p *cryptoTickerPlugin) OnBinaryMessage(input websocket.OnBinaryMessageRequest) (websocket.OnBinaryMessageResponse, error) {
 	// Coinbase doesn't send binary messages, but we implement the handler anyway
 	pdk.Log(pdk.LogWarn, fmt.Sprintf("Received unexpected binary message on connection %s", input.ConnectionID))
-	return websocket.OnBinaryMessageOutput{}, nil
+	return websocket.OnBinaryMessageResponse{}, nil
 }
 
 // OnError is called when an error occurs on the WebSocket connection
-func (p *cryptoTickerPlugin) OnError(input websocket.OnErrorInput) (websocket.OnErrorOutput, error) {
+func (p *cryptoTickerPlugin) OnError(input websocket.OnErrorRequest) (websocket.OnErrorResponse, error) {
 	pdk.Log(pdk.LogError, fmt.Sprintf("WebSocket error on connection %s: %s", input.ConnectionID, input.Error))
-	return websocket.OnErrorOutput{}, nil
+	return websocket.OnErrorResponse{}, nil
 }
 
 // OnClose is called when the WebSocket connection is closed
-func (p *cryptoTickerPlugin) OnClose(input websocket.OnCloseInput) (websocket.OnCloseOutput, error) {
+func (p *cryptoTickerPlugin) OnClose(input websocket.OnCloseRequest) (websocket.OnCloseResponse, error) {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("WebSocket connection %s closed (code: %d, reason: %s)",
 		input.ConnectionID, input.Code, input.Reason))
 
@@ -210,14 +210,14 @@ func (p *cryptoTickerPlugin) OnClose(input websocket.OnCloseInput) (websocket.On
 		}
 	}
 
-	return websocket.OnCloseOutput{}, nil
+	return websocket.OnCloseResponse{}, nil
 }
 
 // OnSchedulerCallback is called when a scheduled task fires
-func (p *cryptoTickerPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackInput) (scheduler.SchedulerCallbackOutput, error) {
+func (p *cryptoTickerPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) (scheduler.SchedulerCallbackResponse, error) {
 	// Only handle our reconnection schedule
 	if input.ScheduleID != reconnectScheduleID {
-		return scheduler.SchedulerCallbackOutput{}, nil
+		return scheduler.SchedulerCallbackResponse{}, nil
 	}
 
 	pdk.Log(pdk.LogInfo, "Attempting to reconnect to Coinbase WebSocket API...")
@@ -244,7 +244,7 @@ func (p *cryptoTickerPlugin) OnSchedulerCallback(input scheduler.SchedulerCallba
 		pdk.Log(pdk.LogInfo, "Successfully reconnected!")
 	}
 
-	return scheduler.SchedulerCallbackOutput{}, nil
+	return scheduler.SchedulerCallbackResponse{}, nil
 }
 
 // calculatePercentChange calculates the percentage change between open and current price

@@ -10,68 +10,68 @@ package capabilities
 type WebSocketCallback interface {
 	// OnTextMessage is called when a text message is received on a WebSocket connection.
 	//nd:export name=nd_websocket_on_text_message
-	OnTextMessage(OnTextMessageInput) (OnTextMessageOutput, error)
+	OnTextMessage(OnTextMessageRequest) (OnTextMessageResponse, error)
 
 	// OnBinaryMessage is called when a binary message is received on a WebSocket connection.
 	//nd:export name=nd_websocket_on_binary_message
-	OnBinaryMessage(OnBinaryMessageInput) (OnBinaryMessageOutput, error)
+	OnBinaryMessage(OnBinaryMessageRequest) (OnBinaryMessageResponse, error)
 
 	// OnError is called when an error occurs on a WebSocket connection.
 	//nd:export name=nd_websocket_on_error
-	OnError(OnErrorInput) (OnErrorOutput, error)
+	OnError(OnErrorRequest) (OnErrorResponse, error)
 
 	// OnClose is called when a WebSocket connection is closed.
 	//nd:export name=nd_websocket_on_close
-	OnClose(OnCloseInput) (OnCloseOutput, error)
+	OnClose(OnCloseRequest) (OnCloseResponse, error)
 }
 
-// OnTextMessageInput is the input provided when a text message is received.
-type OnTextMessageInput struct {
+// OnTextMessageRequest is the request provided when a text message is received.
+type OnTextMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
 	ConnectionID string `json:"connectionId"`
 	// Message is the text message content received from the WebSocket.
 	Message string `json:"message"`
 }
 
-// OnTextMessageOutput is the output from the text message handler.
-type OnTextMessageOutput struct {
+// OnTextMessageResponse is the response from the text message handler.
+type OnTextMessageResponse struct {
 	// Error is the error message if the callback failed.
-	// Empty or null indicates success.
-	Error *string `json:"error,omitempty"`
+	// Empty string indicates success.
+	Error string `json:"error,omitempty"`
 }
 
-// OnBinaryMessageInput is the input provided when a binary message is received.
-type OnBinaryMessageInput struct {
+// OnBinaryMessageRequest is the request provided when a binary message is received.
+type OnBinaryMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
 	ConnectionID string `json:"connectionId"`
 	// Data is the binary data received from the WebSocket, encoded as base64.
 	Data string `json:"data"`
 }
 
-// OnBinaryMessageOutput is the output from the binary message handler.
-type OnBinaryMessageOutput struct {
+// OnBinaryMessageResponse is the response from the binary message handler.
+type OnBinaryMessageResponse struct {
 	// Error is the error message if the callback failed.
-	// Empty or null indicates success.
-	Error *string `json:"error,omitempty"`
+	// Empty string indicates success.
+	Error string `json:"error,omitempty"`
 }
 
-// OnErrorInput is the input provided when an error occurs on a WebSocket connection.
-type OnErrorInput struct {
+// OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
+type OnErrorRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
 	ConnectionID string `json:"connectionId"`
 	// Error is the error message describing what went wrong.
 	Error string `json:"error"`
 }
 
-// OnErrorOutput is the output from the error handler.
-type OnErrorOutput struct {
+// OnErrorResponse is the response from the error handler.
+type OnErrorResponse struct {
 	// Error is the error message if the callback failed.
-	// Empty or null indicates success.
-	Error *string `json:"error,omitempty"`
+	// Empty string indicates success.
+	Error string `json:"error,omitempty"`
 }
 
-// OnCloseInput is the input provided when a WebSocket connection is closed.
-type OnCloseInput struct {
+// OnCloseRequest is the request provided when a WebSocket connection is closed.
+type OnCloseRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that was closed.
 	ConnectionID string `json:"connectionId"`
 	// Code is the WebSocket close status code (e.g., 1000 for normal closure,
@@ -81,9 +81,9 @@ type OnCloseInput struct {
 	Reason string `json:"reason"`
 }
 
-// OnCloseOutput is the output from the close handler.
-type OnCloseOutput struct {
+// OnCloseResponse is the response from the close handler.
+type OnCloseResponse struct {
 	// Error is the error message if the callback failed.
-	// Empty or null indicates success.
-	Error *string `json:"error,omitempty"`
+	// Empty string indicates success.
+	Error string `json:"error,omitempty"`
 }

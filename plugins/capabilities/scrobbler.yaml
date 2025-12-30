@@ -3,31 +3,31 @@ exports:
     nd_scrobbler_is_authorized:
         description: IsAuthorized checks if a user is authorized to scrobble to this service.
         input:
-            $ref: '#/components/schemas/AuthInput'
+            $ref: '#/components/schemas/IsAuthorizedRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/AuthOutput'
+            $ref: '#/components/schemas/IsAuthorizedResponse'
             contentType: application/json
     nd_scrobbler_now_playing:
         description: NowPlaying sends a now playing notification to the scrobbling service.
         input:
-            $ref: '#/components/schemas/NowPlayingInput'
+            $ref: '#/components/schemas/NowPlayingRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ScrobblerOutput'
+            $ref: '#/components/schemas/ScrobblerResponse'
             contentType: application/json
     nd_scrobbler_scrobble:
         description: Scrobble submits a completed scrobble to the scrobbling service.
         input:
-            $ref: '#/components/schemas/ScrobbleInput'
+            $ref: '#/components/schemas/ScrobbleRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ScrobblerOutput'
+            $ref: '#/components/schemas/ScrobblerResponse'
             contentType: application/json
 components:
     schemas:
-        AuthInput:
-            description: AuthInput is the input for authorization check.
+        IsAuthorizedRequest:
+            description: IsAuthorizedRequest is the request for authorization check.
             type: object
             properties:
                 userId:
@@ -39,8 +39,8 @@ components:
             required:
                 - userId
                 - username
-        AuthOutput:
-            description: AuthOutput is the output for authorization check.
+        IsAuthorizedResponse:
+            description: IsAuthorizedResponse is the response for authorization check.
             type: object
             properties:
                 authorized:
@@ -48,8 +48,8 @@ components:
                     description: Authorized indicates whether the user is authorized to scrobble.
             required:
                 - authorized
-        NowPlayingInput:
-            description: NowPlayingInput is the input for now playing notification.
+        NowPlayingRequest:
+            description: NowPlayingRequest is the request for now playing notification.
             type: object
             properties:
                 userId:
@@ -70,8 +70,8 @@ components:
                 - username
                 - track
                 - position
-        ScrobbleInput:
-            description: ScrobbleInput is the input for submitting a scrobble.
+        ScrobbleRequest:
+            description: ScrobbleRequest is the request for submitting a scrobble.
             type: object
             properties:
                 userId:
@@ -92,18 +92,16 @@ components:
                 - username
                 - track
                 - timestamp
-        ScrobblerOutput:
-            description: ScrobblerOutput is the output for scrobbler operations.
+        ScrobblerResponse:
+            description: ScrobblerResponse is the response for scrobbler operations.
             type: object
             properties:
                 error:
                     type: string
                     description: Error is the error message if the operation failed.
-                    nullable: true
                 errorType:
                     $ref: '#/components/schemas/ScrobblerErrorType'
                     description: ErrorType indicates how Navidrome should handle the error.
-                    nullable: true
         TrackInfo:
             description: TrackInfo contains track metadata for scrobbling.
             type: object
@@ -138,27 +136,21 @@ components:
                 mbzRecordingId:
                     type: string
                     description: MBZRecordingID is the MusicBrainz recording ID.
-                    nullable: true
                 mbzAlbumId:
                     type: string
                     description: MBZAlbumID is the MusicBrainz album/release ID.
-                    nullable: true
                 mbzArtistId:
                     type: string
                     description: MBZArtistID is the MusicBrainz artist ID.
-                    nullable: true
                 mbzReleaseGroupId:
                     type: string
                     description: MBZReleaseGroupID is the MusicBrainz release group ID.
-                    nullable: true
                 mbzAlbumArtistId:
                     type: string
                     description: MBZAlbumArtistID is the MusicBrainz album artist ID.
-                    nullable: true
                 mbzReleaseTrackId:
                     type: string
                     description: MBZReleaseTrackID is the MusicBrainz release track ID.
-                    nullable: true
             required:
                 - id
                 - title
