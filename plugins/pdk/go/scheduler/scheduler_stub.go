@@ -21,14 +21,6 @@ type SchedulerCallbackRequest struct {
 	IsRecurring bool `json:"isRecurring"`
 }
 
-// SchedulerCallbackResponse is the response from the scheduler callback.
-type SchedulerCallbackResponse struct {
-	// Error is the error message if the callback failed to process the scheduled task.
-	// Empty string indicates success. The error is logged but does not
-	// affect the scheduling system.
-	Error string `json:"error,omitempty"`
-}
-
 // Scheduler is the marker interface for scheduler plugins.
 // Implement one or more of the provider interfaces below.
 // SchedulerCallback provides scheduled task handling.
@@ -39,7 +31,7 @@ type Scheduler interface{}
 
 // SchedulerCallbackProvider provides the OnSchedulerCallback function.
 type SchedulerCallbackProvider interface {
-	OnSchedulerCallback(SchedulerCallbackRequest) (SchedulerCallbackResponse, error)
+	OnSchedulerCallback(SchedulerCallbackRequest) error
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

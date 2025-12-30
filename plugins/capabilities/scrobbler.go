@@ -11,15 +11,15 @@ package capabilities
 type Scrobbler interface {
 	// IsAuthorized checks if a user is authorized to scrobble to this service.
 	//nd:export name=nd_scrobbler_is_authorized
-	IsAuthorized(IsAuthorizedRequest) (IsAuthorizedResponse, error)
+	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
 
 	// NowPlaying sends a now playing notification to the scrobbling service.
 	//nd:export name=nd_scrobbler_now_playing
-	NowPlaying(NowPlayingRequest) (ScrobblerResponse, error)
+	NowPlaying(NowPlayingRequest) (*ScrobblerResponse, error)
 
 	// Scrobble submits a completed scrobble to the scrobbling service.
 	//nd:export name=nd_scrobbler_scrobble
-	Scrobble(ScrobbleRequest) (ScrobblerResponse, error)
+	Scrobble(ScrobbleRequest) (*ScrobblerResponse, error)
 }
 
 // IsAuthorizedRequest is the request for authorization check.

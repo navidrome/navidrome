@@ -65,7 +65,15 @@ type {{.Name}} struct {
 type {{agentName .Capability}} interface {
 {{- range .Capability.Methods}}
 	// {{.Name}}{{if .Doc}} - {{.Doc}}{{end}}
+	{{- if and .HasInput .HasOutput}}
 	{{.Name}}({{.Input.Type}}) ({{.Output.Type}}, error)
+	{{- else if .HasInput}}
+	{{.Name}}({{.Input.Type}}) error
+	{{- else if .HasOutput}}
+	{{.Name}}() ({{.Output.Type}}, error)
+	{{- else}}
+	{{.Name}}() error
+	{{- end}}
 {{- end}}
 }
 {{- else}}
@@ -84,7 +92,15 @@ type {{agentName .Capability}} interface{}
 
 // {{providerInterface .}} provides the {{.Name}} function.
 type {{providerInterface .}} interface {
+	{{- if and .HasInput .HasOutput}}
 	{{.Name}}({{.Input.Type}}) ({{.Output.Type}}, error)
+	{{- else if .HasInput}}
+	{{.Name}}({{.Input.Type}}) error
+	{{- else if .HasOutput}}
+	{{.Name}}() ({{.Output.Type}}, error)
+	{{- else}}
+	{{.Name}}() error
+	{{- end}}
 }
 {{- end}}
 {{- end}}

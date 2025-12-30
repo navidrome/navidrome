@@ -13,6 +13,73 @@ import (
 
 var errFunctionNotFound = errors.New("function not found")
 
+// callPluginFunctionNoInput calls a plugin function that takes no input.
+// It only checks for errors, with no response expected.
+func callPluginFunctionNoInput(ctx context.Context, plugin *plugin, funcName string) error {
+	start := time.Now()
+
+	// Create plugin instance
+	p, err := plugin.instance()
+	if err != nil {
+		return fmt.Errorf("failed to create plugin: %w", err)
+	}
+	defer p.Close(ctx)
+
+	if !p.FunctionExists(funcName) {
+		log.Trace(ctx, "Plugin function not found", "plugin", plugin.name, "function", funcName)
+		return fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
+	}
+
+	startCall := time.Now()
+	exit, _, err := p.Call(funcName, nil)
+	if err != nil {
+		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+		return fmt.Errorf("plugin call failed: %w", err)
+	}
+	if exit != 0 {
+		return fmt.Errorf("plugin call exited with code %d", exit)
+	}
+
+	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
+	return nil
+}
+
+// callPluginFunctionNoOutput calls a plugin function with input but no response expected.
+// It handles JSON marshalling for input and only checks for errors.
+func callPluginFunctionNoOutput[I any](ctx context.Context, plugin *plugin, funcName string, input I) error {
+	start := time.Now()
+
+	// Create plugin instance
+	p, err := plugin.instance()
+	if err != nil {
+		return fmt.Errorf("failed to create plugin: %w", err)
+	}
+	defer p.Close(ctx)
+
+	if !p.FunctionExists(funcName) {
+		log.Trace(ctx, "Plugin function not found", "plugin", plugin.name, "function", funcName)
+		return fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	startCall := time.Now()
+	exit, _, err := p.Call(funcName, inputBytes)
+	if err != nil {
+		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+		return fmt.Errorf("plugin call failed: %w", err)
+	}
+	if exit != 0 {
+		return fmt.Errorf("plugin call exited with code %d", exit)
+	}
+
+	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
+	return nil
+}
+
 // callPluginFunction is a helper to call a plugin function with input and output types.
 // It handles JSON marshalling/unmarshalling and error checking.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcName string, input I) (O, error) {

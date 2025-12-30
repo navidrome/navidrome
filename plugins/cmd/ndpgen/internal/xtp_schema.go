@@ -82,13 +82,13 @@ func buildExport(export Export) xtpExport {
 	e := xtpExport{Description: cleanDocForYAML(export.Doc)}
 	if export.Input.Type != "" {
 		e.Input = &xtpIOParam{
-			Ref:         "#/components/schemas/" + export.Input.Type,
+			Ref:         "#/components/schemas/" + strings.TrimPrefix(export.Input.Type, "*"),
 			ContentType: "application/json",
 		}
 	}
 	if export.Output.Type != "" {
 		e.Output = &xtpIOParam{
-			Ref:         "#/components/schemas/" + export.Output.Type,
+			Ref:         "#/components/schemas/" + strings.TrimPrefix(export.Output.Type, "*"),
 			ContentType: "application/json",
 		}
 	}

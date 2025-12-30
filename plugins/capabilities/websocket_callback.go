@@ -10,19 +10,19 @@ package capabilities
 type WebSocketCallback interface {
 	// OnTextMessage is called when a text message is received on a WebSocket connection.
 	//nd:export name=nd_websocket_on_text_message
-	OnTextMessage(OnTextMessageRequest) (OnTextMessageResponse, error)
+	OnTextMessage(OnTextMessageRequest) error
 
 	// OnBinaryMessage is called when a binary message is received on a WebSocket connection.
 	//nd:export name=nd_websocket_on_binary_message
-	OnBinaryMessage(OnBinaryMessageRequest) (OnBinaryMessageResponse, error)
+	OnBinaryMessage(OnBinaryMessageRequest) error
 
 	// OnError is called when an error occurs on a WebSocket connection.
 	//nd:export name=nd_websocket_on_error
-	OnError(OnErrorRequest) (OnErrorResponse, error)
+	OnError(OnErrorRequest) error
 
 	// OnClose is called when a WebSocket connection is closed.
 	//nd:export name=nd_websocket_on_close
-	OnClose(OnCloseRequest) (OnCloseResponse, error)
+	OnClose(OnCloseRequest) error
 }
 
 // OnTextMessageRequest is the request provided when a text message is received.
@@ -33,13 +33,6 @@ type OnTextMessageRequest struct {
 	Message string `json:"message"`
 }
 
-// OnTextMessageResponse is the response from the text message handler.
-type OnTextMessageResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
-}
-
 // OnBinaryMessageRequest is the request provided when a binary message is received.
 type OnBinaryMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
@@ -48,26 +41,12 @@ type OnBinaryMessageRequest struct {
 	Data string `json:"data"`
 }
 
-// OnBinaryMessageResponse is the response from the binary message handler.
-type OnBinaryMessageResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
-}
-
 // OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
 type OnErrorRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
 	ConnectionID string `json:"connectionId"`
 	// Error is the error message describing what went wrong.
 	Error string `json:"error"`
-}
-
-// OnErrorResponse is the response from the error handler.
-type OnErrorResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
 }
 
 // OnCloseRequest is the request provided when a WebSocket connection is closed.
@@ -79,11 +58,4 @@ type OnCloseRequest struct {
 	Code int32 `json:"code"`
 	// Reason is the human-readable reason for the connection closure, if provided.
 	Reason string `json:"reason"`
-}
-
-// OnCloseResponse is the response from the close handler.
-type OnCloseResponse struct {
-	// Error is the error message if the callback failed.
-	// Empty string indicates success.
-	Error string `json:"error,omitempty"`
 }
