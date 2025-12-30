@@ -201,6 +201,11 @@ func (m Method) HasReturns() bool {
 	return len(m.Returns) > 0
 }
 
+// IsErrorOnly returns true if the method only returns an error (no data fields).
+func (m Method) IsErrorOnly() bool {
+	return m.HasError && !m.HasReturns()
+}
+
 // Param represents a method parameter or return value.
 type Param struct {
 	Name     string // Parameter name

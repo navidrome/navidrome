@@ -60,11 +60,6 @@ type SchedulerCancelScheduleRequest struct {
 	ScheduleID string `json:"scheduleId"`
 }
 
-// SchedulerCancelScheduleResponse is the response type for Scheduler.CancelSchedule.
-type SchedulerCancelScheduleResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // SchedulerScheduleOneTime calls the scheduler_scheduleonetime host function.
 // ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
 // Plugins that use this function must also implement the SchedulerCallback capability
@@ -162,14 +157,14 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 // any future events.
 //
 // Returns an error if the schedule ID is not found or if cancellation fails.
-func SchedulerCancelSchedule(scheduleID string) (*SchedulerCancelScheduleResponse, error) {
+func SchedulerCancelSchedule(scheduleID string) error {
 	// Marshal request to JSON
 	req := SchedulerCancelScheduleRequest{
 		ScheduleID: scheduleID,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -181,16 +176,15 @@ func SchedulerCancelSchedule(scheduleID string) (*SchedulerCancelScheduleRespons
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response SchedulerCancelScheduleResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }

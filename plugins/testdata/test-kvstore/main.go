@@ -37,7 +37,7 @@ func ndTestKVStore() int32 {
 
 	switch input.Operation {
 	case "set":
-		_, err := host.KVStoreSet(input.Key, input.Value)
+		err := host.KVStoreSet(input.Key, input.Value)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -57,7 +57,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "delete":
-		_, err := host.KVStoreDelete(input.Key)
+		err := host.KVStoreDelete(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})

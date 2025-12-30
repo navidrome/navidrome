@@ -28,12 +28,12 @@ func (t *testWebSocket) OnTextMessage(input websocket.OnTextMessageRequest) erro
 
 	switch input.Message {
 	case "echo":
-		if _, err := host.WebSocketSendText(input.ConnectionID, "echo:"+input.Message); err != nil {
+		if err := host.WebSocketSendText(input.ConnectionID, "echo:"+input.Message); err != nil {
 			return err
 		}
 
 	case "close":
-		if _, err := host.WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin"); err != nil {
+		if err := host.WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin"); err != nil {
 			return err
 		}
 

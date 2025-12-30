@@ -71,11 +71,6 @@ type CacheSetStringRequest struct {
 	TtlSeconds int64  `json:"ttlSeconds"`
 }
 
-// CacheSetStringResponse is the response type for Cache.SetString.
-type CacheSetStringResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheGetStringRequest is the request type for Cache.GetString.
 type CacheGetStringRequest struct {
 	Key string `json:"key"`
@@ -93,11 +88,6 @@ type CacheSetIntRequest struct {
 	Key        string `json:"key"`
 	Value      int64  `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
-}
-
-// CacheSetIntResponse is the response type for Cache.SetInt.
-type CacheSetIntResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // CacheGetIntRequest is the request type for Cache.GetInt.
@@ -119,11 +109,6 @@ type CacheSetFloatRequest struct {
 	TtlSeconds int64   `json:"ttlSeconds"`
 }
 
-// CacheSetFloatResponse is the response type for Cache.SetFloat.
-type CacheSetFloatResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheGetFloatRequest is the request type for Cache.GetFloat.
 type CacheGetFloatRequest struct {
 	Key string `json:"key"`
@@ -141,11 +126,6 @@ type CacheSetBytesRequest struct {
 	Key        string `json:"key"`
 	Value      []byte `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
-}
-
-// CacheSetBytesResponse is the response type for Cache.SetBytes.
-type CacheSetBytesResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // CacheGetBytesRequest is the request type for Cache.GetBytes.
@@ -176,11 +156,6 @@ type CacheRemoveRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheRemoveResponse is the response type for Cache.Remove.
-type CacheRemoveResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheSetString calls the cache_setstring host function.
 // SetString stores a string value in the cache.
 //
@@ -190,7 +165,7 @@ type CacheRemoveResponse struct {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetString(key string, value string, ttlSeconds int64) (*CacheSetStringResponse, error) {
+func CacheSetString(key string, value string, ttlSeconds int64) error {
 	// Marshal request to JSON
 	req := CacheSetStringRequest{
 		Key:        key,
@@ -199,7 +174,7 @@ func CacheSetString(key string, value string, ttlSeconds int64) (*CacheSetString
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -211,18 +186,17 @@ func CacheSetString(key string, value string, ttlSeconds int64) (*CacheSetString
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response CacheSetStringResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }
 
 // CacheGetString calls the cache_getstring host function.
@@ -275,7 +249,7 @@ func CacheGetString(key string) (*CacheGetStringResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetInt(key string, value int64, ttlSeconds int64) (*CacheSetIntResponse, error) {
+func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 	// Marshal request to JSON
 	req := CacheSetIntRequest{
 		Key:        key,
@@ -284,7 +258,7 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) (*CacheSetIntRespons
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -296,18 +270,17 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) (*CacheSetIntRespons
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response CacheSetIntResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }
 
 // CacheGetInt calls the cache_getint host function.
@@ -360,7 +333,7 @@ func CacheGetInt(key string) (*CacheGetIntResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetFloat(key string, value float64, ttlSeconds int64) (*CacheSetFloatResponse, error) {
+func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 	// Marshal request to JSON
 	req := CacheSetFloatRequest{
 		Key:        key,
@@ -369,7 +342,7 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) (*CacheSetFloatR
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -381,18 +354,17 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) (*CacheSetFloatR
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response CacheSetFloatResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }
 
 // CacheGetFloat calls the cache_getfloat host function.
@@ -445,7 +417,7 @@ func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetBytes(key string, value []byte, ttlSeconds int64) (*CacheSetBytesResponse, error) {
+func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 	// Marshal request to JSON
 	req := CacheSetBytesRequest{
 		Key:        key,
@@ -454,7 +426,7 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) (*CacheSetBytesRe
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -466,18 +438,17 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) (*CacheSetBytesRe
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response CacheSetBytesResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }
 
 // CacheGetBytes calls the cache_getbytes host function.
@@ -568,14 +539,14 @@ func CacheHas(key string) (*CacheHasResponse, error) {
 //   - key: The cache key (will be namespaced with plugin ID)
 //
 // Returns an error if the operation fails. Does not return an error if the key doesn't exist.
-func CacheRemove(key string) (*CacheRemoveResponse, error) {
+func CacheRemove(key string) error {
 	// Marshal request to JSON
 	req := CacheRemoveRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -587,16 +558,15 @@ func CacheRemove(key string) (*CacheRemoveResponse, error) {
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response CacheRemoveResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }

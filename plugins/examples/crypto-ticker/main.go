@@ -128,7 +128,7 @@ func connectAndSubscribe(tickers []string) error {
 	}
 
 	// Send subscription message
-	_, err = host.WebSocketSendText(connectionID, string(subscriptionJSON))
+	err = host.WebSocketSendText(connectionID, string(subscriptionJSON))
 	if err != nil {
 		return fmt.Errorf("WebSocket send error: %w", err)
 	}
