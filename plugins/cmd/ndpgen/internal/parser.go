@@ -5,9 +5,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -180,15 +182,18 @@ func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error)
 			// Recursively collect all struct dependencies
 			collectAllStructDependencies(referencedTypes, structMap)
 
+			// Sort type names for stable output order
+			sortedTypeNames := slices.Sorted(maps.Keys(referencedTypes))
+
 			// Attach referenced structs to the capability
-			for typeName := range referencedTypes {
+			for _, typeName := range sortedTypeNames {
 				if s, exists := structMap[typeName]; exists {
 					capability.Structs = append(capability.Structs, s)
 				}
 			}
 
 			// Attach referenced type aliases
-			for typeName := range referencedTypes {
+			for _, typeName := range sortedTypeNames {
 				if a, exists := aliasMap[typeName]; exists {
 					capability.TypeAliases = append(capability.TypeAliases, a)
 				}
@@ -197,7 +202,8 @@ func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error)
 			// Also attach type aliases prefixed with interface name (e.g., ScrobblerError for Scrobbler interface)
 			// This supports error types that are not directly referenced in method signatures
 			interfaceName := typeSpec.Name.Name
-			for typeName, a := range aliasMap {
+			for _, typeName := range slices.Sorted(maps.Keys(aliasMap)) {
+				a := aliasMap[typeName]
 				if strings.HasPrefix(typeName, interfaceName) && !referencedTypes[typeName] {
 					capability.TypeAliases = append(capability.TypeAliases, a)
 					referencedTypes[typeName] = true // Mark as referenced for const lookup
@@ -368,8 +374,8 @@ func parseFile(fset *token.FileSet, path string) ([]Service, error) {
 				}
 			}
 
-			// Attach referenced structs to the service
-			for typeName := range referencedTypes {
+			// Attach referenced structs to the service (sorted for stable output)
+			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {
 				if s, exists := structMap[typeName]; exists {
 					service.Structs = append(service.Structs, s)
 				}

@@ -8,28 +8,12 @@
 
 package websocket
 
-// OnTextMessageRequest is the request provided when a text message is received.
-type OnTextMessageRequest struct {
-	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
-	ConnectionID string `json:"connectionId"`
-	// Message is the text message content received from the WebSocket.
-	Message string `json:"message"`
-}
-
 // OnBinaryMessageRequest is the request provided when a binary message is received.
 type OnBinaryMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
 	ConnectionID string `json:"connectionId"`
 	// Data is the binary data received from the WebSocket, encoded as base64.
 	Data string `json:"data"`
-}
-
-// OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
-type OnErrorRequest struct {
-	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
-	ConnectionID string `json:"connectionId"`
-	// Error is the error message describing what went wrong.
-	Error string `json:"error"`
 }
 
 // OnCloseRequest is the request provided when a WebSocket connection is closed.
@@ -41,6 +25,22 @@ type OnCloseRequest struct {
 	Code int32 `json:"code"`
 	// Reason is the human-readable reason for the connection closure, if provided.
 	Reason string `json:"reason"`
+}
+
+// OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
+type OnErrorRequest struct {
+	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
+	ConnectionID string `json:"connectionId"`
+	// Error is the error message describing what went wrong.
+	Error string `json:"error"`
+}
+
+// OnTextMessageRequest is the request provided when a text message is received.
+type OnTextMessageRequest struct {
+	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
+	ConnectionID string `json:"connectionId"`
+	// Message is the text message content received from the WebSocket.
+	Message string `json:"message"`
 }
 
 // WebSocket is the marker interface for websocket plugins.
