@@ -198,6 +198,17 @@ main:
     type: pair
   explicitstatus:
     aliases: [ itunesadvisory, rtng ]
+  cuefile:
+    aliases: [ cuefile ]
+  cuesubtrack:
+    aliases: [ cuesubtrack ]
+  cuetrackoffset:
+    aliases: [ cuetrackoffset ]
+  cuetrackduration:
+    aliases: [ cuetrackduration ]
+  cuesheet:
+    aliases: [ cuesheet ]
+    maxLength: 10240
 
 # Additional tags. You can add new tags without the need to modify the code. They will be available as fields
 # for smart playlists

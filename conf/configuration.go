@@ -147,6 +147,7 @@ type scannerOptions struct {
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
 	PurgeMissing       string // Values: "never", "always", "full"
+	CUESheetSupport    string
 }
 
 type subsonicOptions struct {
@@ -604,6 +605,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
+	viper.SetDefault("scanner.cuesheetsupport", consts.CUEPreferEmbedded)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
