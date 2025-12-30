@@ -30,12 +30,6 @@ The plugin will append `-USD` to any symbol without a trading pair specified.
 
 ## Building
 
-This plugin was scaffolded using XTP CLI:
-
-```bash
-xtp plugin init --schema-file ../schemas/websocket_callback.yaml --template go --path ./crypto-ticker --name crypto-ticker
-```
-
 To build the plugin and package as `.ndp`:
 
 ```bash
@@ -75,23 +69,22 @@ Copy the resulting `crypto-ticker.ndp` to your Navidrome plugins folder.
 ## Files
 
 - `main.go` - Main plugin implementation
-- `pdk.gen.go` - Generated WebSocket callback types (from XTP)
-- `go.mod` - Go module file (imports `ndhost` SDK)
+- `go.mod` - Go module file
 
-## Host SDK
+## PDK
 
-This plugin imports the Go host SDK directly:
+This plugin imports the Navidrome PDK subpackages directly:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import (
+    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+    "github.com/navidrome/navidrome/plugins/pdk/go/lifecycle"
+    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
+    "github.com/navidrome/navidrome/plugins/pdk/go/websocket"
+)
 ```
 
-The `go.mod` file uses a `replace` directive to point to the local SDK:
-
-```
-require github.com/navidrome/navidrome/plugins/host/go v0.0.0
-replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
-```
+The `go.mod` file uses `replace` directives to point to the local packages for development.
 
 ---
 
