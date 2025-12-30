@@ -61,12 +61,12 @@ func init() {
 
 // Ensure cryptoTickerPlugin implements the required provider interfaces
 var (
-	_ lifecycle.InitProvider              = (*cryptoTickerPlugin)(nil)
-	_ websocket.TextMessageProvider       = (*cryptoTickerPlugin)(nil)
-	_ websocket.BinaryMessageProvider     = (*cryptoTickerPlugin)(nil)
-	_ websocket.ErrorProvider             = (*cryptoTickerPlugin)(nil)
-	_ websocket.CloseProvider             = (*cryptoTickerPlugin)(nil)
-	_ scheduler.SchedulerCallbackProvider = (*cryptoTickerPlugin)(nil)
+	_ lifecycle.InitProvider          = (*cryptoTickerPlugin)(nil)
+	_ websocket.TextMessageProvider   = (*cryptoTickerPlugin)(nil)
+	_ websocket.BinaryMessageProvider = (*cryptoTickerPlugin)(nil)
+	_ websocket.ErrorProvider         = (*cryptoTickerPlugin)(nil)
+	_ websocket.CloseProvider         = (*cryptoTickerPlugin)(nil)
+	_ scheduler.CallbackProvider      = (*cryptoTickerPlugin)(nil)
 )
 
 // OnInit is called when the plugin is loaded.
@@ -208,8 +208,8 @@ func (p *cryptoTickerPlugin) OnClose(input websocket.OnCloseRequest) error {
 	return nil
 }
 
-// OnSchedulerCallback is called when a scheduled task fires
-func (p *cryptoTickerPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) error {
+// OnCallback is called when a scheduled task fires
+func (p *cryptoTickerPlugin) OnCallback(input scheduler.SchedulerCallbackRequest) error {
 	// Only handle our reconnection schedule
 	if input.ScheduleID != reconnectScheduleID {
 		return nil

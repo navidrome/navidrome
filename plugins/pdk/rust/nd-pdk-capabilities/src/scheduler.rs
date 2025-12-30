@@ -42,12 +42,12 @@ impl Error {
     }
 }
 
-/// SchedulerCallbackProvider provides the OnSchedulerCallback function.
-pub trait SchedulerCallbackProvider {
-    fn on_scheduler_callback(&self, req: SchedulerCallbackRequest) -> Result<(), Error>;
+/// CallbackProvider provides the OnCallback function.
+pub trait CallbackProvider {
+    fn on_callback(&self, req: SchedulerCallbackRequest) -> Result<(), Error>;
 }
 
-/// Register the on_scheduler_callback export.
+/// Register the on_callback export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
 macro_rules! register_scheduler_callback {
@@ -57,7 +57,7 @@ macro_rules! register_scheduler_callback {
             req: extism_pdk::Json<$crate::scheduler::SchedulerCallbackRequest>
         ) -> extism_pdk::FnResult<()> {
             let plugin = <$plugin_type>::default();
-            $crate::scheduler::SchedulerCallbackProvider::on_scheduler_callback(&plugin, req.into_inner())?;
+            $crate::scheduler::CallbackProvider::on_callback(&plugin, req.into_inner())?;
             Ok(())
         }
     };

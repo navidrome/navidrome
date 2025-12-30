@@ -32,19 +32,19 @@ type SchedulerCallbackRequest struct {
 // to handle task execution.
 type Scheduler interface{}
 
-// SchedulerCallbackProvider provides the OnSchedulerCallback function.
-type SchedulerCallbackProvider interface {
-	OnSchedulerCallback(SchedulerCallbackRequest) error
+// CallbackProvider provides the OnCallback function.
+type CallbackProvider interface {
+	OnCallback(SchedulerCallbackRequest) error
 } // Internal implementation holders
 var (
-	schedulerCallbackImpl func(SchedulerCallbackRequest) error
+	callbackImpl func(SchedulerCallbackRequest) error
 )
 
 // Register registers a scheduler implementation.
 // The implementation is checked for optional provider interfaces.
 func Register(impl Scheduler) {
-	if p, ok := impl.(SchedulerCallbackProvider); ok {
-		schedulerCallbackImpl = p.OnSchedulerCallback
+	if p, ok := impl.(CallbackProvider); ok {
+		callbackImpl = p.OnCallback
 	}
 }
 
@@ -54,7 +54,7 @@ const NotImplementedCode int32 = -2
 
 //export nd_scheduler_callback
 func _NdSchedulerCallback() int32 {
-	if schedulerCallbackImpl == nil {
+	if callbackImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
 		return NotImplementedCode
 	}
@@ -65,7 +65,7 @@ func _NdSchedulerCallback() int32 {
 		return -1
 	}
 
-	if err := schedulerCallbackImpl(input); err != nil {
+	if err := callbackImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}

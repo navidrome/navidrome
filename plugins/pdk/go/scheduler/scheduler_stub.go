@@ -29,9 +29,9 @@ type SchedulerCallbackRequest struct {
 // to handle task execution.
 type Scheduler interface{}
 
-// SchedulerCallbackProvider provides the OnSchedulerCallback function.
-type SchedulerCallbackProvider interface {
-	OnSchedulerCallback(SchedulerCallbackRequest) error
+// CallbackProvider provides the OnCallback function.
+type CallbackProvider interface {
+	OnCallback(SchedulerCallbackRequest) error
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.

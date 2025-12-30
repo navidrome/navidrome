@@ -58,7 +58,7 @@ func (p *myPlugin) OnInit() error {
     return nil
 }
 
-func (p *myPlugin) OnSchedulerCallback(req scheduler.SchedulerCallbackRequest) error {
+func (p *myPlugin) OnCallback(req scheduler.SchedulerCallbackRequest) error {
     // Handle scheduled task
     return host.WebSocketBroadcast("task-complete", req.ScheduleID)
 }
@@ -183,7 +183,7 @@ func init() {
 
 type myScheduler struct{}
 
-func (s *myScheduler) OnSchedulerCallback(req scheduler.SchedulerCallbackRequest) error {
+func (s *myScheduler) OnCallback(req scheduler.SchedulerCallbackRequest) error {
     // Handle the scheduled task
     if req.Payload == "update-data" {
         // Do work...

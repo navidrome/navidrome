@@ -24,7 +24,7 @@ use nd_pdk::scrobbler::{
     ScrobbleRequest, Scrobbler, SCROBBLER_ERROR_NOT_AUTHORIZED, SCROBBLER_ERROR_RETRY_LATER,
 };
 use nd_pdk::scheduler::{
-    Error as SchedulerError, SchedulerCallbackProvider, SchedulerCallbackRequest,
+    CallbackProvider, Error as SchedulerError, SchedulerCallbackRequest,
 };
 use nd_pdk::websocket::{
     BinaryMessageProvider, CloseProvider, Error as WebSocketError, ErrorProvider,
@@ -203,8 +203,8 @@ impl Scrobbler for DiscordPlugin {
 // Scheduler Callback Implementation
 // ============================================================================
 
-impl SchedulerCallbackProvider for DiscordPlugin {
-    fn on_scheduler_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
+impl CallbackProvider for DiscordPlugin {
+    fn on_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
         match req.payload.as_str() {
             PAYLOAD_HEARTBEAT => {
                 // Heartbeat callback - schedule_id is the username

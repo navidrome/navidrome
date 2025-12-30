@@ -13,12 +13,12 @@ func init() {
 
 type testScheduler struct{}
 
-// OnSchedulerCallback is called when a scheduled task fires.
+// OnCallback is called when a scheduled task fires.
 // Magic payloads trigger specific behaviors to test host functions:
 //   - "schedule-followup": schedules a one-time task via host function
 //   - "schedule-recurring": schedules a recurring task via host function
 //   - "schedule-duplicate:<id>": attempts to schedule with the given ID (for testing duplicate detection)
-func (t *testScheduler) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) error {
+func (t *testScheduler) OnCallback(input scheduler.SchedulerCallbackRequest) error {
 	switch {
 	case input.Payload == "schedule-followup":
 		if _, err := host.SchedulerScheduleOneTime(1, "followup-created", "followup-id"); err != nil {
