@@ -194,10 +194,13 @@ func parseConfig() (*config, error) {
 		return nil, fmt.Errorf("resolving output path: %w", err)
 	}
 
-	// Set output directories for each language: $output/$lang/host/
+	// Set output directories for each language
+	// Go host wrappers: $output/go/host/
+	// Python host wrappers: $output/python/host/
+	// Rust host wrappers: $output/rust/nd-pdk-host/ (renamed crate)
 	absGoOutput := filepath.Join(absOutput, "go", "host")
 	absPythonOutput := filepath.Join(absOutput, "python", "host")
-	absRustOutput := filepath.Join(absOutput, "rust", "host")
+	absRustOutput := filepath.Join(absOutput, "rust", "nd-pdk-host")
 
 	// Determine what to generate
 	// Default: generate Go clients if no language flag is specified
@@ -291,14 +294,23 @@ func parseCapabilities(cfg *config) ([]internal.Capability, error) {
 	return capabilities, nil
 }
 
-// generateCapabilityCode generates Go export wrappers for all capabilities.
+// generateCapabilityCode generates export wrappers for all capabilities.
 func generateCapabilityCode(cfg *config, capabilities []internal.Capability) error {
+	// Generate Go capability wrappers (always, for now)
 	for _, cap := range capabilities {
 		// Output directory is $output/go/<capability_name>/
 		outputDir := filepath.Join(cfg.outputDir, "go", cap.Name)
 
 		if err := generateCapabilityGoCode(cap, outputDir, cfg.dryRun, cfg.verbose); err != nil {
-			return fmt.Errorf("generating capability code for %s: %w", cap.Name, err)
+			return fmt.Errorf("generating Go capability code for %s: %w", cap.Name, err)
+		}
+	}
+
+	// Generate Rust capability wrappers if -rust flag is set
+	if cfg.generateRsClient {
+		rustOutputDir := filepath.Join(cfg.outputDir, "rust", "nd-pdk-capabilities", "src")
+		if err := generateCapabilityRustCode(capabilities, rustOutputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating Rust capability code: %w", err)
 		}
 	}
 
@@ -361,6 +373,58 @@ func generateCapabilityGoCode(cap internal.Capability, outputDir string, dryRun,
 
 		if verbose {
 			fmt.Printf("Generated capability stub: %s\n", stubFile)
+		}
+	}
+
+	return nil
+}
+
+// generateCapabilityRustCode generates Rust export wrapper code for all capabilities.
+func generateCapabilityRustCode(capabilities []internal.Capability, outputDir string, dryRun, verbose bool) error {
+	// Generate individual capability modules
+	for _, cap := range capabilities {
+		code, err := internal.GenerateCapabilityRust(cap)
+		if err != nil {
+			return fmt.Errorf("generating Rust code for %s: %w", cap.Name, err)
+		}
+
+		fileName := internal.ToSnakeCase(cap.Name) + ".rs"
+		filePath := filepath.Join(outputDir, fileName)
+
+		if dryRun {
+			fmt.Printf("=== %s ===\n%s\n", filePath, code)
+		} else {
+			if err := os.MkdirAll(outputDir, 0755); err != nil {
+				return fmt.Errorf("creating output directory: %w", err)
+			}
+
+			if err := os.WriteFile(filePath, code, 0600); err != nil {
+				return fmt.Errorf("writing file %s: %w", filePath, err)
+			}
+
+			if verbose {
+				fmt.Printf("Generated Rust capability code: %s\n", filePath)
+			}
+		}
+	}
+
+	// Generate lib.rs
+	libCode, err := internal.GenerateCapabilityRustLib(capabilities)
+	if err != nil {
+		return fmt.Errorf("generating lib.rs: %w", err)
+	}
+
+	libPath := filepath.Join(outputDir, "lib.rs")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", libPath, libCode)
+	} else {
+		if err := os.WriteFile(libPath, libCode, 0600); err != nil {
+			return fmt.Errorf("writing lib.rs: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated Rust lib.rs: %s\n", libPath)
 		}
 	}
 
