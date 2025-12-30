@@ -23,6 +23,20 @@ const (
 // Error implements the error interface for ScrobblerError.
 func (e ScrobblerError) Error() string { return string(e) }
 
+// IsAuthorizedRequest is the request for authorization check.
+type IsAuthorizedRequest struct {
+	// UserID is the internal Navidrome user ID.
+	UserID string `json:"userId"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+}
+
+// IsAuthorizedResponse is the response for authorization check.
+type IsAuthorizedResponse struct {
+	// Authorized indicates whether the user is authorized to scrobble.
+	Authorized bool `json:"authorized"`
+}
+
 // NowPlayingRequest is the request for now playing notification.
 type NowPlayingRequest struct {
 	// UserID is the internal Navidrome user ID.
@@ -77,20 +91,6 @@ type TrackInfo struct {
 	MBZAlbumArtistID string `json:"mbzAlbumArtistId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
-}
-
-// IsAuthorizedRequest is the request for authorization check.
-type IsAuthorizedRequest struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
-	// Username is the username of the user.
-	Username string `json:"username"`
-}
-
-// IsAuthorizedResponse is the response for authorization check.
-type IsAuthorizedResponse struct {
-	// Authorized indicates whether the user is authorized to scrobble.
-	Authorized bool `json:"authorized"`
 }
 
 // Scrobbler requires all methods to be implemented.
