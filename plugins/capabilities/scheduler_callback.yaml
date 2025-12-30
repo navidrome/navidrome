@@ -3,15 +3,15 @@ exports:
     nd_scheduler_callback:
         description: OnSchedulerCallback is called when a scheduled task fires.
         input:
-            $ref: '#/components/schemas/SchedulerCallbackInput'
+            $ref: '#/components/schemas/SchedulerCallbackRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/SchedulerCallbackOutput'
+            $ref: '#/components/schemas/SchedulerCallbackResponse'
             contentType: application/json
 components:
     schemas:
-        SchedulerCallbackInput:
-            description: SchedulerCallbackInput is the input provided when a scheduled task fires.
+        SchedulerCallbackRequest:
+            description: SchedulerCallbackRequest is the request provided when a scheduled task fires.
             type: object
             properties:
                 scheduleId:
@@ -33,14 +33,13 @@ components:
                 - scheduleId
                 - payload
                 - isRecurring
-        SchedulerCallbackOutput:
-            description: SchedulerCallbackOutput is the output from the scheduler callback.
+        SchedulerCallbackResponse:
+            description: SchedulerCallbackResponse is the response from the scheduler callback.
             type: object
             properties:
                 error:
                     type: string
                     description: |-
                         Error is the error message if the callback failed to process the scheduled task.
-                        Empty or null indicates success. The error is logged but does not
+                        Empty string indicates success. The error is logged but does not
                         affect the scheduling system.
-                    nullable: true

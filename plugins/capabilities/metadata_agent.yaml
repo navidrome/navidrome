@@ -3,71 +3,71 @@ exports:
     nd_get_artist_mbid:
         description: GetArtistMBID retrieves the MusicBrainz ID for an artist.
         input:
-            $ref: '#/components/schemas/ArtistMBIDInput'
+            $ref: '#/components/schemas/ArtistMBIDRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ArtistMBIDOutput'
+            $ref: '#/components/schemas/ArtistMBIDResponse'
             contentType: application/json
     nd_get_artist_url:
         description: GetArtistURL retrieves the external URL for an artist.
         input:
-            $ref: '#/components/schemas/ArtistInput'
+            $ref: '#/components/schemas/ArtistRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ArtistURLOutput'
+            $ref: '#/components/schemas/ArtistURLResponse'
             contentType: application/json
     nd_get_artist_biography:
         description: GetArtistBiography retrieves the biography for an artist.
         input:
-            $ref: '#/components/schemas/ArtistInput'
+            $ref: '#/components/schemas/ArtistRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ArtistBiographyOutput'
+            $ref: '#/components/schemas/ArtistBiographyResponse'
             contentType: application/json
     nd_get_similar_artists:
         description: GetSimilarArtists retrieves similar artists for a given artist.
         input:
-            $ref: '#/components/schemas/SimilarArtistsInput'
+            $ref: '#/components/schemas/SimilarArtistsRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/SimilarArtistsOutput'
+            $ref: '#/components/schemas/SimilarArtistsResponse'
             contentType: application/json
     nd_get_artist_images:
         description: GetArtistImages retrieves images for an artist.
         input:
-            $ref: '#/components/schemas/ArtistInput'
+            $ref: '#/components/schemas/ArtistRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/ArtistImagesOutput'
+            $ref: '#/components/schemas/ArtistImagesResponse'
             contentType: application/json
     nd_get_artist_top_songs:
         description: GetArtistTopSongs retrieves top songs for an artist.
         input:
-            $ref: '#/components/schemas/TopSongsInput'
+            $ref: '#/components/schemas/TopSongsRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/TopSongsOutput'
+            $ref: '#/components/schemas/TopSongsResponse'
             contentType: application/json
     nd_get_album_info:
         description: GetAlbumInfo retrieves album information.
         input:
-            $ref: '#/components/schemas/AlbumInput'
+            $ref: '#/components/schemas/AlbumRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/AlbumInfoOutput'
+            $ref: '#/components/schemas/AlbumInfoResponse'
             contentType: application/json
     nd_get_album_images:
         description: GetAlbumImages retrieves images for an album.
         input:
-            $ref: '#/components/schemas/AlbumInput'
+            $ref: '#/components/schemas/AlbumRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/AlbumImagesOutput'
+            $ref: '#/components/schemas/AlbumImagesResponse'
             contentType: application/json
 components:
     schemas:
-        AlbumImagesOutput:
-            description: AlbumImagesOutput is the output for GetAlbumImages.
+        AlbumImagesResponse:
+            description: AlbumImagesResponse is the response for GetAlbumImages.
             type: object
             properties:
                 images:
@@ -77,8 +77,8 @@ components:
                         $ref: '#/components/schemas/ImageInfo'
             required:
                 - images
-        AlbumInfoOutput:
-            description: AlbumInfoOutput is the output for GetAlbumInfo.
+        AlbumInfoResponse:
+            description: AlbumInfoResponse is the response for GetAlbumInfo.
             type: object
             properties:
                 name:
@@ -98,8 +98,8 @@ components:
                 - mbid
                 - description
                 - url
-        AlbumInput:
-            description: AlbumInput is the common input for album-related functions.
+        AlbumRequest:
+            description: AlbumRequest is the common request for album-related functions.
             type: object
             properties:
                 name:
@@ -111,12 +111,11 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the album (if known).
-                    nullable: true
             required:
                 - name
                 - artist
-        ArtistBiographyOutput:
-            description: ArtistBiographyOutput is the output for GetArtistBiography.
+        ArtistBiographyResponse:
+            description: ArtistBiographyResponse is the response for GetArtistBiography.
             type: object
             properties:
                 biography:
@@ -124,8 +123,8 @@ components:
                     description: Biography is the artist biography text.
             required:
                 - biography
-        ArtistImagesOutput:
-            description: ArtistImagesOutput is the output for GetArtistImages.
+        ArtistImagesResponse:
+            description: ArtistImagesResponse is the response for GetArtistImages.
             type: object
             properties:
                 images:
@@ -135,25 +134,8 @@ components:
                         $ref: '#/components/schemas/ImageInfo'
             required:
                 - images
-        ArtistInput:
-            description: ArtistInput is the common input for artist-related functions.
-            type: object
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID.
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist (if known).
-                    nullable: true
-            required:
-                - id
-                - name
-        ArtistMBIDInput:
-            description: ArtistMBIDInput is the input for GetArtistMBID.
+        ArtistMBIDRequest:
+            description: ArtistMBIDRequest is the request for GetArtistMBID.
             type: object
             properties:
                 id:
@@ -165,8 +147,8 @@ components:
             required:
                 - id
                 - name
-        ArtistMBIDOutput:
-            description: ArtistMBIDOutput is the output for GetArtistMBID.
+        ArtistMBIDResponse:
+            description: ArtistMBIDResponse is the response for GetArtistMBID.
             type: object
             properties:
                 mbid:
@@ -184,11 +166,26 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the artist.
-                    nullable: true
             required:
                 - name
-        ArtistURLOutput:
-            description: ArtistURLOutput is the output for GetArtistURL.
+        ArtistRequest:
+            description: ArtistRequest is the common request for artist-related functions.
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID.
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist (if known).
+            required:
+                - id
+                - name
+        ArtistURLResponse:
+            description: ArtistURLResponse is the response for GetArtistURL.
             type: object
             properties:
                 url:
@@ -210,8 +207,8 @@ components:
             required:
                 - url
                 - size
-        SimilarArtistsInput:
-            description: SimilarArtistsInput is the input for GetSimilarArtists.
+        SimilarArtistsRequest:
+            description: SimilarArtistsRequest is the request for GetSimilarArtists.
             type: object
             properties:
                 id:
@@ -223,7 +220,6 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the artist (if known).
-                    nullable: true
                 limit:
                     type: integer
                     format: int32
@@ -232,8 +228,8 @@ components:
                 - id
                 - name
                 - limit
-        SimilarArtistsOutput:
-            description: SimilarArtistsOutput is the output for GetSimilarArtists.
+        SimilarArtistsResponse:
+            description: SimilarArtistsResponse is the response for GetSimilarArtists.
             type: object
             properties:
                 artists:
@@ -253,11 +249,10 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the song.
-                    nullable: true
             required:
                 - name
-        TopSongsInput:
-            description: TopSongsInput is the input for GetArtistTopSongs.
+        TopSongsRequest:
+            description: TopSongsRequest is the request for GetArtistTopSongs.
             type: object
             properties:
                 id:
@@ -269,7 +264,6 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the artist (if known).
-                    nullable: true
                 count:
                     type: integer
                     format: int32
@@ -278,8 +272,8 @@ components:
                 - id
                 - name
                 - count
-        TopSongsOutput:
-            description: TopSongsOutput is the output for GetArtistTopSongs.
+        TopSongsResponse:
+            description: TopSongsResponse is the response for GetArtistTopSongs.
             type: object
             properties:
                 songs:

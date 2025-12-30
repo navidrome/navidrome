@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 )
@@ -162,18 +163,6 @@ func (s *schedulerServiceImpl) Close() error {
 	return nil
 }
 
-// schedulerCallbackInput is the input format for the nd_scheduler_callback function.
-type schedulerCallbackInput struct {
-	ScheduleID  string `json:"scheduleId"`
-	Payload     string `json:"payload"`
-	IsRecurring bool   `json:"isRecurring"`
-}
-
-// schedulerCallbackOutput is the output format for the nd_scheduler_callback function.
-type schedulerCallbackOutput struct {
-	Error string `json:"error,omitempty"`
-}
-
 // invokeCallback calls the plugin's nd_scheduler_callback function.
 func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID string) {
 	log.Debug(ctx, "Scheduler callback invoked", "plugin", s.pluginName, "scheduleID", scheduleID)
@@ -206,14 +195,14 @@ func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID st
 	}
 
 	// Prepare callback input
-	input := schedulerCallbackInput{
+	input := capabilities.SchedulerCallbackRequest{
 		ScheduleID:  scheduleID,
 		Payload:     payload,
 		IsRecurring: isRecurring,
 	}
 
 	start := time.Now()
-	result, err := callPluginFunction[schedulerCallbackInput, schedulerCallbackOutput](ctx, instance, FuncSchedulerCallback, input)
+	result, err := callPluginFunction[capabilities.SchedulerCallbackRequest, capabilities.SchedulerCallbackResponse](ctx, instance, FuncSchedulerCallback, input)
 	if err != nil {
 		log.Error(ctx, "Scheduler callback failed", "plugin", s.pluginName, "scheduleID", scheduleID, "duration", time.Since(start), err)
 		return
