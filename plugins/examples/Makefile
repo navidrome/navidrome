@@ -52,6 +52,9 @@ clean:
 	rm -f $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm) $(RUST_PLUGINS:%=%.wasm)
 	@$(foreach p,$(RUST_PLUGINS),(cd $(p) && cargo clean 2>/dev/null) || true;)
 
+# Mark .wasm files as intermediate so Make deletes them after building .ndp
+.INTERMEDIATE: $(PLUGINS:%=%.wasm) $(PYTHON_PLUGINS:%=%.wasm) $(RUST_PLUGINS:%=%.wasm)
+
 # Build .ndp package from .wasm and manifest.json
 # Go plugins
 %.ndp: %.wasm %/manifest.json
@@ -59,6 +62,7 @@ clean:
 	@cp $< plugin.wasm
 	zip -j $@ $*/manifest.json plugin.wasm
 	@rm -f plugin.wasm
+	@mv $< $<.tmp && mv $<.tmp $<  # Touch wasm to ensure it's older than ndp
 
 # Use secondary expansion to properly track all Go source files
 .SECONDEXPANSION:
