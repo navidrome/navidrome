@@ -34,33 +34,28 @@ func websocket_sendbinary(uint64) uint64
 //go:wasmimport extism:host/user websocket_closeconnection
 func websocket_closeconnection(uint64) uint64
 
-// WebSocketConnectRequest is the request type for WebSocket.Connect.
-type WebSocketConnectRequest struct {
+type webSocketConnectRequest struct {
 	Url          string            `json:"url"`
 	Headers      map[string]string `json:"headers"`
 	ConnectionID string            `json:"connectionId"`
 }
 
-// WebSocketConnectResponse is the response type for WebSocket.Connect.
-type WebSocketConnectResponse struct {
+type webSocketConnectResponse struct {
 	NewConnectionID string `json:"newConnectionId,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
 
-// WebSocketSendTextRequest is the request type for WebSocket.SendText.
-type WebSocketSendTextRequest struct {
+type webSocketSendTextRequest struct {
 	ConnectionID string `json:"connectionId"`
 	Message      string `json:"message"`
 }
 
-// WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
-type WebSocketSendBinaryRequest struct {
+type webSocketSendBinaryRequest struct {
 	ConnectionID string `json:"connectionId"`
 	Data         []byte `json:"data"`
 }
 
-// WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
-type WebSocketCloseConnectionRequest struct {
+type webSocketCloseConnectionRequest struct {
 	ConnectionID string `json:"connectionId"`
 	Code         int32  `json:"code"`
 	Reason       string `json:"reason"`
@@ -81,7 +76,7 @@ type WebSocketCloseConnectionRequest struct {
 // or an error if the connection fails.
 func WebSocketConnect(url string, headers map[string]string, connectionID string) (string, error) {
 	// Marshal request to JSON
-	req := WebSocketConnectRequest{
+	req := webSocketConnectRequest{
 		Url:          url,
 		Headers:      headers,
 		ConnectionID: connectionID,
@@ -101,7 +96,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response WebSocketConnectResponse
+	var response webSocketConnectResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -124,7 +119,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 // Returns an error if the connection is not found or if sending fails.
 func WebSocketSendText(connectionID string, message string) error {
 	// Marshal request to JSON
-	req := WebSocketSendTextRequest{
+	req := webSocketSendTextRequest{
 		ConnectionID: connectionID,
 		Message:      message,
 	}
@@ -165,7 +160,7 @@ func WebSocketSendText(connectionID string, message string) error {
 // Returns an error if the connection is not found or if sending fails.
 func WebSocketSendBinary(connectionID string, data []byte) error {
 	// Marshal request to JSON
-	req := WebSocketSendBinaryRequest{
+	req := webSocketSendBinaryRequest{
 		ConnectionID: connectionID,
 		Data:         data,
 	}
@@ -207,7 +202,7 @@ func WebSocketSendBinary(connectionID string, data []byte) error {
 // Returns an error if the connection is not found or if closing fails.
 func WebSocketCloseConnection(connectionID string, code int32, reason string) error {
 	// Marshal request to JSON
-	req := WebSocketCloseConnectionRequest{
+	req := webSocketCloseConnectionRequest{
 		ConnectionID: connectionID,
 		Code:         code,
 		Reason:       reason,

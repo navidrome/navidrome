@@ -19,13 +19,11 @@ import (
 //go:wasmimport extism:host/user subsonicapi_call
 func subsonicapi_call(uint64) uint64
 
-// SubsonicAPICallRequest is the request type for SubsonicAPI.Call.
-type SubsonicAPICallRequest struct {
+type subsonicAPICallRequest struct {
 	Uri string `json:"uri"`
 }
 
-// SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
-type SubsonicAPICallResponse struct {
+type subsonicAPICallResponse struct {
 	ResponseJSON string `json:"responseJson,omitempty"`
 	Error        string `json:"error,omitempty"`
 }
@@ -37,7 +35,7 @@ type SubsonicAPICallResponse struct {
 // e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
 func SubsonicAPICall(uri string) (string, error) {
 	// Marshal request to JSON
-	req := SubsonicAPICallRequest{
+	req := subsonicAPICallRequest{
 		Uri: uri,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -55,7 +53,7 @@ func SubsonicAPICall(uri string) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response SubsonicAPICallResponse
+	var response subsonicAPICallResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}

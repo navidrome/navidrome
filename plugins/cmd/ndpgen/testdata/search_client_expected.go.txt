@@ -24,13 +24,11 @@ type Result struct {
 //go:wasmimport extism:host/user search_find
 func search_find(uint64) uint64
 
-// SearchFindRequest is the request type for Search.Find.
-type SearchFindRequest struct {
+type searchFindRequest struct {
 	Query string `json:"query"`
 }
 
-// SearchFindResponse is the response type for Search.Find.
-type SearchFindResponse struct {
+type searchFindResponse struct {
 	Results []Result `json:"results,omitempty"`
 	Total   int32    `json:"total,omitempty"`
 	Error   string   `json:"error,omitempty"`
@@ -39,7 +37,7 @@ type SearchFindResponse struct {
 // SearchFind calls the search_find host function.
 func SearchFind(query string) ([]Result, int32, error) {
 	// Marshal request to JSON
-	req := SearchFindRequest{
+	req := searchFindRequest{
 		Query: query,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -57,7 +55,7 @@ func SearchFind(query string) ([]Result, int32, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response SearchFindResponse
+	var response searchFindResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, 0, err
 	}

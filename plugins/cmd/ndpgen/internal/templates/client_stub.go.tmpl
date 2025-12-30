@@ -8,7 +8,7 @@
 
 package {{.Package}}
 
-{{- /* Generate struct definitions (same as main file, needed for type references) */ -}}
+{{- /* Generate struct definitions (same as main file, needed for type references in function signatures) */ -}}
 {{- range .Service.Structs}}
 
 // {{.Name}} represents the {{.Name}} data structure.
@@ -20,29 +20,6 @@ type {{.Name}} struct {
 	{{.Name}} {{.Type}} `json:"{{.JSONTag}}"`
 {{- end}}
 }
-{{- end}}
-
-{{- /* Generate request/response types (same as main file) */ -}}
-{{range .Service.Methods}}
-{{- if .HasParams}}
-
-// {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
-type {{requestType .}} struct {
-{{- range .Params}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}}"`
-{{- end}}
-}
-{{- end}}
-{{- if not .IsErrorOnly}}
-
-// {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
-type {{responseType .}} struct {
-{{- range .Returns}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`
-{{- end}}
-	Error string `json:"error,omitempty"`
-}
-{{- end}}
 {{- end}}
 
 {{- /* Generate stub wrapper functions that panic */ -}}

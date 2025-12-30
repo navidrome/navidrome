@@ -24,14 +24,12 @@ type Filter struct {
 //go:wasmimport extism:host/user list_items
 func list_items(uint64) uint64
 
-// ListItemsRequest is the request type for List.Items.
-type ListItemsRequest struct {
+type listItemsRequest struct {
 	Name   string `json:"name"`
 	Filter Filter `json:"filter"`
 }
 
-// ListItemsResponse is the response type for List.Items.
-type ListItemsResponse struct {
+type listItemsResponse struct {
 	Count int32  `json:"count,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -39,7 +37,7 @@ type ListItemsResponse struct {
 // ListItems calls the list_items host function.
 func ListItems(name string, filter Filter) (int32, error) {
 	// Marshal request to JSON
-	req := ListItemsRequest{
+	req := listItemsRequest{
 		Name:   name,
 		Filter: filter,
 	}
@@ -58,7 +56,7 @@ func ListItems(name string, filter Filter) (int32, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response ListItemsResponse
+	var response listItemsResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0, err
 	}

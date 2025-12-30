@@ -19,14 +19,12 @@ import (
 //go:wasmimport extism:host/user math_add
 func math_add(uint64) uint64
 
-// MathAddRequest is the request type for Math.Add.
-type MathAddRequest struct {
+type mathAddRequest struct {
 	A int32 `json:"a"`
 	B int32 `json:"b"`
 }
 
-// MathAddResponse is the response type for Math.Add.
-type MathAddResponse struct {
+type mathAddResponse struct {
 	Result int32  `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -34,7 +32,7 @@ type MathAddResponse struct {
 // MathAdd calls the math_add host function.
 func MathAdd(a int32, b int32) (int32, error) {
 	// Marshal request to JSON
-	req := MathAddRequest{
+	req := mathAddRequest{
 		A: a,
 		B: b,
 	}
@@ -53,7 +51,7 @@ func MathAdd(a int32, b int32) (int32, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response MathAddResponse
+	var response mathAddResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0, err
 	}

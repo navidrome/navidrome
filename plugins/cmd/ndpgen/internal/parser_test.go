@@ -273,8 +273,12 @@ type TestService interface {
 
 		It("should generate correct type names", func() {
 			m := Method{Name: "Call"}
+			// Host-side types are public
 			Expect(m.RequestTypeName("SubsonicAPI")).To(Equal("SubsonicAPICallRequest"))
 			Expect(m.ResponseTypeName("SubsonicAPI")).To(Equal("SubsonicAPICallResponse"))
+			// Client/PDK types are private
+			Expect(m.ClientRequestTypeName("SubsonicAPI")).To(Equal("subsonicAPICallRequest"))
+			Expect(m.ClientResponseTypeName("SubsonicAPI")).To(Equal("subsonicAPICallResponse"))
 		})
 	})
 

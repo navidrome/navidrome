@@ -34,50 +34,42 @@ func artwork_gettrackurl(uint64) uint64
 //go:wasmimport extism:host/user artwork_getplaylisturl
 func artwork_getplaylisturl(uint64) uint64
 
-// ArtworkGetArtistUrlRequest is the request type for Artwork.GetArtistUrl.
-type ArtworkGetArtistUrlRequest struct {
+type artworkGetArtistUrlRequest struct {
 	Id   string `json:"id"`
 	Size int32  `json:"size"`
 }
 
-// ArtworkGetArtistUrlResponse is the response type for Artwork.GetArtistUrl.
-type ArtworkGetArtistUrlResponse struct {
+type artworkGetArtistUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-// ArtworkGetAlbumUrlRequest is the request type for Artwork.GetAlbumUrl.
-type ArtworkGetAlbumUrlRequest struct {
+type artworkGetAlbumUrlRequest struct {
 	Id   string `json:"id"`
 	Size int32  `json:"size"`
 }
 
-// ArtworkGetAlbumUrlResponse is the response type for Artwork.GetAlbumUrl.
-type ArtworkGetAlbumUrlResponse struct {
+type artworkGetAlbumUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-// ArtworkGetTrackUrlRequest is the request type for Artwork.GetTrackUrl.
-type ArtworkGetTrackUrlRequest struct {
+type artworkGetTrackUrlRequest struct {
 	Id   string `json:"id"`
 	Size int32  `json:"size"`
 }
 
-// ArtworkGetTrackUrlResponse is the response type for Artwork.GetTrackUrl.
-type ArtworkGetTrackUrlResponse struct {
+type artworkGetTrackUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-// ArtworkGetPlaylistUrlRequest is the request type for Artwork.GetPlaylistUrl.
-type ArtworkGetPlaylistUrlRequest struct {
+type artworkGetPlaylistUrlRequest struct {
 	Id   string `json:"id"`
 	Size int32  `json:"size"`
 }
 
-// ArtworkGetPlaylistUrlResponse is the response type for Artwork.GetPlaylistUrl.
-type ArtworkGetPlaylistUrlResponse struct {
+type artworkGetPlaylistUrlResponse struct {
 	Url   string `json:"url,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -92,7 +84,7 @@ type ArtworkGetPlaylistUrlResponse struct {
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
-	req := ArtworkGetArtistUrlRequest{
+	req := artworkGetArtistUrlRequest{
 		Id:   id,
 		Size: size,
 	}
@@ -111,7 +103,7 @@ func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response ArtworkGetArtistUrlResponse
+	var response artworkGetArtistUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -134,7 +126,7 @@ func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
-	req := ArtworkGetAlbumUrlRequest{
+	req := artworkGetAlbumUrlRequest{
 		Id:   id,
 		Size: size,
 	}
@@ -153,7 +145,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response ArtworkGetAlbumUrlResponse
+	var response artworkGetAlbumUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -176,7 +168,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
-	req := ArtworkGetTrackUrlRequest{
+	req := artworkGetTrackUrlRequest{
 		Id:   id,
 		Size: size,
 	}
@@ -195,7 +187,7 @@ func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response ArtworkGetTrackUrlResponse
+	var response artworkGetTrackUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -218,7 +210,7 @@ func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 // Returns the public URL for the artwork, or an error if generation fails.
 func ArtworkGetPlaylistUrl(id string, size int32) (string, error) {
 	// Marshal request to JSON
-	req := ArtworkGetPlaylistUrlRequest{
+	req := artworkGetPlaylistUrlRequest{
 		Id:   id,
 		Size: size,
 	}
@@ -237,7 +229,7 @@ func ArtworkGetPlaylistUrl(id string, size int32) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response ArtworkGetPlaylistUrlResponse
+	var response artworkGetPlaylistUrlResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}

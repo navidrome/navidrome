@@ -29,34 +29,29 @@ func scheduler_schedulerecurring(uint64) uint64
 //go:wasmimport extism:host/user scheduler_cancelschedule
 func scheduler_cancelschedule(uint64) uint64
 
-// SchedulerScheduleOneTimeRequest is the request type for Scheduler.ScheduleOneTime.
-type SchedulerScheduleOneTimeRequest struct {
+type schedulerScheduleOneTimeRequest struct {
 	DelaySeconds int32  `json:"delaySeconds"`
 	Payload      string `json:"payload"`
 	ScheduleID   string `json:"scheduleId"`
 }
 
-// SchedulerScheduleOneTimeResponse is the response type for Scheduler.ScheduleOneTime.
-type SchedulerScheduleOneTimeResponse struct {
+type schedulerScheduleOneTimeResponse struct {
 	NewScheduleID string `json:"newScheduleId,omitempty"`
 	Error         string `json:"error,omitempty"`
 }
 
-// SchedulerScheduleRecurringRequest is the request type for Scheduler.ScheduleRecurring.
-type SchedulerScheduleRecurringRequest struct {
+type schedulerScheduleRecurringRequest struct {
 	CronExpression string `json:"cronExpression"`
 	Payload        string `json:"payload"`
 	ScheduleID     string `json:"scheduleId"`
 }
 
-// SchedulerScheduleRecurringResponse is the response type for Scheduler.ScheduleRecurring.
-type SchedulerScheduleRecurringResponse struct {
+type schedulerScheduleRecurringResponse struct {
 	NewScheduleID string `json:"newScheduleId,omitempty"`
 	Error         string `json:"error,omitempty"`
 }
 
-// SchedulerCancelScheduleRequest is the request type for Scheduler.CancelSchedule.
-type SchedulerCancelScheduleRequest struct {
+type schedulerCancelScheduleRequest struct {
 	ScheduleID string `json:"scheduleId"`
 }
 
@@ -72,7 +67,7 @@ type SchedulerCancelScheduleRequest struct {
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (string, error) {
 	// Marshal request to JSON
-	req := SchedulerScheduleOneTimeRequest{
+	req := schedulerScheduleOneTimeRequest{
 		DelaySeconds: delaySeconds,
 		Payload:      payload,
 		ScheduleID:   scheduleID,
@@ -92,7 +87,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response SchedulerScheduleOneTimeResponse
+	var response schedulerScheduleOneTimeResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -117,7 +112,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
 func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (string, error) {
 	// Marshal request to JSON
-	req := SchedulerScheduleRecurringRequest{
+	req := schedulerScheduleRecurringRequest{
 		CronExpression: cronExpression,
 		Payload:        payload,
 		ScheduleID:     scheduleID,
@@ -137,7 +132,7 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response SchedulerScheduleRecurringResponse
+	var response schedulerScheduleRecurringResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}
@@ -159,7 +154,7 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 // Returns an error if the schedule ID is not found or if cancellation fails.
 func SchedulerCancelSchedule(scheduleID string) error {
 	// Marshal request to JSON
-	req := SchedulerCancelScheduleRequest{
+	req := schedulerCancelScheduleRequest{
 		ScheduleID: scheduleID,
 	}
 	reqBytes, err := json.Marshal(req)
