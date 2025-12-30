@@ -15,11 +15,6 @@ type CacheSetStringRequest struct {
 	TtlSeconds int64  `json:"ttlSeconds"`
 }
 
-// CacheSetStringResponse is the response type for Cache.SetString.
-type CacheSetStringResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheGetStringRequest is the request type for Cache.GetString.
 type CacheGetStringRequest struct {
 	Key string `json:"key"`
@@ -37,11 +32,6 @@ type CacheSetIntRequest struct {
 	Key        string `json:"key"`
 	Value      int64  `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
-}
-
-// CacheSetIntResponse is the response type for Cache.SetInt.
-type CacheSetIntResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // CacheGetIntRequest is the request type for Cache.GetInt.
@@ -63,11 +53,6 @@ type CacheSetFloatRequest struct {
 	TtlSeconds int64   `json:"ttlSeconds"`
 }
 
-// CacheSetFloatResponse is the response type for Cache.SetFloat.
-type CacheSetFloatResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheGetFloatRequest is the request type for Cache.GetFloat.
 type CacheGetFloatRequest struct {
 	Key string `json:"key"`
@@ -85,11 +70,6 @@ type CacheSetBytesRequest struct {
 	Key        string `json:"key"`
 	Value      []byte `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
-}
-
-// CacheSetBytesResponse is the response type for Cache.SetBytes.
-type CacheSetBytesResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // CacheGetBytesRequest is the request type for Cache.GetBytes.
@@ -120,11 +100,6 @@ type CacheRemoveRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheRemoveResponse is the response type for Cache.Remove.
-type CacheRemoveResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // CacheSetString is a stub that panics on non-WASM platforms.
 // SetString stores a string value in the cache.
 //
@@ -134,7 +109,7 @@ type CacheRemoveResponse struct {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetString(key string, value string, ttlSeconds int64) (*CacheSetStringResponse, error) {
+func CacheSetString(key string, value string, ttlSeconds int64) error {
 	panic("host: CacheSetString is only available in WASM plugins")
 }
 
@@ -159,7 +134,7 @@ func CacheGetString(key string) (*CacheGetStringResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetInt(key string, value int64, ttlSeconds int64) (*CacheSetIntResponse, error) {
+func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 	panic("host: CacheSetInt is only available in WASM plugins")
 }
 
@@ -184,7 +159,7 @@ func CacheGetInt(key string) (*CacheGetIntResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetFloat(key string, value float64, ttlSeconds int64) (*CacheSetFloatResponse, error) {
+func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 	panic("host: CacheSetFloat is only available in WASM plugins")
 }
 
@@ -209,7 +184,7 @@ func CacheGetFloat(key string) (*CacheGetFloatResponse, error) {
 //   - ttlSeconds: Time-to-live in seconds (0 uses default of 24 hours)
 //
 // Returns an error if the operation fails.
-func CacheSetBytes(key string, value []byte, ttlSeconds int64) (*CacheSetBytesResponse, error) {
+func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 	panic("host: CacheSetBytes is only available in WASM plugins")
 }
 
@@ -243,6 +218,6 @@ func CacheHas(key string) (*CacheHasResponse, error) {
 //   - key: The cache key (will be namespaced with plugin ID)
 //
 // Returns an error if the operation fails. Does not return an error if the key doesn't exist.
-func CacheRemove(key string) (*CacheRemoveResponse, error) {
+func CacheRemove(key string) error {
 	panic("host: CacheRemove is only available in WASM plugins")
 }

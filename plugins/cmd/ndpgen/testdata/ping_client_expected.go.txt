@@ -19,13 +19,8 @@ import (
 //go:wasmimport extism:host/user ping_ping
 func ping_ping(uint64) uint64
 
-// PingPingResponse is the response type for Ping.Ping.
-type PingPingResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // PingPing calls the ping_ping host function.
-func PingPing() (*PingPingResponse, error) {
+func PingPing() error {
 	// No parameters - allocate empty JSON object
 	reqMem := pdk.AllocateBytes([]byte("{}"))
 	defer reqMem.Free()
@@ -37,16 +32,15 @@ func PingPing() (*PingPingResponse, error) {
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response PingPingResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }

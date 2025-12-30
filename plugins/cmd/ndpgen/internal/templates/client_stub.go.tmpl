@@ -33,6 +33,7 @@ type {{requestType .}} struct {
 {{- end}}
 }
 {{- end}}
+{{- if not .IsErrorOnly}}
 
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
@@ -42,6 +43,7 @@ type {{responseType .}} struct {
 	Error string `json:"error,omitempty"`
 }
 {{- end}}
+{{- end}}
 
 {{- /* Generate stub wrapper functions that panic */ -}}
 {{range .Service.Methods}}
@@ -50,7 +52,13 @@ type {{responseType .}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc}}
 {{- end}}
+{{- if .IsErrorOnly}}
+func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) error {
+	panic("{{$.Package}}: {{$.Service.Name}}{{.Name}} is only available in WASM plugins")
+}
+{{- else}}
 func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) (*{{responseType .}}, error) {
 	panic("{{$.Package}}: {{$.Service.Name}}{{.Name}} is only available in WASM plugins")
 }
+{{- end}}
 {{- end}}

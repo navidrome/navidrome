@@ -41,7 +41,7 @@ func ndTestCache() int32 {
 
 	switch input.Operation {
 	case "set_string":
-		_, err := host.CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
+		err := host.CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -61,7 +61,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_int":
-		_, err := host.CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
+		err := host.CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -81,7 +81,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_float":
-		_, err := host.CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
+		err := host.CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -101,7 +101,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_bytes":
-		_, err := host.CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
+		err := host.CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -131,7 +131,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "remove":
-		_, err := host.CacheRemove(input.Key)
+		err := host.CacheRemove(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
