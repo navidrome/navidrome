@@ -79,7 +79,8 @@ type TestService interface {
 
 			outputStr := string(output)
 			Expect(outputStr).To(ContainSubstring("Input directory:"))
-			Expect(outputStr).To(ContainSubstring("Output directory:"))
+			Expect(outputStr).To(ContainSubstring("Base output directory:"))
+			Expect(outputStr).To(ContainSubstring("Go output directory:"))
 			Expect(outputStr).To(ContainSubstring("Found 1 host service(s)"))
 			Expect(outputStr).To(ContainSubstring("Generated"))
 		})
@@ -93,7 +94,7 @@ type TestService interface {
 			Expect(filepath.Join(outputDir, "nd_host_test.go")).ToNot(BeAnExistingFile())
 		})
 
-		It("infers package name from output directory", func() {
+		It("uses default package name 'host'", func() {
 			customOutput, err := os.MkdirTemp("", "mypkg")
 			Expect(err).ToNot(HaveOccurred())
 			defer os.RemoveAll(customOutput)
@@ -102,9 +103,10 @@ type TestService interface {
 			_, err = cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred())
 
-			content, err := os.ReadFile(filepath.Join(customOutput, "nd_host_test.go"))
+			// Go code goes to $output/go/host/
+			content, err := os.ReadFile(filepath.Join(customOutput, "go", "host", "nd_host_test.go"))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("package mypkg"))
+			Expect(string(content)).To(ContainSubstring("package host"))
 		})
 
 		It("returns error for invalid input directory", func() {
@@ -151,8 +153,10 @@ type ServiceB interface {
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 			Expect(string(output)).To(ContainSubstring("Found 2 host service(s)"))
 
-			Expect(filepath.Join(outputDir, "nd_host_servicea.go")).To(BeAnExistingFile())
-			Expect(filepath.Join(outputDir, "nd_host_serviceb.go")).To(BeAnExistingFile())
+			// Go code goes to $output/go/host/
+			goHostDir := filepath.Join(outputDir, "go", "host")
+			Expect(filepath.Join(goHostDir, "nd_host_servicea.go")).To(BeAnExistingFile())
+			Expect(filepath.Join(goHostDir, "nd_host_serviceb.go")).To(BeAnExistingFile())
 		})
 
 		It("generates Go client code by default", func() {
@@ -160,13 +164,14 @@ type ServiceB interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-			// Client code in output directory
-			Expect(filepath.Join(outputDir, "nd_host_test.go")).To(BeAnExistingFile())
+			// Go client code goes to $output/go/host/
+			goHostDir := filepath.Join(outputDir, "go", "host")
+			Expect(filepath.Join(goHostDir, "nd_host_test.go")).To(BeAnExistingFile())
 			// Stub file also generated
-			Expect(filepath.Join(outputDir, "nd_host_test_stub.go")).To(BeAnExistingFile())
+			Expect(filepath.Join(goHostDir, "nd_host_test_stub.go")).To(BeAnExistingFile())
 			// doc.go and go.mod also generated
-			Expect(filepath.Join(outputDir, "doc.go")).To(BeAnExistingFile())
-			Expect(filepath.Join(outputDir, "go.mod")).To(BeAnExistingFile())
+			Expect(filepath.Join(goHostDir, "doc.go")).To(BeAnExistingFile())
+			Expect(filepath.Join(goHostDir, "go.mod")).To(BeAnExistingFile())
 		})
 	})
 
@@ -185,13 +190,14 @@ type ServiceB interface {
 				output, err := cmd.CombinedOutput()
 				Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-				// Verify Go client code
-				entries, err := os.ReadDir(outputDir)
+				// Verify Go client code (now in $output/go/host/)
+				goHostDir := filepath.Join(outputDir, "go", "host")
+				entries, err := os.ReadDir(goHostDir)
 				Expect(err).ToNot(HaveOccurred())
 
 				var goClientFiles []string
 				for _, e := range entries {
-					if e.Name() != "python" && e.Name() != "rust" && !e.IsDir() &&
+					if !e.IsDir() &&
 						!strings.HasSuffix(e.Name(), "_stub.go") &&
 						e.Name() != "doc.go" && e.Name() != "go.mod" {
 						goClientFiles = append(goClientFiles, e.Name())
@@ -199,7 +205,7 @@ type ServiceB interface {
 				}
 				Expect(goClientFiles).To(HaveLen(1), "Expected exactly one Go client file, got: %v", goClientFiles)
 
-				goClientActual, err := os.ReadFile(filepath.Join(outputDir, goClientFiles[0]))
+				goClientActual, err := os.ReadFile(filepath.Join(goHostDir, goClientFiles[0]))
 				Expect(err).ToNot(HaveOccurred())
 
 				formattedGoClientActual, err := format.Source(goClientActual)
@@ -212,20 +218,20 @@ type ServiceB interface {
 
 				Expect(string(formattedGoClientActual)).To(Equal(string(formattedGoClientExpected)), "Go client code mismatch")
 
-				// Verify Python client code
-				pythonDir := filepath.Join(outputDir, "python")
-				pyClientEntries, err := os.ReadDir(pythonDir)
+				// Verify Python client code (now in $output/python/host/)
+				pythonHostDir := filepath.Join(outputDir, "python", "host")
+				pyClientEntries, err := os.ReadDir(pythonHostDir)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pyClientEntries).To(HaveLen(1), "Expected exactly one Python client file")
 
-				pyClientActual, err := os.ReadFile(filepath.Join(pythonDir, pyClientEntries[0].Name()))
+				pyClientActual, err := os.ReadFile(filepath.Join(pythonHostDir, pyClientEntries[0].Name()))
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(pyClientActual)).To(Equal(pyClientExpected), "Python client code mismatch")
 
-				// Verify Rust client code
-				rustDir := filepath.Join(outputDir, "rust")
-				rsClientEntries, err := os.ReadDir(rustDir)
+				// Verify Rust client code (now in $output/rust/host/)
+				rustHostDir := filepath.Join(outputDir, "rust", "host")
+				rsClientEntries, err := os.ReadDir(rustHostDir)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rsClientEntries).To(HaveLen(2), "Expected Rust client file and lib.rs")
 
@@ -239,7 +245,7 @@ type ServiceB interface {
 				}
 				Expect(rsClientName).ToNot(BeEmpty(), "Expected to find Rust client file")
 
-				rsClientActual, err := os.ReadFile(filepath.Join(rustDir, rsClientName))
+				rsClientActual, err := os.ReadFile(filepath.Join(rustHostDir, rsClientName))
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(rsClientActual)).To(Equal(rsClientExpected), "Rust client code mismatch")
@@ -286,8 +292,11 @@ type ServiceB interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Generation failed: %s", output)
 
+			// Go code goes to $output/go/host/
+			goHostDir := filepath.Join(outputDir, "go", "host")
+
 			// Read generated client code
-			entries, err := os.ReadDir(outputDir)
+			entries, err := os.ReadDir(goHostDir)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Find the client file
@@ -301,7 +310,7 @@ type ServiceB interface {
 			}
 			Expect(clientFileName).ToNot(BeEmpty(), "Expected to find Go client file")
 
-			content, err := os.ReadFile(filepath.Join(outputDir, clientFileName))
+			content, err := os.ReadFile(filepath.Join(goHostDir, clientFileName))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify key expected content
@@ -334,7 +343,7 @@ go 1.24
 require github.com/navidrome/navidrome/plugins/pdk/go/host v0.0.0
 
 replace github.com/navidrome/navidrome/plugins/pdk/go/host => %s
-`, outputDir)
+`, goHostDir)
 			Expect(os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
 
 			// Add a simple main function that imports and uses the ndpdk package
@@ -351,7 +360,7 @@ var _ = ndpdk.ComprehensiveNoParams
 
 			// Tidy dependencies for the generated go library
 			goTidyLibCmd := exec.Command("go", "mod", "tidy")
-			goTidyLibCmd.Dir = outputDir
+			goTidyLibCmd.Dir = goHostDir
 			goTidyLibOutput, err := goTidyLibCmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "go mod tidy (library) failed: %s", goTidyLibOutput)
 
@@ -389,11 +398,11 @@ type TestService interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-			// Verify Python client code exists
-			pythonDir := filepath.Join(outputDir, "python")
-			Expect(pythonDir).To(BeADirectory())
+			// Verify Python client code exists in $output/python/host/
+			pythonHostDir := filepath.Join(outputDir, "python", "host")
+			Expect(pythonHostDir).To(BeADirectory())
 
-			pythonFile := filepath.Join(pythonDir, "nd_host_test.py")
+			pythonFile := filepath.Join(pythonHostDir, "nd_host_test.py")
 			Expect(pythonFile).To(BeAnExistingFile())
 
 			content, err := os.ReadFile(pythonFile)
@@ -423,12 +432,14 @@ type TestService interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-			// Verify both Go and Python client code exist
-			Expect(filepath.Join(outputDir, "nd_host_test.go")).To(BeAnExistingFile())
+			// Verify Go client code exists in $output/go/host/
+			goHostDir := filepath.Join(outputDir, "go", "host")
+			Expect(filepath.Join(goHostDir, "nd_host_test.go")).To(BeAnExistingFile())
 
-			pythonDir := filepath.Join(outputDir, "python")
-			Expect(pythonDir).To(BeADirectory())
-			Expect(filepath.Join(pythonDir, "nd_host_test.py")).To(BeAnExistingFile())
+			// Verify Python client code exists in $output/python/host/
+			pythonHostDir := filepath.Join(outputDir, "python", "host")
+			Expect(pythonHostDir).To(BeADirectory())
+			Expect(filepath.Join(pythonHostDir, "nd_host_test.py")).To(BeAnExistingFile())
 		})
 
 		It("generates Python code with dataclass for multi-value returns", func() {
@@ -448,7 +459,7 @@ type CacheService interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-			content, err := os.ReadFile(filepath.Join(outputDir, "python", "nd_host_cache.py"))
+			content, err := os.ReadFile(filepath.Join(outputDir, "python", "host", "nd_host_cache.py"))
 			Expect(err).ToNot(HaveOccurred())
 
 			contentStr := string(content)
@@ -476,7 +487,7 @@ type TestService interface {
 			output, err := cmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
-			content, err := os.ReadFile(filepath.Join(outputDir, "python", "nd_host_test.py"))
+			content, err := os.ReadFile(filepath.Join(outputDir, "python", "host", "nd_host_test.py"))
 			Expect(err).ToNot(HaveOccurred())
 
 			contentStr := string(content)
