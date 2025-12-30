@@ -8,17 +8,6 @@
 
 package host
 
-// SubsonicAPICallRequest is the request type for SubsonicAPI.Call.
-type SubsonicAPICallRequest struct {
-	Uri string `json:"uri"`
-}
-
-// SubsonicAPICallResponse is the response type for SubsonicAPI.Call.
-type SubsonicAPICallResponse struct {
-	ResponseJSON string `json:"responseJson,omitempty"`
-	Error        string `json:"error,omitempty"`
-}
-
 // SubsonicAPICall is a stub that panics on non-WASM platforms.
 // Call executes a Subsonic API request and returns the JSON response.
 //

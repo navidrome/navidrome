@@ -19,13 +19,11 @@ import (
 //go:wasmimport extism:host/user counter_count
 func counter_count(uint64) uint64
 
-// CounterCountRequest is the request type for Counter.Count.
-type CounterCountRequest struct {
+type counterCountRequest struct {
 	Name string `json:"name"`
 }
 
-// CounterCountResponse is the response type for Counter.Count.
-type CounterCountResponse struct {
+type counterCountResponse struct {
 	Value int32  `json:"value,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -33,7 +31,7 @@ type CounterCountResponse struct {
 // CounterCount calls the counter_count host function.
 func CounterCount(name string) int32 {
 	// Marshal request to JSON
-	req := CounterCountRequest{
+	req := counterCountRequest{
 		Name: name,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -51,7 +49,7 @@ func CounterCount(name string) int32 {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CounterCountResponse
+	var response counterCountResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0
 	}

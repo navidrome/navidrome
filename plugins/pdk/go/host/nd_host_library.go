@@ -39,19 +39,16 @@ func library_getlibrary(uint64) uint64
 //go:wasmimport extism:host/user library_getalllibraries
 func library_getalllibraries(uint64) uint64
 
-// LibraryGetLibraryRequest is the request type for Library.GetLibrary.
-type LibraryGetLibraryRequest struct {
+type libraryGetLibraryRequest struct {
 	Id int32 `json:"id"`
 }
 
-// LibraryGetLibraryResponse is the response type for Library.GetLibrary.
-type LibraryGetLibraryResponse struct {
+type libraryGetLibraryResponse struct {
 	Result *Library `json:"result,omitempty"`
 	Error  string   `json:"error,omitempty"`
 }
 
-// LibraryGetAllLibrariesResponse is the response type for Library.GetAllLibraries.
-type LibraryGetAllLibrariesResponse struct {
+type libraryGetAllLibrariesResponse struct {
 	Result []Library `json:"result,omitempty"`
 	Error  string    `json:"error,omitempty"`
 }
@@ -65,7 +62,7 @@ type LibraryGetAllLibrariesResponse struct {
 // Returns the library metadata, or an error if the library is not found.
 func LibraryGetLibrary(id int32) (*Library, error) {
 	// Marshal request to JSON
-	req := LibraryGetLibraryRequest{
+	req := libraryGetLibraryRequest{
 		Id: id,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -83,7 +80,7 @@ func LibraryGetLibrary(id int32) (*Library, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response LibraryGetLibraryResponse
+	var response libraryGetLibraryResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}
@@ -113,7 +110,7 @@ func LibraryGetAllLibraries() ([]Library, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response LibraryGetAllLibrariesResponse
+	var response libraryGetAllLibrariesResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}

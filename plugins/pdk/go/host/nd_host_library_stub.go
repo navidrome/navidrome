@@ -23,23 +23,6 @@ type Library struct {
 	TotalDuration float64 `json:"totalDuration"`
 }
 
-// LibraryGetLibraryRequest is the request type for Library.GetLibrary.
-type LibraryGetLibraryRequest struct {
-	Id int32 `json:"id"`
-}
-
-// LibraryGetLibraryResponse is the response type for Library.GetLibrary.
-type LibraryGetLibraryResponse struct {
-	Result *Library `json:"result,omitempty"`
-	Error  string   `json:"error,omitempty"`
-}
-
-// LibraryGetAllLibrariesResponse is the response type for Library.GetAllLibraries.
-type LibraryGetAllLibrariesResponse struct {
-	Result []Library `json:"result,omitempty"`
-	Error  string    `json:"error,omitempty"`
-}
-
 // LibraryGetLibrary is a stub that panics on non-WASM platforms.
 // GetLibrary retrieves metadata for a specific library by ID.
 //

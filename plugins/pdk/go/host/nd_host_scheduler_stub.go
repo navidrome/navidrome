@@ -8,37 +8,6 @@
 
 package host
 
-// SchedulerScheduleOneTimeRequest is the request type for Scheduler.ScheduleOneTime.
-type SchedulerScheduleOneTimeRequest struct {
-	DelaySeconds int32  `json:"delaySeconds"`
-	Payload      string `json:"payload"`
-	ScheduleID   string `json:"scheduleId"`
-}
-
-// SchedulerScheduleOneTimeResponse is the response type for Scheduler.ScheduleOneTime.
-type SchedulerScheduleOneTimeResponse struct {
-	NewScheduleID string `json:"newScheduleId,omitempty"`
-	Error         string `json:"error,omitempty"`
-}
-
-// SchedulerScheduleRecurringRequest is the request type for Scheduler.ScheduleRecurring.
-type SchedulerScheduleRecurringRequest struct {
-	CronExpression string `json:"cronExpression"`
-	Payload        string `json:"payload"`
-	ScheduleID     string `json:"scheduleId"`
-}
-
-// SchedulerScheduleRecurringResponse is the response type for Scheduler.ScheduleRecurring.
-type SchedulerScheduleRecurringResponse struct {
-	NewScheduleID string `json:"newScheduleId,omitempty"`
-	Error         string `json:"error,omitempty"`
-}
-
-// SchedulerCancelScheduleRequest is the request type for Scheduler.CancelSchedule.
-type SchedulerCancelScheduleRequest struct {
-	ScheduleID string `json:"scheduleId"`
-}
-
 // SchedulerScheduleOneTime is a stub that panics on non-WASM platforms.
 // ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
 // Plugins that use this function must also implement the SchedulerCallback capability

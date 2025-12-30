@@ -24,26 +24,23 @@ func meta_get(uint64) uint64
 //go:wasmimport extism:host/user meta_set
 func meta_set(uint64) uint64
 
-// MetaGetRequest is the request type for Meta.Get.
-type MetaGetRequest struct {
+type metaGetRequest struct {
 	Key string `json:"key"`
 }
 
-// MetaGetResponse is the response type for Meta.Get.
-type MetaGetResponse struct {
+type metaGetResponse struct {
 	Value any    `json:"value,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-// MetaSetRequest is the request type for Meta.Set.
-type MetaSetRequest struct {
+type metaSetRequest struct {
 	Data map[string]any `json:"data"`
 }
 
 // MetaGet calls the meta_get host function.
 func MetaGet(key string) (any, error) {
 	// Marshal request to JSON
-	req := MetaGetRequest{
+	req := metaGetRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -61,7 +58,7 @@ func MetaGet(key string) (any, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response MetaGetResponse
+	var response metaGetResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}
@@ -77,7 +74,7 @@ func MetaGet(key string) (any, error) {
 // MetaSet calls the meta_set host function.
 func MetaSet(data map[string]any) error {
 	// Marshal request to JSON
-	req := MetaSetRequest{
+	req := metaSetRequest{
 		Data: data,
 	}
 	reqBytes, err := json.Marshal(req)
