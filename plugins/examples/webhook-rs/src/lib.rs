@@ -67,10 +67,10 @@ impl Scrobbler for WebhookPlugin {
         // Build query parameters
         let query = format!(
             "?title={}&artist={}&album={}&user={}&timestamp={}",
-            urlencod(&req.track.title),
-            urlencod(&req.track.artist),
-            urlencod(&req.track.album),
-            urlencod(&req.username),
+            urlencode(&req.track.title),
+            urlencode(&req.track.artist),
+            urlencode(&req.track.album),
+            urlencode(&req.username),
             req.timestamp
         );
 
@@ -105,7 +105,7 @@ impl Scrobbler for WebhookPlugin {
 }
 
 /// Simple URL encoding for query parameters.
-fn urlencod(s: &str) -> String {
+fn urlencode(s: &str) -> String {
     let mut result = String::with_capacity(s.len() * 3);
     for c in s.chars() {
         match c {

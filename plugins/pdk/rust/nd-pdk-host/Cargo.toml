@@ -8,7 +8,6 @@ license = "GPL-3.0"
 readme = "README.md"
 
 [lib]
-path = "lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
