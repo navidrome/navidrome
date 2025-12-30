@@ -4,6 +4,7 @@ package main
 
 import (
 	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 )
 
 // TestKVStoreInput is the input for nd_test_kvstore callback.
@@ -36,7 +37,7 @@ func ndTestKVStore() int32 {
 
 	switch input.Operation {
 	case "set":
-		_, err := KVStoreSet(input.Key, input.Value)
+		_, err := host.KVStoreSet(input.Key, input.Value)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -46,7 +47,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "get":
-		resp, err := KVStoreGet(input.Key)
+		resp, err := host.KVStoreGet(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -56,7 +57,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "delete":
-		_, err := KVStoreDelete(input.Key)
+		_, err := host.KVStoreDelete(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -66,7 +67,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "has":
-		resp, err := KVStoreHas(input.Key)
+		resp, err := host.KVStoreHas(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -76,7 +77,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "list":
-		resp, err := KVStoreList(input.Prefix)
+		resp, err := host.KVStoreList(input.Prefix)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})
@@ -86,7 +87,7 @@ func ndTestKVStore() int32 {
 		return 0
 
 	case "get_storage_used":
-		resp, err := KVStoreGetStorageUsed()
+		resp, err := host.KVStoreGetStorageUsed()
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestKVStoreOutput{Error: &errStr})

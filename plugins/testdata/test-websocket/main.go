@@ -6,118 +6,63 @@ import (
 	"errors"
 
 	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/websocket"
 )
 
-// OnTextMessageInput is the input for nd_websocket_on_text_message callback.
-type OnTextMessageInput struct {
-	ConnectionID string `json:"connectionId"`
-	Message      string `json:"message"`
+func init() {
+	websocket.Register(&testWebSocket{})
 }
 
-// nd_websocket_on_text_message is called when a text message is received.
+type testWebSocket struct{}
+
+// OnTextMessage is called when a text message is received.
 // Magic messages trigger specific behaviors to test host functions:
 //   - "echo": sends back the same message using SendText host function
 //   - "close": closes the connection using CloseConnection host function
 //   - "store:MESSAGE": stores MESSAGE in plugin config for later retrieval
 //   - "fail": returns an error to test error handling
-//
-//go:wasmexport nd_websocket_on_text_message
-func ndWebSocketOnTextMessage() int32 {
-	var input OnTextMessageInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
+func (t *testWebSocket) OnTextMessage(input websocket.OnTextMessageRequest) error {
 	// Store all received messages for test verification
 	storeReceivedMessage("text:" + input.Message)
 
 	switch input.Message {
 	case "echo":
-		if _, err := WebSocketSendText(input.ConnectionID, "echo:"+input.Message); err != nil {
-			pdk.SetError(err)
-			return -1
+		if _, err := host.WebSocketSendText(input.ConnectionID, "echo:"+input.Message); err != nil {
+			return err
 		}
 
 	case "close":
-		if _, err := WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin"); err != nil {
-			pdk.SetError(err)
-			return -1
+		if _, err := host.WebSocketCloseConnection(input.ConnectionID, 1000, "closed by plugin"); err != nil {
+			return err
 		}
 
 	case "fail":
-		pdk.SetError(errors.New("intentional test failure"))
-		return -1
+		return errors.New("intentional test failure")
 	}
 
-	return 0
+	return nil
 }
 
-// OnBinaryMessageInput is the input for nd_websocket_on_binary_message callback.
-type OnBinaryMessageInput struct {
-	ConnectionID string `json:"connectionId"`
-	Data         string `json:"data"` // Base64 encoded
-}
-
-// nd_websocket_on_binary_message is called when a binary message is received.
-//
-//go:wasmexport nd_websocket_on_binary_message
-func ndWebSocketOnBinaryMessage() int32 {
-	var input OnBinaryMessageInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
+// OnBinaryMessage is called when a binary message is received.
+func (t *testWebSocket) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
 	// Store received binary data for test verification
 	storeReceivedMessage("binary:" + input.Data)
-
-	return 0
+	return nil
 }
 
-// OnErrorInput is the input for nd_websocket_on_error callback.
-type OnErrorInput struct {
-	ConnectionID string `json:"connectionId"`
-	Error        string `json:"error"`
-}
-
-// nd_websocket_on_error is called when an error occurs on a WebSocket connection.
-//
-//go:wasmexport nd_websocket_on_error
-func ndWebSocketOnError() int32 {
-	var input OnErrorInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
+// OnError is called when an error occurs on a WebSocket connection.
+func (t *testWebSocket) OnError(input websocket.OnErrorRequest) error {
 	// Store error for test verification
 	storeReceivedMessage("error:" + input.Error)
-
-	return 0
+	return nil
 }
 
-// OnCloseInput is the input for nd_websocket_on_close callback.
-type OnCloseInput struct {
-	ConnectionID string `json:"connectionId"`
-	Code         int    `json:"code"`
-	Reason       string `json:"reason"`
-}
-
-// nd_websocket_on_close is called when a WebSocket connection is closed.
-//
-//go:wasmexport nd_websocket_on_close
-func ndWebSocketOnClose() int32 {
-	var input OnCloseInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
+// OnClose is called when a WebSocket connection is closed.
+func (t *testWebSocket) OnClose(input websocket.OnCloseRequest) error {
 	// Store close event for test verification
 	storeReceivedMessage("close:" + input.Reason)
-
-	return 0
+	return nil
 }
 
 // storeReceivedMessage stores messages in plugin variable storage for test verification.

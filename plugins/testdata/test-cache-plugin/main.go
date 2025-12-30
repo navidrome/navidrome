@@ -4,6 +4,7 @@ package main
 
 import (
 	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 )
 
 // TestCacheInput is the input for nd_test_cache callback.
@@ -40,7 +41,7 @@ func ndTestCache() int32 {
 
 	switch input.Operation {
 	case "set_string":
-		_, err := CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
+		_, err := host.CacheSetString(input.Key, input.StringVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -50,7 +51,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_string":
-		resp, err := CacheGetString(input.Key)
+		resp, err := host.CacheGetString(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -60,7 +61,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_int":
-		_, err := CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
+		_, err := host.CacheSetInt(input.Key, input.IntVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -70,7 +71,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_int":
-		resp, err := CacheGetInt(input.Key)
+		resp, err := host.CacheGetInt(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -80,7 +81,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_float":
-		_, err := CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
+		_, err := host.CacheSetFloat(input.Key, input.FloatVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -90,7 +91,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_float":
-		resp, err := CacheGetFloat(input.Key)
+		resp, err := host.CacheGetFloat(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -100,7 +101,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "set_bytes":
-		_, err := CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
+		_, err := host.CacheSetBytes(input.Key, input.BytesVal, input.TTLSeconds)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -110,7 +111,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "get_bytes":
-		resp, err := CacheGetBytes(input.Key)
+		resp, err := host.CacheGetBytes(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -120,7 +121,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "has":
-		resp, err := CacheHas(input.Key)
+		resp, err := host.CacheHas(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
@@ -130,7 +131,7 @@ func ndTestCache() int32 {
 		return 0
 
 	case "remove":
-		_, err := CacheRemove(input.Key)
+		_, err := host.CacheRemove(input.Key)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestCacheOutput{Error: &errStr})
