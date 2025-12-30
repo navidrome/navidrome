@@ -194,6 +194,16 @@ func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error)
 				}
 			}
 
+			// Also attach type aliases prefixed with interface name (e.g., ScrobblerError for Scrobbler interface)
+			// This supports error types that are not directly referenced in method signatures
+			interfaceName := typeSpec.Name.Name
+			for typeName, a := range aliasMap {
+				if strings.HasPrefix(typeName, interfaceName) && !referencedTypes[typeName] {
+					capability.TypeAliases = append(capability.TypeAliases, a)
+					referencedTypes[typeName] = true // Mark as referenced for const lookup
+				}
+			}
+
 			// Attach const groups that match referenced type aliases
 			for _, group := range allConstGroups {
 				if group.Type == "" {

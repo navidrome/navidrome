@@ -129,15 +129,6 @@ struct ScrobbleInput {
     timestamp: i64,
 }
 
-#[derive(Serialize, Default)]
-#[serde(rename_all = "camelCase")]
-struct ScrobblerOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error_type: Option<String>,
-}
-
 const ERROR_TYPE_NOT_AUTHORIZED: &str = "not_authorized";
 const ERROR_TYPE_RETRY_LATER: &str = "retry_later";
 
@@ -216,9 +207,7 @@ pub fn nd_scrobbler_is_authorized(Json(input): Json<AuthInput>) -> FnResult<Json
 
 /// Sends a now playing notification to Discord.
 #[plugin_fn]
-pub fn nd_scrobbler_now_playing(
-    Json(input): Json<NowPlayingInput>,
-) -> FnResult<Json<Option<ScrobblerOutput>>> {
+pub fn nd_scrobbler_now_playing(Json(input): Json<NowPlayingInput>) -> FnResult<()> {
     info!(
         "Setting presence for user {}, track: {}",
         input.username, input.track.title
@@ -228,11 +217,10 @@ pub fn nd_scrobbler_now_playing(
     let (client_id, users) = match get_config() {
         Ok(config) => config,
         Err(e) => {
-            let err_msg = format!("failed to get config: {:?}", e);
-            return Ok(Json(Some(ScrobblerOutput {
-                error: Some(err_msg),
-                error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-            })));
+            return Err(WithReturnCode::new(
+                Error::msg(format!("{}: failed to get config: {:?}", ERROR_TYPE_RETRY_LATER, e)),
+                -1,
+            ));
         }
     };
 
@@ -240,21 +228,25 @@ pub fn nd_scrobbler_now_playing(
     let user_token = match users.get(&input.username) {
         Some(token) => token.clone(),
         None => {
-            let err_msg = format!("user '{}' not authorized", input.username);
-            return Ok(Json(Some(ScrobblerOutput {
-                error: Some(err_msg),
-                error_type: Some(ERROR_TYPE_NOT_AUTHORIZED.to_string()),
-            })));
+            return Err(WithReturnCode::new(
+                Error::msg(format!(
+                    "{}: user '{}' not authorized",
+                    ERROR_TYPE_NOT_AUTHORIZED, input.username
+                )),
+                -1,
+            ));
         }
     };
 
     // Connect to Discord
     if let Err(e) = rpc::connect(&input.username, &user_token) {
-        let err_msg = format!("failed to connect to Discord: {:?}", e);
-        return Ok(Json(Some(ScrobblerOutput {
-            error: Some(err_msg),
-            error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-        })));
+        return Err(WithReturnCode::new(
+            Error::msg(format!(
+                "{}: failed to connect to Discord: {:?}",
+                ERROR_TYPE_RETRY_LATER, e
+            )),
+            -1,
+        ));
     }
 
     // Cancel any existing completion schedule
@@ -289,11 +281,13 @@ pub fn nd_scrobbler_now_playing(
             },
         },
     ) {
-        let err_msg = format!("failed to send activity: {:?}", e);
-        return Ok(Json(Some(ScrobblerOutput {
-            error: Some(err_msg),
-            error_type: Some(ERROR_TYPE_RETRY_LATER.to_string()),
-        })));
+        return Err(WithReturnCode::new(
+            Error::msg(format!(
+                "{}: failed to send activity: {:?}",
+                ERROR_TYPE_RETRY_LATER, e
+            )),
+            -1,
+        ));
     }
 
     // Schedule a timer to clear the activity after the track completes
@@ -306,15 +300,14 @@ pub fn nd_scrobbler_now_playing(
         warn!("Failed to schedule completion timer: {:?}", e);
     }
 
-    // Success - return None to indicate no error
-    Ok(Json(None))
+    Ok(())
 }
 
 /// Handles scrobble requests (no-op for Discord Rich Presence).
 #[plugin_fn]
-pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<Json<Option<ScrobblerOutput>>> {
+pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<()> {
     // Discord Rich Presence doesn't need scrobble events - success
-    Ok(Json(None))
+    Ok(())
 }
 
 // ============================================================================

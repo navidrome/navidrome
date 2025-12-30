@@ -105,30 +105,24 @@ func (p *discordPlugin) IsAuthorized(input scrobbler.IsAuthorizedRequest) (*scro
 }
 
 // NowPlaying sends a now playing notification to Discord.
-func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (*scrobbler.ScrobblerResponse, error) {
+func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) error {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Setting presence for user %s, track: %s", input.Username, input.Track.Title))
 
 	// Load configuration
 	clientID, users, err := getConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get config: %w", err)
+		return fmt.Errorf("%w: failed to get config: %v", scrobbler.ScrobblerErrorRetryLater, err)
 	}
 
 	// Check authorization
 	userToken, authorized := users[input.Username]
 	if !authorized {
-		return &scrobbler.ScrobblerResponse{
-			Error:     fmt.Sprintf("user '%s' not authorized", input.Username),
-			ErrorType: scrobbler.ScrobblerErrorNotAuthorized,
-		}, nil
+		return fmt.Errorf("%w: user '%s' not authorized", scrobbler.ScrobblerErrorNotAuthorized, input.Username)
 	}
 
 	// Connect to Discord
 	if err := connect(input.Username, userToken); err != nil {
-		return &scrobbler.ScrobblerResponse{
-			Error:     fmt.Sprintf("failed to connect to Discord: %v", err),
-			ErrorType: scrobbler.ScrobblerErrorRetryLater,
-		}, nil
+		return fmt.Errorf("%w: failed to connect to Discord: %v", scrobbler.ScrobblerErrorRetryLater, err)
 	}
 
 	// Cancel any existing completion schedule
@@ -155,10 +149,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (*scrobble
 			LargeText:  input.Track.Album,
 		},
 	}); err != nil {
-		return &scrobbler.ScrobblerResponse{
-			Error:     fmt.Sprintf("failed to send activity: %v", err),
-			ErrorType: scrobbler.ScrobblerErrorRetryLater,
-		}, nil
+		return fmt.Errorf("%w: failed to send activity: %v", scrobbler.ScrobblerErrorRetryLater, err)
 	}
 
 	// Schedule a timer to clear the activity after the track completes
@@ -168,13 +159,13 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) (*scrobble
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to schedule completion timer: %v", err))
 	}
 
-	return &scrobbler.ScrobblerResponse{}, nil
+	return nil
 }
 
 // Scrobble handles scrobble requests (no-op for Discord).
-func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) (*scrobbler.ScrobblerResponse, error) {
+func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) error {
 	// Discord Rich Presence doesn't need scrobble events
-	return &scrobbler.ScrobblerResponse{}, nil
+	return nil
 }
 
 // ============================================================================

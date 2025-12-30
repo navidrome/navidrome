@@ -4,12 +4,12 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -88,7 +88,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns error when plugin returns error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "service unavailable", "error_type": "retry_later"},
+				"test-scrobbler": {"error": "service unavailable", "error_type": "scrobbler(retry_later)"},
 			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
@@ -97,7 +97,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			track := &model.MediaFile{ID: "track-1", Title: "Test Song"}
 			err := sc.NowPlaying(ctx, "user-1", track, 30)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ContainSubstring("retry later")))
+			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 		})
 	})
 
@@ -123,7 +123,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 		It("returns error when plugin returns not_authorized error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "user not linked", "error_type": "not_authorized"},
+				"test-scrobbler": {"error": "user not linked", "error_type": "scrobbler(not_authorized)"},
 			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
@@ -135,12 +135,12 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			}
 			err := sc.Scrobble(ctx, "user-1", scrobble)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ContainSubstring("not authorized")))
+			Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 		})
 
 		It("returns error when plugin returns unrecoverable error", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "track rejected", "error_type": "unrecoverable"},
+				"test-scrobbler": {"error": "track rejected", "error_type": "scrobbler(unrecoverable)"},
 			}, "test-scrobbler"+PackageExtension)
 
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
@@ -152,7 +152,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			}
 			err := sc.Scrobble(ctx, "user-1", scrobble)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(ContainSubstring("unrecoverable")))
+			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 		})
 	})
 
@@ -170,49 +170,27 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 })
 
 var _ = Describe("mapScrobblerError", func() {
-	It("returns nil for nil output", func() {
+	It("returns nil for nil error", func() {
 		Expect(mapScrobblerError(nil)).ToNot(HaveOccurred())
 	})
 
-	It("returns nil for empty error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: ""}
-		Expect(mapScrobblerError(output)).ToNot(HaveOccurred())
-	})
-
-	It("returns nil for 'none' error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNone}
-		Expect(mapScrobblerError(output)).ToNot(HaveOccurred())
-	})
-
-	It("returns ErrNotAuthorized for 'not_authorized' error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNotAuthorized}
-		err := mapScrobblerError(output)
+	It("returns ErrNotAuthorized for error containing 'not_authorized'", func() {
+		err := mapScrobblerError(errors.New("plugin error: scrobbler(not_authorized)"))
 		Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 	})
 
-	It("returns ErrNotAuthorized with message", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorNotAuthorized, Error: "user not linked"}
-		err := mapScrobblerError(output)
-		Expect(err).To(MatchError(ContainSubstring("not authorized")))
-		Expect(err).To(MatchError(ContainSubstring("user not linked")))
-	})
-
-	It("returns ErrRetryLater for 'retry_later' error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorRetryLater}
-		err := mapScrobblerError(output)
+	It("returns ErrRetryLater for error containing 'retry_later'", func() {
+		err := mapScrobblerError(errors.New("temporary failure: scrobbler(retry_later)"))
 		Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 	})
 
-	It("returns ErrUnrecoverable for 'unrecoverable' error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: capabilities.ScrobblerErrorUnrecoverable}
-		err := mapScrobblerError(output)
+	It("returns ErrUnrecoverable for error containing 'unrecoverable'", func() {
+		err := mapScrobblerError(errors.New("fatal error: scrobbler(unrecoverable)"))
 		Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 	})
 
-	It("returns error for unknown error type", func() {
-		output := &capabilities.ScrobblerResponse{ErrorType: "unknown"}
-		err := mapScrobblerError(output)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("unknown error type"))
+	It("returns ErrUnrecoverable for unknown error", func() {
+		err := mapScrobblerError(errors.New("some unknown error"))
+		Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 	})
 })

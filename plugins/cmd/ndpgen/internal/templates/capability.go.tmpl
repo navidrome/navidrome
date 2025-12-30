@@ -40,6 +40,21 @@ const (
 {{- end}}
 {{- end}}
 
+{{- /* Generate Error() methods for string type aliases with const values (implements error interface) */ -}}
+{{- $consts := .Capability.Consts}}
+{{- range .Capability.TypeAliases}}
+{{- if eq .Type "string"}}
+{{- $typeName := .Name}}
+{{- range $consts}}
+{{- if eq .Type $typeName}}
+
+// Error implements the error interface for {{$typeName}}.
+func (e {{$typeName}}) Error() string { return string(e) }
+{{- end}}
+{{- end}}
+{{- end}}
+{{- end}}
+
 {{- /* Generate struct definitions */ -}}
 {{- range .Capability.Structs}}
 

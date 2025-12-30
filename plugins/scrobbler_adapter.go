@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -63,12 +63,8 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 		Position: int32(position),
 	}
 
-	result, err := callPluginFunction[capabilities.NowPlayingRequest, *capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerNowPlaying, input)
-	if err != nil {
-		return err
-	}
-
-	return mapScrobblerError(result)
+	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerNowPlaying, input)
+	return mapScrobblerError(err)
 }
 
 // Scrobble submits a scrobble to the scrobbler
@@ -81,12 +77,8 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
-	result, err := callPluginFunction[capabilities.ScrobbleRequest, *capabilities.ScrobblerResponse](ctx, s.plugin, FuncScrobblerScrobble, input)
-	if err != nil {
-		return err
-	}
-
-	return mapScrobblerError(result)
+	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerScrobble, input)
+	return mapScrobblerError(err)
 }
 
 // getUsernameFromContext extracts the username from the request context
@@ -117,34 +109,22 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 	}
 }
 
-// mapScrobblerError converts the plugin output error to a scrobbler error
-func mapScrobblerError(output *capabilities.ScrobblerResponse) error {
-	if output == nil {
+// mapScrobblerError converts plugin errors to scrobbler errors based on error message, as errors are returned as
+// strings from plugins.
+func mapScrobblerError(err error) error {
+	if err == nil {
 		return nil
 	}
-	switch output.ErrorType {
-	case capabilities.ScrobblerErrorNone, "":
-		return nil
-	case capabilities.ScrobblerErrorNotAuthorized:
-		if output.Error != "" {
-			return fmt.Errorf("%w: %s", scrobbler.ErrNotAuthorized, output.Error)
-		}
+	errMsg := err.Error()
+	switch {
+	case strings.Contains(errMsg, capabilities.ScrobblerErrorNotAuthorized.Error()):
 		return scrobbler.ErrNotAuthorized
-	case capabilities.ScrobblerErrorRetryLater:
-		if output.Error != "" {
-			return fmt.Errorf("%w: %s", scrobbler.ErrRetryLater, output.Error)
-		}
+	case strings.Contains(errMsg, capabilities.ScrobblerErrorRetryLater.Error()):
 		return scrobbler.ErrRetryLater
-	case capabilities.ScrobblerErrorUnrecoverable:
-		if output.Error != "" {
-			return fmt.Errorf("%w: %s", scrobbler.ErrUnrecoverable, output.Error)
-		}
+	case strings.Contains(errMsg, capabilities.ScrobblerErrorUnrecoverable.Error()):
 		return scrobbler.ErrUnrecoverable
 	default:
-		if output.Error != "" {
-			return fmt.Errorf("unknown error type %q: %s", output.ErrorType, output.Error)
-		}
-		return fmt.Errorf("unknown error type: %s", output.ErrorType)
+		return scrobbler.ErrUnrecoverable
 	}
 }
 

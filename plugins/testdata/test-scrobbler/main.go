@@ -3,70 +3,67 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 
-	"github.com/extism/go-pdk"
+	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
 )
 
-// Scrobbler input/output types
-
-type AuthInput struct {
-	UserID   string `json:"userId"`
-	Username string `json:"username"`
+func init() {
+	scrobbler.Register(&testScrobbler{})
 }
 
-type AuthOutput struct {
-	Authorized bool `json:"authorized"`
+type testScrobbler struct{}
+
+// IsAuthorized checks if a user is authorized.
+func (t *testScrobbler) IsAuthorized(scrobbler.IsAuthorizedRequest) (*scrobbler.IsAuthorizedResponse, error) {
+	return &scrobbler.IsAuthorizedResponse{
+		Authorized: checkAuthConfig(),
+	}, nil
 }
 
-type TrackInfo struct {
-	ID                string  `json:"id"`
-	Title             string  `json:"title"`
-	Album             string  `json:"album"`
-	Artist            string  `json:"artist"`
-	AlbumArtist       string  `json:"albumArtist"`
-	Duration          float32 `json:"duration"`
-	TrackNumber       int     `json:"trackNumber"`
-	DiscNumber        int     `json:"discNumber"`
-	MbzRecordingID    string  `json:"mbzRecordingId,omitempty"`
-	MbzAlbumID        string  `json:"mbzAlbumId,omitempty"`
-	MbzArtistID       string  `json:"mbzArtistId,omitempty"`
-	MbzReleaseGroupID string  `json:"mbzReleaseGroupId,omitempty"`
+// NowPlaying sends a now playing notification.
+func (t *testScrobbler) NowPlaying(input scrobbler.NowPlayingRequest) error {
+	// Check for configured error
+	if err := checkConfigError(); err != nil {
+		return err
+	}
+
+	// Log the now playing (for potential debugging)
+	pdk.Log(pdk.LogInfo, "NowPlaying: "+input.Track.Title+" by "+input.Track.Artist)
+	return nil
 }
 
-type NowPlayingInput struct {
-	UserID   string    `json:"userId"`
-	Username string    `json:"username"`
-	Track    TrackInfo `json:"track"`
-	Position int       `json:"position"`
-}
+// Scrobble submits a scrobble.
+func (t *testScrobbler) Scrobble(input scrobbler.ScrobbleRequest) error {
+	// Check for configured error
+	if err := checkConfigError(); err != nil {
+		return err
+	}
 
-type ScrobbleInput struct {
-	UserID    string    `json:"userId"`
-	Username  string    `json:"username"`
-	Track     TrackInfo `json:"track"`
-	Timestamp int64     `json:"timestamp"`
-}
-
-// ScrobblerOutput contains error information from scrobble operations.
-// A nil pointer indicates success, non-nil indicates an error with details.
-type ScrobblerOutput struct {
-	Error     string `json:"error,omitempty"`
-	ErrorType string `json:"errorType,omitempty"`
+	// Log the scrobble (for potential debugging)
+	pdk.Log(pdk.LogInfo, "Scrobble: "+input.Track.Title+" by "+input.Track.Artist)
+	return nil
 }
 
 // checkConfigError checks if the plugin is configured to return an error.
-// If "error" config is set, it returns the error message and error type.
-func checkConfigError() (bool, string, string) {
+// If "error" config is set, it returns the appropriate ScrobblerError.
+// Error types: "not_authorized", "retry_later", "unrecoverable"
+func checkConfigError() error {
 	errMsg, hasErr := pdk.GetConfig("error")
 	if !hasErr || errMsg == "" {
-		return false, "", ""
+		return nil
 	}
 	errType, _ := pdk.GetConfig("error_type")
-	if errType == "" {
-		errType = "unrecoverable"
+	switch errType {
+	case scrobbler.ScrobblerErrorNotAuthorized.Error():
+		return fmt.Errorf("%w: %s", scrobbler.ScrobblerErrorNotAuthorized, errMsg)
+	case scrobbler.ScrobblerErrorRetryLater.Error():
+		return fmt.Errorf("%w: %s", scrobbler.ScrobblerErrorRetryLater, errMsg)
+	default:
+		return fmt.Errorf("%w: %s", scrobbler.ScrobblerErrorUnrecoverable, errMsg)
 	}
-	return true, errMsg, errType
 }
 
 // checkAuthConfig returns whether the plugin is configured to authorize users.
@@ -82,94 +79,6 @@ func checkAuthConfig() bool {
 		return true // Default on parse error
 	}
 	return auth
-}
-
-//go:wasmexport nd_scrobbler_is_authorized
-func ndScrobblerIsAuthorized() int32 {
-	var input AuthInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	// Return pointer to output
-	output := &AuthOutput{
-		Authorized: checkAuthConfig(),
-	}
-
-	if err := pdk.OutputJSON(output); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-	return 0
-}
-
-//go:wasmexport nd_scrobbler_now_playing
-func ndScrobblerNowPlaying() int32 {
-	var input NowPlayingInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	// Check for configured error - return pointer to error output
-	hasErr, errMsg, errType := checkConfigError()
-	if hasErr {
-		output := &ScrobblerOutput{
-			Error:     errMsg,
-			ErrorType: errType,
-		}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return -1
-		}
-		return 0
-	}
-
-	// Log the now playing (for potential debugging)
-	// In a real plugin, this would send to an external service
-	pdk.Log(pdk.LogInfo, "NowPlaying: "+input.Track.Title+" by "+input.Track.Artist)
-
-	// Success - output nil (empty response)
-	if err := pdk.OutputJSON(nil); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-	return 0
-}
-
-//go:wasmexport nd_scrobbler_scrobble
-func ndScrobblerScrobble() int32 {
-	var input ScrobbleInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	// Check for configured error - return pointer to error output
-	hasErr, errMsg, errType := checkConfigError()
-	if hasErr {
-		output := &ScrobblerOutput{
-			Error:     errMsg,
-			ErrorType: errType,
-		}
-		if err := pdk.OutputJSON(output); err != nil {
-			pdk.SetError(err)
-			return -1
-		}
-		return 0
-	}
-
-	// Log the scrobble (for potential debugging)
-	// In a real plugin, this would send to an external service
-	pdk.Log(pdk.LogInfo, "Scrobble: "+input.Track.Title+" by "+input.Track.Artist)
-
-	// Success - output nil (empty response)
-	if err := pdk.OutputJSON(nil); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-	return 0
 }
 
 func main() {}

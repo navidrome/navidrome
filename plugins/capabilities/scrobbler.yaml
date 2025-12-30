@@ -13,16 +13,10 @@ exports:
         input:
             $ref: '#/components/schemas/NowPlayingRequest'
             contentType: application/json
-        output:
-            $ref: '#/components/schemas/ScrobblerResponse'
-            contentType: application/json
     nd_scrobbler_scrobble:
         description: Scrobble submits a completed scrobble to the scrobbling service.
         input:
             $ref: '#/components/schemas/ScrobbleRequest'
-            contentType: application/json
-        output:
-            $ref: '#/components/schemas/ScrobblerResponse'
             contentType: application/json
 components:
     schemas:
@@ -92,16 +86,6 @@ components:
                 - username
                 - track
                 - timestamp
-        ScrobblerResponse:
-            description: ScrobblerResponse is the response for scrobbler operations.
-            type: object
-            properties:
-                error:
-                    type: string
-                    description: Error is the error message if the operation failed.
-                errorType:
-                    $ref: '#/components/schemas/ScrobblerErrorType'
-                    description: ErrorType indicates how Navidrome should handle the error.
         TrackInfo:
             description: TrackInfo contains track metadata for scrobbling.
             type: object
@@ -160,11 +144,10 @@ components:
                 - duration
                 - trackNumber
                 - discNumber
-        ScrobblerErrorType:
-            description: ScrobblerErrorType indicates how Navidrome should handle scrobbler errors.
+        ScrobblerError:
+            description: ScrobblerError represents an error type for scrobbling operations.
             type: string
             enum:
-                - none
-                - not_authorized
-                - retry_later
-                - unrecoverable
+                - scrobbler(not_authorized)
+                - scrobbler(retry_later)
+                - scrobbler(unrecoverable)

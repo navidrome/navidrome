@@ -15,11 +15,11 @@ type Scrobbler interface {
 
 	// NowPlaying sends a now playing notification to the scrobbling service.
 	//nd:export name=nd_scrobbler_now_playing
-	NowPlaying(NowPlayingRequest) (*ScrobblerResponse, error)
+	NowPlaying(NowPlayingRequest) error
 
 	// Scrobble submits a completed scrobble to the scrobbling service.
 	//nd:export name=nd_scrobbler_scrobble
-	Scrobble(ScrobbleRequest) (*ScrobblerResponse, error)
+	Scrobble(ScrobbleRequest) error
 }
 
 // IsAuthorizedRequest is the request for authorization check.
@@ -92,24 +92,17 @@ type ScrobbleRequest struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
-// ScrobblerErrorType indicates how Navidrome should handle scrobbler errors.
-type ScrobblerErrorType string
+// ScrobblerError represents an error type for scrobbling operations.
+type ScrobblerError string
 
 const (
-	// ScrobblerErrorNone indicates no error occurred.
-	ScrobblerErrorNone ScrobblerErrorType = "none"
 	// ScrobblerErrorNotAuthorized indicates the user is not authorized.
-	ScrobblerErrorNotAuthorized ScrobblerErrorType = "not_authorized"
+	ScrobblerErrorNotAuthorized ScrobblerError = "scrobbler(not_authorized)"
 	// ScrobblerErrorRetryLater indicates the operation should be retried later.
-	ScrobblerErrorRetryLater ScrobblerErrorType = "retry_later"
+	ScrobblerErrorRetryLater ScrobblerError = "scrobbler(retry_later)"
 	// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
-	ScrobblerErrorUnrecoverable ScrobblerErrorType = "unrecoverable"
+	ScrobblerErrorUnrecoverable ScrobblerError = "scrobbler(unrecoverable)"
 )
 
-// ScrobblerResponse is the response for scrobbler operations.
-type ScrobblerResponse struct {
-	// Error is the error message if the operation failed.
-	Error string `json:"error,omitempty"`
-	// ErrorType indicates how Navidrome should handle the error.
-	ErrorType ScrobblerErrorType `json:"errorType,omitempty"`
-}
+// Error implements the error interface for ScrobblerError.
+func (e ScrobblerError) Error() string { return string(e) }
