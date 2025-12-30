@@ -792,7 +792,7 @@ See [capabilities/README.md](capabilities/README.md) for available schemas and s
 
 ### Using Host Service SDKs
 
-Generated SDKs for calling host services are in `plugins/pdk/go/host/`, `plugins/pdk/python/` and `plugins/pdk/rust`.
+Generated SDKs for calling host services are in `plugins/pdk/go/`, `plugins/pdk/python/` and `plugins/pdk/rust`.
 
 **For Go plugins:** Import the SDK as a Go module:
 
@@ -803,11 +803,11 @@ import ndhost "github.com/navidrome/navidrome/plugins/pdk/go/host"
 Add to your `go.mod`:
 
 ```
-require github.com/navidrome/navidrome/plugins/pdk/go/host v0.0.0
-replace github.com/navidrome/navidrome/plugins/pdk/go/host => ../../pdk/go/host
+require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
 ```
 
-See [pdk/go/host/README.md](pdk/go/host/README.md) for detailed documentation.
+See [pdk/go/README.md](pdk/go/README.md) for detailed documentation.
 
 **For Python plugins:** Copy functions from `nd_host_*.py` into your `__init__.py` (see comments in those files for extism-py limitations).
 

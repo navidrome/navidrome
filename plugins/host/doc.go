@@ -38,4 +38,5 @@
 // indicating they should not be edited manually.
 //
 //go:generate go run ../cmd/ndpgen -input=. -output=../pdk -go -python -rust
+//go:generate go mod tidy -C ../pdk/go
 package host
