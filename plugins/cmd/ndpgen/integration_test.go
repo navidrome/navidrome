@@ -166,9 +166,11 @@ type ServiceB interface {
 			Expect(filepath.Join(goHostDir, "nd_host_test.go")).To(BeAnExistingFile())
 			// Stub file also generated
 			Expect(filepath.Join(goHostDir, "nd_host_test_stub.go")).To(BeAnExistingFile())
-			// doc.go and go.mod also generated
+			// doc.go in host dir
 			Expect(filepath.Join(goHostDir, "doc.go")).To(BeAnExistingFile())
-			Expect(filepath.Join(goHostDir, "go.mod")).To(BeAnExistingFile())
+			// go.mod at parent $output/go/ for consolidated module
+			goDir := filepath.Join(outputDir, "go")
+			Expect(filepath.Join(goDir, "go.mod")).To(BeAnExistingFile())
 		})
 	})
 
@@ -332,15 +334,18 @@ type ServiceB interface {
 			pluginDir := filepath.Join(outputDir, "plugin")
 			Expect(os.MkdirAll(pluginDir, 0750)).To(Succeed())
 
+			// go.mod is at parent $output/go/ for consolidated module
+			goDir := filepath.Join(outputDir, "go")
+
 			// Create go.mod for the plugin that imports the generated library
 			goMod := fmt.Sprintf(`module testplugin
 
-go 1.24
+go 1.25
 
-require github.com/navidrome/navidrome/plugins/pdk/go/host v0.0.0
+require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
 
-replace github.com/navidrome/navidrome/plugins/pdk/go/host => %s
-`, goHostDir)
+replace github.com/navidrome/navidrome/plugins/pdk/go => %s
+`, goDir)
 			Expect(os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
 
 			// Add a simple main function that imports and uses the ndpdk package
@@ -357,7 +362,7 @@ var _ = ndpdk.ComprehensiveNoParams
 
 			// Tidy dependencies for the generated go library
 			goTidyLibCmd := exec.Command("go", "mod", "tidy")
-			goTidyLibCmd.Dir = goHostDir
+			goTidyLibCmd.Dir = goDir
 			goTidyLibOutput, err := goTidyLibCmd.CombinedOutput()
 			Expect(err).ToNot(HaveOccurred(), "go mod tidy (library) failed: %s", goTidyLibOutput)
 

@@ -573,11 +573,13 @@ var _ = Describe("Generator", func() {
 
 			codeStr := string(code)
 
-			// Check for module declaration (using new PDK path)
-			Expect(codeStr).To(ContainSubstring("module github.com/navidrome/navidrome/plugins/pdk/go/host"))
+			// Check for module declaration (consolidated PDK path at pdk/go level)
+			Expect(codeStr).To(ContainSubstring("module github.com/navidrome/navidrome/plugins/pdk/go"))
+			// Ensure it's not the old host-specific path
+			Expect(codeStr).NotTo(ContainSubstring("module github.com/navidrome/navidrome/plugins/pdk/go/host"))
 
 			// Check for Go version
-			Expect(codeStr).To(ContainSubstring("go 1.24"))
+			Expect(codeStr).To(ContainSubstring("go 1.25"))
 
 			// Check for extism-go-pdk dependency
 			Expect(codeStr).To(ContainSubstring("github.com/extism/go-pdk"))

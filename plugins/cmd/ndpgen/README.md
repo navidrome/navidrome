@@ -31,7 +31,7 @@ ndpgen -input <dir> -output <dir> [-package <name>] [-v] [-dry-run] [-host-only]
 ```bash
 go run ./plugins/cmd/ndpgen \
   -input ./plugins/host \
-  -output ./plugins/pdk/go/host
+  -output ./plugins/pdk
 ```
 
 ## Annotations
@@ -92,7 +92,7 @@ type SubsonicAPIService interface {
 
 ### Go Client Library (Go/TinyGo WASM)
 
-Generated files are named `nd_host_<servicename>.go` (lowercase) and placed directly in the output directory. The output directory becomes a complete Go module (`github.com/navidrome/navidrome/plugins/pdk/go/host`) with package name `ndpdk`, intended for import by Navidrome plugins built with TinyGo.
+Generated files are named `nd_host_<servicename>.go` (lowercase) and placed in `$output/go/host/`. The `$output/go/` directory becomes a complete Go module (`github.com/navidrome/navidrome/plugins/pdk/go`) with package name `host`, intended for import by Navidrome plugins built with TinyGo.
 
 The generator creates:
 - `nd_host_<servicename>.go` - Client wrapper code (WASM build)

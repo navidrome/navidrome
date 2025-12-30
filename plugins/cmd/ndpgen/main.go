@@ -601,21 +601,25 @@ func generateGoDocFile(services []internal.Service, outputDir, pkgName string, d
 }
 
 // generateGoModFile generates the go.mod file for the Go library.
+// The go.mod is placed at the parent directory ($output/go/) to create a unified
+// module that includes both host wrappers and capabilities.
 func generateGoModFile(outputDir string, dryRun, verbose bool) error {
 	code, err := internal.GenerateGoMod()
 	if err != nil {
 		return fmt.Errorf("generating go.mod: %w", err)
 	}
 
-	modFile := filepath.Join(outputDir, "go.mod")
+	// Output to parent directory ($output/go/) instead of host directory
+	parentDir := filepath.Dir(outputDir)
+	modFile := filepath.Join(parentDir, "go.mod")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", modFile, code)
 		return nil
 	}
 
-	// Create output directory if needed
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	// Create parent directory if needed
+	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
