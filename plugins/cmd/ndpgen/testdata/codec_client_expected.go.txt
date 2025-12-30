@@ -19,13 +19,11 @@ import (
 //go:wasmimport extism:host/user codec_encode
 func codec_encode(uint64) uint64
 
-// CodecEncodeRequest is the request type for Codec.Encode.
-type CodecEncodeRequest struct {
+type codecEncodeRequest struct {
 	Data []byte `json:"data"`
 }
 
-// CodecEncodeResponse is the response type for Codec.Encode.
-type CodecEncodeResponse struct {
+type codecEncodeResponse struct {
 	Result []byte `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -33,7 +31,7 @@ type CodecEncodeResponse struct {
 // CodecEncode calls the codec_encode host function.
 func CodecEncode(data []byte) ([]byte, error) {
 	// Marshal request to JSON
-	req := CodecEncodeRequest{
+	req := codecEncodeRequest{
 		Data: data,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -51,7 +49,7 @@ func CodecEncode(data []byte) ([]byte, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CodecEncodeResponse
+	var response codecEncodeResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}

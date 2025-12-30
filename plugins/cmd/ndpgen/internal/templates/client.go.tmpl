@@ -37,11 +37,10 @@ type {{.Name}} struct {
 func {{exportName .}}(uint64) uint64
 {{- end}}
 
-{{- /* Generate request/response types for all methods */ -}}
+{{- /* Generate request/response types for all methods (private) */ -}}
 {{range .Service.Methods}}
 {{- if .HasParams}}
 
-// {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
 type {{requestType .}} struct {
 {{- range .Params}}
 	{{title .Name}} {{.Type}} `json:"{{.JSONName}}"`
@@ -50,7 +49,6 @@ type {{requestType .}} struct {
 {{- end}}
 {{- if not .IsErrorOnly}}
 
-// {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
 {{- range .Returns}}
 	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`

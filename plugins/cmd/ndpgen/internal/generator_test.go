@@ -627,8 +627,9 @@ var _ = Describe("Generator", func() {
 			// Check for panic in function body
 			Expect(codeStr).To(ContainSubstring(`panic("ndpdk: CacheGet is only available in WASM plugins")`))
 
-			// Check that types are defined (needed for IDE support)
-			Expect(codeStr).To(ContainSubstring("type CacheGetResponse struct"))
+			// Stub files should NOT have request/response types (they're not needed)
+			Expect(codeStr).NotTo(ContainSubstring("Request struct"))
+			Expect(codeStr).NotTo(ContainSubstring("Response struct"))
 		})
 	})
 

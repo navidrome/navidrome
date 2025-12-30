@@ -319,9 +319,9 @@ type ServiceB interface {
 			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparams"))
 			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparamsnoreturns"))
 
-			// Should have response types for methods with complex returns
-			Expect(contentStr).To(ContainSubstring("type ComprehensiveSimpleParamsResponse struct"))
-			Expect(contentStr).To(ContainSubstring("type ComprehensiveMultipleReturnsResponse struct"))
+			// Should have response types for methods with complex returns (private types in client code)
+			Expect(contentStr).To(ContainSubstring("type comprehensiveSimpleParamsResponse struct"))
+			Expect(contentStr).To(ContainSubstring("type comprehensiveMultipleReturnsResponse struct"))
 
 			// Should have wrapper functions
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveSimpleParams("))

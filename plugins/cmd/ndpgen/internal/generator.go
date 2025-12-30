@@ -23,13 +23,14 @@ func hostFuncMap(svc Service) template.FuncMap {
 }
 
 // clientFuncMap returns the template functions for client code generation.
+// Uses private (lowercase) type names for request/response structs.
 func clientFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
 		"lower":        strings.ToLower,
 		"title":        strings.Title,
 		"exportName":   func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":  func(m Method) string { return m.RequestTypeName(svc.Name) },
-		"responseType": func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"requestType":  func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
+		"responseType": func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
 		"formatDoc":    formatDoc,
 	}
 }

@@ -44,53 +44,44 @@ func kvstore_list(uint64) uint64
 //go:wasmimport extism:host/user kvstore_getstorageused
 func kvstore_getstorageused(uint64) uint64
 
-// KVStoreSetRequest is the request type for KVStore.Set.
-type KVStoreSetRequest struct {
+type kVStoreSetRequest struct {
 	Key   string `json:"key"`
 	Value []byte `json:"value"`
 }
 
-// KVStoreGetRequest is the request type for KVStore.Get.
-type KVStoreGetRequest struct {
+type kVStoreGetRequest struct {
 	Key string `json:"key"`
 }
 
-// KVStoreGetResponse is the response type for KVStore.Get.
-type KVStoreGetResponse struct {
+type kVStoreGetResponse struct {
 	Value  []byte `json:"value,omitempty"`
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// KVStoreDeleteRequest is the request type for KVStore.Delete.
-type KVStoreDeleteRequest struct {
+type kVStoreDeleteRequest struct {
 	Key string `json:"key"`
 }
 
-// KVStoreHasRequest is the request type for KVStore.Has.
-type KVStoreHasRequest struct {
+type kVStoreHasRequest struct {
 	Key string `json:"key"`
 }
 
-// KVStoreHasResponse is the response type for KVStore.Has.
-type KVStoreHasResponse struct {
+type kVStoreHasResponse struct {
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// KVStoreListRequest is the request type for KVStore.List.
-type KVStoreListRequest struct {
+type kVStoreListRequest struct {
 	Prefix string `json:"prefix"`
 }
 
-// KVStoreListResponse is the response type for KVStore.List.
-type KVStoreListResponse struct {
+type kVStoreListResponse struct {
 	Keys  []string `json:"keys,omitempty"`
 	Error string   `json:"error,omitempty"`
 }
 
-// KVStoreGetStorageUsedResponse is the response type for KVStore.GetStorageUsed.
-type KVStoreGetStorageUsedResponse struct {
+type kVStoreGetStorageUsedResponse struct {
 	Bytes int64  `json:"bytes,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -105,7 +96,7 @@ type KVStoreGetStorageUsedResponse struct {
 // Returns an error if the storage limit would be exceeded or the operation fails.
 func KVStoreSet(key string, value []byte) error {
 	// Marshal request to JSON
-	req := KVStoreSetRequest{
+	req := kVStoreSetRequest{
 		Key:   key,
 		Value: value,
 	}
@@ -145,7 +136,7 @@ func KVStoreSet(key string, value []byte) error {
 // Returns the value and whether the key exists.
 func KVStoreGet(key string) ([]byte, bool, error) {
 	// Marshal request to JSON
-	req := KVStoreGetRequest{
+	req := kVStoreGetRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -163,7 +154,7 @@ func KVStoreGet(key string) ([]byte, bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response KVStoreGetResponse
+	var response kVStoreGetResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, false, err
 	}
@@ -185,7 +176,7 @@ func KVStoreGet(key string) ([]byte, bool, error) {
 // Returns an error if the operation fails. Does not return an error if the key doesn't exist.
 func KVStoreDelete(key string) error {
 	// Marshal request to JSON
-	req := KVStoreDeleteRequest{
+	req := kVStoreDeleteRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -224,7 +215,7 @@ func KVStoreDelete(key string) error {
 // Returns true if the key exists.
 func KVStoreHas(key string) (bool, error) {
 	// Marshal request to JSON
-	req := KVStoreHasRequest{
+	req := kVStoreHasRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -242,7 +233,7 @@ func KVStoreHas(key string) (bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response KVStoreHasResponse
+	var response kVStoreHasResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return false, err
 	}
@@ -264,7 +255,7 @@ func KVStoreHas(key string) (bool, error) {
 // Returns a slice of matching keys.
 func KVStoreList(prefix string) ([]string, error) {
 	// Marshal request to JSON
-	req := KVStoreListRequest{
+	req := kVStoreListRequest{
 		Prefix: prefix,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -282,7 +273,7 @@ func KVStoreList(prefix string) ([]string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response KVStoreListResponse
+	var response kVStoreListResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}
@@ -310,7 +301,7 @@ func KVStoreGetStorageUsed() (int64, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response KVStoreGetStorageUsedResponse
+	var response kVStoreGetStorageUsedResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0, err
 	}

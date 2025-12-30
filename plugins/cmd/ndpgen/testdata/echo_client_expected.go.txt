@@ -19,13 +19,11 @@ import (
 //go:wasmimport extism:host/user echo_echo
 func echo_echo(uint64) uint64
 
-// EchoEchoRequest is the request type for Echo.Echo.
-type EchoEchoRequest struct {
+type echoEchoRequest struct {
 	Message string `json:"message"`
 }
 
-// EchoEchoResponse is the response type for Echo.Echo.
-type EchoEchoResponse struct {
+type echoEchoResponse struct {
 	Reply string `json:"reply,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -33,7 +31,7 @@ type EchoEchoResponse struct {
 // EchoEcho calls the echo_echo host function.
 func EchoEcho(message string) (string, error) {
 	// Marshal request to JSON
-	req := EchoEchoRequest{
+	req := echoEchoRequest{
 		Message: message,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -51,7 +49,7 @@ func EchoEcho(message string) (string, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response EchoEchoResponse
+	var response echoEchoResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", err
 	}

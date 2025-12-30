@@ -181,14 +181,34 @@ func (m Method) FunctionName(servicePrefix string) string {
 	return servicePrefix + "_" + strings.ToLower(m.Name)
 }
 
-// RequestTypeName returns the generated request type name.
+// RequestTypeName returns the generated request type name (public, for host-side code).
 func (m Method) RequestTypeName(serviceName string) string {
 	return serviceName + m.Name + "Request"
 }
 
-// ResponseTypeName returns the generated response type name.
+// ResponseTypeName returns the generated response type name (public, for host-side code).
 func (m Method) ResponseTypeName(serviceName string) string {
 	return serviceName + m.Name + "Response"
+}
+
+// ClientRequestTypeName returns the generated request type name (private, for client/PDK code).
+func (m Method) ClientRequestTypeName(serviceName string) string {
+	return lowerFirst(serviceName) + m.Name + "Request"
+}
+
+// ClientResponseTypeName returns the generated response type name (private, for client/PDK code).
+func (m Method) ClientResponseTypeName(serviceName string) string {
+	return lowerFirst(serviceName) + m.Name + "Response"
+}
+
+// lowerFirst returns the string with the first letter lowercased.
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToLower(r[0])
+	return string(r)
 }
 
 // HasParams returns true if the method has input parameters.

@@ -8,38 +8,6 @@
 
 package host
 
-// WebSocketConnectRequest is the request type for WebSocket.Connect.
-type WebSocketConnectRequest struct {
-	Url          string            `json:"url"`
-	Headers      map[string]string `json:"headers"`
-	ConnectionID string            `json:"connectionId"`
-}
-
-// WebSocketConnectResponse is the response type for WebSocket.Connect.
-type WebSocketConnectResponse struct {
-	NewConnectionID string `json:"newConnectionId,omitempty"`
-	Error           string `json:"error,omitempty"`
-}
-
-// WebSocketSendTextRequest is the request type for WebSocket.SendText.
-type WebSocketSendTextRequest struct {
-	ConnectionID string `json:"connectionId"`
-	Message      string `json:"message"`
-}
-
-// WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
-type WebSocketSendBinaryRequest struct {
-	ConnectionID string `json:"connectionId"`
-	Data         []byte `json:"data"`
-}
-
-// WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
-type WebSocketCloseConnectionRequest struct {
-	ConnectionID string `json:"connectionId"`
-	Code         int32  `json:"code"`
-	Reason       string `json:"reason"`
-}
-
 // WebSocketConnect is a stub that panics on non-WASM platforms.
 // Connect establishes a WebSocket connection to the specified URL.
 //

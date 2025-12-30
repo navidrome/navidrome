@@ -25,14 +25,12 @@ type User struct {
 //go:wasmimport extism:host/user users_get
 func users_get(uint64) uint64
 
-// UsersGetRequest is the request type for Users.Get.
-type UsersGetRequest struct {
+type usersGetRequest struct {
 	Id     *string `json:"id"`
 	Filter *User   `json:"filter"`
 }
 
-// UsersGetResponse is the response type for Users.Get.
-type UsersGetResponse struct {
+type usersGetResponse struct {
 	Result *User  `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -40,7 +38,7 @@ type UsersGetResponse struct {
 // UsersGet calls the users_get host function.
 func UsersGet(id *string, filter *User) (*User, error) {
 	// Marshal request to JSON
-	req := UsersGetRequest{
+	req := usersGetRequest{
 		Id:     id,
 		Filter: filter,
 	}
@@ -59,7 +57,7 @@ func UsersGet(id *string, filter *User) (*User, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response UsersGetResponse
+	var response usersGetResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}

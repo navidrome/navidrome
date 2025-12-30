@@ -64,95 +64,80 @@ func cache_has(uint64) uint64
 //go:wasmimport extism:host/user cache_remove
 func cache_remove(uint64) uint64
 
-// CacheSetStringRequest is the request type for Cache.SetString.
-type CacheSetStringRequest struct {
+type cacheSetStringRequest struct {
 	Key        string `json:"key"`
 	Value      string `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
 }
 
-// CacheGetStringRequest is the request type for Cache.GetString.
-type CacheGetStringRequest struct {
+type cacheGetStringRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheGetStringResponse is the response type for Cache.GetString.
-type CacheGetStringResponse struct {
+type cacheGetStringResponse struct {
 	Value  string `json:"value,omitempty"`
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// CacheSetIntRequest is the request type for Cache.SetInt.
-type CacheSetIntRequest struct {
+type cacheSetIntRequest struct {
 	Key        string `json:"key"`
 	Value      int64  `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
 }
 
-// CacheGetIntRequest is the request type for Cache.GetInt.
-type CacheGetIntRequest struct {
+type cacheGetIntRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheGetIntResponse is the response type for Cache.GetInt.
-type CacheGetIntResponse struct {
+type cacheGetIntResponse struct {
 	Value  int64  `json:"value,omitempty"`
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// CacheSetFloatRequest is the request type for Cache.SetFloat.
-type CacheSetFloatRequest struct {
+type cacheSetFloatRequest struct {
 	Key        string  `json:"key"`
 	Value      float64 `json:"value"`
 	TtlSeconds int64   `json:"ttlSeconds"`
 }
 
-// CacheGetFloatRequest is the request type for Cache.GetFloat.
-type CacheGetFloatRequest struct {
+type cacheGetFloatRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheGetFloatResponse is the response type for Cache.GetFloat.
-type CacheGetFloatResponse struct {
+type cacheGetFloatResponse struct {
 	Value  float64 `json:"value,omitempty"`
 	Exists bool    `json:"exists,omitempty"`
 	Error  string  `json:"error,omitempty"`
 }
 
-// CacheSetBytesRequest is the request type for Cache.SetBytes.
-type CacheSetBytesRequest struct {
+type cacheSetBytesRequest struct {
 	Key        string `json:"key"`
 	Value      []byte `json:"value"`
 	TtlSeconds int64  `json:"ttlSeconds"`
 }
 
-// CacheGetBytesRequest is the request type for Cache.GetBytes.
-type CacheGetBytesRequest struct {
+type cacheGetBytesRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheGetBytesResponse is the response type for Cache.GetBytes.
-type CacheGetBytesResponse struct {
+type cacheGetBytesResponse struct {
 	Value  []byte `json:"value,omitempty"`
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// CacheHasRequest is the request type for Cache.Has.
-type CacheHasRequest struct {
+type cacheHasRequest struct {
 	Key string `json:"key"`
 }
 
-// CacheHasResponse is the response type for Cache.Has.
-type CacheHasResponse struct {
+type cacheHasResponse struct {
 	Exists bool   `json:"exists,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
-// CacheRemoveRequest is the request type for Cache.Remove.
-type CacheRemoveRequest struct {
+type cacheRemoveRequest struct {
 	Key string `json:"key"`
 }
 
@@ -167,7 +152,7 @@ type CacheRemoveRequest struct {
 // Returns an error if the operation fails.
 func CacheSetString(key string, value string, ttlSeconds int64) error {
 	// Marshal request to JSON
-	req := CacheSetStringRequest{
+	req := cacheSetStringRequest{
 		Key:        key,
 		Value:      value,
 		TtlSeconds: ttlSeconds,
@@ -209,7 +194,7 @@ func CacheSetString(key string, value string, ttlSeconds int64) error {
 // or the stored value is not a string, exists will be false.
 func CacheGetString(key string) (string, bool, error) {
 	// Marshal request to JSON
-	req := CacheGetStringRequest{
+	req := cacheGetStringRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -227,7 +212,7 @@ func CacheGetString(key string) (string, bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CacheGetStringResponse
+	var response cacheGetStringResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return "", false, err
 	}
@@ -251,7 +236,7 @@ func CacheGetString(key string) (string, bool, error) {
 // Returns an error if the operation fails.
 func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 	// Marshal request to JSON
-	req := CacheSetIntRequest{
+	req := cacheSetIntRequest{
 		Key:        key,
 		Value:      value,
 		TtlSeconds: ttlSeconds,
@@ -293,7 +278,7 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 // or the stored value is not an integer, exists will be false.
 func CacheGetInt(key string) (int64, bool, error) {
 	// Marshal request to JSON
-	req := CacheGetIntRequest{
+	req := cacheGetIntRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -311,7 +296,7 @@ func CacheGetInt(key string) (int64, bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CacheGetIntResponse
+	var response cacheGetIntResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0, false, err
 	}
@@ -335,7 +320,7 @@ func CacheGetInt(key string) (int64, bool, error) {
 // Returns an error if the operation fails.
 func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 	// Marshal request to JSON
-	req := CacheSetFloatRequest{
+	req := cacheSetFloatRequest{
 		Key:        key,
 		Value:      value,
 		TtlSeconds: ttlSeconds,
@@ -377,7 +362,7 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 // or the stored value is not a float, exists will be false.
 func CacheGetFloat(key string) (float64, bool, error) {
 	// Marshal request to JSON
-	req := CacheGetFloatRequest{
+	req := cacheGetFloatRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -395,7 +380,7 @@ func CacheGetFloat(key string) (float64, bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CacheGetFloatResponse
+	var response cacheGetFloatResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return 0, false, err
 	}
@@ -419,7 +404,7 @@ func CacheGetFloat(key string) (float64, bool, error) {
 // Returns an error if the operation fails.
 func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 	// Marshal request to JSON
-	req := CacheSetBytesRequest{
+	req := cacheSetBytesRequest{
 		Key:        key,
 		Value:      value,
 		TtlSeconds: ttlSeconds,
@@ -461,7 +446,7 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 // or the stored value is not a byte slice, exists will be false.
 func CacheGetBytes(key string) ([]byte, bool, error) {
 	// Marshal request to JSON
-	req := CacheGetBytesRequest{
+	req := cacheGetBytesRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -479,7 +464,7 @@ func CacheGetBytes(key string) ([]byte, bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CacheGetBytesResponse
+	var response cacheGetBytesResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, false, err
 	}
@@ -501,7 +486,7 @@ func CacheGetBytes(key string) ([]byte, bool, error) {
 // Returns true if the key exists and has not expired.
 func CacheHas(key string) (bool, error) {
 	// Marshal request to JSON
-	req := CacheHasRequest{
+	req := cacheHasRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -519,7 +504,7 @@ func CacheHas(key string) (bool, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response CacheHasResponse
+	var response cacheHasResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return false, err
 	}
@@ -541,7 +526,7 @@ func CacheHas(key string) (bool, error) {
 // Returns an error if the operation fails. Does not return an error if the key doesn't exist.
 func CacheRemove(key string) error {
 	// Marshal request to JSON
-	req := CacheRemoveRequest{
+	req := cacheRemoveRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)

@@ -8,57 +8,6 @@
 
 package host
 
-// KVStoreSetRequest is the request type for KVStore.Set.
-type KVStoreSetRequest struct {
-	Key   string `json:"key"`
-	Value []byte `json:"value"`
-}
-
-// KVStoreGetRequest is the request type for KVStore.Get.
-type KVStoreGetRequest struct {
-	Key string `json:"key"`
-}
-
-// KVStoreGetResponse is the response type for KVStore.Get.
-type KVStoreGetResponse struct {
-	Value  []byte `json:"value,omitempty"`
-	Exists bool   `json:"exists,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
-// KVStoreDeleteRequest is the request type for KVStore.Delete.
-type KVStoreDeleteRequest struct {
-	Key string `json:"key"`
-}
-
-// KVStoreHasRequest is the request type for KVStore.Has.
-type KVStoreHasRequest struct {
-	Key string `json:"key"`
-}
-
-// KVStoreHasResponse is the response type for KVStore.Has.
-type KVStoreHasResponse struct {
-	Exists bool   `json:"exists,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
-// KVStoreListRequest is the request type for KVStore.List.
-type KVStoreListRequest struct {
-	Prefix string `json:"prefix"`
-}
-
-// KVStoreListResponse is the response type for KVStore.List.
-type KVStoreListResponse struct {
-	Keys  []string `json:"keys,omitempty"`
-	Error string   `json:"error,omitempty"`
-}
-
-// KVStoreGetStorageUsedResponse is the response type for KVStore.GetStorageUsed.
-type KVStoreGetStorageUsedResponse struct {
-	Bytes int64  `json:"bytes,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
 // KVStoreSet is a stub that panics on non-WASM platforms.
 // Set stores a byte value with the given key.
 //

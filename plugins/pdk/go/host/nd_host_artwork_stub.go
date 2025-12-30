@@ -8,54 +8,6 @@
 
 package host
 
-// ArtworkGetArtistUrlRequest is the request type for Artwork.GetArtistUrl.
-type ArtworkGetArtistUrlRequest struct {
-	Id   string `json:"id"`
-	Size int32  `json:"size"`
-}
-
-// ArtworkGetArtistUrlResponse is the response type for Artwork.GetArtistUrl.
-type ArtworkGetArtistUrlResponse struct {
-	Url   string `json:"url,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-// ArtworkGetAlbumUrlRequest is the request type for Artwork.GetAlbumUrl.
-type ArtworkGetAlbumUrlRequest struct {
-	Id   string `json:"id"`
-	Size int32  `json:"size"`
-}
-
-// ArtworkGetAlbumUrlResponse is the response type for Artwork.GetAlbumUrl.
-type ArtworkGetAlbumUrlResponse struct {
-	Url   string `json:"url,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-// ArtworkGetTrackUrlRequest is the request type for Artwork.GetTrackUrl.
-type ArtworkGetTrackUrlRequest struct {
-	Id   string `json:"id"`
-	Size int32  `json:"size"`
-}
-
-// ArtworkGetTrackUrlResponse is the response type for Artwork.GetTrackUrl.
-type ArtworkGetTrackUrlResponse struct {
-	Url   string `json:"url,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-// ArtworkGetPlaylistUrlRequest is the request type for Artwork.GetPlaylistUrl.
-type ArtworkGetPlaylistUrlRequest struct {
-	Id   string `json:"id"`
-	Size int32  `json:"size"`
-}
-
-// ArtworkGetPlaylistUrlResponse is the response type for Artwork.GetPlaylistUrl.
-type ArtworkGetPlaylistUrlResponse struct {
-	Url   string `json:"url,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
 // ArtworkGetArtistUrl is a stub that panics on non-WASM platforms.
 // GetArtistUrl generates a public URL for an artist's artwork.
 //
