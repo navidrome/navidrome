@@ -672,6 +672,283 @@ type TestService interface {
 			Expect(codeStr).To(ContainSubstring(`"test_dosomething"`))
 		})
 	})
+
+	Describe("GenerateCapabilityGo", func() {
+		It("should generate valid Go code for a non-required capability", func() {
+			cap := Capability{
+				Name:      "metadata",
+				Interface: "MetadataAgent",
+				Required:  false,
+				Doc:       "MetadataAgent provides metadata retrieval.",
+				Methods: []Export{
+					{
+						Name:       "GetArtistBiography",
+						ExportName: "nd_get_artist_biography",
+						Input:      Param{Type: "ArtistInput"},
+						Output:     Param{Type: "ArtistBiographyOutput"},
+						Doc:        "Returns artist biography",
+					},
+					{
+						Name:       "GetArtistImages",
+						ExportName: "nd_get_artist_images",
+						Input:      Param{Type: "ArtistInput"},
+						Output:     Param{Type: "ArtistImagesOutput"},
+						Doc:        "Returns artist images",
+					},
+				},
+				Structs: []StructDef{
+					{
+						Name: "ArtistInput",
+						Fields: []FieldDef{
+							{Name: "ID", Type: "string", JSONTag: "id"},
+							{Name: "Name", Type: "string", JSONTag: "name"},
+						},
+					},
+					{
+						Name: "ArtistBiographyOutput",
+						Fields: []FieldDef{
+							{Name: "Biography", Type: "string", JSONTag: "biography"},
+						},
+					},
+					{
+						Name: "ArtistImagesOutput",
+						Fields: []FieldDef{
+							{Name: "Images", Type: "[]ImageInfo", JSONTag: "images"},
+						},
+					},
+					{
+						Name: "ImageInfo",
+						Fields: []FieldDef{
+							{Name: "URL", Type: "string", JSONTag: "url"},
+							{Name: "Size", Type: "int32", JSONTag: "size"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateCapabilityGo(cap, "metadata")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check for build tag
+			Expect(codeStr).To(ContainSubstring("//go:build wasip1"))
+
+			// Check for package declaration
+			Expect(codeStr).To(ContainSubstring("package metadata"))
+
+			// Check for marker interface (non-required)
+			Expect(codeStr).To(ContainSubstring("type Metadata interface{}"))
+
+			// Check for provider interfaces
+			Expect(codeStr).To(ContainSubstring("type ArtistBiographyProvider interface"))
+			Expect(codeStr).To(ContainSubstring("type ArtistImagesProvider interface"))
+
+			// Check for Register function with type assertions
+			Expect(codeStr).To(ContainSubstring("func Register(impl Metadata)"))
+			Expect(codeStr).To(ContainSubstring("impl.(ArtistBiographyProvider)"))
+
+			// Check for export wrappers
+			Expect(codeStr).To(ContainSubstring("//export nd_get_artist_biography"))
+			Expect(codeStr).To(ContainSubstring("func _NdGetArtistBiography()"))
+
+			// Check for NotImplementedCode handling
+			Expect(codeStr).To(ContainSubstring("NotImplementedCode"))
+			Expect(codeStr).To(ContainSubstring("return NotImplementedCode"))
+
+			// Check struct definitions
+			Expect(codeStr).To(ContainSubstring("type ArtistInput struct"))
+			Expect(codeStr).To(ContainSubstring("type ImageInfo struct"))
+		})
+
+		It("should generate valid Go code for a required capability", func() {
+			cap := Capability{
+				Name:      "scrobbler",
+				Interface: "Scrobbler",
+				Required:  true,
+				Methods: []Export{
+					{
+						Name:       "IsAuthorized",
+						ExportName: "nd_scrobbler_is_authorized",
+						Input:      Param{Type: "AuthInput"},
+						Output:     Param{Type: "AuthOutput"},
+					},
+					{
+						Name:       "Scrobble",
+						ExportName: "nd_scrobbler_scrobble",
+						Input:      Param{Type: "ScrobbleInput"},
+						Output:     Param{Type: "ScrobblerOutput"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "AuthInput", Fields: []FieldDef{{Name: "UserID", Type: "string", JSONTag: "userId"}}},
+					{Name: "AuthOutput", Fields: []FieldDef{{Name: "Authorized", Type: "bool", JSONTag: "authorized"}}},
+					{Name: "ScrobbleInput", Fields: []FieldDef{{Name: "UserID", Type: "string", JSONTag: "userId"}}},
+					{Name: "ScrobblerOutput", Fields: []FieldDef{{Name: "Error", Type: "*string", JSONTag: "error", OmitEmpty: true}}},
+				},
+			}
+
+			code, err := GenerateCapabilityGo(cap, "scrobbler")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check for full interface (required capability)
+			Expect(codeStr).To(ContainSubstring("type Scrobbler interface {"))
+			Expect(codeStr).To(ContainSubstring("IsAuthorized(AuthInput) (AuthOutput, error)"))
+			Expect(codeStr).To(ContainSubstring("Scrobble(ScrobbleInput) (ScrobblerOutput, error)"))
+
+			// Should NOT have provider interfaces for required capability
+			Expect(codeStr).NotTo(ContainSubstring("AuthProvider interface"))
+
+			// Register should directly assign methods
+			Expect(codeStr).To(ContainSubstring("func Register(impl Scrobbler)"))
+			Expect(codeStr).To(ContainSubstring("impl.IsAuthorized"))
+		})
+
+		It("should include type aliases and consts", func() {
+			cap := Capability{
+				Name:      "scrobbler",
+				Interface: "Scrobbler",
+				Required:  true,
+				Methods: []Export{
+					{
+						Name:       "Scrobble",
+						ExportName: "nd_scrobble",
+						Input:      Param{Type: "ScrobbleInput"},
+						Output:     Param{Type: "ScrobblerOutput"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "ScrobbleInput", Fields: []FieldDef{{Name: "UserID", Type: "string", JSONTag: "userId"}}},
+					{Name: "ScrobblerOutput", Fields: []FieldDef{{Name: "ErrorType", Type: "*ScrobblerErrorType", JSONTag: "errorType", OmitEmpty: true}}},
+				},
+				TypeAliases: []TypeAlias{
+					{Name: "ScrobblerErrorType", Type: "string", Doc: "ScrobblerErrorType indicates error handling."},
+				},
+				Consts: []ConstGroup{
+					{
+						Type: "ScrobblerErrorType",
+						Values: []ConstDef{
+							{Name: "ScrobblerErrorNone", Value: `"none"`, Doc: "No error"},
+							{Name: "ScrobblerErrorRetry", Value: `"retry"`, Doc: "Retry later"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateCapabilityGo(cap, "scrobbler")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check type alias
+			Expect(codeStr).To(ContainSubstring("type ScrobblerErrorType string"))
+
+			// Check consts
+			Expect(codeStr).To(ContainSubstring("ScrobblerErrorNone"))
+			Expect(codeStr).To(ContainSubstring(`"none"`))
+			Expect(codeStr).To(ContainSubstring("ScrobblerErrorRetry"))
+		})
+	})
+
+	Describe("GenerateCapabilityGoStub", func() {
+		It("should generate valid stub code for non-WASM builds", func() {
+			cap := Capability{
+				Name:      "metadata",
+				Interface: "MetadataAgent",
+				Required:  false,
+				Methods: []Export{
+					{
+						Name:       "GetArtistBiography",
+						ExportName: "nd_get_artist_biography",
+						Input:      Param{Type: "ArtistInput"},
+						Output:     Param{Type: "ArtistBiographyOutput"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "ArtistInput", Fields: []FieldDef{{Name: "ID", Type: "string", JSONTag: "id"}}},
+					{Name: "ArtistBiographyOutput", Fields: []FieldDef{{Name: "Biography", Type: "string", JSONTag: "biography"}}},
+				},
+			}
+
+			code, err := GenerateCapabilityGoStub(cap, "metadata")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check for non-WASM build tag
+			Expect(codeStr).To(ContainSubstring("//go:build !wasip1"))
+
+			// Check for package declaration
+			Expect(codeStr).To(ContainSubstring("package metadata"))
+
+			// Check for no-op Register
+			Expect(codeStr).To(ContainSubstring("func Register(_ Metadata) {}"))
+
+			// Check struct definitions are present
+			Expect(codeStr).To(ContainSubstring("type ArtistInput struct"))
+
+			// Check there are no export wrappers
+			Expect(codeStr).NotTo(ContainSubstring("//export"))
+			Expect(codeStr).NotTo(ContainSubstring("pdk.InputJSON"))
+		})
+	})
+
+	Describe("End-to-end capability generation", func() {
+		It("should parse and generate capability code from source", func() {
+			src := `package capabilities
+
+// Lifecycle provides plugin lifecycle hooks.
+//nd:capability name=lifecycle
+type Lifecycle interface {
+	// OnInit is called when the plugin is loaded.
+	//nd:export name=nd_on_init
+	OnInit(OnInitInput) (OnInitOutput, error)
+}
+
+// OnInitInput is the input for OnInit.
+type OnInitInput struct {
+}
+
+// OnInitOutput is the output for OnInit.
+type OnInitOutput struct {
+	// Error is the error message if initialization failed.
+	Error *string ` + "`json:\"error,omitempty\"`" + `
+}
+`
+			// Create temporary directory
+			tmpDir := GinkgoT().TempDir()
+			path := tmpDir + "/lifecycle.go"
+			err := writeFile(path, src)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Parse
+			capabilities, err := ParseCapabilities(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capabilities).To(HaveLen(1))
+
+			cap := capabilities[0]
+			Expect(cap.Name).To(Equal("lifecycle"))
+			Expect(cap.Methods).To(HaveLen(1))
+
+			// Generate WASM code
+			code, err := GenerateCapabilityGo(cap, "lifecycle")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+			Expect(codeStr).To(ContainSubstring("//export nd_on_init"))
+			Expect(codeStr).To(ContainSubstring("type InitProvider interface"))
+
+			// Generate stub code
+			stubCode, err := GenerateCapabilityGoStub(cap, "lifecycle")
+			Expect(err).NotTo(HaveOccurred())
+
+			stubStr := string(stubCode)
+			Expect(stubStr).To(ContainSubstring("//go:build !wasip1"))
+			Expect(stubStr).To(ContainSubstring("func Register(_ Lifecycle) {}"))
+		})
+	})
 })
 
 func writeFile(path, content string) error {
