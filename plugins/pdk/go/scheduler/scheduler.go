@@ -52,7 +52,7 @@ func Register(impl Scheduler) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//export nd_scheduler_callback
+//go:wasmexport nd_scheduler_callback
 func _NdSchedulerCallback() int32 {
 	if callbackImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
