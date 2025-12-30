@@ -81,7 +81,7 @@ pub trait TextMessageProvider {
 /// Register the on_text_message export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_text_message {
+macro_rules! register_websocket_text_message {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_websocket_on_text_message(
@@ -102,7 +102,7 @@ pub trait BinaryMessageProvider {
 /// Register the on_binary_message export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_binary_message {
+macro_rules! register_websocket_binary_message {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_websocket_on_binary_message(
@@ -123,7 +123,7 @@ pub trait ErrorProvider {
 /// Register the on_error export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_error {
+macro_rules! register_websocket_error {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_websocket_on_error(
@@ -144,7 +144,7 @@ pub trait CloseProvider {
 /// Register the on_close export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_close {
+macro_rules! register_websocket_close {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_websocket_on_close(

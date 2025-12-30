@@ -212,7 +212,7 @@ pub trait ArtistMBIDProvider {
 /// Register the get_artist_mbid export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_artist_mbid {
+macro_rules! register_metadata_artist_mbid {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_artist_mbid(
@@ -233,7 +233,7 @@ pub trait ArtistURLProvider {
 /// Register the get_artist_url export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_artist_url {
+macro_rules! register_metadata_artist_url {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_artist_url(
@@ -254,7 +254,7 @@ pub trait ArtistBiographyProvider {
 /// Register the get_artist_biography export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_artist_biography {
+macro_rules! register_metadata_artist_biography {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_artist_biography(
@@ -275,7 +275,7 @@ pub trait SimilarArtistsProvider {
 /// Register the get_similar_artists export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_similar_artists {
+macro_rules! register_metadata_similar_artists {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_similar_artists(
@@ -296,7 +296,7 @@ pub trait ArtistImagesProvider {
 /// Register the get_artist_images export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_artist_images {
+macro_rules! register_metadata_artist_images {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_artist_images(
@@ -317,7 +317,7 @@ pub trait ArtistTopSongsProvider {
 /// Register the get_artist_top_songs export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_artist_top_songs {
+macro_rules! register_metadata_artist_top_songs {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_artist_top_songs(
@@ -338,7 +338,7 @@ pub trait AlbumInfoProvider {
 /// Register the get_album_info export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_album_info {
+macro_rules! register_metadata_album_info {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_album_info(
@@ -359,7 +359,7 @@ pub trait AlbumImagesProvider {
 /// Register the get_album_images export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_album_images {
+macro_rules! register_metadata_album_images {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_get_album_images(

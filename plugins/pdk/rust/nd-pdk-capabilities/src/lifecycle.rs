@@ -32,7 +32,7 @@ pub trait InitProvider {
 /// Register the on_init export.
 /// This macro generates the WASM export function for this method.
 #[macro_export]
-macro_rules! register_init {
+macro_rules! register_lifecycle_init {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_on_init(

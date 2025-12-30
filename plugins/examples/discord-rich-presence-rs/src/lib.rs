@@ -37,10 +37,10 @@ mod rpc;
 // Register capabilities using PDK macros
 nd_pdk::register_scrobbler!(DiscordPlugin);
 nd_pdk::register_scheduler_callback!(DiscordPlugin);
-nd_pdk::register_text_message!(DiscordPlugin);
-nd_pdk::register_binary_message!(DiscordPlugin);
-nd_pdk::register_error!(DiscordPlugin);
-nd_pdk::register_close!(DiscordPlugin);
+nd_pdk::register_websocket_text_message!(DiscordPlugin);
+nd_pdk::register_websocket_binary_message!(DiscordPlugin);
+nd_pdk::register_websocket_error!(DiscordPlugin);
+nd_pdk::register_websocket_close!(DiscordPlugin);
 
 // ============================================================================
 // Constants
