@@ -1,28 +1,32 @@
 // ndpgen generates Navidrome Plugin Development Kit (PDK) code from annotated Go interfaces.
 //
-// This is the unified code generator that replaces hostgen and handles both host function
-// wrappers and capability wrappers (when implemented).
+// This is the unified code generator that handles both host function wrappers
+// and capability export wrappers.
 //
 // Usage:
 //
-//	ndpgen -input=./plugins/host -output=./plugins/pdk
+//	# Generate host wrappers (from plugins/host to plugins/pdk)
+//	ndpgen -host-only -input=./plugins/host -output=./plugins/pdk
 //
-// This generates code into language-specific subdirectories:
-//   - Go:     $output/go/host/
-//   - Python: $output/python/host/
-//   - Rust:   $output/rust/host/
+//	# Generate capability wrappers (from plugins/capabilities to plugins/pdk)
+//	ndpgen -capability-only -input=./plugins/capabilities -output=./plugins/pdk
+//
+// Output directories:
+//   - Host functions:  $output/go/host/, $output/python/host/, $output/rust/host/
+//   - Capabilities:    $output/go/<capability>/ (e.g., $output/go/metadata/)
 //
 // Flags:
 //
-//	-input       Input directory containing Go source files with annotated interfaces
-//	-output      Output directory base for generated files (default: same as input)
-//	-package     Output package name for Go (default: host)
-//	-host-only   Generate only host function wrappers (default: true, capability support TBD)
-//	-go          Generate Go client wrappers (default: true when not using -python/-rust)
-//	-python      Generate Python client wrappers (default: false)
-//	-rust        Generate Rust client wrappers (default: false)
-//	-v           Verbose output
-//	-dry-run     Preview generated code without writing files
+//	-input           Input directory containing Go source files with annotated interfaces
+//	-output          Output directory base for generated files (default: same as input)
+//	-package         Output package name for Go (default: host for host-only, auto for capabilities)
+//	-host-only       Generate only host function wrappers
+//	-capability-only Generate only capability export wrappers
+//	-go              Generate Go client wrappers (default: true when not using -python/-rust)
+//	-python          Generate Python client wrappers (default: false)
+//	-rust            Generate Rust client wrappers (default: false)
+//	-v               Verbose output
+//	-dry-run         Preview generated code without writing files
 package main
 
 import (
@@ -40,11 +44,12 @@ import (
 type config struct {
 	inputDir         string
 	outputDir        string // Base output directory (e.g., plugins/pdk)
-	goOutputDir      string // Go output: $outputDir/go/host
+	goOutputDir      string // Go output: $outputDir/go/host (for host-only)
 	pythonOutputDir  string // Python output: $outputDir/python/host
 	rustOutputDir    string // Rust output: $outputDir/rust/host
 	pkgName          string
 	hostOnly         bool
+	capabilityOnly   bool
 	generateGoClient bool
 	generatePyClient bool
 	generateRsClient bool
@@ -59,6 +64,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	if cfg.capabilityOnly {
+		if err := runCapabilityGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Default: host-only mode
 	services, err := parseServices(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -74,23 +88,58 @@ func main() {
 	}
 }
 
+// runCapabilityGeneration handles capability-only code generation.
+func runCapabilityGeneration(cfg *config) error {
+	capabilities, err := parseCapabilities(cfg)
+	if err != nil {
+		return err
+	}
+	if len(capabilities) == 0 {
+		if cfg.verbose {
+			fmt.Println("No capabilities found")
+		}
+		return nil
+	}
+
+	return generateCapabilityCode(cfg, capabilities)
+}
+
 // parseConfig parses command-line flags and returns the configuration.
 func parseConfig() (*config, error) {
 	var (
-		inputDir  = flag.String("input", ".", "Input directory containing Go source files")
-		outputDir = flag.String("output", "", "Base output directory for generated files (default: same as input)")
-		pkgName   = flag.String("package", "host", "Output package name for Go (default: host)")
-		hostOnly  = flag.Bool("host-only", true, "Generate only host function wrappers (capability support TBD)")
-		goClient  = flag.Bool("go", false, "Generate Go client wrappers")
-		pyClient  = flag.Bool("python", false, "Generate Python client wrappers")
-		rsClient  = flag.Bool("rust", false, "Generate Rust client wrappers")
-		verbose   = flag.Bool("v", false, "Verbose output")
-		dryRun    = flag.Bool("dry-run", false, "Preview generated code without writing files")
+		inputDir       = flag.String("input", ".", "Input directory containing Go source files")
+		outputDir      = flag.String("output", "", "Base output directory for generated files (default: same as input)")
+		pkgName        = flag.String("package", "", "Output package name for Go (default: host for host-only, auto for capabilities)")
+		hostOnly       = flag.Bool("host-only", false, "Generate only host function wrappers")
+		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
+		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
+		pyClient       = flag.Bool("python", false, "Generate Python client wrappers")
+		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
+		verbose        = flag.Bool("v", false, "Verbose output")
+		dryRun         = flag.Bool("dry-run", false, "Preview generated code without writing files")
 	)
 	flag.Parse()
 
+	// Default to host-only if neither mode is specified
+	if !*hostOnly && !*capabilityOnly {
+		*hostOnly = true
+	}
+
+	// Cannot specify both modes
+	if *hostOnly && *capabilityOnly {
+		return nil, fmt.Errorf("cannot specify both -host-only and -capability-only")
+	}
+
 	if *outputDir == "" {
 		*outputDir = *inputDir
+	}
+
+	// Default package name based on mode
+	if *pkgName == "" {
+		if *hostOnly {
+			*pkgName = "host"
+		}
+		// For capability-only, package name is derived from capability annotation
 	}
 
 	absInput, err := filepath.Abs(*inputDir)
@@ -119,6 +168,7 @@ func parseConfig() (*config, error) {
 		rustOutputDir:    absRustOutput,
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
+		capabilityOnly:   *capabilityOnly,
 		generateGoClient: *goClient || !anyLangFlag,
 		generatePyClient: *pyClient,
 		generateRsClient: *rsClient,
@@ -168,6 +218,109 @@ func parseServices(cfg *config) ([]internal.Service, error) {
 	}
 
 	return services, nil
+}
+
+// parseCapabilities parses source files and returns discovered capabilities.
+func parseCapabilities(cfg *config) ([]internal.Capability, error) {
+	if cfg.verbose {
+		fmt.Printf("Input directory: %s\n", cfg.inputDir)
+		fmt.Printf("Base output directory: %s\n", cfg.outputDir)
+		fmt.Printf("Capability-only mode: %v\n", cfg.capabilityOnly)
+	}
+
+	capabilities, err := internal.ParseCapabilities(cfg.inputDir)
+	if err != nil {
+		return nil, fmt.Errorf("parsing capability files: %w", err)
+	}
+
+	if len(capabilities) == 0 {
+		return nil, nil
+	}
+
+	if cfg.verbose {
+		fmt.Printf("Found %d capability(ies)\n", len(capabilities))
+		for _, cap := range capabilities {
+			fmt.Printf("  - %s (%d exports, required=%v)\n", cap.Name, len(cap.Methods), cap.Required)
+		}
+	}
+
+	return capabilities, nil
+}
+
+// generateCapabilityCode generates Go export wrappers for all capabilities.
+func generateCapabilityCode(cfg *config, capabilities []internal.Capability) error {
+	for _, cap := range capabilities {
+		// Output directory is $output/go/<capability_name>/
+		outputDir := filepath.Join(cfg.outputDir, "go", cap.Name)
+
+		if err := generateCapabilityGoCode(cap, outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating capability code for %s: %w", cap.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// generateCapabilityGoCode generates Go export wrapper code for a capability.
+func generateCapabilityGoCode(cap internal.Capability, outputDir string, dryRun, verbose bool) error {
+	// Use the capability name as the package name
+	pkgName := cap.Name
+
+	// Generate the main WASM code
+	code, err := internal.GenerateCapabilityGo(cap, pkgName)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting code: %w\nRaw code:\n%s", err, code)
+	}
+
+	mainFile := filepath.Join(outputDir, cap.Name+".go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", mainFile, formatted)
+	} else {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("creating output directory: %w", err)
+		}
+
+		if err := os.WriteFile(mainFile, formatted, 0600); err != nil {
+			return fmt.Errorf("writing file: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated capability code: %s\n", mainFile)
+		}
+	}
+
+	// Generate the stub code for non-WASM platforms
+	stubCode, err := internal.GenerateCapabilityGoStub(cap, pkgName)
+	if err != nil {
+		return fmt.Errorf("generating stub code: %w", err)
+	}
+
+	formattedStub, err := format.Source(stubCode)
+	if err != nil {
+		return fmt.Errorf("formatting stub code: %w\nRaw code:\n%s", err, stubCode)
+	}
+
+	stubFile := filepath.Join(outputDir, cap.Name+"_stub.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", stubFile, formattedStub)
+	} else {
+		if err := os.WriteFile(stubFile, formattedStub, 0600); err != nil {
+			return fmt.Errorf("writing stub file: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated capability stub: %s\n", stubFile)
+		}
+	}
+
+	return nil
 }
 
 // generateAllCode generates all requested code for the services.
