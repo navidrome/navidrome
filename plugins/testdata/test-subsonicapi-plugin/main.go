@@ -4,6 +4,7 @@ package main
 
 import (
 	"github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 )
 
 // call_subsonic_api is the exported function that tests the SubsonicAPI host function.
@@ -16,7 +17,7 @@ func callSubsonicAPIExport() int32 {
 	uri := pdk.InputString()
 
 	// Call the Subsonic API via host function
-	response, err := SubsonicAPICall(uri)
+	response, err := host.SubsonicAPICall(uri)
 	if err != nil {
 		pdk.SetErrorString("failed to call SubsonicAPI: " + err.Error())
 		return 1

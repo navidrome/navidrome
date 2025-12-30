@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 )
 
 // TestInput is the input for nd_test_artwork callback.
@@ -37,28 +38,28 @@ func ndTestArtwork() int32 {
 
 	switch strings.ToLower(input.ArtworkType) {
 	case "artist":
-		resp, e := ArtworkGetArtistUrl(input.ID, input.Size)
+		resp, e := host.ArtworkGetArtistUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
 		} else {
 			url = resp.Url
 		}
 	case "album":
-		resp, e := ArtworkGetAlbumUrl(input.ID, input.Size)
+		resp, e := host.ArtworkGetAlbumUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
 		} else {
 			url = resp.Url
 		}
 	case "track":
-		resp, e := ArtworkGetTrackUrl(input.ID, input.Size)
+		resp, e := host.ArtworkGetTrackUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
 		} else {
 			url = resp.Url
 		}
 	case "playlist":
-		resp, e := ArtworkGetPlaylistUrl(input.ID, input.Size)
+		resp, e := host.ArtworkGetPlaylistUrl(input.ID, input.Size)
 		if e != nil {
 			err = e
 		} else {
