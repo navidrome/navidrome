@@ -27,20 +27,10 @@ type WebSocketSendTextRequest struct {
 	Message      string `json:"message"`
 }
 
-// WebSocketSendTextResponse is the response type for WebSocket.SendText.
-type WebSocketSendTextResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // WebSocketSendBinaryRequest is the request type for WebSocket.SendBinary.
 type WebSocketSendBinaryRequest struct {
 	ConnectionID string `json:"connectionId"`
 	Data         []byte `json:"data"`
-}
-
-// WebSocketSendBinaryResponse is the response type for WebSocket.SendBinary.
-type WebSocketSendBinaryResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // WebSocketCloseConnectionRequest is the request type for WebSocket.CloseConnection.
@@ -48,11 +38,6 @@ type WebSocketCloseConnectionRequest struct {
 	ConnectionID string `json:"connectionId"`
 	Code         int32  `json:"code"`
 	Reason       string `json:"reason"`
-}
-
-// WebSocketCloseConnectionResponse is the response type for WebSocket.CloseConnection.
-type WebSocketCloseConnectionResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // WebSocketConnect is a stub that panics on non-WASM platforms.
@@ -80,7 +65,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 //   - message: The text message to send
 //
 // Returns an error if the connection is not found or if sending fails.
-func WebSocketSendText(connectionID string, message string) (*WebSocketSendTextResponse, error) {
+func WebSocketSendText(connectionID string, message string) error {
 	panic("host: WebSocketSendText is only available in WASM plugins")
 }
 
@@ -92,7 +77,7 @@ func WebSocketSendText(connectionID string, message string) (*WebSocketSendTextR
 //   - data: The binary data to send
 //
 // Returns an error if the connection is not found or if sending fails.
-func WebSocketSendBinary(connectionID string, data []byte) (*WebSocketSendBinaryResponse, error) {
+func WebSocketSendBinary(connectionID string, data []byte) error {
 	panic("host: WebSocketSendBinary is only available in WASM plugins")
 }
 
@@ -105,6 +90,6 @@ func WebSocketSendBinary(connectionID string, data []byte) (*WebSocketSendBinary
 //   - reason: Optional human-readable reason for closing
 //
 // Returns an error if the connection is not found or if closing fails.
-func WebSocketCloseConnection(connectionID string, code int32, reason string) (*WebSocketCloseConnectionResponse, error) {
+func WebSocketCloseConnection(connectionID string, code int32, reason string) error {
 	panic("host: WebSocketCloseConnection is only available in WASM plugins")
 }

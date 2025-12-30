@@ -39,11 +39,6 @@ type SchedulerCancelScheduleRequest struct {
 	ScheduleID string `json:"scheduleId"`
 }
 
-// SchedulerCancelScheduleResponse is the response type for Scheduler.CancelSchedule.
-type SchedulerCancelScheduleResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // SchedulerScheduleOneTime is a stub that panics on non-WASM platforms.
 // ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
 // Plugins that use this function must also implement the SchedulerCallback capability
@@ -79,6 +74,6 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 // any future events.
 //
 // Returns an error if the schedule ID is not found or if cancellation fails.
-func SchedulerCancelSchedule(scheduleID string) (*SchedulerCancelScheduleResponse, error) {
+func SchedulerCancelSchedule(scheduleID string) error {
 	panic("host: SchedulerCancelSchedule is only available in WASM plugins")
 }

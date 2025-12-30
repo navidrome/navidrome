@@ -40,11 +40,6 @@ type MetaSetRequest struct {
 	Data map[string]any `json:"data"`
 }
 
-// MetaSetResponse is the response type for Meta.Set.
-type MetaSetResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // MetaGet calls the meta_get host function.
 func MetaGet(key string) (*MetaGetResponse, error) {
 	// Marshal request to JSON
@@ -80,14 +75,14 @@ func MetaGet(key string) (*MetaGetResponse, error) {
 }
 
 // MetaSet calls the meta_set host function.
-func MetaSet(data map[string]any) (*MetaSetResponse, error) {
+func MetaSet(data map[string]any) error {
 	// Marshal request to JSON
 	req := MetaSetRequest{
 		Data: data,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -99,16 +94,15 @@ func MetaSet(data map[string]any) (*MetaSetResponse, error) {
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse the response
-	var response MetaSetResponse
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return err
 	}
-
-	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return errors.New(response.Error)
 	}
-
-	return &response, nil
+	return nil
 }

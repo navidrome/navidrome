@@ -14,11 +14,6 @@ type KVStoreSetRequest struct {
 	Value []byte `json:"value"`
 }
 
-// KVStoreSetResponse is the response type for KVStore.Set.
-type KVStoreSetResponse struct {
-	Error string `json:"error,omitempty"`
-}
-
 // KVStoreGetRequest is the request type for KVStore.Get.
 type KVStoreGetRequest struct {
 	Key string `json:"key"`
@@ -34,11 +29,6 @@ type KVStoreGetResponse struct {
 // KVStoreDeleteRequest is the request type for KVStore.Delete.
 type KVStoreDeleteRequest struct {
 	Key string `json:"key"`
-}
-
-// KVStoreDeleteResponse is the response type for KVStore.Delete.
-type KVStoreDeleteResponse struct {
-	Error string `json:"error,omitempty"`
 }
 
 // KVStoreHasRequest is the request type for KVStore.Has.
@@ -77,7 +67,7 @@ type KVStoreGetStorageUsedResponse struct {
 //   - value: The byte slice to store
 //
 // Returns an error if the storage limit would be exceeded or the operation fails.
-func KVStoreSet(key string, value []byte) (*KVStoreSetResponse, error) {
+func KVStoreSet(key string, value []byte) error {
 	panic("host: KVStoreSet is only available in WASM plugins")
 }
 
@@ -99,7 +89,7 @@ func KVStoreGet(key string) (*KVStoreGetResponse, error) {
 //   - key: The storage key
 //
 // Returns an error if the operation fails. Does not return an error if the key doesn't exist.
-func KVStoreDelete(key string) (*KVStoreDeleteResponse, error) {
+func KVStoreDelete(key string) error {
 	panic("host: KVStoreDelete is only available in WASM plugins")
 }
 

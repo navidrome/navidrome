@@ -48,6 +48,7 @@ type {{requestType .}} struct {
 {{- end}}
 }
 {{- end}}
+{{- if not .IsErrorOnly}}
 
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
@@ -57,6 +58,7 @@ type {{responseType .}} struct {
 	Error string `json:"error,omitempty"`
 }
 {{- end}}
+{{- end}}
 
 {{- /* Generate wrapper functions */ -}}
 {{range .Service.Methods}}
@@ -65,7 +67,11 @@ type {{responseType .}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc}}
 {{- end}}
+{{- if .IsErrorOnly}}
+func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) error {
+{{- else}}
 func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) (*{{responseType .}}, error) {
+{{- end}}
 {{- if .HasParams}}
 	// Marshal request to JSON
 	req := {{requestType .}}{
@@ -75,7 +81,7 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return {{if not .IsErrorOnly}}nil, {{end}}err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -91,6 +97,20 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+{{- if .IsErrorOnly}}
+
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return err
+	}
+	if response.Error != "" {
+		return errors.New(response.Error)
+	}
+	return nil
+{{- else}}
 
 	// Parse the response
 	var response {{responseType .}}
@@ -104,5 +124,6 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	}
 
 	return &response, nil
+{{- end}}
 }
 {{- end}}

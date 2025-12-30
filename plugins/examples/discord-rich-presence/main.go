@@ -126,7 +126,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) error {
 	}
 
 	// Cancel any existing completion schedule
-	_, _ = host.SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
+	_ = host.SchedulerCancelSchedule(fmt.Sprintf("%s-clear", input.Username))
 
 	// Calculate timestamps
 	now := time.Now().Unix()
