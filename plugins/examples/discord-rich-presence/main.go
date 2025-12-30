@@ -40,12 +40,12 @@ func init() {
 
 // Ensure discordPlugin implements the required provider interfaces
 var (
-	_ scrobbler.Scrobbler                 = (*discordPlugin)(nil)
-	_ scheduler.SchedulerCallbackProvider = (*discordPlugin)(nil)
-	_ websocket.TextMessageProvider       = (*discordPlugin)(nil)
-	_ websocket.BinaryMessageProvider     = (*discordPlugin)(nil)
-	_ websocket.ErrorProvider             = (*discordPlugin)(nil)
-	_ websocket.CloseProvider             = (*discordPlugin)(nil)
+	_ scrobbler.Scrobbler             = (*discordPlugin)(nil)
+	_ scheduler.CallbackProvider      = (*discordPlugin)(nil)
+	_ websocket.TextMessageProvider   = (*discordPlugin)(nil)
+	_ websocket.BinaryMessageProvider = (*discordPlugin)(nil)
+	_ websocket.ErrorProvider         = (*discordPlugin)(nil)
+	_ websocket.CloseProvider         = (*discordPlugin)(nil)
 )
 
 // getConfig loads the plugin configuration.
@@ -172,8 +172,8 @@ func (p *discordPlugin) Scrobble(_ scrobbler.ScrobbleRequest) error {
 // Scheduler Callback Implementation
 // ============================================================================
 
-// OnSchedulerCallback handles scheduler callbacks.
-func (p *discordPlugin) OnSchedulerCallback(input scheduler.SchedulerCallbackRequest) error {
+// OnCallback handles scheduler callbacks.
+func (p *discordPlugin) OnCallback(input scheduler.SchedulerCallbackRequest) error {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("Scheduler callback: id=%s, payload=%s, recurring=%v", input.ScheduleID, input.Payload, input.IsRecurring))
 
 	// Route based on payload

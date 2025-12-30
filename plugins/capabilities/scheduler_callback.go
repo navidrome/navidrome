@@ -7,10 +7,10 @@ package capabilities
 //
 //nd:capability name=scheduler
 type SchedulerCallback interface {
-	// OnSchedulerCallback is called when a scheduled task fires.
+	// OnCallback is called when a scheduled task fires.
 	// Errors are logged but do not affect the scheduling system.
 	//nd:export name=nd_scheduler_callback
-	OnSchedulerCallback(SchedulerCallbackRequest) error
+	OnCallback(SchedulerCallbackRequest) error
 }
 
 // SchedulerCallbackRequest is the request provided when a scheduled task fires.

@@ -510,7 +510,6 @@ func hasHashMap(cap Capability) bool {
 
 // registerMacroName returns the macro name for registering an optional method.
 // For package "websocket" and method "OnClose", returns "register_websocket_close".
-// Also handles deduplication when method name starts with package name (e.g., "scheduler" + "OnSchedulerCallback" → "register_scheduler_callback").
 func registerMacroName(pkg, name string) string {
 	// Remove common prefixes from method name
 	for _, prefix := range []string{"Get", "On"} {
@@ -518,12 +517,6 @@ func registerMacroName(pkg, name string) string {
 			name = name[len(prefix):]
 			break
 		}
-	}
-	// Check if the method name starts with the package name to avoid duplication
-	// e.g., package="scheduler", method="SchedulerCallback" → just "register_scheduler_callback"
-	pkgTitle := strings.Title(pkg) //nolint:staticcheck
-	if strings.HasPrefix(name, pkgTitle) {
-		return "register_" + ToSnakeCase(name)
 	}
 	return "register_" + ToSnakeCase(pkg) + "_" + ToSnakeCase(name)
 }

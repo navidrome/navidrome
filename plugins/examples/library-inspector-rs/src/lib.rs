@@ -15,7 +15,7 @@
 use extism_pdk::*;
 use nd_pdk::host::{library, scheduler};
 use nd_pdk::lifecycle::{Error as LifecycleError, InitProvider};
-use nd_pdk::scheduler::{Error as SchedulerError, SchedulerCallbackProvider, SchedulerCallbackRequest};
+use nd_pdk::scheduler::{CallbackProvider, Error as SchedulerError, SchedulerCallbackRequest};
 use std::fs;
 
 // Register capabilities using PDK macros
@@ -62,8 +62,8 @@ impl InitProvider for LibraryInspector {
     }
 }
 
-impl SchedulerCallbackProvider for LibraryInspector {
-    fn on_scheduler_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
+impl CallbackProvider for LibraryInspector {
+    fn on_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
         info!(
             "Scheduler callback fired: schedule_id={}, payload={}, recurring={}",
             req.schedule_id, req.payload, req.is_recurring

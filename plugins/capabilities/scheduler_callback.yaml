@@ -2,7 +2,7 @@ version: v1-draft
 exports:
     nd_scheduler_callback:
         description: |-
-            OnSchedulerCallback is called when a scheduled task fires.
+            OnCallback is called when a scheduled task fires.
             Errors are logged but do not affect the scheduling system.
         input:
             $ref: '#/components/schemas/SchedulerCallbackRequest'
