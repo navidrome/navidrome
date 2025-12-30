@@ -1,8 +1,8 @@
 //! Library Inspector Plugin for Navidrome
 //!
-//! This plugin demonstrates how to use the nd-host library for accessing Navidrome
-//! host services in Rust. It periodically logs details about all music libraries
-//! and finds the largest file in the root of each library directory.
+//! This plugin demonstrates how to use the nd-pdk crate for accessing Navidrome
+//! host services and implementing capabilities in Rust. It periodically logs details
+//! about all music libraries and finds the largest file in the root of each library.
 //!
 //! ## Configuration
 //!
@@ -14,29 +14,67 @@
 
 use extism_pdk::*;
 use nd_pdk::host::{library, scheduler};
-use serde::{Deserialize, Serialize};
+use nd_pdk::lifecycle::{Error as LifecycleError, InitProvider};
+use nd_pdk::scheduler::{Error as SchedulerError, SchedulerCallbackProvider, SchedulerCallbackRequest};
 use std::fs;
 
+// Register capabilities using PDK macros
+nd_pdk::register_init!(LibraryInspector);
+nd_pdk::register_scheduler_callback!(LibraryInspector);
+
 // ============================================================================
-// Scheduler Types
+// Plugin Implementation
 // ============================================================================
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SchedulerCallbackInput {
-    schedule_id: String,
-    payload: String,
-    is_recurring: bool,
+/// The library inspector plugin type.
+#[derive(Default)]
+struct LibraryInspector;
+
+impl InitProvider for LibraryInspector {
+    fn on_init(&self) -> Result<(), LifecycleError> {
+        info!("Library Inspector plugin initializing...");
+
+        // Get cron expression from config, default to every minute
+        let cron = config::get("cron")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "@every 1m".to_string());
+
+        info!("Scheduling library inspection with cron: {}", cron);
+
+        // Schedule the recurring task using nd-pdk host scheduler
+        match scheduler::schedule_recurring(&cron, "inspect", "library-inspect") {
+            Ok(schedule_id) => {
+                info!("Scheduled inspection task with ID: {}", schedule_id);
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to schedule inspection: {}", e);
+                error!("{}", error_msg);
+                return Err(LifecycleError::new(error_msg));
+            }
+        }
+
+        // Run an initial inspection
+        inspect_libraries();
+
+        info!("Library Inspector plugin initialized successfully");
+        Ok(())
+    }
 }
 
-// ============================================================================
-// Lifecycle Types
-// ============================================================================
+impl SchedulerCallbackProvider for LibraryInspector {
+    fn on_scheduler_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
+        info!(
+            "Scheduler callback fired: schedule_id={}, payload={}, recurring={}",
+            req.schedule_id, req.payload, req.is_recurring
+        );
 
-#[derive(Serialize, Default)]
-struct InitOutput {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+        if req.payload == "inspect" {
+            inspect_libraries();
+        }
+
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -90,7 +128,7 @@ fn find_largest_file(mount_point: &str) -> Option<(String, u64)> {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        
+
         // Only consider files, not directories
         if !path.is_file() {
             continue;
@@ -166,57 +204,4 @@ fn inspect_libraries() {
     }
 
     info!("=== Library Inspection Complete ===");
-}
-
-// ============================================================================
-// Plugin Exports
-// ============================================================================
-
-/// Called when the plugin is initialized. Schedules the recurring inspection task.
-#[plugin_fn]
-pub fn nd_on_init() -> FnResult<Json<InitOutput>> {
-    info!("Library Inspector plugin initializing...");
-
-    // Get cron expression from config, default to every minute
-    let cron = config::get("cron")
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| "@every 1m".to_string());
-
-    info!("Scheduling library inspection with cron: {}", cron);
-
-    // Schedule the recurring task using nd-host scheduler
-    match scheduler::schedule_recurring(&cron, "inspect", "library-inspect") {
-        Ok(schedule_id) => {
-            info!("Scheduled inspection task with ID: {}", schedule_id);
-        }
-        Err(e) => {
-            let error_msg = format!("Failed to schedule inspection: {}", e);
-            error!("{}", error_msg);
-            return Ok(Json(InitOutput {
-                error: Some(error_msg),
-            }));
-        }
-    }
-
-    // Run an initial inspection
-    inspect_libraries();
-
-    info!("Library Inspector plugin initialized successfully");
-    Ok(Json(InitOutput::default()))
-}
-
-/// Called when a scheduled task fires.
-#[plugin_fn]
-pub fn nd_scheduler_callback(Json(input): Json<SchedulerCallbackInput>) -> FnResult<()> {
-    info!(
-        "Scheduler callback fired: schedule_id={}, payload={}, recurring={}",
-        input.schedule_id, input.payload, input.is_recurring
-    );
-
-    if input.payload == "inspect" {
-        inspect_libraries();
-    }
-
-    Ok(())
 }
