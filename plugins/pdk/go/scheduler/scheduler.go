@@ -11,16 +11,6 @@ import (
 	pdk "github.com/extism/go-pdk"
 )
 
-// SchedulerCallbackOutput represents the SchedulerCallbackOutput data structure.
-// SchedulerCallbackOutput is the output from the scheduler callback.
-type SchedulerCallbackOutput struct {
-	// Error is the error message if the callback failed to process the scheduled task.
-	// Empty or null indicates success. The error is logged but does not
-	// affect the scheduling system.
-	Error *string `json:"error,omitempty"`
-}
-
-// SchedulerCallbackInput represents the SchedulerCallbackInput data structure.
 // SchedulerCallbackInput is the input provided when a scheduled task fires.
 type SchedulerCallbackInput struct {
 	// ScheduleID is the unique identifier for this scheduled task.
@@ -32,6 +22,14 @@ type SchedulerCallbackInput struct {
 	// IsRecurring is true if this is a recurring schedule (created via ScheduleRecurring),
 	// false if it's a one-time schedule (created via ScheduleOneTime).
 	IsRecurring bool `json:"isRecurring"`
+}
+
+// SchedulerCallbackOutput is the output from the scheduler callback.
+type SchedulerCallbackOutput struct {
+	// Error is the error message if the callback failed to process the scheduled task.
+	// Empty or null indicates success. The error is logged but does not
+	// affect the scheduling system.
+	Error *string `json:"error,omitempty"`
 }
 
 // Scheduler is the marker interface for scheduler plugins.

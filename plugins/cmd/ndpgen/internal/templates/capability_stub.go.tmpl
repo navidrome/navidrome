@@ -22,11 +22,16 @@ type {{.Name}} {{.Type}}
 {{- if .Values}}
 
 const (
-{{- range .Values}}
-{{- if .Doc}}
-{{formatDoc .Doc | indent 1}}
+{{- $type := .Type}}
+{{- range $i, $v := .Values}}
+{{- if $v.Doc}}
+{{formatDoc $v.Doc | indent 1}}
 {{- end}}
-	{{.Name}} = {{.Value}}
+{{- if $type}}
+	{{$v.Name}} {{$type}} = {{$v.Value}}
+{{- else}}
+	{{$v.Name}} = {{$v.Value}}
+{{- end}}
 {{- end}}
 )
 {{- end}}
@@ -35,9 +40,10 @@ const (
 {{- /* Generate struct definitions */ -}}
 {{- range .Capability.Structs}}
 
-// {{.Name}} represents the {{.Name}} data structure.
 {{- if .Doc}}
 {{formatDoc .Doc}}
+{{- else}}
+// {{.Name}} represents the {{.Name}} data structure.
 {{- end}}
 type {{.Name}} struct {
 {{- range .Fields}}

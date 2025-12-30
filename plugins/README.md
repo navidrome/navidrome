@@ -705,6 +705,50 @@ tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
 zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
 
+#### Using Go PDK Packages
+
+Navidrome provides type-safe Go packages for each capability in `plugins/pdk/go/`. Instead of manually exporting functions with `//go:wasmexport`, use the `Register()` pattern:
+
+```go
+package main
+
+import (
+    "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+)
+
+type myPlugin struct{}
+
+func (p *myPlugin) GetArtistBiography(input metadata.ArtistBiographyInput) metadata.ArtistBiographyOutput {
+    return metadata.ArtistBiographyOutput{Biography: "Biography text..."}
+}
+
+func init() {
+    metadata.Register(&myPlugin{})
+}
+
+func main() {}
+```
+
+Add to your `go.mod`:
+
+```
+require github.com/navidrome/navidrome v0.0.0
+replace github.com/navidrome/navidrome => ../../..
+```
+
+Available capability packages:
+
+| Package     | Import Path                | Description                          |
+|-------------|----------------------------|--------------------------------------|
+| `metadata`  | `plugins/pdk/go/metadata`  | Artist/album metadata providers      |
+| `scrobbler` | `plugins/pdk/go/scrobbler` | Scrobbling services                  |
+| `lifecycle` | `plugins/pdk/go/lifecycle` | Plugin initialization                |
+| `scheduler` | `plugins/pdk/go/scheduler` | Scheduled task callbacks             |
+| `websocket` | `plugins/pdk/go/websocket` | WebSocket event handlers             |
+| `host`      | `plugins/pdk/go/host`      | Host service SDK (HTTP, cache, etc.) |
+
+See the example plugins in [examples/](examples/) for complete usage patterns.
+
 ### Rust
 
 ```bash
@@ -734,7 +778,7 @@ Bootstrap a new plugin from a schema:
 
 # Create a metadata agent plugin
 xtp plugin init \
-  --schema-file plugins/schemas/metadata_agent.yaml \
+  --schema-file plugins/capabilities/metadata_agent.yaml \
   --template go \
   --path ./my-agent \
   --name my-agent
@@ -744,26 +788,26 @@ cd my-agent && xtp plugin build
 zip -j my-agent.ndp manifest.json dist/plugin.wasm
 ```
 
-See [schemas/README.md](schemas/README.md) for available schemas.
+See [capabilities/README.md](capabilities/README.md) for available schemas and scaffolding examples.
 
 ### Using Host Service SDKs
 
-Generated SDKs for calling host services are in `plugins/host/go/`, `plugins/host/python/` and `plugins/host/rust`.
+Generated SDKs for calling host services are in `plugins/pdk/go/host/`, `plugins/pdk/python/` and `plugins/pdk/rust`.
 
 **For Go plugins:** Import the SDK as a Go module:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import ndhost "github.com/navidrome/navidrome/plugins/pdk/go/host"
 ```
 
 Add to your `go.mod`:
 
 ```
-require github.com/navidrome/navidrome/plugins/host/go v0.0.0
-replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+require github.com/navidrome/navidrome/plugins/pdk/go/host v0.0.0
+replace github.com/navidrome/navidrome/plugins/pdk/go/host => ../../pdk/go/host
 ```
 
-See [plugins/host/go/README.md](host/go/README.md) for detailed documentation.
+See [pdk/go/host/README.md](pdk/go/host/README.md) for detailed documentation.
 
 **For Python plugins:** Copy functions from `nd_host_*.py` into your `__init__.py` (see comments in those files for extism-py limitations).
 
@@ -786,6 +830,7 @@ See [examples/](examples/) for complete working plugins:
 | [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust     | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration (Rust)     |
 
 ---
+
 
 ## Security
 

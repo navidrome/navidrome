@@ -10,7 +10,7 @@ These wrappers provide idiomatic Go APIs for interacting with Navidrome from WAS
 To regenerate:
 
 ```bash
-make generate-pdk
+make gen
 ```
 
 ## Usage

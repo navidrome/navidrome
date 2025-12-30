@@ -2,7 +2,7 @@
 
 Navidrome Plugin Development Kit (PDK) code generator. It reads Go interface definitions with special annotations and generates client wrappers for WASM plugins.
 
-This tool is the unified code generator that replaces `hostgen` and will eventually handle both host function wrappers and capability wrappers.
+This tool is the unified code generator that handle both host function wrappers and capability wrappers.
 
 ## Usage
 
@@ -148,15 +148,6 @@ type ServiceSearchResponse struct {
     Error   string   `json:"error,omitempty"`
 }
 ```
-
-## Migration from hostgen
-
-The `ndpgen` tool replaces `hostgen` for plugin development. Key differences:
-
-1. **Output structure**: Files go directly in the output directory (not a `go/` subdirectory)
-2. **Package name**: Generated code uses `ndpdk` instead of `ndhost`
-3. **Module path**: Uses `github.com/navidrome/navidrome/plugins/pdk/go/host` instead of `github.com/navidrome/navidrome/plugins/host/go`
-4. **Focus**: `ndpgen` generates only client-side code (plugin SDK), not host-side code
 
 ## Running Tests
 

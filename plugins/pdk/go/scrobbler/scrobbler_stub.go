@@ -13,16 +13,47 @@ type ScrobblerErrorType string
 
 const (
 	// ScrobblerErrorNone indicates no error occurred.
-	ScrobblerErrorNone = "none"
+	ScrobblerErrorNone ScrobblerErrorType = "none"
 	// ScrobblerErrorNotAuthorized indicates the user is not authorized.
-	ScrobblerErrorNotAuthorized = "not_authorized"
+	ScrobblerErrorNotAuthorized ScrobblerErrorType = "not_authorized"
 	// ScrobblerErrorRetryLater indicates the operation should be retried later.
-	ScrobblerErrorRetryLater = "retry_later"
+	ScrobblerErrorRetryLater ScrobblerErrorType = "retry_later"
 	// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
-	ScrobblerErrorUnrecoverable = "unrecoverable"
+	ScrobblerErrorUnrecoverable ScrobblerErrorType = "unrecoverable"
 )
 
-// TrackInfo represents the TrackInfo data structure.
+// NowPlayingInput is the input for now playing notification.
+type NowPlayingInput struct {
+	// UserID is the internal Navidrome user ID.
+	UserID string `json:"userId"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track currently playing.
+	Track TrackInfo `json:"track"`
+	// Position is the current playback position in seconds.
+	Position int32 `json:"position"`
+}
+
+// ScrobblerOutput is the output for scrobbler operations.
+type ScrobblerOutput struct {
+	// Error is the error message if the operation failed.
+	Error *string `json:"error,omitempty"`
+	// ErrorType indicates how Navidrome should handle the error.
+	ErrorType *ScrobblerErrorType `json:"errorType,omitempty"`
+}
+
+// ScrobbleInput is the input for submitting a scrobble.
+type ScrobbleInput struct {
+	// UserID is the internal Navidrome user ID.
+	UserID string `json:"userId"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track that was played.
+	Track TrackInfo `json:"track"`
+	// Timestamp is the Unix timestamp when the track started playing.
+	Timestamp int64 `json:"timestamp"`
+}
+
 // TrackInfo contains track metadata for scrobbling.
 type TrackInfo struct {
 	// ID is the internal Navidrome track ID.
@@ -55,7 +86,6 @@ type TrackInfo struct {
 	MBZReleaseTrackID *string `json:"mbzReleaseTrackId,omitempty"`
 }
 
-// AuthInput represents the AuthInput data structure.
 // AuthInput is the input for authorization check.
 type AuthInput struct {
 	// UserID is the internal Navidrome user ID.
@@ -64,46 +94,10 @@ type AuthInput struct {
 	Username string `json:"username"`
 }
 
-// AuthOutput represents the AuthOutput data structure.
 // AuthOutput is the output for authorization check.
 type AuthOutput struct {
 	// Authorized indicates whether the user is authorized to scrobble.
 	Authorized bool `json:"authorized"`
-}
-
-// NowPlayingInput represents the NowPlayingInput data structure.
-// NowPlayingInput is the input for now playing notification.
-type NowPlayingInput struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
-	// Username is the username of the user.
-	Username string `json:"username"`
-	// Track is the track currently playing.
-	Track TrackInfo `json:"track"`
-	// Position is the current playback position in seconds.
-	Position int32 `json:"position"`
-}
-
-// ScrobblerOutput represents the ScrobblerOutput data structure.
-// ScrobblerOutput is the output for scrobbler operations.
-type ScrobblerOutput struct {
-	// Error is the error message if the operation failed.
-	Error *string `json:"error,omitempty"`
-	// ErrorType indicates how Navidrome should handle the error.
-	ErrorType *ScrobblerErrorType `json:"errorType,omitempty"`
-}
-
-// ScrobbleInput represents the ScrobbleInput data structure.
-// ScrobbleInput is the input for submitting a scrobble.
-type ScrobbleInput struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
-	// Username is the username of the user.
-	Username string `json:"username"`
-	// Track is the track that was played.
-	Track TrackInfo `json:"track"`
-	// Timestamp is the Unix timestamp when the track started playing.
-	Timestamp int64 `json:"timestamp"`
 }
 
 // Scrobbler requires all methods to be implemented.

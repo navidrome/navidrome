@@ -845,10 +845,11 @@ type TestService interface {
 			// Check type alias
 			Expect(codeStr).To(ContainSubstring("type ScrobblerErrorType string"))
 
-			// Check consts
-			Expect(codeStr).To(ContainSubstring("ScrobblerErrorNone"))
+			// Check consts - all consts should have type annotation
+			Expect(codeStr).To(ContainSubstring("ScrobblerErrorNone ScrobblerErrorType ="))
 			Expect(codeStr).To(ContainSubstring(`"none"`))
-			Expect(codeStr).To(ContainSubstring("ScrobblerErrorRetry"))
+			Expect(codeStr).To(ContainSubstring("ScrobblerErrorRetry ScrobblerErrorType ="))
+			Expect(codeStr).To(ContainSubstring(`"retry"`))
 		})
 	})
 
