@@ -5,13 +5,18 @@
 //
 // Usage:
 //
-//	ndpgen -input=./plugins/host -output=./plugins/pdk/go/host
+//	ndpgen -input=./plugins/host -output=./plugins/pdk
+//
+// This generates code into language-specific subdirectories:
+//   - Go:     $output/go/host/
+//   - Python: $output/python/host/
+//   - Rust:   $output/rust/host/
 //
 // Flags:
 //
 //	-input       Input directory containing Go source files with annotated interfaces
-//	-output      Output directory for generated files (default: same as input)
-//	-package     Output package name (default: inferred from output directory)
+//	-output      Output directory base for generated files (default: same as input)
+//	-package     Output package name for Go (default: host)
 //	-host-only   Generate only host function wrappers (default: true, capability support TBD)
 //	-go          Generate Go client wrappers (default: true when not using -python/-rust)
 //	-python      Generate Python client wrappers (default: false)
@@ -34,7 +39,10 @@ import (
 // config holds the parsed command-line configuration.
 type config struct {
 	inputDir         string
-	outputDir        string
+	outputDir        string // Base output directory (e.g., plugins/pdk)
+	goOutputDir      string // Go output: $outputDir/go/host
+	pythonOutputDir  string // Python output: $outputDir/python/host
+	rustOutputDir    string // Rust output: $outputDir/rust/host
 	pkgName          string
 	hostOnly         bool
 	generateGoClient bool
@@ -70,8 +78,8 @@ func main() {
 func parseConfig() (*config, error) {
 	var (
 		inputDir  = flag.String("input", ".", "Input directory containing Go source files")
-		outputDir = flag.String("output", "", "Output directory for generated files (default: same as input)")
-		pkgName   = flag.String("package", "", "Output package name (default: inferred from output directory)")
+		outputDir = flag.String("output", "", "Base output directory for generated files (default: same as input)")
+		pkgName   = flag.String("package", "host", "Output package name for Go (default: host)")
 		hostOnly  = flag.Bool("host-only", true, "Generate only host function wrappers (capability support TBD)")
 		goClient  = flag.Bool("go", false, "Generate Go client wrappers")
 		pyClient  = flag.Bool("python", false, "Generate Python client wrappers")
@@ -94,9 +102,10 @@ func parseConfig() (*config, error) {
 		return nil, fmt.Errorf("resolving output path: %w", err)
 	}
 
-	if *pkgName == "" {
-		*pkgName = filepath.Base(absOutput)
-	}
+	// Set output directories for each language: $output/$lang/host/
+	absGoOutput := filepath.Join(absOutput, "go", "host")
+	absPythonOutput := filepath.Join(absOutput, "python", "host")
+	absRustOutput := filepath.Join(absOutput, "rust", "host")
 
 	// Determine what to generate
 	// Default: generate Go clients if no language flag is specified
@@ -105,6 +114,9 @@ func parseConfig() (*config, error) {
 	return &config{
 		inputDir:         absInput,
 		outputDir:        absOutput,
+		goOutputDir:      absGoOutput,
+		pythonOutputDir:  absPythonOutput,
+		rustOutputDir:    absRustOutput,
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
 		generateGoClient: *goClient || !anyLangFlag,
@@ -119,7 +131,16 @@ func parseConfig() (*config, error) {
 func parseServices(cfg *config) ([]internal.Service, error) {
 	if cfg.verbose {
 		fmt.Printf("Input directory: %s\n", cfg.inputDir)
-		fmt.Printf("Output directory: %s\n", cfg.outputDir)
+		fmt.Printf("Base output directory: %s\n", cfg.outputDir)
+		if cfg.generateGoClient {
+			fmt.Printf("Go output directory: %s\n", cfg.goOutputDir)
+		}
+		if cfg.generatePyClient {
+			fmt.Printf("Python output directory: %s\n", cfg.pythonOutputDir)
+		}
+		if cfg.generateRsClient {
+			fmt.Printf("Rust output directory: %s\n", cfg.rustOutputDir)
+		}
 		fmt.Printf("Package name: %s\n", cfg.pkgName)
 		fmt.Printf("Host-only mode: %v\n", cfg.hostOnly)
 		fmt.Printf("Generate Go client code: %v\n", cfg.generateGoClient)
@@ -153,33 +174,33 @@ func parseServices(cfg *config) ([]internal.Service, error) {
 func generateAllCode(cfg *config, services []internal.Service) error {
 	for _, svc := range services {
 		if cfg.generateGoClient {
-			if err := generateGoClientCode(svc, cfg.outputDir, cfg.pkgName, cfg.dryRun, cfg.verbose); err != nil {
+			if err := generateGoClientCode(svc, cfg.goOutputDir, cfg.pkgName, cfg.dryRun, cfg.verbose); err != nil {
 				return fmt.Errorf("generating Go client code for %s: %w", svc.Name, err)
 			}
 		}
 		if cfg.generatePyClient {
-			if err := generatePythonClientCode(svc, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			if err := generatePythonClientCode(svc, cfg.pythonOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 				return fmt.Errorf("generating Python client code for %s: %w", svc.Name, err)
 			}
 		}
 		if cfg.generateRsClient {
-			if err := generateRustClientCode(svc, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+			if err := generateRustClientCode(svc, cfg.rustOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 				return fmt.Errorf("generating Rust client code for %s: %w", svc.Name, err)
 			}
 		}
 	}
 
 	if cfg.generateRsClient && len(services) > 0 {
-		if err := generateRustLibFile(services, cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+		if err := generateRustLibFile(services, cfg.rustOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 			return fmt.Errorf("generating Rust lib.rs: %w", err)
 		}
 	}
 
 	if cfg.generateGoClient && len(services) > 0 {
-		if err := generateGoDocFile(services, cfg.outputDir, cfg.pkgName, cfg.dryRun, cfg.verbose); err != nil {
+		if err := generateGoDocFile(services, cfg.goOutputDir, cfg.pkgName, cfg.dryRun, cfg.verbose); err != nil {
 			return fmt.Errorf("generating Go doc.go: %w", err)
 		}
-		if err := generateGoModFile(cfg.outputDir, cfg.dryRun, cfg.verbose); err != nil {
+		if err := generateGoModFile(cfg.goOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 			return fmt.Errorf("generating Go go.mod: %w", err)
 		}
 	}
@@ -265,17 +286,16 @@ func generatePythonClientCode(svc internal.Service, outputDir string, dryRun, ve
 		return fmt.Errorf("generating code: %w", err)
 	}
 
-	// Python code goes in python/ subdirectory
-	clientDir := filepath.Join(outputDir, "python")
-	clientFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+".py")
+	// Python code goes directly in the output directory
+	clientFile := filepath.Join(outputDir, "nd_host_"+strings.ToLower(svc.Name)+".py")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
 		return nil
 	}
 
-	// Create python/ subdirectory if needed
-	if err := os.MkdirAll(clientDir, 0755); err != nil {
+	// Create output directory if needed
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("creating python client directory: %w", err)
 	}
 
@@ -296,17 +316,16 @@ func generateRustClientCode(svc internal.Service, outputDir string, dryRun, verb
 		return fmt.Errorf("generating code: %w", err)
 	}
 
-	// Rust code goes in rust/ subdirectory
-	clientDir := filepath.Join(outputDir, "rust")
-	clientFile := filepath.Join(clientDir, "nd_host_"+strings.ToLower(svc.Name)+".rs")
+	// Rust code goes directly in the output directory
+	clientFile := filepath.Join(outputDir, "nd_host_"+strings.ToLower(svc.Name)+".rs")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
 		return nil
 	}
 
-	// Create rust/ subdirectory if needed
-	if err := os.MkdirAll(clientDir, 0755); err != nil {
+	// Create output directory if needed
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("creating rust client directory: %w", err)
 	}
 
@@ -327,16 +346,16 @@ func generateRustLibFile(services []internal.Service, outputDir string, dryRun, 
 		return fmt.Errorf("generating lib.rs: %w", err)
 	}
 
-	clientDir := filepath.Join(outputDir, "rust")
-	libFile := filepath.Join(clientDir, "lib.rs")
+	// lib.rs goes directly in the output directory
+	libFile := filepath.Join(outputDir, "lib.rs")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", libFile, code)
 		return nil
 	}
 
-	// Create rust/ subdirectory if needed
-	if err := os.MkdirAll(clientDir, 0755); err != nil {
+	// Create output directory if needed
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("creating rust client directory: %w", err)
 	}
 
