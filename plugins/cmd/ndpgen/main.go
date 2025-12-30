@@ -577,17 +577,18 @@ func generateRustClientCode(svc internal.Service, outputDir string, dryRun, verb
 		return fmt.Errorf("generating code: %w", err)
 	}
 
-	// Rust code goes directly in the output directory
-	clientFile := filepath.Join(outputDir, "nd_host_"+strings.ToLower(svc.Name)+".rs")
+	// Rust code goes in src/ subdirectory (standard Rust convention)
+	srcDir := filepath.Join(outputDir, "src")
+	clientFile := filepath.Join(srcDir, "nd_host_"+strings.ToLower(svc.Name)+".rs")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
 		return nil
 	}
 
-	// Create output directory if needed
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("creating rust client directory: %w", err)
+	// Create src directory if needed
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		return fmt.Errorf("creating rust src directory: %w", err)
 	}
 
 	if err := os.WriteFile(clientFile, code, 0600); err != nil {
@@ -607,17 +608,18 @@ func generateRustLibFile(services []internal.Service, outputDir string, dryRun, 
 		return fmt.Errorf("generating lib.rs: %w", err)
 	}
 
-	// lib.rs goes directly in the output directory
-	libFile := filepath.Join(outputDir, "lib.rs")
+	// lib.rs goes in src/ subdirectory (standard Rust convention)
+	srcDir := filepath.Join(outputDir, "src")
+	libFile := filepath.Join(srcDir, "lib.rs")
 
 	if dryRun {
 		fmt.Printf("=== %s ===\n%s\n", libFile, code)
 		return nil
 	}
 
-	// Create output directory if needed
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("creating rust client directory: %w", err)
+	// Create src directory if needed
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		return fmt.Errorf("creating rust src directory: %w", err)
 	}
 
 	if err := os.WriteFile(libFile, code, 0600); err != nil {

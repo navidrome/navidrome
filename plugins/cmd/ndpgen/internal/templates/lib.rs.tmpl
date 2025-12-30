@@ -36,8 +36,12 @@
 //! - [`{{.Name | lower}}`] - {{if .Doc}}{{.Doc | firstLine}}{{else}}{{.Name}} service{{end}}
 {{- end}}
 {{range .Services}}
-#[path = "nd_host_{{.Name | lower}}.rs"]
-pub mod {{.Name | lower}};
+#[doc(hidden)]
+mod nd_host_{{.Name | lower}};
+/// {{if .Doc}}{{.Doc | firstLine}}{{else}}{{.Name}} host service wrappers.{{end}}
+pub mod {{.Name | lower}} {
+    pub use super::nd_host_{{.Name | lower}}::*;
+}
 {{end}}
 // Re-export commonly used types from extism-pdk for convenience
 pub use extism_pdk::Error;
