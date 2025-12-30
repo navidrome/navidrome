@@ -49,7 +49,7 @@ type SchedulerCancelScheduleRequest struct {
 //   - scheduleID: Optional unique identifier for the scheduled job. If empty, one will be generated
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
-func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (*SchedulerScheduleOneTimeResponse, error) {
+func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID string) (string, error) {
 	panic("host: SchedulerScheduleOneTime is only available in WASM plugins")
 }
 
@@ -63,7 +63,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 //   - scheduleID: Optional unique identifier for the scheduled job. If empty, one will be generated
 //
 // Returns the schedule ID that can be used to cancel the job, or an error if scheduling fails.
-func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (*SchedulerScheduleRecurringResponse, error) {
+func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleID string) (string, error) {
 	panic("host: SchedulerScheduleRecurring is only available in WASM plugins")
 }
 

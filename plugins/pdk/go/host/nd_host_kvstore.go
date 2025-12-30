@@ -143,14 +143,14 @@ func KVStoreSet(key string, value []byte) error {
 //   - key: The storage key
 //
 // Returns the value and whether the key exists.
-func KVStoreGet(key string) (*KVStoreGetResponse, error) {
+func KVStoreGet(key string) ([]byte, bool, error) {
 	// Marshal request to JSON
 	req := KVStoreGetRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -165,15 +165,15 @@ func KVStoreGet(key string) (*KVStoreGetResponse, error) {
 	// Parse the response
 	var response KVStoreGetResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return nil, false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Value, response.Exists, nil
 }
 
 // KVStoreDelete calls the kvstore_delete host function.
@@ -222,14 +222,14 @@ func KVStoreDelete(key string) error {
 //   - key: The storage key
 //
 // Returns true if the key exists.
-func KVStoreHas(key string) (*KVStoreHasResponse, error) {
+func KVStoreHas(key string) (bool, error) {
 	// Marshal request to JSON
 	req := KVStoreHasRequest{
 		Key: key,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -244,15 +244,15 @@ func KVStoreHas(key string) (*KVStoreHasResponse, error) {
 	// Parse the response
 	var response KVStoreHasResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return false, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return false, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Exists, nil
 }
 
 // KVStoreList calls the kvstore_list host function.
@@ -262,7 +262,7 @@ func KVStoreHas(key string) (*KVStoreHasResponse, error) {
 //   - prefix: Key prefix to filter by (empty string returns all keys)
 //
 // Returns a slice of matching keys.
-func KVStoreList(prefix string) (*KVStoreListResponse, error) {
+func KVStoreList(prefix string) ([]string, error) {
 	// Marshal request to JSON
 	req := KVStoreListRequest{
 		Prefix: prefix,
@@ -292,12 +292,12 @@ func KVStoreList(prefix string) (*KVStoreListResponse, error) {
 		return nil, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Keys, nil
 }
 
 // KVStoreGetStorageUsed calls the kvstore_getstorageused host function.
 // GetStorageUsed returns the total storage used by this plugin in bytes.
-func KVStoreGetStorageUsed() (*KVStoreGetStorageUsedResponse, error) {
+func KVStoreGetStorageUsed() (int64, error) {
 	// No parameters - allocate empty JSON object
 	reqMem := pdk.AllocateBytes([]byte("{}"))
 	defer reqMem.Free()
@@ -312,13 +312,13 @@ func KVStoreGetStorageUsed() (*KVStoreGetStorageUsedResponse, error) {
 	// Parse the response
 	var response KVStoreGetStorageUsedResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return 0, errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.Bytes, nil
 }

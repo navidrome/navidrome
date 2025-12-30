@@ -75,17 +75,17 @@ func getConfig() (clientID string, users map[string]string, err error) {
 
 // getImageURL retrieves the track artwork URL.
 func getImageURL(trackID string) string {
-	resp, err := host.ArtworkGetTrackUrl(trackID, 300)
+	artworkURL, err := host.ArtworkGetTrackUrl(trackID, 300)
 	if err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to get artwork URL: %v", err))
 		return ""
 	}
 
 	// Don't use localhost URLs
-	if strings.HasPrefix(resp.Url, "http://localhost") {
+	if strings.HasPrefix(artworkURL, "http://localhost") {
 		return ""
 	}
-	return resp.Url
+	return artworkURL
 }
 
 // ============================================================================

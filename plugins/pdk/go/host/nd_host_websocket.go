@@ -79,7 +79,7 @@ type WebSocketCloseConnectionRequest struct {
 //
 // Returns the connection ID that can be used to send messages or close the connection,
 // or an error if the connection fails.
-func WebSocketConnect(url string, headers map[string]string, connectionID string) (*WebSocketConnectResponse, error) {
+func WebSocketConnect(url string, headers map[string]string, connectionID string) (string, error) {
 	// Marshal request to JSON
 	req := WebSocketConnectRequest{
 		Url:          url,
@@ -88,7 +88,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqMem := pdk.AllocateBytes(reqBytes)
 	defer reqMem.Free()
@@ -103,15 +103,15 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 	// Parse the response
 	var response WebSocketConnectResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Convert Error field to Go error
 	if response.Error != "" {
-		return nil, errors.New(response.Error)
+		return "", errors.New(response.Error)
 	}
 
-	return &response, nil
+	return response.NewConnectionID, nil
 }
 
 // WebSocketSendText calls the websocket_sendtext host function.

@@ -206,6 +206,76 @@ func (m Method) IsErrorOnly() bool {
 	return m.HasError && !m.HasReturns()
 }
 
+// IsSingleReturn returns true if the method has exactly one return value (excluding error).
+func (m Method) IsSingleReturn() bool {
+	return len(m.Returns) == 1
+}
+
+// IsMultiReturn returns true if the method has multiple return values (excluding error).
+func (m Method) IsMultiReturn() bool {
+	return len(m.Returns) > 1
+}
+
+// ReturnSignature returns the Go return type signature for the wrapper function.
+// For error-only: "error"
+// For single return with error: "(Type, error)"
+// For single return no error: "Type"
+// For multi return: "(Type1, Type2, ..., error)"
+func (m Method) ReturnSignature() string {
+	if m.IsErrorOnly() {
+		return "error"
+	}
+	var parts []string
+	for _, r := range m.Returns {
+		parts = append(parts, r.Type)
+	}
+	if m.HasError {
+		parts = append(parts, "error")
+	}
+	// Single return without error doesn't need parentheses
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	return "(" + strings.Join(parts, ", ") + ")"
+}
+
+// ZeroValues returns the zero value expressions for all return types (excluding error).
+// Used for error return statements like "return "", false, err".
+func (m Method) ZeroValues() string {
+	var zeros []string
+	for _, r := range m.Returns {
+		zeros = append(zeros, zeroValue(r.Type))
+	}
+	return strings.Join(zeros, ", ")
+}
+
+// zeroValue returns the zero value for a Go type.
+func zeroValue(typ string) string {
+	switch {
+	case typ == "string":
+		return `""`
+	case typ == "bool":
+		return "false"
+	case typ == "int", typ == "int8", typ == "int16", typ == "int32", typ == "int64",
+		typ == "uint", typ == "uint8", typ == "uint16", typ == "uint32", typ == "uint64",
+		typ == "float32", typ == "float64":
+		return "0"
+	case typ == "[]byte":
+		return "nil"
+	case strings.HasPrefix(typ, "[]"):
+		return "nil"
+	case strings.HasPrefix(typ, "map["):
+		return "nil"
+	case strings.HasPrefix(typ, "*"):
+		return "nil"
+	case typ == "any", typ == "interface{}":
+		return "nil"
+	default:
+		// For custom struct types, return empty struct
+		return typ + "{}"
+	}
+}
+
 // Param represents a method parameter or return value.
 type Param struct {
 	Name     string // Parameter name
