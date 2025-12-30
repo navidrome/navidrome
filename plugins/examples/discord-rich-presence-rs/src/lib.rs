@@ -18,7 +18,7 @@
 //! in configuration files is not secure and may violate Discord's terms of service.
 
 use extism_pdk::*;
-use nd_host::{artwork, scheduler};
+use nd_pdk::host::{artwork, scheduler};
 use serde::{Deserialize, Serialize};
 
 mod rpc;

@@ -753,11 +753,61 @@ See the example plugins in [examples/](examples/) for complete usage patterns.
 
 ```bash
 # Build WebAssembly module
-cargo build --release --target wasm32-unknown-unknown
+cargo build --release --target wasm32-wasip1
 
 # Package as .ndp
-zip -j my-plugin.ndp manifest.json target/wasm32-unknown-unknown/release/plugin.wasm
+zip -j my-plugin.ndp manifest.json target/wasm32-wasip1/release/plugin.wasm
 ```
+
+#### Using Rust PDK
+
+The Rust PDK provides generated type-safe wrappers for both capabilities and host services:
+
+```toml
+# Cargo.toml
+[dependencies]
+nd-pdk = { path = "../../pdk/rust/nd-pdk" }
+extism-pdk = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+**Implementing capabilities with traits and macros:**
+
+```rust
+use nd_pdk::scrobbler::{Scrobbler, IsAuthorizedRequest, IsAuthorizedResponse, Error};
+use nd_pdk::register_scrobbler;
+
+#[derive(Default)]
+struct MyPlugin;
+
+impl Scrobbler for MyPlugin {
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error> {
+        Ok(IsAuthorizedResponse { authorized: true })
+    }
+    fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error> { Ok(()) }
+    fn scrobble(&self, req: ScrobbleRequest) -> Result<(), Error> { Ok(()) }
+}
+
+register_scrobbler!(MyPlugin);  // Generates all WASM exports
+```
+
+**Using host services:**
+
+```rust
+use nd_pdk::host::{cache, scheduler, library};
+
+// Cache a value for 1 hour
+cache::set_string("my_key", "my_value", 3600)?;
+
+// Schedule a recurring task
+scheduler::schedule_recurring("@every 5m", "payload", "task_id")?;
+
+// Access library metadata
+let libs = library::get_all_libraries()?;
+```
+
+See [pdk/rust/README.md](pdk/rust/README.md) for detailed documentation and examples.
 
 ### Python (with extism-py)
 
@@ -810,6 +860,12 @@ replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
 See [pdk/go/README.md](pdk/go/README.md) for detailed documentation.
 
 **For Python plugins:** Copy functions from `nd_host_*.py` into your `__init__.py` (see comments in those files for extism-py limitations).
+
+**Recommendations:**
+
+- **Go:** Best overall experience with excellent stdlib support and familiar syntax for most developers. Recommended if you're already in the Go ecosystem.
+- **Rust:** Best for performance-critical plugins or when leveraging Rust's ecosystem. Produces smallest binaries with excellent type safety.
+- **Python:** Best for rapid prototyping or simple plugins. Note that extism-py has limitations compared to compiled languages.
 
 ---
 

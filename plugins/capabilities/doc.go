@@ -54,6 +54,6 @@
 //
 //	func Register(impl Scrobbler) { ... }
 //
-//go:generate go run ../cmd/ndpgen -capability-only -input=. -output=../pdk -go
+//go:generate go run ../cmd/ndpgen -capability-only -input=. -output=../pdk -go -rust
 //go:generate go run ../cmd/ndpgen -schemas -input=.
 package capabilities

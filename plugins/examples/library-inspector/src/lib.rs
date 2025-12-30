@@ -13,7 +13,7 @@
 //! ```
 
 use extism_pdk::*;
-use nd_host::{library, scheduler};
+use nd_pdk::host::{library, scheduler};
 use serde::{Deserialize, Serialize};
 use std::fs;
 

@@ -1,5 +1,5 @@
 [package]
-name = "nd-host"
+name = "nd-pdk-host"
 version = "0.1.0"
 edition = "2021"
 description = "Navidrome host function wrappers for Rust plugins"
@@ -9,7 +9,7 @@ readme = "README.md"
 
 [lib]
 path = "lib.rs"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 extism-pdk = "1.2"
