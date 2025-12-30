@@ -8,13 +8,11 @@
 
 package lifecycle
 
-// OnInitInput represents the OnInitInput data structure.
 // OnInitInput is the input provided to the init callback.
 // Currently empty, reserved for future use.
 type OnInitInput struct {
 }
 
-// OnInitOutput represents the OnInitOutput data structure.
 // OnInitOutput is the output from the init callback.
 type OnInitOutput struct {
 	// Error is the error message if initialization failed.

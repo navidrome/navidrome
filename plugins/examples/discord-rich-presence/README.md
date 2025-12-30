@@ -98,25 +98,24 @@ Folder = "/path/to/plugins"
 
 | File         | Description                                            |
 |--------------|--------------------------------------------------------|
-| `main.go`    | Plugin entry point, manifest, scrobbler implementation |
+| `main.go`    | Plugin entry point, capability registration, and implementations |
 | `rpc.go`     | Discord gateway communication and RPC logic            |
-| `pdk.gen.go` | Generated types from XTP schemas (combined)            |
-| `go.mod`     | Go module file (imports `ndhost` SDK)                  |
+| `go.mod`     | Go module file                                         |
 
-## Host SDK
+## PDK
 
-This plugin imports the Go host SDK directly:
+This plugin imports the Navidrome PDK subpackages directly:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import (
+    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
+    "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
+    "github.com/navidrome/navidrome/plugins/pdk/go/websocket"
+)
 ```
 
-The `go.mod` file uses a `replace` directive to point to the local SDK:
-
-```
-require github.com/navidrome/navidrome/plugins/host/go v0.0.0
-replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
-```
+The `go.mod` file uses `replace` directives to point to the local packages for development.
 
 ## Host Services Used
 

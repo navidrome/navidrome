@@ -1,6 +1,6 @@
 # Minimal Navidrome Plugin Example
 
-This is a minimal example demonstrating how to create a Navidrome plugin using Go and the Extism PDK.
+This is a minimal example demonstrating how to create a Navidrome plugin using Go and the Navidrome PDK.
 
 ## Building
 
@@ -8,7 +8,7 @@ This is a minimal example demonstrating how to create a Navidrome plugin using G
 2. Build the plugin:
    ```bash
    go mod tidy
-   tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
+   tinygo build -o plugin.wasm -target wasip1 -buildmode=c-shared .
    zip -j minimal.ndp manifest.json plugin.wasm
    ```
 
@@ -37,19 +37,36 @@ Agents = "lastfm,spotify,minimal"
 ## What This Example Demonstrates
 
 - Plugin package structure (`.ndp` = zip with `manifest.json` + `plugin.wasm`)
-- Implementing `nd_get_artist_biography` as a MetadataAgent capability
-- Basic JSON input/output handling with the Extism PDK
+- Using the Navidrome PDK `metadata` subpackage
+- Implementing the `ArtistBiographyProvider` interface
+- Registration pattern with `metadata.Register()`
+
+## PDK Usage
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+
+type myPlugin struct{}
+
+func init() {
+    metadata.Register(&myPlugin{})
+}
+
+func (p *myPlugin) GetArtistBiography(input metadata.ArtistInput) (metadata.ArtistBiographyOutput, error) {
+    return metadata.ArtistBiographyOutput{Biography: "..."}, nil
+}
+```
 
 ## Extending the Example
 
-To add more capabilities, implement additional exported functions:
+To add more capabilities, implement additional provider interfaces from the `metadata` package:
 
-- `nd_get_artist_mbid` - Get MusicBrainz ID for an artist
-- `nd_get_artist_url` - Get external URL for an artist
-- `nd_get_similar_artists` - Get similar artists
-- `nd_get_artist_images` - Get artist images
-- `nd_get_artist_top_songs` - Get top songs for an artist
-- `nd_get_album_info` - Get album information
-- `nd_get_album_images` - Get album images
+- `ArtistMBIDProvider` - Get MusicBrainz ID for an artist
+- `ArtistURLProvider` - Get external URL for an artist
+- `SimilarArtistsProvider` - Get similar artists
+- `ArtistImagesProvider` - Get artist images
+- `ArtistTopSongsProvider` - Get top songs for an artist
+- `AlbumInfoProvider` - Get album information
+- `AlbumImagesProvider` - Get album images
 
 See the full documentation in `/plugins/README.md` for input/output formats.

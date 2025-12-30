@@ -8,7 +8,6 @@
 
 package websocket
 
-// OnErrorInput represents the OnErrorInput data structure.
 // OnErrorInput is the input provided when an error occurs on a WebSocket connection.
 type OnErrorInput struct {
 	// ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
@@ -17,7 +16,6 @@ type OnErrorInput struct {
 	Error string `json:"error"`
 }
 
-// OnErrorOutput represents the OnErrorOutput data structure.
 // OnErrorOutput is the output from the error handler.
 type OnErrorOutput struct {
 	// Error is the error message if the callback failed.
@@ -25,7 +23,6 @@ type OnErrorOutput struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// OnCloseInput represents the OnCloseInput data structure.
 // OnCloseInput is the input provided when a WebSocket connection is closed.
 type OnCloseInput struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that was closed.
@@ -37,7 +34,6 @@ type OnCloseInput struct {
 	Reason string `json:"reason"`
 }
 
-// OnCloseOutput represents the OnCloseOutput data structure.
 // OnCloseOutput is the output from the close handler.
 type OnCloseOutput struct {
 	// Error is the error message if the callback failed.
@@ -45,7 +41,6 @@ type OnCloseOutput struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// OnTextMessageInput represents the OnTextMessageInput data structure.
 // OnTextMessageInput is the input provided when a text message is received.
 type OnTextMessageInput struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
@@ -54,7 +49,6 @@ type OnTextMessageInput struct {
 	Message string `json:"message"`
 }
 
-// OnTextMessageOutput represents the OnTextMessageOutput data structure.
 // OnTextMessageOutput is the output from the text message handler.
 type OnTextMessageOutput struct {
 	// Error is the error message if the callback failed.
@@ -62,7 +56,6 @@ type OnTextMessageOutput struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// OnBinaryMessageInput represents the OnBinaryMessageInput data structure.
 // OnBinaryMessageInput is the input provided when a binary message is received.
 type OnBinaryMessageInput struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
@@ -71,7 +64,6 @@ type OnBinaryMessageInput struct {
 	Data string `json:"data"`
 }
 
-// OnBinaryMessageOutput represents the OnBinaryMessageOutput data structure.
 // OnBinaryMessageOutput is the output from the binary message handler.
 type OnBinaryMessageOutput struct {
 	// Error is the error message if the callback failed.

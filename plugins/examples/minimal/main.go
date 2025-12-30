@@ -2,42 +2,31 @@
 //
 // Build with:
 //
-//	tinygo build -o minimal.wasm -target wasip1 -buildmode=c-shared ./main.go
+//	tinygo build -o minimal.wasm -target wasip1 -buildmode=c-shared .
 //
 // Install by copying minimal.ndp to your Navidrome plugins folder.
 package main
 
 import (
-	"github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
 )
 
-type ArtistInput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	MBID string `json:"mbid,omitempty"`
+// minimalPlugin implements the metadata provider interfaces.
+type minimalPlugin struct{}
+
+// init registers the plugin implementation
+func init() {
+	metadata.Register(&minimalPlugin{})
 }
 
-type BiographyOutput struct {
-	Biography string `json:"biography"`
-}
+// Ensure minimalPlugin implements the ArtistBiographyProvider interface
+var _ metadata.ArtistBiographyProvider = (*minimalPlugin)(nil)
 
-//go:wasmexport nd_get_artist_biography
-func ndGetArtistBiography() int32 {
-	var input ArtistInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-
-	output := BiographyOutput{
+// GetArtistBiography returns a placeholder biography for the artist.
+func (p *minimalPlugin) GetArtistBiography(input metadata.ArtistInput) (metadata.ArtistBiographyOutput, error) {
+	return metadata.ArtistBiographyOutput{
 		Biography: "This is a placeholder biography for " + input.Name + ".",
-	}
-
-	if err := pdk.OutputJSON(output); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	return 0
+	}, nil
 }
 
 func main() {}

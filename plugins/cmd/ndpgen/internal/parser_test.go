@@ -13,7 +13,7 @@ var _ = Describe("Parser", func() {
 
 	BeforeEach(func() {
 		var err error
-		tmpDir, err = os.MkdirTemp("", "hostgen-test-*")
+		tmpDir, err = os.MkdirTemp("", "ndpgen-test-*")
 		Expect(err).NotTo(HaveOccurred())
 	})
 
