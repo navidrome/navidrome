@@ -228,11 +228,11 @@ type ServiceB interface {
 
 				Expect(string(pyClientActual)).To(Equal(pyClientExpected), "Python client code mismatch")
 
-				// Verify Rust client code (now in $output/rust/nd-pdk-host/)
-				rustHostDir := filepath.Join(outputDir, "rust", "nd-pdk-host")
-				rsClientEntries, err := os.ReadDir(rustHostDir)
+				// Verify Rust client code (now in $output/rust/nd-pdk-host/src/)
+				rustSrcDir := filepath.Join(outputDir, "rust", "nd-pdk-host", "src")
+				rsClientEntries, err := os.ReadDir(rustSrcDir)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(rsClientEntries).To(HaveLen(2), "Expected Rust client file and lib.rs")
+				Expect(rsClientEntries).To(HaveLen(2), "Expected Rust client file and lib.rs in src/")
 
 				// Find the client file (not lib.rs)
 				var rsClientName string
@@ -244,7 +244,7 @@ type ServiceB interface {
 				}
 				Expect(rsClientName).ToNot(BeEmpty(), "Expected to find Rust client file")
 
-				rsClientActual, err := os.ReadFile(filepath.Join(rustHostDir, rsClientName))
+				rsClientActual, err := os.ReadFile(filepath.Join(rustSrcDir, rsClientName))
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(rsClientActual)).To(Equal(rsClientExpected), "Rust client code mismatch")

@@ -40,26 +40,54 @@
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
 //! - [`websocket`] - provides WebSocket communication capabilities for plugins.
 
-#[path = "nd_host_artwork.rs"]
-pub mod artwork;
+#[doc(hidden)]
+mod nd_host_artwork;
+/// provides artwork URL generation capabilities for plugins.
+pub mod artwork {
+    pub use super::nd_host_artwork::*;
+}
 
-#[path = "nd_host_cache.rs"]
-pub mod cache;
+#[doc(hidden)]
+mod nd_host_cache;
+/// provides in-memory TTL-based caching capabilities for plugins.
+pub mod cache {
+    pub use super::nd_host_cache::*;
+}
 
-#[path = "nd_host_kvstore.rs"]
-pub mod kvstore;
+#[doc(hidden)]
+mod nd_host_kvstore;
+/// provides persistent key-value storage for plugins.
+pub mod kvstore {
+    pub use super::nd_host_kvstore::*;
+}
 
-#[path = "nd_host_library.rs"]
-pub mod library;
+#[doc(hidden)]
+mod nd_host_library;
+/// provides access to music library metadata for plugins.
+pub mod library {
+    pub use super::nd_host_library::*;
+}
 
-#[path = "nd_host_scheduler.rs"]
-pub mod scheduler;
+#[doc(hidden)]
+mod nd_host_scheduler;
+/// provides task scheduling capabilities for plugins.
+pub mod scheduler {
+    pub use super::nd_host_scheduler::*;
+}
 
-#[path = "nd_host_subsonicapi.rs"]
-pub mod subsonicapi;
+#[doc(hidden)]
+mod nd_host_subsonicapi;
+/// provides access to Navidrome's Subsonic API from plugins.
+pub mod subsonicapi {
+    pub use super::nd_host_subsonicapi::*;
+}
 
-#[path = "nd_host_websocket.rs"]
-pub mod websocket;
+#[doc(hidden)]
+mod nd_host_websocket;
+/// provides WebSocket communication capabilities for plugins.
+pub mod websocket {
+    pub use super::nd_host_websocket::*;
+}
 
 // Re-export commonly used types from extism-pdk for convenience
 pub use extism_pdk::Error;
