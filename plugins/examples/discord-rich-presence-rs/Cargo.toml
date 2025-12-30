@@ -13,4 +13,4 @@ crate-type = ["cdylib"]
 extism-pdk = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-nd-host = { path = "../../host/rust" }
+nd-host = { path = "../../pdk/rust/host" }

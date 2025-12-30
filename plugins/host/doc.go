@@ -27,7 +27,7 @@
 //
 // # Generated Code
 //
-// The hostgen tool reads annotated interfaces and generates Extism host function wrappers
+// The ndpgen tool reads annotated interfaces and generates Extism host function wrappers
 // that handle:
 //   - JSON serialization/deserialization of request/response types
 //   - Memory operations (ReadBytes, WriteBytes, Alloc)
@@ -37,5 +37,5 @@
 // Generated files follow the pattern <servicename>_gen.go and include a header comment
 // indicating they should not be edited manually.
 //
-//go:generate go run ../cmd/hostgen -input=. -output=. -python -go -rust
+//go:generate go run ../cmd/ndpgen -input=. -output=../pdk -go -python -rust
 package host
