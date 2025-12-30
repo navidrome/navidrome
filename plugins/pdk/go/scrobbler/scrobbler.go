@@ -11,33 +11,20 @@ import (
 	pdk "github.com/extism/go-pdk"
 )
 
-// ScrobblerErrorType indicates how Navidrome should handle scrobbler errors.
-type ScrobblerErrorType string
+// ScrobblerError represents an error type for scrobbling operations.
+type ScrobblerError string
 
 const (
-	// ScrobblerErrorNone indicates no error occurred.
-	ScrobblerErrorNone ScrobblerErrorType = "none"
 	// ScrobblerErrorNotAuthorized indicates the user is not authorized.
-	ScrobblerErrorNotAuthorized ScrobblerErrorType = "not_authorized"
+	ScrobblerErrorNotAuthorized ScrobblerError = "scrobbler(not_authorized)"
 	// ScrobblerErrorRetryLater indicates the operation should be retried later.
-	ScrobblerErrorRetryLater ScrobblerErrorType = "retry_later"
+	ScrobblerErrorRetryLater ScrobblerError = "scrobbler(retry_later)"
 	// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
-	ScrobblerErrorUnrecoverable ScrobblerErrorType = "unrecoverable"
+	ScrobblerErrorUnrecoverable ScrobblerError = "scrobbler(unrecoverable)"
 )
 
-// IsAuthorizedRequest is the request for authorization check.
-type IsAuthorizedRequest struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
-	// Username is the username of the user.
-	Username string `json:"username"`
-}
-
-// IsAuthorizedResponse is the response for authorization check.
-type IsAuthorizedResponse struct {
-	// Authorized indicates whether the user is authorized to scrobble.
-	Authorized bool `json:"authorized"`
-}
+// Error implements the error interface for ScrobblerError.
+func (e ScrobblerError) Error() string { return string(e) }
 
 // NowPlayingRequest is the request for now playing notification.
 type NowPlayingRequest struct {
@@ -49,14 +36,6 @@ type NowPlayingRequest struct {
 	Track TrackInfo `json:"track"`
 	// Position is the current playback position in seconds.
 	Position int32 `json:"position"`
-}
-
-// ScrobblerResponse is the response for scrobbler operations.
-type ScrobblerResponse struct {
-	// Error is the error message if the operation failed.
-	Error string `json:"error,omitempty"`
-	// ErrorType indicates how Navidrome should handle the error.
-	ErrorType ScrobblerErrorType `json:"errorType,omitempty"`
 }
 
 // ScrobbleRequest is the request for submitting a scrobble.
@@ -103,6 +82,20 @@ type TrackInfo struct {
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
 }
 
+// IsAuthorizedRequest is the request for authorization check.
+type IsAuthorizedRequest struct {
+	// UserID is the internal Navidrome user ID.
+	UserID string `json:"userId"`
+	// Username is the username of the user.
+	Username string `json:"username"`
+}
+
+// IsAuthorizedResponse is the response for authorization check.
+type IsAuthorizedResponse struct {
+	// Authorized indicates whether the user is authorized to scrobble.
+	Authorized bool `json:"authorized"`
+}
+
 // Scrobbler requires all methods to be implemented.
 // Scrobbler provides scrobbling functionality to external services.
 // This capability allows plugins to submit listening history to services like Last.fm,
@@ -114,14 +107,14 @@ type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
 	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
 	// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
-	NowPlaying(NowPlayingRequest) (*ScrobblerResponse, error)
+	NowPlaying(NowPlayingRequest) error
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
-	Scrobble(ScrobbleRequest) (*ScrobblerResponse, error)
+	Scrobble(ScrobbleRequest) error
 } // Internal implementation holders
 var (
 	isAuthorizedImpl func(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
-	nowPlayingImpl   func(NowPlayingRequest) (*ScrobblerResponse, error)
-	scrobbleImpl     func(ScrobbleRequest) (*ScrobblerResponse, error)
+	nowPlayingImpl   func(NowPlayingRequest) error
+	scrobbleImpl     func(ScrobbleRequest) error
 )
 
 // Register registers a scrobbler implementation.
@@ -176,13 +169,7 @@ func _NdScrobblerNowPlaying() int32 {
 		return -1
 	}
 
-	output, err := nowPlayingImpl(input)
-	if err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	if err := pdk.OutputJSON(output); err != nil {
+	if err := nowPlayingImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
@@ -203,13 +190,7 @@ func _NdScrobblerScrobble() int32 {
 		return -1
 	}
 
-	output, err := scrobbleImpl(input)
-	if err != nil {
-		pdk.SetError(err)
-		return -1
-	}
-
-	if err := pdk.OutputJSON(output); err != nil {
+	if err := scrobbleImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
