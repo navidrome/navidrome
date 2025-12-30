@@ -132,7 +132,7 @@ See the example plugins for complete implementations:
 
 - [webhook-rs](../../examples/webhook-rs/) - Simple scrobbler using the PDK
 - [discord-rich-presence-rs](../../examples/discord-rich-presence-rs/) - Complex plugin with multiple capabilities
-- [library-inspector](../../examples/library-inspector/) - Host service demonstration
+- [library-inspector](../../examples/library-inspector-rs/) - Host service demonstration
 
 ## Code Generation
 

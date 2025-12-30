@@ -1,5 +1,5 @@
 [package]
-name = "library-inspector"
+name = "library-inspector-rs"
 version = "1.0.0"
 edition = "2021"
 description = "Navidrome plugin that periodically logs library details and finds largest files"

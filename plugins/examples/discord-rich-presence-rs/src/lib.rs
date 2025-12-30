@@ -1,7 +1,7 @@
 //! Discord Rich Presence Plugin for Navidrome - Rust Implementation
 //!
 //! This plugin integrates Navidrome with Discord Rich Presence. It demonstrates how to:
-//! - Use the generated nd-host wrappers for host service calls
+//! - Use the nd-pdk crate for host service calls
 //! - Implement the Scrobbler capability for now-playing updates
 //! - Implement SchedulerCallback for heartbeat and activity clearing
 //! - Implement WebSocketCallback for Discord gateway communication
@@ -19,9 +19,28 @@
 
 use extism_pdk::*;
 use nd_pdk::host::{artwork, scheduler};
-use serde::{Deserialize, Serialize};
+use nd_pdk::scrobbler::{
+    Error as ScrobblerError, IsAuthorizedRequest, IsAuthorizedResponse, NowPlayingRequest,
+    ScrobbleRequest, Scrobbler, SCROBBLER_ERROR_NOT_AUTHORIZED, SCROBBLER_ERROR_RETRY_LATER,
+};
+use nd_pdk::scheduler::{
+    Error as SchedulerError, SchedulerCallbackProvider, SchedulerCallbackRequest,
+};
+use nd_pdk::websocket::{
+    BinaryMessageProvider, CloseProvider, Error as WebSocketError, ErrorProvider,
+    OnBinaryMessageRequest, OnCloseRequest, OnErrorRequest, OnTextMessageRequest,
+    TextMessageProvider,
+};
 
 mod rpc;
+
+// Register capabilities using PDK macros
+nd_pdk::register_scrobbler!(DiscordPlugin);
+nd_pdk::register_scheduler_callback!(DiscordPlugin);
+nd_pdk::register_text_message!(DiscordPlugin);
+nd_pdk::register_binary_message!(DiscordPlugin);
+nd_pdk::register_error!(DiscordPlugin);
+nd_pdk::register_close!(DiscordPlugin);
 
 // ============================================================================
 // Constants
@@ -31,6 +50,14 @@ const CLIENT_ID_KEY: &str = "clientid";
 const USERS_KEY: &str = "users";
 const PAYLOAD_HEARTBEAT: &str = "heartbeat";
 const PAYLOAD_CLEAR_ACTIVITY: &str = "clear-activity";
+
+// ============================================================================
+// Plugin Implementation
+// ============================================================================
+
+/// The Discord Rich Presence plugin type.
+#[derive(Default)]
+struct DiscordPlugin;
 
 // ============================================================================
 // Configuration
@@ -73,302 +100,167 @@ fn get_image_url(track_id: &str) -> String {
 }
 
 // ============================================================================
-// Scrobbler Types
+// Scrobbler Implementation
 // ============================================================================
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AuthInput {
-    #[allow(dead_code)]
-    user_id: String,
-    username: String,
-}
+impl Scrobbler for DiscordPlugin {
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, ScrobblerError> {
+        let (_, users) = match get_config() {
+            Ok(config) => config,
+            Err(e) => {
+                error!("Failed to get config: {:?}", e);
+                return Ok(IsAuthorizedResponse { authorized: false });
+            }
+        };
 
-#[derive(Serialize)]
-struct AuthOutput {
-    authorized: bool,
-}
+        let authorized = users.contains_key(&req.username);
+        info!("IsAuthorized for user {}: {}", req.username, authorized);
+        Ok(IsAuthorizedResponse { authorized })
+    }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct TrackInfo {
-    id: String,
-    title: String,
-    album: String,
-    artist: String,
-    album_artist: String,
-    duration: f32,
-    track_number: i32,
-    disc_number: i32,
-    #[serde(default)]
-    mbz_recording_id: Option<String>,
-    #[serde(default)]
-    mbz_album_id: Option<String>,
-    #[serde(default)]
-    mbz_artist_id: Option<String>,
-}
+    fn now_playing(&self, req: NowPlayingRequest) -> Result<(), ScrobblerError> {
+        info!(
+            "Setting presence for user {}, track: {}",
+            req.username, req.track.title
+        );
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct NowPlayingInput {
-    user_id: String,
-    username: String,
-    track: TrackInfo,
-    position: i32,
-}
+        // Load configuration
+        let (client_id, users) = get_config()
+            .map_err(|e| ScrobblerError::new(format!("{}: failed to get config: {:?}", SCROBBLER_ERROR_RETRY_LATER, e)))?;
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct ScrobbleInput {
-    user_id: String,
-    username: String,
-    track: TrackInfo,
-    timestamp: i64,
-}
+        // Check authorization
+        let user_token = users.get(&req.username).cloned().ok_or_else(|| {
+            ScrobblerError::new(format!(
+                "{}: user '{}' not authorized",
+                SCROBBLER_ERROR_NOT_AUTHORIZED, req.username
+            ))
+        })?;
 
-const ERROR_TYPE_NOT_AUTHORIZED: &str = "not_authorized";
-const ERROR_TYPE_RETRY_LATER: &str = "retry_later";
-
-// ============================================================================
-// Scheduler Callback Types
-// ============================================================================
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct SchedulerCallbackInput {
-    schedule_id: String,
-    payload: String,
-    is_recurring: bool,
-}
-
-// ============================================================================
-// WebSocket Callback Types
-// ============================================================================
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct OnTextMessageInput {
-    connection_id: String,
-    message: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct OnBinaryMessageInput {
-    connection_id: String,
-    message: Vec<u8>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct OnErrorInput {
-    connection_id: String,
-    error: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-struct OnCloseInput {
-    connection_id: String,
-    code: i32,
-    reason: String,
-}
-
-// ============================================================================
-// Scrobbler Plugin Exports
-// ============================================================================
-
-/// Checks if a user is authorized for Discord Rich Presence.
-#[plugin_fn]
-pub fn nd_scrobbler_is_authorized(Json(input): Json<AuthInput>) -> FnResult<Json<AuthOutput>> {
-    let (_, users) = match get_config() {
-        Ok(config) => config,
-        Err(e) => {
-            error!("Failed to get config: {:?}", e);
-            return Ok(Json(AuthOutput { authorized: false }));
-        }
-    };
-
-    let authorized = users.contains_key(&input.username);
-    info!(
-        "IsAuthorized for user {}: {}",
-        input.username, authorized
-    );
-    Ok(Json(AuthOutput { authorized }))
-}
-
-/// Sends a now playing notification to Discord.
-#[plugin_fn]
-pub fn nd_scrobbler_now_playing(Json(input): Json<NowPlayingInput>) -> FnResult<()> {
-    info!(
-        "Setting presence for user {}, track: {}",
-        input.username, input.track.title
-    );
-
-    // Load configuration
-    let (client_id, users) = match get_config() {
-        Ok(config) => config,
-        Err(e) => {
-            return Err(WithReturnCode::new(
-                Error::msg(format!("{}: failed to get config: {:?}", ERROR_TYPE_RETRY_LATER, e)),
-                -1,
-            ));
-        }
-    };
-
-    // Check authorization
-    let user_token = match users.get(&input.username) {
-        Some(token) => token.clone(),
-        None => {
-            return Err(WithReturnCode::new(
-                Error::msg(format!(
-                    "{}: user '{}' not authorized",
-                    ERROR_TYPE_NOT_AUTHORIZED, input.username
-                )),
-                -1,
-            ));
-        }
-    };
-
-    // Connect to Discord
-    if let Err(e) = rpc::connect(&input.username, &user_token) {
-        return Err(WithReturnCode::new(
-            Error::msg(format!(
+        // Connect to Discord
+        rpc::connect(&req.username, &user_token)
+            .map_err(|e| ScrobblerError::new(format!(
                 "{}: failed to connect to Discord: {:?}",
-                ERROR_TYPE_RETRY_LATER, e
-            )),
-            -1,
-        ));
-    }
+                SCROBBLER_ERROR_RETRY_LATER, e
+            )))?;
 
-    // Cancel any existing completion schedule
-    let _ = scheduler::cancel_schedule(&format!("{}-clear", input.username));
+        // Cancel any existing completion schedule
+        let _ = scheduler::cancel_schedule(&format!("{}-clear", req.username));
 
-    // Calculate timestamps
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    let start_time = (now - input.position as i64) * 1000;
-    let end_time = start_time + (input.track.duration as i64) * 1000;
+        // Calculate timestamps
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        let start_time = (now - req.position as i64) * 1000;
+        let end_time = start_time + (req.track.duration as i64) * 1000;
 
-    // Send activity update
-    if let Err(e) = rpc::send_activity(
-        &client_id,
-        &input.username,
-        &user_token,
-        rpc::Activity {
-            application: client_id.clone(),
-            name: "Navidrome".to_string(),
-            activity_type: 2, // Listening
-            details: input.track.title.clone(),
-            state: input.track.artist.clone(),
-            timestamps: rpc::ActivityTimestamps {
-                start: start_time,
-                end: end_time,
+        // Send activity update
+        rpc::send_activity(
+            &client_id,
+            &req.username,
+            &user_token,
+            rpc::Activity {
+                application: client_id.clone(),
+                name: "Navidrome".to_string(),
+                activity_type: 2, // Listening
+                details: req.track.title.clone(),
+                state: req.track.artist.clone(),
+                timestamps: rpc::ActivityTimestamps {
+                    start: start_time,
+                    end: end_time,
+                },
+                assets: rpc::ActivityAssets {
+                    large_image: get_image_url(&req.track.id),
+                    large_text: req.track.album.clone(),
+                },
             },
-            assets: rpc::ActivityAssets {
-                large_image: get_image_url(&input.track.id),
-                large_text: input.track.album.clone(),
-            },
-        },
-    ) {
-        return Err(WithReturnCode::new(
-            Error::msg(format!(
-                "{}: failed to send activity: {:?}",
-                ERROR_TYPE_RETRY_LATER, e
-            )),
-            -1,
-        ));
+        )
+        .map_err(|e| ScrobblerError::new(format!(
+            "{}: failed to send activity: {:?}",
+            SCROBBLER_ERROR_RETRY_LATER, e
+        )))?;
+
+        // Schedule a timer to clear the activity after the track completes
+        let remaining_seconds = (req.track.duration as i32) - req.position + 5;
+        if let Err(e) = scheduler::schedule_one_time(
+            remaining_seconds,
+            PAYLOAD_CLEAR_ACTIVITY,
+            &format!("{}-clear", req.username),
+        ) {
+            warn!("Failed to schedule completion timer: {:?}", e);
+        }
+
+        Ok(())
     }
 
-    // Schedule a timer to clear the activity after the track completes
-    let remaining_seconds = (input.track.duration as i32) - input.position + 5;
-    if let Err(e) = scheduler::schedule_one_time(
-        remaining_seconds,
-        PAYLOAD_CLEAR_ACTIVITY,
-        &format!("{}-clear", input.username),
-    ) {
-        warn!("Failed to schedule completion timer: {:?}", e);
+    fn scrobble(&self, _req: ScrobbleRequest) -> Result<(), ScrobblerError> {
+        // Discord Rich Presence doesn't need scrobble events - success
+        Ok(())
     }
-
-    Ok(())
-}
-
-/// Handles scrobble requests (no-op for Discord Rich Presence).
-#[plugin_fn]
-pub fn nd_scrobbler_scrobble(_input: Json<ScrobbleInput>) -> FnResult<()> {
-    // Discord Rich Presence doesn't need scrobble events - success
-    Ok(())
 }
 
 // ============================================================================
-// Scheduler Callback Export
+// Scheduler Callback Implementation
 // ============================================================================
 
-/// Handles scheduler callbacks for heartbeat and activity clearing.
-#[plugin_fn]
-pub fn nd_scheduler_callback(Json(input): Json<SchedulerCallbackInput>) -> FnResult<()> {
-    match input.payload.as_str() {
-        PAYLOAD_HEARTBEAT => {
-            // Heartbeat callback - schedule_id is the username
-            rpc::handle_heartbeat_callback(&input.schedule_id)?;
+impl SchedulerCallbackProvider for DiscordPlugin {
+    fn on_scheduler_callback(&self, req: SchedulerCallbackRequest) -> Result<(), SchedulerError> {
+        match req.payload.as_str() {
+            PAYLOAD_HEARTBEAT => {
+                // Heartbeat callback - schedule_id is the username
+                rpc::handle_heartbeat_callback(&req.schedule_id)
+                    .map_err(|e| SchedulerError::new(e.to_string()))?;
+            }
+            PAYLOAD_CLEAR_ACTIVITY => {
+                // Clear activity callback - schedule_id is "username-clear"
+                let username = req.schedule_id.trim_end_matches("-clear");
+                rpc::handle_clear_activity_callback(username)
+                    .map_err(|e| SchedulerError::new(e.to_string()))?;
+            }
+            _ => {
+                warn!("Unknown scheduler callback payload: {}", req.payload);
+            }
         }
-        PAYLOAD_CLEAR_ACTIVITY => {
-            // Clear activity callback - schedule_id is "username-clear"
-            let username = input.schedule_id.trim_end_matches("-clear");
-            rpc::handle_clear_activity_callback(username)?;
-        }
-        _ => {
-            warn!("Unknown scheduler callback payload: {}", input.payload);
-        }
+
+        Ok(())
     }
-
-    Ok(())
 }
 
 // ============================================================================
-// WebSocket Callback Exports
+// WebSocket Callback Implementations
 // ============================================================================
 
-/// Handles incoming WebSocket text messages.
-#[plugin_fn]
-pub fn nd_websocket_on_text_message(Json(input): Json<OnTextMessageInput>) -> FnResult<()> {
-    rpc::handle_websocket_message(&input.connection_id, &input.message)?;
-    Ok(())
+impl TextMessageProvider for DiscordPlugin {
+    fn on_text_message(&self, req: OnTextMessageRequest) -> Result<(), WebSocketError> {
+        rpc::handle_websocket_message(&req.connection_id, &req.message)
+            .map_err(|e| WebSocketError::new(e.to_string()))?;
+        Ok(())
+    }
 }
 
-/// Handles incoming WebSocket binary messages.
-#[plugin_fn]
-pub fn nd_websocket_on_binary_message(Json(_input): Json<OnBinaryMessageInput>) -> FnResult<()> {
-    // Binary messages are not expected from Discord
-    Ok(())
+impl BinaryMessageProvider for DiscordPlugin {
+    fn on_binary_message(&self, _req: OnBinaryMessageRequest) -> Result<(), WebSocketError> {
+        // Binary messages are not expected from Discord
+        Ok(())
+    }
 }
 
-/// Handles WebSocket errors.
-#[plugin_fn]
-pub fn nd_websocket_on_error(Json(input): Json<OnErrorInput>) -> FnResult<()> {
-    warn!(
-        "WebSocket error for connection '{}': {}",
-        input.connection_id, input.error
-    );
-    Ok(())
+impl ErrorProvider for DiscordPlugin {
+    fn on_error(&self, req: OnErrorRequest) -> Result<(), WebSocketError> {
+        warn!(
+            "WebSocket error for connection '{}': {}",
+            req.connection_id, req.error
+        );
+        Ok(())
+    }
 }
 
-/// Handles WebSocket connection closure.
-#[plugin_fn]
-pub fn nd_websocket_on_close(Json(input): Json<OnCloseInput>) -> FnResult<()> {
-    info!(
-        "WebSocket connection '{}' closed with code {}: {}",
-        input.connection_id, input.code, input.reason
-    );
-    Ok(())
+impl CloseProvider for DiscordPlugin {
+    fn on_close(&self, req: OnCloseRequest) -> Result<(), WebSocketError> {
+        info!(
+            "WebSocket connection '{}' closed with code {}: {}",
+            req.connection_id, req.code, req.reason
+        );
+        Ok(())
+    }
 }

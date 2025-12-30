@@ -880,7 +880,7 @@ See [examples/](examples/) for complete working plugins:
 | [coverartarchive-py](examples/coverartarchive-py/)             | Python   | MetadataAgent | HTTP                                       | Cover Art Archive              |
 | [webhook-rs](examples/webhook-rs/)                             | Rust     | Scrobbler     | HTTP                                       | HTTP webhooks                  |
 | [nowplaying-py](examples/nowplaying-py/)                       | Python   | Lifecycle     | Scheduler, SubsonicAPI                     | Periodic now-playing logger    |
-| [library-inspector](examples/library-inspector/)               | Rust     | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
+| [library-inspector](examples/library-inspector-rs/)               | Rust     | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
 | [crypto-ticker](examples/crypto-ticker/)                       | Go       | Lifecycle     | WebSocket, Scheduler                       | Real-time crypto prices demo   |
 | [discord-rich-presence](examples/discord-rich-presence/)       | Go       | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration            |
 | [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust     | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration (Rust)     |
