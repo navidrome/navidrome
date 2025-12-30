@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 )
 
 // TestLibraryInput is the input for nd_test_library callback.
@@ -21,11 +22,11 @@ type TestLibraryInput struct {
 
 // TestLibraryOutput is the output from nd_test_library callback.
 type TestLibraryOutput struct {
-	Library     *Library  `json:"library,omitempty"`
-	Libraries   []Library `json:"libraries,omitempty"`
-	FileContent string    `json:"file_content,omitempty"`
-	DirEntries  []string  `json:"dir_entries,omitempty"`
-	Error       *string   `json:"error,omitempty"`
+	Library     *host.Library  `json:"library,omitempty"`
+	Libraries   []host.Library `json:"libraries,omitempty"`
+	FileContent string         `json:"file_content,omitempty"`
+	DirEntries  []string       `json:"dir_entries,omitempty"`
+	Error       *string        `json:"error,omitempty"`
 }
 
 // nd_test_library is the test callback that tests the library host functions.
@@ -41,7 +42,7 @@ func ndTestLibrary() int32 {
 
 	switch input.Operation {
 	case "get_library":
-		resp, err := LibraryGetLibrary(input.LibraryID)
+		resp, err := host.LibraryGetLibrary(input.LibraryID)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
@@ -51,7 +52,7 @@ func ndTestLibrary() int32 {
 		return 0
 
 	case "get_all_libraries":
-		resp, err := LibraryGetAllLibraries()
+		resp, err := host.LibraryGetAllLibraries()
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
