@@ -166,7 +166,7 @@ const NotImplementedCode int32 = -2
 {{- /* Generate export wrappers */ -}}
 {{range .Capability.Methods}}
 
-//export {{.ExportName}}
+//go:wasmexport {{.ExportName}}
 func {{exportFunc .}}() int32 {
 	if {{implVar .}} == nil {
 		// Return standard code - host will skip this plugin gracefully

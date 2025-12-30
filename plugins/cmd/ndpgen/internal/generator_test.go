@@ -752,7 +752,7 @@ type TestService interface {
 			Expect(codeStr).To(ContainSubstring("impl.(ArtistBiographyProvider)"))
 
 			// Check for export wrappers
-			Expect(codeStr).To(ContainSubstring("//export nd_get_artist_biography"))
+			Expect(codeStr).To(ContainSubstring("//go:wasmexport nd_get_artist_biography"))
 			Expect(codeStr).To(ContainSubstring("func _NdGetArtistBiography()"))
 
 			// Check for NotImplementedCode handling
@@ -894,7 +894,7 @@ type TestService interface {
 			Expect(codeStr).To(ContainSubstring("type ArtistInput struct"))
 
 			// Check there are no export wrappers
-			Expect(codeStr).NotTo(ContainSubstring("//export"))
+			Expect(codeStr).NotTo(ContainSubstring("//go:wasmexport"))
 			Expect(codeStr).NotTo(ContainSubstring("pdk.InputJSON"))
 		})
 	})
@@ -941,7 +941,7 @@ type OnInitOutput struct {
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
-			Expect(codeStr).To(ContainSubstring("//export nd_on_init"))
+			Expect(codeStr).To(ContainSubstring("//go:wasmexport nd_on_init"))
 			Expect(codeStr).To(ContainSubstring("type InitProvider interface"))
 
 			// Generate stub code

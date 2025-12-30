@@ -129,7 +129,7 @@ func Register(impl Scrobbler) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//export nd_scrobbler_is_authorized
+//go:wasmexport nd_scrobbler_is_authorized
 func _NdScrobblerIsAuthorized() int32 {
 	if isAuthorizedImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -156,7 +156,7 @@ func _NdScrobblerIsAuthorized() int32 {
 	return 0
 }
 
-//export nd_scrobbler_now_playing
+//go:wasmexport nd_scrobbler_now_playing
 func _NdScrobblerNowPlaying() int32 {
 	if nowPlayingImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -177,7 +177,7 @@ func _NdScrobblerNowPlaying() int32 {
 	return 0
 }
 
-//export nd_scrobbler_scrobble
+//go:wasmexport nd_scrobbler_scrobble
 func _NdScrobblerScrobble() int32 {
 	if scrobbleImpl == nil {
 		// Return standard code - host will skip this plugin gracefully

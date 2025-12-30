@@ -102,7 +102,7 @@ func Register(impl WebSocket) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//export nd_websocket_on_text_message
+//go:wasmexport nd_websocket_on_text_message
 func _NdWebsocketOnTextMessage() int32 {
 	if textMessageImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -123,7 +123,7 @@ func _NdWebsocketOnTextMessage() int32 {
 	return 0
 }
 
-//export nd_websocket_on_binary_message
+//go:wasmexport nd_websocket_on_binary_message
 func _NdWebsocketOnBinaryMessage() int32 {
 	if binaryMessageImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -144,7 +144,7 @@ func _NdWebsocketOnBinaryMessage() int32 {
 	return 0
 }
 
-//export nd_websocket_on_error
+//go:wasmexport nd_websocket_on_error
 func _NdWebsocketOnError() int32 {
 	if errorImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
@@ -165,7 +165,7 @@ func _NdWebsocketOnError() int32 {
 	return 0
 }
 
-//export nd_websocket_on_close
+//go:wasmexport nd_websocket_on_close
 func _NdWebsocketOnClose() int32 {
 	if closeImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
