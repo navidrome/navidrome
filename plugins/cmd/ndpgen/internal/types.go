@@ -15,6 +15,103 @@ type Service struct {
 	Structs    []StructDef // Structs used by this service
 }
 
+// Capability represents a parsed capability interface for plugin exports.
+type Capability struct {
+	Name        string       // Package name from annotation (e.g., "metadata")
+	Interface   string       // Go interface name (e.g., "MetadataAgent")
+	Required    bool         // If true, all methods must be implemented
+	Methods     []Export     // Methods marked with //nd:export
+	Doc         string       // Documentation comment for the capability
+	Structs     []StructDef  // Structs used by this capability
+	TypeAliases []TypeAlias  // Type aliases used by this capability
+	Consts      []ConstGroup // Const groups used by this capability
+}
+
+// TypeAlias represents a type alias definition (e.g., type ScrobblerErrorType string).
+type TypeAlias struct {
+	Name string // Type name
+	Type string // Underlying type
+	Doc  string // Documentation comment
+}
+
+// ConstGroup represents a group of const definitions.
+type ConstGroup struct {
+	Type   string     // Type name for typed consts (empty for untyped)
+	Values []ConstDef // Const definitions
+}
+
+// ConstDef represents a single const definition.
+type ConstDef struct {
+	Name  string // Const name
+	Value string // Const value
+	Doc   string // Documentation comment
+}
+
+// KnownStructs returns a map of struct names defined in this capability.
+func (c Capability) KnownStructs() map[string]bool {
+	result := make(map[string]bool)
+	for _, st := range c.Structs {
+		result[st.Name] = true
+	}
+	return result
+}
+
+// Export represents an exported WASM function within a capability.
+type Export struct {
+	Name       string // Go method name (e.g., "GetArtistBiography")
+	ExportName string // WASM export name (e.g., "nd_get_artist_biography")
+	Input      Param  // Single input parameter (the struct type)
+	Output     Param  // Single output return value (the struct type)
+	Doc        string // Documentation comment for the method
+}
+
+// ProviderInterfaceName returns the optional provider interface name.
+// For a method "GetArtistBiography", returns "ArtistBiographyProvider".
+func (e Export) ProviderInterfaceName() string {
+	// Remove "Get", "On", etc. prefixes and add "Provider" suffix
+	name := e.Name
+	for _, prefix := range []string{"Get", "On"} {
+		if strings.HasPrefix(name, prefix) {
+			name = name[len(prefix):]
+			break
+		}
+	}
+	return name + "Provider"
+}
+
+// ImplVarName returns the internal implementation variable name.
+// For "GetArtistBiography", returns "artistBiographyImpl".
+func (e Export) ImplVarName() string {
+	name := e.Name
+	for _, prefix := range []string{"Get", "On"} {
+		if strings.HasPrefix(name, prefix) {
+			name = name[len(prefix):]
+			break
+		}
+	}
+	// Convert to camelCase
+	if len(name) > 0 {
+		name = strings.ToLower(string(name[0])) + name[1:]
+	}
+	return name + "Impl"
+}
+
+// ExportFuncName returns the unexported WASM export function name.
+// For "nd_get_artist_biography", returns "_ndGetArtistBiography".
+func (e Export) ExportFuncName() string {
+	// Convert snake_case to PascalCase
+	parts := strings.Split(e.ExportName, "_")
+	var result strings.Builder
+	result.WriteString("_")
+	for _, part := range parts {
+		if len(part) > 0 {
+			result.WriteString(strings.ToUpper(string(part[0])))
+			result.WriteString(part[1:])
+		}
+	}
+	return result.String()
+}
+
 // StructDef represents a Go struct type definition.
 type StructDef struct {
 	Name   string     // Go struct name (e.g., "Library")

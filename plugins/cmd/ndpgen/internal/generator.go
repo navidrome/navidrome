@@ -303,3 +303,101 @@ func GenerateGoMod() ([]byte, error) {
 	}
 	return tmplContent, nil
 }
+
+// capabilityTemplateData holds data for capability template execution.
+type capabilityTemplateData struct {
+	Package    string
+	Capability Capability
+}
+
+// capabilityFuncMap returns template functions for capability code generation.
+func capabilityFuncMap(cap Capability) template.FuncMap {
+	return template.FuncMap{
+		"formatDoc":         formatDoc,
+		"indent":            indentText,
+		"agentName":         capabilityAgentName,
+		"providerInterface": func(e Export) string { return e.ProviderInterfaceName() },
+		"implVar":           func(e Export) string { return e.ImplVarName() },
+		"exportFunc":        func(e Export) string { return e.ExportFuncName() },
+	}
+}
+
+// indentText adds n tabs to each line of text.
+func indentText(n int, s string) string {
+	indent := strings.Repeat("\t", n)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = indent + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// capabilityAgentName returns the interface name for a capability.
+// Uses the Go interface name stripped of common suffixes.
+func capabilityAgentName(cap Capability) string {
+	name := cap.Interface
+	// Remove common suffixes to get a clean name
+	for _, suffix := range []string{"Agent", "Callback", "Service"} {
+		if strings.HasSuffix(name, suffix) {
+			name = name[:len(name)-len(suffix)]
+			break
+		}
+	}
+	// Use the shortened name or the original if no suffix found
+	if name == "" {
+		name = cap.Interface
+	}
+	return name
+}
+
+// GenerateCapabilityGo generates Go export wrapper code for a capability.
+func GenerateCapabilityGo(cap Capability, pkgName string) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/capability.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading capability template: %w", err)
+	}
+
+	tmpl, err := template.New("capability").Funcs(capabilityFuncMap(cap)).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := capabilityTemplateData{
+		Package:    pkgName,
+		Capability: cap,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// GenerateCapabilityGoStub generates stub code for non-WASM platforms.
+func GenerateCapabilityGoStub(cap Capability, pkgName string) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/capability_stub.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading capability stub template: %w", err)
+	}
+
+	tmpl, err := template.New("capability_stub").Funcs(capabilityFuncMap(cap)).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	data := capabilityTemplateData{
+		Package:    pkgName,
+		Capability: cap,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

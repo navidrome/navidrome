@@ -1,14 +1,6 @@
 // Wikimedia plugin for Navidrome - fetches artist metadata from Wikidata, DBpedia and Wikipedia.
 //
-// This plugin was generated using:
-//
-//	xtp plugin init --schema-file plugins/schemas/metadata_agent.yaml --template go --path ./wikimedia --name wikimedia-plugin
-//
 // Build with:
-//
-//	xtp plugin build
-//
-// Or manually:
 //
 //	tinygo build -o wikimedia.wasm -target wasip1 -buildmode=c-shared .
 //
@@ -22,7 +14,23 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/extism/go-pdk"
+	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+)
+
+// wikimediaPlugin implements the metadata provider interfaces for the methods we support.
+type wikimediaPlugin struct{}
+
+// init registers the plugin implementation
+func init() {
+	metadata.Register(&wikimediaPlugin{})
+}
+
+// Ensure wikimediaPlugin implements the provider interfaces
+var (
+	_ metadata.ArtistURLProvider       = (*wikimediaPlugin)(nil)
+	_ metadata.ArtistBiographyProvider = (*wikimediaPlugin)(nil)
+	_ metadata.ArtistImagesProvider    = (*wikimediaPlugin)(nil)
 )
 
 const (
@@ -232,15 +240,15 @@ func getMBID(mbid *string) string {
 	return *mbid
 }
 
-// NdGetArtistUrl returns the Wikipedia URL for an artist
-func NdGetArtistUrl(input ArtistInput) (ArtistURLOutput, error) {
-	mbid := getMBID(input.Mbid)
+// GetArtistURL returns the Wikipedia URL for an artist
+func (*wikimediaPlugin) GetArtistURL(input metadata.ArtistInput) (metadata.ArtistURLOutput, error) {
+	mbid := getMBID(input.MBID)
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistURL: name=%s, mbid=%s", input.Name, mbid))
 
 	// 1. Try Wikidata (MBID first, then name)
 	wikiURL, err := getWikidataWikipediaURL(mbid, input.Name)
 	if err == nil && wikiURL != "" {
-		return ArtistURLOutput{Url: wikiURL}, nil
+		return metadata.ArtistURLOutput{URL: wikiURL}, nil
 	}
 	if err != nil {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikidata URL failed: %v", err))
@@ -250,7 +258,7 @@ func NdGetArtistUrl(input ArtistInput) (ArtistURLOutput, error) {
 	if input.Name != "" {
 		wikiURL, err = getDBpediaWikipediaURL(input.Name)
 		if err == nil && wikiURL != "" {
-			return ArtistURLOutput{Url: wikiURL}, nil
+			return metadata.ArtistURLOutput{URL: wikiURL}, nil
 		}
 		if err != nil {
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia URL failed: %v", err))
@@ -261,15 +269,15 @@ func NdGetArtistUrl(input ArtistInput) (ArtistURLOutput, error) {
 	if input.Name != "" {
 		searchURL := fmt.Sprintf("https://en.wikipedia.org/w/index.php?search=%s", url.QueryEscape(input.Name))
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("URL not found, falling back to search URL: %s", searchURL))
-		return ArtistURLOutput{Url: searchURL}, nil
+		return metadata.ArtistURLOutput{URL: searchURL}, nil
 	}
 
-	return ArtistURLOutput{}, errors.New("could not determine Wikipedia URL")
+	return metadata.ArtistURLOutput{}, errors.New("could not determine Wikipedia URL")
 }
 
-// NdGetArtistBiography returns the biography for an artist from Wikipedia
-func NdGetArtistBiography(input ArtistInput) (ArtistBiographyOutput, error) {
-	mbid := getMBID(input.Mbid)
+// GetArtistBiography returns the biography for an artist from Wikipedia
+func (*wikimediaPlugin) GetArtistBiography(input metadata.ArtistInput) (metadata.ArtistBiographyOutput, error) {
+	mbid := getMBID(input.MBID)
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistBiography: name=%s, mbid=%s", input.Name, mbid))
 
 	// 1. Get Wikipedia URL (using the logic from GetArtistURL)
@@ -297,7 +305,7 @@ func NdGetArtistBiography(input ArtistInput) (ArtistBiographyOutput, error) {
 			bio, err := getWikipediaExtract(pageTitle)
 			if err == nil && bio != "" {
 				pdk.Log(pdk.LogDebug, "Found Wikipedia extract")
-				return ArtistBiographyOutput{Biography: bio}, nil
+				return metadata.ArtistBiographyOutput{Biography: bio}, nil
 			}
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikipedia extract failed: %v", err))
 		} else {
@@ -311,18 +319,18 @@ func NdGetArtistBiography(input ArtistInput) (ArtistBiographyOutput, error) {
 		bio, err := getDBpediaComment(input.Name)
 		if err == nil && bio != "" {
 			pdk.Log(pdk.LogDebug, "Found DBpedia comment")
-			return ArtistBiographyOutput{Biography: bio}, nil
+			return metadata.ArtistBiographyOutput{Biography: bio}, nil
 		}
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia comment failed: %v", err))
 	}
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Biography not found for: %s (%s)", input.Name, mbid))
-	return ArtistBiographyOutput{}, errors.New("biography not found")
+	return metadata.ArtistBiographyOutput{}, errors.New("biography not found")
 }
 
-// NdGetArtistImages returns artist images from Wikidata
-func NdGetArtistImages(input ArtistInput) (ArtistImagesOutput, error) {
-	mbid := getMBID(input.Mbid)
+// GetArtistImages returns artist images from Wikidata
+func (*wikimediaPlugin) GetArtistImages(input metadata.ArtistInput) (metadata.ArtistImagesOutput, error) {
+	mbid := getMBID(input.MBID)
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistImages: name=%s, mbid=%s", input.Name, mbid))
 
 	var q string
@@ -332,43 +340,23 @@ func NdGetArtistImages(input ArtistInput) (ArtistImagesOutput, error) {
 		escapedName := strings.ReplaceAll(input.Name, "\"", "\\\"")
 		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist rdfs:label "%s"@en; wdt:P18 ?img } LIMIT 1`, escapedName)
 	} else {
-		return ArtistImagesOutput{}, errors.New("MBID or Name required for Wikidata Image lookup")
+		return metadata.ArtistImagesOutput{}, errors.New("MBID or Name required for Wikidata Image lookup")
 	}
 
 	result, err := sparqlQuery(wikidataEndpoint, q)
 	if err != nil {
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, mbid))
-		return ArtistImagesOutput{}, errors.New("image not found")
+		return metadata.ArtistImagesOutput{}, errors.New("image not found")
 	}
 	if result.Results.Bindings[0].Img != nil {
-		return ArtistImagesOutput{
-			Images: []ImageInfo{{Url: result.Results.Bindings[0].Img.Value, Size: 0}},
+		return metadata.ArtistImagesOutput{
+			Images: []metadata.ImageInfo{{URL: result.Results.Bindings[0].Img.Value, Size: 0}},
 		}, nil
 	}
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, mbid))
-	return ArtistImagesOutput{}, errors.New("image not found")
+	return metadata.ArtistImagesOutput{}, errors.New("image not found")
 }
 
-// The functions below are not implemented - they return errors to indicate
-// Navidrome should fall back to other agents.
-
-func NdGetAlbumImages(input AlbumInput) (AlbumImagesOutput, error) {
-	return AlbumImagesOutput{}, errors.New("not implemented")
-}
-
-func NdGetAlbumInfo(input AlbumInput) (AlbumInfoOutput, error) {
-	return AlbumInfoOutput{}, errors.New("not implemented")
-}
-
-func NdGetArtistMbid(input ArtistMBIDInput) (ArtistMBIDOutput, error) {
-	return ArtistMBIDOutput{}, errors.New("not implemented")
-}
-
-func NdGetArtistTopSongs(input TopSongsInput) (TopSongsOutput, error) {
-	return TopSongsOutput{}, errors.New("not implemented")
-}
-
-func NdGetSimilarArtists(input SimilarArtistsInput) (SimilarArtistsOutput, error) {
-	return SimilarArtistsOutput{}, errors.New("not implemented")
-}
+// Required main function - init() handles registration
+func main() {}

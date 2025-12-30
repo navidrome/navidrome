@@ -17,6 +17,10 @@ var (
 	hostServicePattern = regexp.MustCompile(`//nd:hostservice\s+(.*)`)
 	// //nd:hostfunc [name=CustomName]
 	hostFuncPattern = regexp.MustCompile(`//nd:hostfunc(?:\s+(.*))?`)
+	// //nd:capability name=PackageName [required=true]
+	capabilityPattern = regexp.MustCompile(`//nd:capability\s+(.*)`)
+	// //nd:export name=ExportName
+	exportPattern = regexp.MustCompile(`//nd:export\s+(.*)`)
 	// key=value pairs
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
 )
@@ -49,6 +53,223 @@ func ParseDirectory(dir string) ([]Service, error) {
 	}
 
 	return services, nil
+}
+
+// ParseCapabilities parses all Go source files in a directory and extracts capabilities.
+func ParseCapabilities(dir string) ([]Capability, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading directory: %w", err)
+	}
+
+	var capabilities []Capability
+	fset := token.NewFileSet()
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		// Skip generated files, test files, and doc.go
+		if strings.HasSuffix(entry.Name(), "_gen.go") ||
+			strings.HasSuffix(entry.Name(), "_test.go") ||
+			entry.Name() == "doc.go" {
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
+		parsed, err := parseCapabilityFile(fset, path)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
+		}
+		capabilities = append(capabilities, parsed...)
+	}
+
+	return capabilities, nil
+}
+
+// parseCapabilityFile parses a single Go source file and extracts capabilities.
+func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error) {
+	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+
+	// First pass: collect all struct definitions in the file
+	allStructs := parseStructs(f)
+	structMap := make(map[string]StructDef)
+	for _, s := range allStructs {
+		structMap[s.Name] = s
+	}
+
+	// Collect type aliases and consts
+	allTypeAliases := parseTypeAliases(f)
+	aliasMap := make(map[string]TypeAlias)
+	for _, a := range allTypeAliases {
+		aliasMap[a.Name] = a
+	}
+	allConstGroups := parseConstGroups(f)
+
+	var capabilities []Capability
+
+	for _, decl := range f.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			continue
+		}
+
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+
+			interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
+			if !ok {
+				continue
+			}
+
+			// Check for //nd:capability annotation in doc comment
+			docText, rawDoc := getDocComment(genDecl, typeSpec)
+			capAnnotation := parseCapabilityAnnotation(rawDoc)
+			if capAnnotation == nil {
+				continue
+			}
+
+			capability := Capability{
+				Name:      capAnnotation["name"],
+				Interface: typeSpec.Name.Name,
+				Required:  capAnnotation["required"] == "true",
+				Doc:       cleanDoc(docText),
+			}
+
+			// Parse methods and collect referenced types
+			referencedTypes := make(map[string]bool)
+			for _, method := range interfaceType.Methods.List {
+				if len(method.Names) == 0 {
+					continue // Embedded interface
+				}
+
+				funcType, ok := method.Type.(*ast.FuncType)
+				if !ok {
+					continue
+				}
+
+				// Check for //nd:export annotation
+				methodDocText, methodRawDoc := getMethodDocComment(method)
+				exportAnnotation := parseExportAnnotation(methodRawDoc)
+				if exportAnnotation == nil {
+					continue
+				}
+
+				export, err := parseExport(method.Names[0].Name, funcType, exportAnnotation, cleanDoc(methodDocText))
+				if err != nil {
+					return nil, fmt.Errorf("parsing export %s.%s: %w", typeSpec.Name.Name, method.Names[0].Name, err)
+				}
+				capability.Methods = append(capability.Methods, export)
+
+				// Collect referenced types from input and output
+				collectReferencedTypes(export.Input.Type, referencedTypes)
+				collectReferencedTypes(export.Output.Type, referencedTypes)
+			}
+
+			// Recursively collect all struct dependencies
+			collectAllStructDependencies(referencedTypes, structMap)
+
+			// Attach referenced structs to the capability
+			for typeName := range referencedTypes {
+				if s, exists := structMap[typeName]; exists {
+					capability.Structs = append(capability.Structs, s)
+				}
+			}
+
+			// Attach referenced type aliases
+			for typeName := range referencedTypes {
+				if a, exists := aliasMap[typeName]; exists {
+					capability.TypeAliases = append(capability.TypeAliases, a)
+				}
+			}
+
+			// Attach const groups that match referenced type aliases
+			for _, group := range allConstGroups {
+				if group.Type == "" {
+					continue
+				}
+				if referencedTypes[group.Type] {
+					capability.Consts = append(capability.Consts, group)
+				}
+			}
+
+			if len(capability.Methods) > 0 {
+				capabilities = append(capabilities, capability)
+			}
+		}
+	}
+
+	return capabilities, nil
+}
+
+// collectAllStructDependencies recursively collects all struct types referenced by other structs.
+func collectAllStructDependencies(referencedTypes map[string]bool, structMap map[string]StructDef) {
+	// Keep iterating until no new types are added
+	for {
+		newTypes := make(map[string]bool)
+		for typeName := range referencedTypes {
+			if s, exists := structMap[typeName]; exists {
+				for _, field := range s.Fields {
+					collectReferencedTypes(field.Type, newTypes)
+				}
+			}
+		}
+		// Check if any new types were found
+		foundNew := false
+		for t := range newTypes {
+			if !referencedTypes[t] {
+				referencedTypes[t] = true
+				foundNew = true
+			}
+		}
+		if !foundNew {
+			break
+		}
+	}
+}
+
+// parseExport parses an export method signature into an Export struct.
+func parseExport(name string, funcType *ast.FuncType, annotation map[string]string, doc string) (Export, error) {
+	export := Export{
+		Name:       name,
+		ExportName: annotation["name"],
+		Doc:        doc,
+	}
+
+	// Capability exports have exactly one input parameter (the struct type)
+	if funcType.Params != nil && len(funcType.Params.List) == 1 {
+		field := funcType.Params.List[0]
+		typeName := typeToString(field.Type)
+		paramName := "input"
+		if len(field.Names) > 0 {
+			paramName = field.Names[0].Name
+		}
+		export.Input = NewParam(paramName, typeName)
+	}
+
+	// Capability exports return (OutputType, error)
+	if funcType.Results != nil {
+		for _, field := range funcType.Results.List {
+			typeName := typeToString(field.Type)
+			if typeName == "error" {
+				continue // Skip error return
+			}
+			paramName := "output"
+			if len(field.Names) > 0 {
+				paramName = field.Names[0].Name
+			}
+			export.Output = NewParam(paramName, typeName)
+			break // Only take the first non-error return
+		}
+	}
+
+	return export, nil
 }
 
 // parseFile parses a single Go source file and extracts host services.
@@ -190,6 +411,104 @@ func parseStructs(f *ast.File) []StructDef {
 	}
 
 	return structs
+}
+
+// parseTypeAliases extracts all type alias definitions from a parsed Go file.
+// Type aliases are non-struct type declarations like: type MyType string
+func parseTypeAliases(f *ast.File) []TypeAlias {
+	var aliases []TypeAlias
+
+	for _, decl := range f.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			continue
+		}
+
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+
+			// Skip struct and interface types
+			if _, isStruct := typeSpec.Type.(*ast.StructType); isStruct {
+				continue
+			}
+			if _, isInterface := typeSpec.Type.(*ast.InterfaceType); isInterface {
+				continue
+			}
+
+			docText, _ := getDocComment(genDecl, typeSpec)
+			aliases = append(aliases, TypeAlias{
+				Name: typeSpec.Name.Name,
+				Type: typeToString(typeSpec.Type),
+				Doc:  cleanDoc(docText),
+			})
+		}
+	}
+
+	return aliases
+}
+
+// parseConstGroups extracts const groups from a parsed Go file.
+func parseConstGroups(f *ast.File) []ConstGroup {
+	var groups []ConstGroup
+
+	for _, decl := range f.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.CONST {
+			continue
+		}
+
+		group := ConstGroup{}
+		for _, spec := range genDecl.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+
+			// Get type if specified
+			if valueSpec.Type != nil && group.Type == "" {
+				group.Type = typeToString(valueSpec.Type)
+			}
+
+			// Extract values
+			for i, name := range valueSpec.Names {
+				def := ConstDef{
+					Name: name.Name,
+				}
+				// Get value if present
+				if i < len(valueSpec.Values) {
+					def.Value = exprToString(valueSpec.Values[i])
+				}
+				// Get doc comment
+				if valueSpec.Doc != nil {
+					def.Doc = cleanDoc(valueSpec.Doc.Text())
+				} else if valueSpec.Comment != nil {
+					def.Doc = cleanDoc(valueSpec.Comment.Text())
+				}
+				group.Values = append(group.Values, def)
+			}
+		}
+
+		if len(group.Values) > 0 {
+			groups = append(groups, group)
+		}
+	}
+
+	return groups
+}
+
+// exprToString converts an AST expression to a Go source string.
+func exprToString(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		return e.Value
+	case *ast.Ident:
+		return e.Name
+	default:
+		return ""
+	}
 }
 
 // parseStructField parses a struct field and returns FieldDef for each name.
@@ -366,6 +685,30 @@ func parseHostFuncAnnotation(doc string) map[string]string {
 				params = make(map[string]string)
 			}
 			return params
+		}
+	}
+	return nil
+}
+
+// parseCapabilityAnnotation extracts //nd:capability annotation parameters.
+func parseCapabilityAnnotation(doc string) map[string]string {
+	for _, line := range strings.Split(doc, "\n") {
+		line = strings.TrimSpace(line)
+		match := capabilityPattern.FindStringSubmatch(line)
+		if match != nil {
+			return parseKeyValuePairs(match[1])
+		}
+	}
+	return nil
+}
+
+// parseExportAnnotation extracts //nd:export annotation parameters.
+func parseExportAnnotation(doc string) map[string]string {
+	for _, line := range strings.Split(doc, "\n") {
+		line = strings.TrimSpace(line)
+		match := exportPattern.FindStringSubmatch(line)
+		if match != nil {
+			return parseKeyValuePairs(match[1])
 		}
 	}
 	return nil
