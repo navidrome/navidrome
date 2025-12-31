@@ -415,6 +415,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
 		"fieldRustType":       func(f FieldDef) string { return f.RustType(knownStructs) },
 		"rustOutputType":      rustOutputType,
+		"isPrimitiveRust":     isPrimitiveRustType,
 		"skipSerializingFunc": skipSerializingFunc,
 		"hasHashMap":          hasHashMap,
 		"agentName":           capabilityAgentName,
@@ -473,7 +474,35 @@ func rustOutputType(goType string) string {
 	if strings.HasPrefix(goType, "*") {
 		return goType[1:]
 	}
+	// Convert Go primitives to Rust primitives
+	switch goType {
+	case "bool":
+		return "bool"
+	case "string":
+		return "String"
+	case "int", "int32":
+		return "i32"
+	case "int64":
+		return "i64"
+	case "float32":
+		return "f32"
+	case "float64":
+		return "f64"
+	}
 	return goType
+}
+
+// isPrimitiveRustType returns true if the Go type maps to a Rust primitive type.
+func isPrimitiveRustType(goType string) bool {
+	// Strip pointer prefix first
+	if strings.HasPrefix(goType, "*") {
+		goType = goType[1:]
+	}
+	switch goType {
+	case "bool", "string", "int", "int32", "int64", "float32", "float64":
+		return true
+	}
+	return false
 }
 
 // rustConstName converts a Go const name to Rust convention (SCREAMING_SNAKE_CASE).
