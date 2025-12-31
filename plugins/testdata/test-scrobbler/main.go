@@ -17,10 +17,8 @@ func init() {
 type testScrobbler struct{}
 
 // IsAuthorized checks if a user is authorized.
-func (t *testScrobbler) IsAuthorized(scrobbler.IsAuthorizedRequest) (*scrobbler.IsAuthorizedResponse, error) {
-	return &scrobbler.IsAuthorizedResponse{
-		Authorized: checkAuthConfig(),
-	}, nil
+func (t *testScrobbler) IsAuthorized(scrobbler.IsAuthorizedRequest) (bool, error) {
+	return checkAuthConfig(), nil
 }
 
 // NowPlaying sends a now playing notification.

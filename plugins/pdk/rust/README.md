@@ -34,7 +34,7 @@ The Scrobbler capability requires all methods to be implemented:
 
 ```rust
 use nd_pdk::scrobbler::{
-    Error, IsAuthorizedRequest, IsAuthorizedResponse,
+    Error, IsAuthorizedRequest,
     NowPlayingRequest, ScrobbleRequest, Scrobbler,
 };
 
@@ -45,8 +45,8 @@ nd_pdk::register_scrobbler!(MyPlugin);
 struct MyPlugin;
 
 impl Scrobbler for MyPlugin {
-    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error> {
-        Ok(IsAuthorizedResponse { authorized: true })
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error> {
+        Ok(true)
     }
 
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error> {

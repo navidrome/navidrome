@@ -20,7 +20,7 @@
 use extism_pdk::*;
 use nd_pdk::host::{artwork, scheduler};
 use nd_pdk::scrobbler::{
-    Error as ScrobblerError, IsAuthorizedRequest, IsAuthorizedResponse, NowPlayingRequest,
+    Error as ScrobblerError, IsAuthorizedRequest, NowPlayingRequest,
     ScrobbleRequest, Scrobbler, SCROBBLER_ERROR_NOT_AUTHORIZED, SCROBBLER_ERROR_RETRY_LATER,
 };
 use nd_pdk::scheduler::{
@@ -104,18 +104,18 @@ fn get_image_url(track_id: &str) -> String {
 // ============================================================================
 
 impl Scrobbler for DiscordPlugin {
-    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, ScrobblerError> {
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, ScrobblerError> {
         let (_, users) = match get_config() {
             Ok(config) => config,
             Err(e) => {
                 error!("Failed to get config: {:?}", e);
-                return Ok(IsAuthorizedResponse { authorized: false });
+                return Ok(false);
             }
         };
 
         let authorized = users.contains_key(&req.username);
         info!("IsAuthorized for user {}: {}", req.username, authorized);
-        Ok(IsAuthorizedResponse { authorized })
+        Ok(authorized)
     }
 
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), ScrobblerError> {
