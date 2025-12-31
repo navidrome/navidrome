@@ -3,6 +3,7 @@ package core_test
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -83,6 +84,26 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Name).To(Equal("Test Playlist"))
 				Expect(pls.Tracks).To(HaveLen(1))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+			})
+
+			It("stores playlist paths normalized to NFC", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileRepo{}
+				ps = core.NewPlaylists(ds)
+
+				nfdName := "cafe" + string([]rune{'\u0301'}) + ".m3u"
+				playlistPath := filepath.Join(tmpDir, nfdName)
+				Expect(os.WriteFile(playlistPath, []byte("song.mp3\n"), 0o600)).To(Succeed())
+
+				folder = &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir}
+
+				pls, err := ps.ImportFile(ctx, folder, nfdName)
+				Expect(err).ToNot(HaveOccurred())
+
+				normalizedPath := model.NormalizePlaylistPath(playlistPath)
+				Expect(pls.Path).To(Equal(normalizedPath))
+				Expect(mockPlsRepo.last.Path).To(Equal(normalizedPath))
 			})
 
 			It("parses UTF-16 LE encoded playlists with BOM and converts to UTF-8", func() {
@@ -426,20 +447,19 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("handles Unicode normalization when comparing paths (NFD vs NFC)", func() {
-			// Simulate macOS filesystem: stores paths in NFD (decomposed) form
-			// "è" (U+00E8) in NFC becomes "e" + "◌̀" (U+0065 + U+0300) in NFD
-			nfdPath := "artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
-			repo.data = []string{nfdPath}
+			// Simulate database storing NFC (composed) form
+			nfcPath := "artist/Mich\u00E8le/song.mp3" // NFC: single è character
+			repo.data = []string{nfcPath}
 
-			// Simulate Apple Music M3U: uses NFC (composed) form
-			nfcPath := "/music/artist/Mich\u00E8le/song.mp3" // NFC: single è character
-			m3u := nfcPath + "\n"
+			// Playlist entry uses NFD (decomposed) form
+			nfdPath := "/music/artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
+			m3u := nfdPath + "\n"
 			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
 			// Should match despite different Unicode normalization forms
-			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
+			Expect(pls.Tracks[0].Path).To(Equal(nfcPath))
 		})
 
 	})
@@ -542,8 +562,8 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
-		// Normalize the data path to NFD (simulates macOS filesystem storage)
-		normalizedDataPath := norm.NFD.String(dataPath)
+		// Normalize the data path to NFC (matches playlist normalization)
+		normalizedDataPath := norm.NFC.String(dataPath)
 
 		for _, requestPath := range paths {
 			// Strip library qualifier if present (format: "libraryID:path")
@@ -556,9 +576,8 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 				}
 			}
 
-			// The request path should already be normalized to NFD by production code
-			// before calling FindByPaths (to match DB storage)
-			normalizedRequestPath := norm.NFD.String(actualPath)
+			// The request path should already be normalized to NFC by production code
+			normalizedRequestPath := norm.NFC.String(actualPath)
 
 			// Case-insensitive comparison (like SQL's "collate nocase")
 			if strings.EqualFold(normalizedRequestPath, normalizedDataPath) {
