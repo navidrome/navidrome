@@ -26,7 +26,8 @@ type (
 	}
 
 	xtpIOParam struct {
-		Ref         string `yaml:"$ref"`
+		Ref         string `yaml:"$ref,omitempty"`
+		Type        string `yaml:"type,omitempty"`
 		ContentType string `yaml:"contentType"`
 	}
 
@@ -87,12 +88,30 @@ func buildExport(export Export) xtpExport {
 		}
 	}
 	if export.Output.Type != "" {
-		e.Output = &xtpIOParam{
-			Ref:         "#/components/schemas/" + strings.TrimPrefix(export.Output.Type, "*"),
-			ContentType: "application/json",
+		outputType := strings.TrimPrefix(export.Output.Type, "*")
+		// Check if output is a primitive type
+		if isPrimitiveGoType(outputType) {
+			e.Output = &xtpIOParam{
+				Type:        goTypeToXTPType(outputType),
+				ContentType: "application/json",
+			}
+		} else {
+			e.Output = &xtpIOParam{
+				Ref:         "#/components/schemas/" + outputType,
+				ContentType: "application/json",
+			}
 		}
 	}
 	return e
+}
+
+// isPrimitiveGoType returns true if the Go type is a primitive type.
+func isPrimitiveGoType(goType string) bool {
+	switch goType {
+	case "bool", "string", "int", "int32", "int64", "float32", "float64", "[]byte":
+		return true
+	}
+	return false
 }
 
 func buildSchemas(cap Capability) yaml.Node {
@@ -102,12 +121,17 @@ func buildSchemas(cap Capability) yaml.Node {
 		knownTypes[alias.Name] = true
 	}
 
+	// Collect types that are actually used by exports
+	usedTypes := collectUsedTypes(cap, knownTypes)
+
 	// Sort structs by name for consistent output
 	structNames := make([]string, 0, len(cap.Structs))
 	structMap := make(map[string]StructDef)
 	for _, st := range cap.Structs {
-		structNames = append(structNames, st.Name)
-		structMap[st.Name] = st
+		if usedTypes[st.Name] {
+			structNames = append(structNames, st.Name)
+			structMap[st.Name] = st
+		}
 	}
 	sort.Strings(structNames)
 
@@ -116,8 +140,11 @@ func buildSchemas(cap Capability) yaml.Node {
 		addToMap(&schemas, name, buildObjectSchema(st, knownTypes))
 	}
 
-	// Build enum types from type aliases
+	// Build enum types from type aliases (only if used by exports)
 	for _, alias := range cap.TypeAliases {
+		if !usedTypes[alias.Name] {
+			continue
+		}
 		if alias.Type == "string" {
 			for _, cg := range cap.Consts {
 				if cg.Type == alias.Name {
@@ -129,6 +156,48 @@ func buildSchemas(cap Capability) yaml.Node {
 	}
 
 	return schemas
+}
+
+// collectUsedTypes returns a set of type names that are reachable from exports.
+func collectUsedTypes(cap Capability, knownTypes map[string]bool) map[string]bool {
+	used := make(map[string]bool)
+
+	// Start with types directly referenced by exports
+	for _, export := range cap.Methods {
+		if export.Input.Type != "" {
+			addTypeAndDeps(strings.TrimPrefix(export.Input.Type, "*"), cap, knownTypes, used)
+		}
+		if export.Output.Type != "" {
+			outputType := strings.TrimPrefix(export.Output.Type, "*")
+			if !isPrimitiveGoType(outputType) {
+				addTypeAndDeps(outputType, cap, knownTypes, used)
+			}
+		}
+	}
+
+	return used
+}
+
+// addTypeAndDeps adds a type and all its dependencies to the used set.
+func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, used map[string]bool) {
+	if used[typeName] || !knownTypes[typeName] {
+		return
+	}
+	used[typeName] = true
+
+	// Find the struct and add its field types
+	for _, st := range cap.Structs {
+		if st.Name == typeName {
+			for _, field := range st.Fields {
+				fieldType := strings.TrimPrefix(field.Type, "*")
+				fieldType = strings.TrimPrefix(fieldType, "[]")
+				if knownTypes[fieldType] {
+					addTypeAndDeps(fieldType, cap, knownTypes, used)
+				}
+			}
+			return
+		}
+	}
 }
 
 func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema {

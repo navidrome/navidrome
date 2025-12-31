@@ -115,7 +115,7 @@ macro_rules! register_{{snakeCase .Package}} {
             {{- if .HasInput}}
             req: extism_pdk::Json<$crate::{{snakeCase $.Package}}::{{rustOutputType .Input.Type}}>
             {{- end}}
-        ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<$crate::{{snakeCase $.Package}}::{{rustOutputType .Output.Type}}>{{else}}(){{end}}> {
+        ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<{{if isPrimitiveRust .Output.Type}}{{rustOutputType .Output.Type}}{{else}}$crate::{{snakeCase $.Package}}::{{rustOutputType .Output.Type}}{{end}}>{{else}}(){{end}}> {
             let plugin = <$plugin_type>::default();
             {{- if and .HasInput .HasOutput}}
             let result = $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
@@ -162,7 +162,7 @@ macro_rules! {{registerMacroName .Name}} {
             {{- if .HasInput}}
             req: extism_pdk::Json<$crate::{{snakeCase $.Package}}::{{rustOutputType .Input.Type}}>
             {{- end}}
-        ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<$crate::{{snakeCase $.Package}}::{{rustOutputType .Output.Type}}>{{else}}(){{end}}> {
+        ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<{{if isPrimitiveRust .Output.Type}}{{rustOutputType .Output.Type}}{{else}}$crate::{{snakeCase $.Package}}::{{rustOutputType .Output.Type}}{{end}}>{{else}}(){{end}}> {
             let plugin = <$plugin_type>::default();
             {{- if and .HasInput .HasOutput}}
             let result = $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
