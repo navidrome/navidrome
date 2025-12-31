@@ -5,7 +5,10 @@
 //
 // Usage:
 //
-//	# Generate host wrappers (from plugins/host to plugins/pdk)
+//	# Generate host wrappers for Navidrome server (output to input directory)
+//	ndpgen -host-wrappers -input=./plugins/host -package=host
+//
+//	# Generate PDK client wrappers (from plugins/host to plugins/pdk)
 //	ndpgen -host-only -input=./plugins/host -output=./plugins/pdk
 //
 //	# Generate capability wrappers (from plugins/capabilities to plugins/pdk)
@@ -15,6 +18,7 @@
 //	ndpgen -schemas -input=./plugins/capabilities
 //
 // Output directories:
+//   - Host wrappers:   $input/<servicename>_gen.go (server-side, used by Navidrome)
 //   - Host functions:  $output/go/host/, $output/python/host/, $output/rust/host/
 //   - Capabilities:    $output/go/<capability>/ (e.g., $output/go/metadata/)
 //   - Schemas:         $input/<capability>.yaml (co-located with Go sources)
@@ -24,7 +28,8 @@
 //	-input           Input directory containing Go source files with annotated interfaces
 //	-output          Output directory base for generated files (default: same as input)
 //	-package         Output package name for Go (default: host for host-only, auto for capabilities)
-//	-host-only       Generate only host function wrappers
+//	-host-wrappers   Generate server-side host wrappers (used by Navidrome, output to input directory)
+//	-host-only       Generate PDK client wrappers for calling host functions
 //	-capability-only Generate only capability export wrappers
 //	-schemas         Generate XTP YAML schemas from capabilities
 //	-go              Generate Go client wrappers (default: true when not using -python/-rust)
@@ -54,6 +59,7 @@ type config struct {
 	rustOutputDir    string // Rust output: $outputDir/rust/host
 	pkgName          string
 	hostOnly         bool
+	hostWrappers     bool // Generate host wrappers (used by Navidrome server)
 	capabilityOnly   bool
 	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
 	generateGoClient bool
@@ -80,6 +86,14 @@ func main() {
 
 	if cfg.capabilityOnly {
 		if err := runCapabilityGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if cfg.hostWrappers {
+		if err := runHostWrapperGeneration(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -134,6 +148,31 @@ func runSchemaGeneration(cfg *config) error {
 	return generateSchemas(cfg, capabilities)
 }
 
+// runHostWrapperGeneration handles host wrapper code generation.
+// This generates the *_gen.go files in the input directory that are used
+// by Navidrome server to expose host functions to plugins.
+func runHostWrapperGeneration(cfg *config) error {
+	services, err := parseServices(cfg)
+	if err != nil {
+		return err
+	}
+	if len(services) == 0 {
+		if cfg.verbose {
+			fmt.Println("No host services found")
+		}
+		return nil
+	}
+
+	// Generate host wrappers for each service
+	for _, svc := range services {
+		if err := generateHostWrapperCode(svc, cfg.inputDir, cfg.pkgName, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating host wrapper for %s: %w", svc.Name, err)
+		}
+	}
+
+	return nil
+}
+
 // parseConfig parses command-line flags and returns the configuration.
 func parseConfig() (*config, error) {
 	var (
@@ -141,6 +180,7 @@ func parseConfig() (*config, error) {
 		outputDir      = flag.String("output", "", "Base output directory for generated files (default: same as input)")
 		pkgName        = flag.String("package", "", "Output package name for Go (default: host for host-only, auto for capabilities)")
 		hostOnly       = flag.Bool("host-only", false, "Generate only host function wrappers")
+		hostWrappers   = flag.Bool("host-wrappers", false, "Generate host wrappers (used by Navidrome server, output to input directory)")
 		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
@@ -154,6 +194,9 @@ func parseConfig() (*config, error) {
 	// Count how many mode flags are specified
 	modeCount := 0
 	if *hostOnly {
+		modeCount++
+	}
+	if *hostWrappers {
 		modeCount++
 	}
 	if *capabilityOnly {
@@ -170,7 +213,7 @@ func parseConfig() (*config, error) {
 
 	// Cannot specify multiple modes
 	if modeCount > 1 {
-		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -capability-only, -schemas)")
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas)")
 	}
 
 	if *outputDir == "" {
@@ -214,6 +257,7 @@ func parseConfig() (*config, error) {
 		rustOutputDir:    absRustOutput,
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
+		hostWrappers:     *hostWrappers,
 		capabilityOnly:   *capabilityOnly,
 		schemasOnly:      *schemasOnly,
 		generateGoClient: *goClient || !anyLangFlag,
@@ -463,6 +507,38 @@ func generateAllCode(cfg *config, services []internal.Service) error {
 		}
 		if err := generateGoModFile(cfg.goOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 			return fmt.Errorf("generating Go go.mod: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// generateHostWrapperCode generates host wrapper code for a service.
+// This generates the *_gen.go files that are used by Navidrome server
+// to expose host functions to plugins via Extism.
+func generateHostWrapperCode(svc internal.Service, outputDir, pkgName string, dryRun, verbose bool) error {
+	code, err := internal.GenerateHost(svc, pkgName)
+	if err != nil {
+		return fmt.Errorf("generating code: %w", err)
+	}
+
+	formatted, err := format.Source(code)
+	if err != nil {
+		return fmt.Errorf("formatting code: %w\nRaw code:\n%s", err, code)
+	}
+
+	// Host wrapper file follows the pattern <servicename>_gen.go
+	hostFile := filepath.Join(outputDir, strings.ToLower(svc.Name)+"_gen.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", hostFile, formatted)
+	} else {
+		if err := os.WriteFile(hostFile, formatted, 0600); err != nil {
+			return fmt.Errorf("writing file: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated host wrapper: %s\n", hostFile)
 		}
 	}
 
