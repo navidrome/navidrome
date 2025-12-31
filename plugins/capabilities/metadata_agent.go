@@ -11,35 +11,35 @@ package capabilities
 type MetadataAgent interface {
 	// GetArtistMBID retrieves the MusicBrainz ID for an artist.
 	//nd:export name=nd_get_artist_mbid
-	GetArtistMBID(ArtistMBIDRequest) (ArtistMBIDResponse, error)
+	GetArtistMBID(ArtistMBIDRequest) (*ArtistMBIDResponse, error)
 
 	// GetArtistURL retrieves the external URL for an artist.
 	//nd:export name=nd_get_artist_url
-	GetArtistURL(ArtistRequest) (ArtistURLResponse, error)
+	GetArtistURL(ArtistRequest) (*ArtistURLResponse, error)
 
 	// GetArtistBiography retrieves the biography for an artist.
 	//nd:export name=nd_get_artist_biography
-	GetArtistBiography(ArtistRequest) (ArtistBiographyResponse, error)
+	GetArtistBiography(ArtistRequest) (*ArtistBiographyResponse, error)
 
 	// GetSimilarArtists retrieves similar artists for a given artist.
 	//nd:export name=nd_get_similar_artists
-	GetSimilarArtists(SimilarArtistsRequest) (SimilarArtistsResponse, error)
+	GetSimilarArtists(SimilarArtistsRequest) (*SimilarArtistsResponse, error)
 
 	// GetArtistImages retrieves images for an artist.
 	//nd:export name=nd_get_artist_images
-	GetArtistImages(ArtistRequest) (ArtistImagesResponse, error)
+	GetArtistImages(ArtistRequest) (*ArtistImagesResponse, error)
 
 	// GetArtistTopSongs retrieves top songs for an artist.
 	//nd:export name=nd_get_artist_top_songs
-	GetArtistTopSongs(TopSongsRequest) (TopSongsResponse, error)
+	GetArtistTopSongs(TopSongsRequest) (*TopSongsResponse, error)
 
 	// GetAlbumInfo retrieves album information.
 	//nd:export name=nd_get_album_info
-	GetAlbumInfo(AlbumRequest) (AlbumInfoResponse, error)
+	GetAlbumInfo(AlbumRequest) (*AlbumInfoResponse, error)
 
 	// GetAlbumImages retrieves images for an album.
 	//nd:export name=nd_get_album_images
-	GetAlbumImages(AlbumRequest) (AlbumImagesResponse, error)
+	GetAlbumImages(AlbumRequest) (*AlbumImagesResponse, error)
 }
 
 // ArtistMBIDRequest is the request for GetArtistMBID.

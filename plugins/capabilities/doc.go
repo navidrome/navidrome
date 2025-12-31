@@ -10,7 +10,7 @@
 //	//nd:capability name=metadata
 //	type MetadataAgent interface {
 //	    //nd:export name=nd_get_artist_biography
-//	    GetArtistBiography(ArtistInput) (ArtistBiographyOutput, error)
+//	    GetArtistBiography(ArtistRequest) (*ArtistBiographyResponse, error)
 //	}
 //
 // Annotation Reference:
@@ -35,7 +35,7 @@
 //
 //	// Optional provider interfaces
 //	type ArtistBiographyProvider interface {
-//	    GetArtistBiography(ArtistInput) (ArtistBiographyOutput, error)
+//	    GetArtistBiography(ArtistRequest) (*ArtistBiographyResponse, error)
 //	}
 //
 //	// Registration function
@@ -47,9 +47,9 @@
 //
 //	// Scrobbler requires all methods
 //	type Scrobbler interface {
-//	    IsAuthorized(AuthInput) (AuthOutput, error)
-//	    NowPlaying(NowPlayingInput) (ScrobblerOutput, error)
-//	    Scrobble(ScrobbleInput) (ScrobblerOutput, error)
+//	    IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
+//	    NowPlaying(NowPlayingRequest) error
+//	    Scrobble(ScrobbleRequest) error
 //	}
 //
 //	func Register(impl Scrobbler) { ... }
