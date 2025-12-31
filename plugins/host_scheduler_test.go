@@ -273,7 +273,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(testService.GetScheduleCount()).To(Equal(1))
 
 			// Create a plugin instance
-			instance, err := plugin.instance()
+			instance, err := plugin.instance(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 

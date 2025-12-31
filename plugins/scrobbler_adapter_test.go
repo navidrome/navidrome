@@ -14,18 +14,20 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// ctxWithUser returns a fresh context with the test user.
+// Must be called within each test, not in BeforeAll, because the context
+// from BeforeAll gets cancelled before tests run.
+func ctxWithUser() context.Context {
+	return request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", UserName: "testuser"})
+}
+
 var _ = Describe("ScrobblerPlugin", Ordered, func() {
 	var (
 		scrobblerManager *Manager
 		s                scrobbler.Scrobbler
-		ctx              context.Context
 	)
 
 	BeforeAll(func() {
-		ctx = GinkgoT().Context()
-		// Add user to context for username extraction
-		ctx = request.WithUser(ctx, model.User{ID: "user-1", UserName: "testuser"})
-
 		// Load the scrobbler via a new manager with the test-scrobbler plugin
 		scrobblerManager, _ = createTestManagerWithPlugins(nil, "test-scrobbler"+PackageExtension)
 
@@ -52,7 +54,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 	Describe("IsAuthorized", func() {
 		It("returns true when plugin is configured to authorize", func() {
-			result := s.IsAuthorized(ctx, "user-1")
+			result := s.IsAuthorized(ctxWithUser(), "user-1")
 			Expect(result).To(BeTrue())
 		})
 
@@ -64,7 +66,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			sc, ok := manager.LoadScrobbler("test-scrobbler")
 			Expect(ok).To(BeTrue())
 
-			result := sc.IsAuthorized(ctx, "user-1")
+			result := sc.IsAuthorized(ctxWithUser(), "user-1")
 			Expect(result).To(BeFalse())
 		})
 	})
@@ -82,7 +84,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				DiscNumber:  1,
 			}
 
-			err := s.NowPlaying(ctx, "user-1", track, 30)
+			err := s.NowPlaying(ctxWithUser(), "user-1", track, 30)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -95,7 +97,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(ok).To(BeTrue())
 
 			track := &model.MediaFile{ID: "track-1", Title: "Test Song"}
-			err := sc.NowPlaying(ctx, "user-1", track, 30)
+			err := sc.NowPlaying(ctxWithUser(), "user-1", track, 30)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 		})
@@ -117,7 +119,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				TimeStamp: time.Now(),
 			}
 
-			err := s.Scrobble(ctx, "user-1", sc)
+			err := s.Scrobble(ctxWithUser(), "user-1", sc)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -133,7 +135,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
 				TimeStamp: time.Now(),
 			}
-			err := sc.Scrobble(ctx, "user-1", scrobble)
+			err := sc.Scrobble(ctxWithUser(), "user-1", scrobble)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 		})
@@ -150,7 +152,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
 				TimeStamp: time.Now(),
 			}
-			err := sc.Scrobble(ctx, "user-1", scrobble)
+			err := sc.Scrobble(ctxWithUser(), "user-1", scrobble)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 		})

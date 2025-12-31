@@ -408,7 +408,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			p := manager.plugins["test-cache-plugin"]
 			manager.mu.RUnlock()
 
-			instance, err := p.instance()
+			instance, err := p.instance(ctx)
 			if err != nil {
 				return nil, err
 			}

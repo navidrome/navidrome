@@ -269,8 +269,10 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 
 	// Compile the plugin with all host functions
 	extismConfig := extism.PluginConfig{
-		EnableWasi:    true,
-		RuntimeConfig: wazero.NewRuntimeConfig().WithCompilationCache(m.cache),
+		EnableWasi: true,
+		RuntimeConfig: wazero.NewRuntimeConfig().
+			WithCompilationCache(m.cache).
+			WithCloseOnContextDone(true),
 	}
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
 	if err != nil {
