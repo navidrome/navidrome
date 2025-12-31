@@ -24,7 +24,6 @@ components:
     schemas:
         OnBinaryMessageRequest:
             description: OnBinaryMessageRequest is the request provided when a binary message is received.
-            type: object
             properties:
                 connectionId:
                     type: string
@@ -37,7 +36,6 @@ components:
                 - data
         OnCloseRequest:
             description: OnCloseRequest is the request provided when a WebSocket connection is closed.
-            type: object
             properties:
                 connectionId:
                     type: string
@@ -57,7 +55,6 @@ components:
                 - reason
         OnErrorRequest:
             description: OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
-            type: object
             properties:
                 connectionId:
                     type: string
@@ -70,7 +67,6 @@ components:
                 - error
         OnTextMessageRequest:
             description: OnTextMessageRequest is the request provided when a text message is received.
-            type: object
             properties:
                 connectionId:
                     type: string

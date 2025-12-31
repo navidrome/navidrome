@@ -27,13 +27,13 @@ var _ = Describe("ndpgen CLI", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		// Set testdata directory
-		testdataDir = filepath.Join(mustGetWd(GinkgoT()), "plugins", "cmd", "ndpgen", "testdata")
+		// Set testdata directory (relative to ndpgen root)
+		testdataDir = filepath.Join(mustGetWd(GinkgoT()), "testdata")
 
 		// Build the ndpgen binary
 		ndpgenBin = filepath.Join(os.TempDir(), "ndpgen-test")
 		cmd := exec.Command("go", "build", "-o", ndpgenBin, ".")
-		cmd.Dir = filepath.Join(mustGetWd(GinkgoT()), "plugins", "cmd", "ndpgen")
+		cmd.Dir = mustGetWd(GinkgoT())
 		output, err := cmd.CombinedOutput()
 		Expect(err).ToNot(HaveOccurred(), "Failed to build ndpgen: %s", output)
 		DeferCleanup(func() {
@@ -512,13 +512,19 @@ func mustGetWd(t FullGinkgoTInterface) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Look for ndpgen's own go.mod (the subproject root)
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
+		goModPath := filepath.Join(dir, "go.mod")
+		if _, err := os.Stat(goModPath); err == nil {
+			// Check if this is the ndpgen go.mod by reading it
+			content, err := os.ReadFile(goModPath)
+			if err == nil && strings.Contains(string(content), "plugins/cmd/ndpgen") {
+				return dir
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			t.Fatal("could not find project root")
+			t.Fatal("could not find ndpgen project root")
 		}
 		dir = parent
 	}

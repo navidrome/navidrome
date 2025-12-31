@@ -68,7 +68,6 @@ components:
     schemas:
         AlbumImagesResponse:
             description: AlbumImagesResponse is the response for GetAlbumImages.
-            type: object
             properties:
                 images:
                     type: array
@@ -79,7 +78,6 @@ components:
                 - images
         AlbumInfoResponse:
             description: AlbumInfoResponse is the response for GetAlbumInfo.
-            type: object
             properties:
                 name:
                     type: string
@@ -100,7 +98,6 @@ components:
                 - url
         AlbumRequest:
             description: AlbumRequest is the common request for album-related functions.
-            type: object
             properties:
                 name:
                     type: string
@@ -116,7 +113,6 @@ components:
                 - artist
         ArtistBiographyResponse:
             description: ArtistBiographyResponse is the response for GetArtistBiography.
-            type: object
             properties:
                 biography:
                     type: string
@@ -125,7 +121,6 @@ components:
                 - biography
         ArtistImagesResponse:
             description: ArtistImagesResponse is the response for GetArtistImages.
-            type: object
             properties:
                 images:
                     type: array
@@ -136,7 +131,6 @@ components:
                 - images
         ArtistMBIDRequest:
             description: ArtistMBIDRequest is the request for GetArtistMBID.
-            type: object
             properties:
                 id:
                     type: string
@@ -149,7 +143,6 @@ components:
                 - name
         ArtistMBIDResponse:
             description: ArtistMBIDResponse is the response for GetArtistMBID.
-            type: object
             properties:
                 mbid:
                     type: string
@@ -158,7 +151,6 @@ components:
                 - mbid
         ArtistRef:
             description: ArtistRef is a reference to an artist with name and optional MBID.
-            type: object
             properties:
                 name:
                     type: string
@@ -170,7 +162,6 @@ components:
                 - name
         ArtistRequest:
             description: ArtistRequest is the common request for artist-related functions.
-            type: object
             properties:
                 id:
                     type: string
@@ -186,7 +177,6 @@ components:
                 - name
         ArtistURLResponse:
             description: ArtistURLResponse is the response for GetArtistURL.
-            type: object
             properties:
                 url:
                     type: string
@@ -195,7 +185,6 @@ components:
                 - url
         ImageInfo:
             description: ImageInfo represents an image with URL and size.
-            type: object
             properties:
                 url:
                     type: string
@@ -209,7 +198,6 @@ components:
                 - size
         SimilarArtistsRequest:
             description: SimilarArtistsRequest is the request for GetSimilarArtists.
-            type: object
             properties:
                 id:
                     type: string
@@ -230,7 +218,6 @@ components:
                 - limit
         SimilarArtistsResponse:
             description: SimilarArtistsResponse is the response for GetSimilarArtists.
-            type: object
             properties:
                 artists:
                     type: array
@@ -241,7 +228,6 @@ components:
                 - artists
         SongRef:
             description: SongRef is a reference to a song with name and optional MBID.
-            type: object
             properties:
                 name:
                     type: string
@@ -253,7 +239,6 @@ components:
                 - name
         TopSongsRequest:
             description: TopSongsRequest is the request for GetArtistTopSongs.
-            type: object
             properties:
                 id:
                     type: string
@@ -274,7 +259,6 @@ components:
                 - count
         TopSongsResponse:
             description: TopSongsResponse is the response for GetArtistTopSongs.
-            type: object
             properties:
                 songs:
                     type: array
