@@ -469,6 +469,10 @@ func rustConstType(goType string) string {
 // rustOutputType converts a Go type to Rust for capability method signatures.
 // It handles pointer types specially - for capability outputs, pointers become the base type
 // (not Option<T>) because Rust's Result<T, Error> already provides optional semantics.
+//
+// TODO: Pointer to primitive types (e.g., *string, *int32) are not handled correctly.
+// Currently "*string" returns "string" instead of "String". This would generate invalid
+// Rust code. No current capability uses this pattern, but it should be fixed if needed.
 func rustOutputType(goType string) string {
 	// Strip pointer prefix - capability outputs use Result<T, Error> for optionality
 	if strings.HasPrefix(goType, "*") {
