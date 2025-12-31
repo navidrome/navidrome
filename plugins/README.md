@@ -330,23 +330,23 @@ func ndSchedulerCallback() int32 {
 Add the generated SDK to your `go.mod`:
 
 ```
-require github.com/navidrome/navidrome/plugins/host/go v0.0.0
-replace github.com/navidrome/navidrome/plugins/host/go => ../../host/go
+require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
+replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
 ```
 
 Then import and use:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 // Schedule one-time task in 60 seconds
-scheduleID, err := ndhost.SchedulerScheduleOneTime(60, "my-payload", "")
+scheduleID, err := host.SchedulerScheduleOneTime(60, "my-payload", "")
 
 // Schedule recurring task with cron expression (every hour)
-scheduleID, err := ndhost.SchedulerScheduleRecurring("0 * * * *", "hourly-task", "")
+scheduleID, err := host.SchedulerScheduleRecurring("0 * * * *", "hourly-task", "")
 
 // Cancel a task
-err := ndhost.SchedulerCancelSchedule(scheduleID)
+err := host.SchedulerCancelSchedule(scheduleID)
 ```
 
 ### Cache
@@ -387,13 +387,13 @@ Store and retrieve data in an in-memory TTL-based cache. Each plugin has its own
 Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup):
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 // Cache a value for 1 hour
-ndhost.CacheSetString("api-response", responseData, 3600)
+host.CacheSetString("api-response", responseData, 3600)
 
 // Retrieve (check Exists before using Value)
-result, err := ndhost.CacheGetString("api-response")
+result, err := host.CacheGetString("api-response")
 if result.Exists {
     data := result.Value
 }
@@ -441,31 +441,31 @@ Persistent key-value storage that survives server restarts. Each plugin has its 
 Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup):
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 // Store a value (as raw bytes)
 token := []byte(`{"access_token": "xyz", "refresh_token": "abc"}`)
-_, err := ndhost.KVStoreSet("oauth:spotify", token)
+_, err := host.KVStoreSet("oauth:spotify", token)
 
 // Retrieve a value
-result, err := ndhost.KVStoreGet("oauth:spotify")
+result, err := host.KVStoreGet("oauth:spotify")
 if result.Exists {
     var tokenData map[string]string
     json.Unmarshal(result.Value, &tokenData)
 }
 
 // List all keys with prefix
-keysResult, err := ndhost.KVStoreList("user:")
+keysResult, err := host.KVStoreList("user:")
 for _, key := range keysResult.Keys {
     // Process each key
 }
 
 // Check storage usage
-usageResult, err := KVStoreGetStorageUsed()
+usageResult, err := host.KVStoreGetStorageUsed()
 fmt.Printf("Using %d bytes\n", usageResult.Bytes)
 
 // Delete a value
-KVStoreDelete("oauth:spotify")
+host.KVStoreDelete("oauth:spotify")
 ```
 
 > **Note:** Unlike Cache, KVStore data persists across server restarts. Storage is located at `${DataFolder}/plugins/${pluginID}/kvstore.db`.
@@ -571,19 +571,19 @@ entries, err := os.ReadDir("/libraries/1/Artist")
 Import the Go SDK (see [Scheduler](#scheduler) for `go.mod` setup). The `Library` struct is provided by the SDK:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/host/go"
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 // Get a specific library
-resp, err := ndhost.LibraryGetLibrary(1)
+resp, err := host.LibraryGetLibrary(1)
 if err != nil {
     // Handle error
 }
 library := resp.Result
 
 // Get all libraries
-resp, err := ndhost.LibraryGetAllLibraries()
+resp, err := host.LibraryGetAllLibraries()
 for _, lib := range resp.Result {
-    // lib is of type ndhost.Library
+    // lib is of type host.Library
     fmt.Printf("Library: %s (%d songs)\n", lib.Name, lib.TotalSongs)
 }
 ```
@@ -847,7 +847,7 @@ Generated SDKs for calling host services are in `plugins/pdk/go/`, `plugins/pdk/
 **For Go plugins:** Import the SDK as a Go module:
 
 ```go
-import ndhost "github.com/navidrome/navidrome/plugins/pdk/go/host"
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 ```
 
 Add to your `go.mod`:
