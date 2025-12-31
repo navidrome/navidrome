@@ -111,7 +111,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 			p := manager.plugins["test-artwork"]
 			manager.mu.RUnlock()
 
-			instance, err := p.instance()
+			instance, err := p.instance(ctx)
 			if err != nil {
 				return "", err
 			}

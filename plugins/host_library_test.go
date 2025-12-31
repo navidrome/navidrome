@@ -363,7 +363,7 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 			p := manager.plugins["test-library"]
 			manager.mu.RUnlock()
 
-			instance, err := p.instance()
+			instance, err := p.instance(ctx)
 			if err != nil {
 				return nil, err
 			}

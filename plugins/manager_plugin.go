@@ -20,8 +20,11 @@ type plugin struct {
 	closers      []io.Closer  // Cleanup functions to call on unload
 }
 
-func (p *plugin) instance() (*extism.Plugin, error) {
-	instance, err := p.compiled.Instance(context.Background(), extism.PluginInstanceConfig{
+// instance creates a new plugin instance for the given context.
+// The context is used for cancellation - if cancelled during a call,
+// the module will be terminated and the instance becomes unusable.
+func (p *plugin) instance(ctx context.Context) (*extism.Plugin, error) {
+	instance, err := p.compiled.Instance(ctx, extism.PluginInstanceConfig{
 		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
 	})
 	if err != nil {

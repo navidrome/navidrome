@@ -434,7 +434,7 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 			p := manager.plugins["test-kvstore"]
 			manager.mu.RUnlock()
 
-			instance, err := p.instance()
+			instance, err := p.instance(ctx)
 			if err != nil {
 				return nil, err
 			}
