@@ -77,22 +77,29 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 		return errors.New("plugin ID cannot be empty")
 	}
 
-	// Try update first
-	values, _ := toSQLArgs(*plugin)
-	update := Update(r.tableName).Where(Eq{"id": plugin.ID}).SetMap(values)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-
-	// Insert if not exists
-	plugin.CreatedAt = time.Now()
-	values, _ = toSQLArgs(*plugin)
-	insert := Insert(r.tableName).SetMap(values)
-	_, err = r.executeSQL(insert)
+	// Upsert using INSERT ... ON CONFLICT for atomic operation
+	_, err := r.db.NewQuery(`
+		INSERT INTO plugin (id, path, manifest, config, enabled, last_error, sha256, created_at, updated_at)
+		VALUES ({:id}, {:path}, {:manifest}, {:config}, {:enabled}, {:last_error}, {:sha256}, {:created_at}, {:updated_at})
+		ON CONFLICT(id) DO UPDATE SET
+			path = excluded.path,
+			manifest = excluded.manifest,
+			config = excluded.config,
+			enabled = excluded.enabled,
+			last_error = excluded.last_error,
+			sha256 = excluded.sha256,
+			updated_at = excluded.updated_at
+	`).Bind(dbx.Params{
+		"id":         plugin.ID,
+		"path":       plugin.Path,
+		"manifest":   plugin.Manifest,
+		"config":     plugin.Config,
+		"enabled":    plugin.Enabled,
+		"last_error": plugin.LastError,
+		"sha256":     plugin.SHA256,
+		"created_at": time.Now(),
+		"updated_at": plugin.UpdatedAt,
+	}).Execute()
 	return err
 }
 
