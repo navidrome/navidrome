@@ -26,32 +26,32 @@ func checkConfigError() error {
 	return errors.New(errMsg)
 }
 
-func (t *testMetadataAgent) GetArtistMBID(input metadata.ArtistMBIDRequest) (metadata.ArtistMBIDResponse, error) {
+func (t *testMetadataAgent) GetArtistMBID(input metadata.ArtistMBIDRequest) (*metadata.ArtistMBIDResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.ArtistMBIDResponse{}, err
+		return nil, err
 	}
-	return metadata.ArtistMBIDResponse{MBID: "test-mbid-" + input.Name}, nil
+	return &metadata.ArtistMBIDResponse{MBID: "test-mbid-" + input.Name}, nil
 }
 
-func (t *testMetadataAgent) GetArtistURL(input metadata.ArtistRequest) (metadata.ArtistURLResponse, error) {
+func (t *testMetadataAgent) GetArtistURL(input metadata.ArtistRequest) (*metadata.ArtistURLResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.ArtistURLResponse{}, err
+		return nil, err
 	}
-	return metadata.ArtistURLResponse{URL: "https://test.example.com/artist/" + input.Name}, nil
+	return &metadata.ArtistURLResponse{URL: "https://test.example.com/artist/" + input.Name}, nil
 }
 
-func (t *testMetadataAgent) GetArtistBiography(input metadata.ArtistRequest) (metadata.ArtistBiographyResponse, error) {
+func (t *testMetadataAgent) GetArtistBiography(input metadata.ArtistRequest) (*metadata.ArtistBiographyResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.ArtistBiographyResponse{}, err
+		return nil, err
 	}
-	return metadata.ArtistBiographyResponse{Biography: "Biography for " + input.Name}, nil
+	return &metadata.ArtistBiographyResponse{Biography: "Biography for " + input.Name}, nil
 }
 
-func (t *testMetadataAgent) GetArtistImages(input metadata.ArtistRequest) (metadata.ArtistImagesResponse, error) {
+func (t *testMetadataAgent) GetArtistImages(input metadata.ArtistRequest) (*metadata.ArtistImagesResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.ArtistImagesResponse{}, err
+		return nil, err
 	}
-	return metadata.ArtistImagesResponse{
+	return &metadata.ArtistImagesResponse{
 		Images: []metadata.ImageInfo{
 			{URL: "https://test.example.com/images/" + input.Name + "/large.jpg", Size: 500},
 			{URL: "https://test.example.com/images/" + input.Name + "/small.jpg", Size: 100},
@@ -59,9 +59,9 @@ func (t *testMetadataAgent) GetArtistImages(input metadata.ArtistRequest) (metad
 	}, nil
 }
 
-func (t *testMetadataAgent) GetSimilarArtists(input metadata.SimilarArtistsRequest) (metadata.SimilarArtistsResponse, error) {
+func (t *testMetadataAgent) GetSimilarArtists(input metadata.SimilarArtistsRequest) (*metadata.SimilarArtistsResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.SimilarArtistsResponse{}, err
+		return nil, err
 	}
 	limit := int(input.Limit)
 	if limit == 0 {
@@ -73,12 +73,12 @@ func (t *testMetadataAgent) GetSimilarArtists(input metadata.SimilarArtistsReque
 			Name: input.Name + " Similar " + string(rune('A'+i)),
 		})
 	}
-	return metadata.SimilarArtistsResponse{Artists: artists}, nil
+	return &metadata.SimilarArtistsResponse{Artists: artists}, nil
 }
 
-func (t *testMetadataAgent) GetArtistTopSongs(input metadata.TopSongsRequest) (metadata.TopSongsResponse, error) {
+func (t *testMetadataAgent) GetArtistTopSongs(input metadata.TopSongsRequest) (*metadata.TopSongsResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.TopSongsResponse{}, err
+		return nil, err
 	}
 	count := int(input.Count)
 	if count == 0 {
@@ -90,14 +90,14 @@ func (t *testMetadataAgent) GetArtistTopSongs(input metadata.TopSongsRequest) (m
 			Name: input.Name + " Song " + strconv.Itoa(i+1),
 		})
 	}
-	return metadata.TopSongsResponse{Songs: songs}, nil
+	return &metadata.TopSongsResponse{Songs: songs}, nil
 }
 
-func (t *testMetadataAgent) GetAlbumInfo(input metadata.AlbumRequest) (metadata.AlbumInfoResponse, error) {
+func (t *testMetadataAgent) GetAlbumInfo(input metadata.AlbumRequest) (*metadata.AlbumInfoResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.AlbumInfoResponse{}, err
+		return nil, err
 	}
-	return metadata.AlbumInfoResponse{
+	return &metadata.AlbumInfoResponse{
 		Name:        input.Name,
 		MBID:        "test-album-mbid-" + input.Name,
 		Description: "Description for " + input.Name + " by " + input.Artist,
@@ -105,11 +105,11 @@ func (t *testMetadataAgent) GetAlbumInfo(input metadata.AlbumRequest) (metadata.
 	}, nil
 }
 
-func (t *testMetadataAgent) GetAlbumImages(input metadata.AlbumRequest) (metadata.AlbumImagesResponse, error) {
+func (t *testMetadataAgent) GetAlbumImages(input metadata.AlbumRequest) (*metadata.AlbumImagesResponse, error) {
 	if err := checkConfigError(); err != nil {
-		return metadata.AlbumImagesResponse{}, err
+		return nil, err
 	}
-	return metadata.AlbumImagesResponse{
+	return &metadata.AlbumImagesResponse{
 		Images: []metadata.ImageInfo{
 			{URL: "https://test.example.com/albums/" + input.Name + "/cover.jpg", Size: 500},
 		},
