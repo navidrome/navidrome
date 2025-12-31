@@ -7,7 +7,11 @@ This directory contains the Go interface definitions for Navidrome plugin capabi
 
 ## For Go Plugin Developers
 
-Go developers should use the generated PDK packages in `plugins/pdk/go/`. See the example plugins in `plugins/examples/` for usage patterns.
+Go developers should use the generated PDK packages in `plugins/pdk/go/`. See the example Go plugins in `plugins/examples/` for usage patterns.
+
+## For Rust Plugin Developers
+
+Rust developers should use the generated PDK crate in `plugins/pdk/rust/nd-pdk`. See the example Rust plugins in `plugins/examples` for usage patterns.
 
 ## For Non-Go Plugin Developers
 
@@ -65,17 +69,14 @@ xtp plugin init --schema-file plugins/capabilities/websocket_callback.yaml \
 
 After generating the scaffolding, implement the required functions and build your plugin as a WebAssembly module. The exact build process depends on your chosen language - see the [Extism PDK documentation](https://extism.org/docs/concepts/pdk) for language-specific guides.
 
-## Schema Generation
+## XTP Schema Generation
 
-The YAML schemas are automatically generated from the Go interfaces using `ndpgen`:
+The YAML schemas in this package are automatically generated from the capability Go interfaces using `ndpgen`.
+To regenerate the schemas after modifying the interfaces, run:
 
 ```bash
-go run ./plugins/cmd/ndpgen -schemas -input=./plugins/capabilities
+cd plugins/cmd/ndpgen && go run . -schemas -input=./plugins/capabilities
 ```
-
-### Technical Note: XTP Schema Compatibility
-
-The generated schemas include `type: object` on object schemas. While this is technically not valid according to the [XTP JSON Schema specification](https://raw.githubusercontent.com/dylibso/xtp-bindgen/5090518dd86ba5e734dc225a33066ecc0ed2e12d/plugin/schema.json), it is **required** as a workaround for XTP's code generator to properly resolve type information (especially for structs with empty properties). XTP tolerates this with a validation warning but generates correct code.
 
 ## Resources
 
