@@ -93,15 +93,15 @@ func getImageURL(trackID string) string {
 // ============================================================================
 
 // IsAuthorized checks if a user is authorized for Discord Rich Presence.
-func (p *discordPlugin) IsAuthorized(input scrobbler.IsAuthorizedRequest) (*scrobbler.IsAuthorizedResponse, error) {
+func (p *discordPlugin) IsAuthorized(input scrobbler.IsAuthorizedRequest) (bool, error) {
 	_, users, err := getConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to check user authorization: %w", err)
+		return false, fmt.Errorf("failed to check user authorization: %w", err)
 	}
 
 	_, authorized := users[input.Username]
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("IsAuthorized for user %s: %v", input.Username, authorized))
-	return &scrobbler.IsAuthorizedResponse{Authorized: authorized}, nil
+	return authorized, nil
 }
 
 // NowPlaying sends a now playing notification to Discord.

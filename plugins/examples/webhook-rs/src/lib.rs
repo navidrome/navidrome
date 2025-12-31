@@ -14,7 +14,7 @@
 
 use extism_pdk::{config, error, http, info, warn, HttpRequest};
 use nd_pdk::scrobbler::{
-    Error, IsAuthorizedRequest, IsAuthorizedResponse, NowPlayingRequest, ScrobbleRequest,
+    Error, IsAuthorizedRequest, NowPlayingRequest, ScrobbleRequest,
     Scrobbler,
 };
 
@@ -31,12 +31,12 @@ struct WebhookPlugin;
 
 impl Scrobbler for WebhookPlugin {
     /// Checks if a user is authorized. This plugin authorizes all users.
-    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error> {
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error> {
         info!(
             "Authorization check for user: {} ({})",
             req.username, req.user_id
         );
-        Ok(IsAuthorizedResponse { authorized: true })
+        Ok(true)
     }
 
     /// Handles now playing notifications. This plugin ignores them (webhooks only on scrobble).

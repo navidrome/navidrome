@@ -31,12 +31,6 @@ type IsAuthorizedRequest struct {
 	Username string `json:"username"`
 }
 
-// IsAuthorizedResponse is the response for authorization check.
-type IsAuthorizedResponse struct {
-	// Authorized indicates whether the user is authorized to scrobble.
-	Authorized bool `json:"authorized"`
-}
-
 // NowPlayingRequest is the request for now playing notification.
 type NowPlayingRequest struct {
 	// UserID is the internal Navidrome user ID.
@@ -102,7 +96,7 @@ type TrackInfo struct {
 // all three functions: IsAuthorized, NowPlaying, and Scrobble.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
-	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
+	IsAuthorized(IsAuthorizedRequest) (bool, error)
 	// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
 	NowPlaying(NowPlayingRequest) error
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.

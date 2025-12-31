@@ -6,7 +6,7 @@ exports:
             $ref: '#/components/schemas/IsAuthorizedRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/IsAuthorizedResponse'
+            type: boolean
             contentType: application/json
     nd_scrobbler_now_playing:
         description: NowPlaying sends a now playing notification to the scrobbling service.
@@ -33,15 +33,6 @@ components:
             required:
                 - userId
                 - username
-        IsAuthorizedResponse:
-            description: IsAuthorizedResponse is the response for authorization check.
-            type: object
-            properties:
-                authorized:
-                    type: boolean
-                    description: Authorized indicates whether the user is authorized to scrobble.
-            required:
-                - authorized
         NowPlayingRequest:
             description: NowPlayingRequest is the request for now playing notification.
             type: object
@@ -144,10 +135,3 @@ components:
                 - duration
                 - trackNumber
                 - discNumber
-        ScrobblerError:
-            description: ScrobblerError represents an error type for scrobbling operations.
-            type: string
-            enum:
-                - scrobbler(not_authorized)
-                - scrobbler(retry_later)
-                - scrobbler(unrecoverable)

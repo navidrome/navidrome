@@ -11,7 +11,7 @@ package capabilities
 type Scrobbler interface {
 	// IsAuthorized checks if a user is authorized to scrobble to this service.
 	//nd:export name=nd_scrobbler_is_authorized
-	IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
+	IsAuthorized(IsAuthorizedRequest) (bool, error)
 
 	// NowPlaying sends a now playing notification to the scrobbling service.
 	//nd:export name=nd_scrobbler_now_playing
@@ -28,12 +28,6 @@ type IsAuthorizedRequest struct {
 	UserID string `json:"userId"`
 	// Username is the username of the user.
 	Username string `json:"username"`
-}
-
-// IsAuthorizedResponse is the response for authorization check.
-type IsAuthorizedResponse struct {
-	// Authorized indicates whether the user is authorized to scrobble.
-	Authorized bool `json:"authorized"`
 }
 
 // TrackInfo contains track metadata for scrobbling.
