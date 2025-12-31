@@ -27,13 +27,15 @@ func callPluginFunctionNoOutput[I any](ctx context.Context, plugin *plugin, func
 
 // callPluginFunction is a helper to call a plugin function with input and output types.
 // It handles JSON marshalling/unmarshalling and error checking.
+// The context is used for cancellation - if cancelled during the call, the plugin
+// instance will be terminated and context.Canceled or context.DeadlineExceeded will be returned.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcName string, input I) (O, error) {
 	start := time.Now()
 
 	var result O
 
-	// Create plugin instance
-	p, err := plugin.instance()
+	// Create plugin instance with context for cancellation support
+	p, err := plugin.instance(ctx)
 	if err != nil {
 		return result, fmt.Errorf("failed to create plugin: %w", err)
 	}
@@ -50,8 +52,13 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 	}
 
 	startCall := time.Now()
-	exit, output, err := p.Call(funcName, inputBytes)
+	exit, output, err := p.CallWithContext(ctx, funcName, inputBytes)
 	if err != nil {
+		// If context was cancelled, return that error instead of the plugin error
+		if ctx.Err() != nil {
+			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall))
+			return result, ctx.Err()
+		}
 		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
