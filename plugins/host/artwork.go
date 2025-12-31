@@ -2,7 +2,7 @@ package host
 
 import "context"
 
-// ArtworkService provides artwork URL generation capabilities for plugins.
+// ArtworkService provides artwork public URL generation capabilities for plugins.
 //
 // This service allows plugins to generate public URLs for artwork images of
 // various entity types (artists, albums, tracks, playlists). The generated URLs

@@ -35,7 +35,7 @@ Then import the package in your plugin code:
 
 The following host services are available:
 
-  - Artwork: provides artwork URL generation capabilities for plugins.
+  - Artwork: provides artwork public URL generation capabilities for plugins.
   - Cache: provides in-memory TTL-based caching capabilities for plugins.
   - KVStore: provides persistent key-value storage for plugins.
   - Library: provides access to music library metadata for plugins.

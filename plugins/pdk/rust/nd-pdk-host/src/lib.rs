@@ -32,7 +32,7 @@
 //!
 //! # Available Services
 //!
-//! - [`artwork`] - provides artwork URL generation capabilities for plugins.
+//! - [`artwork`] - provides artwork public URL generation capabilities for plugins.
 //! - [`cache`] - provides in-memory TTL-based caching capabilities for plugins.
 //! - [`kvstore`] - provides persistent key-value storage for plugins.
 //! - [`library`] - provides access to music library metadata for plugins.
@@ -42,7 +42,7 @@
 
 #[doc(hidden)]
 mod nd_host_artwork;
-/// provides artwork URL generation capabilities for plugins.
+/// provides artwork public URL generation capabilities for plugins.
 pub mod artwork {
     pub use super::nd_host_artwork::*;
 }
