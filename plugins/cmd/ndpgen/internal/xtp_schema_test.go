@@ -54,6 +54,10 @@ var _ = Describe("XTP Schema Generation", func() {
 				Expect(schema).NotTo(BeEmpty())
 			})
 
+			It("should validate against XTP JSONSchema", func() {
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
+			})
+
 			It("should have correct version", func() {
 				doc := parseSchema(schema)
 				Expect(doc["version"]).To(Equal("v1-draft"))
@@ -80,7 +84,8 @@ var _ = Describe("XTP Schema Generation", func() {
 				components := doc["components"].(map[string]any)
 				schemas := components["schemas"].(map[string]any)
 				input := schemas["TestInput"].(map[string]any)
-				Expect(input["type"]).To(Equal("object")) // Workaround for XTP code generator
+				// Per XTP spec, ObjectSchema does NOT have a type field - only properties, required, description
+				Expect(input).NotTo(HaveKey("type"))
 				props := input["properties"].(map[string]any)
 				Expect(props).To(HaveKey("name"))
 				Expect(props).To(HaveKey("count"))
@@ -126,6 +131,10 @@ var _ = Describe("XTP Schema Generation", func() {
 				var err error
 				schema, err = GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate against XTP JSONSchema", func() {
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 			})
 
 			It("should not mark required field as nullable", func() {
@@ -202,6 +211,10 @@ var _ = Describe("XTP Schema Generation", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			It("should validate against XTP JSONSchema", func() {
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
+			})
+
 			It("should define enum type with correct values", func() {
 				doc := parseSchema(schema)
 				components := doc["components"].(map[string]any)
@@ -259,6 +272,10 @@ var _ = Describe("XTP Schema Generation", func() {
 				var err error
 				schema, err = GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate against XTP JSONSchema", func() {
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 			})
 
 			It("should define string array with primitive type", func() {
@@ -323,6 +340,9 @@ var _ = Describe("XTP Schema Generation", func() {
 				}
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+
+				// Validate against XTP JSONSchema
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				components := doc["components"].(map[string]any)
@@ -395,7 +415,7 @@ var _ = Describe("XTP Schema Generation", func() {
 		}
 
 		Context("export with primitive string output", func() {
-			It("should use type instead of $ref", func() {
+			It("should use type instead of $ref and validate against XTP JSONSchema", func() {
 				capability := Capability{
 					Name:       "test",
 					SourceFile: "test",
@@ -407,6 +427,7 @@ var _ = Describe("XTP Schema Generation", func() {
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(schema).NotTo(BeEmpty())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				exports := doc["exports"].(map[string]any)
@@ -419,7 +440,7 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 
 		Context("export with primitive bool output", func() {
-			It("should use boolean type", func() {
+			It("should use boolean type and validate against XTP JSONSchema", func() {
 				capability := Capability{
 					Name:       "test",
 					SourceFile: "test",
@@ -430,6 +451,7 @@ var _ = Describe("XTP Schema Generation", func() {
 				}
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				exports := doc["exports"].(map[string]any)
@@ -441,7 +463,7 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 
 		Context("export with primitive int output", func() {
-			It("should use integer type", func() {
+			It("should use integer type and validate against XTP JSONSchema", func() {
 				capability := Capability{
 					Name:       "test",
 					SourceFile: "test",
@@ -452,6 +474,7 @@ var _ = Describe("XTP Schema Generation", func() {
 				}
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				exports := doc["exports"].(map[string]any)
@@ -463,7 +486,7 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 
 		Context("export with pointer to primitive output", func() {
-			It("should strip pointer and use primitive type", func() {
+			It("should strip pointer and use primitive type and validate against XTP JSONSchema", func() {
 				capability := Capability{
 					Name:       "test",
 					SourceFile: "test",
@@ -474,6 +497,7 @@ var _ = Describe("XTP Schema Generation", func() {
 				}
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				exports := doc["exports"].(map[string]any)
@@ -485,7 +509,7 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 
 		Context("export with struct output", func() {
-			It("should still use $ref", func() {
+			It("should still use $ref and validate against XTP JSONSchema", func() {
 				capability := Capability{
 					Name:       "test",
 					SourceFile: "test",
@@ -499,6 +523,7 @@ var _ = Describe("XTP Schema Generation", func() {
 				}
 				schema, err := GenerateSchema(capability)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 				doc := parseSchema(schema)
 				exports := doc["exports"].(map[string]any)
@@ -539,6 +564,7 @@ var _ = Describe("XTP Schema Generation", func() {
 			}
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			schemas := getSchemas(schema)
 			Expect(schemas).To(HaveKey("UsedInput"))
@@ -561,6 +587,7 @@ var _ = Describe("XTP Schema Generation", func() {
 			}
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			schemas := getSchemas(schema)
 			Expect(schemas).To(HaveKey("Input"))
@@ -583,6 +610,7 @@ var _ = Describe("XTP Schema Generation", func() {
 			}
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			schemas := getSchemas(schema)
 			Expect(schemas).To(HaveKey("Input"))
@@ -605,6 +633,7 @@ var _ = Describe("XTP Schema Generation", func() {
 			}
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			schemas := getSchemas(schema)
 			Expect(schemas).To(HaveKey("Input"))
@@ -625,6 +654,7 @@ var _ = Describe("XTP Schema Generation", func() {
 			}
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			schemas := getSchemas(schema)
 			Expect(schemas).To(HaveKey("Input"))
@@ -672,6 +702,7 @@ var _ = Describe("XTP Schema Generation", func() {
 
 			schema, err := GenerateSchema(capability)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
 
 			doc := parseSchema(schema)
 			components := doc["components"].(map[string]any)

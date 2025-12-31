@@ -792,6 +792,11 @@ func generateSchemaFile(cap internal.Capability, outputDir string, dryRun, verbo
 		return fmt.Errorf("generating schema: %w", err)
 	}
 
+	// Validate the generated schema against XTP JSONSchema spec
+	if err := internal.ValidateXTPSchema(schema); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Schema validation for %s:\n%s\n", cap.Name, err)
+	}
+
 	// Use the source file name: websocket_callback.go -> websocket_callback.yaml
 	schemaFile := filepath.Join(outputDir, cap.SourceFile+".yaml")
 

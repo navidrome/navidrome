@@ -22,7 +22,6 @@ components:
     schemas:
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
-            type: object
             properties:
                 userId:
                     type: string
@@ -35,7 +34,6 @@ components:
                 - username
         NowPlayingRequest:
             description: NowPlayingRequest is the request for now playing notification.
-            type: object
             properties:
                 userId:
                     type: string
@@ -57,7 +55,6 @@ components:
                 - position
         ScrobbleRequest:
             description: ScrobbleRequest is the request for submitting a scrobble.
-            type: object
             properties:
                 userId:
                     type: string
@@ -79,7 +76,6 @@ components:
                 - timestamp
         TrackInfo:
             description: TrackInfo contains track metadata for scrobbling.
-            type: object
             properties:
                 id:
                     type: string

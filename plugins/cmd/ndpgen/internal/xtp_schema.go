@@ -32,12 +32,10 @@ type (
 	}
 
 	// xtpObjectSchema represents an object schema in XTP.
-	// Note: The Type field is technically not valid per the XTP JSON Schema,
-	// but is required as a workaround for XTP's code generator to properly
-	// resolve type information (especially for empty structs).
+	// Per the XTP JSON Schema, ObjectSchema has properties, required, and description
+	// but NOT a type field.
 	xtpObjectSchema struct {
 		Description string    `yaml:"description,omitempty"`
-		Type        string    `yaml:"type"`
 		Properties  yaml.Node `yaml:"properties"`
 		Required    []string  `yaml:"required,omitempty"`
 	}
@@ -203,7 +201,6 @@ func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool,
 func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema {
 	schema := xtpObjectSchema{
 		Description: cleanDocForYAML(st.Doc),
-		Type:        "object", // Required workaround for XTP code generator
 		Properties:  yaml.Node{Kind: yaml.MappingNode},
 	}
 
