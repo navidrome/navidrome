@@ -3,7 +3,8 @@
 This directory contains the Go interface definitions for Navidrome plugin capabilities. These interfaces are the **source of truth** for plugin development and are used to generate:
 
 1. **Go PDK packages** (`pdk/go/*/`) - Type-safe wrappers for Go plugin developers
-2. **XTP YAML schemas** (`*.yaml`) - Schema files for non-Go plugin developers
+2. **Rust PDK crates** (`pdk/rust/*/`) - Type-safe wrappers for Rust plugin developers
+3. **XTP YAML schemas** (`*.yaml`) - Schema files for other [Extism plugin languages](https://extism.org/docs/concepts/pdk/) (TypeScript, Python, C#, Zig, C++, ...)
 
 ## For Go Plugin Developers
 
