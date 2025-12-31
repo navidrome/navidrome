@@ -955,6 +955,206 @@ type OnInitOutput struct {
 	})
 })
 
+var _ = Describe("Rust Generation", func() {
+	Describe("rustOutputType", func() {
+		It("should convert Go primitives to Rust primitives", func() {
+			Expect(rustOutputType("bool")).To(Equal("bool"))
+			Expect(rustOutputType("string")).To(Equal("String"))
+			Expect(rustOutputType("int")).To(Equal("i32"))
+			Expect(rustOutputType("int32")).To(Equal("i32"))
+			Expect(rustOutputType("int64")).To(Equal("i64"))
+			Expect(rustOutputType("float32")).To(Equal("f32"))
+			Expect(rustOutputType("float64")).To(Equal("f64"))
+		})
+
+		It("should strip pointer prefix", func() {
+			// NOTE: This behavior is incorrect for pointer to primitives.
+			// "*string" returns "string" instead of "String", which would generate
+			// invalid Rust code. No current capability uses this pattern.
+			// See TODO in rustOutputType function.
+			Expect(rustOutputType("*string")).To(Equal("string"))
+			Expect(rustOutputType("*MyStruct")).To(Equal("MyStruct"))
+		})
+
+		It("should pass through unknown types", func() {
+			Expect(rustOutputType("CustomType")).To(Equal("CustomType"))
+			Expect(rustOutputType("MyStruct")).To(Equal("MyStruct"))
+		})
+	})
+
+	Describe("isPrimitiveRustType", func() {
+		It("should return true for primitive Go types", func() {
+			Expect(isPrimitiveRustType("bool")).To(BeTrue())
+			Expect(isPrimitiveRustType("string")).To(BeTrue())
+			Expect(isPrimitiveRustType("int")).To(BeTrue())
+			Expect(isPrimitiveRustType("int32")).To(BeTrue())
+			Expect(isPrimitiveRustType("int64")).To(BeTrue())
+			Expect(isPrimitiveRustType("float32")).To(BeTrue())
+			Expect(isPrimitiveRustType("float64")).To(BeTrue())
+		})
+
+		It("should return false for non-primitive types", func() {
+			Expect(isPrimitiveRustType("MyStruct")).To(BeFalse())
+			Expect(isPrimitiveRustType("CustomType")).To(BeFalse())
+			Expect(isPrimitiveRustType("[]string")).To(BeFalse())
+			Expect(isPrimitiveRustType("map[string]int")).To(BeFalse())
+		})
+
+		It("should handle pointer types by stripping prefix", func() {
+			Expect(isPrimitiveRustType("*string")).To(BeTrue())
+			Expect(isPrimitiveRustType("*int64")).To(BeTrue())
+			Expect(isPrimitiveRustType("*MyStruct")).To(BeFalse())
+		})
+	})
+
+	Describe("GenerateCapabilityRust", func() {
+		It("should generate valid Rust code with primitive output types", func() {
+			cap := Capability{
+				Name:       "test",
+				Interface:  "TestAgent",
+				Required:   true,
+				SourceFile: "test",
+				Methods: []Export{
+					{
+						Name:       "GetBool",
+						ExportName: "nd_get_bool",
+						Input:      Param{Type: "BoolInput"},
+						Output:     Param{Type: "bool"},
+					},
+					{
+						Name:       "GetString",
+						ExportName: "nd_get_string",
+						Input:      Param{Type: "StrInput"},
+						Output:     Param{Type: "string"},
+					},
+					{
+						Name:       "GetInt",
+						ExportName: "nd_get_int",
+						Input:      Param{Type: "IntInput"},
+						Output:     Param{Type: "int32"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "BoolInput", Fields: []FieldDef{{Name: "ID", Type: "string", JSONTag: "id"}}},
+					{Name: "StrInput", Fields: []FieldDef{{Name: "Key", Type: "string", JSONTag: "key"}}},
+					{Name: "IntInput", Fields: []FieldDef{{Name: "Index", Type: "int32", JSONTag: "index"}}},
+				},
+			}
+
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check that primitive output types are not prefixed with $crate::
+			// The template should use isPrimitiveRust to determine this
+			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<bool>>"))
+			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<String>>"))
+			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<i32>>"))
+
+			// Verify that primitive output types don't use $crate:: prefix in FnResult
+			// The pattern "$crate::test::bool>" would indicate incorrect generation
+			Expect(codeStr).NotTo(ContainSubstring("$crate::test::bool>"))
+			Expect(codeStr).NotTo(ContainSubstring("$crate::test::String>"))
+			Expect(codeStr).NotTo(ContainSubstring("$crate::test::i32>"))
+		})
+
+		It("should generate valid Rust code with struct output types", func() {
+			cap := Capability{
+				Name:       "metadata",
+				Interface:  "MetadataAgent",
+				Required:   true,
+				SourceFile: "metadata",
+				Methods: []Export{
+					{
+						Name:       "GetArtist",
+						ExportName: "nd_get_artist",
+						Input:      Param{Type: "ArtistInput"},
+						Output:     Param{Type: "ArtistOutput"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "ArtistInput", Fields: []FieldDef{{Name: "ID", Type: "string", JSONTag: "id"}}},
+					{Name: "ArtistOutput", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+				},
+			}
+
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Non-primitive struct types should use $crate:: prefix
+			Expect(codeStr).To(ContainSubstring("$crate::metadata::ArtistOutput"))
+		})
+
+		It("should generate valid Rust code with pointer output types", func() {
+			cap := Capability{
+				Name:       "test",
+				Interface:  "TestAgent",
+				Required:   true,
+				SourceFile: "test",
+				Methods: []Export{
+					{
+						Name:       "GetOptionalStruct",
+						ExportName: "nd_get_optional_struct",
+						Input:      Param{Type: "Input"},
+						Output:     Param{Type: "*Output"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "Input", Fields: []FieldDef{{Name: "ID", Type: "string", JSONTag: "id"}}},
+					{Name: "Output", Fields: []FieldDef{{Name: "Value", Type: "string", JSONTag: "value"}}},
+				},
+			}
+
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Pointer to struct should strip pointer and use struct type with $crate::
+			Expect(codeStr).To(ContainSubstring("$crate::test::Output>"))
+			// Pointer output types should NOT have Option<> wrapping - Result handles optionality
+			Expect(codeStr).NotTo(ContainSubstring("Option<"))
+		})
+
+		It("should include all float types correctly", func() {
+			cap := Capability{
+				Name:       "test",
+				Interface:  "TestAgent",
+				Required:   true,
+				SourceFile: "test",
+				Methods: []Export{
+					{
+						Name:       "GetFloat32",
+						ExportName: "nd_get_float32",
+						Input:      Param{Type: "Input"},
+						Output:     Param{Type: "float32"},
+					},
+					{
+						Name:       "GetFloat64",
+						ExportName: "nd_get_float64",
+						Input:      Param{Type: "Input"},
+						Output:     Param{Type: "float64"},
+					},
+				},
+				Structs: []StructDef{
+					{Name: "Input", Fields: []FieldDef{{Name: "ID", Type: "string", JSONTag: "id"}}},
+				},
+			}
+
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<f32>>"))
+			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<f64>>"))
+		})
+	})
+})
+
 func writeFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0600)
 }
