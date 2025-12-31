@@ -191,11 +191,11 @@ Agents = "lastfm,spotify,my-plugin"
 
 Integrates with external scrobbling services. Export one or more of these functions:
 
-| Function                     | Input                 | Output                  | Description                 |
-|------------------------------|-----------------------|-------------------------|-----------------------------|
-| `nd_scrobbler_is_authorized` | `{userId, username}`  | `{authorized}`          | Check if user is authorized |
-| `nd_scrobbler_now_playing`   | See below             | `{error?, errorType?}`  | Send now playing            |
-| `nd_scrobbler_scrobble`      | See below             | `{error?, errorType?}`  | Submit a scrobble           |
+| Function                     | Input                 | Output         | Description                 |
+|------------------------------|-----------------------|----------------|-----------------------------||
+| `nd_scrobbler_is_authorized` | `{userId, username}`  | `{authorized}` | Check if user is authorized |
+| `nd_scrobbler_now_playing`   | See below             | (none)         | Send now playing            |
+| `nd_scrobbler_scrobble`      | See below             | (none)         | Submit a scrobble           |
 
 **NowPlaying/Scrobble Input:**
 
@@ -220,20 +220,22 @@ Integrates with external scrobbling services. Export one or more of these functi
 }
 ```
 
-**Error Output (on failure):**
+**Error Handling:**
 
-```json
-{
-  "error": "error message",
-  "errorType": "notAuthorized|retryLater|unrecoverable"
-}
+On success, return `0`. On failure, use `pdk.SetError()` with one of these error types:
+
+- `scrobbler(not_authorized)` – User needs to re-authorize
+- `scrobbler(retry_later)` – Temporary failure, Navidrome will retry
+- `scrobbler(unrecoverable)` – Permanent failure, scrobble discarded
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
+
+// Return error using predefined constants
+return scrobbler.ScrobblerErrorNotAuthorized
+return scrobbler.ScrobblerErrorRetryLater
+return scrobbler.ScrobblerErrorUnrecoverable
 ```
-
-- `notAuthorized` – User needs to re-authorize
-- `retryLater` – Temporary failure, Navidrome will retry
-- `unrecoverable` – Permanent failure, scrobble discarded
-
-On success, return empty JSON `{}` or omit output entirely.
 
 ### Lifecycle
 
@@ -718,8 +720,8 @@ import (
 
 type myPlugin struct{}
 
-func (p *myPlugin) GetArtistBiography(input metadata.ArtistBiographyInput) metadata.ArtistBiographyOutput {
-    return metadata.ArtistBiographyOutput{Biography: "Biography text..."}
+func (p *myPlugin) GetArtistBiography(input metadata.ArtistRequest) (*metadata.ArtistBiographyResponse, error) {
+    return &metadata.ArtistBiographyResponse{Biography: "Biography text..."}, nil
 }
 
 func init() {

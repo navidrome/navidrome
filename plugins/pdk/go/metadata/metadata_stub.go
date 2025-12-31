@@ -150,42 +150,42 @@ type Metadata interface{}
 
 // ArtistMBIDProvider provides the GetArtistMBID function.
 type ArtistMBIDProvider interface {
-	GetArtistMBID(ArtistMBIDRequest) (ArtistMBIDResponse, error)
+	GetArtistMBID(ArtistMBIDRequest) (*ArtistMBIDResponse, error)
 }
 
 // ArtistURLProvider provides the GetArtistURL function.
 type ArtistURLProvider interface {
-	GetArtistURL(ArtistRequest) (ArtistURLResponse, error)
+	GetArtistURL(ArtistRequest) (*ArtistURLResponse, error)
 }
 
 // ArtistBiographyProvider provides the GetArtistBiography function.
 type ArtistBiographyProvider interface {
-	GetArtistBiography(ArtistRequest) (ArtistBiographyResponse, error)
+	GetArtistBiography(ArtistRequest) (*ArtistBiographyResponse, error)
 }
 
 // SimilarArtistsProvider provides the GetSimilarArtists function.
 type SimilarArtistsProvider interface {
-	GetSimilarArtists(SimilarArtistsRequest) (SimilarArtistsResponse, error)
+	GetSimilarArtists(SimilarArtistsRequest) (*SimilarArtistsResponse, error)
 }
 
 // ArtistImagesProvider provides the GetArtistImages function.
 type ArtistImagesProvider interface {
-	GetArtistImages(ArtistRequest) (ArtistImagesResponse, error)
+	GetArtistImages(ArtistRequest) (*ArtistImagesResponse, error)
 }
 
 // ArtistTopSongsProvider provides the GetArtistTopSongs function.
 type ArtistTopSongsProvider interface {
-	GetArtistTopSongs(TopSongsRequest) (TopSongsResponse, error)
+	GetArtistTopSongs(TopSongsRequest) (*TopSongsResponse, error)
 }
 
 // AlbumInfoProvider provides the GetAlbumInfo function.
 type AlbumInfoProvider interface {
-	GetAlbumInfo(AlbumRequest) (AlbumInfoResponse, error)
+	GetAlbumInfo(AlbumRequest) (*AlbumInfoResponse, error)
 }
 
 // AlbumImagesProvider provides the GetAlbumImages function.
 type AlbumImagesProvider interface {
-	GetAlbumImages(AlbumRequest) (AlbumImagesResponse, error)
+	GetAlbumImages(AlbumRequest) (*AlbumImagesResponse, error)
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.
