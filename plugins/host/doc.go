@@ -36,8 +36,4 @@
 //
 // Generated files follow the pattern <servicename>_gen.go and include a header comment
 // indicating they should not be edited manually.
-//
-//go:generate go run ../cmd/ndpgen -host-wrappers -input=. -package=host
-//go:generate go run ../cmd/ndpgen -input=. -output=../pdk -go -python -rust
-//go:generate go mod tidy -C ../pdk/go
 package host

@@ -26,7 +26,7 @@ docker-compose.yml
 !contrib/docker-compose.yml
 binaries
 navidrome-*
-ndpgen
+/ndpgen
 AGENTS.md
 .github/prompts
 .github/instructions
