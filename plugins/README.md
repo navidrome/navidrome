@@ -192,8 +192,8 @@ Agents = "lastfm,spotify,my-plugin"
 Integrates with external scrobbling services. Export one or more of these functions:
 
 | Function                     | Input                 | Output         | Description                 |
-|------------------------------|-----------------------|----------------|-----------------------------||
-| `nd_scrobbler_is_authorized` | `{userId, username}`  | `{authorized}` | Check if user is authorized |
+|------------------------------|-----------------------|----------------|-----------------------------|
+| `nd_scrobbler_is_authorized` | `{userId, username}`  | `bool`         | Check if user is authorized |
 | `nd_scrobbler_now_playing`   | See below             | (none)         | Send now playing            |
 | `nd_scrobbler_scrobble`      | See below             | (none)         | Submit a scrobble           |
 
@@ -777,15 +777,15 @@ serde_json = "1.0"
 **Implementing capabilities with traits and macros:**
 
 ```rust
-use nd_pdk::scrobbler::{Scrobbler, IsAuthorizedRequest, IsAuthorizedResponse, Error};
+use nd_pdk::scrobbler::{Scrobbler, IsAuthorizedRequest, Error};
 use nd_pdk::register_scrobbler;
 
 #[derive(Default)]
 struct MyPlugin;
 
 impl Scrobbler for MyPlugin {
-    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error> {
-        Ok(IsAuthorizedResponse { authorized: true })
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error> {
+        Ok(true)
     }
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error> { Ok(()) }
     fn scrobble(&self, req: ScrobbleRequest) -> Result<(), Error> { Ok(()) }

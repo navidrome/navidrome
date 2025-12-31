@@ -45,12 +45,12 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 		Username: username,
 	}
 
-	result, err := callPluginFunction[capabilities.IsAuthorizedRequest, *capabilities.IsAuthorizedResponse](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
-	if err != nil || result == nil {
+	result, err := callPluginFunction[capabilities.IsAuthorizedRequest, bool](ctx, s.plugin, FuncScrobblerIsAuthorized, input)
+	if err != nil {
 		return false
 	}
 
-	return result.Authorized
+	return result
 }
 
 // NowPlaying sends a now playing notification to the scrobbler

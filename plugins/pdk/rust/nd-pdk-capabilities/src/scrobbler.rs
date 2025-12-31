@@ -23,14 +23,6 @@ pub struct IsAuthorizedRequest {
     #[serde(default)]
     pub username: String,
 }
-/// IsAuthorizedResponse is the response for authorization check.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IsAuthorizedResponse {
-    /// Authorized indicates whether the user is authorized to scrobble.
-    #[serde(default)]
-    pub authorized: bool,
-}
 /// NowPlayingRequest is the request for now playing notification.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -142,7 +134,7 @@ impl Error {
 /// all three functions: IsAuthorized, NowPlaying, and Scrobble.
 pub trait Scrobbler {
     /// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
-    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error>;
+    fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error>;
     /// NowPlaying - NowPlaying sends a now playing notification to the scrobbling service.
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error>;
     /// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
@@ -157,7 +149,7 @@ macro_rules! register_scrobbler {
         #[extism_pdk::plugin_fn]
         pub fn nd_scrobbler_is_authorized(
             req: extism_pdk::Json<$crate::scrobbler::IsAuthorizedRequest>
-        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::scrobbler::IsAuthorizedResponse>> {
+        ) -> extism_pdk::FnResult<extism_pdk::Json<bool>> {
             let plugin = <$plugin_type>::default();
             let result = $crate::scrobbler::Scrobbler::is_authorized(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))

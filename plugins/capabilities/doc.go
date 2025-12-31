@@ -47,7 +47,7 @@
 //
 //	// Scrobbler requires all methods
 //	type Scrobbler interface {
-//	    IsAuthorized(IsAuthorizedRequest) (*IsAuthorizedResponse, error)
+//	    IsAuthorized(IsAuthorizedRequest) (bool, error)
 //	    NowPlaying(NowPlayingRequest) error
 //	    Scrobble(ScrobbleRequest) error
 //	}

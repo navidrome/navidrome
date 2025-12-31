@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use nd_pdk::scrobbler::{Scrobbler, IsAuthorizedRequest, IsAuthorizedResponse, Error};
+//! use nd_pdk::scrobbler::{Scrobbler, IsAuthorizedRequest, Error};
 //! use nd_pdk::register_scrobbler;
 //!
 //! struct MyPlugin;
@@ -16,8 +16,8 @@
 //! }
 //!
 //! impl Scrobbler for MyPlugin {
-//!     fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<IsAuthorizedResponse, Error> {
-//!         Ok(IsAuthorizedResponse { authorized: true })
+//!     fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error> {
+//!         Ok(true)
 //!     }
 //!     // ... implement other required methods
 //! }
