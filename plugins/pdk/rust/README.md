@@ -108,13 +108,13 @@ let libs = library::get_all()?;
 
 ## Available Capabilities
 
-| Capability | Pattern | Description |
-|------------|---------|-------------|
-| `scrobbler` | Required-all | Submit listening history to external services |
-| `metadata` | Optional | Provide artist/album metadata from external sources |
-| `lifecycle` | Optional | Handle plugin initialization |
-| `scheduler` | Optional | Receive scheduled callbacks |
-| `websocket` | Optional | Handle WebSocket messages |
+| Capability  | Pattern      | Description                                         |
+|-------------|--------------|-----------------------------------------------------|
+| `scrobbler` | Required-all | Submit listening history to external services       |
+| `metadata`  | Optional     | Provide artist/album metadata from external sources |
+| `lifecycle` | Optional     | Handle plugin initialization                        |
+| `scheduler` | Optional     | Receive scheduled callbacks                         |
+| `websocket` | Optional     | Handle WebSocket messages                           |
 
 ## Building
 
@@ -132,14 +132,14 @@ See the example plugins for complete implementations:
 
 - [webhook-rs](../../examples/webhook-rs/) - Simple scrobbler using the PDK
 - [discord-rich-presence-rs](../../examples/discord-rich-presence-rs/) - Complex plugin with multiple capabilities
-- [library-inspector](../../examples/library-inspector-rs/) - Host service demonstration
+- [library-inspector-rs](../../examples/library-inspector-rs/) - Host service demonstration
 
 ## Code Generation
 
 The capability modules in `nd-pdk-capabilities` are auto-generated from the Go capability definitions. To regenerate after capability changes:
 
 ```bash
-go generate ./plugins/capabilities
+make gen
 ```
 
 This generates both Go and Rust PDK code.
