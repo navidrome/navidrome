@@ -19,12 +19,11 @@ func init() {
 	metadata.Register(&minimalPlugin{})
 }
 
-// Ensure minimalPlugin implements the ArtistBiographyProvider interface
 var _ metadata.ArtistBiographyProvider = (*minimalPlugin)(nil)
 
 // GetArtistBiography returns a placeholder biography for the artist.
-func (p *minimalPlugin) GetArtistBiography(input metadata.ArtistRequest) (metadata.ArtistBiographyResponse, error) {
-	return metadata.ArtistBiographyResponse{
+func (p *minimalPlugin) GetArtistBiography(input metadata.ArtistRequest) (*metadata.ArtistBiographyResponse, error) {
+	return &metadata.ArtistBiographyResponse{
 		Biography: "This is a placeholder biography for " + input.Name + ".",
 	}, nil
 }
