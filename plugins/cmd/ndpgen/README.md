@@ -96,7 +96,7 @@ Generated files are named `nd_host_<servicename>.go` (lowercase) and placed in `
 
 The generator creates:
 - `nd_host_<servicename>.go` - Client wrapper code (WASM build)
-- `nd_host_<servicename>_stub.go` - Stub code for non-WASM platforms
+- `nd_host_<servicename>_stub.go` - Mock implementations for non-WASM platforms (testing)
 - `doc.go` - Package documentation listing all available services
 - `go.mod` - Go module file with required dependencies
 
@@ -107,6 +107,48 @@ Each service file includes:
 - `//go:wasmimport` declarations for each host function
 - Response struct types and any struct definitions from the service
 - Wrapper functions that handle memory allocation and JSON parsing
+
+### Testing Plugins with Mocks
+
+The stub files (`*_stub.go`) contain [testify/mock](https://github.com/stretchr/testify) implementations that allow plugin authors to unit test their code on non-WASM platforms.
+
+Each host service has:
+- A private mock struct embedding `mock.Mock`
+- An exported auto-instantiated mock instance (e.g., `host.CacheMock`, `host.ArtworkMock`)
+- Wrapper functions that delegate to the mock
+
+**Example: Testing a plugin that uses the Cache service**
+
+```go
+package myplugin
+
+import (
+    "testing"
+    
+    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+)
+
+func TestMyPluginFunction(t *testing.T) {
+    // Set expectations on the mock
+    host.CacheMock.On("GetString", "my-key").Return("cached-value", true, nil)
+    host.CacheMock.On("SetString", "new-key", "new-value", int64(3600)).Return(nil)
+    
+    // Call your plugin code that uses host.CacheGetString and host.CacheSetString
+    result := myPluginFunction()
+    
+    // Assert the result
+    if result != "expected" {
+        t.Errorf("unexpected result: %s", result)
+    }
+    
+    // Verify all expected calls were made
+    host.CacheMock.AssertExpectations(t)
+}
+```
+
+**Resetting mocks between tests:**
+
+If you need to reset mock state between tests, testify's mock doesn't have a built-in reset. Either use separate test functions (testify automatically resets between test runs), or create a helper to set up fresh expectations.
 
 ### Python Client Library
 
