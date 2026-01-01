@@ -255,6 +255,66 @@ make plugin.wasm
 The PDK includes [testify/mock](https://github.com/stretchr/testify) implementations for all host services,
 allowing you to unit test your plugin code on non-WASM platforms (your development machine).
 
+### PDK Abstraction Layer
+
+The `pdk` subpackage provides a testable wrapper around the Extism PDK functions. Instead of importing
+`github.com/extism/go-pdk` directly, import the abstraction layer:
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+
+func myFunction() {
+    // Use pdk functions - same API as extism/go-pdk
+    config, ok := pdk.GetConfig("my_setting")
+    if ok {
+        pdk.Log(pdk.LogInfo, "Setting: " + config)
+    }
+    
+    var input MyInput
+    if err := pdk.InputJSON(&input); err != nil {
+        pdk.SetError(err)
+        return
+    }
+    
+    output := processInput(input)
+    pdk.OutputJSON(output)
+}
+```
+
+For WASM builds, these functions delegate directly to `extism/go-pdk` with zero overhead.
+For native builds (tests), they use mocks that you can configure:
+
+```go
+package myplugin
+
+import (
+    "testing"
+    
+    "github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+)
+
+func TestMyFunction(t *testing.T) {
+    // Reset mock state before each test
+    pdk.ResetMock()
+    
+    // Set up expectations
+    pdk.PDKMock.On("GetConfig", "my_setting").Return("test_value", true)
+    pdk.PDKMock.On("Log", pdk.LogInfo, "Setting: test_value").Return()
+    pdk.PDKMock.On("InputJSON", mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+        // Populate the input struct
+        input := args.Get(0).(*MyInput)
+        input.Name = "test"
+    })
+    pdk.PDKMock.On("OutputJSON", mock.Anything).Return(nil)
+    
+    // Call your function
+    myFunction()
+    
+    // Verify expectations
+    pdk.PDKMock.AssertExpectations(t)
+}
+```
+
 ### Mock Instances
 
 Each host service has an auto-instantiated mock instance:
@@ -312,3 +372,8 @@ go test ./...
 
 The stub files with mocks are only compiled for non-WASM builds (`//go:build !wasip1`),
 so they won't affect your production WASM binary.
+
+### Complete Examples
+
+For more comprehensive examples including HTTP requests, Memory handling, and various testing patterns,
+see [pdk/example_test.go](pdk/example_test.go).

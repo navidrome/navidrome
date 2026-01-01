@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/extism/go-pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // call_subsonic_api is the exported function that tests the SubsonicAPI host function.

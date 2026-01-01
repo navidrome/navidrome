@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/extism/go-pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
 	"github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
 	"github.com/navidrome/navidrome/plugins/pdk/go/websocket"

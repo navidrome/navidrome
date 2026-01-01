@@ -8,7 +8,7 @@
 package lifecycle
 
 import (
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // Lifecycle is the marker interface for lifecycle plugins.

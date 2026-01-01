@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	pdk "github.com/extism/go-pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // TestLibraryInput is the input for nd_test_library callback.

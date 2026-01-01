@@ -3,8 +3,8 @@
 package main
 
 import (
-	pdk "github.com/extism/go-pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // TestKVStoreInput is the input for nd_test_kvstore callback.

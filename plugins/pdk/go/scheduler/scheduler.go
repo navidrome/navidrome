@@ -8,7 +8,7 @@
 package scheduler
 
 import (
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // SchedulerCallbackRequest is the request provided when a scheduled task fires.

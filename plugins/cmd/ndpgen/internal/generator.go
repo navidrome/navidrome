@@ -640,3 +640,220 @@ func GenerateCapabilityRustLib(capabilities []Capability) ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+// pdkFuncMap returns the template functions for PDK code generation.
+func pdkFuncMap() template.FuncMap {
+	return template.FuncMap{
+		"firstSentence":       firstSentence,
+		"paramList":           pdkParamList,
+		"returnList":          pdkReturnList,
+		"argList":             pdkArgList,
+		"argListWithReceiver": pdkArgListWithReceiver,
+		"mockReturns":         pdkMockReturns,
+		"constValue":          pdkConstValue,
+		"stubTypeUnderlying":  stubTypeUnderlying,
+		"methodReceiver":      pdkMethodReceiver,
+	}
+}
+
+// stubTypeUnderlying returns the appropriate stub type for non-WASM builds.
+// For types that reference internal packages (like memory.Memory), returns "struct{}".
+func stubTypeUnderlying(t PDKType) string {
+	underlying := t.Underlying
+	// If the underlying type references a package (contains a dot), use a stub struct
+	if strings.Contains(underlying, ".") {
+		return "struct{}"
+	}
+	// For simple types like int, int32, return as-is
+	return underlying
+}
+
+// firstSentence returns the first sentence of a doc string, normalized to a single line.
+func firstSentence(doc string) string {
+	if doc == "" {
+		return ""
+	}
+	// Normalize whitespace (replace newlines with spaces, collapse multiple spaces)
+	doc = strings.Join(strings.Fields(doc), " ")
+
+	// Find first period followed by space or end
+	for i, r := range doc {
+		if r == '.' && (i+1 >= len(doc) || doc[i+1] == ' ') {
+			return doc[:i+1]
+		}
+	}
+	return doc
+}
+
+// pdkParamList generates a parameter list string for function signature.
+func pdkParamList(params []PDKParam) string {
+	var parts []string
+	for _, p := range params {
+		if p.Name != "" {
+			parts = append(parts, p.Name+" "+p.Type)
+		} else {
+			parts = append(parts, p.Type)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// pdkReturnList generates a return list string for function signature.
+func pdkReturnList(returns []PDKReturn) string {
+	if len(returns) == 0 {
+		return ""
+	}
+	if len(returns) == 1 && returns[0].Name == "" {
+		return " " + returns[0].Type
+	}
+	var parts []string
+	for _, r := range returns {
+		if r.Name != "" {
+			parts = append(parts, r.Name+" "+r.Type)
+		} else {
+			parts = append(parts, r.Type)
+		}
+	}
+	return " (" + strings.Join(parts, ", ") + ")"
+}
+
+// pdkArgList generates an argument list string for function call.
+func pdkArgList(params []PDKParam) string {
+	var parts []string
+	for _, p := range params {
+		if p.Name != "" {
+			parts = append(parts, p.Name)
+		} else {
+			parts = append(parts, "_")
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// pdkArgListWithReceiver generates an argument list that includes the receiver variable
+// as the first argument to PDKMock.Called(). This allows tests to verify which instance
+// a method was called on.
+func pdkArgListWithReceiver(params []PDKParam, typeName string) string {
+	// Use lowercase first letter of type name as receiver variable
+	receiverVar := strings.ToLower(typeName[:1])
+	parts := []string{receiverVar}
+	for _, p := range params {
+		if p.Name != "" {
+			parts = append(parts, p.Name)
+		} else {
+			parts = append(parts, "_")
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// pdkMethodReceiver generates the receiver declaration for a method.
+// Example: "r *HTTPRequest" or "m Memory"
+func pdkMethodReceiver(receiver, typeName string) string {
+	receiverVar := strings.ToLower(typeName[:1])
+	if strings.HasPrefix(receiver, "*") {
+		return receiverVar + " *" + typeName
+	}
+	return receiverVar + " " + typeName
+}
+
+// pdkMockReturns generates the mock return accessors for a function.
+func pdkMockReturns(returns []PDKReturn) string {
+	var parts []string
+	for i, r := range returns {
+		parts = append(parts, mockAccessorForType(r.Type, i))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// mockAccessorForType returns the testify mock accessor for a type.
+func mockAccessorForType(typ string, idx int) string {
+	switch typ {
+	case "string":
+		return fmt.Sprintf("args.String(%d)", idx)
+	case "bool":
+		return fmt.Sprintf("args.Bool(%d)", idx)
+	case "int":
+		return fmt.Sprintf("args.Int(%d)", idx)
+	case "error":
+		return fmt.Sprintf("args.Error(%d)", idx)
+	case "[]byte":
+		return fmt.Sprintf("args.Get(%d).([]byte)", idx)
+	case "uint64":
+		return fmt.Sprintf("args.Get(%d).(uint64)", idx)
+	case "uint32":
+		return fmt.Sprintf("args.Get(%d).(uint32)", idx)
+	case "uint16":
+		return fmt.Sprintf("args.Get(%d).(uint16)", idx)
+	default:
+		return fmt.Sprintf("args.Get(%d).(%s)", idx, typ)
+	}
+}
+
+// pdkConstValue returns the value expression for a constant.
+func pdkConstValue(c PDKConst) string {
+	if c.Value == "" || c.Value == "iota" {
+		return "iota"
+	}
+	return c.Value
+}
+
+// GeneratePDKGo generates the WASM implementation of the PDK wrapper package.
+func GeneratePDKGo(symbols *PDKSymbols) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/pdk.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading pdk template: %w", err)
+	}
+
+	tmpl, err := template.New("pdk").Funcs(pdkFuncMap()).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, symbols); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// GeneratePDKGoStub generates the native stub implementation of the PDK wrapper package.
+func GeneratePDKGoStub(symbols *PDKSymbols) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/pdk_stub.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading pdk stub template: %w", err)
+	}
+
+	tmpl, err := template.New("pdk_stub").Funcs(pdkFuncMap()).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, symbols); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// GeneratePDKTypesStub generates the native type definitions for the PDK wrapper package.
+func GeneratePDKTypesStub(symbols *PDKSymbols) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/types_stub.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading types stub template: %w", err)
+	}
+
+	tmpl, err := template.New("types_stub").Funcs(pdkFuncMap()).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, symbols); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

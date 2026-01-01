@@ -8,7 +8,7 @@
 package metadata
 
 import (
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // AlbumImagesResponse is the response for GetAlbumImages.
