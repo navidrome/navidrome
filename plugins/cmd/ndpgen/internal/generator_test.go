@@ -587,7 +587,7 @@ var _ = Describe("Generator", func() {
 	})
 
 	Describe("GenerateClientGoStub", func() {
-		It("should generate valid stub code with panic functions", func() {
+		It("should generate valid mock code with testify/mock", func() {
 			svc := Service{
 				Name:       "Cache",
 				Permission: "cache",
@@ -623,15 +623,95 @@ var _ = Describe("Generator", func() {
 			// Check for package declaration
 			Expect(codeStr).To(ContainSubstring("package ndpdk"))
 
-			// Check for stub comment
-			Expect(codeStr).To(ContainSubstring("stub implementations for non-WASM builds"))
+			// Check for mock comment
+			Expect(codeStr).To(ContainSubstring("mock implementations for non-WASM builds"))
 
-			// Check for panic in function body
-			Expect(codeStr).To(ContainSubstring(`panic("ndpdk: CacheGet is only available in WASM plugins")`))
+			// Check for testify/mock import
+			Expect(codeStr).To(ContainSubstring(`"github.com/stretchr/testify/mock"`))
+
+			// Check for private mock struct
+			Expect(codeStr).To(ContainSubstring("type mockCacheService struct"))
+			Expect(codeStr).To(ContainSubstring("mock.Mock"))
+
+			// Check for exported mock instance
+			Expect(codeStr).To(ContainSubstring("var CacheMock = &mockCacheService{}"))
+
+			// Check for mock method
+			Expect(codeStr).To(ContainSubstring("func (m *mockCacheService) Get(key string)"))
+			Expect(codeStr).To(ContainSubstring("m.Called(key)"))
+
+			// Check for wrapper function delegating to mock
+			Expect(codeStr).To(ContainSubstring("func CacheGet(key string)"))
+			Expect(codeStr).To(ContainSubstring("return CacheMock.Get(key)"))
 
 			// Stub files should NOT have request/response types (they're not needed)
 			Expect(codeStr).NotTo(ContainSubstring("Request struct"))
 			Expect(codeStr).NotTo(ContainSubstring("Response struct"))
+		})
+
+		It("should generate correct mock return values for different types", func() {
+			svc := Service{
+				Name:       "Test",
+				Permission: "test",
+				Interface:  "TestService",
+				Methods: []Method{
+					{
+						Name: "GetString",
+						Params: []Param{
+							{Name: "key", Type: "string"},
+						},
+						Returns: []Param{
+							{Name: "value", Type: "string"},
+						},
+						HasError: true,
+					},
+					{
+						Name: "GetInt64",
+						Params: []Param{
+							{Name: "key", Type: "string"},
+						},
+						Returns: []Param{
+							{Name: "value", Type: "int64"},
+							{Name: "exists", Type: "bool"},
+						},
+						HasError: true,
+					},
+					{
+						Name: "GetBytes",
+						Params: []Param{
+							{Name: "key", Type: "string"},
+						},
+						Returns: []Param{
+							{Name: "value", Type: "[]byte"},
+						},
+						HasError: true,
+					},
+				},
+			}
+
+			code, err := GenerateClientGoStub(svc, "ndpdk")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify it's valid Go code
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Check string return uses args.String(0)
+			Expect(codeStr).To(ContainSubstring("args.String(0)"))
+
+			// Check int64 return uses args.Get(0).(int64)
+			Expect(codeStr).To(ContainSubstring("args.Get(0).(int64)"))
+
+			// Check bool return uses args.Bool(1)
+			Expect(codeStr).To(ContainSubstring("args.Bool(1)"))
+
+			// Check []byte return uses args.Get(0).([]byte)
+			Expect(codeStr).To(ContainSubstring("args.Get(0).([]byte)"))
+
+			// Check error returns use args.Error(N)
+			Expect(codeStr).To(ContainSubstring("args.Error("))
 		})
 	})
 

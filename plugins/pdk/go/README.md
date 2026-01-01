@@ -249,3 +249,66 @@ Or use the provided Makefile targets in plugin examples:
 ```bash
 make plugin.wasm
 ```
+
+## Testing Plugins
+
+The PDK includes [testify/mock](https://github.com/stretchr/testify) implementations for all host services,
+allowing you to unit test your plugin code on non-WASM platforms (your development machine).
+
+### Mock Instances
+
+Each host service has an auto-instantiated mock instance:
+
+| Service       | Mock Instance            |
+|---------------|--------------------------|
+| `Artwork`     | `host.ArtworkMock`       |
+| `Cache`       | `host.CacheMock`         |
+| `Config`      | `host.ConfigMock`        |
+| `KVStore`     | `host.KVStoreMock`       |
+| `Library`     | `host.LibraryMock`       |
+| `Scheduler`   | `host.SchedulerMock`     |
+| `SubsonicAPI` | `host.SubsonicAPIMock`   |
+| `WebSocket`   | `host.WebSocketMock`     |
+
+### Example Test
+
+```go
+package myplugin
+
+import (
+    "testing"
+
+    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+)
+
+func TestMyPluginFunction(t *testing.T) {
+    // Set expectations on the mock
+    host.CacheMock.On("GetString", "my-key").Return("cached-value", true, nil)
+    host.CacheMock.On("SetString", "new-key", "new-value", int64(3600)).Return(nil)
+
+    // Call your plugin code that uses host.CacheGetString / host.CacheSetString
+    result, err := myPluginFunction()
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    // Assert the result
+    if result != "expected" {
+        t.Errorf("unexpected result: %s", result)
+    }
+
+    // Verify all expected calls were made
+    host.CacheMock.AssertExpectations(t)
+}
+```
+
+### Running Tests
+
+Since tests run on your development machine (not WASM), use standard Go testing:
+
+```bash
+go test ./...
+```
+
+The stub files with mocks are only compiled for non-WASM builds (`//go:build !wasip1`),
+so they won't affect your production WASM binary.
