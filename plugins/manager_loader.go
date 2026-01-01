@@ -12,6 +12,8 @@ import (
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -268,11 +270,19 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 	}
 
 	// Compile the plugin with all host functions
+	runtimeConfig := wazero.NewRuntimeConfig().
+		WithCompilationCache(m.cache).
+		WithCloseOnContextDone(true)
+
+	// Enable experimental threads if requested in manifest
+	if pkg.Manifest.HasExperimentalThreads() {
+		runtimeConfig = runtimeConfig.WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesThreads)
+		log.Debug(m.ctx, "Enabling experimental threads support", "plugin", name)
+	}
+
 	extismConfig := extism.PluginConfig{
-		EnableWasi: true,
-		RuntimeConfig: wazero.NewRuntimeConfig().
-			WithCompilationCache(m.cache).
-			WithCloseOnContextDone(true),
+		EnableWasi:    true,
+		RuntimeConfig: runtimeConfig,
 	}
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
 	if err != nil {

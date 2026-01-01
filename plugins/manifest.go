@@ -11,5 +11,7 @@ func (m *Manifest) AllowedHosts() []string {
 	return m.Permissions.Http.AllowedHosts
 }
 
-// TODO: ConfigPermission is defined in the schema but not currently enforced.
-// Plugins always receive their config section. Implement permission checking or remove from schema.
+// HasExperimentalThreads returns true if the manifest requests experimental threads support.
+func (m *Manifest) HasExperimentalThreads() bool {
+	return m.Experimental != nil && m.Experimental.Threads != nil
+}
