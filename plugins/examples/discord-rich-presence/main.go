@@ -28,25 +28,18 @@ const (
 	usersKey    = "users"
 )
 
-// discordPlugin implements the scrobbler, scheduler, and websocket interfaces.
+// discordPlugin implements the scrobbler and scheduler interfaces.
 type discordPlugin struct{}
+
+// rpc handles Discord gateway communication (via websockets).
+var rpc = &discordRPC{}
 
 // init registers the plugin capabilities
 func init() {
 	scrobbler.Register(&discordPlugin{})
 	scheduler.Register(&discordPlugin{})
-	websocket.Register(&discordPlugin{})
+	websocket.Register(rpc)
 }
-
-// Ensure discordPlugin implements the required provider interfaces
-var (
-	_ scrobbler.Scrobbler             = (*discordPlugin)(nil)
-	_ scheduler.CallbackProvider      = (*discordPlugin)(nil)
-	_ websocket.TextMessageProvider   = (*discordPlugin)(nil)
-	_ websocket.BinaryMessageProvider = (*discordPlugin)(nil)
-	_ websocket.ErrorProvider         = (*discordPlugin)(nil)
-	_ websocket.CloseProvider         = (*discordPlugin)(nil)
-)
 
 // getConfig loads the plugin configuration.
 func getConfig() (clientID string, users map[string]string, err error) {
@@ -121,7 +114,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) error {
 	}
 
 	// Connect to Discord
-	if err := connect(input.Username, userToken); err != nil {
+	if err := rpc.connect(input.Username, userToken); err != nil {
 		return fmt.Errorf("%w: failed to connect to Discord: %v", scrobbler.ScrobblerErrorRetryLater, err)
 	}
 
@@ -134,7 +127,7 @@ func (p *discordPlugin) NowPlaying(input scrobbler.NowPlayingRequest) error {
 	endTime := startTime + int64(input.Track.Duration)*1000
 
 	// Send activity update
-	if err := sendActivity(clientID, input.Username, userToken, activity{
+	if err := rpc.sendActivity(clientID, input.Username, userToken, activity{
 		Application: clientID,
 		Name:        "Navidrome",
 		Type:        2, // Listening
@@ -180,14 +173,14 @@ func (p *discordPlugin) OnCallback(input scheduler.SchedulerCallbackRequest) err
 	switch input.Payload {
 	case payloadHeartbeat:
 		// Heartbeat callback - scheduleId is the username
-		if err := handleHeartbeatCallback(input.ScheduleID); err != nil {
+		if err := rpc.handleHeartbeatCallback(input.ScheduleID); err != nil {
 			return err
 		}
 
 	case payloadClearActivity:
 		// Clear activity callback - scheduleId is "username-clear"
 		username := strings.TrimSuffix(input.ScheduleID, "-clear")
-		if err := handleClearActivityCallback(username); err != nil {
+		if err := rpc.handleClearActivityCallback(username); err != nil {
 			return err
 		}
 
@@ -195,33 +188,6 @@ func (p *discordPlugin) OnCallback(input scheduler.SchedulerCallbackRequest) err
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Unknown scheduler callback payload: %s", input.Payload))
 	}
 
-	return nil
-}
-
-// ============================================================================
-// WebSocket Callback Implementation
-// ============================================================================
-
-// OnTextMessage handles incoming WebSocket text messages.
-func (p *discordPlugin) OnTextMessage(input websocket.OnTextMessageRequest) error {
-	return handleWebSocketMessage(input.ConnectionID, input.Message)
-}
-
-// OnBinaryMessage handles incoming WebSocket binary messages.
-func (p *discordPlugin) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
-	pdk.Log(pdk.LogDebug, fmt.Sprintf("Received unexpected binary message for connection '%s'", input.ConnectionID))
-	return nil
-}
-
-// OnError handles WebSocket errors.
-func (p *discordPlugin) OnError(input websocket.OnErrorRequest) error {
-	pdk.Log(pdk.LogWarn, fmt.Sprintf("WebSocket error for connection '%s': %s", input.ConnectionID, input.Error))
-	return nil
-}
-
-// OnClose handles WebSocket connection closure.
-func (p *discordPlugin) OnClose(input websocket.OnCloseRequest) error {
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("WebSocket connection '%s' closed with code %d: %s", input.ConnectionID, input.Code, input.Reason))
 	return nil
 }
 

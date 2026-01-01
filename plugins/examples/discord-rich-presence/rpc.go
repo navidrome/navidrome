@@ -1,17 +1,18 @@
 // Discord Rich Presence Plugin - RPC Communication
 //
 // This file handles all Discord gateway communication including WebSocket connections,
-// presence updates, and heartbeat management.
+// presence updates, and heartbeat management. The discordRPC struct implements WebSocket
+// callback interfaces and encapsulates all Discord communication logic.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/extism/go-pdk"
 	host "github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/navidrome/navidrome/plugins/pdk/go/websocket"
 )
 
 // Discord WebSocket Gateway constants
@@ -31,6 +32,36 @@ const (
 	payloadHeartbeat     = "heartbeat"
 	payloadClearActivity = "clear-activity"
 )
+
+// discordRPC handles Discord gateway communication and implements WebSocket callbacks.
+type discordRPC struct{}
+
+// ============================================================================
+// WebSocket Callback Implementation
+// ============================================================================
+
+// OnTextMessage handles incoming WebSocket text messages.
+func (r *discordRPC) OnTextMessage(input websocket.OnTextMessageRequest) error {
+	return r.handleWebSocketMessage(input.ConnectionID, input.Message)
+}
+
+// OnBinaryMessage handles incoming WebSocket binary messages.
+func (r *discordRPC) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("Received unexpected binary message for connection '%s'", input.ConnectionID))
+	return nil
+}
+
+// OnError handles WebSocket errors.
+func (r *discordRPC) OnError(input websocket.OnErrorRequest) error {
+	pdk.Log(pdk.LogWarn, fmt.Sprintf("WebSocket error for connection '%s': %s", input.ConnectionID, input.Error))
+	return nil
+}
+
+// OnClose handles WebSocket connection closure.
+func (r *discordRPC) OnClose(input websocket.OnCloseRequest) error {
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("WebSocket connection '%s' closed with code %d: %s", input.ConnectionID, input.Code, input.Reason))
+	return nil
+}
 
 // activity represents a Discord activity.
 type activity struct {
@@ -74,13 +105,17 @@ type identifyProperties struct {
 	Device  string `json:"device"`
 }
 
+// ============================================================================
+// Image Processing
+// ============================================================================
+
 // processImage processes an image URL for Discord, with fallback to default image.
-func processImage(imageURL, clientID, token string, isDefaultImage bool) (string, error) {
+func (r *discordRPC) processImage(imageURL, clientID, token string, isDefaultImage bool) (string, error) {
 	if imageURL == "" {
 		if isDefaultImage {
 			return "", fmt.Errorf("default image URL is empty")
 		}
-		return processImage(defaultImage, clientID, token, true)
+		return r.processImage(defaultImage, clientID, token, true)
 	}
 
 	if strings.HasPrefix(imageURL, "mp:") {
@@ -107,7 +142,7 @@ func processImage(imageURL, clientID, token string, isDefaultImage bool) (string
 		if isDefaultImage {
 			return "", fmt.Errorf("failed to process default image: HTTP %d", resp.Status())
 		}
-		return processImage(defaultImage, clientID, token, true)
+		return r.processImage(defaultImage, clientID, token, true)
 	}
 
 	var data []map[string]string
@@ -115,14 +150,14 @@ func processImage(imageURL, clientID, token string, isDefaultImage bool) (string
 		if isDefaultImage {
 			return "", fmt.Errorf("failed to unmarshal default image response: %w", err)
 		}
-		return processImage(defaultImage, clientID, token, true)
+		return r.processImage(defaultImage, clientID, token, true)
 	}
 
 	if len(data) == 0 {
 		if isDefaultImage {
 			return "", fmt.Errorf("no data returned for default image")
 		}
-		return processImage(defaultImage, clientID, token, true)
+		return r.processImage(defaultImage, clientID, token, true)
 	}
 
 	image := data[0]["external_asset_path"]
@@ -130,7 +165,7 @@ func processImage(imageURL, clientID, token string, isDefaultImage bool) (string
 		if isDefaultImage {
 			return "", fmt.Errorf("empty external_asset_path for default image")
 		}
-		return processImage(defaultImage, clientID, token, true)
+		return r.processImage(defaultImage, clientID, token, true)
 	}
 
 	processedImage := fmt.Sprintf("mp:%s", image)
@@ -147,11 +182,15 @@ func processImage(imageURL, clientID, token string, isDefaultImage bool) (string
 	return processedImage, nil
 }
 
+// ============================================================================
+// Activity Management
+// ============================================================================
+
 // sendActivity sends an activity update to Discord.
-func sendActivity(clientID, username, token string, data activity) error {
+func (r *discordRPC) sendActivity(clientID, username, token string, data activity) error {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Sending activity for user %s: %s - %s", username, data.Details, data.State))
 
-	processedImage, err := processImage(data.Assets.LargeImage, clientID, token, false)
+	processedImage, err := r.processImage(data.Assets.LargeImage, clientID, token, false)
 	if err != nil {
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Failed to process image for user %s, continuing without image: %v", username, err))
 		data.Assets.LargeImage = ""
@@ -164,17 +203,21 @@ func sendActivity(clientID, username, token string, data activity) error {
 		Status:     "dnd",
 		Afk:        false,
 	}
-	return sendMessage(username, presenceOpCode, presence)
+	return r.sendMessage(username, presenceOpCode, presence)
 }
 
 // clearActivity clears the Discord activity for a user.
-func clearActivity(username string) error {
+func (r *discordRPC) clearActivity(username string) error {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Clearing activity for user %s", username))
-	return sendMessage(username, presenceOpCode, presencePayload{})
+	return r.sendMessage(username, presenceOpCode, presencePayload{})
 }
 
+// ============================================================================
+// Low-level Communication
+// ============================================================================
+
 // sendMessage sends a message over the WebSocket connection.
-func sendMessage(username string, opCode int, payload any) error {
+func (r *discordRPC) sendMessage(username string, opCode int, payload any) error {
 	message := map[string]any{
 		"op": opCode,
 		"d":  payload,
@@ -192,7 +235,7 @@ func sendMessage(username string, opCode int, payload any) error {
 }
 
 // getDiscordGateway retrieves the Discord gateway URL.
-func getDiscordGateway() (string, error) {
+func (r *discordRPC) getDiscordGateway() (string, error) {
 	req := pdk.NewHTTPRequest(pdk.MethodGet, "https://discord.com/api/gateway")
 	resp := req.Send()
 	if resp.Status() != 200 {
@@ -207,18 +250,18 @@ func getDiscordGateway() (string, error) {
 }
 
 // sendHeartbeat sends a heartbeat to Discord.
-func sendHeartbeat(username string) error {
+func (r *discordRPC) sendHeartbeat(username string) error {
 	seqNum, _, err := host.CacheGetInt(fmt.Sprintf("discord.seq.%s", username))
 	if err != nil {
 		return fmt.Errorf("failed to get sequence number: %w", err)
 	}
 
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("Sending heartbeat for user %s: %d", username, seqNum))
-	return sendMessage(username, heartbeatOpCode, seqNum)
+	return r.sendMessage(username, heartbeatOpCode, seqNum)
 }
 
 // cleanupFailedConnection cleans up a failed Discord connection.
-func cleanupFailedConnection(username string) {
+func (r *discordRPC) cleanupFailedConnection(username string) {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Cleaning up failed connection for user %s", username))
 
 	// Cancel the heartbeat schedule
@@ -238,8 +281,8 @@ func cleanupFailedConnection(username string) {
 }
 
 // isConnected checks if a user is connected to Discord by testing the heartbeat.
-func isConnected(username string) bool {
-	err := sendHeartbeat(username)
+func (r *discordRPC) isConnected(username string) bool {
+	err := r.sendHeartbeat(username)
 	if err != nil {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Heartbeat test failed for user %s: %v", username, err))
 		return false
@@ -248,15 +291,15 @@ func isConnected(username string) bool {
 }
 
 // connect establishes a connection to Discord for a user.
-func connect(username, token string) error {
-	if isConnected(username) {
+func (r *discordRPC) connect(username, token string) error {
+	if r.isConnected(username) {
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("Reusing existing connection for user %s", username))
 		return nil
 	}
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Creating new connection for user %s", username))
 
 	// Get Discord Gateway URL
-	gateway, err := getDiscordGateway()
+	gateway, err := r.getDiscordGateway()
 	if err != nil {
 		return fmt.Errorf("failed to get Discord gateway: %w", err)
 	}
@@ -278,7 +321,7 @@ func connect(username, token string) error {
 			Device:  "Discord Client",
 		},
 	}
-	if err := sendMessage(username, gateOpCode, payload); err != nil {
+	if err := r.sendMessage(username, gateOpCode, payload); err != nil {
 		return fmt.Errorf("failed to send identify payload: %w", err)
 	}
 
@@ -295,7 +338,7 @@ func connect(username, token string) error {
 }
 
 // disconnect closes the Discord connection for a user.
-func disconnect(username string) error {
+func (r *discordRPC) disconnect(username string) error {
 	if err := host.SchedulerCancelSchedule(username); err != nil {
 		return fmt.Errorf("failed to cancel schedule: %w", err)
 	}
@@ -307,7 +350,7 @@ func disconnect(username string) error {
 }
 
 // handleWebSocketMessage processes incoming WebSocket messages from Discord.
-func handleWebSocketMessage(connectionID, message string) error {
+func (r *discordRPC) handleWebSocketMessage(connectionID, message string) error {
 	if len(message) < 1024 {
 		pdk.Log(pdk.LogTrace, fmt.Sprintf("Received WebSocket message for connection '%s': %s", connectionID, message))
 	} else {
@@ -332,31 +375,26 @@ func handleWebSocketMessage(connectionID, message string) error {
 }
 
 // handleHeartbeatCallback processes heartbeat scheduler callbacks.
-func handleHeartbeatCallback(username string) error {
-	if err := sendHeartbeat(username); err != nil {
+func (r *discordRPC) handleHeartbeatCallback(username string) error {
+	if err := r.sendHeartbeat(username); err != nil {
 		// On first heartbeat failure, immediately clean up the connection
 		pdk.Log(pdk.LogWarn, fmt.Sprintf("Heartbeat failed for user %s, cleaning up connection: %v", username, err))
-		cleanupFailedConnection(username)
+		r.cleanupFailedConnection(username)
 		return fmt.Errorf("heartbeat failed, connection cleaned up: %w", err)
 	}
 	return nil
 }
 
 // handleClearActivityCallback processes clear activity scheduler callbacks.
-func handleClearActivityCallback(username string) error {
+func (r *discordRPC) handleClearActivityCallback(username string) error {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Removing presence for user %s", username))
-	if err := clearActivity(username); err != nil {
+	if err := r.clearActivity(username); err != nil {
 		return fmt.Errorf("failed to clear activity: %w", err)
 	}
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Disconnecting user %s", username))
-	if err := disconnect(username); err != nil {
+	if err := r.disconnect(username); err != nil {
 		return fmt.Errorf("failed to disconnect from Discord: %w", err)
 	}
 	return nil
-}
-
-// nowPlaying returns the current timestamp in milliseconds.
-func nowMillis() int64 {
-	return time.Now().UnixMilli()
 }
