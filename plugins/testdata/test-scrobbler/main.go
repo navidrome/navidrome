@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
 )
 

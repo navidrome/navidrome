@@ -8,7 +8,7 @@
 package websocket
 
 import (
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // OnBinaryMessageRequest is the request provided when a binary message is received.
