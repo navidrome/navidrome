@@ -233,13 +233,13 @@ func extractPageTitleFromURL(wikiURL string) (string, error) {
 }
 
 // GetArtistURL returns the Wikipedia URL for an artist
-func (*wikimediaPlugin) GetArtistURL(input metadata.ArtistRequest) (metadata.ArtistURLResponse, error) {
+func (*wikimediaPlugin) GetArtistURL(input metadata.ArtistRequest) (*metadata.ArtistURLResponse, error) {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistURL: name=%s, mbid=%s", input.Name, input.MBID))
 
 	// 1. Try Wikidata (MBID first, then name)
 	wikiURL, err := getWikidataWikipediaURL(input.MBID, input.Name)
 	if err == nil && wikiURL != "" {
-		return metadata.ArtistURLResponse{URL: wikiURL}, nil
+		return &metadata.ArtistURLResponse{URL: wikiURL}, nil
 	}
 	if err != nil {
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikidata URL failed: %v", err))
@@ -249,7 +249,7 @@ func (*wikimediaPlugin) GetArtistURL(input metadata.ArtistRequest) (metadata.Art
 	if input.Name != "" {
 		wikiURL, err = getDBpediaWikipediaURL(input.Name)
 		if err == nil && wikiURL != "" {
-			return metadata.ArtistURLResponse{URL: wikiURL}, nil
+			return &metadata.ArtistURLResponse{URL: wikiURL}, nil
 		}
 		if err != nil {
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia URL failed: %v", err))
@@ -260,14 +260,14 @@ func (*wikimediaPlugin) GetArtistURL(input metadata.ArtistRequest) (metadata.Art
 	if input.Name != "" {
 		searchURL := fmt.Sprintf("https://en.wikipedia.org/w/index.php?search=%s", url.QueryEscape(input.Name))
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("URL not found, falling back to search URL: %s", searchURL))
-		return metadata.ArtistURLResponse{URL: searchURL}, nil
+		return &metadata.ArtistURLResponse{URL: searchURL}, nil
 	}
 
-	return metadata.ArtistURLResponse{}, errors.New("could not determine Wikipedia URL")
+	return nil, errors.New("could not determine Wikipedia URL")
 }
 
 // GetArtistBiography returns the biography for an artist from Wikipedia
-func (*wikimediaPlugin) GetArtistBiography(input metadata.ArtistRequest) (metadata.ArtistBiographyResponse, error) {
+func (*wikimediaPlugin) GetArtistBiography(input metadata.ArtistRequest) (*metadata.ArtistBiographyResponse, error) {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistBiography: name=%s, mbid=%s", input.Name, input.MBID))
 
 	// 1. Get Wikipedia URL (using the logic from GetArtistURL)
@@ -295,7 +295,7 @@ func (*wikimediaPlugin) GetArtistBiography(input metadata.ArtistRequest) (metada
 			bio, err := getWikipediaExtract(pageTitle)
 			if err == nil && bio != "" {
 				pdk.Log(pdk.LogDebug, "Found Wikipedia extract")
-				return metadata.ArtistBiographyResponse{Biography: bio}, nil
+				return &metadata.ArtistBiographyResponse{Biography: bio}, nil
 			}
 			pdk.Log(pdk.LogDebug, fmt.Sprintf("Wikipedia extract failed: %v", err))
 		} else {
@@ -309,17 +309,17 @@ func (*wikimediaPlugin) GetArtistBiography(input metadata.ArtistRequest) (metada
 		bio, err := getDBpediaComment(input.Name)
 		if err == nil && bio != "" {
 			pdk.Log(pdk.LogDebug, "Found DBpedia comment")
-			return metadata.ArtistBiographyResponse{Biography: bio}, nil
+			return &metadata.ArtistBiographyResponse{Biography: bio}, nil
 		}
 		pdk.Log(pdk.LogDebug, fmt.Sprintf("DBpedia comment failed: %v", err))
 	}
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Biography not found for: %s (%s)", input.Name, input.MBID))
-	return metadata.ArtistBiographyResponse{}, errors.New("biography not found")
+	return nil, errors.New("biography not found")
 }
 
 // GetArtistImages returns artist images from Wikidata
-func (*wikimediaPlugin) GetArtistImages(input metadata.ArtistRequest) (metadata.ArtistImagesResponse, error) {
+func (*wikimediaPlugin) GetArtistImages(input metadata.ArtistRequest) (*metadata.ArtistImagesResponse, error) {
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("GetArtistImages: name=%s, mbid=%s", input.Name, input.MBID))
 
 	var q string
@@ -329,22 +329,22 @@ func (*wikimediaPlugin) GetArtistImages(input metadata.ArtistRequest) (metadata.
 		escapedName := strings.ReplaceAll(input.Name, "\"", "\\\"")
 		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist rdfs:label "%s"@en; wdt:P18 ?img } LIMIT 1`, escapedName)
 	} else {
-		return metadata.ArtistImagesResponse{}, errors.New("MBID or Name required for Wikidata Image lookup")
+		return nil, errors.New("MBID or Name required for Wikidata Image lookup")
 	}
 
 	result, err := sparqlQuery(wikidataEndpoint, q)
 	if err != nil {
 		pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, input.MBID))
-		return metadata.ArtistImagesResponse{}, errors.New("image not found")
+		return nil, errors.New("image not found")
 	}
 	if result.Results.Bindings[0].Img != nil {
-		return metadata.ArtistImagesResponse{
+		return &metadata.ArtistImagesResponse{
 			Images: []metadata.ImageInfo{{URL: result.Results.Bindings[0].Img.Value, Size: 0}},
 		}, nil
 	}
 
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("Image not found for: %s (%s)", input.Name, input.MBID))
-	return metadata.ArtistImagesResponse{}, errors.New("image not found")
+	return nil, errors.New("image not found")
 }
 
 // Required main function - init() handles registration
