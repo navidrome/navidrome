@@ -145,4 +145,75 @@ var _ = Describe("Manifest", func() {
 			Expect(hosts).To(Equal([]string{"api.example.com", "*.spotify.com"}))
 		})
 	})
+
+	Describe("HasExperimentalThreads", func() {
+		It("returns false when no experimental section", func() {
+			m := &Manifest{}
+			Expect(m.HasExperimentalThreads()).To(BeFalse())
+		})
+
+		It("returns false when experimental section has no threads", func() {
+			m := &Manifest{
+				Experimental: &Experimental{},
+			}
+			Expect(m.HasExperimentalThreads()).To(BeFalse())
+		})
+
+		It("returns true when threads feature is present", func() {
+			m := &Manifest{
+				Experimental: &Experimental{
+					Threads: &ThreadsFeature{},
+				},
+			}
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
+
+		It("returns true when threads feature has a reason", func() {
+			reason := "Required for concurrent processing"
+			m := &Manifest{
+				Experimental: &Experimental{
+					Threads: &ThreadsFeature{
+						Reason: &reason,
+					},
+				},
+			}
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
+
+		It("parses experimental.threads from JSON", func() {
+			data := []byte(`{
+				"name": "Threaded Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"experimental": {
+					"threads": {
+						"reason": "To use multi-threaded WASM module"
+					}
+				}
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+			Expect(m.Experimental.Threads.Reason).ToNot(BeNil())
+			Expect(*m.Experimental.Threads.Reason).To(Equal("To use multi-threaded WASM module"))
+		})
+
+		It("parses experimental.threads without reason from JSON", func() {
+			data := []byte(`{
+				"name": "Threaded Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"experimental": {
+					"threads": {}
+				}
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
+	})
 })

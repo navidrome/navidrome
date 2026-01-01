@@ -132,6 +132,27 @@ Every plugin must include a `manifest.json` file. Example:
 
 **Required fields:** `name`, `author`, `version`
 
+#### Experimental Features
+
+Plugins can opt-in to experimental WebAssembly features that may change or be removed in future versions. Currently supported:
+
+- **`threads`** – Enables WebAssembly threads support (for plugins compiled with multi-threading)
+
+```json
+{
+  "name": "Threaded Plugin",
+  "author": "Author Name",
+  "version": "1.0.0",
+  "experimental": {
+    "threads": {
+      "reason": "Required for concurrent audio processing"
+    }
+  }
+}
+```
+
+> **Note:** Experimental features may have compatibility or performance implications. Use only when necessary.
+
 ---
 
 ## Capabilities
