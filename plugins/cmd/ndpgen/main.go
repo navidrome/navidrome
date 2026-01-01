@@ -62,6 +62,7 @@ type config struct {
 	hostWrappers     bool // Generate host wrappers (used by Navidrome server)
 	capabilityOnly   bool
 	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
+	pdkOnly          bool // Generate PDK abstraction layer wrapper
 	generateGoClient bool
 	generatePyClient bool
 	generateRsClient bool
@@ -78,6 +79,14 @@ func main() {
 
 	if cfg.schemasOnly {
 		if err := runSchemaGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if cfg.pdkOnly {
+		if err := runPDKGeneration(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -148,6 +157,128 @@ func runSchemaGeneration(cfg *config) error {
 	return generateSchemas(cfg, capabilities)
 }
 
+// runPDKGeneration handles PDK abstraction layer code generation.
+// This generates the pdk wrapper package that wraps extism/go-pdk
+// with mockable implementations for unit testing on native platforms.
+func runPDKGeneration(cfg *config) error {
+	// Output directory is $output/go/pdk/
+	outputDir := filepath.Join(cfg.outputDir, "go", "pdk")
+	return generatePDKPackageWithParsing(outputDir, cfg.dryRun, cfg.verbose)
+}
+
+// generatePDKPackageWithParsing generates the PDK abstraction layer using AST parsing.
+// It extracts all exported symbols from extism/go-pdk and generates wrappers for them.
+func generatePDKPackageWithParsing(outputDir string, dryRun, verbose bool) error {
+	if verbose {
+		fmt.Println("Parsing extism/go-pdk to extract exported symbols...")
+	}
+
+	// Parse extism/go-pdk to get all exported symbols
+	symbols, err := internal.ParseExtismPDK()
+	if err != nil {
+		return fmt.Errorf("parsing extism/go-pdk: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Found %d types, %d constants, %d functions\n",
+			len(symbols.Types), len(symbols.Consts), len(symbols.Functions))
+		for _, t := range symbols.Types {
+			fmt.Printf("  Type %s: %d methods, %d fields\n", t.Name, len(t.Methods), len(t.Fields))
+			for _, m := range t.Methods {
+				fmt.Printf("    Method: %s (receiver: %s)\n", m.Name, m.Receiver)
+			}
+		}
+		fmt.Printf("Generating PDK abstraction layer to: %s\n", outputDir)
+	}
+
+	// Generate the WASM implementation (pdk.go)
+	pdkCode, err := internal.GeneratePDKGo(symbols)
+	if err != nil {
+		return fmt.Errorf("generating pdk.go: %w", err)
+	}
+
+	formatted, err := format.Source(pdkCode)
+	if err != nil {
+		return fmt.Errorf("formatting pdk.go: %w\nRaw code:\n%s", err, pdkCode)
+	}
+
+	pdkFile := filepath.Join(outputDir, "pdk.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", pdkFile, formatted)
+	} else {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("creating output directory: %w", err)
+		}
+
+		if err := os.WriteFile(pdkFile, formatted, 0600); err != nil {
+			return fmt.Errorf("writing pdk.go: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated: %s\n", pdkFile)
+		}
+	}
+
+	// Generate the types stub (types_stub.go)
+	typesStubCode, err := internal.GeneratePDKTypesStub(symbols)
+	if err != nil {
+		return fmt.Errorf("generating types_stub.go: %w", err)
+	}
+
+	formattedTypesStub, err := format.Source(typesStubCode)
+	if err != nil {
+		return fmt.Errorf("formatting types_stub.go: %w\nRaw code:\n%s", err, typesStubCode)
+	}
+
+	typesStubFile := filepath.Join(outputDir, "types_stub.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", typesStubFile, formattedTypesStub)
+	} else {
+		if err := os.WriteFile(typesStubFile, formattedTypesStub, 0600); err != nil {
+			return fmt.Errorf("writing types_stub.go: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated: %s\n", typesStubFile)
+		}
+	}
+
+	// Generate the stub implementation (pdk_stub.go)
+	stubCode, err := internal.GeneratePDKGoStub(symbols)
+	if err != nil {
+		return fmt.Errorf("generating pdk_stub.go: %w", err)
+	}
+
+	formattedStub, err := format.Source(stubCode)
+	if err != nil {
+		return fmt.Errorf("formatting pdk_stub.go: %w\nRaw code:\n%s", err, stubCode)
+	}
+
+	stubFile := filepath.Join(outputDir, "pdk_stub.go")
+
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", stubFile, formattedStub)
+	} else {
+		if err := os.WriteFile(stubFile, formattedStub, 0600); err != nil {
+			return fmt.Errorf("writing pdk_stub.go: %w", err)
+		}
+
+		if verbose {
+			fmt.Printf("Generated: %s\n", stubFile)
+		}
+	}
+
+	return nil
+}
+
+// generatePDKPackage generates the PDK abstraction layer to a specific directory.
+// This is called by generateAllCode to include the PDK package alongside host client code.
+func generatePDKPackage(outputDir string, dryRun, verbose bool) error {
+	return generatePDKPackageWithParsing(outputDir, dryRun, verbose)
+}
+
 // runHostWrapperGeneration handles host wrapper code generation.
 // This generates the *_gen.go files in the input directory that are used
 // by Navidrome server to expose host functions to plugins.
@@ -183,6 +314,7 @@ func parseConfig() (*config, error) {
 		hostWrappers   = flag.Bool("host-wrappers", false, "Generate host wrappers (used by Navidrome server, output to input directory)")
 		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
+		pdkOnly        = flag.Bool("extism-pdk", false, "Generate PDK abstraction layer by parsing extism/go-pdk")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
 		pyClient       = flag.Bool("python", false, "Generate Python client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
@@ -205,6 +337,9 @@ func parseConfig() (*config, error) {
 	if *schemasOnly {
 		modeCount++
 	}
+	if *pdkOnly {
+		modeCount++
+	}
 
 	// Default to host-only if no mode is specified
 	if modeCount == 0 {
@@ -213,7 +348,7 @@ func parseConfig() (*config, error) {
 
 	// Cannot specify multiple modes
 	if modeCount > 1 {
-		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas)")
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -pdk)")
 	}
 
 	if *outputDir == "" {
@@ -260,6 +395,7 @@ func parseConfig() (*config, error) {
 		hostWrappers:     *hostWrappers,
 		capabilityOnly:   *capabilityOnly,
 		schemasOnly:      *schemasOnly,
+		pdkOnly:          *pdkOnly,
 		generateGoClient: *goClient || !anyLangFlag,
 		generatePyClient: *pyClient,
 		generateRsClient: *rsClient,
@@ -507,6 +643,11 @@ func generateAllCode(cfg *config, services []internal.Service) error {
 		}
 		if err := generateGoModFile(cfg.goOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 			return fmt.Errorf("generating Go go.mod: %w", err)
+		}
+		// Generate PDK abstraction layer alongside host client code
+		pdkDir := filepath.Join(filepath.Dir(cfg.goOutputDir), "pdk")
+		if err := generatePDKPackage(pdkDir, cfg.dryRun, cfg.verbose); err != nil {
+			return fmt.Errorf("generating PDK package: %w", err)
 		}
 	}
 

@@ -8,7 +8,7 @@
 package scrobbler
 
 import (
-	pdk "github.com/extism/go-pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // ScrobblerError represents an error type for scrobbling operations.

@@ -14,8 +14,8 @@ import (
 	"net/url"
 	"strings"
 
-	pdk "github.com/extism/go-pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
 // wikimediaPlugin implements the metadata provider interfaces for the methods we support.
