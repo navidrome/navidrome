@@ -26,12 +26,56 @@ func hostFuncMap(svc Service) template.FuncMap {
 // Uses private (lowercase) type names for request/response structs.
 func clientFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":        strings.ToLower,
-		"title":        strings.Title,
-		"exportName":   func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":  func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
-		"responseType": func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
-		"formatDoc":    formatDoc,
+		"lower":            strings.ToLower,
+		"title":            strings.Title,
+		"exportName":       func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":      func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
+		"responseType":     func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
+		"formatDoc":        formatDoc,
+		"mockReturnValues": mockReturnValues,
+	}
+}
+
+// mockReturnValues generates the testify mock return value accessors for a method.
+// For example: args.String(0), args.Bool(1), args.Error(2)
+func mockReturnValues(m Method) string {
+	var parts []string
+	idx := 0
+
+	for _, r := range m.Returns {
+		parts = append(parts, mockAccessor(r.Type, idx))
+		idx++
+	}
+
+	if m.HasError {
+		parts = append(parts, fmt.Sprintf("args.Error(%d)", idx))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// mockAccessor returns the testify mock accessor call for a given type and index.
+func mockAccessor(typ string, idx int) string {
+	switch {
+	case typ == "string":
+		return fmt.Sprintf("args.String(%d)", idx)
+	case typ == "bool":
+		return fmt.Sprintf("args.Bool(%d)", idx)
+	case typ == "int":
+		return fmt.Sprintf("args.Int(%d)", idx)
+	case typ == "int64":
+		return fmt.Sprintf("args.Get(%d).(int64)", idx)
+	case typ == "int32":
+		return fmt.Sprintf("args.Get(%d).(int32)", idx)
+	case typ == "float64":
+		return fmt.Sprintf("args.Get(%d).(float64)", idx)
+	case typ == "float32":
+		return fmt.Sprintf("args.Get(%d).(float32)", idx)
+	case typ == "[]byte":
+		return fmt.Sprintf("args.Get(%d).([]byte)", idx)
+	default:
+		// For slices, maps, pointers, and custom types, use Get with type assertion
+		return fmt.Sprintf("args.Get(%d).(%s)", idx, typ)
 	}
 }
 
