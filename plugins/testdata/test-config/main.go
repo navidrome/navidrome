@@ -46,7 +46,7 @@ func ndTestConfig() int32 {
 		return 0
 
 	case "list":
-		keys := host.ConfigList(input.Prefix)
+		keys := host.ConfigKeys(input.Prefix)
 		pdk.OutputJSON(TestConfigOutput{Keys: keys})
 		return 0
 

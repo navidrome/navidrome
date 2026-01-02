@@ -31,8 +31,8 @@ def _config_getint(offset: int) -> int:
     ...
 
 
-@extism.import_fn("extism:host/user", "config_list")
-def _config_list(offset: int) -> int:
+@extism.import_fn("extism:host/user", "config_keys")
+def _config_keys(offset: int) -> int:
     """Raw host function - do not call directly."""
     ...
 
@@ -116,7 +116,7 @@ value cannot be parsed as an integer, exists will be false.
     )
 
 
-def config_list(prefix: str) -> Any:
+def config_keys(prefix: str) -> Any:
     """List returns configuration keys matching the given prefix.
 
 Parameters:
@@ -138,7 +138,7 @@ Returns a sorted slice of matching configuration keys.
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
-    response_offset = _config_list(request_mem.offset)
+    response_offset = _config_keys(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
     response = json.loads(extism.memory.string(response_mem))
 
