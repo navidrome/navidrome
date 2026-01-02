@@ -31,13 +31,13 @@ type ConfigGetIntResponse struct {
 	Exists bool  `json:"exists,omitempty"`
 }
 
-// ConfigListRequest is the request type for Config.List.
-type ConfigListRequest struct {
+// ConfigKeysRequest is the request type for Config.Keys.
+type ConfigKeysRequest struct {
 	Prefix string `json:"prefix"`
 }
 
-// ConfigListResponse is the response type for Config.List.
-type ConfigListResponse struct {
+// ConfigKeysResponse is the response type for Config.Keys.
+type ConfigKeysResponse struct {
 	Keys []string `json:"keys,omitempty"`
 }
 
@@ -47,7 +47,7 @@ func RegisterConfigHostFunctions(service ConfigService) []extism.HostFunction {
 	return []extism.HostFunction{
 		newConfigGetHostFunction(service),
 		newConfigGetIntHostFunction(service),
-		newConfigListHostFunction(service),
+		newConfigKeysHostFunction(service),
 	}
 }
 
@@ -113,9 +113,9 @@ func newConfigGetIntHostFunction(service ConfigService) extism.HostFunction {
 	)
 }
 
-func newConfigListHostFunction(service ConfigService) extism.HostFunction {
+func newConfigKeysHostFunction(service ConfigService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
-		"config_list",
+		"config_keys",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
@@ -123,17 +123,17 @@ func newConfigListHostFunction(service ConfigService) extism.HostFunction {
 				configWriteError(p, stack, err)
 				return
 			}
-			var req ConfigListRequest
+			var req ConfigKeysRequest
 			if err := json.Unmarshal(reqBytes, &req); err != nil {
 				configWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			keys := service.List(ctx, req.Prefix)
+			keys := service.Keys(ctx, req.Prefix)
 
 			// Write JSON response to plugin memory
-			resp := ConfigListResponse{
+			resp := ConfigKeysResponse{
 				Keys: keys,
 			}
 			configWriteResponse(p, stack, resp)

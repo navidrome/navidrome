@@ -53,8 +53,8 @@ func (s *configServiceImpl) GetInt(ctx context.Context, key string) (int64, bool
 	return intValue, true
 }
 
-// List returns configuration keys matching the given prefix.
-func (s *configServiceImpl) List(ctx context.Context, prefix string) []string {
+// Keys returns configuration keys matching the given prefix.
+func (s *configServiceImpl) Keys(ctx context.Context, prefix string) []string {
 	keys := make([]string, 0, len(s.config))
 	for k := range s.config {
 		if prefix == "" || strings.HasPrefix(k, prefix) {
@@ -62,7 +62,7 @@ func (s *configServiceImpl) List(ctx context.Context, prefix string) []string {
 		}
 	}
 	sort.Strings(keys)
-	log.Trace(ctx, "Config.List", "plugin", s.pluginName, "prefix", prefix, "keyCount", len(keys))
+	log.Trace(ctx, "Config.Keys", "plugin", s.pluginName, "prefix", prefix, "keyCount", len(keys))
 	return keys
 }
 
