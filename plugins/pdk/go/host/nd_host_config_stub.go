@@ -54,19 +54,19 @@ func ConfigGetInt(key string) (int64, bool) {
 	return ConfigMock.GetInt(key)
 }
 
-// List is the mock method for ConfigList.
-func (m *mockConfigService) List(prefix string) []string {
+// Keys is the mock method for ConfigKeys.
+func (m *mockConfigService) Keys(prefix string) []string {
 	args := m.Called(prefix)
 	return args.Get(0).([]string)
 }
 
-// ConfigList delegates to the mock instance.
+// ConfigKeys delegates to the mock instance.
 // List returns configuration keys matching the given prefix.
 //
 // Parameters:
 //   - prefix: Key prefix to filter by. If empty, returns all keys.
 //
 // Returns a sorted slice of matching configuration keys.
-func ConfigList(prefix string) []string {
-	return ConfigMock.List(prefix)
+func ConfigKeys(prefix string) []string {
+	return ConfigMock.Keys(prefix)
 }

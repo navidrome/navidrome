@@ -683,7 +683,7 @@ Access plugin configuration values programmatically. Unlike `pdk.GetConfig()` wh
 |-----------------|------------|-----------------------------|
 | `config_get`    | `key`      | `value, exists`             |
 | `config_getint` | `key`      | `value, exists`             |
-| `config_list`   | `prefix`   | Array of matching key names |
+| `config_keys`   | `prefix`   | Array of matching key names |
 
 **Usage (with generated SDK):**
 
@@ -700,13 +700,13 @@ if exists {
 count, exists := host.ConfigGetInt("max_retries")
 
 // List all keys with a prefix (useful for user-specific config)
-keys := host.ConfigList("user:")
+keys := host.ConfigKeys("user:")
 for _, key := range keys {
     // key might be "user:john", "user:jane", etc.
 }
 
 // List all configuration keys
-allKeys := host.ConfigList("")
+allKeys := host.ConfigKeys("")
 ```
 
 ---

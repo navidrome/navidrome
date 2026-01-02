@@ -38,13 +38,13 @@ struct ConfigGetIntResponse {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ConfigListRequest {
+struct ConfigKeysRequest {
     prefix: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ConfigListResponse {
+struct ConfigKeysResponse {
     #[serde(default)]
     keys: Vec<String>,
 }
@@ -53,7 +53,7 @@ struct ConfigListResponse {
 extern "ExtismHost" {
     fn config_get(input: Json<ConfigGetRequest>) -> Json<ConfigGetResponse>;
     fn config_getint(input: Json<ConfigGetIntRequest>) -> Json<ConfigGetIntResponse>;
-    fn config_list(input: Json<ConfigListRequest>) -> Json<ConfigListResponse>;
+    fn config_keys(input: Json<ConfigKeysRequest>) -> Json<ConfigKeysResponse>;
 }
 
 /// Get retrieves a configuration value as a string.
@@ -122,9 +122,9 @@ pub fn get_int(key: &str) -> Result<(i64, bool), Error> {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn list(prefix: &str) -> Result<Vec<String>, Error> {
+pub fn keys(prefix: &str) -> Result<Vec<String>, Error> {
     let response = unsafe {
-        config_list(Json(ConfigListRequest {
+        config_keys(Json(ConfigKeysRequest {
             prefix: prefix.to_owned(),
         }))?
     };

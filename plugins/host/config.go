@@ -33,12 +33,12 @@ type ConfigService interface {
 	//nd:hostfunc
 	GetInt(ctx context.Context, key string) (value int64, exists bool)
 
-	// List returns configuration keys matching the given prefix.
+	// Keys returns configuration keys matching the given prefix.
 	//
 	// Parameters:
 	//   - prefix: Key prefix to filter by. If empty, returns all keys.
 	//
 	// Returns a sorted slice of matching configuration keys.
 	//nd:hostfunc
-	List(ctx context.Context, prefix string) (keys []string)
+	Keys(ctx context.Context, prefix string) (keys []string)
 }

@@ -23,10 +23,10 @@ func config_get(uint64) uint64
 //go:wasmimport extism:host/user config_getint
 func config_getint(uint64) uint64
 
-// config_list is the host function provided by Navidrome.
+// config_keys is the host function provided by Navidrome.
 //
-//go:wasmimport extism:host/user config_list
-func config_list(uint64) uint64
+//go:wasmimport extism:host/user config_keys
+func config_keys(uint64) uint64
 
 type configGetRequest struct {
 	Key string `json:"key"`
@@ -46,11 +46,11 @@ type configGetIntResponse struct {
 	Exists bool  `json:"exists,omitempty"`
 }
 
-type configListRequest struct {
+type configKeysRequest struct {
 	Prefix string `json:"prefix"`
 }
 
-type configListResponse struct {
+type configKeysResponse struct {
 	Keys []string `json:"keys,omitempty"`
 }
 
@@ -125,16 +125,16 @@ func ConfigGetInt(key string) (int64, bool) {
 	return response.Value, response.Exists
 }
 
-// ConfigList calls the config_list host function.
+// ConfigKeys calls the config_keys host function.
 // List returns configuration keys matching the given prefix.
 //
 // Parameters:
 //   - prefix: Key prefix to filter by. If empty, returns all keys.
 //
 // Returns a sorted slice of matching configuration keys.
-func ConfigList(prefix string) []string {
+func ConfigKeys(prefix string) []string {
 	// Marshal request to JSON
-	req := configListRequest{
+	req := configKeysRequest{
 		Prefix: prefix,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -145,14 +145,14 @@ func ConfigList(prefix string) []string {
 	defer reqMem.Free()
 
 	// Call the host function
-	responsePtr := config_list(reqMem.Offset())
+	responsePtr := config_keys(reqMem.Offset())
 
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response configListResponse
+	var response configKeysResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil
 	}

@@ -107,7 +107,7 @@ var _ = Describe("ConfigService", func() {
 		})
 	})
 
-	Describe("List", func() {
+	Describe("Keys", func() {
 		BeforeEach(func() {
 			service = newConfigService("test_plugin", map[string]string{
 				"zebra":        "z",
@@ -120,23 +120,23 @@ var _ = Describe("ConfigService", func() {
 		})
 
 		It("returns all keys in sorted order when prefix is empty", func() {
-			keys := service.List(ctx, "")
+			keys := service.Keys(ctx, "")
 			Expect(keys).To(Equal([]string{"apple", "banana", "user_alice", "user_bob", "user_charlie", "zebra"}))
 		})
 
 		It("returns only keys matching prefix", func() {
-			keys := service.List(ctx, "user_")
+			keys := service.Keys(ctx, "user_")
 			Expect(keys).To(Equal([]string{"user_alice", "user_bob", "user_charlie"}))
 		})
 
 		It("returns empty slice when no keys match prefix", func() {
-			keys := service.List(ctx, "nonexistent_")
+			keys := service.Keys(ctx, "nonexistent_")
 			Expect(keys).To(BeEmpty())
 		})
 
 		It("returns empty slice for empty config", func() {
 			service = newConfigService("test_plugin", nil)
-			keys := service.List(ctx, "")
+			keys := service.Keys(ctx, "")
 			Expect(keys).To(BeEmpty())
 		})
 	})
