@@ -26,7 +26,9 @@ type {{responseType .}} struct {
 {{- range .Returns}}
 	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`
 {{- end}}
+{{- if .HasError}}
 	Error string `json:"error,omitempty"`
+{{- end}}
 }
 {{end}}
 

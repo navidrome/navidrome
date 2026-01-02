@@ -80,10 +80,11 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
     response_offset = _{{exportName .}}(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
     response = json.loads(extism.memory.string(response_mem))
-
+{{if .HasError}}
     if response.get("error"):
         raise HostFunctionError(response["error"])
-{{if .NeedsResultClass}}
+{{end}}
+{{- if .NeedsResultClass}}
     return {{pythonResultType .}}(
 {{- range .Returns}}
         {{.PythonName}}=response.get("{{.JSONName}}"{{pythonDefault .}}),

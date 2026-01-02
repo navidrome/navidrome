@@ -163,6 +163,16 @@ func (s Service) KnownStructs() map[string]bool {
 	return result
 }
 
+// HasErrors returns true if any method in the service returns an error.
+func (s Service) HasErrors() bool {
+	for _, m := range s.Methods {
+		if m.HasError {
+			return true
+		}
+	}
+	return false
+}
+
 // Method represents a host function method within a service.
 type Method struct {
 	Name       string  // Go method name (e.g., "Call")

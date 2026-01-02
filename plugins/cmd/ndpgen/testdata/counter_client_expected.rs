@@ -17,8 +17,6 @@ struct CounterCountRequest {
 struct CounterCountResponse {
     #[serde(default)]
     value: i32,
-    #[serde(default)]
-    error: Option<String>,
 }
 
 #[host_fn]
@@ -42,10 +40,6 @@ pub fn count(name: &str) -> Result<i32, Error> {
             name: name.to_owned(),
         }))?
     };
-
-    if let Some(err) = response.0.error {
-        return Err(Error::msg(err));
-    }
 
     Ok(response.0.value)
 }

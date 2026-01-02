@@ -41,8 +41,10 @@ struct {{responseType .}} {
     #[serde(default)]
     {{.RustName}}: {{rustType .}},
 {{- end}}
+{{- if .HasError}}
     #[serde(default)]
     error: Option<String>,
+{{- end}}
 }
 {{- end}}
 
@@ -88,11 +90,12 @@ pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName
         {{exportName .}}(Json(serde_json::json!({})))?
 {{- end}}
     };
-
+{{if .HasError}}
     if let Some(err) = response.0.error {
         return Err(Error::msg(err));
     }
-{{if eq (len .Returns) 0}}
+{{end}}
+{{- if eq (len .Returns) 0}}
     Ok(())
 {{- else if eq (len .Returns) 1}}
     Ok(response.0.{{(index .Returns 0).RustName}})
