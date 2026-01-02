@@ -46,7 +46,4 @@ def counter_count(name: str) -> int:
     response_mem = extism.memory.find(response_offset)
     response = json.loads(extism.memory.string(response_mem))
 
-    if response.get("error"):
-        raise HostFunctionError(response["error"])
-
     return response.get("value", 0)

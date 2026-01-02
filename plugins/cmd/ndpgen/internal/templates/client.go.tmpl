@@ -9,7 +9,9 @@ package {{.Package}}
 
 import (
 	"encoding/json"
+{{- if .Service.HasErrors}}
 	"errors"
+{{- end}}
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
@@ -53,7 +55,9 @@ type {{responseType .}} struct {
 {{- range .Returns}}
 	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`
 {{- end}}
+{{- if .HasError}}
 	Error string `json:"error,omitempty"`
+{{- end}}
 }
 {{- end}}
 {{- end}}

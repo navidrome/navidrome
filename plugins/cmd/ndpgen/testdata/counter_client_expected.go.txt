@@ -9,7 +9,6 @@ package ndhost
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
@@ -24,8 +23,7 @@ type counterCountRequest struct {
 }
 
 type counterCountResponse struct {
-	Value int32  `json:"value,omitempty"`
-	Error string `json:"error,omitempty"`
+	Value int32 `json:"value,omitempty"`
 }
 
 // CounterCount calls the counter_count host function.
