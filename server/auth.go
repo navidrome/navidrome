@@ -16,6 +16,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/go-ldap/ldap"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -154,7 +155,11 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 }
 
 func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
-	u, err := userRepo.FindByUsernameWithPassword(userName)
+	u, err := validateLoginLDAP(userRepo, userName, password)
+	if u != nil && err == nil {
+		return u, nil
+	}
+	u, err = userRepo.FindByUsernameWithPassword(userName)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
@@ -168,6 +173,93 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	if err != nil {
 		log.Error("Could not update LastLoginAt", "user", userName)
 	}
+	return u, nil
+}
+
+func validateLoginLDAP(userRepo model.UserRepository, userName, password string) (*model.User, error) {
+	if conf.Server.LDAP.Host == "" {
+		return nil, nil
+	}
+
+	binduserdn := conf.Server.LDAP.BindDN
+	bindpassword := conf.Server.LDAP.BindPassword
+	mailAttr := conf.Server.LDAP.Mail
+	nameAttr := conf.Server.LDAP.Name
+
+	l, err := ldap.DialURL(conf.Server.LDAP.Host)
+	if err != nil {
+		log.Error(err)
+		return nil, nil
+	}
+	defer l.Close()
+
+	// First bind with a read only user
+	err = l.Bind(binduserdn, bindpassword)
+	if err != nil {
+		log.Error(err)
+		return nil, nil
+	}
+
+	// Search for the given username
+	searchRequest := ldap.NewSearchRequest(
+		conf.Server.LDAP.Base,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		fmt.Sprintf(conf.Server.LDAP.SearchFilter, ldap.EscapeFilter(userName)),
+		[]string{"dn", nameAttr, mailAttr},
+		nil,
+	)
+
+	sr, err := l.Search(searchRequest)
+	if err != nil {
+		log.Error(err)
+		return nil, nil
+	}
+
+	if len(sr.Entries) != 1 {
+		log.Error("User does not exist or too many entries returned")
+		return nil, nil
+	}
+
+	dn := sr.Entries[0].DN
+	mail := sr.Entries[0].GetAttributeValue(mailAttr)
+	name := sr.Entries[0].GetAttributeValue(nameAttr)
+
+	authenticated := true
+	// Bind as the user to verify their password
+	err = l.Bind(dn, password)
+
+	if err != nil {
+		log.Error(err)
+		authenticated = false
+	}
+
+	// Rebind as the read only user for any further queries
+	err = l.Bind(binduserdn, bindpassword)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if !authenticated {
+		return nil, nil
+	}
+
+	u, err := userRepo.FindByUsername(userName)
+	if errors.Is(err, model.ErrNotFound) {
+		u = &model.User{UserName: userName}
+	}
+	u.Name = name
+	u.Email = mail
+	u.Password = password
+	err = userRepo.Put(u)
+	if err != nil {
+		log.Error("Could not update User", "user", userName)
+	}
+
+	err = userRepo.UpdateLastLoginAt(u.ID)
+	if err != nil {
+		log.Error("Could not update LastLoginAt", "user", userName)
+	}
+
 	return u, nil
 }
 

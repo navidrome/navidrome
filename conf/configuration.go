@@ -98,6 +98,7 @@ type configOptions struct {
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
+	LDAP                            ldapOptions         `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
@@ -176,6 +177,16 @@ type lastfmOptions struct {
 type spotifyOptions struct {
 	ID     string
 	Secret string
+}
+
+type ldapOptions struct {
+	Host         string
+	BindDN       string
+	BindPassword string
+	Base         string
+	SearchFilter string
+	Mail         string
+	Name         string
 }
 
 type deezerOptions struct {
@@ -572,6 +583,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
+	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -620,6 +632,15 @@ func setViperDefaults() {
 	viper.SetDefault("deezer.language", "en")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+
+	viper.SetDefault("ldap.host", "ldap://localhost:389")
+	viper.SetDefault("ldap.binddn", "")
+	viper.SetDefault("ldap.bindpassword", "")
+	viper.SetDefault("ldap.base", "")
+	viper.SetDefault("ldap.searchfilter", "(&(objectClass=inetOrgPerson)(uid=%s))")
+	viper.SetDefault("ldap.mail", "mail")
+	viper.SetDefault("ldap.name", "cn")
+
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")

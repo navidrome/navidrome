@@ -26,6 +26,7 @@ require (
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httprate v0.15.0
 	github.com/go-chi/jwtauth/v5 v5.3.3
+	github.com/go-ldap/ldap v3.0.3+incompatible
 	github.com/go-viper/encoding/ini v0.1.1
 	github.com/gohugoio/hashstructure v0.6.0
 	github.com/google/go-pipeline v0.0.0-20230411140531-6cbedfc1d3fc
@@ -68,7 +69,10 @@ require (
 	golang.org/x/term v0.38.0
 	golang.org/x/text v0.32.0
 	golang.org/x/time v0.14.0
+	golang.org/x/tools v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.11
+	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
+	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -132,8 +136,6 @@ require (
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
-	golang.org/x/tools v0.40.0 // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 
