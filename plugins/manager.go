@@ -35,6 +35,12 @@ const (
 // SubsonicRouter is an http.Handler that serves Subsonic API requests.
 type SubsonicRouter = http.Handler
 
+// PluginMetricsRecorder is an interface for recording plugin metrics.
+// This is satisfied by core/metrics.Metrics but defined here to avoid import cycles.
+type PluginMetricsRecorder interface {
+	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
+}
+
 // Manager manages loading and lifecycle of WebAssembly plugins.
 // It implements both agents.PluginLoader and scrobbler.PluginLoader interfaces.
 type Manager struct {
@@ -56,15 +62,17 @@ type Manager struct {
 	subsonicRouter SubsonicRouter
 	ds             model.DataStore
 	broker         events.Broker
+	metrics        PluginMetricsRecorder
 }
 
 // GetManager returns a singleton instance of the plugin manager.
 // The manager is not started automatically; call Start() to begin loading plugins.
-func GetManager(ds model.DataStore, broker events.Broker) *Manager {
+func GetManager(ds model.DataStore, broker events.Broker, m PluginMetricsRecorder) *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
 			ds:      ds,
 			broker:  broker,
+			metrics: m,
 			plugins: make(map[string]*plugin),
 		}
 	})
