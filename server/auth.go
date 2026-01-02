@@ -237,7 +237,7 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	}
 
 	u, err := userRepo.FindByUsername(userName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		u = &model.User{UserName: userName}
 	}
 	u.Name = name
@@ -254,15 +254,6 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	}
 
 	return u, nil
-}
-
-// This method maps the custom authorization header to the default 'Authorization', used by the jwtauth library
-func authHeaderMapper(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bearer := r.Header.Get(consts.UIAuthorizationHeader)
-		r.Header.Set("Authorization", bearer)
-		next.ServeHTTP(w, r)
-	})
 }
 
 func JWTVerifier(next http.Handler) http.Handler {
