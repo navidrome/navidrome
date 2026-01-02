@@ -118,6 +118,13 @@ jobs:
           pkg-config --define-prefix --cflags --libs taglib # for debugging
           go test -shuffle=on -tags netgo -race ./... -v
 
+      - name: Test ndpgen
+        run: |
+          cd plugins/cmd/ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen .
+          ./ndpgen --help
+
   js:
     name: Test JS code
     runs-on: ubuntu-latest
