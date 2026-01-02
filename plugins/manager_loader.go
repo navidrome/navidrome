@@ -22,6 +22,7 @@ type serviceContext struct {
 	pluginName  string
 	manager     *Manager
 	permissions *Permissions
+	config      map[string]string
 }
 
 // hostServiceEntry defines a host service for table-driven registration.
@@ -34,6 +35,14 @@ type hostServiceEntry struct {
 // hostServices defines all available host services.
 // Adding a new host service only requires adding an entry here.
 var hostServices = []hostServiceEntry{
+	{
+		name:          "Config",
+		hasPermission: func(p *Permissions) bool { return true }, // Always available, no permission required
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			service := newConfigService(ctx.pluginName, ctx.config)
+			return host.RegisterConfigHostFunctions(service), nil
+		},
+	},
 	{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
@@ -258,6 +267,7 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 		pluginName:  name,
 		manager:     m,
 		permissions: pkg.Manifest.Permissions,
+		config:      pluginConfig,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
