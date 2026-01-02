@@ -18,6 +18,7 @@ type plugin struct {
 	compiled     *extism.CompiledPlugin
 	capabilities []Capability // Auto-detected capabilities based on exported functions
 	closers      []io.Closer  // Cleanup functions to call on unload
+	metrics      PluginMetricsRecorder
 }
 
 // instance creates a new plugin instance for the given context.
