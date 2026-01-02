@@ -315,7 +315,7 @@ func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error)
 // collectPlugins collects information about installed plugins
 func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
 	// TODO Fix import/inject cycles
-	manager := plugins.GetManager(c.ds, events.GetBroker())
+	manager := plugins.GetManager(c.ds, events.GetBroker(), nil)
 	info := manager.GetPluginInfo()
 
 	result := make(map[string]insights.PluginInfo, len(info))

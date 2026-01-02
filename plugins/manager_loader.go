@@ -317,6 +317,7 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 		compiled:     compiled,
 		capabilities: capabilities,
 		closers:      closers,
+		metrics:      m.metrics,
 	}
 	m.mu.Unlock()
 

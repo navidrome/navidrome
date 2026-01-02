@@ -61,6 +61,13 @@ func createTestManager(pluginConfig map[string]map[string]string) (*Manager, str
 // and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
 // Returns the manager and temp directory path.
 func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plugins ...string) (*Manager, string) {
+	return createTestManagerWithPluginsAndMetrics(pluginConfig, nil, plugins...)
+}
+
+// createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
+// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
+// Returns the manager and temp directory path.
+func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]string, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
@@ -115,6 +122,7 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	manager := &Manager{
 		plugins:        make(map[string]*plugin),
 		ds:             dataStore,
+		metrics:        metrics,
 		subsonicRouter: http.NotFoundHandler(), // Stub router for tests
 	}
 	err = manager.Start(GinkgoT().Context())
