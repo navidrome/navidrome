@@ -10,19 +10,19 @@ package pdk
 
 import "github.com/stretchr/testify/mock"
 
-// MockPDK is the mock implementation for testing PDK functions.
-type MockPDK struct {
+// mockPDK is the mock implementation for testing PDK functions.
+type mockPDK struct {
 	mock.Mock
 }
 
 // PDKMock is the auto-instantiated mock instance for testing.
 // Use this to set expectations: pdk.PDKMock.On("GetConfig", "key").Return("value", true)
-var PDKMock = &MockPDK{}
+var PDKMock = &mockPDK{}
 
 // ResetMock resets the mock to its initial state.
 // Call this in test setup/teardown to ensure clean state between tests.
 func ResetMock() {
-	PDKMock = &MockPDK{}
+	PDKMock = &mockPDK{}
 }
 
 // Functions
