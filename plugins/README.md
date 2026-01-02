@@ -29,6 +29,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Library](#library)
   - [Artwork](#artwork)
   - [SubsonicAPI](#subsonicapi)
+  - [Config](#config)
 - [Configuration](#configuration)
 - [Building Plugins](#building-plugins)
 - [Examples](#examples)
@@ -668,6 +669,44 @@ Call Navidrome's Subsonic API internally (no network round-trip).
 ```go
 // The URI must include the 'u' parameter with the username
 response, err := SubsonicAPICall("getAlbumList2?type=random&size=10&u=username")
+```
+
+### Config
+
+Access plugin configuration values programmatically. Unlike `pdk.GetConfig()` which only retrieves individual values, this service can list all available configuration keys—useful for discovering dynamic configuration (e.g., user-to-token mappings).
+
+> **Note:** This service is always available and does not require a manifest permission.
+
+**Host functions:**
+
+| Function        | Parameters | Returns                     |
+|-----------------|------------|-----------------------------|
+| `config_get`    | `key`      | `value, exists`             |
+| `config_getint` | `key`      | `value, exists`             |
+| `config_list`   | `prefix`   | Array of matching key names |
+
+**Usage (with generated SDK):**
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
+
+// Get a string configuration value
+value, exists := host.ConfigGet("api_key")
+if exists {
+    // Use the value
+}
+
+// Get an integer configuration value
+count, exists := host.ConfigGetInt("max_retries")
+
+// List all keys with a prefix (useful for user-specific config)
+keys := host.ConfigList("user:")
+for _, key := range keys {
+    // key might be "user:john", "user:jane", etc.
+}
+
+// List all configuration keys
+allKeys := host.ConfigList("")
 ```
 
 ---

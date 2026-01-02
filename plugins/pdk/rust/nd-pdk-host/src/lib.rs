@@ -34,6 +34,7 @@
 //!
 //! - [`artwork`] - provides artwork public URL generation capabilities for plugins.
 //! - [`cache`] - provides in-memory TTL-based caching capabilities for plugins.
+//! - [`config`] - provides access to plugin configuration values.
 //! - [`kvstore`] - provides persistent key-value storage for plugins.
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
@@ -52,6 +53,13 @@ mod nd_host_cache;
 /// provides in-memory TTL-based caching capabilities for plugins.
 pub mod cache {
     pub use super::nd_host_cache::*;
+}
+
+#[doc(hidden)]
+mod nd_host_config;
+/// provides access to plugin configuration values.
+pub mod config {
+    pub use super::nd_host_config::*;
 }
 
 #[doc(hidden)]
