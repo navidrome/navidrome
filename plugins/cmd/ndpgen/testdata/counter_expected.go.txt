@@ -16,8 +16,7 @@ type CounterCountRequest struct {
 
 // CounterCountResponse is the response type for Counter.Count.
 type CounterCountResponse struct {
-	Value int32  `json:"value,omitempty"`
-	Error string `json:"error,omitempty"`
+	Value int32 `json:"value,omitempty"`
 }
 
 // RegisterCounterHostFunctions registers Counter service host functions.
