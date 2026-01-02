@@ -111,19 +111,19 @@ func (r *pluginRepository) EntityName() string {
 	return "plugin"
 }
 
-func (r *pluginRepository) NewInstance() interface{} {
+func (r *pluginRepository) NewInstance() any {
 	return &model.Plugin{}
 }
 
-func (r *pluginRepository) Read(id string) (interface{}, error) {
+func (r *pluginRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *pluginRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *pluginRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *pluginRepository) Save(entity interface{}) (string, error) {
+func (r *pluginRepository) Save(entity any) (string, error) {
 	p := entity.(*model.Plugin)
 	if !r.isPermitted() {
 		return "", rest.ErrPermissionDenied
@@ -135,7 +135,7 @@ func (r *pluginRepository) Save(entity interface{}) (string, error) {
 	return p.ID, err
 }
 
-func (r *pluginRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *pluginRepository) Update(id string, entity any, cols ...string) error {
 	p := entity.(*model.Plugin)
 	p.ID = id
 	if !r.isPermitted() {
