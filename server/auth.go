@@ -177,6 +177,10 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 }
 
 func validateLoginLDAP(userRepo model.UserRepository, userName, password string) (*model.User, error) {
+	if conf.Server.LDAP.Host == "" {
+		return nil, nil
+	}
+
 	binduserdn := conf.Server.LDAP.BindDN
 	bindpassword := conf.Server.LDAP.BindPassword
 	mailAttr := conf.Server.LDAP.Mail
@@ -185,6 +189,7 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	l, err := ldap.DialURL(conf.Server.LDAP.Host)
 	if err != nil {
 		log.Error(err)
+		return nil, nil
 	}
 	defer l.Close()
 
@@ -192,6 +197,7 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	err = l.Bind(binduserdn, bindpassword)
 	if err != nil {
 		log.Error(err)
+		return nil, nil
 	}
 
 	// Search for the given username
@@ -206,6 +212,7 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	sr, err := l.Search(searchRequest)
 	if err != nil {
 		log.Error(err)
+		return nil, nil
 	}
 
 	if len(sr.Entries) != 1 {
