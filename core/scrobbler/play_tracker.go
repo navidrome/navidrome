@@ -49,16 +49,6 @@ type playSession struct {
 	UserID     string    // User ID for DB operations
 }
 
-// duration calculates the elapsed listening time for this session.
-func (s *playSession) duration() int {
-	elapsed := int(time.Since(s.Start).Seconds())
-	duration := elapsed + s.Position
-	if duration < 0 {
-		duration = 0
-	}
-	return duration
-}
-
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
@@ -245,7 +235,7 @@ func (p *playTracker) finalizeSession(session *playSession) {
 		return
 	}
 
-	duration := session.duration()
+	duration := session.Position
 
 	// Update the scrobble in the database
 	ctx := context.Background()
@@ -266,31 +256,22 @@ func (p *playTracker) finalizeSessionOnExpiration(playerID string, info NowPlayi
 		return
 	}
 
-	var scrobbleID string
-	var lastPosition int
-
 	p.playSessionMu.Lock()
+	var sessionToFinalize *playSession
 	// Find session by iterating (we need to match by playerID which is part of the key)
 	for key, session := range p.playSessionMap {
 		// Check if this session matches the expired NowPlaying entry
 		if session.TrackID == info.MediaFile.ID && key == sessionKey(session.UserID, playerID) {
-			scrobbleID = session.ScrobbleID
-			lastPosition = session.Position
+			sessionToFinalize = session
 			delete(p.playSessionMap, key)
 			break
 		}
 	}
 	p.playSessionMu.Unlock()
 
-	// Update duration using the last known position
-	if scrobbleID != "" {
-		ctx := context.Background()
-		err := p.ds.Scrobble(ctx).UpdateDuration(scrobbleID, lastPosition)
-		if err != nil {
-			log.Error(ctx, "Error updating scrobble duration on expiration", "scrobbleID", scrobbleID, "duration", lastPosition, err)
-		} else {
-			log.Debug(ctx, "Updated scrobble duration on expiration", "scrobbleID", scrobbleID, "duration", lastPosition, "trackID", info.MediaFile.ID)
-		}
+	// Finalize outside the lock. This will calculate the duration up to the point of expiration.
+	if sessionToFinalize != nil {
+		p.finalizeSession(sessionToFinalize)
 	}
 }
 
@@ -360,7 +341,7 @@ func (p *playTracker) getSessionDuration(userID, playerID, trackID string) int {
 		return 0
 	}
 
-	return session.duration()
+	return session.Position
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
