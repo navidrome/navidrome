@@ -29,7 +29,7 @@ var _ = Describe("UsersService", Ordered, func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 	})
 
@@ -144,84 +144,12 @@ var _ = Describe("UsersService", Ordered, func() {
 })
 
 var _ = Describe("UsersService Integration", Ordered, func() {
-	var (
-		manager *Manager
-		tmpDir  string
-	)
+	var manager *Manager
 
 	BeforeAll(func() {
-		var err error
-		tmpDir, err = os.MkdirTemp("", "users-integration-test-*")
-		Expect(err).ToNot(HaveOccurred())
-
-		// Copy the test-users plugin
-		srcPath := filepath.Join(testdataDir, "test-users"+PackageExtension)
-		destPath := filepath.Join(tmpDir, "test-users"+PackageExtension)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Compute SHA256 for the plugin
-		hash := sha256.Sum256(data)
-		hashHex := hex.EncodeToString(hash[:])
-
-		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
-
-		// Setup mock DataStore with pre-enabled plugin and users
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
-			ID:       "test-users",
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			AllUsers: true, // Allow all users
-		}})
-
-		mockUserRepo := tests.CreateMockUserRepo()
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user1",
-			UserName: "alice",
-			Name:     "Alice Admin",
-			IsAdmin:  true,
-		})
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user2",
-			UserName: "bob",
-			Name:     "Bob User",
-			IsAdmin:  false,
-		})
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user3",
-			UserName: "charlie",
-			Name:     "Charlie User",
-			IsAdmin:  false,
-		})
-
-		dataStore := &tests.MockDataStore{
-			MockedPlugin: mockPluginRepo,
-			MockedUser:   mockUserRepo,
-		}
-
-		// Create and start manager
-		manager = &Manager{
-			plugins:        make(map[string]*plugin),
-			ds:             dataStore,
-			subsonicRouter: http.NotFoundHandler(),
-		}
-		err = manager.Start(GinkgoT().Context())
-		Expect(err).ToNot(HaveOccurred())
-
-		DeferCleanup(func() {
-			_ = manager.Stop()
-			_ = os.RemoveAll(tmpDir)
-		})
+		var cleanup func()
+		manager, cleanup = setupUsersIntegrationManager(true, "")
+		DeferCleanup(cleanup)
 	})
 
 	Describe("Plugin Loading", func() {
@@ -236,52 +164,8 @@ var _ = Describe("UsersService Integration", Ordered, func() {
 	})
 
 	Describe("Users Operations via Plugin", func() {
-		type testUsersInput struct {
-			Operation string `json:"operation"`
-		}
-		type user struct {
-			UserName string `json:"userName"`
-			Name     string `json:"name"`
-			IsAdmin  bool   `json:"isAdmin"`
-		}
-		type testUsersOutput struct {
-			Users []user  `json:"users,omitempty"`
-			Error *string `json:"error,omitempty"`
-		}
-
-		callTestUsers := func(ctx context.Context, input testUsersInput) (*testUsersOutput, error) {
-			manager.mu.RLock()
-			p := manager.plugins["test-users"]
-			manager.mu.RUnlock()
-
-			instance, err := p.instance(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer instance.Close(ctx)
-
-			inputBytes, _ := json.Marshal(input)
-			_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			var output testUsersOutput
-			if err := json.Unmarshal(outputBytes, &output); err != nil {
-				return nil, err
-			}
-			if output.Error != nil {
-				return nil, errors.New(*output.Error)
-			}
-			return &output, nil
-		}
-
 		It("should get all users when allUsers is true", func() {
-			ctx := GinkgoT().Context()
-
-			output, err := callTestUsers(ctx, testUsersInput{
-				Operation: "get_users",
-			})
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_users"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Users).To(HaveLen(3))
 
@@ -294,15 +178,11 @@ var _ = Describe("UsersService Integration", Ordered, func() {
 		})
 
 		It("should return correct user properties", func() {
-			ctx := GinkgoT().Context()
-
-			output, err := callTestUsers(ctx, testUsersInput{
-				Operation: "get_users",
-			})
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_users"})
 			Expect(err).ToNot(HaveOccurred())
 
 			// Find alice
-			var alice *user
+			var alice *testUser
 			for i := range output.Users {
 				if output.Users[i].UserName == "alice" {
 					alice = &output.Users[i]
@@ -317,15 +197,11 @@ var _ = Describe("UsersService Integration", Ordered, func() {
 		})
 
 		It("should return non-admin user correctly", func() {
-			ctx := GinkgoT().Context()
-
-			output, err := callTestUsers(ctx, testUsersInput{
-				Operation: "get_users",
-			})
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_users"})
 			Expect(err).ToNot(HaveOccurred())
 
 			// Find bob
-			var bob *user
+			var bob *testUser
 			for i := range output.Users {
 				if output.Users[i].UserName == "bob" {
 					bob = &output.Users[i]
@@ -342,134 +218,17 @@ var _ = Describe("UsersService Integration", Ordered, func() {
 })
 
 var _ = Describe("UsersService Integration with Specific Users", Ordered, func() {
-	var (
-		manager *Manager
-		tmpDir  string
-	)
+	var manager *Manager
 
 	BeforeAll(func() {
-		var err error
-		tmpDir, err = os.MkdirTemp("", "users-specific-test-*")
-		Expect(err).ToNot(HaveOccurred())
-
-		// Copy the test-users plugin
-		srcPath := filepath.Join(testdataDir, "test-users"+PackageExtension)
-		destPath := filepath.Join(tmpDir, "test-users"+PackageExtension)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Compute SHA256 for the plugin
-		hash := sha256.Sum256(data)
-		hashHex := hex.EncodeToString(hash[:])
-
-		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
-
-		// Setup mock DataStore with specific allowed users (only user1 and user3)
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
-			ID:       "test-users",
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			AllUsers: false,
-			Users:    `["user1", "user3"]`, // Only allow alice and charlie
-		}})
-
-		mockUserRepo := tests.CreateMockUserRepo()
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user1",
-			UserName: "alice",
-			Name:     "Alice Admin",
-			IsAdmin:  true,
-		})
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user2",
-			UserName: "bob",
-			Name:     "Bob User",
-			IsAdmin:  false,
-		})
-		_ = mockUserRepo.Put(&model.User{
-			ID:       "user3",
-			UserName: "charlie",
-			Name:     "Charlie User",
-			IsAdmin:  false,
-		})
-
-		dataStore := &tests.MockDataStore{
-			MockedPlugin: mockPluginRepo,
-			MockedUser:   mockUserRepo,
-		}
-
-		// Create and start manager
-		manager = &Manager{
-			plugins:        make(map[string]*plugin),
-			ds:             dataStore,
-			subsonicRouter: http.NotFoundHandler(),
-		}
-		err = manager.Start(GinkgoT().Context())
-		Expect(err).ToNot(HaveOccurred())
-
-		DeferCleanup(func() {
-			_ = manager.Stop()
-			_ = os.RemoveAll(tmpDir)
-		})
+		var cleanup func()
+		manager, cleanup = setupUsersIntegrationManager(false, `["user1", "user3"]`)
+		DeferCleanup(cleanup)
 	})
 
 	Describe("Users Operations with Specific Allowed Users", func() {
-		type testUsersInput struct {
-			Operation string `json:"operation"`
-		}
-		type user struct {
-			UserName string `json:"userName"`
-			Name     string `json:"name"`
-			IsAdmin  bool   `json:"isAdmin"`
-		}
-		type testUsersOutput struct {
-			Users []user  `json:"users,omitempty"`
-			Error *string `json:"error,omitempty"`
-		}
-
-		callTestUsers := func(ctx context.Context, input testUsersInput) (*testUsersOutput, error) {
-			manager.mu.RLock()
-			p := manager.plugins["test-users"]
-			manager.mu.RUnlock()
-
-			instance, err := p.instance(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer instance.Close(ctx)
-
-			inputBytes, _ := json.Marshal(input)
-			_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			var output testUsersOutput
-			if err := json.Unmarshal(outputBytes, &output); err != nil {
-				return nil, err
-			}
-			if output.Error != nil {
-				return nil, errors.New(*output.Error)
-			}
-			return &output, nil
-		}
-
 		It("should only return allowed users", func() {
-			ctx := GinkgoT().Context()
-
-			output, err := callTestUsers(ctx, testUsersInput{
-				Operation: "get_users",
-			})
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_users"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Users).To(HaveLen(2))
 
@@ -483,3 +242,164 @@ var _ = Describe("UsersService Integration with Specific Users", Ordered, func()
 		})
 	})
 })
+
+// testUsersSetup contains common setup data for users integration tests
+type testUsersSetup struct {
+	tmpDir   string
+	destPath string
+	hashHex  string
+}
+
+// setupTestUsersPlugin creates a temporary directory with the test-users plugin and returns setup info
+func setupTestUsersPlugin() (*testUsersSetup, error) {
+	tmpDir, err := os.MkdirTemp("", "users-integration-test-*")
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy the test-users plugin
+	srcPath := filepath.Join(testdataDir, "test-users"+PackageExtension)
+	destPath := filepath.Join(tmpDir, "test-users"+PackageExtension)
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		_ = os.RemoveAll(tmpDir)
+		return nil, err
+	}
+	if err := os.WriteFile(destPath, data, 0600); err != nil {
+		_ = os.RemoveAll(tmpDir)
+		return nil, err
+	}
+
+	// Compute SHA256 for the plugin
+	hash := sha256.Sum256(data)
+	hashHex := hex.EncodeToString(hash[:])
+
+	return &testUsersSetup{
+		tmpDir:   tmpDir,
+		destPath: destPath,
+		hashHex:  hashHex,
+	}, nil
+}
+
+// createTestUsers creates standard test users in the mock repo
+func createTestUsers(mockUserRepo *tests.MockedUserRepo) {
+	_ = mockUserRepo.Put(&model.User{
+		ID:       "user1",
+		UserName: "alice",
+		Name:     "Alice Admin",
+		IsAdmin:  true,
+	})
+	_ = mockUserRepo.Put(&model.User{
+		ID:       "user2",
+		UserName: "bob",
+		Name:     "Bob User",
+		IsAdmin:  false,
+	})
+	_ = mockUserRepo.Put(&model.User{
+		ID:       "user3",
+		UserName: "charlie",
+		Name:     "Charlie User",
+		IsAdmin:  false,
+	})
+}
+
+// setupTestUsersConfig sets up common plugin configuration
+func setupTestUsersConfig(tmpDir string) {
+	conf.Server.Plugins.Enabled = true
+	conf.Server.Plugins.Folder = tmpDir
+	conf.Server.Plugins.AutoReload = false
+	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
+}
+
+// testUsersInput represents input for test-users plugin calls
+type testUsersInput struct {
+	Operation string `json:"operation"`
+}
+
+// testUser represents a user returned from test-users plugin
+type testUser struct {
+	UserName string `json:"userName"`
+	Name     string `json:"name"`
+	IsAdmin  bool   `json:"isAdmin"`
+}
+
+// testUsersOutput represents output from test-users plugin
+type testUsersOutput struct {
+	Users []testUser `json:"users,omitempty"`
+	Error *string    `json:"error,omitempty"`
+}
+
+// callTestUsersPlugin calls the test-users plugin with given input
+func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersInput) (*testUsersOutput, error) {
+	manager.mu.RLock()
+	p := manager.plugins["test-users"]
+	manager.mu.RUnlock()
+
+	instance, err := p.instance(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer instance.Close(ctx)
+
+	inputBytes, _ := json.Marshal(input)
+	_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var output testUsersOutput
+	if err := json.Unmarshal(outputBytes, &output); err != nil {
+		return nil, err
+	}
+	if output.Error != nil {
+		return nil, errors.New(*output.Error)
+	}
+	return &output, nil
+}
+
+// setupUsersIntegrationManager creates a Manager for users integration tests with the given plugin settings
+func setupUsersIntegrationManager(allUsers bool, allowedUsers string) (*Manager, func()) {
+	setup, err := setupTestUsersPlugin()
+	Expect(err).ToNot(HaveOccurred())
+
+	// Setup config
+	cleanupConfig := configtest.SetupConfig()
+	setupTestUsersConfig(setup.tmpDir)
+
+	// Setup mock DataStore with pre-enabled plugin and users
+	mockPluginRepo := tests.CreateMockPluginRepo()
+	mockPluginRepo.Permitted = true
+	mockPluginRepo.SetData(model.Plugins{{
+		ID:       "test-users",
+		Path:     setup.destPath,
+		SHA256:   setup.hashHex,
+		Enabled:  true,
+		AllUsers: allUsers,
+		Users:    allowedUsers,
+	}})
+
+	mockUserRepo := tests.CreateMockUserRepo()
+	createTestUsers(mockUserRepo)
+
+	dataStore := &tests.MockDataStore{
+		MockedPlugin: mockPluginRepo,
+		MockedUser:   mockUserRepo,
+	}
+
+	// Create and start manager
+	manager := &Manager{
+		plugins:        make(map[string]*plugin),
+		ds:             dataStore,
+		subsonicRouter: http.NotFoundHandler(),
+	}
+	err = manager.Start(GinkgoT().Context())
+	Expect(err).ToNot(HaveOccurred())
+
+	cleanup := func() {
+		_ = manager.Stop()
+		_ = os.RemoveAll(setup.tmpDir)
+		cleanupConfig()
+	}
+
+	return manager, cleanup
+}

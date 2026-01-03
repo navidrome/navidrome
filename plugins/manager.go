@@ -374,43 +374,9 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 // UpdatePluginConfig updates the configuration for a plugin.
 // If the plugin is enabled, it will be reloaded with the new config.
 func (m *Manager) UpdatePluginConfig(ctx context.Context, id, configJSON string) error {
-	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
-	}
-
-	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
-
-	plugin, err := repo.Get(id)
-	if err != nil {
-		return fmt.Errorf("getting plugin from DB: %w", err)
-	}
-
-	wasEnabled := plugin.Enabled
-
-	// Update config in DB
-	plugin.Config = configJSON
-	plugin.UpdatedAt = time.Now()
-	if err := repo.Put(plugin); err != nil {
-		return fmt.Errorf("updating plugin config in DB: %w", err)
-	}
-
-	// Reload if enabled
-	if wasEnabled {
-		if err := m.unloadPlugin(id); err != nil {
-			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
-		}
-		if err := m.loadPluginWithConfig(plugin); err != nil {
-			plugin.LastError = err.Error()
-			plugin.Enabled = false
-			_ = repo.Put(plugin)
-			return fmt.Errorf("reloading plugin with new config: %w", err)
-		}
-	}
-
-	log.Info(ctx, "Updated plugin config", "plugin", id)
-	m.sendPluginRefreshEvent(ctx, id)
-	return nil
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Config = configJSON
+	})
 }
 
 // UpdatePluginUsers updates the users permission settings for a plugin.
@@ -418,6 +384,17 @@ func (m *Manager) UpdatePluginConfig(ctx context.Context, id, configJSON string)
 // If the plugin requires users permission and no users are configured (and allUsers is false),
 // the plugin will be automatically disabled.
 func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error {
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Users = usersJSON
+		p.AllUsers = allUsers
+	})
+}
+
+// updatePluginSettings is a common implementation for updating plugin settings.
+// The updateFn is called to apply the specific field updates to the plugin.
+// If the plugin is enabled, it will be reloaded. If users permission is required
+// but no longer satisfied, the plugin will be disabled.
+func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn func(*model.Plugin)) error {
 	if m.ds == nil {
 		return fmt.Errorf("datastore not configured")
 	}
@@ -432,26 +409,17 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 
 	wasEnabled := plugin.Enabled
 
-	// Update users in DB
-	plugin.Users = usersJSON
-	plugin.AllUsers = allUsers
+	// Apply the specific updates
+	updateFn(plugin)
 	plugin.UpdatedAt = time.Now()
 
-	// Check if plugin requires users permission and if the new settings are valid
+	// Check if plugin requires users permission and if it's still satisfied
 	shouldDisable := false
 	if wasEnabled {
 		manifest, err := readManifest(plugin.Path)
 		if err == nil && manifest.Permissions != nil && manifest.Permissions.Users != nil {
-			// Plugin requires users permission - check if it's still satisfied
-			if !allUsers {
-				if usersJSON == "" {
-					shouldDisable = true
-				} else {
-					var users []string
-					if err := json.Unmarshal([]byte(usersJSON), &users); err != nil || len(users) == 0 {
-						shouldDisable = true
-					}
-				}
+			if !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
+				shouldDisable = true
 			}
 		}
 	}
@@ -463,7 +431,7 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 		}
 		plugin.Enabled = false
 		if err := repo.Put(plugin); err != nil {
-			return fmt.Errorf("updating plugin users in DB: %w", err)
+			return fmt.Errorf("updating plugin in DB: %w", err)
 		}
 		log.Info(ctx, "Disabled plugin due to users permission removal", "plugin", id)
 		m.sendPluginRefreshEvent(ctx, id)
@@ -471,7 +439,7 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 	}
 
 	if err := repo.Put(plugin); err != nil {
-		return fmt.Errorf("updating plugin users in DB: %w", err)
+		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
 	// Reload if enabled
@@ -483,11 +451,11 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 			plugin.LastError = err.Error()
 			plugin.Enabled = false
 			_ = repo.Put(plugin)
-			return fmt.Errorf("reloading plugin with new users config: %w", err)
+			return fmt.Errorf("reloading plugin: %w", err)
 		}
 	}
 
-	log.Info(ctx, "Updated plugin users", "plugin", id)
+	log.Info(ctx, "Updated plugin settings", "plugin", id)
 	m.sendPluginRefreshEvent(ctx, id)
 	return nil
 }
@@ -537,20 +505,26 @@ func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 
 	// Check users permission gate
 	if manifest.Permissions != nil && manifest.Permissions.Users != nil {
-		if !p.AllUsers && p.Users == "" {
+		if !hasValidUsersConfig(p.Users, p.AllUsers) {
 			return fmt.Errorf("users permission requires configuration: select users or enable 'all users' access")
-		}
-		// Also check that Users JSON array is not empty if AllUsers is false
-		if !p.AllUsers {
-			var users []string
-			if err := json.Unmarshal([]byte(p.Users), &users); err != nil {
-				return fmt.Errorf("invalid users configuration: %w", err)
-			}
-			if len(users) == 0 {
-				return fmt.Errorf("users permission requires configuration: select at least one user or enable 'all users' access")
-			}
 		}
 	}
 
 	return nil
+}
+
+// hasValidUsersConfig checks if a plugin has valid users configuration.
+// Returns true if allUsers is true, or if usersJSON contains at least one user.
+func hasValidUsersConfig(usersJSON string, allUsers bool) bool {
+	if allUsers {
+		return true
+	}
+	if usersJSON == "" {
+		return false
+	}
+	var users []string
+	if err := json.Unmarshal([]byte(usersJSON), &users); err != nil {
+		return false
+	}
+	return len(users) > 0
 }

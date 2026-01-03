@@ -77,48 +77,18 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle config update first (if provided)
+	// Handle config update (if provided)
 	if req.Config != nil {
-		// Validate JSON if not empty
-		if *req.Config != "" && !isValidJSON(*req.Config) {
-			http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
-			return
-		}
-		if err := api.pluginManager.UpdatePluginConfig(ctx, id, *req.Config); err != nil {
-			log.Error(ctx, "Error updating plugin config", "id", id, err)
-			http.Error(w, "Error updating plugin configuration: "+err.Error(), http.StatusInternalServerError)
+		if err := validateAndUpdateConfig(ctx, api.pluginManager, id, *req.Config, w); err != nil {
+			log.Error(ctx, "Error updating plugin config", err)
 			return
 		}
 	}
 
 	// Handle users permission update (if provided)
 	if req.Users != nil || req.AllUsers != nil {
-		// Get current values if not provided in request
-		plugin, err := repo.Get(id)
-		if err != nil {
-			log.Error(ctx, "Error getting plugin for users update", "id", id, err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		usersJSON := plugin.Users
-		allUsers := plugin.AllUsers
-
-		if req.Users != nil {
-			// Validate users JSON if not empty
-			if *req.Users != "" && !isValidJSON(*req.Users) {
-				http.Error(w, "Invalid JSON in users field", http.StatusBadRequest)
-				return
-			}
-			usersJSON = *req.Users
-		}
-		if req.AllUsers != nil {
-			allUsers = *req.AllUsers
-		}
-
-		if err := api.pluginManager.UpdatePluginUsers(ctx, id, usersJSON, allUsers); err != nil {
-			log.Error(ctx, "Error updating plugin users", "id", id, err)
-			http.Error(w, "Error updating plugin users: "+err.Error(), http.StatusInternalServerError)
+		if err := validateAndUpdateUsers(ctx, api.pluginManager, repo, id, req, w); err != nil {
+			log.Error(ctx, "Error updating plugin users", err)
 			return
 		}
 	}
@@ -167,4 +137,52 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 func isValidJSON(s string) bool {
 	var js json.RawMessage
 	return json.Unmarshal([]byte(s), &js) == nil
+}
+
+// validateAndUpdateConfig validates the config JSON and updates the plugin.
+// Returns an error if validation or update fails (error response already written).
+func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJSON string, w http.ResponseWriter) error {
+	if configJSON != "" && !isValidJSON(configJSON) {
+		http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
+		return errors.New("invalid JSON")
+	}
+	if err := pm.UpdatePluginConfig(ctx, id, configJSON); err != nil {
+		log.Error(ctx, "Error updating plugin config", "id", id, err)
+		http.Error(w, "Error updating plugin configuration: "+err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	return nil
+}
+
+// validateAndUpdateUsers validates the users JSON and updates the plugin.
+// Returns an error if validation or update fails (error response already written).
+func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
+	// Get current values if not provided in request
+	plugin, err := repo.Get(id)
+	if err != nil {
+		log.Error(ctx, "Error getting plugin for users update", "id", id, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return err
+	}
+
+	usersJSON := plugin.Users
+	allUsers := plugin.AllUsers
+
+	if req.Users != nil {
+		if *req.Users != "" && !isValidJSON(*req.Users) {
+			http.Error(w, "Invalid JSON in users field", http.StatusBadRequest)
+			return errors.New("invalid JSON")
+		}
+		usersJSON = *req.Users
+	}
+	if req.AllUsers != nil {
+		allUsers = *req.AllUsers
+	}
+
+	if err := pm.UpdatePluginUsers(ctx, id, usersJSON, allUsers); err != nil {
+		log.Error(ctx, "Error updating plugin users", "id", id, err)
+		http.Error(w, "Error updating plugin users: "+err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	return nil
 }
