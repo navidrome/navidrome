@@ -156,6 +156,9 @@ type Permissions struct {
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
 
+	// Users corresponds to the JSON schema field "users".
+	Users *UsersPermission `json:"users,omitempty" yaml:"users,omitempty" mapstructure:"users,omitempty"`
+
 	// Websocket corresponds to the JSON schema field "websocket".
 	Websocket *WebSocketPermission `json:"websocket,omitempty" yaml:"websocket,omitempty" mapstructure:"websocket,omitempty"`
 }
@@ -199,6 +202,12 @@ func (j *SubsonicAPIPermission) UnmarshalJSON(value []byte) error {
 // Enable experimental WebAssembly threads support
 type ThreadsFeature struct {
 	// Explanation for why threads support is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Users service permissions for accessing user information
+type UsersPermission struct {
+	// Explanation for why users access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 

@@ -10,6 +10,7 @@ import {
 import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { Tooltip, FormControlLabel } from '@material-ui/core'
+import PropTypes from 'prop-types'
 
 const useStyles = makeStyles((theme) => ({
   enabledSwitch: {
@@ -30,8 +31,13 @@ const useStyles = makeStyles((theme) => ({
  * @param {Object} props
  * @param {boolean} [props.showLabel=false] - Whether to show the enable/disable label
  * @param {string} [props.size='small'] - Switch size ('small' or 'medium')
+ * @param {Object} [props.manifest=null] - Parsed manifest object for permission checking
  */
-const ToggleEnabledSwitch = ({ showLabel = false, size = 'small' }) => {
+const ToggleEnabledSwitch = ({
+  showLabel = false,
+  size = 'small',
+  manifest = null,
+}) => {
   const resource = useResourceContext()
   const record = useRecordContext()
   const notify = useNotify()
@@ -73,11 +79,30 @@ const ToggleEnabledSwitch = ({ showLabel = false, size = 'small' }) => {
   )
 
   const hasError = !!record?.lastError
-  const isDisabled = loading || hasError
+
+  // Check if users permission is required but not configured
+  const usersPermissionRequired = useMemo(() => {
+    if (!manifest?.permissions?.users) return false
+    if (record?.allUsers) return false
+    // Check if users array is empty or not set
+    if (!record?.users) return true
+    try {
+      const users = JSON.parse(record.users)
+      return users.length === 0
+    } catch {
+      return true
+    }
+  }, [manifest, record?.allUsers, record?.users])
+
+  const isDisabled =
+    loading || hasError || (usersPermissionRequired && !record?.enabled)
 
   const tooltipTitle = useMemo(() => {
     if (hasError) {
       return translate('resources.plugin.actions.disabledDueToError')
+    }
+    if (usersPermissionRequired && !record?.enabled) {
+      return translate('resources.plugin.actions.disabledUsersRequired')
     }
     if (!showLabel) {
       return translate(
@@ -87,7 +112,7 @@ const ToggleEnabledSwitch = ({ showLabel = false, size = 'small' }) => {
       )
     }
     return ''
-  }, [hasError, showLabel, record?.enabled, translate])
+  }, [hasError, usersPermissionRequired, showLabel, record?.enabled, translate])
 
   const switchElement = (
     <Switch
@@ -124,6 +149,12 @@ const ToggleEnabledSwitch = ({ showLabel = false, size = 'small' }) => {
       <span>{switchElement}</span>
     </Tooltip>
   )
+}
+
+ToggleEnabledSwitch.propTypes = {
+  showLabel: PropTypes.bool,
+  size: PropTypes.oneOf(['small', 'medium']),
+  manifest: PropTypes.object,
 }
 
 export default ToggleEnabledSwitch

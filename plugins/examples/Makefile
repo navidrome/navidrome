@@ -12,6 +12,11 @@ RUST_PLUGINS := $(patsubst %/Cargo.toml,%,$(wildcard */Cargo.toml))
 TINYGO := $(shell command -v tinygo 2> /dev/null)
 EXTISM_PY := $(shell command -v extism-py 2> /dev/null)
 
+# PDK source files that trigger rebuild when changed (recursive)
+PDK_GO_SOURCES := $(shell find ../pdk/go -name '*.go' 2>/dev/null)
+PDK_PY_SOURCES := $(shell find ../pdk/python -name '*.py' 2>/dev/null)
+PDK_RS_SOURCES := $(shell find ../pdk/rust -name '*.rs' 2>/dev/null)
+
 # Allow building plugins without .ndp extension (e.g., make minimal instead of make minimal.ndp)
 .PHONY: $(PLUGINS) $(PYTHON_PLUGINS) $(RUST_PLUGINS)
 $(PLUGINS): %: %.ndp
@@ -66,7 +71,7 @@ clean:
 
 # Use secondary expansion to properly track all Go source files
 .SECONDEXPANSION:
-$(PLUGINS:%=%.wasm): %.wasm: $$(shell find % -name '*.go' 2>/dev/null) %/go.mod
+$(PLUGINS:%=%.wasm): %.wasm: $$(shell find % -name '*.go' 2>/dev/null) %/go.mod $(PDK_GO_SOURCES)
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else
@@ -76,7 +81,7 @@ endif
 # Python plugin builds (generic rule for any folder with plugin/__init__.py)
 # Use secondary expansion to get all .py files in the plugin directory as dependencies
 .SECONDEXPANSION:
-$(PYTHON_PLUGINS:%=%.wasm): %.wasm: $$(wildcard %/plugin/*.py)
+$(PYTHON_PLUGINS:%=%.wasm): %.wasm: $$(wildcard %/plugin/*.py) $(PDK_PY_SOURCES)
 ifndef EXTISM_PY
 	$(error extism-py is not installed. Install from https://github.com/extism/python-pdk)
 endif
@@ -88,6 +93,6 @@ endif
 RUST_TARGET := wasm32-wasip1
 RUSTUP_CARGO := $(shell rustup which cargo 2>/dev/null || echo cargo)
 RUSTUP_RUSTC := $(shell rustup which rustc 2>/dev/null)
-$(RUST_PLUGINS:%=%.wasm): %.wasm: %/Cargo.toml $$(wildcard %/src/*.rs)
+$(RUST_PLUGINS:%=%.wasm): %.wasm: %/Cargo.toml $$(wildcard %/src/*.rs) $(PDK_RS_SOURCES)
 	cd $* && CARGO_BUILD_RUSTC=$(RUSTUP_RUSTC) $(RUSTUP_CARGO) build --release --target $(RUST_TARGET)
 	cp $*/target/$(RUST_TARGET)/release/$(subst -,_,$*).wasm $@

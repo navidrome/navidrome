@@ -61,7 +61,7 @@ func (m *mockConfigService) Keys(prefix string) []string {
 }
 
 // ConfigKeys delegates to the mock instance.
-// List returns configuration keys matching the given prefix.
+// Keys returns configuration keys matching the given prefix.
 //
 // Parameters:
 //   - prefix: Key prefix to filter by. If empty, returns all keys.

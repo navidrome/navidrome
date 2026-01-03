@@ -42,6 +42,7 @@ The following host services are available:
   - Library: provides access to music library metadata for plugins.
   - Scheduler: provides task scheduling capabilities for plugins.
   - SubsonicAPI: provides access to Navidrome's Subsonic API from plugins.
+  - Users: provides access to user information for plugins.
   - WebSocket: provides WebSocket communication capabilities for plugins.
 
 # Building Plugins

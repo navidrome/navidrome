@@ -88,6 +88,9 @@
         },
         "kvstore": {
           "$ref": "#/$defs/KVStorePermission"
+        },
+        "users": {
+          "$ref": "#/$defs/UsersPermission"
         }
       }
     },
@@ -222,6 +225,17 @@
         "maxSize": {
           "type": "string",
           "description": "Maximum storage size (e.g., '1MB', '500KB'). Default: 1MB"
+        }
+      }
+    },
+    "UsersPermission": {
+      "type": "object",
+      "description": "Users service permissions for accessing user information",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why users access is needed"
         }
       }
     }

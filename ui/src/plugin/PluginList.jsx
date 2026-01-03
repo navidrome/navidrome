@@ -23,10 +23,23 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+const useManifest = () => {
+  const record = useRecordContext()
+  return useMemo(() => {
+    if (!record?.manifest) return null
+    try {
+      return JSON.parse(record.manifest)
+    } catch {
+      return null
+    }
+  }, [record?.manifest])
+}
+
 const EnabledOrErrorField = () => {
   const record = useRecordContext()
   const translate = useTranslate()
   const classes = useStyles()
+  const manifest = useManifest()
 
   if (record.lastError) {
     return (
@@ -41,19 +54,7 @@ const EnabledOrErrorField = () => {
     )
   }
 
-  return <ToggleEnabledSwitch source={'enabled'} />
-}
-
-const useManifest = () => {
-  const record = useRecordContext()
-  return useMemo(() => {
-    if (!record?.manifest) return null
-    try {
-      return JSON.parse(record.manifest)
-    } catch {
-      return null
-    }
-  }, [record?.manifest])
+  return <ToggleEnabledSwitch source={'enabled'} manifest={manifest} />
 }
 
 const ManifestField = ({ source }) => {

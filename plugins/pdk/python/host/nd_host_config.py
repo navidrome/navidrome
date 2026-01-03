@@ -117,7 +117,7 @@ value cannot be parsed as an integer, exists will be false.
 
 
 def config_keys(prefix: str) -> Any:
-    """List returns configuration keys matching the given prefix.
+    """Keys returns configuration keys matching the given prefix.
 
 Parameters:
   - prefix: Key prefix to filter by. If empty, returns all keys.

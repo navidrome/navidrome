@@ -107,7 +107,7 @@ pub fn get_int(key: &str) -> Result<(i64, bool), Error> {
     Ok((response.0.value, response.0.exists))
 }
 
-/// List returns configuration keys matching the given prefix.
+/// Keys returns configuration keys matching the given prefix.
 /// 
 /// Parameters:
 ///   - prefix: Key prefix to filter by. If empty, returns all keys.

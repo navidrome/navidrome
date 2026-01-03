@@ -10,7 +10,8 @@ import {
   Title as RaTitle,
   Loading,
 } from 'react-admin'
-import { Box, useMediaQuery } from '@material-ui/core'
+import { Box, useMediaQuery, Button } from '@material-ui/core'
+import { MdSave } from 'react-icons/md'
 import Alert from '@material-ui/lab/Alert'
 import { Title, useResourceRefresh } from '../common'
 import { usePluginShowStyles } from './styles.js'
@@ -19,6 +20,7 @@ import { StatusCard } from './StatusCard'
 import { InfoCard } from './InfoCard'
 import { ManifestSection } from './ManifestSection'
 import { ConfigCard } from './ConfigCard'
+import { UsersPermissionCard } from './UsersPermissionCard'
 
 // Main show layout component
 const PluginShowLayout = () => {
@@ -33,6 +35,12 @@ const PluginShowLayout = () => {
   const [configPairs, setConfigPairs] = useState([])
   const [isDirty, setIsDirty] = useState(false)
   const [lastRecordConfig, setLastRecordConfig] = useState(null)
+
+  // Users permission state
+  const [selectedUsers, setSelectedUsers] = useState([])
+  const [allUsers, setAllUsers] = useState(false)
+  const [lastRecordUsers, setLastRecordUsers] = useState(null)
+  const [lastRecordAllUsers, setLastRecordAllUsers] = useState(null)
 
   // Convert JSON config to key-value pairs
   const jsonToPairs = useCallback((jsonString) => {
@@ -70,15 +78,42 @@ const PluginShowLayout = () => {
     }
   }, [record, lastRecordConfig, isDirty, jsonToPairs])
 
-  const handleConfigPairsChange = useCallback(
-    (newPairs) => {
-      setConfigPairs(newPairs)
-      const newJson = pairsToJson(newPairs)
-      const originalJson = record?.config || ''
-      setIsDirty(newJson !== originalJson)
-    },
-    [record?.config, pairsToJson],
-  )
+  // Initialize/update users permission state when record loads or changes
+  React.useEffect(() => {
+    if (record && !isDirty) {
+      const recordUsers = record.users || ''
+      const recordAllUsers = record.allUsers || false
+
+      if (
+        recordUsers !== lastRecordUsers ||
+        recordAllUsers !== lastRecordAllUsers
+      ) {
+        try {
+          setSelectedUsers(recordUsers ? JSON.parse(recordUsers) : [])
+        } catch {
+          setSelectedUsers([])
+        }
+        setAllUsers(recordAllUsers)
+        setLastRecordUsers(recordUsers)
+        setLastRecordAllUsers(recordAllUsers)
+      }
+    }
+  }, [record, lastRecordUsers, lastRecordAllUsers, isDirty])
+
+  const handleConfigPairsChange = useCallback((newPairs) => {
+    setConfigPairs(newPairs)
+    setIsDirty(true)
+  }, [])
+
+  const handleSelectedUsersChange = useCallback((newSelectedUsers) => {
+    setSelectedUsers(newSelectedUsers)
+    setIsDirty(true)
+  }, [])
+
+  const handleAllUsersChange = useCallback((newAllUsers) => {
+    setAllUsers(newAllUsers)
+    setIsDirty(true)
+  }, [])
 
   const [updatePlugin, { loading }] = useUpdate(
     'plugin',
@@ -91,6 +126,8 @@ const PluginShowLayout = () => {
         refresh()
         setIsDirty(false)
         setLastRecordConfig(null) // Reset to reinitialize from server
+        setLastRecordUsers(null)
+        setLastRecordAllUsers(null)
         notify('resources.plugin.notifications.updated', 'info')
       },
       onFailure: (err) => {
@@ -105,8 +142,17 @@ const PluginShowLayout = () => {
   const handleSaveConfig = useCallback(() => {
     if (!record) return
     const config = pairsToJson(configPairs)
-    updatePlugin('plugin', record.id, { config }, record)
-  }, [updatePlugin, record, configPairs, pairsToJson])
+    const data = { config }
+
+    // Include users data if users permission is present
+    const manifest = record.manifest ? JSON.parse(record.manifest) : null
+    if (manifest?.permissions?.users) {
+      data.users = JSON.stringify(selectedUsers)
+      data.allUsers = allUsers
+    }
+
+    updatePlugin('plugin', record.id, data, record)
+  }, [updatePlugin, record, configPairs, pairsToJson, selectedUsers, allUsers])
 
   // Parse manifest
   const { manifest, manifestJson } = useMemo(() => {
@@ -148,7 +194,11 @@ const PluginShowLayout = () => {
       <Box className={classes.root}>
         <ErrorSection error={record.lastError} translate={translate} />
 
-        <StatusCard classes={classes} translate={translate} />
+        <StatusCard
+          classes={classes}
+          translate={translate}
+          manifest={manifest}
+        />
 
         <InfoCard
           record={record}
@@ -167,12 +217,31 @@ const PluginShowLayout = () => {
         <ConfigCard
           configPairs={configPairs}
           onConfigPairsChange={handleConfigPairsChange}
-          isDirty={isDirty}
-          loading={loading}
           classes={classes}
           translate={translate}
-          onSave={handleSaveConfig}
         />
+
+        <UsersPermissionCard
+          manifest={manifest}
+          classes={classes}
+          selectedUsers={selectedUsers}
+          allUsers={allUsers}
+          onSelectedUsersChange={handleSelectedUsersChange}
+          onAllUsersChange={handleAllUsersChange}
+        />
+
+        <Box display="flex" justifyContent="flex-end">
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<MdSave />}
+            onClick={handleSaveConfig}
+            disabled={!isDirty || loading}
+            className={classes.saveButton}
+          >
+            {translate('ra.action.save')}
+          </Button>
+        </Box>
       </Box>
     </>
   )
