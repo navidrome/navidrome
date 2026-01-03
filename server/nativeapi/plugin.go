@@ -96,8 +96,8 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	// Handle enable/disable
 	if req.Enabled != nil {
 		if *req.Enabled {
-			if err := api.pluginManager.EnablePlugin(ctx, id); err != nil {
-				log.Error(ctx, "Error enabling plugin", "id", id, err)
+			if enableErr := api.pluginManager.EnablePlugin(ctx, id); enableErr != nil {
+				log.Error(ctx, "Error enabling plugin", "id", id, enableErr)
 				// Refresh plugin from DB to get the error
 				plugin, err := repo.Get(id)
 				if err != nil {
@@ -105,9 +105,18 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
 					return
 				}
+				// Return error response with message field for React-Admin compatibility
+				// and include the plugin data so UI can update its state
+				errorResponse := struct {
+					Message string        `json:"message"`
+					Plugin  *model.Plugin `json:"plugin"`
+				}{
+					Message: enableErr.Error(),
+					Plugin:  plugin,
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)
-				_ = json.NewEncoder(w).Encode(plugin)
+				_ = json.NewEncoder(w).Encode(errorResponse)
 				return
 			}
 		} else {

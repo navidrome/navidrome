@@ -62,6 +62,7 @@ const ToggleEnabledSwitch = ({
         )
       },
       onFailure: (error) => {
+        refresh()
         notify(
           error?.message || 'resources.plugin.notifications.error',
           'warning',
