@@ -9,8 +9,10 @@
       "reason": "Schedule periodic checks for now playing status"
     },
     "subsonicapi": {
-      "reason": "Query the getNowPlaying API endpoint",
-      "allowAdmins": true
+      "reason": "Query the getNowPlaying API endpoint"
+    },
+    "users": {
+      "reason": "Access user information for SubsonicAPI authorization"
     }
   }
 }

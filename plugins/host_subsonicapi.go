@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path"
-	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -27,19 +26,27 @@ const subsonicAPIVersion = "1.16.1"
 // URL Format: Only the path and query parameters are used - host/protocol are ignored.
 // Automatic Parameters: The service adds 'c' (client), 'v' (version), 'f' (format).
 type subsonicAPIServiceImpl struct {
-	pluginID    string
-	router      SubsonicRouter
-	ds          model.DataStore
-	permissions *subsonicAPIPermissions
+	pluginID       string
+	router         SubsonicRouter
+	ds             model.DataStore
+	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
+	allUsers       bool     // If true, plugin can access all users
+	userIDMap      map[string]struct{}
 }
 
 // newSubsonicAPIService creates a new SubsonicAPIService for a plugin.
-func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, permissions *SubsonicAPIPermission) host.SubsonicAPIService {
+func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, allowedUserIDs []string, allUsers bool) host.SubsonicAPIService {
+	userIDMap := make(map[string]struct{})
+	for _, id := range allowedUserIDs {
+		userIDMap[id] = struct{}{}
+	}
 	return &subsonicAPIServiceImpl{
-		pluginID:    pluginID,
-		router:      router,
-		ds:          ds,
-		permissions: parseSubsonicAPIPermissions(permissions),
+		pluginID:       pluginID,
+		router:         router,
+		ds:             ds,
+		allowedUserIDs: allowedUserIDs,
+		allUsers:       allUsers,
+		userIDMap:      userIDMap,
 	}
 }
 
@@ -107,46 +114,29 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, 
 }
 
 func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {
-	if s.permissions == nil {
+	// If allUsers is true, allow any user
+	if s.allUsers {
 		return nil
 	}
-	if len(s.permissions.AllowedUsernames) > 0 {
-		if _, ok := s.permissions.usernameMap[strings.ToLower(username)]; !ok {
-			return fmt.Errorf("username %s is not allowed", username)
-		}
+
+	// Must have at least one allowed user ID configured
+	if len(s.allowedUserIDs) == 0 {
+		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
 	}
-	if !s.permissions.AllowAdmins {
-		usr, err := s.ds.User(ctx).FindByUsername(username)
-		if err != nil {
-			if errors.Is(err, model.ErrNotFound) {
-				return fmt.Errorf("username %s not found", username)
-			}
-			return err
+
+	// Look up the user by username to get their ID
+	usr, err := s.ds.User(ctx).FindByUsername(username)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return fmt.Errorf("username %s not found", username)
 		}
-		if usr.IsAdmin {
-			return fmt.Errorf("calling SubsonicAPI as admin user is not allowed")
-		}
+		return err
 	}
+
+	// Check if the user's ID is in the allowed list
+	if _, ok := s.userIDMap[usr.ID]; !ok {
+		return fmt.Errorf("user %s is not authorized for this plugin", username)
+	}
+
 	return nil
-}
-
-type subsonicAPIPermissions struct {
-	AllowedUsernames []string
-	AllowAdmins      bool
-	usernameMap      map[string]struct{}
-}
-
-func parseSubsonicAPIPermissions(data *SubsonicAPIPermission) *subsonicAPIPermissions {
-	if data == nil {
-		return &subsonicAPIPermissions{}
-	}
-	perms := &subsonicAPIPermissions{
-		AllowedUsernames: data.AllowedUsernames,
-		AllowAdmins:      data.AllowAdmins,
-		usernameMap:      make(map[string]struct{}),
-	}
-	for _, u := range data.AllowedUsernames {
-		perms.usernameMap[strings.ToLower(u)] = struct{}{}
-	}
-	return perms
 }

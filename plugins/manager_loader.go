@@ -50,8 +50,7 @@ var hostServices = []hostServiceEntry{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			perm := ctx.permissions.Subsonicapi
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, perm)
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
 			return host.RegisterSubsonicAPIHostFunctions(service), nil
 		},
 	},
@@ -330,15 +329,23 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	capabilities := detectCapabilities(instance)
 	instance.Close(m.ctx)
 
+	// Validate manifest against detected capabilities
+	if err := ValidateWithCapabilities(pkg.Manifest, capabilities); err != nil {
+		compiled.Close(m.ctx)
+		return fmt.Errorf("manifest validation: %w", err)
+	}
+
 	m.mu.Lock()
 	m.plugins[p.ID] = &plugin{
-		name:         p.ID,
-		path:         p.Path,
-		manifest:     pkg.Manifest,
-		compiled:     compiled,
-		capabilities: capabilities,
-		closers:      closers,
-		metrics:      m.metrics,
+		name:           p.ID,
+		path:           p.Path,
+		manifest:       pkg.Manifest,
+		compiled:       compiled,
+		capabilities:   capabilities,
+		closers:        closers,
+		metrics:        m.metrics,
+		allowedUserIDs: allowedUsers,
+		allUsers:       p.AllUsers,
 	}
 	m.mu.Unlock()
 

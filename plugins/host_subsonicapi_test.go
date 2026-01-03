@@ -82,10 +82,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 		enabledPlugin := model.Plugin{
-			ID:      "test-subsonicapi-plugin",
-			Path:    pluginPath,
-			SHA256:  hashHex,
-			Enabled: true,
+			ID:       "test-subsonicapi-plugin",
+			Path:     pluginPath,
+			SHA256:   hashHex,
+			Enabled:  true,
+			AllUsers: true, // Allow all users for test plugin
 		}
 		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
 
@@ -208,24 +209,20 @@ var _ = Describe("SubsonicAPIService", func() {
 	})
 
 	Describe("Permission Enforcement", func() {
-		Context("with AllowedUsernames restriction", func() {
+		Context("with specific user IDs allowed", func() {
 			It("blocks users not in the allowed list", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowedUsernames: []string{"alloweduser"},
-					AllowAdmins:      true,
-				})
+				// allowedUserIDs contains "user2", but testuser is "user1"
+				service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"user2"}, false)
 
 				ctx := GinkgoT().Context()
 				_, err := service.Call(ctx, "/ping?u=testuser")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not allowed"))
+				Expect(err.Error()).To(ContainSubstring("not authorized"))
 			})
 
 			It("allows users in the allowed list", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowedUsernames: []string{"alloweduser"},
-					AllowAdmins:      true,
-				})
+				// allowedUserIDs contains "user2" which is "alloweduser"
+				service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"user2"}, false)
 
 				ctx := GinkgoT().Context()
 				response, err := service.Call(ctx, "/ping?u=alloweduser")
@@ -233,48 +230,19 @@ var _ = Describe("SubsonicAPIService", func() {
 				Expect(response).To(ContainSubstring("ok"))
 			})
 
-			It("is case-insensitive for usernames", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowedUsernames: []string{"AllowedUser"},
-					AllowAdmins:      true,
-				})
-
-				ctx := GinkgoT().Context()
-				response, err := service.Call(ctx, "/ping?u=alloweduser")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(response).To(ContainSubstring("ok"))
-			})
-		})
-
-		Context("with AllowAdmins=false", func() {
-			It("blocks admin users", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowAdmins: false,
-				})
+			It("blocks admin users when not in allowed list", func() {
+				// allowedUserIDs only contains "user1" (testuser), not "admin1"
+				service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"user1"}, false)
 
 				ctx := GinkgoT().Context()
 				_, err := service.Call(ctx, "/ping?u=adminuser")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("admin user is not allowed"))
+				Expect(err.Error()).To(ContainSubstring("not authorized"))
 			})
 
-			It("allows non-admin users", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowAdmins: false,
-				})
-
-				ctx := GinkgoT().Context()
-				response, err := service.Call(ctx, "/ping?u=testuser")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(response).To(ContainSubstring("ok"))
-			})
-		})
-
-		Context("with AllowAdmins=true", func() {
-			It("allows admin users", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, &SubsonicAPIPermission{
-					AllowAdmins: true,
-				})
+			It("allows admin users when in allowed list", func() {
+				// allowedUserIDs contains "admin1"
+				service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"admin1"}, false)
 
 				ctx := GinkgoT().Context()
 				response, err := service.Call(ctx, "/ping?u=adminuser")
@@ -283,21 +251,50 @@ var _ = Describe("SubsonicAPIService", func() {
 			})
 		})
 
-		Context("with no permissions set (nil)", func() {
-			It("allows all users", func() {
-				service := newSubsonicAPIService("test-plugin", router, dataStore, nil)
+		Context("with allUsers=true", func() {
+			It("allows all users regardless of allowed list", func() {
+				service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
 
 				ctx := GinkgoT().Context()
 				response, err := service.Call(ctx, "/ping?u=testuser")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(response).To(ContainSubstring("ok"))
 			})
+
+			It("allows admin users when allUsers is true", func() {
+				service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
+
+				ctx := GinkgoT().Context()
+				response, err := service.Call(ctx, "/ping?u=adminuser")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response).To(ContainSubstring("ok"))
+			})
+		})
+
+		Context("with no users configured", func() {
+			It("returns error when no users are configured", func() {
+				service := newSubsonicAPIService("test-plugin", router, dataStore, nil, false)
+
+				ctx := GinkgoT().Context()
+				_, err := service.Call(ctx, "/ping?u=testuser")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("no users configured"))
+			})
+
+			It("returns error for empty user list", func() {
+				service := newSubsonicAPIService("test-plugin", router, dataStore, []string{}, false)
+
+				ctx := GinkgoT().Context()
+				_, err := service.Call(ctx, "/ping?u=testuser")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("no users configured"))
+			})
 		})
 	})
 
 	Describe("URL Handling", func() {
 		It("returns error for missing username parameter", func() {
-			service := newSubsonicAPIService("test-plugin", router, dataStore, nil)
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
 
 			ctx := GinkgoT().Context()
 			_, err := service.Call(ctx, "/ping")
@@ -306,7 +303,7 @@ var _ = Describe("SubsonicAPIService", func() {
 		})
 
 		It("returns error for invalid URL", func() {
-			service := newSubsonicAPIService("test-plugin", router, dataStore, nil)
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
 
 			ctx := GinkgoT().Context()
 			_, err := service.Call(ctx, "://invalid")
@@ -315,7 +312,7 @@ var _ = Describe("SubsonicAPIService", func() {
 		})
 
 		It("extracts endpoint from path correctly", func() {
-			service := newSubsonicAPIService("test-plugin", router, dataStore, nil)
+			service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"user1"}, false)
 
 			ctx := GinkgoT().Context()
 			_, err := service.Call(ctx, "/rest/ping.view?u=testuser")
@@ -328,7 +325,7 @@ var _ = Describe("SubsonicAPIService", func() {
 
 	Describe("Router Availability", func() {
 		It("returns error when router is nil", func() {
-			service := newSubsonicAPIService("test-plugin", nil, dataStore, nil)
+			service := newSubsonicAPIService("test-plugin", nil, dataStore, nil, true)
 
 			ctx := GinkgoT().Context()
 			_, err := service.Call(ctx, "/ping?u=testuser")
