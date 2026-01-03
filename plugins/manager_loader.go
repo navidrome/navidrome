@@ -9,6 +9,7 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/tetratelabs/wazero"
@@ -19,10 +20,12 @@ import (
 
 // serviceContext provides dependencies needed by host service factories.
 type serviceContext struct {
-	pluginName  string
-	manager     *Manager
-	permissions *Permissions
-	config      map[string]string
+	pluginName   string
+	manager      *Manager
+	permissions  *Permissions
+	config       map[string]string
+	allowedUsers []string // User IDs this plugin can access
+	allUsers     bool     // If true, plugin can access all users
 }
 
 // hostServiceEntry defines a host service for table-driven registration.
@@ -107,6 +110,14 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterKVStoreHostFunctions(service), service
 		},
 	},
+	{
+		name:          "Users",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			return host.RegisterUsersHostFunctions(service), nil
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
@@ -167,7 +178,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 				}
 			}()
 
-			if err := m.loadPluginWithConfig(plugin.ID, plugin.Path, plugin.Config); err != nil {
+			if err := m.loadPluginWithConfig(&plugin); err != nil {
 				// Store error in DB
 				plugin.LastError = err.Error()
 				plugin.Enabled = false
@@ -203,8 +214,8 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 }
 
 // loadPluginWithConfig loads a plugin with configuration from DB.
-// The ndpPath should point to an .ndp package file.
-func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
+// The p.Path should point to an .ndp package file.
+func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	if m.stopped.Load() {
 		return fmt.Errorf("manager is stopped")
 	}
@@ -219,14 +230,22 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 
 	// Parse config from JSON
 	var pluginConfig map[string]string
-	if configJSON != "" {
-		if err := json.Unmarshal([]byte(configJSON), &pluginConfig); err != nil {
+	if p.Config != "" {
+		if err := json.Unmarshal([]byte(p.Config), &pluginConfig); err != nil {
 			return fmt.Errorf("parsing plugin config: %w", err)
 		}
 	}
 
+	// Parse users from JSON
+	var allowedUsers []string
+	if p.Users != "" {
+		if err := json.Unmarshal([]byte(p.Users), &allowedUsers); err != nil {
+			return fmt.Errorf("parsing plugin users: %w", err)
+		}
+	}
+
 	// Open the .ndp package to get manifest and wasm bytes
-	pkg, err := openPackage(ndpPath)
+	pkg, err := openPackage(p.Path)
 	if err != nil {
 		return fmt.Errorf("opening package: %w", err)
 	}
@@ -264,10 +283,12 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 	var closers []io.Closer
 
 	svcCtx := &serviceContext{
-		pluginName:  name,
-		manager:     m,
-		permissions: pkg.Manifest.Permissions,
-		config:      pluginConfig,
+		pluginName:   p.ID,
+		manager:      m,
+		permissions:  pkg.Manifest.Permissions,
+		config:       pluginConfig,
+		allowedUsers: allowedUsers,
+		allUsers:     p.AllUsers,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
@@ -287,7 +308,7 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 	// Enable experimental threads if requested in manifest
 	if pkg.Manifest.HasExperimentalThreads() {
 		runtimeConfig = runtimeConfig.WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesThreads)
-		log.Debug(m.ctx, "Enabling experimental threads support", "plugin", name)
+		log.Debug(m.ctx, "Enabling experimental threads support", "plugin", p.ID)
 	}
 
 	extismConfig := extism.PluginConfig{
@@ -305,14 +326,14 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 		compiled.Close(m.ctx)
 		return fmt.Errorf("creating instance: %w", err)
 	}
-	instance.SetLogger(extismLogger(name))
+	instance.SetLogger(extismLogger(p.ID))
 	capabilities := detectCapabilities(instance)
 	instance.Close(m.ctx)
 
 	m.mu.Lock()
-	m.plugins[name] = &plugin{
-		name:         name,
-		path:         ndpPath,
+	m.plugins[p.ID] = &plugin{
+		name:         p.ID,
+		path:         p.Path,
 		manifest:     pkg.Manifest,
 		compiled:     compiled,
 		capabilities: capabilities,
@@ -322,7 +343,7 @@ func (m *Manager) loadPluginWithConfig(name, ndpPath, configJSON string) error {
 	m.mu.Unlock()
 
 	// Call plugin init function
-	callPluginInit(m.ctx, m.plugins[name])
+	callPluginInit(m.ctx, m.plugins[p.ID])
 
 	return nil
 }

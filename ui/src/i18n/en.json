@@ -349,13 +349,16 @@
         "updatedAt": "Updated",
         "createdAt": "Installed",
         "configKey": "Key",
-        "configValue": "Value"
+        "configValue": "Value",
+        "allUsers": "Allow all users",
+        "selectedUsers": "Selected users"
       },
       "sections": {
         "status": "Status",
         "info": "Plugin Information",
         "configuration": "Configuration",
-        "manifest": "Manifest"
+        "manifest": "Manifest",
+        "usersPermission": "Users Permission"
       },
       "status": {
         "enabled": "Enabled",
@@ -365,6 +368,7 @@
         "enable": "Enable",
         "disable": "Disable",
         "disabledDueToError": "Fix the error before enabling",
+        "disabledUsersRequired": "Select users before enabling",
         "addConfig": "Add Configuration"
       },
       "notifications": {
@@ -379,7 +383,11 @@
       "messages": {
         "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
         "clickPermissions": "Click a permission for details",
-        "noConfig": "No configuration set"
+        "noConfig": "No configuration set",
+        "allUsersHelp": "When enabled, the plugin will have access to all users, including those created in the future.",
+        "noUsers": "No users selected",
+        "permissionReason": "Reason",
+        "usersRequired": "This plugin requires access to user information. Select which users the plugin can access, or enable 'Allow all users'."
       },
       "placeholders": {
         "configKey": "key",

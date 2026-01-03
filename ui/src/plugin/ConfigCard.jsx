@@ -3,7 +3,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Box,
   TextField as MuiTextField,
   Table,
   TableBody,
@@ -13,18 +12,14 @@ import {
   TableRow,
   IconButton,
   Paper,
-  Button,
 } from '@material-ui/core'
-import { MdSave, MdDelete } from 'react-icons/md'
+import { MdDelete } from 'react-icons/md'
 
 export const ConfigCard = ({
   configPairs,
   onConfigPairsChange,
-  isDirty,
-  loading,
   classes,
   translate,
-  onSave,
 }) => {
   const handleKeyChange = useCallback(
     (index, newKey) => {
@@ -145,19 +140,6 @@ export const ConfigCard = ({
             </TableBody>
           </Table>
         </TableContainer>
-
-        <Box display="flex" justifyContent="flex-end">
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<MdSave />}
-            onClick={onSave}
-            disabled={!isDirty || loading}
-            className={classes.saveButton}
-          >
-            {translate('ra.action.save')}
-          </Button>
-        </Box>
       </CardContent>
     </Card>
   )

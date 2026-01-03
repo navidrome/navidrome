@@ -11,6 +11,9 @@ all: $(PLUGINS:%=%.ndp)
 clean:
 	rm -f $(PLUGINS:%=%.ndp) $(PLUGINS:%=%.wasm)
 
+# PDK source files that trigger rebuild when changed (recursive)
+PDK_SOURCES := $(shell find ../pdk/go -name '*.go' 2>/dev/null)
+
 # Build the .ndp package (zip containing manifest.json + plugin.wasm)
 %.ndp: %.wasm %/manifest.json
 	@rm -f $@
@@ -20,7 +23,7 @@ clean:
 	@mv $< $<.tmp && mv $<.tmp $<  # Touch wasm to ensure it's older than ndp
 
 # Build the wasm binary
-%.wasm: %/*.go %/go.mod
+%.wasm: %/*.go %/go.mod $(PDK_SOURCES)
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else

@@ -246,6 +246,129 @@ var _ = Describe("Plugin API", func() {
 					Expect(plugin.Config).To(Equal(""))
 				})
 
+				It("updates users field", func() {
+					// Configure mock to update the repo when UpdatePluginUsers is called
+					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Users = usersJSON
+						p.AllUsers = allUsers
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
+					body := bytes.NewBufferString(`{"users":"[\"user1\",\"user2\"]"}`)
+					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusOK))
+
+					var plugin model.Plugin
+					err := json.Unmarshal(w.Body.Bytes(), &plugin)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(plugin.Users).To(Equal(`["user1","user2"]`))
+					Expect(mockManager.UpdatePluginUsersCalls).To(HaveLen(1))
+					Expect(mockManager.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["user1","user2"]`))
+				})
+
+				It("updates allUsers field", func() {
+					// Configure mock to update the repo when UpdatePluginUsers is called
+					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Users = usersJSON
+						p.AllUsers = allUsers
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
+					body := bytes.NewBufferString(`{"allUsers":true}`)
+					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusOK))
+
+					var plugin model.Plugin
+					err := json.Unmarshal(w.Body.Bytes(), &plugin)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(plugin.AllUsers).To(BeTrue())
+					Expect(mockManager.UpdatePluginUsersCalls).To(HaveLen(1))
+					Expect(mockManager.UpdatePluginUsersCalls[0].AllUsers).To(BeTrue())
+				})
+
+				It("updates both users and allUsers fields together", func() {
+					// Configure mock to update the repo when UpdatePluginUsers is called
+					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Users = usersJSON
+						p.AllUsers = allUsers
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
+					body := bytes.NewBufferString(`{"users":"[\"user1\"]","allUsers":false}`)
+					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusOK))
+
+					var plugin model.Plugin
+					err := json.Unmarshal(w.Body.Bytes(), &plugin)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(plugin.Users).To(Equal(`["user1"]`))
+					Expect(plugin.AllUsers).To(BeFalse())
+					Expect(mockManager.UpdatePluginUsersCalls).To(HaveLen(1))
+				})
+
+				It("rejects invalid JSON in users field", func() {
+					body := bytes.NewBufferString(`{"users":"not valid json"}`)
+					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusBadRequest))
+					Expect(w.Body.String()).To(ContainSubstring("Invalid JSON"))
+				})
+
+				It("allows empty users", func() {
+					// Configure mock to update the repo when UpdatePluginUsers is called
+					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
+						adminCtx := request.WithUser(ctx, adminUser)
+						p, _ := ds.Plugin(adminCtx).Get(id)
+						p.Users = usersJSON
+						p.AllUsers = allUsers
+						return ds.Plugin(adminCtx).Put(p)
+					}
+
+					body := bytes.NewBufferString(`{"users":""}`)
+					req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusOK))
+
+					var plugin model.Plugin
+					err := json.Unmarshal(w.Body.Bytes(), &plugin)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(plugin.Users).To(Equal(""))
+				})
+
 				It("returns 404 for non-existent plugin", func() {
 					body := bytes.NewBufferString(`{"enabled":true}`)
 					req := httptest.NewRequest("PUT", "/plugin/non-existent", body)
