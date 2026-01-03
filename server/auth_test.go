@@ -342,4 +342,54 @@ var _ = Describe("Auth", func() {
 			Expect(u.IsAdmin).To(BeFalse())
 		})
 	})
+
+	Describe("LDAP Login", func() {
+		var ds model.DataStore
+		var originalHost string
+
+		BeforeEach(func() {
+			ds = &tests.MockDataStore{}
+			originalHost = conf.Server.LDAP.Host
+		})
+
+		AfterEach(func() {
+			conf.Server.LDAP.Host = originalHost
+		})
+
+		It("validateLoginLDAP returns nil if Host is not configured", func() {
+			conf.Server.LDAP.Host = ""
+			u, err := validateLoginLDAP(ds.User(context.Background()), "user", "pass")
+			Expect(err).To(BeNil())
+			Expect(u).To(BeNil())
+		})
+
+		It("validateLoginLDAP returns nil if connection fails", func() {
+			conf.Server.LDAP.Host = "ldap://invalid-host:389"
+			u, err := validateLoginLDAP(ds.User(context.Background()), "user", "pass")
+			Expect(err).To(BeNil())
+			Expect(u).To(BeNil())
+		})
+
+		It("validateLogin proceeds to DB auth if LDAP is not configured", func() {
+			conf.Server.LDAP.Host = ""
+			userRepo := ds.User(context.Background())
+			_ = userRepo.Put(&model.User{ID: "1", UserName: "user", NewPassword: "password", Name: "User"})
+
+			u, err := validateLogin(userRepo, "user", "password")
+			Expect(err).To(BeNil())
+			Expect(u).ToNot(BeNil())
+			Expect(u.UserName).To(Equal("user"))
+		})
+
+		It("validateLogin proceeds to DB auth if LDAP fails", func() {
+			conf.Server.LDAP.Host = "ldap://invalid-host:389"
+			userRepo := ds.User(context.Background())
+			_ = userRepo.Put(&model.User{ID: "1", UserName: "user", NewPassword: "password", Name: "User"})
+
+			u, err := validateLogin(userRepo, "user", "password")
+			Expect(err).To(BeNil())
+			Expect(u).ToNot(BeNil())
+			Expect(u.UserName).To(Equal("user"))
+		})
+	})
 })
