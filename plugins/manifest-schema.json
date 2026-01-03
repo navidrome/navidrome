@@ -147,24 +147,12 @@
     },
     "SubsonicAPIPermission": {
       "type": "object",
-      "description": "SubsonicAPI service permissions",
+      "description": "SubsonicAPI service permissions. Requires 'users' permission to be declared.",
       "additionalProperties": false,
       "properties": {
         "reason": {
           "type": "string",
           "description": "Explanation for why SubsonicAPI access is needed"
-        },
-        "allowedUsernames": {
-          "type": "array",
-          "description": "List of usernames the plugin can pass as u. Any user if empty",
-          "items": {
-            "type": "string"
-          }
-        },
-        "allowAdmins": {
-          "type": "boolean",
-          "description": "If false, reject calls where the u is an admin",
-          "default": false
         }
       }
     },

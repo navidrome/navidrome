@@ -220,6 +220,20 @@ Integrates with external scrobbling services. Export one or more of these functi
 | `nd_scrobbler_now_playing`   | See below             | (none)         | Send now playing            |
 | `nd_scrobbler_scrobble`      | See below             | (none)         | Submit a scrobble           |
 
+> **Important:** Scrobbler plugins require the `users` permission in their manifest. Scrobble events are only sent for users assigned to the plugin through Navidrome's configuration. The `nd_scrobbler_is_authorized` function is called after the server-side user check passes.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "users": {
+      "reason": "Receive scrobble events for users assigned to this plugin"
+    }
+  }
+}
+```
+
 **NowPlaying/Scrobble Input:**
 
 ```json
@@ -647,16 +661,16 @@ Call Navidrome's Subsonic API internally (no network round-trip).
 {
   "permissions": {
     "subsonicapi": {
-      "reason": "Access library data",
-      "allowedUsernames": ["user1", "user2"],
-      "allowAdmins": false
+      "reason": "Access library data"
+    },
+    "users": {
+      "reason": "Access user information for SubsonicAPI authorization"
     }
   }
 }
 ```
 
-- `allowedUsernames` – Restrict which users the plugin can act as (empty = any user)
-- `allowAdmins` – Whether plugin can call API as admin users (default: false)
+> **Important:** The `subsonicapi` permission requires the `users` permission. User access is controlled through the plugin's database configuration, not the manifest. Configure which users can use the plugin through the Navidrome UI or API.
 
 **Host function:**
 
@@ -1039,7 +1053,7 @@ Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
-6. **SubsonicAPI Restrictions** – Configurable user/admin access controls
+6. **User-Scoped Authorization** – Plugins with `subsonicapi` or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration. The `users` permission is required for these features.
 7. **Users Permission** – Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
 
 

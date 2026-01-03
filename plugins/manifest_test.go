@@ -216,4 +216,180 @@ var _ = Describe("Manifest", func() {
 			Expect(m.HasExperimentalThreads()).To(BeTrue())
 		})
 	})
+
+	Describe("ParseManifest", func() {
+		It("parses a valid manifest with users permission", func() {
+			data := []byte(`{
+				"name": "Test Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"permissions": {
+					"subsonicapi": {},
+					"users": {}
+				}
+			}`)
+
+			m, err := ParseManifest(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).To(Equal("Test Plugin"))
+			Expect(m.Permissions.Subsonicapi).ToNot(BeNil())
+			Expect(m.Permissions.Users).ToNot(BeNil())
+		})
+
+		It("returns error for invalid JSON", func() {
+			data := []byte(`{invalid}`)
+
+			_, err := ParseManifest(data)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when subsonicapi is requested without users permission", func() {
+			data := []byte(`{
+				"name": "Test Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"permissions": {
+					"subsonicapi": {}
+				}
+			}`)
+
+			_, err := ParseManifest(data)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
+	})
+
+	Describe("Validate", func() {
+		It("validates manifest with subsonicapi and users permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Subsonicapi: &SubsonicAPIPermission{},
+					Users:       &UsersPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when subsonicapi without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Subsonicapi: &SubsonicAPIPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+		})
+
+		It("validates manifest without subsonicapi", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Http: &HTTPPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates manifest without any permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Describe("ValidateWithCapabilities", func() {
+		It("validates scrobbler capability with users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Users: &UsersPermission{},
+				},
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityScrobbler})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when scrobbler capability without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityScrobbler})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("scrobbler"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
+
+		It("validates non-scrobbler capability without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityMetadataAgent})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates multiple capabilities including scrobbler", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Users: &UsersPermission{},
+				},
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityMetadataAgent, CapabilityScrobbler})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates with nil capabilities", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates with empty capabilities", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{})
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
 })

@@ -259,10 +259,19 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 		return nil, false
 	}
 
-	// Create a new scrobbler adapter for this plugin
+	// Build user ID map for fast lookups
+	userIDMap := make(map[string]struct{})
+	for _, id := range plugin.allowedUserIDs {
+		userIDMap[id] = struct{}{}
+	}
+
+	// Create a new scrobbler adapter for this plugin with user authorization config
 	return &ScrobblerPlugin{
-		name:   plugin.name,
-		plugin: plugin,
+		name:           plugin.name,
+		plugin:         plugin,
+		allowedUserIDs: plugin.allowedUserIDs,
+		allUsers:       plugin.allUsers,
+		userIDMap:      userIDMap,
 	}, true
 }
 

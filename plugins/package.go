@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -62,13 +61,13 @@ func openPackage(ndpPath string) (*ndpPackage, error) {
 	}
 
 	// Parse and validate manifest
-	var manifest Manifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+	manifest, err := ParseManifest(manifestBytes)
+	if err != nil {
 		return nil, fmt.Errorf("parsing manifest: %w", err)
 	}
 
 	return &ndpPackage{
-		Manifest:  &manifest,
+		Manifest:  manifest,
 		WasmBytes: wasmBytes,
 	}, nil
 }
@@ -90,12 +89,12 @@ func readManifest(ndpPath string) (*Manifest, error) {
 				return nil, fmt.Errorf("reading manifest: %w", err)
 			}
 
-			var manifest Manifest
-			if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+			manifest, err := ParseManifest(manifestBytes)
+			if err != nil {
 				return nil, fmt.Errorf("parsing manifest: %w", err)
 			}
 
-			return &manifest, nil
+			return manifest, nil
 		}
 	}
 
