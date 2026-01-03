@@ -106,6 +106,13 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 	client, _ := request.ClientFrom(r.Context())
 
+	// If there's a current track with a position, update the scrobble duration
+	// This handles the case where the user stops playback and the client saves the queue
+	if currentID != "" && position > 0 {
+		positionSecs := int(position / 1000)
+		api.scrobbler.StopPlayback(r.Context(), currentID, positionSecs)
+	}
+
 	items := slice.Map(ids, func(id string) model.MediaFile {
 		return model.MediaFile{ID: id}
 	})
@@ -180,6 +187,14 @@ func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, e
 		if err != nil || currentIndex < 0 || currentIndex >= len(ids) {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
+	}
+
+	// If there's a current track with a position, update the scrobble duration
+	// This handles the case where the user stops playback and the client saves the queue
+	if len(ids) > 0 && currentIndex < len(ids) && position > 0 {
+		currentID := ids[currentIndex]
+		positionSecs := int(position / 1000)
+		api.scrobbler.StopPlayback(r.Context(), currentID, positionSecs)
 	}
 
 	items := slice.Map(ids, func(id string) model.MediaFile {
