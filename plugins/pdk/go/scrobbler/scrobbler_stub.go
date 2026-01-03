@@ -25,16 +25,12 @@ func (e ScrobblerError) Error() string { return string(e) }
 
 // IsAuthorizedRequest is the request for authorization check.
 type IsAuthorizedRequest struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
 	// Username is the username of the user.
 	Username string `json:"username"`
 }
 
 // NowPlayingRequest is the request for now playing notification.
 type NowPlayingRequest struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
 	// Username is the username of the user.
 	Username string `json:"username"`
 	// Track is the track currently playing.
@@ -45,8 +41,6 @@ type NowPlayingRequest struct {
 
 // ScrobbleRequest is the request for submitting a scrobble.
 type ScrobbleRequest struct {
-	// UserID is the internal Navidrome user ID.
-	UserID string `json:"userId"`
 	// Username is the username of the user.
 	Username string `json:"username"`
 	// Track is the track that was played.
