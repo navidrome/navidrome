@@ -215,7 +215,7 @@ Integrates with external scrobbling services. Export one or more of these functi
 
 | Function                     | Input                 | Output         | Description                 |
 |------------------------------|-----------------------|----------------|-----------------------------|
-| `nd_scrobbler_is_authorized` | `{userId, username}`  | `bool`         | Check if user is authorized |
+| `nd_scrobbler_is_authorized` | `{username}`          | `bool`         | Check if user is authorized |
 | `nd_scrobbler_now_playing`   | See below             | (none)         | Send now playing            |
 | `nd_scrobbler_scrobble`      | See below             | (none)         | Submit a scrobble           |
 
@@ -223,7 +223,6 @@ Integrates with external scrobbling services. Export one or more of these functi
 
 ```json
 {
-  "userId": "abc123",
   "username": "john",
   "track": {
     "id": "track-id",

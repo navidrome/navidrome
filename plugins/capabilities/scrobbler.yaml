@@ -23,21 +23,14 @@ components:
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
             properties:
-                userId:
-                    type: string
-                    description: UserID is the internal Navidrome user ID.
                 username:
                     type: string
                     description: Username is the username of the user.
             required:
-                - userId
                 - username
         NowPlayingRequest:
             description: NowPlayingRequest is the request for now playing notification.
             properties:
-                userId:
-                    type: string
-                    description: UserID is the internal Navidrome user ID.
                 username:
                     type: string
                     description: Username is the username of the user.
@@ -49,16 +42,12 @@ components:
                     format: int32
                     description: Position is the current playback position in seconds.
             required:
-                - userId
                 - username
                 - track
                 - position
         ScrobbleRequest:
             description: ScrobbleRequest is the request for submitting a scrobble.
             properties:
-                userId:
-                    type: string
-                    description: UserID is the internal Navidrome user ID.
                 username:
                     type: string
                     description: Username is the username of the user.
@@ -70,7 +59,6 @@ components:
                     format: int64
                     description: Timestamp is the Unix timestamp when the track started playing.
             required:
-                - userId
                 - username
                 - track
                 - timestamp

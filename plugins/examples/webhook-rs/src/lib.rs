@@ -32,10 +32,7 @@ struct WebhookPlugin;
 impl Scrobbler for WebhookPlugin {
     /// Checks if a user is authorized. This plugin authorizes all users.
     fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error> {
-        info!(
-            "Authorization check for user: {} ({})",
-            req.username, req.user_id
-        );
+        info!("Authorization check for user: {}", req.username);
         Ok(true)
     }
 
