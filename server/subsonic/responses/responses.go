@@ -161,7 +161,7 @@ type Child struct {
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	UserRating            int32      `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
-	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
+	IsVideo               *bool      `xml:"isVideo,attr"                            json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->

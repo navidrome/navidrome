@@ -14,8 +14,7 @@
             "title": "title",
             "album": "album",
             "artist": "artist",
-            "duration": 120,
-            "isVideo": false
+            "duration": 120
           },
           {
             "id": "2",
@@ -23,8 +22,7 @@
             "title": "title 2",
             "album": "album",
             "artist": "artist",
-            "duration": 300,
-            "isVideo": false
+            "duration": 300
           }
         ],
         "id": "ABC123",
