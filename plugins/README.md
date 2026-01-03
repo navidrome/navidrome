@@ -30,6 +30,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Artwork](#artwork)
   - [SubsonicAPI](#subsonicapi)
   - [Config](#config)
+  - [Users](#users)
 - [Configuration](#configuration)
 - [Building Plugins](#building-plugins)
 - [Examples](#examples)
@@ -708,6 +709,86 @@ for _, key := range keys {
 allKeys := host.ConfigKeys("")
 ```
 
+### Users
+
+Access user information for the users that the plugin has been granted access to. This is useful for plugins that need to associate data with specific users or display user information.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "users": {
+      "reason": "Display user information in status updates"
+    }
+  }
+}
+```
+
+**Important:** Before enabling a plugin that requires the `users` permission, an administrator must configure which users the plugin can access. This can be done in two ways:
+
+1. **Allow all users** – Enable the "Allow all users" toggle in the plugin settings
+2. **Select specific users** – Choose individual users from the user list
+
+If neither option is configured, the plugin cannot be enabled.
+
+**Host functions:**
+
+| Function         | Parameters | Returns               |
+|------------------|------------|-----------------------|
+| `users_getusers` | –          | Array of User objects |
+
+**User object fields:**
+
+| Field      | Type    | Description                    |
+|------------|---------|--------------------------------|
+| `userName` | string  | The user's unique username     |
+| `name`     | string  | The user's display name        |
+| `isAdmin`  | boolean | Whether the user is an admin   |
+
+> **Security:** Sensitive fields like passwords, email addresses, and internal IDs are never exposed to plugins.
+
+**Usage (with generated SDK):**
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/host"
+
+// Get all users the plugin has access to
+users, err := host.UsersGetUsers()
+if err != nil {
+    pdk.Log(pdk.LogError, "Failed to get users: " + err.Error())
+    return
+}
+
+for _, user := range users {
+    pdk.Log(pdk.LogInfo, "User: " + user.UserName + " (" + user.Name + ")")
+    if user.IsAdmin {
+        pdk.Log(pdk.LogInfo, "  - Administrator")
+    }
+}
+```
+
+**Rust example:**
+
+```rust
+use nd_pdk_host::users::get_users;
+
+let users = get_users()?;
+for user in users {
+    println!("User: {} ({})", user.user_name, user.name);
+}
+```
+
+**Python example:**
+
+```python
+from host.nd_host_users import users_get_users
+
+users = users_get_users()
+for user in users:
+    print(f"User: {user['userName']} ({user['name']})")
+```
+
 ---
 
 ## Configuration
@@ -959,6 +1040,7 @@ Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
 6. **SubsonicAPI Restrictions** – Configurable user/admin access controls
+7. **Users Permission** – Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
 
 
 ---

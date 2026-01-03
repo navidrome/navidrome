@@ -243,6 +243,66 @@ var _ = Describe("UsersService Integration with Specific Users", Ordered, func()
 	})
 })
 
+var _ = Describe("UsersService Enable Gate", Ordered, func() {
+	var manager *Manager
+
+	BeforeAll(func() {
+		var cleanup func()
+		// Start with disabled plugin, no users configured
+		manager, cleanup = setupUsersIntegrationManagerWithEnabled(false, false, "")
+		DeferCleanup(cleanup)
+	})
+
+	Describe("Enable Gate Behavior", func() {
+		It("should block enabling when no users configured and allUsers is false", func() {
+			ctx := GinkgoT().Context()
+			err := manager.EnablePlugin(ctx, "test-users")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("users permission requires configuration"))
+		})
+
+		It("should allow enabling when allUsers is true", func() {
+			ctx := GinkgoT().Context()
+
+			// Update the plugin to have allUsers=true
+			err := manager.UpdatePluginUsers(ctx, "test-users", "", true)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Now enabling should succeed
+			err = manager.EnablePlugin(ctx, "test-users")
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify plugin is loaded
+			manager.mu.RLock()
+			_, ok := manager.plugins["test-users"]
+			manager.mu.RUnlock()
+			Expect(ok).To(BeTrue())
+		})
+
+		It("should allow enabling when specific users are configured", func() {
+			ctx := GinkgoT().Context()
+
+			// First disable the plugin
+			err := manager.DisablePlugin(ctx, "test-users")
+			Expect(err).ToNot(HaveOccurred())
+
+			// Update to have specific users (and allUsers=false)
+			err = manager.UpdatePluginUsers(ctx, "test-users", `["user1"]`, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Now enabling should succeed
+			err = manager.EnablePlugin(ctx, "test-users")
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify plugin is loaded
+			manager.mu.RLock()
+			_, ok := manager.plugins["test-users"]
+			manager.mu.RUnlock()
+			Expect(ok).To(BeTrue())
+		})
+	})
+})
+
 // testUsersSetup contains common setup data for users integration tests
 type testUsersSetup struct {
 	tmpDir   string
@@ -357,8 +417,14 @@ func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersI
 	return &output, nil
 }
 
-// setupUsersIntegrationManager creates a Manager for users integration tests with the given plugin settings
+// setupUsersIntegrationManager creates a Manager for users integration tests with the given plugin settings.
+// The plugin is enabled by default.
 func setupUsersIntegrationManager(allUsers bool, allowedUsers string) (*Manager, func()) {
+	return setupUsersIntegrationManagerWithEnabled(true, allUsers, allowedUsers)
+}
+
+// setupUsersIntegrationManagerWithEnabled creates a Manager for users integration tests with full control over plugin state
+func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUsers string) (*Manager, func()) {
 	setup, err := setupTestUsersPlugin()
 	Expect(err).ToNot(HaveOccurred())
 
@@ -366,14 +432,14 @@ func setupUsersIntegrationManager(allUsers bool, allowedUsers string) (*Manager,
 	cleanupConfig := configtest.SetupConfig()
 	setupTestUsersConfig(setup.tmpDir)
 
-	// Setup mock DataStore with pre-enabled plugin and users
+	// Setup mock DataStore with plugin and users
 	mockPluginRepo := tests.CreateMockPluginRepo()
 	mockPluginRepo.Permitted = true
 	mockPluginRepo.SetData(model.Plugins{{
 		ID:       "test-users",
 		Path:     setup.destPath,
 		SHA256:   setup.hashHex,
-		Enabled:  true,
+		Enabled:  enabled,
 		AllUsers: allUsers,
 		Users:    allowedUsers,
 	}})
