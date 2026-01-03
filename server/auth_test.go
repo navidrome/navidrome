@@ -370,23 +370,23 @@ var _ = Describe("Auth", func() {
 			Expect(u).To(BeNil())
 		})
 
-		It("validateLogin proceeds to DB auth if LDAP is not configured", func() {
+		It("ValidateLogin proceeds to DB auth if LDAP is not configured", func() {
 			conf.Server.LDAP.Host = ""
 			userRepo := ds.User(context.Background())
 			_ = userRepo.Put(&model.User{ID: "1", UserName: "user", NewPassword: "password", Name: "User"})
 
-			u, err := validateLogin(userRepo, "user", "password")
+			u, err := ValidateLogin(userRepo, "user", "password")
 			Expect(err).To(BeNil())
 			Expect(u).ToNot(BeNil())
 			Expect(u.UserName).To(Equal("user"))
 		})
 
-		It("validateLogin proceeds to DB auth if LDAP fails", func() {
+		It("ValidateLogin proceeds to DB auth if LDAP fails", func() {
 			conf.Server.LDAP.Host = "ldap://invalid-host:389"
 			userRepo := ds.User(context.Background())
 			_ = userRepo.Put(&model.User{ID: "1", UserName: "user", NewPassword: "password", Name: "User"})
 
-			u, err := validateLogin(userRepo, "user", "password")
+			u, err := ValidateLogin(userRepo, "user", "password")
 			Expect(err).To(BeNil())
 			Expect(u).ToNot(BeNil())
 			Expect(u.UserName).To(Equal("user"))

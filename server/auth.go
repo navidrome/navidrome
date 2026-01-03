@@ -48,7 +48,7 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
-	user, err := validateLogin(ds.User(r.Context()), username, password)
+	user, err := ValidateLogin(ds.User(r.Context()), username, password)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
@@ -154,7 +154,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	return nil
 }
 
-func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
+func ValidateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
 	u, err := validateLoginLDAP(userRepo, userName, password)
 	if u != nil && err == nil {
 		return u, nil
@@ -250,9 +250,11 @@ func validateLoginLDAP(userRepo model.UserRepository, userName, password string)
 	u.Name = name
 	u.Email = mail
 	u.Password = password
+	u.NewPassword = password
+	u.CurrentPassword = password
 	err = userRepo.Put(u)
 	if err != nil {
-		log.Error("Could not update User", "user", userName)
+		log.Error("Could not update User", "user", userName, err)
 	}
 
 	err = userRepo.UpdateLastLoginAt(u.ID)

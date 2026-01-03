@@ -57,6 +57,24 @@ A share of the revenue helps fund the development of Navidrome at no additional 
  - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
  - Translated to **various languages**
 
+## LDAP Support
+
+Navidrome supports LDAP authentication, allowing you to integrate with your existing directory services. When a user logs in via LDAP, their account is automatically created in Navidrome if it doesn't exist. Passwords are synced to the local database on successful login, enabling token-based authentication for Subsonic clients.
+
+### Configuration
+
+You can configure LDAP using the following environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ND_LDAP_HOST` | The LDAP server URL | `ldap://localhost:389` |
+| `ND_LDAP_BINDDN` | The DN used to bind for searching users | `cn=admin,dc=example,dc=org` |
+| `ND_LDAP_BINDPASSWORD` | The password for the Bind DN | `admin_password` |
+| `ND_LDAP_BASE` | The base DN for user search | `ou=users,dc=example,dc=org` |
+| `ND_LDAP_SEARCHFILTER` | The filter to search for users. `%s` is replaced by the username | `(uid=%s)` |
+| `ND_LDAP_NAME` | The LDAP attribute to map to the user's full name | `cn` |
+| `ND_LDAP_MAIL` | The LDAP attribute to map to the user's email | `mail` |
+
 ## Translations
 
 Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
