@@ -5,8 +5,10 @@
   "description": "Test plugin for SubsonicAPI host function",
   "permissions": {
     "subsonicapi": {
-      "reason": "Testing SubsonicAPI access",
-      "allowAdmins": true
+      "reason": "Testing SubsonicAPI access"
+    },
+    "users": {
+      "reason": "Access user information for SubsonicAPI authorization"
     }
   }
 }

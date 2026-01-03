@@ -8,6 +8,9 @@
     "http": {
       "reason": "To send webhook notifications to configured URLs",
       "allowedHosts": ["*"]
+    },
+    "users": {
+      "reason": "Receive scrobble events for users assigned to this plugin"
     }
   }
 }

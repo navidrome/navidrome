@@ -71,6 +71,41 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		})
 	})
 
+	Describe("isUserAllowed", func() {
+		It("returns true when allUsers is true", func() {
+			sp := &ScrobblerPlugin{allUsers: true}
+			Expect(sp.isUserAllowed("any-user")).To(BeTrue())
+		})
+
+		It("returns false when allowedUserIDs is empty and allUsers is false", func() {
+			sp := &ScrobblerPlugin{allUsers: false, allowedUserIDs: []string{}}
+			Expect(sp.isUserAllowed("user-1")).To(BeFalse())
+		})
+
+		It("returns false when allowedUserIDs is nil and allUsers is false", func() {
+			sp := &ScrobblerPlugin{allUsers: false}
+			Expect(sp.isUserAllowed("user-1")).To(BeFalse())
+		})
+
+		It("returns true when user is in allowedUserIDs", func() {
+			sp := &ScrobblerPlugin{
+				allUsers:       false,
+				allowedUserIDs: []string{"user-1", "user-2"},
+				userIDMap:      map[string]struct{}{"user-1": {}, "user-2": {}},
+			}
+			Expect(sp.isUserAllowed("user-1")).To(BeTrue())
+		})
+
+		It("returns false when user is not in allowedUserIDs", func() {
+			sp := &ScrobblerPlugin{
+				allUsers:       false,
+				allowedUserIDs: []string{"user-1", "user-2"},
+				userIDMap:      map[string]struct{}{"user-1": {}, "user-2": {}},
+			}
+			Expect(sp.isUserAllowed("user-3")).To(BeFalse())
+		})
+	})
+
 	Describe("NowPlaying", func() {
 		It("successfully calls the plugin", func() {
 			track := &model.MediaFile{
