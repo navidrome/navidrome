@@ -41,7 +41,6 @@ type ScrobblerPlugin struct {
 func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
 	username := getUsernameFromContext(ctx)
 	input := capabilities.IsAuthorizedRequest{
-		UserID:   userId,
 		Username: username,
 	}
 
@@ -57,7 +56,6 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	username := getUsernameFromContext(ctx)
 	input := capabilities.NowPlayingRequest{
-		UserID:   userId,
 		Username: username,
 		Track:    mediaFileToTrackInfo(track),
 		Position: int32(position),
@@ -71,7 +69,6 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobbler.Scrobble) error {
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
-		UserID:    userId,
 		Username:  username,
 		Track:     mediaFileToTrackInfo(&sc.MediaFile),
 		Timestamp: sc.TimeStamp.Unix(),

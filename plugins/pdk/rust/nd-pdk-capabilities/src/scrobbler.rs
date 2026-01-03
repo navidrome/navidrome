@@ -16,9 +16,6 @@ pub const SCROBBLER_ERROR_UNRECOVERABLE: ScrobblerError = "scrobbler(unrecoverab
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IsAuthorizedRequest {
-    /// UserID is the internal Navidrome user ID.
-    #[serde(default)]
-    pub user_id: String,
     /// Username is the username of the user.
     #[serde(default)]
     pub username: String,
@@ -27,9 +24,6 @@ pub struct IsAuthorizedRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NowPlayingRequest {
-    /// UserID is the internal Navidrome user ID.
-    #[serde(default)]
-    pub user_id: String,
     /// Username is the username of the user.
     #[serde(default)]
     pub username: String,
@@ -44,9 +38,6 @@ pub struct NowPlayingRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleRequest {
-    /// UserID is the internal Navidrome user ID.
-    #[serde(default)]
-    pub user_id: String,
     /// Username is the username of the user.
     #[serde(default)]
     pub username: String,
