@@ -70,6 +70,17 @@ func (u *MockedUserRepo) Get(id string) (*model.User, error) {
 	return nil, model.ErrNotFound
 }
 
+func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	var users model.Users
+	for _, usr := range u.Data {
+		users = append(users, *usr)
+	}
+	return users, nil
+}
+
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {

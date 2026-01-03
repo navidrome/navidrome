@@ -79,12 +79,14 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 
 	// Upsert using INSERT ... ON CONFLICT for atomic operation
 	_, err := r.db.NewQuery(`
-		INSERT INTO plugin (id, path, manifest, config, enabled, last_error, sha256, created_at, updated_at)
-		VALUES ({:id}, {:path}, {:manifest}, {:config}, {:enabled}, {:last_error}, {:sha256}, {:created_at}, {:updated_at})
+		INSERT INTO plugin (id, path, manifest, config, users, all_users, enabled, last_error, sha256, created_at, updated_at)
+		VALUES ({:id}, {:path}, {:manifest}, {:config}, {:users}, {:all_users}, {:enabled}, {:last_error}, {:sha256}, {:created_at}, {:updated_at})
 		ON CONFLICT(id) DO UPDATE SET
 			path = excluded.path,
 			manifest = excluded.manifest,
 			config = excluded.config,
+			users = excluded.users,
+			all_users = excluded.all_users,
 			enabled = excluded.enabled,
 			last_error = excluded.last_error,
 			sha256 = excluded.sha256,
@@ -94,6 +96,8 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 		"path":       plugin.Path,
 		"manifest":   plugin.Manifest,
 		"config":     plugin.Config,
+		"users":      plugin.Users,
+		"all_users":  plugin.AllUsers,
 		"enabled":    plugin.Enabled,
 		"last_error": plugin.LastError,
 		"sha256":     plugin.SHA256,

@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS plugin (
     path TEXT NOT NULL,
     manifest TEXT NOT NULL,
     config TEXT,
+    users TEXT,
+    all_users INTEGER NOT NULL DEFAULT 0,
     enabled INTEGER NOT NULL DEFAULT 0,
     last_error TEXT,
     sha256 TEXT NOT NULL,

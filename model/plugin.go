@@ -7,6 +7,8 @@ type Plugin struct {
 	Path      string    `structs:"path"       json:"path"`
 	Manifest  string    `structs:"manifest"   json:"manifest"`
 	Config    string    `structs:"config"     json:"config,omitempty"`
+	Users     string    `structs:"users"      json:"users,omitempty"`
+	AllUsers  bool      `structs:"all_users"  json:"allUsers,omitempty"`
 	Enabled   bool      `structs:"enabled"    json:"enabled"`
 	LastError string    `structs:"last_error" json:"lastError,omitempty"`
 	SHA256    string    `structs:"sha256"     json:"sha256"`

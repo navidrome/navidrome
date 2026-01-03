@@ -126,7 +126,7 @@ func ConfigGetInt(key string) (int64, bool) {
 }
 
 // ConfigKeys calls the config_keys host function.
-// List returns configuration keys matching the given prefix.
+// Keys returns configuration keys matching the given prefix.
 //
 // Parameters:
 //   - prefix: Key prefix to filter by. If empty, returns all keys.

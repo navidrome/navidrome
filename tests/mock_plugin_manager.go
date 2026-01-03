@@ -5,7 +5,7 @@ import (
 )
 
 // MockPluginManager is a mock implementation of plugins.PluginManager for testing.
-// It implements EnablePlugin, DisablePlugin, and UpdatePluginConfig methods.
+// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, and UpdatePluginUsers methods.
 type MockPluginManager struct {
 	// EnablePluginFn is called when EnablePlugin is invoked. If nil, returns EnableError.
 	EnablePluginFn func(ctx context.Context, id string) error
@@ -13,11 +13,14 @@ type MockPluginManager struct {
 	DisablePluginFn func(ctx context.Context, id string) error
 	// UpdatePluginConfigFn is called when UpdatePluginConfig is invoked. If nil, returns ConfigError.
 	UpdatePluginConfigFn func(ctx context.Context, id, configJSON string) error
+	// UpdatePluginUsersFn is called when UpdatePluginUsers is invoked. If nil, returns UsersError.
+	UpdatePluginUsersFn func(ctx context.Context, id, usersJSON string, allUsers bool) error
 
 	// Default errors to return when Fn callbacks are not set
 	EnableError  error
 	DisableError error
 	ConfigError  error
+	UsersError   error
 
 	// Track calls for assertions
 	EnablePluginCalls       []string
@@ -25,6 +28,11 @@ type MockPluginManager struct {
 	UpdatePluginConfigCalls []struct {
 		ID         string
 		ConfigJSON string
+	}
+	UpdatePluginUsersCalls []struct {
+		ID        string
+		UsersJSON string
+		AllUsers  bool
 	}
 }
 
@@ -53,4 +61,16 @@ func (m *MockPluginManager) UpdatePluginConfig(ctx context.Context, id, configJS
 		return m.UpdatePluginConfigFn(ctx, id, configJSON)
 	}
 	return m.ConfigError
+}
+
+func (m *MockPluginManager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error {
+	m.UpdatePluginUsersCalls = append(m.UpdatePluginUsersCalls, struct {
+		ID        string
+		UsersJSON string
+		AllUsers  bool
+	}{ID: id, UsersJSON: usersJSON, AllUsers: allUsers})
+	if m.UpdatePluginUsersFn != nil {
+		return m.UpdatePluginUsersFn(ctx, id, usersJSON, allUsers)
+	}
+	return m.UsersError
 }

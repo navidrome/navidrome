@@ -39,6 +39,7 @@
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
+//! - [`users`] - provides access to user information for plugins.
 //! - [`websocket`] - provides WebSocket communication capabilities for plugins.
 
 #[doc(hidden)]
@@ -88,6 +89,13 @@ mod nd_host_subsonicapi;
 /// provides access to Navidrome's Subsonic API from plugins.
 pub mod subsonicapi {
     pub use super::nd_host_subsonicapi::*;
+}
+
+#[doc(hidden)]
+mod nd_host_users;
+/// provides access to user information for plugins.
+pub mod users {
+    pub use super::nd_host_users::*;
 }
 
 #[doc(hidden)]
