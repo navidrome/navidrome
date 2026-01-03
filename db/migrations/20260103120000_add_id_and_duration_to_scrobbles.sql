@@ -17,7 +17,7 @@ CREATE TABLE scrobbles_new(
 );
 
 INSERT INTO scrobbles_new (id, media_file_id, user_id, submission_time, duration)
-SELECT lower(hex(randomblob(16))), media_file_id, user_id, submission_time, 0 FROM scrobbles;
+SELECT lower(hex(randomblob(16))), media_file_id, user_id, submission_time, NULL FROM scrobbles;
 
 DROP TABLE scrobbles;
 ALTER TABLE scrobbles_new RENAME TO scrobbles;
