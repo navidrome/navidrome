@@ -1,0 +1,79 @@
+version: v1-draft
+exports:
+    nd_websocket_on_text_message:
+        description: OnTextMessage is called when a text message is received on a WebSocket connection.
+        input:
+            $ref: '#/components/schemas/OnTextMessageRequest'
+            contentType: application/json
+    nd_websocket_on_binary_message:
+        description: OnBinaryMessage is called when a binary message is received on a WebSocket connection.
+        input:
+            $ref: '#/components/schemas/OnBinaryMessageRequest'
+            contentType: application/json
+    nd_websocket_on_error:
+        description: OnError is called when an error occurs on a WebSocket connection.
+        input:
+            $ref: '#/components/schemas/OnErrorRequest'
+            contentType: application/json
+    nd_websocket_on_close:
+        description: OnClose is called when a WebSocket connection is closed.
+        input:
+            $ref: '#/components/schemas/OnCloseRequest'
+            contentType: application/json
+components:
+    schemas:
+        OnBinaryMessageRequest:
+            description: OnBinaryMessageRequest is the request provided when a binary message is received.
+            properties:
+                connectionId:
+                    type: string
+                    description: ConnectionID is the unique identifier for the WebSocket connection that received the message.
+                data:
+                    type: string
+                    description: Data is the binary data received from the WebSocket, encoded as base64.
+            required:
+                - connectionId
+                - data
+        OnCloseRequest:
+            description: OnCloseRequest is the request provided when a WebSocket connection is closed.
+            properties:
+                connectionId:
+                    type: string
+                    description: ConnectionID is the unique identifier for the WebSocket connection that was closed.
+                code:
+                    type: integer
+                    format: int32
+                    description: |-
+                        Code is the WebSocket close status code (e.g., 1000 for normal closure,
+                        1001 for going away, 1006 for abnormal closure).
+                reason:
+                    type: string
+                    description: Reason is the human-readable reason for the connection closure, if provided.
+            required:
+                - connectionId
+                - code
+                - reason
+        OnErrorRequest:
+            description: OnErrorRequest is the request provided when an error occurs on a WebSocket connection.
+            properties:
+                connectionId:
+                    type: string
+                    description: ConnectionID is the unique identifier for the WebSocket connection where the error occurred.
+                error:
+                    type: string
+                    description: Error is the error message describing what went wrong.
+            required:
+                - connectionId
+                - error
+        OnTextMessageRequest:
+            description: OnTextMessageRequest is the request provided when a text message is received.
+            properties:
+                connectionId:
+                    type: string
+                    description: ConnectionID is the unique identifier for the WebSocket connection that received the message.
+                message:
+                    type: string
+                    description: Message is the text message content received from the WebSocket.
+            required:
+                - connectionId
+                - message

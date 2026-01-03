@@ -64,6 +64,7 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 	if a.pluginLoader != nil {
 		availablePlugins = a.pluginLoader.PluginNames("MetadataAgent")
 	}
+	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
 
 	configuredAgents := strings.Split(conf.Server.Agents, ",")
 
@@ -354,6 +355,9 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 			continue
 		}
 		images, err := retriever.GetAlbumImages(ctx, name, artist, mbid)
+		if err != nil {
+			log.Trace(ctx, "Agent GetAlbumImages failed", "agent", ag.AgentName(), "album", name, "artist", artist, "mbid", mbid, err)
+		}
 		if len(images) > 0 && err == nil {
 			log.Debug(ctx, "Got Album Images", "agent", ag.AgentName(), "album", name, "artist", artist,
 				"mbid", mbid, "elapsed", time.Since(start))

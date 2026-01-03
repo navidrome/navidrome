@@ -253,7 +253,9 @@
         "updatedAt": "Últ. Atualização",
         "createdAt": "Data de Criação",
         "downloadable": "Permitir Baixar?"
-      }
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
@@ -327,6 +329,61 @@
         "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
         "scanInProgress": "Scan em progresso...",
         "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Nome",
+        "description": "Descrição",
+        "version": "Versão",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Permissões",
+        "enabled": "Habilitado",
+        "status": "Status",
+        "path": "Caminho",
+        "lastError": "Erro",
+        "hasError": "Erro",
+        "updatedAt": "Atualizado",
+        "createdAt": "Instalado",
+        "configKey": "Chave",
+        "configValue": "Valor"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informações do Plugin",
+        "configuration": "Configuração",
+        "manifest": "Manifesto"
+      },
+      "status": {
+        "enabled": "Habilitado",
+        "disabled": "Desabilitado"
+      },
+      "actions": {
+        "enable": "Habilitar",
+        "disable": "Desabilitar",
+        "disabledDueToError": "Corrija o erro antes de habilitar",
+        "addConfig": "Adicionar configuração"
+      },
+      "notifications": {
+        "enabled": "Plugin habilitado",
+        "disabled": "Plugin desabilitado",
+        "updated": "Plugin atualizado",
+        "error": "Erro ao atualizar plugin"
+      },
+      "validation": {
+        "invalidJson": "A configuração deve ser um JSON válido"
+      },
+      "messages": {
+        "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
+        "clickPermissions": "Clique em uma permissão para ver detalhes",
+        "noConfig": "Nenhuma configuração definida"
+      },
+      "placeholders": {
+        "configKey": "chave",
+        "configValue": "valor"
       }
     }
   },
