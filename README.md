@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> This is a soft fork of Navidrome that adds LDAP support. It is based on [this previously closed PR](https://github.com/navidrome/navidrome/pull/590).
+> Based on the thread in the original PR, it is unlikely this would be accepted upstream, but I wanted to use LLDAP with Navidrome so here we are. 
+
+> [!WARNING]
+> **Notice of AI/LLM usage in code.** While I am a reasonably competent Go programmer, I do not have the time nor desire to dig into this codebase deeply.
+> As such, I've used Gemini 3.0 Pro and Zed to handle the heavy lifting. I review all code prior to merging into the main branch.
+
 <a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
 
 # Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
@@ -48,6 +56,7 @@ A share of the revenue helps fund the development of Navidrome at no additional 
  - Reads and uses all your beautifully curated **metadata**
  - Great support for **compilations** (Various Artists albums) and **box sets** (multi-disc albums)
  - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
+ - **LDAP** support allows users to authenticate against LDAP servers for SSO
  - Very **low resource usage**
  - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
  - Ready to use binaries for all major platforms, including **Raspberry Pi**
