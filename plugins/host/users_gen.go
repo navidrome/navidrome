@@ -15,11 +15,18 @@ type UsersGetUsersResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// UsersGetAdminsResponse is the response type for Users.GetAdmins.
+type UsersGetAdminsResponse struct {
+	Result []User `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
 // RegisterUsersHostFunctions registers Users service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterUsersHostFunctions(service UsersService) []extism.HostFunction {
 	return []extism.HostFunction{
 		newUsersGetUsersHostFunction(service),
+		newUsersGetAdminsHostFunction(service),
 	}
 }
 
@@ -37,6 +44,29 @@ func newUsersGetUsersHostFunction(service UsersService) extism.HostFunction {
 
 			// Write JSON response to plugin memory
 			resp := UsersGetUsersResponse{
+				Result: result,
+			}
+			usersWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newUsersGetAdminsHostFunction(service UsersService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"users_getadmins",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+
+			// Call the service method
+			result, svcErr := service.GetAdmins(ctx)
+			if svcErr != nil {
+				usersWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := UsersGetAdminsResponse{
 				Result: result,
 			}
 			usersWriteResponse(p, stack, resp)

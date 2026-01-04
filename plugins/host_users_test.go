@@ -141,6 +141,86 @@ var _ = Describe("UsersService", Ordered, func() {
 			})
 		})
 	})
+
+	Describe("GetAdmins", func() {
+		var mockUserRepo *tests.MockedUserRepo
+
+		BeforeEach(func() {
+			mockUserRepo = ds.User(ctx).(*tests.MockedUserRepo)
+			// Add test users - alice is admin, bob and charlie are not
+			_ = mockUserRepo.Put(&model.User{
+				ID:       "user1",
+				UserName: "alice",
+				Name:     "Alice Admin",
+				IsAdmin:  true,
+			})
+			_ = mockUserRepo.Put(&model.User{
+				ID:       "user2",
+				UserName: "bob",
+				Name:     "Bob User",
+				IsAdmin:  false,
+			})
+			_ = mockUserRepo.Put(&model.User{
+				ID:       "user3",
+				UserName: "charlie",
+				Name:     "Charlie User",
+				IsAdmin:  false,
+			})
+		})
+
+		Context("with allUsers=true", func() {
+			BeforeEach(func() {
+				service = newUsersService(ds, nil, true)
+			})
+
+			It("should return only admin users", func() {
+				admins, err := service.GetAdmins(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(admins).To(HaveLen(1))
+				Expect(admins[0].UserName).To(Equal("alice"))
+				Expect(admins[0].IsAdmin).To(BeTrue())
+			})
+		})
+
+		Context("with specific allowed users including admin", func() {
+			BeforeEach(func() {
+				// Allow access to user1 (admin) and user2 (non-admin)
+				service = newUsersService(ds, []string{"user1", "user2"}, false)
+			})
+
+			It("should return only admin users from allowed list", func() {
+				admins, err := service.GetAdmins(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(admins).To(HaveLen(1))
+				Expect(admins[0].UserName).To(Equal("alice"))
+			})
+		})
+
+		Context("with specific allowed users excluding admin", func() {
+			BeforeEach(func() {
+				// Only allow access to non-admin users
+				service = newUsersService(ds, []string{"user2", "user3"}, false)
+			})
+
+			It("should return empty when no admins in allowed list", func() {
+				admins, err := service.GetAdmins(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(admins).To(BeEmpty())
+			})
+		})
+
+		Context("when datastore returns error", func() {
+			BeforeEach(func() {
+				mockUserRepo.Error = model.ErrNotFound
+				service = newUsersService(ds, nil, true)
+			})
+
+			It("should propagate the error", func() {
+				_, err := service.GetAdmins(ctx)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
 })
 
 var _ = Describe("UsersService Integration", Ordered, func() {
@@ -215,6 +295,16 @@ var _ = Describe("UsersService Integration", Ordered, func() {
 			Expect(bob.IsAdmin).To(BeFalse())
 		})
 	})
+
+	Describe("GetAdmins Operations via Plugin", func() {
+		It("should get only admin users when allUsers is true", func() {
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_admins"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Users).To(HaveLen(1))
+			Expect(output.Users[0].UserName).To(Equal("alice"))
+			Expect(output.Users[0].IsAdmin).To(BeTrue())
+		})
+	})
 })
 
 var _ = Describe("UsersService Integration with Specific Users", Ordered, func() {
@@ -239,6 +329,34 @@ var _ = Describe("UsersService Integration with Specific Users", Ordered, func()
 			}
 			Expect(userNames).To(ContainElements("alice", "charlie"))
 			Expect(userNames).ToNot(ContainElement("bob"))
+		})
+
+		It("should only return admin users from allowed list via GetAdmins", func() {
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_admins"})
+			Expect(err).ToNot(HaveOccurred())
+			// Only alice (user1) is admin, charlie (user3) is not
+			Expect(output.Users).To(HaveLen(1))
+			Expect(output.Users[0].UserName).To(Equal("alice"))
+			Expect(output.Users[0].IsAdmin).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("UsersService Integration GetAdmins with No Admins", Ordered, func() {
+	var manager *Manager
+
+	BeforeAll(func() {
+		var cleanup func()
+		// Only allow user2 (bob) and user3 (charlie), both non-admins
+		manager, cleanup = setupUsersIntegrationManager(false, `["user2", "user3"]`)
+		DeferCleanup(cleanup)
+	})
+
+	Describe("GetAdmins with no admin users in allowed list", func() {
+		It("should return empty when no admins in allowed list", func() {
+			output, err := callTestUsersPlugin(GinkgoT().Context(), manager, testUsersInput{Operation: "get_admins"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Users).To(BeEmpty())
 		})
 	})
 })

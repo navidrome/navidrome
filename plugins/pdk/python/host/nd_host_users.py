@@ -25,6 +25,12 @@ def _users_getusers(offset: int) -> int:
     ...
 
 
+@extism.import_fn("extism:host/user", "users_getadmins")
+def _users_getadmins(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
 def users_get_users() -> Any:
     """GetUsers returns all users the plugin has been granted access to.
 Only minimal user information (userName, name, isAdmin) is returned.
@@ -41,6 +47,30 @@ Returns a slice of users the plugin can access, or an empty slice if none config
     request_bytes = b"{}"
     request_mem = extism.memory.alloc(request_bytes)
     response_offset = _users_getusers(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response = json.loads(extism.memory.string(response_mem))
+
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+    return response.get("result", None)
+
+
+def users_get_admins() -> Any:
+    """GetAdmins returns only admin users the plugin has been granted access to.
+This is a convenience method that filters GetUsers results to include only admins.
+
+Returns a slice of admin users the plugin can access, or an empty slice if none.
+
+    Returns:
+        Any: The result value.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request_bytes = b"{}"
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _users_getadmins(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
     response = json.loads(extism.memory.string(response_mem))
 

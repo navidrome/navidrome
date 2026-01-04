@@ -25,9 +25,19 @@ struct UsersGetUsersResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UsersGetAdminsResponse {
+    #[serde(default)]
+    result: Vec<User>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[host_fn]
 extern "ExtismHost" {
     fn users_getusers(input: Json<serde_json::Value>) -> Json<UsersGetUsersResponse>;
+    fn users_getadmins(input: Json<serde_json::Value>) -> Json<UsersGetAdminsResponse>;
 }
 
 /// GetUsers returns all users the plugin has been granted access to.
@@ -44,6 +54,28 @@ extern "ExtismHost" {
 pub fn get_users() -> Result<Vec<User>, Error> {
     let response = unsafe {
         users_getusers(Json(serde_json::json!({})))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.result)
+}
+
+/// GetAdmins returns only admin users the plugin has been granted access to.
+/// This is a convenience method that filters GetUsers results to include only admins.
+/// 
+/// Returns a slice of admin users the plugin can access, or an empty slice if none.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn get_admins() -> Result<Vec<User>, Error> {
+    let response = unsafe {
+        users_getadmins(Json(serde_json::json!({})))?
     };
 
     if let Some(err) = response.0.error {

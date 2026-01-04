@@ -43,3 +43,18 @@ func (m *mockUsersService) GetUsers() ([]User, error) {
 func UsersGetUsers() ([]User, error) {
 	return UsersMock.GetUsers()
 }
+
+// GetAdmins is the mock method for UsersGetAdmins.
+func (m *mockUsersService) GetAdmins() ([]User, error) {
+	args := m.Called()
+	return args.Get(0).([]User), args.Error(1)
+}
+
+// UsersGetAdmins delegates to the mock instance.
+// GetAdmins returns only admin users the plugin has been granted access to.
+// This is a convenience method that filters GetUsers results to include only admins.
+//
+// Returns a slice of admin users the plugin can access, or an empty slice if none.
+func UsersGetAdmins() ([]User, error) {
+	return UsersMock.GetAdmins()
+}
