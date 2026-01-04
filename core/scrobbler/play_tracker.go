@@ -116,7 +116,7 @@ func (p *playTracker) stopNowPlayingWorker() {
 	<-p.workerDone // Wait for worker to finish
 }
 
-// pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers
+// pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers.
 func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scrobbler) bool {
 	if len(pluginNames) != len(scrobblers) {
 		return false
@@ -129,7 +129,9 @@ func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scro
 	return true
 }
 
-// refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers
+// refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers.
+// The buffered scrobblers use a loader function to dynamically get the current plugin instance,
+// so we only need to add/remove scrobblers when plugins are added/removed (not when reloaded).
 func (p *playTracker) refreshPluginScrobblers() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -148,15 +150,16 @@ func (p *playTracker) refreshPluginScrobblers() {
 	// Build a set of current plugins for faster lookups
 	current := make(map[string]struct{}, len(pluginNames))
 
-	// Process additions - add new plugins
+	// Process additions - add new plugins with a loader that dynamically fetches the current instance
 	for _, name := range pluginNames {
 		current[name] = struct{}{}
-		// Only create a new scrobbler if it doesn't exist
 		if _, exists := p.pluginScrobblers[name]; !exists {
-			s, ok := p.pluginLoader.LoadScrobbler(name)
-			if ok && s != nil {
-				p.pluginScrobblers[name] = newBufferedScrobbler(p.ds, s, name)
-			}
+			// Capture the name for the closure
+			pluginName := name
+			loader := p.pluginLoader
+			p.pluginScrobblers[name] = newBufferedScrobblerWithLoader(p.ds, name, func() (Scrobbler, bool) {
+				return loader.LoadScrobbler(pluginName)
+			})
 		}
 	}
 

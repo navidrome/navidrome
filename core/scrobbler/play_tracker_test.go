@@ -432,6 +432,122 @@ var _ = Describe("PlayTracker", func() {
 			Expect(pTracker.pluginScrobblers).NotTo(HaveKey("plugin1"))
 		})
 	})
+
+	Describe("Plugin reload (config update) behavior", func() {
+		var mockPlugin *mockPluginLoader
+		var pTracker *playTracker
+		var originalScrobbler *fakeScrobbler
+		var reloadedScrobbler *fakeScrobbler
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+			ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
+			ds = &tests.MockDataStore{}
+
+			// Setup initial plugin scrobbler
+			originalScrobbler = &fakeScrobbler{Authorized: true}
+			reloadedScrobbler = &fakeScrobbler{Authorized: true}
+
+			mockPlugin = &mockPluginLoader{
+				names:      []string{"plugin1"},
+				scrobblers: map[string]Scrobbler{"plugin1": originalScrobbler},
+			}
+
+			// Create tracker - this will create buffered scrobblers with loaders
+			pTracker = newPlayTracker(ds, events.GetBroker(), mockPlugin)
+
+			// Trigger initial plugin registration
+			pTracker.refreshPluginScrobblers()
+		})
+
+		AfterEach(func() {
+			pTracker.stopNowPlayingWorker()
+		})
+
+		It("uses the new plugin instance after reload (simulating config update)", func() {
+			// First call should use the original scrobbler
+			scrobblers := pTracker.getActiveScrobblers()
+			pluginScr := scrobblers["plugin1"]
+			Expect(pluginScr).ToNot(BeNil())
+
+			err := pluginScr.NowPlaying(ctx, "u-1", &track, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(originalScrobbler.GetNowPlayingCalled()).To(BeTrue())
+			Expect(reloadedScrobbler.GetNowPlayingCalled()).To(BeFalse())
+
+			// Simulate plugin reload (config update): replace the scrobbler in the loader
+			// This is what happens when UpdatePluginConfig is called - the plugin manager
+			// unloads the old plugin and loads a new instance
+			mockPlugin.mu.Lock()
+			mockPlugin.scrobblers["plugin1"] = reloadedScrobbler
+			mockPlugin.mu.Unlock()
+
+			// Reset call tracking
+			originalScrobbler.nowPlayingCalled.Store(false)
+
+			// Get scrobblers again - should still return the same buffered scrobbler
+			// but subsequent calls should use the new plugin instance via the loader
+			scrobblers = pTracker.getActiveScrobblers()
+			pluginScr = scrobblers["plugin1"]
+
+			err = pluginScr.NowPlaying(ctx, "u-1", &track, 0)
+			Expect(err).ToNot(HaveOccurred())
+
+			// The new scrobbler should be called, not the old one
+			Expect(reloadedScrobbler.GetNowPlayingCalled()).To(BeTrue())
+			Expect(originalScrobbler.GetNowPlayingCalled()).To(BeFalse())
+		})
+
+		It("handles plugin becoming unavailable temporarily", func() {
+			// First verify plugin works
+			scrobblers := pTracker.getActiveScrobblers()
+			pluginScr := scrobblers["plugin1"]
+
+			err := pluginScr.NowPlaying(ctx, "u-1", &track, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(originalScrobbler.GetNowPlayingCalled()).To(BeTrue())
+
+			// Simulate plugin becoming unavailable (e.g., during reload)
+			mockPlugin.mu.Lock()
+			delete(mockPlugin.scrobblers, "plugin1")
+			mockPlugin.mu.Unlock()
+
+			originalScrobbler.nowPlayingCalled.Store(false)
+
+			// NowPlaying should return error when plugin unavailable
+			err = pluginScr.NowPlaying(ctx, "u-1", &track, 0)
+			Expect(err).To(HaveOccurred())
+			Expect(originalScrobbler.GetNowPlayingCalled()).To(BeFalse())
+
+			// Simulate plugin becoming available again
+			mockPlugin.mu.Lock()
+			mockPlugin.scrobblers["plugin1"] = reloadedScrobbler
+			mockPlugin.mu.Unlock()
+
+			// Should work again with new instance
+			err = pluginScr.NowPlaying(ctx, "u-1", &track, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(reloadedScrobbler.GetNowPlayingCalled()).To(BeTrue())
+		})
+
+		It("IsAuthorized uses the current plugin instance", func() {
+			scrobblers := pTracker.getActiveScrobblers()
+			pluginScr := scrobblers["plugin1"]
+
+			// Original is authorized
+			Expect(pluginScr.IsAuthorized(ctx, "u-1")).To(BeTrue())
+
+			// Replace with unauthorized scrobbler
+			unauthorizedScrobbler := &fakeScrobbler{Authorized: false}
+			mockPlugin.mu.Lock()
+			mockPlugin.scrobblers["plugin1"] = unauthorizedScrobbler
+			mockPlugin.mu.Unlock()
+
+			// Should reflect the new scrobbler's authorization status
+			Expect(pluginScr.IsAuthorized(ctx, "u-1")).To(BeFalse())
+		})
+	})
 })
 
 type fakeScrobbler struct {
