@@ -95,8 +95,24 @@ const ToggleEnabledSwitch = ({
     }
   }, [manifest, record?.allUsers, record?.users])
 
+  // Check if library permission is required but not configured
+  const libraryPermissionRequired = useMemo(() => {
+    if (!manifest?.permissions?.library) return false
+    if (record?.allLibraries) return false
+    // Check if libraries array is empty or not set
+    if (!record?.libraries) return true
+    try {
+      const libraries = JSON.parse(record.libraries)
+      return libraries.length === 0
+    } catch {
+      return true
+    }
+  }, [manifest, record?.allLibraries, record?.libraries])
+
+  const permissionRequired =
+    usersPermissionRequired || libraryPermissionRequired
   const isDisabled =
-    loading || hasError || (usersPermissionRequired && !record?.enabled)
+    loading || hasError || (permissionRequired && !record?.enabled)
 
   const tooltipTitle = useMemo(() => {
     if (hasError) {
@@ -104,6 +120,9 @@ const ToggleEnabledSwitch = ({
     }
     if (usersPermissionRequired && !record?.enabled) {
       return translate('resources.plugin.actions.disabledUsersRequired')
+    }
+    if (libraryPermissionRequired && !record?.enabled) {
+      return translate('resources.plugin.actions.disabledLibrariesRequired')
     }
     if (!showLabel) {
       return translate(
@@ -113,7 +132,14 @@ const ToggleEnabledSwitch = ({
       )
     }
     return ''
-  }, [hasError, usersPermissionRequired, showLabel, record?.enabled, translate])
+  }, [
+    hasError,
+    usersPermissionRequired,
+    libraryPermissionRequired,
+    showLabel,
+    record?.enabled,
+    translate,
+  ])
 
   const switchElement = (
     <Switch
@@ -127,11 +153,12 @@ const ToggleEnabledSwitch = ({
   )
 
   if (showLabel) {
+    const showTooltip = hasError || (permissionRequired && !record?.enabled)
     return (
       <Tooltip
         title={tooltipTitle}
-        disableHoverListener={!hasError}
-        disableFocusListener={!hasError}
+        disableHoverListener={!showTooltip}
+        disableFocusListener={!showTooltip}
       >
         <FormControlLabel
           control={switchElement}

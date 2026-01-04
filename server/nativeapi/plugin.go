@@ -43,10 +43,12 @@ func pluginsEnabledMiddleware(next http.Handler) http.Handler {
 
 // PluginUpdateRequest represents the fields that can be updated via the API
 type PluginUpdateRequest struct {
-	Enabled  *bool   `json:"enabled,omitempty"`
-	Config   *string `json:"config,omitempty"`
-	Users    *string `json:"users,omitempty"`
-	AllUsers *bool   `json:"allUsers,omitempty"`
+	Enabled      *bool   `json:"enabled,omitempty"`
+	Config       *string `json:"config,omitempty"`
+	Users        *string `json:"users,omitempty"`
+	AllUsers     *bool   `json:"allUsers,omitempty"`
+	Libraries    *string `json:"libraries,omitempty"`
+	AllLibraries *bool   `json:"allLibraries,omitempty"`
 }
 
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +91,14 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	if req.Users != nil || req.AllUsers != nil {
 		if err := validateAndUpdateUsers(ctx, api.pluginManager, repo, id, req, w); err != nil {
 			log.Error(ctx, "Error updating plugin users", err)
+			return
+		}
+	}
+
+	// Handle libraries permission update (if provided)
+	if req.Libraries != nil || req.AllLibraries != nil {
+		if err := validateAndUpdateLibraries(ctx, api.pluginManager, repo, id, req, w); err != nil {
+			log.Error(ctx, "Error updating plugin libraries", err)
 			return
 		}
 	}
@@ -191,6 +201,39 @@ func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.Pl
 	if err := pm.UpdatePluginUsers(ctx, id, usersJSON, allUsers); err != nil {
 		log.Error(ctx, "Error updating plugin users", "id", id, err)
 		http.Error(w, "Error updating plugin users: "+err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	return nil
+}
+
+// validateAndUpdateLibraries validates the libraries JSON and updates the plugin.
+// Returns an error if validation or update fails (error response already written).
+func validateAndUpdateLibraries(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
+	// Get current values if not provided in request
+	plugin, err := repo.Get(id)
+	if err != nil {
+		log.Error(ctx, "Error getting plugin for libraries update", "id", id, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return err
+	}
+
+	librariesJSON := plugin.Libraries
+	allLibraries := plugin.AllLibraries
+
+	if req.Libraries != nil {
+		if *req.Libraries != "" && !isValidJSON(*req.Libraries) {
+			http.Error(w, "Invalid JSON in libraries field", http.StatusBadRequest)
+			return errors.New("invalid JSON")
+		}
+		librariesJSON = *req.Libraries
+	}
+	if req.AllLibraries != nil {
+		allLibraries = *req.AllLibraries
+	}
+
+	if err := pm.UpdatePluginLibraries(ctx, id, librariesJSON, allLibraries); err != nil {
+		log.Error(ctx, "Error updating plugin libraries", "id", id, err)
+		http.Error(w, "Error updating plugin libraries: "+err.Error(), http.StatusInternalServerError)
 		return err
 	}
 	return nil

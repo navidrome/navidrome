@@ -5,7 +5,7 @@ import (
 )
 
 // MockPluginManager is a mock implementation of plugins.PluginManager for testing.
-// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, and UpdatePluginUsers methods.
+// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, UpdatePluginUsers and UpdatePluginLibraries methods.
 type MockPluginManager struct {
 	// EnablePluginFn is called when EnablePlugin is invoked. If nil, returns EnableError.
 	EnablePluginFn func(ctx context.Context, id string) error
@@ -15,12 +15,15 @@ type MockPluginManager struct {
 	UpdatePluginConfigFn func(ctx context.Context, id, configJSON string) error
 	// UpdatePluginUsersFn is called when UpdatePluginUsers is invoked. If nil, returns UsersError.
 	UpdatePluginUsersFn func(ctx context.Context, id, usersJSON string, allUsers bool) error
+	// UpdatePluginLibrariesFn is called when UpdatePluginLibraries is invoked. If nil, returns LibrariesError.
+	UpdatePluginLibrariesFn func(ctx context.Context, id, librariesJSON string, allLibraries bool) error
 
 	// Default errors to return when Fn callbacks are not set
-	EnableError  error
-	DisableError error
-	ConfigError  error
-	UsersError   error
+	EnableError    error
+	DisableError   error
+	ConfigError    error
+	UsersError     error
+	LibrariesError error
 
 	// Track calls for assertions
 	EnablePluginCalls       []string
@@ -33,6 +36,11 @@ type MockPluginManager struct {
 		ID        string
 		UsersJSON string
 		AllUsers  bool
+	}
+	UpdatePluginLibrariesCalls []struct {
+		ID            string
+		LibrariesJSON string
+		AllLibraries  bool
 	}
 }
 
@@ -73,4 +81,16 @@ func (m *MockPluginManager) UpdatePluginUsers(ctx context.Context, id, usersJSON
 		return m.UpdatePluginUsersFn(ctx, id, usersJSON, allUsers)
 	}
 	return m.UsersError
+}
+
+func (m *MockPluginManager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error {
+	m.UpdatePluginLibrariesCalls = append(m.UpdatePluginLibrariesCalls, struct {
+		ID            string
+		LibrariesJSON string
+		AllLibraries  bool
+	}{ID: id, LibrariesJSON: librariesJSON, AllLibraries: allLibraries})
+	if m.UpdatePluginLibrariesFn != nil {
+		return m.UpdatePluginLibrariesFn(ctx, id, librariesJSON, allLibraries)
+	}
+	return m.LibrariesError
 }

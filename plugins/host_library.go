@@ -11,17 +11,32 @@ import (
 type libraryServiceImpl struct {
 	ds                model.DataStore
 	hasFilesystemPerm bool
+	allowedLibraryIDs []int
+	allLibraries      bool
+	libraryIDMap      map[int]struct{}
 }
 
-func newLibraryService(ds model.DataStore, perm *LibraryPermission) host.LibraryService {
+func newLibraryService(ds model.DataStore, perm *LibraryPermission, allowedLibraryIDs []int, allLibraries bool) host.LibraryService {
 	hasFS := perm != nil && perm.Filesystem
+	libraryIDMap := make(map[int]struct{})
+	for _, id := range allowedLibraryIDs {
+		libraryIDMap[id] = struct{}{}
+	}
 	return &libraryServiceImpl{
 		ds:                ds,
 		hasFilesystemPerm: hasFS,
+		allowedLibraryIDs: allowedLibraryIDs,
+		allLibraries:      allLibraries,
+		libraryIDMap:      libraryIDMap,
 	}
 }
 
 func (s *libraryServiceImpl) GetLibrary(ctx context.Context, id int32) (*host.Library, error) {
+	// Check if the library is accessible
+	if !s.isLibraryAccessible(int(id)) {
+		return nil, fmt.Errorf("library not accessible: library ID %d is not in the allowed list", id)
+	}
+
 	lib, err := s.ds.Library(ctx).Get(int(id))
 	if err != nil {
 		return nil, fmt.Errorf("library not found: %w", err)
@@ -30,15 +45,27 @@ func (s *libraryServiceImpl) GetLibrary(ctx context.Context, id int32) (*host.Li
 	return s.convertLibrary(lib), nil
 }
 
+// isLibraryAccessible checks if a library ID is accessible to this plugin.
+func (s *libraryServiceImpl) isLibraryAccessible(id int) bool {
+	if s.allLibraries {
+		return true
+	}
+	_, ok := s.libraryIDMap[id]
+	return ok
+}
+
 func (s *libraryServiceImpl) GetAllLibraries(ctx context.Context) ([]host.Library, error) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries: %w", err)
 	}
 
-	result := make([]host.Library, len(libs))
-	for i, lib := range libs {
-		result[i] = *s.convertLibrary(&lib)
+	// Filter libraries based on allowed list
+	var result []host.Library
+	for _, lib := range libs {
+		if s.isLibraryAccessible(lib.ID) {
+			result = append(result, *s.convertLibrary(&lib))
+		}
 	}
 
 	return result, nil
