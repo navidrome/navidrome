@@ -349,13 +349,19 @@
         "updatedAt": "Atualizado",
         "createdAt": "Instalado",
         "configKey": "Chave",
-        "configValue": "Valor"
+        "configValue": "Valor",
+        "allUsers": "Permitir todos os usuários",
+        "selectedUsers": "Usuários selecionados",
+        "allLibraries": "Permitir todas as bibliotecas",
+        "selectedLibraries": "Bibliotecas selecionadas"
       },
       "sections": {
         "status": "Status",
         "info": "Informações do Plugin",
         "configuration": "Configuração",
-        "manifest": "Manifesto"
+        "manifest": "Manifesto",
+        "usersPermission": "Permissão de Usuários",
+        "libraryPermission": "Permissão de Bibliotecas"
       },
       "status": {
         "enabled": "Habilitado",
@@ -365,6 +371,8 @@
         "enable": "Habilitar",
         "disable": "Desabilitar",
         "disabledDueToError": "Corrija o erro antes de habilitar",
+        "disabledUsersRequired": "Selecione usuários antes de habilitar",
+        "disabledLibrariesRequired": "Selecione bibliotecas antes de habilitar",
         "addConfig": "Adicionar configuração"
       },
       "notifications": {
@@ -379,7 +387,14 @@
       "messages": {
         "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
         "clickPermissions": "Clique em uma permissão para ver detalhes",
-        "noConfig": "Nenhuma configuração definida"
+        "noConfig": "Nenhuma configuração definida",
+        "allUsersHelp": "Quando habilitado, o plugin terá acesso a todos os usuários, incluindo os criados no futuro.",
+        "noUsers": "Nenhum usuário selecionado",
+        "permissionReason": "Motivo",
+        "usersRequired": "Este plugin requer acesso a informações de usuário. Selecione quais usuários o plugin pode acessar, ou habilite 'Permitir todos os usuários'.",
+        "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
+        "noLibraries": "Nenhuma biblioteca selecionada",
+        "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'."
       },
       "placeholders": {
         "configKey": "chave",
