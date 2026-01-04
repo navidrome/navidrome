@@ -28,7 +28,17 @@ type User struct {
 //go:wasmimport extism:host/user users_getusers
 func users_getusers(uint64) uint64
 
+// users_getadmins is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user users_getadmins
+func users_getadmins(uint64) uint64
+
 type usersGetUsersResponse struct {
+	Result []User `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+type usersGetAdminsResponse struct {
 	Result []User `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -53,6 +63,37 @@ func UsersGetUsers() ([]User, error) {
 
 	// Parse the response
 	var response usersGetUsersResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return response.Result, nil
+}
+
+// UsersGetAdmins calls the users_getadmins host function.
+// GetAdmins returns only admin users the plugin has been granted access to.
+// This is a convenience method that filters GetUsers results to include only admins.
+//
+// Returns a slice of admin users the plugin can access, or an empty slice if none.
+func UsersGetAdmins() ([]User, error) {
+	// No parameters - allocate empty JSON object
+	reqMem := pdk.AllocateBytes([]byte("{}"))
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := users_getadmins(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response usersGetAdminsResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}

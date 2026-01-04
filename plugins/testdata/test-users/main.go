@@ -10,7 +10,7 @@ import (
 
 // TestUsersInput is the input for nd_test_users callback.
 type TestUsersInput struct {
-	Operation string `json:"operation"` // "get_users"
+	Operation string `json:"operation"` // "get_users", "get_admins"
 }
 
 // TestUsersOutput is the output from nd_test_users callback.
@@ -39,6 +39,16 @@ func ndTestUsers() int32 {
 			return 0
 		}
 		pdk.OutputJSON(TestUsersOutput{Users: users})
+		return 0
+
+	case "get_admins":
+		admins, err := host.UsersGetAdmins()
+		if err != nil {
+			errStr := err.Error()
+			pdk.OutputJSON(TestUsersOutput{Error: &errStr})
+			return 0
+		}
+		pdk.OutputJSON(TestUsersOutput{Users: admins})
 		return 0
 
 	default:

@@ -25,4 +25,11 @@ type UsersService interface {
 	// Returns a slice of users the plugin can access, or an empty slice if none configured.
 	//nd:hostfunc
 	GetUsers(ctx context.Context) ([]User, error)
+
+	// GetAdmins returns only admin users the plugin has been granted access to.
+	// This is a convenience method that filters GetUsers results to include only admins.
+	//
+	// Returns a slice of admin users the plugin can access, or an empty slice if none.
+	//nd:hostfunc
+	GetAdmins(ctx context.Context) ([]User, error)
 }

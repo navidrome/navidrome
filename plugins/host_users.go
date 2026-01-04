@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type usersServiceImpl struct {
@@ -47,6 +48,17 @@ func (s *usersServiceImpl) GetUsers(ctx context.Context) ([]host.User, error) {
 	}
 
 	return result, nil
+}
+
+func (s *usersServiceImpl) GetAdmins(ctx context.Context) ([]host.User, error) {
+	users, err := s.GetUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Filter(users, func(u host.User) bool {
+		return u.IsAdmin
+	}), nil
 }
 
 var _ host.UsersService = (*usersServiceImpl)(nil)
