@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -23,7 +26,9 @@ func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 	}
 	response := newResponse()
 	response.Playlists = &responses.Playlists{
-		Playlist: slice.Map(allPls, api.buildPlaylist),
+		Playlist: slice.Map(allPls, func(p model.Playlist) responses.Playlist {
+			return api.buildPlaylist(ctx, p)
+		}),
 	}
 	return response, nil
 }
@@ -51,7 +56,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 
 	response := newResponse()
 	response.Playlist = &responses.PlaylistWithSongs{
-		Playlist: api.buildPlaylist(*pls),
+		Playlist: api.buildPlaylist(ctx, *pls),
 	}
 	response.Playlist.Entry = slice.MapWithArg(pls.MediaFiles(), ctx, childFromMediaFile)
 	return response, nil
@@ -152,21 +157,28 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	return newResponse(), nil
 }
 
-func (api *Router) buildPlaylist(p model.Playlist) responses.Playlist {
+func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) responses.Playlist {
 	pls := responses.Playlist{}
 	pls.Id = p.ID
 	pls.Name = p.Name
-	pls.Comment = p.Comment
 	pls.SongCount = int32(p.SongCount)
-	pls.Owner = p.OwnerName
 	pls.Duration = int32(p.Duration)
-	pls.Public = p.Public
 	pls.Created = p.CreatedAt
-	pls.CoverArt = p.CoverArtID().String()
 	if p.IsSmartPlaylist() {
 		pls.Changed = time.Now()
 	} else {
 		pls.Changed = p.UpdatedAt
 	}
+
+	player, ok := request.PlayerFrom(ctx)
+	if ok && strings.Contains(conf.Server.Subsonic.MinimalClients, player.Client) {
+		return pls
+	}
+
+	pls.Comment = p.Comment
+	pls.Owner = p.OwnerName
+	pls.Public = &p.Public
+	pls.CoverArt = p.CoverArtID().String()
+
 	return pls
 }
