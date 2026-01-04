@@ -21,6 +21,7 @@ import { InfoCard } from './InfoCard'
 import { ManifestSection } from './ManifestSection'
 import { ConfigCard } from './ConfigCard'
 import { UsersPermissionCard } from './UsersPermissionCard'
+import { LibraryPermissionCard } from './LibraryPermissionCard'
 
 // Main show layout component
 const PluginShowLayout = () => {
@@ -41,6 +42,12 @@ const PluginShowLayout = () => {
   const [allUsers, setAllUsers] = useState(false)
   const [lastRecordUsers, setLastRecordUsers] = useState(null)
   const [lastRecordAllUsers, setLastRecordAllUsers] = useState(null)
+
+  // Libraries permission state
+  const [selectedLibraries, setSelectedLibraries] = useState([])
+  const [allLibraries, setAllLibraries] = useState(false)
+  const [lastRecordLibraries, setLastRecordLibraries] = useState(null)
+  const [lastRecordAllLibraries, setLastRecordAllLibraries] = useState(null)
 
   // Convert JSON config to key-value pairs
   const jsonToPairs = useCallback((jsonString) => {
@@ -100,6 +107,30 @@ const PluginShowLayout = () => {
     }
   }, [record, lastRecordUsers, lastRecordAllUsers, isDirty])
 
+  // Initialize/update libraries permission state when record loads or changes
+  React.useEffect(() => {
+    if (record && !isDirty) {
+      const recordLibraries = record.libraries || ''
+      const recordAllLibraries = record.allLibraries || false
+
+      if (
+        recordLibraries !== lastRecordLibraries ||
+        recordAllLibraries !== lastRecordAllLibraries
+      ) {
+        try {
+          setSelectedLibraries(
+            recordLibraries ? JSON.parse(recordLibraries) : [],
+          )
+        } catch {
+          setSelectedLibraries([])
+        }
+        setAllLibraries(recordAllLibraries)
+        setLastRecordLibraries(recordLibraries)
+        setLastRecordAllLibraries(recordAllLibraries)
+      }
+    }
+  }, [record, lastRecordLibraries, lastRecordAllLibraries, isDirty])
+
   const handleConfigPairsChange = useCallback((newPairs) => {
     setConfigPairs(newPairs)
     setIsDirty(true)
@@ -112,6 +143,16 @@ const PluginShowLayout = () => {
 
   const handleAllUsersChange = useCallback((newAllUsers) => {
     setAllUsers(newAllUsers)
+    setIsDirty(true)
+  }, [])
+
+  const handleSelectedLibrariesChange = useCallback((newSelectedLibraries) => {
+    setSelectedLibraries(newSelectedLibraries)
+    setIsDirty(true)
+  }, [])
+
+  const handleAllLibrariesChange = useCallback((newAllLibraries) => {
+    setAllLibraries(newAllLibraries)
     setIsDirty(true)
   }, [])
 
@@ -128,6 +169,8 @@ const PluginShowLayout = () => {
         setLastRecordConfig(null) // Reset to reinitialize from server
         setLastRecordUsers(null)
         setLastRecordAllUsers(null)
+        setLastRecordLibraries(null)
+        setLastRecordAllLibraries(null)
         notify('resources.plugin.notifications.updated', 'info')
       },
       onFailure: (err) => {
@@ -151,8 +194,23 @@ const PluginShowLayout = () => {
       data.allUsers = allUsers
     }
 
+    // Include libraries data if library permission is present
+    if (manifest?.permissions?.library) {
+      data.libraries = JSON.stringify(selectedLibraries)
+      data.allLibraries = allLibraries
+    }
+
     updatePlugin('plugin', record.id, data, record)
-  }, [updatePlugin, record, configPairs, pairsToJson, selectedUsers, allUsers])
+  }, [
+    updatePlugin,
+    record,
+    configPairs,
+    pairsToJson,
+    selectedUsers,
+    allUsers,
+    selectedLibraries,
+    allLibraries,
+  ])
 
   // Parse manifest
   const { manifest, manifestJson } = useMemo(() => {
@@ -228,6 +286,15 @@ const PluginShowLayout = () => {
           allUsers={allUsers}
           onSelectedUsersChange={handleSelectedUsersChange}
           onAllUsersChange={handleAllUsersChange}
+        />
+
+        <LibraryPermissionCard
+          manifest={manifest}
+          classes={classes}
+          selectedLibraries={selectedLibraries}
+          allLibraries={allLibraries}
+          onSelectedLibrariesChange={handleSelectedLibrariesChange}
+          onAllLibrariesChange={handleAllLibrariesChange}
         />
 
         <Box display="flex" justifyContent="flex-end">

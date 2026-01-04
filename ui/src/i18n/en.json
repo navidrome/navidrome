@@ -351,14 +351,17 @@
         "configKey": "Key",
         "configValue": "Value",
         "allUsers": "Allow all users",
-        "selectedUsers": "Selected users"
+        "selectedUsers": "Selected users",
+        "allLibraries": "Allow all libraries",
+        "selectedLibraries": "Selected libraries"
       },
       "sections": {
         "status": "Status",
         "info": "Plugin Information",
         "configuration": "Configuration",
         "manifest": "Manifest",
-        "usersPermission": "Users Permission"
+        "usersPermission": "Users Permission",
+        "libraryPermission": "Library Permission"
       },
       "status": {
         "enabled": "Enabled",
@@ -369,6 +372,7 @@
         "disable": "Disable",
         "disabledDueToError": "Fix the error before enabling",
         "disabledUsersRequired": "Select users before enabling",
+        "disabledLibrariesRequired": "Select libraries before enabling",
         "addConfig": "Add Configuration"
       },
       "notifications": {
@@ -387,7 +391,10 @@
         "allUsersHelp": "When enabled, the plugin will have access to all users, including those created in the future.",
         "noUsers": "No users selected",
         "permissionReason": "Reason",
-        "usersRequired": "This plugin requires access to user information. Select which users the plugin can access, or enable 'Allow all users'."
+        "usersRequired": "This plugin requires access to user information. Select which users the plugin can access, or enable 'Allow all users'.",
+        "allLibrariesHelp": "When enabled, the plugin will have access to all libraries, including those created in the future.",
+        "noLibraries": "No libraries selected",
+        "librariesRequired": "This plugin requires access to library information. Select which libraries the plugin can access, or enable 'Allow all libraries'."
       },
       "placeholders": {
         "configKey": "key",

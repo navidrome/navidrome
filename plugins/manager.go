@@ -399,6 +399,17 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 	})
 }
 
+// UpdatePluginLibraries updates the libraries permission settings for a plugin.
+// If the plugin is enabled, it will be reloaded with the new settings.
+// If the plugin requires library permission and no libraries are configured (and allLibraries is false),
+// the plugin will be automatically disabled.
+func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error {
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Libraries = librariesJSON
+		p.AllLibraries = allLibraries
+	})
+}
+
 // updatePluginSettings is a common implementation for updating plugin settings.
 // The updateFn is called to apply the specific field updates to the plugin.
 // If the plugin is enabled, it will be reloaded. If users permission is required
@@ -422,19 +433,25 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 	updateFn(plugin)
 	plugin.UpdatedAt = time.Now()
 
-	// Check if plugin requires users permission and if it's still satisfied
+	// Check if plugin requires permission and if it's still satisfied
 	shouldDisable := false
+	disableReason := ""
 	if wasEnabled {
 		manifest, err := readManifest(plugin.Path)
-		if err == nil && manifest.Permissions != nil && manifest.Permissions.Users != nil {
-			if !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
+		if err == nil && manifest.Permissions != nil {
+			if manifest.Permissions.Users != nil && !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
 				shouldDisable = true
+				disableReason = "users permission removal"
+			}
+			if manifest.Permissions.Library != nil && !hasValidLibrariesConfig(plugin.Libraries, plugin.AllLibraries) {
+				shouldDisable = true
+				disableReason = "library permission removal"
 			}
 		}
 	}
 
 	if shouldDisable {
-		// Disable the plugin since users permission is no longer satisfied
+		// Disable the plugin since permission is no longer satisfied
 		if err := m.unloadPlugin(id); err != nil {
 			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 		}
@@ -442,7 +459,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 		if err := repo.Put(plugin); err != nil {
 			return fmt.Errorf("updating plugin in DB: %w", err)
 		}
-		log.Info(ctx, "Disabled plugin due to users permission removal", "plugin", id)
+		log.Info(ctx, "Disabled plugin due to "+disableReason, "plugin", id)
 		m.sendPluginRefreshEvent(ctx, id)
 		return nil
 	}
@@ -519,6 +536,13 @@ func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 		}
 	}
 
+	// Check library permission gate
+	if manifest.Permissions != nil && manifest.Permissions.Library != nil {
+		if !hasValidLibrariesConfig(p.Libraries, p.AllLibraries) {
+			return fmt.Errorf("library permission requires configuration: select libraries or enable 'all libraries' access")
+		}
+	}
+
 	return nil
 }
 
@@ -536,4 +560,20 @@ func hasValidUsersConfig(usersJSON string, allUsers bool) bool {
 		return false
 	}
 	return len(users) > 0
+}
+
+// hasValidLibrariesConfig checks if a plugin has valid libraries configuration.
+// Returns true if allLibraries is true, or if librariesJSON contains at least one library.
+func hasValidLibrariesConfig(librariesJSON string, allLibraries bool) bool {
+	if allLibraries {
+		return true
+	}
+	if librariesJSON == "" {
+		return false
+	}
+	var libraries []int
+	if err := json.Unmarshal([]byte(librariesJSON), &libraries); err != nil {
+		return false
+	}
+	return len(libraries) > 0
 }

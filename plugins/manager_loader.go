@@ -20,12 +20,14 @@ import (
 
 // serviceContext provides dependencies needed by host service factories.
 type serviceContext struct {
-	pluginName   string
-	manager      *Manager
-	permissions  *Permissions
-	config       map[string]string
-	allowedUsers []string // User IDs this plugin can access
-	allUsers     bool     // If true, plugin can access all users
+	pluginName       string
+	manager          *Manager
+	permissions      *Permissions
+	config           map[string]string
+	allowedUsers     []string // User IDs this plugin can access
+	allUsers         bool     // If true, plugin can access all users
+	allowedLibraries []int    // Library IDs this plugin can access
+	allLibraries     bool     // If true, plugin can access all libraries
 }
 
 // hostServiceEntry defines a host service for table-driven registration.
@@ -92,7 +94,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Library
-			service := newLibraryService(ctx.manager.ds, perm)
+			service := newLibraryService(ctx.manager.ds, perm, ctx.allowedLibraries, ctx.allLibraries)
 			return host.RegisterLibraryHostFunctions(service), nil
 		},
 	},
@@ -243,6 +245,14 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		}
 	}
 
+	// Parse libraries from JSON
+	var allowedLibraries []int
+	if p.Libraries != "" {
+		if err := json.Unmarshal([]byte(p.Libraries), &allowedLibraries); err != nil {
+			return fmt.Errorf("parsing plugin libraries: %w", err)
+		}
+	}
+
 	// Open the .ndp package to get manifest and wasm bytes
 	pkg, err := openPackage(p.Path)
 	if err != nil {
@@ -270,9 +280,20 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 		}
 
+		// Build a set of allowed library IDs for fast lookup
+		allowedLibrarySet := make(map[int]struct{}, len(allowedLibraries))
+		for _, id := range allowedLibraries {
+			allowedLibrarySet[id] = struct{}{}
+		}
+
 		allowedPaths := make(map[string]string)
 		for _, lib := range libraries {
-			allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
+			// Only mount if allLibraries is true or library is in the allowed list
+			if p.AllLibraries {
+				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
+			} else if _, ok := allowedLibrarySet[lib.ID]; ok {
+				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
+			}
 		}
 		pluginManifest.AllowedPaths = allowedPaths
 	}
@@ -282,12 +303,14 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	var closers []io.Closer
 
 	svcCtx := &serviceContext{
-		pluginName:   p.ID,
-		manager:      m,
-		permissions:  pkg.Manifest.Permissions,
-		config:       pluginConfig,
-		allowedUsers: allowedUsers,
-		allUsers:     p.AllUsers,
+		pluginName:       p.ID,
+		manager:          m,
+		permissions:      pkg.Manifest.Permissions,
+		config:           pluginConfig,
+		allowedUsers:     allowedUsers,
+		allUsers:         p.AllUsers,
+		allowedLibraries: allowedLibraries,
+		allLibraries:     p.AllLibraries,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
