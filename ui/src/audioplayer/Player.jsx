@@ -95,6 +95,22 @@ const Player = () => {
     }
   }, [audioInstance, context, gainNode, playerState, gainInfo])
 
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Check if there's a current track and audio is actually playing
+      if (playerState.current && Object.keys(playerState.current).length > 0) {
+        // Check if audio is actually playing (not paused)
+        if (audioInstance && !audioInstance.paused) {
+          e.preventDefault()
+          e.returnValue = '' // Chrome requires returnValue to be set
+        }
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [playerState, audioInstance])
+
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
