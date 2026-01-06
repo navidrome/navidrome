@@ -88,12 +88,14 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 }
 
 func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, folder *model.Folder) (*model.Playlist, error) {
-	pls, err := s.newSyncedPlaylist(folder.AbsolutePath(), playlistFile)
+	playlistPath := filepath.Join(folder.AbsolutePath(), playlistFile)
+
+	pls, err := s.newSyncedPlaylist(playlistPath, playlistFile)
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := os.Open(pls.Path)
+	file, err := os.Open(playlistPath)
 	if err != nil {
 		return nil, err
 	}
@@ -110,12 +112,13 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	return pls, err
 }
 
-func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*model.Playlist, error) {
-	playlistPath := filepath.Join(baseDir, playlistFile)
+func (s *playlists) newSyncedPlaylist(playlistPath string, playlistFile string) (*model.Playlist, error) {
 	info, err := os.Stat(playlistPath)
 	if err != nil {
 		return nil, err
 	}
+
+	normalizedPath := model.NormalizePlaylistPath(playlistPath)
 
 	var extension = filepath.Ext(playlistFile)
 	var name = playlistFile[0 : len(playlistFile)-len(extension)]
@@ -124,7 +127,7 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 		Name:      name,
 		Comment:   fmt.Sprintf("Auto-imported from '%s'", playlistFile),
 		Public:    false,
-		Path:      playlistPath,
+		Path:      normalizedPath,
 		Sync:      true,
 		UpdatedAt: info.ModTime(),
 	}
@@ -201,13 +204,11 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			continue
 		}
 
-		// Normalize to NFD for filesystem compatibility (macOS). Database stores paths in NFD.
-		// See https://github.com/navidrome/navidrome/issues/4663
-		resolvedPaths = slice.Map(resolvedPaths, func(path string) string {
-			return strings.ToLower(norm.NFD.String(path))
+		normalizedPaths := slice.Map(resolvedPaths, func(path string) string {
+			return strings.ToLower(norm.NFC.String(path))
 		})
 
-		found, err := mediaFileRepository.FindByPaths(resolvedPaths)
+		found, err := mediaFileRepository.FindByPaths(normalizedPaths)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -217,12 +218,12 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		for idx := range found {
 			// Normalize to lowercase for case-insensitive comparison
 			// Key format: "libraryID:path"
-			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(found[idx].Path))
+			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(norm.NFC.String(found[idx].Path)))
 			existing[key] = idx
 		}
 
 		// Find media files in the order of the resolved paths, to keep playlist order
-		for _, path := range resolvedPaths {
+		for _, path := range normalizedPaths {
 			idx, ok := existing[path]
 			if ok {
 				mfs = append(mfs, found[idx])
@@ -388,6 +389,8 @@ func (s *playlists) resolvePaths(ctx context.Context, folder *model.Folder, line
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UserFrom(ctx)
+
+	newPls.Path = model.NormalizePlaylistPath(newPls.Path)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
