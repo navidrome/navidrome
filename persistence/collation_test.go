@@ -32,6 +32,7 @@ var _ = Describe("Collation", func() {
 		Entry("media_file.sort_title", "media_file", "sort_title"),
 		Entry("media_file.sort_album_name", "media_file", "sort_album_name"),
 		Entry("media_file.sort_artist_name", "media_file", "sort_artist_name"),
+		Entry("playlist.name", "playlist", "name"),
 		Entry("radio.name", "radio", "name"),
 		Entry("user.name", "user", "name"),
 	)
@@ -53,6 +54,7 @@ var _ = Describe("Collation", func() {
 		Entry("media_file.sort_album_name", "media_file", "coalesce(nullif(sort_album_name,''),order_album_name) collate nocase"),
 		Entry("media_file.sort_artist_name", "media_file", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate nocase"),
 		Entry("media_file.path", "media_file", "path collate nocase"),
+		Entry("playlist.name", "playlist", "name collate nocase"),
 		Entry("radio.name", "radio", "name collate nocase"),
 		Entry("user.user_name", "user", "user_name collate nocase"),
 	)

@@ -170,6 +170,7 @@ const PlaylistList = (props) => {
     <List
       {...props}
       exporter={false}
+      sort={{ field: 'name', order: 'ASC' }}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
