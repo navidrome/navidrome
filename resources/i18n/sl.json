@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Skeniraj knjižnico",
         "manageUsers": "Upravljanje dostopa uporabnikov",
-        "viewDetails": "Ogled podrobnosti"
+        "viewDetails": "Ogled podrobnosti",
+        "quickScan": "Hitro skeniranje",
+        "fullScan": "Popolno skeniranje"
       },
       "notifications": {
         "created": "Knjižnica je uspešno ustvarjena",
         "updated": "Knjižnica je bila uspešno posodobljena",
         "deleted": "Knjižnica je uspešno izbrisana",
         "scanStarted": "Skeniranje knjižnice se je začelo",
-        "scanCompleted": "Skeniranje knjižnice končano"
+        "scanCompleted": "Skeniranje knjižnice končano",
+        "quickScanStarted": "Hitro skeniranje se je začelo",
+        "fullScanStarted": "Popolno skeniranje se je začelo",
+        "scanError": "Napaka pri začetku skeniranja. Preverite dnevnike"
       },
       "validation": {
         "nameRequired": "Ime knjižnice je obvezno",
@@ -604,7 +609,8 @@
     "serverDown": "NEPOVEZAN",
     "scanType": "Tip",
     "status": "Napaka pri skeniranju",
-    "elapsedTime": "Pretečeni čas"
+    "elapsedTime": "Pretečeni čas",
+    "selectiveScan": "Selektivno"
   },
   "help": {
     "title": "Hitre tipke",
