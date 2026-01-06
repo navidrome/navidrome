@@ -161,7 +161,7 @@ type Child struct {
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	UserRating            int32      `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
-	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
+	IsVideo               *bool      `xml:"isVideo,attr"                            json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
@@ -308,7 +308,7 @@ type Playlist struct {
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
 	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
 	Duration  int32     `xml:"duration,attr"                 json:"duration"`
-	Public    bool      `xml:"public,attr"                   json:"public"`
+	Public    *bool     `xml:"public,attr"                   json:"public,omitempty"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
