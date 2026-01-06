@@ -73,7 +73,7 @@ const PluginList = (props) => {
   useResourceRefresh('plugin')
 
   return (
-    <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false}>
+    <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false} bulkActionButtons={false}>
       {isXsmall ? (
         <SimpleList
           primaryText={(record) => record.id}
