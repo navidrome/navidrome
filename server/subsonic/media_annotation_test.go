@@ -30,6 +30,42 @@ var _ = Describe("MediaAnnotationController", func() {
 		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil)
 	})
 
+	Describe("Star", func() {
+		It("should send refresh resource event when starring a playlist", func() {
+			mockPlaylistRepo := &tests.MockPlaylistRepo{
+				Entity: &model.Playlist{ID: "pls-1", Name: "Test Playlist"},
+			}
+			ds.(*tests.MockDataStore).MockedPlaylist = mockPlaylistRepo
+
+			r := newGetRequest("id=pls-1")
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(eventBroker.Events).To(HaveLen(1))
+
+			event := eventBroker.Events[0].(*events.RefreshResource)
+			data := event.Data(event)
+			Expect(data).To(ContainSubstring(`"playlist":["*"]`))
+		})
+
+		It("should send refresh resource event when unstarring a playlist", func() {
+			mockPlaylistRepo := &tests.MockPlaylistRepo{
+				Entity: &model.Playlist{ID: "pls-1", Name: "Test Playlist"},
+			}
+			ds.(*tests.MockDataStore).MockedPlaylist = mockPlaylistRepo
+
+			r := newGetRequest("id=pls-1")
+			_, err := router.Unstar(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(eventBroker.Events).To(HaveLen(1))
+
+			event := eventBroker.Events[0].(*events.RefreshResource)
+			data := event.Data(event)
+			Expect(data).To(ContainSubstring(`"playlist":["*"]`))
+		})
+	})
+
 	Describe("Scrobble", func() {
 		It("submit all scrobbles with only the id", func() {
 			submissionTime := time.Now()
