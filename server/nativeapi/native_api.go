@@ -28,6 +28,7 @@ type PluginManager interface {
 	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
 	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	RescanPlugins(ctx context.Context) error
 }
 
 type Router struct {

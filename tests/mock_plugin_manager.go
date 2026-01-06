@@ -5,7 +5,7 @@ import (
 )
 
 // MockPluginManager is a mock implementation of plugins.PluginManager for testing.
-// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, UpdatePluginUsers and UpdatePluginLibraries methods.
+// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, UpdatePluginUsers, UpdatePluginLibraries and RescanPlugins methods.
 type MockPluginManager struct {
 	// EnablePluginFn is called when EnablePlugin is invoked. If nil, returns EnableError.
 	EnablePluginFn func(ctx context.Context, id string) error
@@ -17,6 +17,8 @@ type MockPluginManager struct {
 	UpdatePluginUsersFn func(ctx context.Context, id, usersJSON string, allUsers bool) error
 	// UpdatePluginLibrariesFn is called when UpdatePluginLibraries is invoked. If nil, returns LibrariesError.
 	UpdatePluginLibrariesFn func(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	// RescanPluginsFn is called when RescanPlugins is invoked. If nil, returns RescanError.
+	RescanPluginsFn func(ctx context.Context) error
 
 	// Default errors to return when Fn callbacks are not set
 	EnableError    error
@@ -24,6 +26,7 @@ type MockPluginManager struct {
 	ConfigError    error
 	UsersError     error
 	LibrariesError error
+	RescanError    error
 
 	// Track calls for assertions
 	EnablePluginCalls       []string
@@ -42,6 +45,7 @@ type MockPluginManager struct {
 		LibrariesJSON string
 		AllLibraries  bool
 	}
+	RescanPluginsCalls int
 }
 
 func (m *MockPluginManager) EnablePlugin(ctx context.Context, id string) error {
@@ -93,4 +97,12 @@ func (m *MockPluginManager) UpdatePluginLibraries(ctx context.Context, id, libra
 		return m.UpdatePluginLibrariesFn(ctx, id, librariesJSON, allLibraries)
 	}
 	return m.LibrariesError
+}
+
+func (m *MockPluginManager) RescanPlugins(ctx context.Context) error {
+	m.RescanPluginsCalls++
+	if m.RescanPluginsFn != nil {
+		return m.RescanPluginsFn(ctx)
+	}
+	return m.RescanError
 }

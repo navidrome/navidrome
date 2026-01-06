@@ -373,7 +373,8 @@
         "disabledDueToError": "Fix the error before enabling",
         "disabledUsersRequired": "Select users before enabling",
         "disabledLibrariesRequired": "Select libraries before enabling",
-        "addConfig": "Add Configuration"
+        "addConfig": "Add Configuration",
+        "rescan": "Rescan"
       },
       "notifications": {
         "enabled": "Plugin enabled",

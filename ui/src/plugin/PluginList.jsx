@@ -1,14 +1,19 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import {
+  Button,
   Datagrid,
   TextField,
+  TopToolbar,
+  useNotify,
   useRecordContext,
+  useRefresh,
   useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery, Tooltip, Chip, Typography } from '@material-ui/core'
-import { MdError } from 'react-icons/md'
+import { MdError, MdRefresh } from 'react-icons/md'
 import { List, DateField, SimpleList, useResourceRefresh } from '../common'
+import { httpClient } from '../dataProvider'
 import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
 const useStyles = makeStyles((theme) => ({
@@ -67,13 +72,53 @@ const ManifestField = ({ source }) => {
   return <Typography variant="body2">{manifest[source] || '-'}</Typography>
 }
 
+const PluginListActions = () => {
+  const translate = useTranslate()
+  const notify = useNotify()
+  const refresh = useRefresh()
+  const [loading, setLoading] = useState(false)
+
+  const handleRescan = useCallback(() => {
+    setLoading(true)
+    httpClient('/api/plugin/rescan', { method: 'POST' })
+      .then(() => {
+        refresh()
+      })
+      .catch((error) => {
+        notify(error.message || 'ra.page.error', { type: 'warning' })
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [notify, refresh])
+
+  return (
+    <TopToolbar>
+      <Button
+        onClick={handleRescan}
+        disabled={loading}
+        label={translate('resources.plugin.actions.rescan')}
+        data-testid="rescan-button"
+      >
+        <MdRefresh />
+      </Button>
+    </TopToolbar>
+  )
+}
+
 const PluginList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   useResourceRefresh('plugin')
 
   return (
-    <List {...props} sort={{ field: 'id', order: 'ASC' }} exporter={false} bulkActionButtons={false}>
+    <List
+      {...props}
+      sort={{ field: 'id', order: 'ASC' }}
+      exporter={false}
+      bulkActionButtons={false}
+      actions={<PluginListActions />}
+    >
       {isXsmall ? (
         <SimpleList
           primaryText={(record) => record.id}
