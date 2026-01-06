@@ -410,6 +410,18 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 	})
 }
 
+// RescanPlugins triggers a manual rescan of the plugins folder.
+// This synchronizes the database with the filesystem, discovering new plugins,
+// updating changed ones, and removing deleted ones.
+func (m *Manager) RescanPlugins(ctx context.Context) error {
+	folder := conf.Server.Plugins.Folder
+	if folder == "" {
+		return fmt.Errorf("plugins folder not configured")
+	}
+	log.Info(ctx, "Manual plugin rescan requested", "folder", folder)
+	return m.syncPlugins(ctx, folder)
+}
+
 // updatePluginSettings is a common implementation for updating plugin settings.
 // The updateFn is called to apply the specific field updates to the plugin.
 // If the plugin is enabled, it will be reloaded. If users permission is required

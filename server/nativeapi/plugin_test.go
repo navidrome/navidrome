@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
@@ -393,6 +394,32 @@ var _ = Describe("Plugin API", func() {
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
 				})
 			})
+
+			Describe("POST /api/plugin/rescan", func() {
+				It("triggers plugin rescan", func() {
+					req := httptest.NewRequest("POST", "/plugin/rescan", nil)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusOK))
+					Expect(mockManager.RescanPluginsCalls).To(Equal(1))
+				})
+
+				It("returns error when rescan fails", func() {
+					mockManager.RescanError = errors.New("folder not configured")
+
+					req := httptest.NewRequest("POST", "/plugin/rescan", nil)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusInternalServerError))
+					Expect(w.Body.String()).To(ContainSubstring("folder not configured"))
+				})
+			})
 		})
 
 		Describe("as regular user", func() {
@@ -429,6 +456,16 @@ var _ = Describe("Plugin API", func() {
 				req := httptest.NewRequest("PUT", "/plugin/test-plugin-1", body)
 				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+
+				router.ServeHTTP(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusForbidden))
+			})
+
+			It("denies access to POST /api/plugin/rescan", func() {
+				req := httptest.NewRequest("POST", "/plugin/rescan", nil)
+				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				w := httptest.NewRecorder()
 
 				router.ServeHTTP(w, req)

@@ -373,7 +373,8 @@
         "disabledDueToError": "Corrija o erro antes de habilitar",
         "disabledUsersRequired": "Selecione usuários antes de habilitar",
         "disabledLibrariesRequired": "Selecione bibliotecas antes de habilitar",
-        "addConfig": "Adicionar configuração"
+        "addConfig": "Adicionar configuração",
+        "rescan": "Rescanear"
       },
       "notifications": {
         "enabled": "Plugin habilitado",

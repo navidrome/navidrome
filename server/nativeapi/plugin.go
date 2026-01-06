@@ -22,12 +22,25 @@ func (api *Router) addPluginRoute(r chi.Router) {
 	r.Route("/plugin", func(r chi.Router) {
 		r.Use(pluginsEnabledMiddleware)
 		r.Get("/", rest.GetAll(constructor))
+		r.Post("/rescan", api.rescanPlugins)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(constructor))
 			r.Put("/", api.updatePlugin)
 		})
 	})
+}
+
+func (api *Router) rescanPlugins(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := api.pluginManager.RescanPlugins(ctx); err != nil {
+		log.Error(ctx, "Error rescanning plugins", err)
+		http.Error(w, "Error rescanning plugins: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // Middleware to check if plugins feature is enabled
