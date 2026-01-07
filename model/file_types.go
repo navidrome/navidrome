@@ -28,3 +28,8 @@ func IsValidPlaylist(filePath string) bool {
 	extension := strings.ToLower(filepath.Ext(filePath))
 	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }
+
+func IsCueSheetFile(filePath string) bool {
+	extension := strings.ToLower(filepath.Ext(filePath))
+	return extension == ".cue"
+}

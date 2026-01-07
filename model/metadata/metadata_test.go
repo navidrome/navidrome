@@ -5,12 +5,15 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Metadata", func() {
@@ -129,6 +132,23 @@ var _ = Describe("Metadata", func() {
 				md = metadata.New(filePath, props)
 
 				Expect(md.Strings(model.TagGenre)).To(Equal([]string{"Rock", "Pop", "Punk"}))
+			})
+
+			It("should store cue tags if enabled", func() {
+				props.Tags = model.RawTags{
+					"cue_track01_musicbrainz_trackid": {"8f84da07-09a0-477b-b216-cc982dabcde1"},
+				}
+				md = metadata.New(filePath, props)
+				Expect(md.CueTags()).To(HaveKeyWithValue("cue_track01_musicbrainz_trackid", []string{"8f84da07-09a0-477b-b216-cc982dabcde1"}))
+			})
+
+			It("should not store cue tags if disabled", func() {
+				conf.Server.Scanner.CUESheetSupport = consts.CUEDisable
+				props.Tags = model.RawTags{
+					"cue_track01_musicbrainz_trackid": {"8f84da07-09a0-477b-b216-cc982dabcde1"},
+				}
+				md = metadata.New(filePath, props)
+				Expect(md.CueTags()).To(BeEmpty())
 			})
 		})
 

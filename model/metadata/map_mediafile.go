@@ -59,8 +59,15 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.RGTrackGain = md.mapGain(model.TagReplayGainTrackGain, model.TagR128TrackGain)
 
 	// General properties
+	mf.SubTrack = md.SubTrack()
+	if mf.SubTrack >= 0 {
+		mf.Offset = md.Offset()
+		mf.Duration = md.SubTrackLength()
+		mf.CUEFile = md.first(model.TagCUEFile)
+	} else {
+		mf.Duration = md.Length()
+	}
 	mf.HasCoverArt = md.HasPicture()
-	mf.Duration = md.Length()
 	mf.BitRate = md.AudioProperties().BitRate
 	mf.SampleRate = md.AudioProperties().SampleRate
 	mf.BitDepth = md.AudioProperties().BitDepth
@@ -94,8 +101,8 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	// MediaFile struct. This is to avoid redundancy in the DB
 	//
 	// Remove all tags from the main section that are not flagged as album tags
-	for tag, conf := range model.TagMainMappings() {
-		if !conf.Album {
+	for tag, config := range model.TagMainMappings() {
+		if !config.Album {
 			delete(mf.Tags, tag)
 		}
 	}

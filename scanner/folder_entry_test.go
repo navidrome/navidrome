@@ -4,11 +4,12 @@ import (
 	"io/fs"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("folder_entry", func() {
@@ -109,6 +110,17 @@ var _ = Describe("folder_entry", func() {
 				entry.imageFiles["cover.jpg"] = &fakeDirEntry{name: "cover.jpg"}
 				entry.numPlaylists = 2
 				entry.numSubFolders = 3
+				Expect(entry.hasNoFiles()).To(BeFalse())
+			})
+
+			It("returns false when folder has CUE files", func() {
+				entry.cueFiles["album.cue"] = &fakeDirEntry{name: "album.cue"}
+				Expect(entry.hasNoFiles()).To(BeFalse())
+			})
+
+			It("returns false when folder has both CUE and audio files", func() {
+				entry.cueFiles["album.cue"] = &fakeDirEntry{name: "album.cue"}
+				entry.audioFiles["album.flac"] = &fakeDirEntry{name: "album.flac"}
 				Expect(entry.hasNoFiles()).To(BeFalse())
 			})
 		})
@@ -382,6 +394,79 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash).To(HaveLen(32)) // MD5 hash should be 32 hex characters
 				Expect(hash).To(MatchRegexp("^[a-f0-9]{32}$"))
 			})
+
+			It("produces different hash when CUE files are added", func() {
+				hash1 := entry.hash()
+
+				entry.cueFiles["album.cue"] = &fakeDirEntry{name: "album.cue"}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when CUE file size changes", func() {
+				entry.cueFiles["album.cue"] = &fakeDirEntry{
+					name: "album.cue",
+					fileInfo: &fakeFileInfo{
+						name:    "album.cue",
+						size:    1000,
+						modTime: time.Now(),
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.cueFiles["album.cue"] = &fakeDirEntry{
+					name: "album.cue",
+					fileInfo: &fakeFileInfo{
+						name:    "album.cue",
+						size:    2000, // Different size
+						modTime: time.Now(),
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when CUE file modification time changes", func() {
+				baseTime := time.Now()
+				entry.cueFiles["album.cue"] = &fakeDirEntry{
+					name: "album.cue",
+					fileInfo: &fakeFileInfo{
+						name:    "album.cue",
+						size:    1000,
+						modTime: baseTime,
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.cueFiles["album.cue"] = &fakeDirEntry{
+					name: "album.cue",
+					fileInfo: &fakeFileInfo{
+						name:    "album.cue",
+						size:    1000,
+						modTime: baseTime.Add(1 * time.Hour), // Different modtime
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces deterministic hash with CUE files in different order", func() {
+				entry.cueFiles["z.cue"] = &fakeDirEntry{name: "z.cue"}
+				entry.cueFiles["a.cue"] = &fakeDirEntry{name: "a.cue"}
+				hash1 := entry.hash()
+
+				// Recreate with different order
+				entry.cueFiles = map[string]fs.DirEntry{
+					"a.cue": &fakeDirEntry{name: "a.cue"},
+					"z.cue": &fakeDirEntry{name: "z.cue"},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).To(Equal(hash2))
+			})
 		})
 
 		Describe("isOutdated", func() {
@@ -491,6 +576,65 @@ var _ = Describe("folder_entry", func() {
 			// Modify folder and verify it becomes outdated
 			entry.audioFiles["track3.mp3"] = &fakeDirEntry{name: "track3.mp3"}
 			Expect(entry.isOutdated()).To(BeTrue())
+		})
+
+		It("handles folder with CUE sheets correctly", func() {
+			// Create new folder entry
+			folderPath := "music/lossless/album"
+			folderID := model.FolderID(lib, folderPath)
+			entry := newFolderEntry(job, folderID, folderPath, time.Time{}, "")
+
+			// Add CUE file and corresponding audio file
+			entry.cueFiles["album.cue"] = &fakeDirEntry{
+				name: "album.cue",
+				fileInfo: &fakeFileInfo{
+					name:    "album.cue",
+					size:    2000,
+					modTime: time.Now(),
+				},
+			}
+			entry.audioFiles["album.flac"] = &fakeDirEntry{
+				name: "album.flac",
+				fileInfo: &fakeFileInfo{
+					name:    "album.flac",
+					size:    500000000,
+					modTime: time.Now(),
+				},
+			}
+			entry.imageFiles["cover.jpg"] = &fakeDirEntry{name: "cover.jpg"}
+			entry.modTime = time.Now()
+			entry.imagesUpdatedAt = time.Now()
+
+			// Folder should not be empty
+			Expect(entry.hasNoFiles()).To(BeFalse())
+			Expect(entry.isEmpty()).To(BeFalse())
+
+			// Set previous hash to current hash
+			entry.prevHash = entry.hash()
+			entry.updTime = time.Now()
+
+			// Should not be outdated
+			Expect(entry.isOutdated()).To(BeFalse())
+
+			// Modify CUE file and verify it becomes outdated
+			entry.cueFiles["album.cue"] = &fakeDirEntry{
+				name: "album.cue",
+				fileInfo: &fakeFileInfo{
+					name:    "album.cue",
+					size:    2500, // Different size
+					modTime: time.Now().Add(1 * time.Hour),
+				},
+			}
+			Expect(entry.isOutdated()).To(BeTrue())
+		})
+
+		It("correctly initializes cueSheets map", func() {
+			folderPath := "music/test"
+			folderID := model.FolderID(lib, folderPath)
+			entry := newFolderEntry(job, folderID, folderPath, time.Time{}, "")
+
+			Expect(entry.cueSheets).ToNot(BeNil())
+			Expect(entry.cueSheets).To(BeEmpty())
 		})
 	})
 })

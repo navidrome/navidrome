@@ -12,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata/cue"
 	"github.com/navidrome/navidrome/utils/chrono"
 )
 
@@ -21,12 +22,19 @@ func newFolderEntry(job *scanJob, id, path string, updTime time.Time, hash strin
 		job:        job,
 		path:       path,
 		audioFiles: make(map[string]fs.DirEntry),
+		cueFiles:   make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
 		albumIDMap: make(map[string]string),
 		updTime:    updTime,
 		prevHash:   hash,
+		cueSheets:  make(map[string]*cueSheetInfo),
 	}
 	return f
+}
+
+type cueSheetInfo struct {
+	CUEFile  string
+	CueSheet *cue.Cuesheet
 }
 
 type folderEntry struct {
@@ -37,6 +45,7 @@ type folderEntry struct {
 	modTime         time.Time // From FS
 	updTime         time.Time // from DB
 	audioFiles      map[string]fs.DirEntry
+	cueFiles        map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
 	numPlaylists    int
 	numSubFolders   int
@@ -48,10 +57,11 @@ type folderEntry struct {
 	artists         model.Artists
 	tags            model.TagList
 	missingTracks   []*model.MediaFile
+	cueSheets       map[string]*cueSheetInfo // Mapping of media file name to CUE sheet info
 }
 
 func (f *folderEntry) hasNoFiles() bool {
-	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && f.numPlaylists == 0
+	return len(f.audioFiles) == 0 && len(f.cueFiles) == 0 && len(f.imageFiles) == 0 && f.numPlaylists == 0
 }
 
 func (f *folderEntry) isEmpty() bool {
@@ -97,6 +107,8 @@ func (f *folderEntry) hash() string {
 	slices.Sort(audioKeys)
 	imageKeys := slices.Collect(maps.Keys(f.imageFiles))
 	slices.Sort(imageKeys)
+	cueKeys := slices.Collect(maps.Keys(f.cueFiles))
+	slices.Sort(cueKeys)
 
 	// Include audio files with their size and modtime
 	for _, key := range audioKeys {
@@ -110,6 +122,14 @@ func (f *folderEntry) hash() string {
 	for _, key := range imageKeys {
 		_, _ = io.WriteString(h, key)
 		if info, err := f.imageFiles[key].Info(); err == nil {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		}
+	}
+
+	// Include CUE files with their size and modtime
+	for _, key := range cueKeys {
+		_, _ = io.WriteString(h, key)
+		if info, err := f.cueFiles[key].Info(); err == nil {
 			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
 		}
 	}

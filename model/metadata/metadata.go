@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -66,10 +68,20 @@ func NewPair(key, value string) string {
 }
 
 func New(filePath string, info Info) Metadata {
+	cueRawTags := model.RawTags{}
+	if conf.Server.Scanner.CUESheetSupport != consts.CUEDisable {
+		for key, tags := range info.Tags {
+			lowerKey := strings.ToLower(key)
+			if strings.HasPrefix(lowerKey, "cue_track") && len(tags) > 0 {
+				cueRawTags[lowerKey] = tags
+			}
+		}
+	}
 	return Metadata{
 		filePath:   filePath,
 		fileInfo:   info.FileInfo,
 		tags:       clean(filePath, info.Tags),
+		cueTags:    cueRawTags,
 		audioProps: info.AudioProperties,
 		hasPicture: info.HasPicture,
 	}
@@ -79,8 +91,19 @@ type Metadata struct {
 	filePath   string
 	fileInfo   FileInfo
 	tags       model.Tags
+	cueTags    model.RawTags
 	audioProps AudioProperties
 	hasPicture bool
+}
+
+func (md Metadata) WithCUERawTags(rawTags model.RawTags) Metadata {
+	return Metadata{
+		filePath:   md.filePath,
+		fileInfo:   md.fileInfo,
+		tags:       clean(md.filePath, rawTags),
+		audioProps: md.audioProps,
+		hasPicture: md.hasPicture,
+	}
 }
 
 func (md Metadata) FilePath() string     { return md.filePath }
@@ -90,8 +113,10 @@ func (md Metadata) Size() int64          { return md.fileInfo.Size() }
 func (md Metadata) Suffix() string {
 	return strings.ToLower(strings.TrimPrefix(path.Ext(md.filePath), "."))
 }
-func (md Metadata) AudioProperties() AudioProperties         { return md.audioProps }
-func (md Metadata) Length() float32                          { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
+
+func (md Metadata) AudioProperties() AudioProperties { return md.audioProps }
+func (md Metadata) Length() float32                  { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
+
 func (md Metadata) HasPicture() bool                         { return md.hasPicture }
 func (md Metadata) All() model.Tags                          { return md.tags }
 func (md Metadata) Strings(key model.TagName) []string       { return md.tags[key] }
@@ -104,6 +129,46 @@ func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 	return float(md.first(key), def...)
 }
 func (md Metadata) NullableFloat(key model.TagName) *float64 { return nullableFloat(md.first(key)) }
+
+func (md Metadata) SubTrack() int {
+	sub := md.first(model.TagCUESubTrack)
+	if len(sub) == 0 {
+		return -1
+	}
+	s, err := strconv.Atoi(sub)
+	if err != nil {
+		return -1
+	}
+	return s
+}
+
+func (md Metadata) Offset() float32 {
+	offsetStr := md.first(model.TagCUETrackOffset)
+	if offsetStr == "" {
+		return 0
+	}
+	offsetMs, err := strconv.ParseFloat(offsetStr, 32)
+	if err != nil {
+		return 0
+	}
+	return float32(offsetMs)
+}
+
+func (md Metadata) SubTrackLength() float32 {
+	lengthStr := md.first(model.TagCUETrackDuration)
+	if lengthStr == "" {
+		return 0
+	}
+	lengthMs, err := strconv.ParseFloat(lengthStr, 32)
+	if err != nil {
+		return 0
+	}
+	return float32(lengthMs)
+}
+
+func (md Metadata) CueTags() model.RawTags {
+	return md.cueTags
+}
 
 func (md Metadata) Gain(key model.TagName) *float64 {
 	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))

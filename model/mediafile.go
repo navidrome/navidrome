@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gohugoio/hashstructure"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
@@ -84,6 +85,9 @@ type MediaFile struct {
 	RGAlbumPeak          *float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 	RGTrackGain          *float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RGTrackPeak          *float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	Offset               float32  `structs:"offset" json:"offset"`                 // Track offset in seconds for sub-tracks
+	SubTrack             int      `structs:"sub_track" json:"sub_track"`           // Index of the sub-track in a multi-track media, -1 if not a sub-track
+	CUEFile              string   `structs:"cuefile" json:"cuefile" hash:"ignore"` // CUE file if this is a sub-track mediafile created from an external CUE sheet
 
 	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags from the original file
 	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this track
@@ -187,7 +191,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Missing = true
 	embedArtPath := ""
 	embedArtDisc := 0
-	for _, m := range mfs {
+	for i, m := range mfs {
 		// We assume these attributes are all the same for all songs in an album
 		a.ID = m.AlbumID
 		a.LibraryID = m.LibraryID
@@ -206,7 +210,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration
-		a.Size += m.Size
+		// Don't sum sub tracks sizes
+		if m.SubTrack < 0 || (m.SubTrack >= 0 && i == 0) {
+			a.Size += m.Size
+		}
 		years = append(years, m.Year)
 		dates = append(dates, m.Date)
 		originalYears = append(originalYears, m.OriginalYear)
