@@ -55,7 +55,6 @@
       "fields": {
         "albumArtist": "Album Artist",
         "artist": "Artist",
-        "composer": "Composer",
         "duration": "Time",
         "songCount": "Songs",
         "playCount": "Plays",

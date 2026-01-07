@@ -55,7 +55,6 @@
       "fields": {
         "albumArtist": "Albumartist",
         "artist": "Artist",
-        "composer": "Kompositör",
         "duration": "Längd",
         "songCount": "Antal låtar",
         "playCount": "Spelningar",
