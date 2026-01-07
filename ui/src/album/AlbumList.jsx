@@ -198,6 +198,7 @@ const AlbumList = (props) => {
     'album',
     [
       'artist',
+      'composer',
       'songCount',
       'playCount',
       'year',
@@ -207,7 +208,7 @@ const AlbumList = (props) => {
       'size',
       'createdAt',
     ],
-    ['createdAt', 'size'],
+    ['composer', 'createdAt', 'size'],
   )
 
   // If it does not have filter/sort params (usually coming from Menu),

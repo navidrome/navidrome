@@ -99,6 +99,7 @@ const AlbumTableView = ({
   const toggleableFields = useMemo(() => {
     return {
       artist: <ArtistLinkField source="albumArtist" />,
+      composer: <ArtistLinkField source="composer" />,
       songCount: isDesktop && (
         <NumberField source="songCount" sortByOrder={'DESC'} />
       ),
@@ -132,7 +133,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['createdAt', 'size', 'mood'],
+    defaultOff: ['comoser', 'createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (
