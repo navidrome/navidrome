@@ -133,7 +133,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['comoser', 'createdAt', 'size', 'mood'],
+    defaultOff: ['composer', 'createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (
