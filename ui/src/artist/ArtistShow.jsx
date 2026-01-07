@@ -123,9 +123,9 @@ const ArtistShowLayout = (props) => {
           {...showContext}
           addLabel={false}
           reference="album"
-          target="artist_id"
+          target="role_total_id"
           sort={{ field: 'max_year', order: 'ASC' }}
-          filter={{ artist_id: record?.id }}
+          filter={{ role_total_id: record?.id }}
           perPage={perPage}
           pagination={pagination}
         >
