@@ -1,0 +1,121 @@
+version: v1-draft
+exports:
+    nd_scrobbler_is_authorized:
+        description: IsAuthorized checks if a user is authorized to scrobble to this service.
+        input:
+            $ref: '#/components/schemas/IsAuthorizedRequest'
+            contentType: application/json
+        output:
+            type: boolean
+            contentType: application/json
+    nd_scrobbler_now_playing:
+        description: NowPlaying sends a now playing notification to the scrobbling service.
+        input:
+            $ref: '#/components/schemas/NowPlayingRequest'
+            contentType: application/json
+    nd_scrobbler_scrobble:
+        description: Scrobble submits a completed scrobble to the scrobbling service.
+        input:
+            $ref: '#/components/schemas/ScrobbleRequest'
+            contentType: application/json
+components:
+    schemas:
+        IsAuthorizedRequest:
+            description: IsAuthorizedRequest is the request for authorization check.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user.
+            required:
+                - username
+        NowPlayingRequest:
+            description: NowPlayingRequest is the request for now playing notification.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user.
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+                    description: Track is the track currently playing.
+                position:
+                    type: integer
+                    format: int32
+                    description: Position is the current playback position in seconds.
+            required:
+                - username
+                - track
+                - position
+        ScrobbleRequest:
+            description: ScrobbleRequest is the request for submitting a scrobble.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user.
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+                    description: Track is the track that was played.
+                timestamp:
+                    type: integer
+                    format: int64
+                    description: Timestamp is the Unix timestamp when the track started playing.
+            required:
+                - username
+                - track
+                - timestamp
+        TrackInfo:
+            description: TrackInfo contains track metadata for scrobbling.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome track ID.
+                title:
+                    type: string
+                    description: Title is the track title.
+                album:
+                    type: string
+                    description: Album is the album name.
+                artist:
+                    type: string
+                    description: Artist is the track artist.
+                albumArtist:
+                    type: string
+                    description: AlbumArtist is the album artist.
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the track duration in seconds.
+                trackNumber:
+                    type: integer
+                    format: int32
+                    description: TrackNumber is the track number on the album.
+                discNumber:
+                    type: integer
+                    format: int32
+                    description: DiscNumber is the disc number.
+                mbzRecordingId:
+                    type: string
+                    description: MBZRecordingID is the MusicBrainz recording ID.
+                mbzAlbumId:
+                    type: string
+                    description: MBZAlbumID is the MusicBrainz album/release ID.
+                mbzArtistId:
+                    type: string
+                    description: MBZArtistID is the MusicBrainz artist ID.
+                mbzReleaseGroupId:
+                    type: string
+                    description: MBZReleaseGroupID is the MusicBrainz release group ID.
+                mbzAlbumArtistId:
+                    type: string
+                    description: MBZAlbumArtistID is the MusicBrainz album artist ID.
+                mbzReleaseTrackId:
+                    type: string
+                    description: MBZReleaseTrackID is the MusicBrainz release track ID.
+            required:
+                - id
+                - title
+                - album
+                - artist
+                - albumArtist
+                - duration
+                - trackNumber
+                - discNumber

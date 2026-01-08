@@ -182,6 +182,7 @@ func fromAlbumExternalSource(ctx context.Context, al model.Album, provider exter
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
 	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
+	req.Header.Set("User-Agent", consts.HTTPUserAgent)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, "", err

@@ -20,18 +20,32 @@ import (
 	"github.com/navidrome/navidrome/server"
 )
 
-type Router struct {
-	http.Handler
-	ds          model.DataStore
-	share       core.Share
-	playlists   core.Playlists
-	insights    metrics.Insights
-	libs        core.Library
-	maintenance core.Maintenance
+// PluginManager defines the interface for plugin management operations.
+// This interface is used by the API handlers to enable/disable plugins and update configuration.
+type PluginManager interface {
+	EnablePlugin(ctx context.Context, id string) error
+	DisablePlugin(ctx context.Context, id string) error
+	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
+	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
+	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	RescanPlugins(ctx context.Context) error
+	UnloadDisabledPlugins(ctx context.Context)
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, maintenance core.Maintenance) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, maintenance: maintenance}
+type Router struct {
+	http.Handler
+	ds            model.DataStore
+	share         core.Share
+	playlists     core.Playlists
+	insights      metrics.Insights
+	libs          core.Library
+	users         core.User
+	maintenance   core.Maintenance
+	pluginManager PluginManager
+}
+
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager}
 	r.Handler = r.routes()
 	return r
 }
@@ -47,7 +61,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.Authenticator(api.ds))
 		r.Use(server.JWTRefresher)
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
-		api.R(r, "/user", model.User{}, true)
+		api.RX(r, "/user", api.users.NewRepository, true)
 		api.R(r, "/song", model.MediaFile{}, false)
 		api.R(r, "/album", model.Album{}, false)
 		api.R(r, "/artist", model.Artist{}, false)
@@ -72,6 +86,7 @@ func (api *Router) routes() http.Handler {
 			api.addInspectRoute(r)
 			api.addConfigRoute(r)
 			api.addUserLibraryRoute(r)
+			api.addPluginRoute(r)
 			api.RX(r, "/library", api.libs.NewRepository, true)
 		})
 	})

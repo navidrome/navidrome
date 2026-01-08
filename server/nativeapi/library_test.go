@@ -11,7 +11,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -30,7 +29,7 @@ var _ = Describe("Library API", func() {
 		DeferCleanup(configtest.SetupConfig())
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, core.NewMockLibraryService(), nil)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users

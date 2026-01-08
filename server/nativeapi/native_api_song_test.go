@@ -11,7 +11,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -95,7 +94,7 @@ var _ = Describe("Song Endpoints", func() {
 		mfRepo.SetData(testSongs)
 
 		// Create the native API router and wrap it with the JWTVerifier middleware
-		nativeRouter := New(ds, nil, nil, nil, core.NewMockLibraryService(), nil)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})

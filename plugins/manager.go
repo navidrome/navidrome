@@ -1,421 +1,636 @@
 package plugins
 
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/websocket/websocket.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/cache/cache.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/artwork/artwork.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/subsonicapi/subsonicapi.proto
-
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"slices"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/schema"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/rjeczalik/notify"
 	"github.com/tetratelabs/wazero"
 )
 
 const (
-	CapabilityMetadataAgent       = "MetadataAgent"
-	CapabilityScrobbler           = "Scrobbler"
-	CapabilitySchedulerCallback   = "SchedulerCallback"
-	CapabilityWebSocketCallback   = "WebSocketCallback"
-	CapabilityLifecycleManagement = "LifecycleManagement"
+	// defaultTimeout is the default timeout for plugin function calls
+	defaultTimeout = 30 * time.Second
+
+	// maxPluginLoadConcurrency is the maximum number of plugins that can be
+	// compiled/loaded in parallel during startup
+	maxPluginLoadConcurrency = 3
 )
 
-// pluginCreators maps capability types to their respective creator functions
-type pluginConstructor func(wasmPath, pluginID string, m *managerImpl, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
+// SubsonicRouter is an http.Handler that serves Subsonic API requests.
+type SubsonicRouter = http.Handler
 
-var pluginCreators = map[string]pluginConstructor{
-	CapabilityMetadataAgent:     newWasmMediaAgent,
-	CapabilityScrobbler:         newWasmScrobblerPlugin,
-	CapabilitySchedulerCallback: newWasmSchedulerCallback,
-	CapabilityWebSocketCallback: newWasmWebSocketCallback,
+// PluginMetricsRecorder is an interface for recording plugin metrics.
+// This is satisfied by core/metrics.Metrics but defined here to avoid import cycles.
+type PluginMetricsRecorder interface {
+	RecordPluginRequest(ctx context.Context, plugin, method string, ok bool, elapsed int64)
 }
 
-// WasmPlugin is the base interface that all WASM plugins implement
-type WasmPlugin interface {
-	// PluginID returns the unique identifier of the plugin (folder name)
-	PluginID() string
+// Manager manages loading and lifecycle of WebAssembly plugins.
+// It implements both agents.PluginLoader and scrobbler.PluginLoader interfaces.
+type Manager struct {
+	mu      sync.RWMutex
+	plugins map[string]*plugin
+	ctx     context.Context
+	cancel  context.CancelFunc
+	cache   wazero.CompilationCache
+	stopped atomic.Bool    // Set to true when Stop() is called
+	loadWg  sync.WaitGroup // Tracks in-flight plugin load operations
+
+	// File watcher fields (used when AutoReload is enabled)
+	watcherEvents  chan notify.EventInfo
+	watcherDone    chan struct{}
+	debounceTimers map[string]*time.Timer
+	debounceMu     sync.Mutex
+
+	// SubsonicAPI host function dependencies (set once before Start, not modified after)
+	subsonicRouter SubsonicRouter
+	ds             model.DataStore
+	broker         events.Broker
+	metrics        PluginMetricsRecorder
 }
 
-type plugin struct {
-	ID               string
-	Path             string
-	Capabilities     []string
-	WasmPath         string
-	Manifest         *schema.PluginManifest // Loaded manifest
-	Runtime          api.WazeroNewRuntime
-	ModConfig        wazero.ModuleConfig
-	compilationReady chan struct{}
-	compilationErr   error
-}
-
-func (p *plugin) waitForCompilation() error {
-	timeout := pluginCompilationTimeout()
-	select {
-	case <-p.compilationReady:
-	case <-time.After(timeout):
-		err := fmt.Errorf("timed out waiting for plugin %s to compile", p.ID)
-		log.Error("Timed out waiting for plugin compilation", "name", p.ID, "path", p.WasmPath, "timeout", timeout, "err", err)
-		return err
-	}
-	if p.compilationErr != nil {
-		log.Error("Failed to compile plugin", "name", p.ID, "path", p.WasmPath, p.compilationErr)
-	}
-	return p.compilationErr
-}
-
-type SubsonicRouter http.Handler
-
-type Manager interface {
-	SetSubsonicRouter(router SubsonicRouter)
-	EnsureCompiled(name string) error
-	PluginList() map[string]schema.PluginManifest
-	PluginNames(capability string) []string
-	LoadPlugin(name string, capability string) WasmPlugin
-	LoadMediaAgent(name string) (agents.Interface, bool)
-	LoadScrobbler(name string) (scrobbler.Scrobbler, bool)
-	ScanPlugins()
-}
-
-// managerImpl is a singleton that manages plugins
-type managerImpl struct {
-	plugins          map[string]*plugin             // Map of plugin folder name to plugin info
-	pluginsMu        sync.RWMutex                   // Protects plugins map
-	subsonicRouter   atomic.Pointer[SubsonicRouter] // Subsonic API router
-	schedulerService *schedulerService              // Service for handling scheduled tasks
-	websocketService *websocketService              // Service for handling WebSocket connections
-	lifecycle        *pluginLifecycleManager        // Manages plugin lifecycle and initialization
-	adapters         map[string]WasmPlugin          // Map of plugin folder name + capability to adapter
-	ds               model.DataStore                // DataStore for accessing persistent data
-	metrics          metrics.Metrics
-}
-
-// GetManager returns the singleton instance of managerImpl
-func GetManager(ds model.DataStore, metrics metrics.Metrics) Manager {
-	if !conf.Server.Plugins.Enabled {
-		return &noopManager{}
-	}
-	return singleton.GetInstance(func() *managerImpl {
-		return createManager(ds, metrics)
+// GetManager returns a singleton instance of the plugin manager.
+// The manager is not started automatically; call Start() to begin loading plugins.
+func GetManager(ds model.DataStore, broker events.Broker, m PluginMetricsRecorder) *Manager {
+	return singleton.GetInstance(func() *Manager {
+		return &Manager{
+			ds:      ds,
+			broker:  broker,
+			metrics: m,
+			plugins: make(map[string]*plugin),
+		}
 	})
 }
 
-// createManager creates a new managerImpl instance. Used in tests
-func createManager(ds model.DataStore, metrics metrics.Metrics) *managerImpl {
-	m := &managerImpl{
-		plugins:   make(map[string]*plugin),
-		lifecycle: newPluginLifecycleManager(metrics),
-		ds:        ds,
-		metrics:   metrics,
-	}
-
-	// Create the host services
-	m.schedulerService = newSchedulerService(m)
-	m.websocketService = newWebsocketService(m)
-
-	return m
-}
-
-// SetSubsonicRouter sets the SubsonicRouter after managerImpl initialization
-func (m *managerImpl) SetSubsonicRouter(router SubsonicRouter) {
-	m.subsonicRouter.Store(&router)
-}
-
-// registerPlugin adds a plugin to the registry with the given parameters
-// Used internally by ScanPlugins to register plugins
-func (m *managerImpl) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest) *plugin {
-	// Create custom runtime function
-	customRuntime := m.createRuntime(pluginID, manifest.Permissions)
-
-	// Configure module and determine plugin name
-	mc := newWazeroModuleConfig()
-
-	// Check if it's a symlink, indicating development mode
-	isSymlink := false
-	if fileInfo, err := os.Lstat(pluginDir); err == nil {
-		isSymlink = fileInfo.Mode()&os.ModeSymlink != 0
-	}
-
-	// Store plugin info
-	p := &plugin{
-		ID:               pluginID,
-		Path:             pluginDir,
-		Capabilities:     slice.Map(manifest.Capabilities, func(cap schema.PluginManifestCapabilitiesElem) string { return string(cap) }),
-		WasmPath:         wasmPath,
-		Manifest:         manifest,
-		Runtime:          customRuntime,
-		ModConfig:        mc,
-		compilationReady: make(chan struct{}),
-	}
-
-	// Register the plugin first
-	m.pluginsMu.Lock()
-	m.plugins[pluginID] = p
-
-	// Register one plugin adapter for each capability
-	for _, capability := range manifest.Capabilities {
-		capabilityStr := string(capability)
-		constructor := pluginCreators[capabilityStr]
-		if constructor == nil {
-			// Warn about unknown capabilities, except for LifecycleManagement (it does not have an adapter)
-			if capability != CapabilityLifecycleManagement {
-				log.Warn("Unknown plugin capability type", "capability", capability, "plugin", pluginID)
-			}
-			continue
-		}
-		adapter := constructor(wasmPath, pluginID, m, customRuntime, mc)
-		if adapter == nil {
-			log.Error("Failed to create plugin adapter", "plugin", pluginID, "capability", capabilityStr, "path", wasmPath)
-			continue
-		}
-		m.adapters[pluginID+"_"+capabilityStr] = adapter
-	}
-	m.pluginsMu.Unlock()
-
-	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
-	return m.plugins[pluginID]
-}
-
-// initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
-func (m *managerImpl) initializePluginIfNeeded(plugin *plugin) {
-	// Skip if already initialized
-	if m.lifecycle.isInitialized(plugin) {
+// sendPluginRefreshEvent broadcasts a refresh event for the plugin resource.
+// This notifies connected UI clients that plugin data has changed.
+func (m *Manager) sendPluginRefreshEvent(ctx context.Context, pluginIDs ...string) {
+	if m.broker == nil {
 		return
 	}
-
-	// Check if the plugin implements LifecycleManagement
-	if slices.Contains(plugin.Manifest.Capabilities, CapabilityLifecycleManagement) {
-		if err := m.lifecycle.callOnInit(plugin); err != nil {
-			m.unregisterPlugin(plugin.ID)
-		}
-	}
+	event := (&events.RefreshResource{}).With("plugin", pluginIDs...)
+	m.broker.SendBroadcastMessage(ctx, event)
 }
 
-// unregisterPlugin removes a plugin from the manager
-func (m *managerImpl) unregisterPlugin(pluginID string) {
-	m.pluginsMu.Lock()
-	defer m.pluginsMu.Unlock()
-
-	plugin, ok := m.plugins[pluginID]
-	if !ok {
-		return
-	}
-
-	// Clear initialization state from lifecycle manager
-	m.lifecycle.clearInitialized(plugin)
-
-	// Unregister plugin adapters
-	for _, capability := range plugin.Manifest.Capabilities {
-		delete(m.adapters, pluginID+"_"+string(capability))
-	}
-
-	// Unregister plugin
-	delete(m.plugins, pluginID)
-	log.Info("Unregistered plugin", "plugin", pluginID)
+// SetSubsonicRouter sets the Subsonic router for SubsonicAPI host functions.
+// This should be called after the subsonic router is created but before plugins
+// that require SubsonicAPI access are loaded.
+func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
+	m.subsonicRouter = router
 }
 
-// ScanPlugins scans the plugins directory, discovers all valid plugins, and registers them for use.
-func (m *managerImpl) ScanPlugins() {
-	// Clear existing plugins
-	m.pluginsMu.Lock()
-	m.plugins = make(map[string]*plugin)
-	m.adapters = make(map[string]WasmPlugin)
-	m.pluginsMu.Unlock()
+// Start initializes the plugin manager and loads plugins from the configured folder.
+// It should be called once during application startup when plugins are enabled.
+// The startup flow is:
+// 1. Sync plugins folder with DB (discover new, update changed, remove deleted)
+// 2. Load only enabled plugins from DB
+func (m *Manager) Start(ctx context.Context) error {
+	if !conf.Server.Plugins.Enabled {
+		log.Debug(ctx, "Plugin system is disabled")
+		return nil
+	}
 
-	// Get plugins directory from config
-	root := conf.Server.Plugins.Folder
-	log.Debug("Scanning plugins folder", "root", root)
+	if m.subsonicRouter == nil {
+		log.Fatal(ctx, "Plugin manager requires DataStore to be configured")
+	}
 
-	// Fail fast if the compilation cache cannot be initialized
-	_, err := getCompilationCache()
+	// Set extism log level based on plugin-specific config or global log level
+	pluginLogLevel := conf.Server.Plugins.LogLevel
+	if pluginLogLevel == "" {
+		pluginLogLevel = conf.Server.LogLevel
+	}
+	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
+
+	m.ctx, m.cancel = context.WithCancel(ctx)
+
+	// Initialize wazero compilation cache for better performance
+	cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
+	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
+
+	var err error
+	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
 	if err != nil {
-		log.Error("Failed to initialize plugins compilation cache. Disabling plugins", err)
-		return
+		log.Error(ctx, "Failed to create wazero compilation cache", err)
+		return fmt.Errorf("creating wazero compilation cache: %w", err)
 	}
 
-	// Discover all plugins using the shared discovery function
-	discoveries := DiscoverPlugins(root)
+	folder := conf.Server.Plugins.Folder
+	if folder == "" {
+		log.Debug(ctx, "No plugins folder configured")
+		return nil
+	}
 
-	var validPluginNames []string
-	var registeredPlugins []*plugin
-	for _, discovery := range discoveries {
-		if discovery.Error != nil {
-			// Handle global errors (like directory read failure)
-			if discovery.ID == "" {
-				log.Error("Plugin discovery failed", discovery.Error)
-				return
-			}
-			// Handle individual plugin errors
-			log.Error("Failed to process plugin", "plugin", discovery.ID, discovery.Error)
-			continue
-		}
+	// Create plugins folder if it doesn't exist
+	if err := os.MkdirAll(folder, 0755); err != nil {
+		log.Error(ctx, "Failed to create plugins folder", "folder", folder, err)
+		return fmt.Errorf("creating plugins folder: %w", err)
+	}
 
-		// Log discovery details
-		log.Debug("Processing entry", "name", discovery.ID, "isSymlink", discovery.IsSymlink)
-		if discovery.IsSymlink {
-			log.Debug("Processing symlinked plugin directory", "name", discovery.ID, "target", discovery.Path)
-		}
-		log.Debug("Checking for plugin.wasm", "wasmPath", discovery.WasmPath)
-		log.Debug("Manifest loaded successfully", "folder", discovery.ID, "name", discovery.Manifest.Name, "capabilities", discovery.Manifest.Capabilities)
+	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
-		validPluginNames = append(validPluginNames, discovery.ID)
+	// Sync plugins folder with DB
+	if err := m.syncPlugins(ctx, folder); err != nil {
+		log.Error(ctx, "Error syncing plugins with DB", err)
+		// Continue - we can still try to load plugins
+	}
 
-		// Register the plugin
-		plugin := m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest)
-		if plugin != nil {
-			registeredPlugins = append(registeredPlugins, plugin)
+	// Load enabled plugins from DB
+	if err := m.loadEnabledPlugins(ctx); err != nil {
+		log.Error(ctx, "Error loading enabled plugins", err)
+		return fmt.Errorf("loading enabled plugins: %w", err)
+	}
+
+	// Start file watcher if auto-reload is enabled
+	if conf.Server.Plugins.AutoReload {
+		if err := m.startWatcher(); err != nil {
+			log.Error(ctx, "Failed to start plugin file watcher", err)
+			// Non-fatal - plugins are still loaded, just no auto-reload
 		}
 	}
 
-	// Start background processing for all registered plugins after registration is complete
-	// This avoids race conditions between registration and goroutines that might unregister plugins
-	for _, p := range registeredPlugins {
-		go func(plugin *plugin) {
-			precompilePlugin(plugin)
-			// Check if this plugin implements InitService and hasn't been initialized yet
-			m.initializePluginIfNeeded(plugin)
-		}(p)
-	}
-
-	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
+	return nil
 }
 
-// PluginList returns a map of all registered plugins with their manifests
-func (m *managerImpl) PluginList() map[string]schema.PluginManifest {
-	m.pluginsMu.RLock()
-	defer m.pluginsMu.RUnlock()
+// Stop shuts down the plugin manager and releases all resources.
+func (m *Manager) Stop() error {
+	// Mark as stopped first to prevent new operations
+	m.stopped.Store(true)
 
-	// Create a map to hold the plugin manifests
-	pluginList := make(map[string]schema.PluginManifest, len(m.plugins))
+	// Cancel context to signal all goroutines to stop
+	if m.cancel != nil {
+		m.cancel()
+	}
+
+	// Stop file watcher
+	m.stopWatcher()
+
+	// Wait for all in-flight plugin load operations to complete
+	// This is critical to avoid races with cache.Close()
+	m.loadWg.Wait()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Close all plugins
 	for name, plugin := range m.plugins {
-		// Use the plugin ID as the key and the manifest as the value
-		pluginList[name] = *plugin.Manifest
+		err := plugin.Close()
+		if err != nil {
+			log.Error("Error during plugin cleanup", "plugin", name, err)
+		}
+		if plugin.compiled != nil {
+			if err := plugin.compiled.Close(context.Background()); err != nil {
+				log.Error("Error closing plugin", "plugin", name, err)
+			}
+		}
 	}
-	return pluginList
+	m.plugins = make(map[string]*plugin)
+
+	// Close compilation cache
+	if m.cache != nil {
+		if err := m.cache.Close(context.Background()); err != nil {
+			log.Error("Error closing wazero cache", err)
+		}
+		m.cache = nil
+	}
+
+	return nil
 }
 
-// PluginNames returns the folder names of all plugins that implement the specified capability
-func (m *managerImpl) PluginNames(capability string) []string {
-	m.pluginsMu.RLock()
-	defer m.pluginsMu.RUnlock()
+// PluginNames returns the names of all plugins that implement a particular capability.
+// This is used by both agents and scrobbler systems to discover available plugins.
+// Capabilities are auto-detected from the plugin's exported functions.
+func (m *Manager) PluginNames(capability string) []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	var names []string
+	cap := Capability(capability)
 	for name, plugin := range m.plugins {
-		for _, c := range plugin.Manifest.Capabilities {
-			if string(c) == capability {
-				names = append(names, name)
-				break
-			}
+		if hasCapability(plugin.capabilities, cap) {
+			names = append(names, name)
 		}
 	}
 	return names
 }
 
-func (m *managerImpl) getPlugin(name string, capability string) (*plugin, WasmPlugin, error) {
-	m.pluginsMu.RLock()
-	defer m.pluginsMu.RUnlock()
-	info, infoOk := m.plugins[name]
-	adapter, adapterOk := m.adapters[name+"_"+capability]
-
-	if !infoOk {
-		return nil, nil, fmt.Errorf("plugin not registered: %s", name)
-	}
-	if !adapterOk {
-		return nil, nil, fmt.Errorf("plugin adapter not registered: %s, capability: %s", name, capability)
-	}
-	return info, adapter, nil
-}
-
-// LoadPlugin instantiates and returns a plugin by folder name
-func (m *managerImpl) LoadPlugin(name string, capability string) WasmPlugin {
-	info, adapter, err := m.getPlugin(name, capability)
-	if err != nil {
-		log.Warn("Error loading plugin", err)
-		return nil
-	}
-
-	log.Debug("Loading plugin", "name", name, "path", info.Path)
-
-	// Wait for the plugin to be ready before using it.
-	if err := info.waitForCompilation(); err != nil {
-		log.Error("Plugin is not ready, cannot be loaded", "plugin", name, "capability", capability, "err", err)
-		return nil
-	}
-
-	if adapter == nil {
-		log.Warn("Plugin adapter not found", "name", name, "capability", capability)
-		return nil
-	}
-	return adapter
-}
-
-// EnsureCompiled waits for a plugin to finish compilation and returns any compilation error.
-// This is useful when you need to wait for compilation without loading a specific capability,
-// such as during plugin refresh operations or health checks.
-func (m *managerImpl) EnsureCompiled(name string) error {
-	m.pluginsMu.RLock()
+// LoadMediaAgent loads and returns a media agent plugin by name.
+// Returns false if the plugin is not found or doesn't have the MetadataAgent capability.
+func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
+	m.mu.RLock()
 	plugin, ok := m.plugins[name]
-	m.pluginsMu.RUnlock()
+	m.mu.RUnlock()
 
+	if !ok || !hasCapability(plugin.capabilities, CapabilityMetadataAgent) {
+		return nil, false
+	}
+
+	// Create a new metadata agent adapter for this plugin
+	return &MetadataAgent{
+		name:   plugin.name,
+		plugin: plugin,
+	}, true
+}
+
+// LoadScrobbler loads and returns a scrobbler plugin by name.
+// Returns false if the plugin is not found or doesn't have the Scrobbler capability.
+func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
+	m.mu.RLock()
+	plugin, ok := m.plugins[name]
+	m.mu.RUnlock()
+
+	if !ok || !hasCapability(plugin.capabilities, CapabilityScrobbler) {
+		return nil, false
+	}
+
+	// Build user ID map for fast lookups
+	userIDMap := make(map[string]struct{})
+	for _, id := range plugin.allowedUserIDs {
+		userIDMap[id] = struct{}{}
+	}
+
+	// Create a new scrobbler adapter for this plugin with user authorization config
+	return &ScrobblerPlugin{
+		name:           plugin.name,
+		plugin:         plugin,
+		allowedUserIDs: plugin.allowedUserIDs,
+		allUsers:       plugin.allUsers,
+		userIDMap:      userIDMap,
+	}, true
+}
+
+// PluginInfo contains basic information about a plugin for metrics/insights.
+type PluginInfo struct {
+	Name    string
+	Version string
+}
+
+// GetPluginInfo returns information about all loaded plugins.
+func (m *Manager) GetPluginInfo() map[string]PluginInfo {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	info := make(map[string]PluginInfo, len(m.plugins))
+	for name, plugin := range m.plugins {
+		info[name] = PluginInfo{
+			Name:    plugin.manifest.Name,
+			Version: plugin.manifest.Version,
+		}
+	}
+	return info
+}
+
+// EnablePlugin enables a plugin by loading it and updating the DB.
+// Returns an error if the plugin is not found in DB or fails to load.
+func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
+	if m.ds == nil {
+		return fmt.Errorf("datastore not configured")
+	}
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	plugin, err := repo.Get(id)
+	if err != nil {
+		return fmt.Errorf("getting plugin from DB: %w", err)
+	}
+
+	if plugin.Enabled {
+		return nil // Already enabled
+	}
+
+	// Check permission gates before enabling
+	if err := m.checkPermissionGates(plugin); err != nil {
+		return err
+	}
+
+	// Try to load the plugin
+	if err := m.loadPluginWithConfig(plugin); err != nil {
+		// Store error and return
+		plugin.LastError = err.Error()
+		plugin.UpdatedAt = time.Now()
+		_ = repo.Put(plugin)
+		return fmt.Errorf("loading plugin: %w", err)
+	}
+
+	// Update DB
+	plugin.Enabled = true
+	plugin.LastError = ""
+	plugin.UpdatedAt = time.Now()
+	if err := repo.Put(plugin); err != nil {
+		// Unload since we couldn't update DB
+		_ = m.unloadPlugin(id)
+		return fmt.Errorf("updating plugin in DB: %w", err)
+	}
+
+	log.Info(ctx, "Enabled plugin", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
+	return nil
+}
+
+// DisablePlugin disables a plugin by unloading it and updating the DB.
+// Returns an error if the plugin is not found in DB.
+func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
+	if m.ds == nil {
+		return fmt.Errorf("datastore not configured")
+	}
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	plugin, err := repo.Get(id)
+	if err != nil {
+		return fmt.Errorf("getting plugin from DB: %w", err)
+	}
+
+	if !plugin.Enabled {
+		return nil // Already disabled
+	}
+
+	// Unload the plugin
+	if err := m.unloadPlugin(id); err != nil {
+		log.Debug(ctx, "Plugin was not loaded", "plugin", id)
+	}
+
+	// Update DB
+	plugin.Enabled = false
+	plugin.UpdatedAt = time.Now()
+	if err := repo.Put(plugin); err != nil {
+		return fmt.Errorf("updating plugin in DB: %w", err)
+	}
+
+	log.Info(ctx, "Disabled plugin", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
+	return nil
+}
+
+// UpdatePluginConfig updates the configuration for a plugin.
+// If the plugin is enabled, it will be reloaded with the new config.
+func (m *Manager) UpdatePluginConfig(ctx context.Context, id, configJSON string) error {
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Config = configJSON
+	})
+}
+
+// UpdatePluginUsers updates the users permission settings for a plugin.
+// If the plugin is enabled, it will be reloaded with the new settings.
+// If the plugin requires users permission and no users are configured (and allUsers is false),
+// the plugin will be automatically disabled.
+func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error {
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Users = usersJSON
+		p.AllUsers = allUsers
+	})
+}
+
+// UpdatePluginLibraries updates the libraries permission settings for a plugin.
+// If the plugin is enabled, it will be reloaded with the new settings.
+// If the plugin requires library permission and no libraries are configured (and allLibraries is false),
+// the plugin will be automatically disabled.
+func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error {
+	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
+		p.Libraries = librariesJSON
+		p.AllLibraries = allLibraries
+	})
+}
+
+// RescanPlugins triggers a manual rescan of the plugins folder.
+// This synchronizes the database with the filesystem, discovering new plugins,
+// updating changed ones, and removing deleted ones.
+func (m *Manager) RescanPlugins(ctx context.Context) error {
+	folder := conf.Server.Plugins.Folder
+	if folder == "" {
+		return fmt.Errorf("plugins folder not configured")
+	}
+	log.Info(ctx, "Manual plugin rescan requested", "folder", folder)
+	return m.syncPlugins(ctx, folder)
+}
+
+// updatePluginSettings is a common implementation for updating plugin settings.
+// The updateFn is called to apply the specific field updates to the plugin.
+// If the plugin is enabled, it will be reloaded. If users permission is required
+// but no longer satisfied, the plugin will be disabled.
+func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn func(*model.Plugin)) error {
+	if m.ds == nil {
+		return fmt.Errorf("datastore not configured")
+	}
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	plugin, err := repo.Get(id)
+	if err != nil {
+		return fmt.Errorf("getting plugin from DB: %w", err)
+	}
+
+	wasEnabled := plugin.Enabled
+
+	// Apply the specific updates
+	updateFn(plugin)
+	plugin.UpdatedAt = time.Now()
+
+	// Check if plugin requires permission and if it's still satisfied
+	shouldDisable := false
+	disableReason := ""
+	if wasEnabled {
+		manifest, err := readManifest(plugin.Path)
+		if err == nil && manifest.Permissions != nil {
+			if manifest.Permissions.Users != nil && !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
+				shouldDisable = true
+				disableReason = "users permission removal"
+			}
+			if manifest.Permissions.Library != nil && !hasValidLibrariesConfig(plugin.Libraries, plugin.AllLibraries) {
+				shouldDisable = true
+				disableReason = "library permission removal"
+			}
+		}
+	}
+
+	if shouldDisable {
+		// Disable the plugin since permission is no longer satisfied
+		if err := m.unloadPlugin(id); err != nil {
+			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
+		}
+		plugin.Enabled = false
+		if err := repo.Put(plugin); err != nil {
+			return fmt.Errorf("updating plugin in DB: %w", err)
+		}
+		log.Info(ctx, "Disabled plugin due to "+disableReason, "plugin", id)
+		m.sendPluginRefreshEvent(ctx, id)
+		return nil
+	}
+
+	if err := repo.Put(plugin); err != nil {
+		return fmt.Errorf("updating plugin in DB: %w", err)
+	}
+
+	// Reload if enabled
+	if wasEnabled {
+		if err := m.unloadPlugin(id); err != nil {
+			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
+		}
+		if err := m.loadPluginWithConfig(plugin); err != nil {
+			plugin.LastError = err.Error()
+			plugin.Enabled = false
+			_ = repo.Put(plugin)
+			return fmt.Errorf("reloading plugin: %w", err)
+		}
+	}
+
+	log.Info(ctx, "Updated plugin settings", "plugin", id)
+	m.sendPluginRefreshEvent(ctx, id)
+	return nil
+}
+
+// unloadPlugin removes a plugin from the manager and closes its resources.
+// Returns an error if the plugin is not found.
+func (m *Manager) unloadPlugin(name string) error {
+	m.mu.Lock()
+	plugin, ok := m.plugins[name]
 	if !ok {
-		return fmt.Errorf("plugin not found: %s", name)
+		m.mu.Unlock()
+		return fmt.Errorf("plugin %q not found", name)
+	}
+	delete(m.plugins, name)
+	m.mu.Unlock()
+
+	// Run cleanup functions
+	err := plugin.Close()
+	if err != nil {
+		log.Error("Error during plugin cleanup", "plugin", name, err)
 	}
 
-	return plugin.waitForCompilation()
-}
-
-// LoadMediaAgent instantiates and returns a media agent plugin by folder name
-func (m *managerImpl) LoadMediaAgent(name string) (agents.Interface, bool) {
-	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
-	if plugin == nil {
-		return nil, false
+	// Close the compiled plugin outside the lock with a grace period
+	// to allow in-flight requests to complete
+	if plugin.compiled != nil {
+		// Use a brief timeout for cleanup
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := plugin.compiled.Close(ctx); err != nil {
+			log.Error("Error closing plugin during unload", "plugin", name, err)
+		}
 	}
-	agent, ok := plugin.(*wasmMediaAgent)
-	return agent, ok
+
+	runtime.GC()
+	log.Info(m.ctx, "Unloaded plugin", "plugin", name)
+	return nil
 }
 
-// LoadScrobbler instantiates and returns a scrobbler plugin by folder name
-func (m *managerImpl) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	plugin := m.LoadPlugin(name, CapabilityScrobbler)
-	if plugin == nil {
-		return nil, false
+// UnloadDisabledPlugins checks for plugins that are disabled in the database
+// but still loaded in memory, and unloads them. This is called after user or
+// library deletion to clean up plugins that were auto-disabled due to
+// permission loss.
+func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
+	if m.ds == nil {
+		return
 	}
-	s, ok := plugin.(scrobbler.Scrobbler)
-	return s, ok
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	// Get all disabled plugins from the database
+	plugins, err := repo.GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"enabled": false},
+	})
+	if err != nil {
+		log.Error(ctx, "Failed to get disabled plugins", err)
+		return
+	}
+
+	// Check each disabled plugin and unload if still in memory
+	var unloaded []string
+	for _, p := range plugins {
+		m.mu.RLock()
+		_, loaded := m.plugins[p.ID]
+		m.mu.RUnlock()
+
+		if loaded {
+			if err := m.unloadPlugin(p.ID); err != nil {
+				log.Warn(ctx, "Failed to unload disabled plugin", "plugin", p.ID, err)
+			} else {
+				unloaded = append(unloaded, p.ID)
+				log.Info(ctx, "Unloaded disabled plugin", "plugin", p.ID)
+			}
+		}
+	}
+
+	// Send refresh events for unloaded plugins
+	if len(unloaded) > 0 {
+		m.sendPluginRefreshEvent(ctx, unloaded...)
+	}
 }
 
-type noopManager struct{}
+// checkPermissionGates validates that all permission-based requirements are met
+// before a plugin can be enabled. Returns an error if any gate condition fails.
+func (m *Manager) checkPermissionGates(p *model.Plugin) error {
+	// Parse manifest to check permissions
+	manifest, err := readManifest(p.Path)
+	if err != nil {
+		return fmt.Errorf("reading manifest: %w", err)
+	}
 
-func (n noopManager) SetSubsonicRouter(router SubsonicRouter) {}
+	// Check users permission gate
+	if manifest.Permissions != nil && manifest.Permissions.Users != nil {
+		if !hasValidUsersConfig(p.Users, p.AllUsers) {
+			return fmt.Errorf("users permission requires configuration: select users or enable 'all users' access")
+		}
+	}
 
-func (n noopManager) EnsureCompiled(name string) error { return nil }
+	// Check library permission gate
+	if manifest.Permissions != nil && manifest.Permissions.Library != nil {
+		if !hasValidLibrariesConfig(p.Libraries, p.AllLibraries) {
+			return fmt.Errorf("library permission requires configuration: select libraries or enable 'all libraries' access")
+		}
+	}
 
-func (n noopManager) PluginList() map[string]schema.PluginManifest { return nil }
+	return nil
+}
 
-func (n noopManager) PluginNames(capability string) []string { return nil }
+// hasValidUsersConfig checks if a plugin has valid users configuration.
+// Returns true if allUsers is true, or if usersJSON contains at least one user.
+func hasValidUsersConfig(usersJSON string, allUsers bool) bool {
+	if allUsers {
+		return true
+	}
+	if usersJSON == "" {
+		return false
+	}
+	var users []string
+	if err := json.Unmarshal([]byte(usersJSON), &users); err != nil {
+		return false
+	}
+	return len(users) > 0
+}
 
-func (n noopManager) LoadPlugin(name string, capability string) WasmPlugin { return nil }
-
-func (n noopManager) LoadMediaAgent(name string) (agents.Interface, bool) { return nil, false }
-
-func (n noopManager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) { return nil, false }
-
-func (n noopManager) ScanPlugins() {}
+// hasValidLibrariesConfig checks if a plugin has valid libraries configuration.
+// Returns true if allLibraries is true, or if librariesJSON contains at least one library.
+func hasValidLibrariesConfig(librariesJSON string, allLibraries bool) bool {
+	if allLibraries {
+		return true
+	}
+	if librariesJSON == "" {
+		return false
+	}
+	var libraries []int
+	if err := json.Unmarshal([]byte(librariesJSON), &libraries); err != nil {
+		return false
+	}
+	return len(libraries) > 0
+}

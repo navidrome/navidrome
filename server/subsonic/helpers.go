@@ -13,9 +13,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
@@ -99,7 +99,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		Name:           a.Name,
 		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -113,7 +113,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     getArtistAlbumCount(&a),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
 	}
 	if a.Starred {
