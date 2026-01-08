@@ -134,7 +134,9 @@ describe('PluginList', () => {
     fireEvent.click(rescanButton)
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith('Network error', { type: 'warning' })
+      expect(mockNotify).toHaveBeenCalledWith('Network error', {
+        type: 'warning',
+      })
     })
   })
 })
