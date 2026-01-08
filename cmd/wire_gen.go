@@ -69,9 +69,10 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
-	library := core.NewLibrary(dataStore, modelScanner, watcher, broker)
+	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
+	user := core.NewUser(dataStore, manager)
 	maintenance := core.NewMaintenance(dataStore)
-	router := nativeapi.New(dataStore, share, playlists, insights, library, maintenance, manager)
+	router := nativeapi.New(dataStore, share, playlists, insights, library, user, maintenance, manager)
 	return router
 }
 
@@ -200,7 +201,7 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

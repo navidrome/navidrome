@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -530,6 +531,50 @@ func (m *Manager) unloadPlugin(name string) error {
 	runtime.GC()
 	log.Info(m.ctx, "Unloaded plugin", "plugin", name)
 	return nil
+}
+
+// UnloadDisabledPlugins checks for plugins that are disabled in the database
+// but still loaded in memory, and unloads them. This is called after user or
+// library deletion to clean up plugins that were auto-disabled due to
+// permission loss.
+func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
+	if m.ds == nil {
+		return
+	}
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	// Get all disabled plugins from the database
+	plugins, err := repo.GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"enabled": false},
+	})
+	if err != nil {
+		log.Error(ctx, "Failed to get disabled plugins", err)
+		return
+	}
+
+	// Check each disabled plugin and unload if still in memory
+	var unloaded []string
+	for _, p := range plugins {
+		m.mu.RLock()
+		_, loaded := m.plugins[p.ID]
+		m.mu.RUnlock()
+
+		if loaded {
+			if err := m.unloadPlugin(p.ID); err != nil {
+				log.Warn(ctx, "Failed to unload disabled plugin", "plugin", p.ID, err)
+			} else {
+				unloaded = append(unloaded, p.ID)
+				log.Info(ctx, "Unloaded disabled plugin", "plugin", p.ID)
+			}
+		}
+	}
+
+	// Send refresh events for unloaded plugins
+	if len(unloaded) > 0 {
+		m.sendPluginRefreshEvent(ctx, unloaded...)
+	}
 }
 
 // checkPermissionGates validates that all permission-based requirements are met

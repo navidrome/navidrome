@@ -266,6 +266,10 @@ func (r *libraryRepository) Delete(id int) error {
 	defer libLock.Unlock()
 	delete(libCache, id)
 
+	// Clean up orphaned plugin references for the deleted library
+	if err := cleanupPluginLibraryReferences(r.db, id); err != nil {
+		log.Error(r.ctx, "Failed to cleanup plugin library references", "libraryID", id, err)
+	}
 	return nil
 }
 

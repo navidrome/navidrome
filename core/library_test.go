@@ -32,6 +32,7 @@ var _ = Describe("Library Service", func() {
 	var scanner *tests.MockScanner
 	var watcherManager *mockWatcherManager
 	var broker *mockEventBroker
+	var pluginManager *mockPluginUnloader
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -50,7 +51,9 @@ var _ = Describe("Library Service", func() {
 		}
 		// Create a mock event broker
 		broker = &mockEventBroker{}
-		service = core.NewLibrary(ds, scanner, watcherManager, broker)
+		// Create a mock plugin unloader
+		pluginManager = &mockPluginUnloader{}
+		service = core.NewLibrary(ds, scanner, watcherManager, broker, pluginManager)
 		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
@@ -869,7 +872,44 @@ var _ = Describe("Library Service", func() {
 			Expect(broker.Events).To(HaveLen(1))
 		})
 	})
+
+	Describe("Plugin Manager Integration", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			// Reset the call count for each test
+			pluginManager.unloadCalls = 0
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
+		})
+
+		It("calls UnloadDisabledPlugins after successful library deletion", func() {
+			libraryRepo.SetData(model.Libraries{
+				{ID: 2, Name: "Library to Delete", Path: tempDir},
+			})
+
+			err := repo.Delete("2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pluginManager.unloadCalls).To(Equal(1))
+		})
+
+		It("does not call UnloadDisabledPlugins when library deletion fails", func() {
+			// Try to delete non-existent library
+			err := repo.Delete("999")
+			Expect(err).To(HaveOccurred())
+			Expect(pluginManager.unloadCalls).To(Equal(0))
+		})
+	})
 })
+
+// mockPluginUnloader is a simple mock for testing UnloadDisabledPlugins calls
+type mockPluginUnloader struct {
+	unloadCalls int
+}
+
+func (m *mockPluginUnloader) UnloadDisabledPlugins(ctx context.Context) {
+	m.unloadCalls++
+}
 
 // mockWatcherManager provides a simple mock implementation of core.Watcher for testing
 type mockWatcherManager struct {

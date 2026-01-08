@@ -106,3 +106,7 @@ func (m *MockPluginManager) RescanPlugins(ctx context.Context) error {
 	}
 	return m.RescanError
 }
+
+func (m *MockPluginManager) UnloadDisabledPlugins(ctx context.Context) {
+	// No-op for mock - plugins are not actually loaded in tests
+}
