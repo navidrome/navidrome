@@ -10,6 +10,7 @@
         "playCount": "Plays",
         "title": "Title",
         "artist": "Artist",
+        "composer": "Composer",
         "album": "Album",
         "path": "File path",
         "libraryName": "Library",
