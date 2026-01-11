@@ -271,4 +271,60 @@ var _ = Describe("Provider - TopSongs", func() {
 		ag.AssertExpectations(GinkgoT())
 		mediaFileRepo.AssertExpectations(GinkgoT())
 	})
+
+	It("matches songs by ID first when agent provides IDs", func() {
+		// Mock finding the artist
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		// Mock agent response with IDs provided (highest priority matching)
+		// Note: Songs have no MBID to ensure only ID matching is used
+		agentSongs := []agents.Song{
+			{ID: "song-1", Name: "Song One"},
+			{ID: "song-2", Name: "Song Two"},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
+
+		// Mock ID lookup (first query - should match both songs directly)
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1"}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1"}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 2)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(2))
+		Expect(songs[0].ID).To(Equal("song-1"))
+		Expect(songs[1].ID).To(Equal("song-2"))
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	It("falls back to MBID when ID is not found", func() {
+		// Mock finding the artist
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		// Mock agent response with ID that won't be found, but MBID that will
+		agentSongs := []agents.Song{
+			{ID: "non-existent-id", Name: "Song One", MBID: "mbid-song-1"},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
+
+		// Mock ID lookup - returns empty (ID not found)
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{}, nil).Once()
+		// Mock MBID lookup - finds the song
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(1))
+		Expect(songs[0].ID).To(Equal("song-1"))
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
 })

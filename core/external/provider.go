@@ -426,17 +426,21 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artistName, err)
 	}
 
+	idMatches, err := e.loadTracksByID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
+	}
 	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
-	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, mbidMatches)
+	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, idMatches, mbidMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
 	}
 
-	log.Trace(ctx, "Top Songs loaded", "name", artistName, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
-	mfs := e.selectTopSongs(songs, mbidMatches, titleMatches, count)
+	log.Trace(ctx, "Top Songs loaded", "name", artistName, "numSongs", len(songs), "numIDMatches", len(idMatches), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
+	mfs := e.selectTopSongs(songs, idMatches, mbidMatches, titleMatches, count)
 
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artistName)
@@ -477,9 +481,41 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (m
 	return matches, nil
 }
 
-func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, artist *auxArtist, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+	var ids []string
+	for _, s := range songs {
+		if s.ID != "" {
+			ids = append(ids, s.ID)
+		}
+	}
+	matches := map[string]model.MediaFile{}
+	if len(ids) == 0 {
+		return matches, nil
+	}
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"id": ids},
+			squirrel.Eq{"missing": false},
+		},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, mf := range res {
+		if _, ok := matches[mf.ID]; !ok {
+			matches[mf.ID] = mf
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, artist *auxArtist, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	titleMap := map[string]string{}
 	for _, s := range songs {
+		// Skip if already matched by ID or MBID
+		if s.ID != "" && idMatches[s.ID].ID != "" {
+			continue
+		}
 		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
 			continue
 		}
@@ -518,18 +554,27 @@ func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, a
 	return matches, nil
 }
 
-func (e *provider) selectTopSongs(songs []agents.Song, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
+func (e *provider) selectTopSongs(songs []agents.Song, byID, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
 	var mfs model.MediaFiles
 	for _, t := range songs {
 		if len(mfs) == count {
 			break
 		}
+		// Try ID match first
+		if t.ID != "" {
+			if mf, ok := byID[t.ID]; ok {
+				mfs = append(mfs, mf)
+				continue
+			}
+		}
+		// Try MBID match second
 		if t.MBID != "" {
 			if mf, ok := byMBID[t.MBID]; ok {
 				mfs = append(mfs, mf)
 				continue
 			}
 		}
+		// Fall back to title match
 		if mf, ok := byTitle[str.SanitizeFieldForSorting(t.Name)]; ok {
 			mfs = append(mfs, mf)
 		}
@@ -593,36 +638,51 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 	var result model.Artists
 	var notPresent []string
 
-	artistNames := slice.Map(similar, func(artist agents.Artist) string { return artist.Name })
-
-	// Query all artists at once
-	clauses := slice.Map(artistNames, func(name string) squirrel.Sqlizer {
-		return squirrel.Like{"artist.name": name}
-	})
-	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.Or(clauses),
-	})
+	// Load artists by ID (highest priority)
+	idMatches, err := e.loadArtistsByID(ctx, similar)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a map for quick lookup
-	artistMap := make(map[string]model.Artist)
-	for _, artist := range artists {
-		artistMap[artist.Name] = artist
+	// Load artists by MBID (second priority)
+	mbidMatches, err := e.loadArtistsByMBID(ctx, similar, idMatches)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load artists by name (lowest priority, fallback)
+	nameMatches, err := e.loadArtistsByName(ctx, similar, idMatches, mbidMatches)
+	if err != nil {
+		return nil, err
 	}
 
 	count := 0
 
-	// Process the similar artists
+	// Process the similar artists using priority: ID → MBID → Name
 	for _, s := range similar {
-		if artist, found := artistMap[s.Name]; found {
+		if count >= limit {
+			break
+		}
+		// Try ID match first
+		if s.ID != "" {
+			if artist, found := idMatches[s.ID]; found {
+				result = append(result, artist)
+				count++
+				continue
+			}
+		}
+		// Try MBID match second
+		if s.MBID != "" {
+			if artist, found := mbidMatches[s.MBID]; found {
+				result = append(result, artist)
+				count++
+				continue
+			}
+		}
+		// Fall back to name match
+		if artist, found := nameMatches[s.Name]; found {
 			result = append(result, artist)
 			count++
-
-			if count >= limit {
-				break
-			}
 		} else {
 			notPresent = append(notPresent, s.Name)
 		}
@@ -643,6 +703,95 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 	}
 
 	return result, nil
+}
+
+func (e *provider) loadArtistsByID(ctx context.Context, similar []agents.Artist) (map[string]model.Artist, error) {
+	var ids []string
+	for _, s := range similar {
+		if s.ID != "" {
+			ids = append(ids, s.ID)
+		}
+	}
+	matches := map[string]model.Artist{}
+	if len(ids) == 0 {
+		return matches, nil
+	}
+	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"artist.id": ids},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, a := range res {
+		if _, ok := matches[a.ID]; !ok {
+			matches[a.ID] = a
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) loadArtistsByMBID(ctx context.Context, similar []agents.Artist, idMatches map[string]model.Artist) (map[string]model.Artist, error) {
+	var mbids []string
+	for _, s := range similar {
+		// Skip if already matched by ID
+		if s.ID != "" && idMatches[s.ID].ID != "" {
+			continue
+		}
+		if s.MBID != "" {
+			mbids = append(mbids, s.MBID)
+		}
+	}
+	matches := map[string]model.Artist{}
+	if len(mbids) == 0 {
+		return matches, nil
+	}
+	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"mbz_artist_id": mbids},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, a := range res {
+		if id := a.MbzArtistID; id != "" {
+			if _, ok := matches[id]; !ok {
+				matches[id] = a
+			}
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artist, idMatches map[string]model.Artist, mbidMatches map[string]model.Artist) (map[string]model.Artist, error) {
+	var names []string
+	for _, s := range similar {
+		// Skip if already matched by ID or MBID
+		if s.ID != "" && idMatches[s.ID].ID != "" {
+			continue
+		}
+		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		names = append(names, s.Name)
+	}
+	matches := map[string]model.Artist{}
+	if len(names) == 0 {
+		return matches, nil
+	}
+	clauses := slice.Map(names, func(name string) squirrel.Sqlizer {
+		return squirrel.Like{"artist.name": name}
+	})
+	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Or(clauses),
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, a := range res {
+		if _, ok := matches[a.Name]; !ok {
+			matches[a.Name] = a
+		}
+	}
+	return matches, nil
 }
 
 func (e *provider) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {

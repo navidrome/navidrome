@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
@@ -67,8 +68,16 @@ var _ = Describe("Provider - ArtistRadio", func() {
 		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist One", "", 15).
 			Return(similarAgentsResp, nil).Once()
 
+		// Mock the three-phase artist lookup: ID (skipped - no IDs), MBID, then Name
+		// MBID lookup returns empty (no match)
 		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			return opt.Max == 0 && opt.Filters != nil
+			_, ok := opt.Filters.(squirrel.Eq)
+			return opt.Max == 0 && ok
+		})).Return(model.Artists{}, nil).Once()
+		// Name lookup returns the similar artist
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			_, ok := opt.Filters.(squirrel.Or)
+			return opt.Max == 0 && ok
 		})).Return(model.Artists{similarArtist}, nil).Once()
 
 		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
