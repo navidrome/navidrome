@@ -375,6 +375,9 @@ type MediaFileRepository interface {
 	FindRecentFilesByMBZTrackID(missing MediaFile, since time.Time) (MediaFiles, error)
 	FindRecentFilesByProperties(missing MediaFile, since time.Time) (MediaFiles, error)
 
+	// UpdatePopularity updates Last.fm popularity data for a media file
+	UpdatePopularity(m *MediaFile) error
+
 	AnnotatedRepository
 	BookmarkableRepository
 	SearchableRepository[MediaFiles]

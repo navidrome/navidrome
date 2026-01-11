@@ -305,6 +305,43 @@ func (api *Router) GetLibraryRadio(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
+// RefreshPopularity refreshes Last.fm popularity data for an entity (artist, album, or track)
+func (api *Router) RefreshPopularity(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	entityType, err := p.String("type")
+	if err != nil {
+		return nil, err
+	}
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate entity type
+	switch entityType {
+	case "artist", "album", "track":
+		// Valid types
+	default:
+		return nil, newError(responses.ErrorGeneric, "invalid type: must be artist, album, or track")
+	}
+
+	ctx := r.Context()
+	info, err := api.provider.RefreshPopularity(ctx, entityType, id)
+	if err != nil {
+		log.Error(r, "Error refreshing popularity", "type", entityType, "id", id, err)
+		return nil, err
+	}
+
+	response := newResponse()
+	response.PopularityInfo = &responses.PopularityInfo{
+		EntityType: entityType,
+		ID:         id,
+		Listeners:  info.Listeners,
+		Playcount:  info.Playcount,
+	}
+	return response, nil
+}
+
 func (api *Router) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size

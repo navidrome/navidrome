@@ -7,33 +7,34 @@ import (
 )
 
 type Subsonic struct {
-	XMLName       xml.Name           `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
-	Status        string             `xml:"status,attr"                                   json:"status"`
-	Version       string             `xml:"version,attr"                                  json:"version"`
-	Type          string             `xml:"type,attr"                                     json:"type"`
-	ServerVersion string             `xml:"serverVersion,attr"                            json:"serverVersion"`
-	OpenSubsonic  bool               `xml:"openSubsonic,attr,omitempty"                   json:"openSubsonic,omitempty"`
-	Error         *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
-	License       *License           `xml:"license,omitempty"                             json:"license,omitempty"`
-	MusicFolders  *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
-	Indexes       *Indexes           `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
-	Directory     *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
-	User          *User              `xml:"user,omitempty"                                json:"user,omitempty"`
-	Users         *Users             `xml:"users,omitempty"                               json:"users,omitempty"`
-	AlbumList     *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
-	AlbumList2    *AlbumList2        `xml:"albumList2,omitempty"                          json:"albumList2,omitempty"`
-	Playlists     *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
-	Playlist      *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
-	SearchResult2 *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
-	SearchResult3 *SearchResult3     `xml:"searchResult3,omitempty"                       json:"searchResult3,omitempty"`
-	Starred       *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
-	Starred2      *Starred2          `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
-	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
-	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
-	RandomSongs   *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
-	SongsByGenre  *Songs             `xml:"songsByGenre,omitempty"                        json:"songsByGenre,omitempty"`
-	LibraryRadio  *Songs             `xml:"libraryRadio,omitempty"                        json:"libraryRadio,omitempty"`
-	Genres        *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
+	XMLName        xml.Name           `xml:"http://subsonic.org/restapi subsonic-response" json:"-"`
+	Status         string             `xml:"status,attr"                                   json:"status"`
+	Version        string             `xml:"version,attr"                                  json:"version"`
+	Type           string             `xml:"type,attr"                                     json:"type"`
+	ServerVersion  string             `xml:"serverVersion,attr"                            json:"serverVersion"`
+	OpenSubsonic   bool               `xml:"openSubsonic,attr,omitempty"                   json:"openSubsonic,omitempty"`
+	Error          *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
+	License        *License           `xml:"license,omitempty"                             json:"license,omitempty"`
+	MusicFolders   *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
+	Indexes        *Indexes           `xml:"indexes,omitempty"                             json:"indexes,omitempty"`
+	Directory      *Directory         `xml:"directory,omitempty"                           json:"directory,omitempty"`
+	User           *User              `xml:"user,omitempty"                                json:"user,omitempty"`
+	Users          *Users             `xml:"users,omitempty"                               json:"users,omitempty"`
+	AlbumList      *AlbumList         `xml:"albumList,omitempty"                           json:"albumList,omitempty"`
+	AlbumList2     *AlbumList2        `xml:"albumList2,omitempty"                          json:"albumList2,omitempty"`
+	Playlists      *Playlists         `xml:"playlists,omitempty"                           json:"playlists,omitempty"`
+	Playlist       *PlaylistWithSongs `xml:"playlist,omitempty"                            json:"playlist,omitempty"`
+	SearchResult2  *SearchResult2     `xml:"searchResult2,omitempty"                       json:"searchResult2,omitempty"`
+	SearchResult3  *SearchResult3     `xml:"searchResult3,omitempty"                       json:"searchResult3,omitempty"`
+	Starred        *Starred           `xml:"starred,omitempty"                             json:"starred,omitempty"`
+	Starred2       *Starred2          `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
+	NowPlaying     *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
+	Song           *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
+	RandomSongs    *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
+	SongsByGenre   *Songs             `xml:"songsByGenre,omitempty"                        json:"songsByGenre,omitempty"`
+	LibraryRadio   *Songs             `xml:"libraryRadio,omitempty"                        json:"libraryRadio,omitempty"`
+	PopularityInfo *PopularityInfo    `xml:"popularityInfo,omitempty"                      json:"popularityInfo,omitempty"`
+	Genres         *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
 
 	// ID3
 	Artist              *Artists             `xml:"artists,omitempty"                     json:"artists,omitempty"`
@@ -438,6 +439,13 @@ type SimilarSongs2 struct {
 
 type TopSongs struct {
 	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
+}
+
+type PopularityInfo struct {
+	EntityType string `xml:"entityType,attr"     json:"entityType"`
+	ID         string `xml:"id,attr"             json:"id"`
+	Listeners  int64  `xml:"listeners,attr"      json:"listeners"`
+	Playcount  int64  `xml:"playcount,attr"      json:"playcount"`
 }
 
 type PlayQueue struct {

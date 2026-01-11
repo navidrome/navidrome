@@ -34,6 +34,12 @@ const (
 	refreshQueueLength = 2000
 )
 
+// PopularityInfo contains popularity data returned by RefreshPopularity
+type PopularityInfo struct {
+	Listeners int64
+	Playcount int64
+}
+
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
@@ -42,6 +48,7 @@ type Provider interface {
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
+	RefreshPopularity(ctx context.Context, entityType string, id string) (*PopularityInfo, error)
 }
 
 type provider struct {
@@ -87,6 +94,7 @@ type Agents interface {
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
 	agents.ArtistPopularityRetriever
+	agents.TrackPopularityRetriever
 }
 
 func NewProvider(ds model.DataStore, agents Agents) Provider {
@@ -547,6 +555,99 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 		return nil, err
 	}
 	return songs, nil
+}
+
+// RefreshPopularity fetches and updates popularity data for an entity (artist, album, or track)
+func (e *provider) RefreshPopularity(ctx context.Context, entityType string, id string) (*PopularityInfo, error) {
+	switch entityType {
+	case "artist":
+		return e.refreshArtistPopularity(ctx, id)
+	case "album":
+		return e.refreshAlbumPopularity(ctx, id)
+	case "track":
+		return e.refreshTrackPopularity(ctx, id)
+	default:
+		return nil, fmt.Errorf("unknown entity type: %s", entityType)
+	}
+}
+
+func (e *provider) refreshArtistPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	artistName := artist.Name()
+	info, err := e.ag.GetArtistPopularity(ctx, artist.ID, artistName, artist.MbzArtistID)
+	if err != nil {
+		log.Error(ctx, "Error fetching artist popularity", "id", id, "name", artistName, err)
+		return nil, err
+	}
+
+	artist.LastFMListeners = info.Listeners
+	artist.LastFMPlaycount = info.Playcount
+	artist.ExternalInfoUpdatedAt = P(time.Now())
+
+	err = e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
+	if err != nil {
+		log.Error(ctx, "Error updating artist popularity", "id", id, "name", artistName, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Artist popularity refreshed", "id", id, "name", artistName, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
+}
+
+func (e *provider) refreshAlbumPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	album, err := e.getAlbum(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	albumName := album.Name()
+	info, err := e.ag.GetAlbumInfo(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
+	if err != nil {
+		log.Error(ctx, "Error fetching album popularity", "id", id, "name", albumName, err)
+		return nil, err
+	}
+
+	album.LastFMListeners = info.Listeners
+	album.LastFMPlaycount = info.Playcount
+	album.ExternalInfoUpdatedAt = P(time.Now())
+
+	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
+	if err != nil {
+		log.Error(ctx, "Error updating album popularity", "id", id, "name", albumName, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Album popularity refreshed", "id", id, "name", albumName, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
+}
+
+func (e *provider) refreshTrackPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	mf, err := e.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := e.ag.GetTrackPopularity(ctx, mf.Title, mf.Artist, mf.MbzRecordingID)
+	if err != nil {
+		log.Error(ctx, "Error fetching track popularity", "id", id, "title", mf.Title, "artist", mf.Artist, err)
+		return nil, err
+	}
+
+	mf.LastFMListeners = info.Listeners
+	mf.LastFMPlaycount = info.Playcount
+
+	err = e.ds.MediaFile(ctx).UpdatePopularity(mf)
+	if err != nil {
+		log.Error(ctx, "Error updating track popularity", "id", id, "title", mf.Title, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Track popularity refreshed", "id", id, "title", mf.Title, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
 }
 
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {

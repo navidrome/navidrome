@@ -401,6 +401,16 @@ func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (interface{}
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
+func (r *mediaFileRepository) UpdatePopularity(m *model.MediaFile) error {
+	upd := Update(r.tableName).
+		Set("lastfm_listeners", m.LastFMListeners).
+		Set("lastfm_playcount", m.LastFMPlaycount).
+		Set("updated_at", time.Now()).
+		Where(Eq{"id": m.ID})
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r *mediaFileRepository) EntityName() string {
 	return "mediafile"
 }
