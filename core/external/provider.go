@@ -84,6 +84,7 @@ type Agents interface {
 	agents.ArtistSimilarRetriever
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
+	agents.ArtistPopularityRetriever
 }
 
 func NewProvider(ds model.DataStore, agents Agents) Provider {
@@ -158,6 +159,10 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 	if info.Description != "" {
 		album.Description = info.Description
 	}
+
+	// Store Last.fm popularity data
+	album.LastFMListeners = info.Listeners
+	album.LastFMPlaycount = info.Playcount
 
 	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
 	if err == nil && len(images) > 0 {
@@ -261,6 +266,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilar(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
+	g.Go(func() error { e.callGetPopularity(ctx, e.ag, &artist); return nil })
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
@@ -543,6 +549,15 @@ func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriev
 		return
 	}
 	artist.ExternalUrl = artisURL
+}
+
+func (e *provider) callGetPopularity(ctx context.Context, agent agents.ArtistPopularityRetriever, artist *auxArtist) {
+	info, err := agent.GetArtistPopularity(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
+	if err != nil {
+		return
+	}
+	artist.LastFMListeners = info.Listeners
+	artist.LastFMPlaycount = info.Playcount
 }
 
 func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {

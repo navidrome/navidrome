@@ -19,6 +19,8 @@ type Album struct {
 	URL         string          `json:"url"`
 	Image       []ExternalImage `json:"image"`
 	Description Description     `json:"wiki"`
+	Listeners   string          `json:"listeners"`
+	Playcount   string          `json:"playcount"`
 }
 
 type Artist struct {
@@ -27,6 +29,12 @@ type Artist struct {
 	URL   string          `json:"url"`
 	Image []ExternalImage `json:"image"`
 	Bio   Description     `json:"bio"`
+	Stats ArtistStats     `json:"stats"`
+}
+
+type ArtistStats struct {
+	Listeners string `json:"listeners"`
+	Playcount string `json:"playcount"`
 }
 
 type SimilarArtists struct {

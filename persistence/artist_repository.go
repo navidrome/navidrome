@@ -225,7 +225,8 @@ func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
 	_, err := r.put(a.ID, dba,
 		"biography", "small_image_url", "medium_image_url", "large_image_url",
-		"similar_artists", "external_url", "external_info_updated_at")
+		"similar_artists", "external_url", "external_info_updated_at",
+		"lastfm_listeners", "lastfm_playcount")
 	return err
 }
 

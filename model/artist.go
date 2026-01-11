@@ -32,6 +32,10 @@ type Artist struct {
 	SimilarArtists        Artists    `structs:"similar_artists"  json:"-"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt,omitempty"`
 
+	// Popularity data from Last.fm
+	LastFMListeners int64 `structs:"lastfm_listeners" json:"lastfmListeners,omitempty"`
+	LastFMPlaycount int64 `structs:"lastfm_playcount" json:"lastfmPlaycount,omitempty"`
+
 	Missing bool `structs:"missing" json:"missing"`
 
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
