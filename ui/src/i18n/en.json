@@ -78,7 +78,9 @@
         "grouping": "Grouping",
         "media": "Media",
         "mood": "Mood",
-        "missing": "Missing"
+        "missing": "Missing",
+        "lastfmListeners": "Last.fm listeners",
+        "lastfmPlaycount": "Last.fm plays"
       },
       "actions": {
         "playAll": "Play",
@@ -111,7 +113,9 @@
         "rating": "Rating",
         "genre": "Genre",
         "role": "Role",
-        "missing": "Missing"
+        "missing": "Missing",
+        "lastfmListeners": "Last.fm listeners",
+        "lastfmPlaycount": "Last.fm plays"
       },
       "roles": {
         "albumartist": "Album Artist |||| Album Artists",

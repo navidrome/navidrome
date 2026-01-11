@@ -6,7 +6,7 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { LoveButton, PopularityField, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
@@ -160,6 +160,11 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
                   size={'small'}
                   className={classes.rating}
                 />
+              </div>
+            )}
+            {config.enableExternalServices && (
+              <div>
+                <PopularityField record={record} />
               </div>
             )}
             <Collapse

@@ -4,7 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { LoveButton, PopularityField, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 
@@ -161,6 +161,9 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
                 size={'small'}
                 className={classes.rating}
               />
+            )}
+            {config.enableExternalServices && (
+              <PopularityField record={record} />
             )}
           </div>
         </div>

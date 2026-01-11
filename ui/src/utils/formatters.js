@@ -99,3 +99,32 @@ export const formatNumber = (value, locale) => {
   if (value === null || value === undefined) return '0'
   return value.toLocaleString(locale)
 }
+
+export const formatCompactNumber = (value) => {
+  if (value === null || value === undefined || value === 0) return '0'
+
+  const absValue = Math.abs(value)
+  const suffixes = ['', 'K', 'M', 'B', 'T']
+
+  // Find appropriate suffix
+  let suffixIndex = 0
+  let scaledValue = absValue
+  while (scaledValue >= 1000 && suffixIndex < suffixes.length - 1) {
+    scaledValue /= 1000
+    suffixIndex++
+  }
+
+  // Format with appropriate precision
+  let formatted
+  if (scaledValue >= 100) {
+    formatted = Math.round(scaledValue).toString()
+  } else if (scaledValue >= 10) {
+    formatted = scaledValue.toFixed(1).replace(/\.0$/, '')
+  } else {
+    formatted = scaledValue.toFixed(1).replace(/\.0$/, '')
+  }
+
+  // Handle negative numbers
+  const sign = value < 0 ? '-' : ''
+  return `${sign}${formatted}${suffixes[suffixIndex]}`
+}
