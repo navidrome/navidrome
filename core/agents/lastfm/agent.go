@@ -261,6 +261,24 @@ func (l *lastfmAgent) GetArtistPopularity(ctx context.Context, id, name, mbid st
 	}, nil
 }
 
+func (l *lastfmAgent) GetTrackPopularity(ctx context.Context, title, artist, mbid string) (*agents.TrackInfo, error) {
+	t, err := l.client.trackGetInfo(ctx, title, artist, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	listeners, _ := strconv.ParseInt(t.Listeners, 10, 64)
+	playcount, _ := strconv.ParseInt(t.Playcount, 10, 64)
+
+	return &agents.TrackInfo{
+		Name:      t.Name,
+		MBID:      t.MBID,
+		Artist:    t.Artist.Name,
+		Listeners: listeners,
+		Playcount: playcount,
+	}, nil
+}
+
 func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {
 	a, err := l.client.albumGetInfo(ctx, name, artist, mbid)
 	var lfErr *lastFMError

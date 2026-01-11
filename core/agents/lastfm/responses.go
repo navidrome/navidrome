@@ -5,6 +5,7 @@ type Response struct {
 	SimilarArtists SimilarArtists `json:"similarartists"`
 	TopTracks      TopTracks      `json:"toptracks"`
 	Album          Album          `json:"album"`
+	Track          TrackInfo      `json:"track"`
 	Error          int            `json:"error"`
 	Message        string         `json:"message"`
 	Token          string         `json:"token"`
@@ -60,6 +61,27 @@ type Description struct {
 type Track struct {
 	Name string `json:"name"`
 	MBID string `json:"mbid"`
+}
+
+// TrackInfo represents the detailed track information from track.getInfo
+type TrackInfo struct {
+	Name      string `json:"name"`
+	MBID      string `json:"mbid"`
+	URL       string `json:"url"`
+	Duration  string `json:"duration"`
+	Listeners string `json:"listeners"`
+	Playcount string `json:"playcount"`
+	Artist    struct {
+		Name string `json:"name"`
+		MBID string `json:"mbid"`
+		URL  string `json:"url"`
+	} `json:"artist"`
+	Album struct {
+		Artist string `json:"artist"`
+		Title  string `json:"title"`
+		MBID   string `json:"mbid"`
+		URL    string `json:"url"`
+	} `json:"album"`
 }
 
 type TopTracks struct {

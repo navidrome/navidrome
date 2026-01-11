@@ -31,6 +31,15 @@ type ArtistInfo struct {
 	Playcount int64
 }
 
+// TrackInfo contains track metadata with popularity info
+type TrackInfo struct {
+	Name      string
+	MBID      string
+	Artist    string
+	Listeners int64
+	Playcount int64
+}
+
 type Artist struct {
 	Name string
 	MBID string
@@ -86,6 +95,10 @@ type ArtistTopSongsRetriever interface {
 
 type ArtistPopularityRetriever interface {
 	GetArtistPopularity(ctx context.Context, id, name, mbid string) (*ArtistInfo, error)
+}
+
+type TrackPopularityRetriever interface {
+	GetTrackPopularity(ctx context.Context, title, artist, mbid string) (*TrackInfo, error)
 }
 
 var Map map[string]Constructor

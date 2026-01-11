@@ -85,6 +85,10 @@ type MediaFile struct {
 	RGTrackGain          *float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RGTrackPeak          *float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
+	// Popularity data from Last.fm
+	LastFMListeners int64 `structs:"lastfm_listeners" json:"lastfmListeners,omitempty" hash:"ignore"`
+	LastFMPlaycount int64 `structs:"lastfm_playcount" json:"lastfmPlaycount,omitempty" hash:"ignore"`
+
 	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags from the original file
 	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this track
 

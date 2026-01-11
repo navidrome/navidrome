@@ -347,7 +347,7 @@ func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model
 
 // LibraryRadio returns a weighted random selection of songs from the library,
 // biased toward popular tracks based on Last.fm listeners/playcount data.
-// Songs from albums with higher popularity scores have a higher chance of being selected.
+// It uses track-level popularity when available, falling back to album popularity.
 func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, libraryIDs []int) (model.MediaFiles, error) {
 	// Build query options for fetching songs
 	opts := model.QueryOptions{
@@ -389,7 +389,7 @@ func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, li
 		return nil, nil
 	}
 
-	// Build a map of album IDs to their popularity scores
+	// Build a map of album IDs to their popularity scores (used as fallback)
 	albumIDs := make([]string, 0, len(songs))
 	albumIDSet := make(map[string]bool)
 	for _, song := range songs {
@@ -399,7 +399,7 @@ func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, li
 		}
 	}
 
-	// Fetch album popularity data
+	// Fetch album popularity data (used as fallback when track has no popularity)
 	albums, err := e.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Eq{"album.id": albumIDs},
 	})
@@ -424,9 +424,17 @@ func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, li
 	const baseWeight = 100
 
 	for _, song := range songs {
-		popularity := albumPopularity[song.AlbumID]
+		// Use track-level popularity if available, otherwise fall back to album
+		var popularity int64
+		trackPopularity := song.LastFMListeners*2 + song.LastFMPlaycount
+		if trackPopularity > 0 {
+			popularity = trackPopularity
+		} else {
+			popularity = albumPopularity[song.AlbumID]
+		}
+
 		// Calculate weight: base weight + scaled popularity
-		// Using logarithmic scaling to prevent extremely popular albums from dominating
+		// Using logarithmic scaling to prevent extremely popular tracks from dominating
 		var weight int
 		if popularity > 0 {
 			// Log scale the popularity to prevent huge disparities
