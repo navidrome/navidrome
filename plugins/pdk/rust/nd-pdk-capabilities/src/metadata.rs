@@ -82,6 +82,9 @@ pub struct ArtistMBIDResponse {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistRef {
+    /// ID is the internal Navidrome artist ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     /// Name is the artist name.
     #[serde(default)]
     pub name: String,
@@ -151,6 +154,9 @@ pub struct SimilarArtistsResponse {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SongRef {
+    /// ID is the internal Navidrome mediafile ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     /// Name is the song name.
     #[serde(default)]
     pub name: String,

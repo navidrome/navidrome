@@ -70,7 +70,9 @@ func (t *testMetadataAgent) GetSimilarArtists(input metadata.SimilarArtistsReque
 	artists := make([]metadata.ArtistRef, 0, limit)
 	for i := range limit {
 		artists = append(artists, metadata.ArtistRef{
+			ID:   "similar-artist-id-" + strconv.Itoa(i+1),
 			Name: input.Name + " Similar " + string(rune('A'+i)),
+			MBID: "similar-mbid-" + strconv.Itoa(i+1),
 		})
 	}
 	return &metadata.SimilarArtistsResponse{Artists: artists}, nil
@@ -87,7 +89,9 @@ func (t *testMetadataAgent) GetArtistTopSongs(input metadata.TopSongsRequest) (*
 	songs := make([]metadata.SongRef, 0, count)
 	for i := range count {
 		songs = append(songs, metadata.SongRef{
+			ID:   "song-id-" + strconv.Itoa(i+1),
 			Name: input.Name + " Song " + strconv.Itoa(i+1),
+			MBID: "song-mbid-" + strconv.Itoa(i+1),
 		})
 	}
 	return &metadata.TopSongsResponse{Songs: songs}, nil

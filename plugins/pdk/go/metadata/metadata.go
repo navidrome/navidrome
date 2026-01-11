@@ -67,6 +67,8 @@ type ArtistMBIDResponse struct {
 
 // ArtistRef is a reference to an artist with name and optional MBID.
 type ArtistRef struct {
+	// ID is the internal Navidrome artist ID (if known).
+	ID string `json:"id,omitempty"`
 	// Name is the artist name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the artist.
@@ -117,6 +119,8 @@ type SimilarArtistsResponse struct {
 
 // SongRef is a reference to a song with name and optional MBID.
 type SongRef struct {
+	// ID is the internal Navidrome mediafile ID (if known).
+	ID string `json:"id,omitempty"`
 	// Name is the song name.
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.

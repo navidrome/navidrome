@@ -152,6 +152,9 @@ components:
         ArtistRef:
             description: ArtistRef is a reference to an artist with name and optional MBID.
             properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
                 name:
                     type: string
                     description: Name is the artist name.
@@ -229,6 +232,9 @@ components:
         SongRef:
             description: SongRef is a reference to a song with name and optional MBID.
             properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome mediafile ID (if known).
                 name:
                     type: string
                     description: Name is the song name.

@@ -109,7 +109,7 @@ func (a *MetadataAgent) GetSimilarArtists(ctx context.Context, id, name, mbid st
 
 	artists := make([]agents.Artist, len(result.Artists))
 	for i, ar := range result.Artists {
-		artists[i] = agents.Artist{Name: ar.Name, MBID: ar.MBID}
+		artists[i] = agents.Artist{ID: ar.ID, Name: ar.Name, MBID: ar.MBID}
 	}
 
 	return artists, nil
@@ -149,7 +149,7 @@ func (a *MetadataAgent) GetArtistTopSongs(ctx context.Context, id, artistName, m
 
 	songs := make([]agents.Song, len(result.Songs))
 	for i, s := range result.Songs {
-		songs[i] = agents.Song{Name: s.Name, MBID: s.MBID}
+		songs[i] = agents.Song{ID: s.ID, Name: s.Name, MBID: s.MBID}
 	}
 
 	return songs, nil
