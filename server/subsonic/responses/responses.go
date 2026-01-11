@@ -32,6 +32,7 @@ type Subsonic struct {
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
 	RandomSongs   *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
 	SongsByGenre  *Songs             `xml:"songsByGenre,omitempty"                        json:"songsByGenre,omitempty"`
+	LibraryRadio  *Songs             `xml:"libraryRadio,omitempty"                        json:"libraryRadio,omitempty"`
 	Genres        *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
 
 	// ID3

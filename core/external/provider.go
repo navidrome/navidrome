@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strings"
@@ -37,6 +38,7 @@ type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	LibraryRadio(ctx context.Context, count int, genre string, libraryIDs []int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -341,6 +343,120 @@ func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model
 	}
 
 	return similarSongs, nil
+}
+
+// LibraryRadio returns a weighted random selection of songs from the library,
+// biased toward popular tracks based on Last.fm listeners/playcount data.
+// Songs from albums with higher popularity scores have a higher chance of being selected.
+func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, libraryIDs []int) (model.MediaFiles, error) {
+	// Build query options for fetching songs
+	opts := model.QueryOptions{
+		Max:  count * 10, // Fetch more songs than needed for better variety
+		Sort: "random()",
+	}
+
+	// Apply genre filter if specified
+	if genre != "" {
+		opts.Filters = squirrel.Like{"media_file.genre": genre}
+	}
+
+	// Apply library filter if specified
+	if len(libraryIDs) > 0 {
+		libraryFilter := squirrel.Eq{"media_file.library_id": libraryIDs}
+		if opts.Filters != nil {
+			opts.Filters = squirrel.And{opts.Filters, libraryFilter}
+		} else {
+			opts.Filters = libraryFilter
+		}
+	}
+
+	// Exclude missing files
+	missingFilter := squirrel.Eq{"media_file.missing": false}
+	if opts.Filters != nil {
+		opts.Filters = squirrel.And{opts.Filters, missingFilter}
+	} else {
+		opts.Filters = missingFilter
+	}
+
+	songs, err := e.ds.MediaFile(ctx).GetAll(opts)
+	if err != nil {
+		log.Error(ctx, "Error fetching songs for library radio", err)
+		return nil, err
+	}
+
+	if len(songs) == 0 {
+		log.Debug(ctx, "No songs found for library radio", "genre", genre, "libraryIDs", libraryIDs)
+		return nil, nil
+	}
+
+	// Build a map of album IDs to their popularity scores
+	albumIDs := make([]string, 0, len(songs))
+	albumIDSet := make(map[string]bool)
+	for _, song := range songs {
+		if !albumIDSet[song.AlbumID] {
+			albumIDs = append(albumIDs, song.AlbumID)
+			albumIDSet[song.AlbumID] = true
+		}
+	}
+
+	// Fetch album popularity data
+	albums, err := e.ds.Album(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"album.id": albumIDs},
+	})
+	if err != nil {
+		log.Warn(ctx, "Error fetching album popularity data", err)
+		// Continue without popularity data - use uniform weights
+	}
+
+	// Build album popularity map
+	albumPopularity := make(map[string]int64)
+	for _, album := range albums {
+		// Use a combination of listeners and playcount for the popularity score
+		// Listeners are weighted more heavily as they represent unique reach
+		popularity := album.LastFMListeners*2 + album.LastFMPlaycount
+		albumPopularity[album.ID] = popularity
+	}
+
+	// Create weighted chooser
+	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
+
+	// Base weight ensures all songs have some chance of being selected
+	const baseWeight = 100
+
+	for _, song := range songs {
+		popularity := albumPopularity[song.AlbumID]
+		// Calculate weight: base weight + scaled popularity
+		// Using logarithmic scaling to prevent extremely popular albums from dominating
+		var weight int
+		if popularity > 0 {
+			// Log scale the popularity to prevent huge disparities
+			// Add 1 to avoid log(0), multiply to get meaningful weights
+			scaledPopularity := int(math.Log10(float64(popularity)+1) * 100)
+			weight = baseWeight + scaledPopularity
+		} else {
+			weight = baseWeight
+		}
+		weightedSongs.Add(song, weight)
+	}
+
+	// Pick songs using weighted random selection
+	var radioSongs model.MediaFiles
+	for len(radioSongs) < count && weightedSongs.Size() > 0 {
+		if utils.IsCtxDone(ctx) {
+			log.Warn(ctx, "LibraryRadio call canceled", ctx.Err())
+			return radioSongs, ctx.Err()
+		}
+
+		song, err := weightedSongs.Pick()
+		if err != nil {
+			log.Warn(ctx, "Error picking weighted song", err)
+			continue
+		}
+		radioSongs = append(radioSongs, song)
+	}
+
+	log.Debug(ctx, "Library radio generated", "requested", count, "returned", len(radioSongs), "genre", genre)
+	return radioSongs, nil
 }
 
 func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {

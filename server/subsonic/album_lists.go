@@ -278,6 +278,33 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
+// GetLibraryRadio returns a weighted random selection of songs from the library,
+// biased toward popular tracks based on Last.fm popularity data.
+// This is similar to Plex's library radio feature.
+func (api *Router) GetLibraryRadio(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	count := min(p.IntOr("count", 50), 500)
+	genre, _ := p.String("genre")
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := r.Context()
+	songs, err := api.provider.LibraryRadio(ctx, count, genre, musicFolderIds)
+	if err != nil {
+		log.Error(r, "Error generating library radio", err)
+		return nil, err
+	}
+
+	response := newResponse()
+	response.LibraryRadio = &responses.Songs{}
+	response.LibraryRadio.Songs = slice.MapWithArg(songs, ctx, childFromMediaFile)
+	return response, nil
+}
+
 func (api *Router) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size
