@@ -12,8 +12,6 @@ import { useHistory, useLocation } from 'react-router-dom'
 
 const InfiniteScrollContext = createContext(null)
 
-const APP_BAR_HEIGHT = 64
-
 const getStorageKey = (pathname, filterValues) => {
   const filterKey = JSON.stringify(filterValues || {})
   return `infiniteScroll:${pathname}:${filterKey}`
@@ -308,6 +306,7 @@ export const InfiniteScrollProvider = ({ children }) => {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useInfiniteScroll = () => {
   const context = useContext(InfiniteScrollContext)
   if (!context) {
