@@ -32,8 +32,8 @@ const InfiniteScrollContent = ({ children, ...props }) => {
 
   const infiniteProps = {
     ...props,
-    data: accumulatedIds.length > 0 ? accumulatedData : props.data,
-    ids: accumulatedIds.length > 0 ? accumulatedIds : props.ids,
+    data: accumulatedData,
+    ids: accumulatedIds,
     loading,
     loaded,
   }
