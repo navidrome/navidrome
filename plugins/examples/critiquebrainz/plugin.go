@@ -69,8 +69,13 @@ type musicBrainzRelease struct {
 
 func getReleaseGroupID(ctx context.Context, releaseID string) (string, error) {
 	cacheKey := "release_to_rg_" + releaseID
-	if cached, _ := cacheService.GetString(ctx, &cache.GetRequest{Key: cacheKey}); cached.Exists && cached.Value != "" {
+	if cached, err := cacheService.GetString(ctx, &cache.GetRequest{Key: cacheKey}); err == nil && cached.Exists {
+		if cached.Value == "" {
+			return "", api.ErrNotFound
+		}
 		return cached.Value, nil
+	} else if err != nil {
+		log.Printf("Error reading release group ID from cache: %v", err)
 	}
 
 	resp, err := client.Get(ctx, &http.HttpRequest{
@@ -89,15 +94,25 @@ func getReleaseGroupID(ctx context.Context, releaseID string) (string, error) {
 	if err := json.Unmarshal(resp.Body, &release); err != nil {
 		return "", err
 	}
+
 	if release.ReleaseGroup.ID == "" {
+		if _, cacheErr := cacheService.SetString(ctx, &cache.SetStringRequest{
+			Key:        cacheKey,
+			Value:      "",
+			TtlSeconds: int64(releaseGroupCacheTTL.Seconds()),
+		}); cacheErr != nil {
+			log.Printf("Failed to cache empty release group ID: %v", cacheErr)
+		}
 		return "", api.ErrNotFound
 	}
 
-	_, _ = cacheService.SetString(ctx, &cache.SetStringRequest{
+	if _, cacheErr := cacheService.SetString(ctx, &cache.SetStringRequest{
 		Key:        cacheKey,
 		Value:      release.ReleaseGroup.ID,
 		TtlSeconds: int64(releaseGroupCacheTTL.Seconds()),
-	})
+	}); cacheErr != nil {
+		log.Printf("Failed to cache release group ID: %v", cacheErr)
+	}
 	return release.ReleaseGroup.ID, nil
 }
 
@@ -108,11 +123,17 @@ func (CritiqueBrainzAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoR
 
 	releaseGroupID, err := getReleaseGroupID(ctx, req.Mbid)
 	if err != nil {
+		if err != api.ErrNotFound {
+			log.Printf("Failed to get release group ID for MBID %s: %v", req.Mbid, err)
+		}
 		return nil, api.ErrNotFound
 	}
 
 	cacheKey := "album_review_" + releaseGroupID
-	if cached, _ := cacheService.GetString(ctx, &cache.GetRequest{Key: cacheKey}); cached.Exists && cached.Value != "" {
+	if cached, err := cacheService.GetString(ctx, &cache.GetRequest{Key: cacheKey}); err == nil && cached.Exists {
+		if cached.Value == "" {
+			return nil, api.ErrNotFound
+		}
 		return &api.AlbumInfoResponse{
 			Info: &api.AlbumInfo{
 				Mbid:        req.Mbid,
@@ -121,18 +142,31 @@ func (CritiqueBrainzAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoR
 				Url:         "https://critiquebrainz.org/release-group/" + releaseGroupID,
 			},
 		}, nil
+	} else if err != nil {
+		log.Printf("Error reading album review from cache: %v", err)
 	}
 
 	description, err := fetchReviews(ctx, releaseGroupID)
 	if err != nil {
+		if err == api.ErrNotFound {
+			if _, cacheErr := cacheService.SetString(ctx, &cache.SetStringRequest{
+				Key:        cacheKey,
+				Value:      "",
+				TtlSeconds: int64(cacheTTL.Seconds()),
+			}); cacheErr != nil {
+				log.Printf("Failed to cache empty album review: %v", cacheErr)
+			}
+		}
 		return nil, err
 	}
 
-	_, _ = cacheService.SetString(ctx, &cache.SetStringRequest{
+	if _, cacheErr := cacheService.SetString(ctx, &cache.SetStringRequest{
 		Key:        cacheKey,
 		Value:      description,
 		TtlSeconds: int64(cacheTTL.Seconds()),
-	})
+	}); cacheErr != nil {
+		log.Printf("Failed to cache album review: %v", cacheErr)
+	}
 
 	return &api.AlbumInfoResponse{
 		Info: &api.AlbumInfo{
@@ -184,20 +218,19 @@ func formatReviews(resp *reviewResponse) string {
 		fmt.Fprintf(&sb, "Average Rating: %.1f/5 (%d ratings)\n\n", resp.AverageRating.Average, resp.AverageRating.Count)
 	}
 
-	first := true
+	var reviewStrings []string
 	for _, r := range resp.Reviews {
 		if r.Text == "" {
 			continue
 		}
-		if !first {
-			sb.WriteString("\n---\n\n")
-		}
-		first = false
+		var reviewSb strings.Builder
 		if r.Rating != nil {
-			fmt.Fprintf(&sb, "★ %d/5 ", *r.Rating)
+			fmt.Fprintf(&reviewSb, "★ %d/5 ", *r.Rating)
 		}
-		fmt.Fprintf(&sb, "by %s\n\n%s", r.User.DisplayName, r.Text)
+		fmt.Fprintf(&reviewSb, "by %s\n\n%s", r.User.DisplayName, r.Text)
+		reviewStrings = append(reviewStrings, reviewSb.String())
 	}
+	sb.WriteString(strings.Join(reviewStrings, "\n---\n\n"))
 
 	return sb.String()
 }
