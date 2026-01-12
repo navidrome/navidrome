@@ -363,6 +363,60 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 	return nil, ErrNotFound
 }
 
+func (a *Agents) GetArtistPopularity(ctx context.Context, id, name, mbid string) (*ArtistInfo, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return nil, ErrNotFound
+	case consts.VariousArtistsID:
+		return nil, nil
+	}
+	start := time.Now()
+	for _, enabledAgent := range a.getEnabledAgentNames() {
+		ag := a.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(ArtistPopularityRetriever)
+		if !ok {
+			continue
+		}
+		info, err := retriever.GetArtistPopularity(ctx, id, name, mbid)
+		if err == nil && info != nil {
+			log.Debug(ctx, "Got Artist Popularity", "agent", ag.AgentName(), "artist", name,
+				"listeners", info.Listeners, "playcount", info.Playcount, "elapsed", time.Since(start))
+			return info, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+func (a *Agents) GetTrackPopularity(ctx context.Context, title, artist, mbid string) (*TrackInfo, error) {
+	start := time.Now()
+	for _, enabledAgent := range a.getEnabledAgentNames() {
+		ag := a.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(TrackPopularityRetriever)
+		if !ok {
+			continue
+		}
+		info, err := retriever.GetTrackPopularity(ctx, title, artist, mbid)
+		if err == nil && info != nil {
+			log.Debug(ctx, "Got Track Popularity", "agent", ag.AgentName(), "track", title, "artist", artist,
+				"listeners", info.Listeners, "playcount", info.Playcount, "elapsed", time.Since(start))
+			return info, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 var _ Interface = (*Agents)(nil)
 var _ ArtistMBIDRetriever = (*Agents)(nil)
 var _ ArtistURLRetriever = (*Agents)(nil)
@@ -370,5 +424,7 @@ var _ ArtistBiographyRetriever = (*Agents)(nil)
 var _ ArtistSimilarRetriever = (*Agents)(nil)
 var _ ArtistImageRetriever = (*Agents)(nil)
 var _ ArtistTopSongsRetriever = (*Agents)(nil)
+var _ ArtistPopularityRetriever = (*Agents)(nil)
+var _ TrackPopularityRetriever = (*Agents)(nil)
 var _ AlbumInfoRetriever = (*Agents)(nil)
 var _ AlbumImageRetriever = (*Agents)(nil)

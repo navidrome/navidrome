@@ -121,6 +121,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getNowPlaying", api.GetNowPlaying)
 			h(r, "getRandomSongs", api.GetRandomSongs)
 			h(r, "getSongsByGenre", api.GetSongsByGenre)
+			h(r, "getLibraryRadio", api.GetLibraryRadio)
+			h(r, "refreshPopularity", api.RefreshPopularity)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))

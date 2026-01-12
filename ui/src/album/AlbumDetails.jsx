@@ -26,6 +26,7 @@ import {
   DurationField,
   formatRange,
   LoveButton,
+  PopularityField,
   RatingField,
   SizeField,
   useAlbumsPerPage,
@@ -326,6 +327,11 @@ const AlbumDetails = (props) => {
                   resource={'album'}
                   size={isDesktop ? 'medium' : 'small'}
                 />
+              </div>
+            )}
+            {config.enableExternalServices && (
+              <div>
+                <PopularityField />
               </div>
             )}
             {isDesktop ? (

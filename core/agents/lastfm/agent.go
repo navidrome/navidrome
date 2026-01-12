@@ -74,11 +74,16 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		return nil, err
 	}
 
+	listeners, _ := strconv.ParseInt(a.Listeners, 10, 64)
+	playcount, _ := strconv.ParseInt(a.Playcount, 10, 64)
+
 	return &agents.AlbumInfo{
 		Name:        a.Name,
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
+		Listeners:   listeners,
+		Playcount:   playcount,
 	}, nil
 }
 
@@ -237,6 +242,41 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 		}
 	}
 	return res, nil
+}
+
+func (l *lastfmAgent) GetArtistPopularity(ctx context.Context, id, name, mbid string) (*agents.ArtistInfo, error) {
+	a, err := l.callArtistGetInfo(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	listeners, _ := strconv.ParseInt(a.Stats.Listeners, 10, 64)
+	playcount, _ := strconv.ParseInt(a.Stats.Playcount, 10, 64)
+
+	return &agents.ArtistInfo{
+		Name:      a.Name,
+		MBID:      a.MBID,
+		Listeners: listeners,
+		Playcount: playcount,
+	}, nil
+}
+
+func (l *lastfmAgent) GetTrackPopularity(ctx context.Context, title, artist, mbid string) (*agents.TrackInfo, error) {
+	t, err := l.client.trackGetInfo(ctx, title, artist, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	listeners, _ := strconv.ParseInt(t.Listeners, 10, 64)
+	playcount, _ := strconv.ParseInt(t.Playcount, 10, 64)
+
+	return &agents.TrackInfo{
+		Name:      t.Name,
+		MBID:      t.MBID,
+		Artist:    t.Artist.Name,
+		Listeners: listeners,
+		Playcount: playcount,
+	}, nil
 }
 
 func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {

@@ -55,6 +55,10 @@ type Album struct {
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty" hash:"ignore"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt" hash:"ignore"`
 
+	// Popularity data from Last.fm
+	LastFMListeners int64 `structs:"lastfm_listeners" json:"lastfmListeners,omitempty" hash:"ignore"`
+	LastFMPlaycount int64 `structs:"lastfm_playcount" json:"lastfmPlaycount,omitempty" hash:"ignore"`
+
 	Genre        string       `structs:"genre" json:"genre" hash:"ignore"`               // Easy access to the most common genre
 	Genres       Genres       `structs:"-" json:"genres" hash:"ignore"`                  // Easy access to all genres for this album
 	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags for this album

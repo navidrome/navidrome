@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strings"
@@ -33,13 +34,21 @@ const (
 	refreshQueueLength = 2000
 )
 
+// PopularityInfo contains popularity data returned by RefreshPopularity
+type PopularityInfo struct {
+	Listeners int64
+	Playcount int64
+}
+
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	LibraryRadio(ctx context.Context, count int, genre string, libraryIDs []int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
+	RefreshPopularity(ctx context.Context, entityType string, id string) (*PopularityInfo, error)
 }
 
 type provider struct {
@@ -84,6 +93,8 @@ type Agents interface {
 	agents.ArtistSimilarRetriever
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
+	agents.ArtistPopularityRetriever
+	agents.TrackPopularityRetriever
 }
 
 func NewProvider(ds model.DataStore, agents Agents) Provider {
@@ -158,6 +169,10 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 	if info.Description != "" {
 		album.Description = info.Description
 	}
+
+	// Store Last.fm popularity data
+	album.LastFMListeners = info.Listeners
+	album.LastFMPlaycount = info.Playcount
 
 	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
 	if err == nil && len(images) > 0 {
@@ -261,6 +276,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilar(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
+	g.Go(func() error { e.callGetPopularity(ctx, e.ag, &artist); return nil })
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
@@ -335,6 +351,128 @@ func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model
 	}
 
 	return similarSongs, nil
+}
+
+// LibraryRadio returns a weighted random selection of songs from the library,
+// biased toward popular tracks based on Last.fm listeners/playcount data.
+// It uses track-level popularity when available, falling back to album popularity.
+func (e *provider) LibraryRadio(ctx context.Context, count int, genre string, libraryIDs []int) (model.MediaFiles, error) {
+	// Build query options for fetching songs
+	opts := model.QueryOptions{
+		Max:  count * 10, // Fetch more songs than needed for better variety
+		Sort: "random()",
+	}
+
+	// Apply genre filter if specified
+	if genre != "" {
+		opts.Filters = squirrel.Like{"media_file.genre": genre}
+	}
+
+	// Apply library filter if specified
+	if len(libraryIDs) > 0 {
+		libraryFilter := squirrel.Eq{"media_file.library_id": libraryIDs}
+		if opts.Filters != nil {
+			opts.Filters = squirrel.And{opts.Filters, libraryFilter}
+		} else {
+			opts.Filters = libraryFilter
+		}
+	}
+
+	// Exclude missing files
+	missingFilter := squirrel.Eq{"media_file.missing": false}
+	if opts.Filters != nil {
+		opts.Filters = squirrel.And{opts.Filters, missingFilter}
+	} else {
+		opts.Filters = missingFilter
+	}
+
+	songs, err := e.ds.MediaFile(ctx).GetAll(opts)
+	if err != nil {
+		log.Error(ctx, "Error fetching songs for library radio", err)
+		return nil, err
+	}
+
+	if len(songs) == 0 {
+		log.Debug(ctx, "No songs found for library radio", "genre", genre, "libraryIDs", libraryIDs)
+		return nil, nil
+	}
+
+	// Build a map of album IDs to their popularity scores (used as fallback)
+	albumIDs := make([]string, 0, len(songs))
+	albumIDSet := make(map[string]bool)
+	for _, song := range songs {
+		if !albumIDSet[song.AlbumID] {
+			albumIDs = append(albumIDs, song.AlbumID)
+			albumIDSet[song.AlbumID] = true
+		}
+	}
+
+	// Fetch album popularity data (used as fallback when track has no popularity)
+	albums, err := e.ds.Album(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Eq{"album.id": albumIDs},
+	})
+	if err != nil {
+		log.Warn(ctx, "Error fetching album popularity data", err)
+		// Continue without popularity data - use uniform weights
+	}
+
+	// Build album popularity map
+	albumPopularity := make(map[string]int64)
+	for _, album := range albums {
+		// Use a combination of listeners and playcount for the popularity score
+		// Listeners are weighted more heavily as they represent unique reach
+		popularity := album.LastFMListeners*2 + album.LastFMPlaycount
+		albumPopularity[album.ID] = popularity
+	}
+
+	// Create weighted chooser
+	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
+
+	// Base weight ensures all songs have some chance of being selected
+	const baseWeight = 100
+
+	for _, song := range songs {
+		// Use track-level popularity if available, otherwise fall back to album
+		var popularity int64
+		trackPopularity := song.LastFMListeners*2 + song.LastFMPlaycount
+		if trackPopularity > 0 {
+			popularity = trackPopularity
+		} else {
+			popularity = albumPopularity[song.AlbumID]
+		}
+
+		// Calculate weight: base weight + scaled popularity
+		// Using logarithmic scaling to prevent extremely popular tracks from dominating
+		var weight int
+		if popularity > 0 {
+			// Log scale the popularity to prevent huge disparities
+			// Add 1 to avoid log(0), multiply to get meaningful weights
+			scaledPopularity := int(math.Log10(float64(popularity)+1) * 100)
+			weight = baseWeight + scaledPopularity
+		} else {
+			weight = baseWeight
+		}
+		weightedSongs.Add(song, weight)
+	}
+
+	// Pick songs using weighted random selection
+	var radioSongs model.MediaFiles
+	for len(radioSongs) < count && weightedSongs.Size() > 0 {
+		if utils.IsCtxDone(ctx) {
+			log.Warn(ctx, "LibraryRadio call canceled", ctx.Err())
+			return radioSongs, ctx.Err()
+		}
+
+		song, err := weightedSongs.Pick()
+		if err != nil {
+			log.Warn(ctx, "Error picking weighted song", err)
+			continue
+		}
+		radioSongs = append(radioSongs, song)
+	}
+
+	log.Debug(ctx, "Library radio generated", "requested", count, "returned", len(radioSongs), "genre", genre)
+	return radioSongs, nil
 }
 
 func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
@@ -417,6 +555,99 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 		return nil, err
 	}
 	return songs, nil
+}
+
+// RefreshPopularity fetches and updates popularity data for an entity (artist, album, or track)
+func (e *provider) RefreshPopularity(ctx context.Context, entityType string, id string) (*PopularityInfo, error) {
+	switch entityType {
+	case "artist":
+		return e.refreshArtistPopularity(ctx, id)
+	case "album":
+		return e.refreshAlbumPopularity(ctx, id)
+	case "track":
+		return e.refreshTrackPopularity(ctx, id)
+	default:
+		return nil, fmt.Errorf("unknown entity type: %s", entityType)
+	}
+}
+
+func (e *provider) refreshArtistPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	artist, err := e.getArtist(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	artistName := artist.Name()
+	info, err := e.ag.GetArtistPopularity(ctx, artist.ID, artistName, artist.MbzArtistID)
+	if err != nil {
+		log.Error(ctx, "Error fetching artist popularity", "id", id, "name", artistName, err)
+		return nil, err
+	}
+
+	artist.LastFMListeners = info.Listeners
+	artist.LastFMPlaycount = info.Playcount
+	artist.ExternalInfoUpdatedAt = P(time.Now())
+
+	err = e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
+	if err != nil {
+		log.Error(ctx, "Error updating artist popularity", "id", id, "name", artistName, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Artist popularity refreshed", "id", id, "name", artistName, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
+}
+
+func (e *provider) refreshAlbumPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	album, err := e.getAlbum(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	albumName := album.Name()
+	info, err := e.ag.GetAlbumInfo(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
+	if err != nil {
+		log.Error(ctx, "Error fetching album popularity", "id", id, "name", albumName, err)
+		return nil, err
+	}
+
+	album.LastFMListeners = info.Listeners
+	album.LastFMPlaycount = info.Playcount
+	album.ExternalInfoUpdatedAt = P(time.Now())
+
+	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
+	if err != nil {
+		log.Error(ctx, "Error updating album popularity", "id", id, "name", albumName, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Album popularity refreshed", "id", id, "name", albumName, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
+}
+
+func (e *provider) refreshTrackPopularity(ctx context.Context, id string) (*PopularityInfo, error) {
+	mf, err := e.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := e.ag.GetTrackPopularity(ctx, mf.Title, mf.Artist, mf.MbzRecordingID)
+	if err != nil {
+		log.Error(ctx, "Error fetching track popularity", "id", id, "title", mf.Title, "artist", mf.Artist, err)
+		return nil, err
+	}
+
+	mf.LastFMListeners = info.Listeners
+	mf.LastFMPlaycount = info.Playcount
+
+	err = e.ds.MediaFile(ctx).UpdatePopularity(mf)
+	if err != nil {
+		log.Error(ctx, "Error updating track popularity", "id", id, "title", mf.Title, err)
+		return nil, err
+	}
+
+	log.Debug(ctx, "Track popularity refreshed", "id", id, "title", mf.Title, "listeners", info.Listeners, "playcount", info.Playcount)
+	return &PopularityInfo{Listeners: info.Listeners, Playcount: info.Playcount}, nil
 }
 
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
@@ -588,6 +819,15 @@ func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriev
 		return
 	}
 	artist.ExternalUrl = artisURL
+}
+
+func (e *provider) callGetPopularity(ctx context.Context, agent agents.ArtistPopularityRetriever, artist *auxArtist) {
+	info, err := agent.GetArtistPopularity(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
+	if err != nil {
+		return
+	}
+	artist.LastFMListeners = info.Listeners
+	artist.LastFMPlaycount = info.Playcount
 }
 
 func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
