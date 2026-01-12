@@ -6,7 +6,7 @@
   "permissions": {
     "websocket": {
       "reason": "For testing WebSocket callbacks",
-      "allowedHosts": ["*.example.com", "localhost:*", "echo.websocket.org"]
+      "requiredHosts": ["*.example.com", "localhost:*", "echo.websocket.org"]
     }
   }
 }

@@ -197,7 +197,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
 				hostOnly = serverURL[:idx]
 			}
-			testService.allowedHosts = append(testService.allowedHosts, hostOnly)
+			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
 
 		AfterEach(func() {
@@ -324,7 +324,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
 				hostOnly = serverURL[:idx]
 			}
-			testService.allowedHosts = append(testService.allowedHosts, hostOnly)
+			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
 
 		AfterEach(func() {
@@ -451,7 +451,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
 				hostOnly = serverURL[:idx]
 			}
-			testService.allowedHosts = append(testService.allowedHosts, hostOnly)
+			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
 
 		AfterEach(func() {
@@ -542,7 +542,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
 				hostOnly = serverURL[:idx]
 			}
-			testService.allowedHosts = append(testService.allowedHosts, hostOnly)
+			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 
 			ctx := GinkgoT().Context()
 			wsURL := "ws://" + serverURL

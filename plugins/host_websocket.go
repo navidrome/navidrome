@@ -54,9 +54,9 @@ type wsConnection struct {
 // webSocketServiceImpl implements host.WebSocketService.
 // It provides plugins with WebSocket communication capabilities.
 type webSocketServiceImpl struct {
-	pluginName   string
-	manager      *Manager
-	allowedHosts []string
+	pluginName    string
+	manager       *Manager
+	requiredHosts []string
 
 	mu          sync.RWMutex
 	connections map[string]*wsConnection
@@ -65,10 +65,10 @@ type webSocketServiceImpl struct {
 // newWebSocketService creates a new WebSocketService for a plugin.
 func newWebSocketService(pluginName string, manager *Manager, permission *WebSocketPermission) *webSocketServiceImpl {
 	return &webSocketServiceImpl{
-		pluginName:   pluginName,
-		manager:      manager,
-		allowedHosts: permission.AllowedHosts,
-		connections:  make(map[string]*wsConnection),
+		pluginName:    pluginName,
+		manager:       manager,
+		requiredHosts: permission.RequiredHosts,
+		connections:   make(map[string]*wsConnection),
 	}
 }
 
@@ -248,7 +248,7 @@ func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
 		hostWithoutPort = host[:idx]
 	}
 
-	for _, pattern := range s.allowedHosts {
+	for _, pattern := range s.requiredHosts {
 		if matchHostPattern(pattern, hostWithoutPort) {
 			return true
 		}

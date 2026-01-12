@@ -19,7 +19,7 @@ var _ = Describe("Manifest", func() {
 				"permissions": {
 					"http": {
 						"reason": "Fetch metadata",
-						"allowedHosts": ["api.example.com", "*.spotify.com"]
+						"requiredHosts": ["api.example.com", "*.spotify.com"]
 					}
 				}
 			}`)
@@ -34,7 +34,7 @@ var _ = Describe("Manifest", func() {
 			Expect(*m.Website).To(Equal("https://example.com"))
 			Expect(m.Permissions.Http).ToNot(BeNil())
 			Expect(*m.Permissions.Http.Reason).To(Equal("Fetch metadata"))
-			Expect(m.Permissions.Http.AllowedHosts).To(ContainElements("api.example.com", "*.spotify.com"))
+			Expect(m.Permissions.Http.RequiredHosts).To(ContainElements("api.example.com", "*.spotify.com"))
 		})
 
 		It("parses a minimal manifest", func() {
@@ -117,11 +117,11 @@ var _ = Describe("Manifest", func() {
 		})
 	})
 
-	Describe("AllowedHosts", func() {
+	Describe("RequiredHTTPHosts", func() {
 		It("returns nil when no permissions", func() {
 			m := &Manifest{}
 
-			Expect(m.AllowedHosts()).To(BeNil())
+			Expect(m.RequiredHTTPHosts()).To(BeNil())
 		})
 
 		It("returns nil when no HTTP permissions", func() {
@@ -129,19 +129,19 @@ var _ = Describe("Manifest", func() {
 				Permissions: &Permissions{},
 			}
 
-			Expect(m.AllowedHosts()).To(BeNil())
+			Expect(m.RequiredHTTPHosts()).To(BeNil())
 		})
 
 		It("returns hosts from permissions", func() {
 			m := &Manifest{
 				Permissions: &Permissions{
 					Http: &HTTPPermission{
-						AllowedHosts: []string{"api.example.com", "*.spotify.com"},
+						RequiredHosts: []string{"api.example.com", "*.spotify.com"},
 					},
 				},
 			}
 
-			hosts := m.AllowedHosts()
+			hosts := m.RequiredHTTPHosts()
 			Expect(hosts).To(Equal([]string{"api.example.com", "*.spotify.com"}))
 		})
 	})

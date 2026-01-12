@@ -395,7 +395,8 @@
         "usersRequired": "Este plugin requer acesso a informações de usuário. Selecione quais usuários o plugin pode acessar, ou habilite 'Permitir todos os usuários'.",
         "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
         "noLibraries": "Nenhuma biblioteca selecionada",
-        "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'."
+        "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
+        "requiredHosts": "Hosts necessários"
       },
       "placeholders": {
         "configKey": "chave",

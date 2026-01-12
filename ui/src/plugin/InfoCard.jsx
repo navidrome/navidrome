@@ -10,15 +10,17 @@ import {
   Link,
   ClickAwayListener,
 } from '@material-ui/core'
+import { useTranslate } from 'react-admin'
 import { DateField } from '../common'
 
 // Helper component for permission chips with clickable persistent tooltips
 const PermissionChip = ({ label, permission, classes }) => {
   const [open, setOpen] = useState(false)
+  const translate = useTranslate()
 
   if (!permission) return null
 
-  const hasHosts = permission.allowedHosts?.length > 0
+  const hasHosts = permission.requiredHosts?.length > 0
   const hasTooltip = permission.reason || hasHosts
 
   const handleClick = () => {
@@ -39,8 +41,8 @@ const PermissionChip = ({ label, permission, classes }) => {
       {hasHosts && (
         <Box mt={permission.reason ? 0.5 : 0}>
           <Typography variant="caption" component="div">
-            Allowed hosts:{' '}
-            {permission.allowedHosts.map((host, i) => (
+            {translate('resources.plugin.messages.requiredHosts')}:{' '}
+            {permission.requiredHosts.map((host, i) => (
               <span key={host}>
                 {i > 0 && ', '}
                 <code>{host}</code>

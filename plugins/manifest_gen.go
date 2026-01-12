@@ -31,12 +31,12 @@ type Experimental struct {
 
 // HTTP access permissions for a plugin
 type HTTPPermission struct {
-	// List of allowed host patterns for HTTP requests (e.g., 'api.example.com',
-	// '*.spotify.com')
-	AllowedHosts []string `json:"allowedHosts,omitempty" yaml:"allowedHosts,omitempty" mapstructure:"allowedHosts,omitempty"`
-
 	// Explanation for why HTTP access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+
+	// List of required host patterns for HTTP requests (e.g., 'api.example.com',
+	// '*.spotify.com')
+	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }
 
 // Key-value store permissions for persistent plugin storage
@@ -189,10 +189,10 @@ type UsersPermission struct {
 
 // WebSocket service permissions for establishing WebSocket connections
 type WebSocketPermission struct {
-	// List of allowed host patterns for WebSocket connections (e.g.,
-	// 'api.example.com', '*.spotify.com')
-	AllowedHosts []string `json:"allowedHosts,omitempty" yaml:"allowedHosts,omitempty" mapstructure:"allowedHosts,omitempty"`
-
 	// Explanation for why WebSocket access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+
+	// List of required host patterns for WebSocket connections (e.g.,
+	// 'api.example.com', '*.spotify.com')
+	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }

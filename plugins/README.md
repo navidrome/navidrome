@@ -126,7 +126,7 @@ Every plugin must include a `manifest.json` file. Example:
   "permissions": {
     "http": {
       "reason": "Fetch metadata from external API",
-      "allowedHosts": ["api.example.com", "*.musicbrainz.org"]
+      "requiredHosts": ["api.example.com", "*.musicbrainz.org"]
     }
   }
 }
@@ -300,7 +300,7 @@ Make HTTP requests using the Extism PDK's built-in HTTP support. See your [Extis
   "permissions": {
     "http": {
       "reason": "Fetch metadata from external API",
-      "allowedHosts": ["api.example.com", "*.musicbrainz.org"]
+      "requiredHosts": ["api.example.com", "*.musicbrainz.org"]
     }
   }
 }
@@ -519,7 +519,7 @@ Establish persistent WebSocket connections to external services.
   "permissions": {
     "websocket": {
       "reason": "Real-time connection to service",
-      "allowedHosts": ["gateway.example.com", "*.discord.gg"]
+      "requiredHosts": ["gateway.example.com", "*.discord.gg"]
     }
   }
 }

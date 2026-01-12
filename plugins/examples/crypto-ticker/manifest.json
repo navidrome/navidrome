@@ -13,7 +13,7 @@
     },
     "websocket": {
       "reason": "To connect to Coinbase WebSocket API for real-time prices",
-      "allowedHosts": ["ws-feed.exchange.coinbase.com"]
+      "requiredHosts": ["ws-feed.exchange.coinbase.com"]
     }
   }
 }

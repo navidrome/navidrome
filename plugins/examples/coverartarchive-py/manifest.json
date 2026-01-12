@@ -7,7 +7,7 @@
   "permissions": {
     "http": {
       "reason": "Fetch album cover art from Cover Art Archive API",
-      "allowedHosts": [
+      "requiredHosts": [
         "coverartarchive.org",
         "*.archive.org"
       ]

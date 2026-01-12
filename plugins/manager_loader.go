@@ -268,7 +268,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
 
-	if hosts := pkg.Manifest.AllowedHosts(); len(hosts) > 0 {
+	if hosts := pkg.Manifest.RequiredHTTPHosts(); len(hosts) > 0 {
 		pluginManifest.AllowedHosts = hosts
 	}
 

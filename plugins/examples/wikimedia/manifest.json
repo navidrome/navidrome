@@ -7,7 +7,7 @@
   "permissions": {
     "http": {
       "reason": "Fetch metadata from Wikimedia APIs",
-      "allowedHosts": [
+      "requiredHosts": [
         "query.wikidata.org",
         "dbpedia.org",
         "en.wikipedia.org"
