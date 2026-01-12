@@ -45,15 +45,6 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 	return nil
 }
 
-// RequiredHTTPHosts returns a list of required hosts for HTTP requests.
-// Returns the hosts directly from the manifest's permissions.
-func (m *Manifest) RequiredHTTPHosts() []string {
-	if m.Permissions == nil || m.Permissions.Http == nil {
-		return nil
-	}
-	return m.Permissions.Http.RequiredHosts
-}
-
 // HasExperimentalThreads returns true if the manifest requests experimental threads support.
 func (m *Manifest) HasExperimentalThreads() bool {
 	return m.Experimental != nil && m.Experimental.Threads != nil

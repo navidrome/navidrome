@@ -117,35 +117,6 @@ var _ = Describe("Manifest", func() {
 		})
 	})
 
-	Describe("RequiredHTTPHosts", func() {
-		It("returns nil when no permissions", func() {
-			m := &Manifest{}
-
-			Expect(m.RequiredHTTPHosts()).To(BeNil())
-		})
-
-		It("returns nil when no HTTP permissions", func() {
-			m := &Manifest{
-				Permissions: &Permissions{},
-			}
-
-			Expect(m.RequiredHTTPHosts()).To(BeNil())
-		})
-
-		It("returns hosts from permissions", func() {
-			m := &Manifest{
-				Permissions: &Permissions{
-					Http: &HTTPPermission{
-						RequiredHosts: []string{"api.example.com", "*.spotify.com"},
-					},
-				},
-			}
-
-			hosts := m.RequiredHTTPHosts()
-			Expect(hosts).To(Equal([]string{"api.example.com", "*.spotify.com"}))
-		})
-	})
-
 	Describe("HasExperimentalThreads", func() {
 		It("returns false when no experimental section", func() {
 			m := &Manifest{}

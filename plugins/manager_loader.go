@@ -268,8 +268,10 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
 
-	if hosts := pkg.Manifest.RequiredHTTPHosts(); len(hosts) > 0 {
-		pluginManifest.AllowedHosts = hosts
+	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
+		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
+			pluginManifest.AllowedHosts = hosts
+		}
 	}
 
 	// Configure filesystem access for library permission
