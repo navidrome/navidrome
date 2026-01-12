@@ -87,14 +87,17 @@ export const InfiniteScrollProvider = ({ children }) => {
     }
   }, [])
 
-  const { data: additionalData, ids: additionalIds, loaded: additionalLoaded } =
-    useGetList(
-      resource,
-      { page: nextPageToFetch || 1, perPage },
-      sort,
-      combinedFilter,
-      { enabled: nextPageToFetch !== null && nextPageToFetch > 1 },
-    )
+  const {
+    data: additionalData,
+    ids: additionalIds,
+    loaded: additionalLoaded,
+  } = useGetList(
+    resource,
+    { page: nextPageToFetch || 1, perPage },
+    sort,
+    combinedFilter,
+    { enabled: nextPageToFetch !== null && nextPageToFetch > 1 },
+  )
 
   const maxLoadedPage = useMemo(() => {
     const additionalPages = Object.keys(additionalPagesData).map(Number)
