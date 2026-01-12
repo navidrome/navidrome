@@ -494,7 +494,7 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 	}
 	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
-			squirrel.Eq{"id": ids},
+			squirrel.Eq{"media_file.id": ids},
 			squirrel.Eq{"missing": false},
 		},
 	})
