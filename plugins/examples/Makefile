@@ -1,7 +1,8 @@
-all: wikimedia coverartarchive crypto-ticker discord-rich-presence subsonicapi-demo
+all: wikimedia coverartarchive critiquebrainz crypto-ticker discord-rich-presence subsonicapi-demo
 
 wikimedia: wikimedia/plugin.wasm
 coverartarchive: coverartarchive/plugin.wasm
+critiquebrainz: critiquebrainz/plugin.wasm
 crypto-ticker: crypto-ticker/plugin.wasm
 discord-rich-presence: discord-rich-presence/plugin.wasm
 subsonicapi-demo: subsonicapi-demo/plugin.wasm
@@ -11,6 +12,9 @@ wikimedia/plugin.wasm: wikimedia/plugin.go
 
 coverartarchive/plugin.wasm: coverartarchive/plugin.go
 	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./coverartarchive
+
+critiquebrainz/plugin.wasm: critiquebrainz/plugin.go
+	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./critiquebrainz
 
 crypto-ticker/plugin.wasm: crypto-ticker/plugin.go
 	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./crypto-ticker
@@ -23,5 +27,5 @@ subsonicapi-demo/plugin.wasm: subsonicapi-demo/plugin.go
 	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./subsonicapi-demo
 
 clean:
-	rm -f wikimedia/plugin.wasm coverartarchive/plugin.wasm crypto-ticker/plugin.wasm \
-		discord-rich-presence/plugin.wasm subsonicapi-demo/plugin.wasm
+	rm -f wikimedia/plugin.wasm coverartarchive/plugin.wasm critiquebrainz/plugin.wasm \
+		crypto-ticker/plugin.wasm discord-rich-presence/plugin.wasm subsonicapi-demo/plugin.wasm
