@@ -12,32 +12,26 @@ import { useHistory, useLocation } from 'react-router-dom'
 
 const InfiniteScrollContext = createContext(null)
 
+const scrollStateCache = new Map()
+
 const getStorageKey = (pathname, filterValues) => {
   const filterKey = JSON.stringify(filterValues || {})
-  return `infiniteScroll:${pathname}:${filterKey}`
+  return `${pathname}:${filterKey}`
 }
 
 const saveScrollState = (pathname, filterValues, pagesLoaded, scrollY) => {
   const key = getStorageKey(pathname, filterValues)
-  sessionStorage.setItem(key, JSON.stringify({ pagesLoaded, scrollY }))
+  scrollStateCache.set(key, { pagesLoaded, scrollY })
 }
 
 const getScrollState = (pathname, filterValues) => {
   const key = getStorageKey(pathname, filterValues)
-  const saved = sessionStorage.getItem(key)
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch {
-      return null
-    }
-  }
-  return null
+  return scrollStateCache.get(key) || null
 }
 
 const clearScrollState = (pathname, filterValues) => {
   const key = getStorageKey(pathname, filterValues)
-  sessionStorage.removeItem(key)
+  scrollStateCache.delete(key)
 }
 
 export const InfiniteScrollProvider = ({ children }) => {

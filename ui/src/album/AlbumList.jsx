@@ -18,7 +18,6 @@ import {
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
-  InfinitePagination,
   InfiniteScrollWrapper,
   List,
   QuickFilter,
@@ -241,7 +240,7 @@ const AlbumList = (props) => {
         perPage={perPage}
         pagination={
           infiniteScrollEnabled ? (
-            <InfinitePagination />
+            false
           ) : (
             <Pagination rowsPerPageOptions={perPageOptions} />
           )
