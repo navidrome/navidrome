@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -61,7 +62,7 @@ func createTestManager(pluginConfig map[string]map[string]string) (*Manager, str
 // and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
 // Returns the manager and temp directory path.
 func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plugins ...string) (*Manager, string) {
-	return createTestManagerWithPluginsAndMetrics(pluginConfig, nil, plugins...)
+	return createTestManagerWithPluginsAndMetrics(pluginConfig, noopMetricsRecorder{}, plugins...)
 }
 
 // createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
@@ -155,3 +156,8 @@ var _ = AfterSuite(func() {
 		_ = os.RemoveAll(tmpPluginsDir)
 	}
 })
+
+// noopMetricsRecorder is a no-op implementation of PluginMetricsRecorder for tests
+type noopMetricsRecorder struct{}
+
+func (noopMetricsRecorder) RecordPluginRequest(context.Context, string, string, bool, int64) {}

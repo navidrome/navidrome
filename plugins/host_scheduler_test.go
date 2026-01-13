@@ -79,6 +79,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			plugins:        make(map[string]*plugin),
 			ds:             dataStore,
 			subsonicRouter: http.NotFoundHandler(),
+			metrics:        noopMetricsRecorder{},
 		}
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())

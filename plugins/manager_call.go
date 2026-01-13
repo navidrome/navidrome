@@ -59,42 +59,35 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 
 	startCall := time.Now()
 	exit, output, err := p.CallWithContext(ctx, funcName, inputBytes)
+	elapsed := time.Since(startCall)
 	if err != nil {
-		elapsed := time.Since(startCall).Milliseconds()
 		// If context was cancelled, return that error instead of the plugin error
 		if ctx.Err() != nil {
-			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall))
+			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
 			return result, ctx.Err()
 		}
-		if plugin.metrics != nil {
-			plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed)
-		}
-		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
 	if exit != 0 {
-		elapsed := time.Since(startCall).Milliseconds()
-		if plugin.metrics != nil {
-			plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed)
-		}
 		if exit == notImplementedCode {
+			plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
 			return result, fmt.Errorf("%w: %s", errNotImplemented, funcName)
 		}
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
 		return result, fmt.Errorf("plugin call exited with code %d", exit)
 	}
 
 	if len(output) > 0 {
 		err = json.Unmarshal(output, &result)
 		if err != nil {
-			log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start), err)
+			log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
 		}
 	}
 
 	// Record metrics for successful calls (or JSON unmarshal failures)
-	if plugin.metrics != nil {
-		elapsed := time.Since(startCall).Milliseconds()
-		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, err == nil, elapsed)
-	}
+	plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, err == nil, elapsed.Milliseconds())
 
 	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
 	return result, err
