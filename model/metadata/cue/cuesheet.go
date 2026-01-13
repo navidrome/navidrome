@@ -17,7 +17,6 @@ import (
 
 const (
 	delims          = "\t\n\r "
-	eol             = "\n"
 	framesPerSecond = 75 // is based on audio CD sectors and 44100 Hz sample rate
 	remGenre        = "GENRE"
 	remComment      = "COMMENT"
@@ -210,6 +209,105 @@ func setTagOrError(value *string, newValue string, err error, noEmpty bool) erro
 	return nil
 }
 
+func readCUERem(cuesheet *Cuesheet, line string) error {
+	if cuesheet.Rem == nil {
+		cuesheet.Rem = RemData{}
+	}
+	key, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("REM command key: %w", err)
+	}
+	trimmedLine := strings.TrimLeft(line, delims)
+	if len(trimmedLine) > 0 && isQuoted(trimmedLine) {
+		value, closed := unquote(trimmedLine)
+		if !closed {
+			return ErrorUnclosedQuote
+		}
+		cuesheet.Rem[key] = value
+	} else {
+		cuesheet.Rem[key] = line
+	}
+	return nil
+}
+
+func readCUECatalog(cuesheet *Cuesheet, line string) error {
+	if len(cuesheet.Catalog) > 0 {
+		return ErrorDuplicateCatalog
+	}
+	if !catalogRegex.MatchString(line) {
+		return ErrorInvalidCatalog
+	}
+	cuesheet.Catalog = line
+	return nil
+}
+
+func readCUECdTextFile(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		log.Warn("Unclosed quote in CDTEXTFILE, using rest of line", "value", value)
+	}
+	return setTagOrError(&cuesheet.CdTextFile, value, ErrorDuplicateCdTextFile, false)
+}
+
+func readCUETitle(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		log.Warn("Unclosed quote in TITLE, using rest of line", "value", value)
+	}
+	err = setTagOrError(&cuesheet.Title, value, ErrorDuplicateTitle, true)
+	if errors.Is(err, ErrorDuplicateTitle) {
+		log.Error(fmt.Sprintf("already has title '%s' / '%s'", cuesheet.Title, line))
+	}
+	return err
+}
+
+func readCUEPerformer(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		log.Warn("Unclosed quote in PERFORMER, using rest of line", "value", value)
+	}
+	return setTagOrError(&cuesheet.Performer, value, ErrorDuplicatePerformer, true)
+}
+
+func readCUESongwriter(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		log.Warn("Unclosed quote in SONGWRITER, using rest of line", "value", value)
+	}
+	return setTagOrError(&cuesheet.SongWriter, value, ErrorDuplicateSongwriter, true)
+}
+
+func readCUEPreGap(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("PREGAP: %w", err)
+	}
+	cuesheet.Pregap, err = frameFromString(value)
+	return err
+}
+
+func readCUEPostGap(cuesheet *Cuesheet, line string) error {
+	value, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("POSTGAP: %w", err)
+	}
+	cuesheet.Postgap, err = frameFromString(value)
+	return err
+}
+
+func readCUEFile(cuesheet *Cuesheet, line string) error {
+	fileName, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("FILE command filename: %w", err)
+	}
+	fileType, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("FILE command type: %w", err)
+	}
+	cuesheet.File = append(cuesheet.File, File{FileName: fileName, FileType: fileType})
+	return nil
+}
+
 func readCUEFields(cuesheet *Cuesheet, line string) error {
 	command, err := readString(&line)
 	if err != nil {
@@ -219,103 +317,26 @@ func readCUEFields(cuesheet *Cuesheet, line string) error {
 
 	switch command {
 	case "REM":
-		if cuesheet.Rem == nil {
-			cuesheet.Rem = RemData{}
-		}
-		key, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("REM command key: %w", err)
-		}
-		trimmedLine := strings.TrimLeft(line, delims)
-		if len(trimmedLine) > 0 && isQuoted(trimmedLine) {
-			value, closed := unquote(trimmedLine)
-			if !closed {
-				return ErrorUnclosedQuote
-			}
-			cuesheet.Rem[key] = value
-		} else {
-			cuesheet.Rem[key] = line
-		}
+		return readCUERem(cuesheet, line)
 	case "CATALOG":
-		if len(cuesheet.Catalog) > 0 {
-			return ErrorDuplicateCatalog
-		}
-		if !catalogRegex.MatchString(line) {
-			return ErrorInvalidCatalog
-		}
-		cuesheet.Catalog = line
+		return readCUECatalog(cuesheet, line)
 	case "CDTEXTFILE":
-		value, err := readString(&line)
-		if err != nil {
-			log.Warn("Unclosed quote in CDTEXTFILE, using rest of line", "value", value)
-		}
-		err = setTagOrError(&cuesheet.CdTextFile, value, ErrorDuplicateCdTextFile, false)
-		if err != nil {
-			return err
-		}
+		return readCUECdTextFile(cuesheet, line)
 	case "TITLE":
-		value, err := readString(&line)
-		if err != nil {
-			log.Warn("Unclosed quote in TITLE, using rest of line", "value", value)
-		}
-		err = setTagOrError(&cuesheet.Title, value, ErrorDuplicateTitle, true)
-		if errors.Is(err, ErrorDuplicateTitle) {
-			log.Error(fmt.Sprintf("already has title '%s' / '%s'", cuesheet.Title, line))
-		}
-		if err != nil {
-			return err
-		}
+		return readCUETitle(cuesheet, line)
 	case "PERFORMER":
-		value, err := readString(&line)
-		if err != nil {
-			log.Warn("Unclosed quote in PERFORMER, using rest of line", "value", value)
-		}
-		err = setTagOrError(&cuesheet.Performer, value, ErrorDuplicatePerformer, true)
-		if err != nil {
-			return err
-		}
+		return readCUEPerformer(cuesheet, line)
 	case "SONGWRITER":
-		value, err := readString(&line)
-		if err != nil {
-			log.Warn("Unclosed quote in SONGWRITER, using rest of line", "value", value)
-		}
-		err = setTagOrError(&cuesheet.SongWriter, value, ErrorDuplicateSongwriter, true)
-		if err != nil {
-			return err
-		}
+		return readCUESongwriter(cuesheet, line)
 	case "PREGAP":
-		value, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("PREGAP: %w", err)
-		}
-		cuesheet.Pregap, err = frameFromString(value)
-		if err != nil {
-			return err
-		}
+		return readCUEPreGap(cuesheet, line)
 	case "POSTGAP":
-		value, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("POSTGAP: %w", err)
-		}
-		cuesheet.Postgap, err = frameFromString(value)
-		if err != nil {
-			return err
-		}
+		return readCUEPostGap(cuesheet, line)
 	case "FILE":
-		fileName, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("FILE command filename: %w", err)
-		}
-		fileType, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("FILE command type: %w", err)
-		}
-		cuesheet.File = append(cuesheet.File, File{FileName: fileName, FileType: fileType})
-		return nil
+		return readCUEFile(cuesheet, line)
 	default:
+		return nil
 	}
-
-	return nil
 }
 
 func readFileFields(file *File, line string) (bool, error) {
@@ -346,7 +367,129 @@ func readFileFields(file *File, line string) (bool, error) {
 	return false, nil
 }
 
-func readTrackFields(track *Track, line string) (err error) {
+func parseFlag(flag string) Flags {
+	switch flag {
+	case "DCP":
+		return Dcp
+	case "4CH":
+		return FourCh
+	case "PRE":
+		return Pre
+	case "SCMS":
+		return Scms
+	default:
+		return None
+	}
+}
+
+func readTrackFlags(track *Track, line string) error {
+	if track.Flags != None {
+		return ErrorDuplicateTrackFlags
+	}
+	track.Flags = None
+	for len(line) > 0 {
+		flag, err := readString(&line)
+		if err != nil {
+			log.Warn("Unclosed quote in FLAGS, using rest of line", "value", flag)
+			if flag != "" {
+				track.Flags |= parseFlag(flag)
+			}
+			break
+		}
+		track.Flags |= parseFlag(flag)
+	}
+	return nil
+}
+
+func readTrackISRC(track *Track, line string) error {
+	if len(track.ISRC) > 0 {
+		return ErrorDuplicateTrackISRC
+	}
+	if !isrcRegex.MatchString(line) {
+		return ErrorInvalidISRC
+	}
+	track.ISRC = line
+	return nil
+}
+
+func readTrackStringField(value *string, line string, duplicateErr error, fieldName string) error {
+	v, closed := unquote(line)
+	if !closed {
+		log.Warn(fmt.Sprintf("Unclosed quote in track %s, using rest of line", fieldName), "value", v)
+	}
+	return setTagOrError(value, v, duplicateErr, true)
+}
+
+func readTrackPreGap(track *Track, line string) error {
+	if track.PreGap > 0 {
+		return ErrorDuplicateTrackPreGap
+	}
+	value, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("PREGAP: %w", err)
+	}
+	track.PreGap, err = frameFromString(value)
+	return err
+}
+
+func readTrackPostGap(track *Track, line string) error {
+	if track.PostGap > 0 {
+		return ErrorDuplicateTrackPostGap
+	}
+	value, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("POSTGAP: %w", err)
+	}
+	track.PostGap, err = frameFromString(value)
+	return err
+}
+
+func readTrackIndex(track *Track, line string) error {
+	index := TrackIndex{}
+	var err error
+	index.Number, err = readUint(&line)
+	if err != nil {
+		return fmt.Errorf("INDEX number: %w", err)
+	}
+	value, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("INDEX frame: %w", err)
+	}
+	index.Frame, err = frameFromString(value)
+	if err != nil {
+		return err
+	}
+	if len(track.Index) == 0 && index.Number > 1 {
+		return ErrorIndexOutOfOrder
+	} else if len(track.Index) > 0 && track.Index[len(track.Index)-1].Number != index.Number-1 {
+		return ErrorIndexOutOfOrder
+	}
+	track.Index = append(track.Index, index)
+	return nil
+}
+
+func readTrackRem(track *Track, line string) error {
+	if track.Rem == nil {
+		track.Rem = RemData{}
+	}
+	key, err := readString(&line)
+	if err != nil {
+		return fmt.Errorf("REM command key: %w", err)
+	}
+	trimmedLine := strings.TrimLeft(line, delims)
+	if len(trimmedLine) > 0 && isQuoted(trimmedLine) {
+		value, closed := unquote(trimmedLine)
+		if !closed {
+			return ErrorUnclosedQuote
+		}
+		track.Rem[key] = value
+	} else {
+		track.Rem[key] = line
+	}
+	return nil
+}
+
+func readTrackFields(track *Track, line string) error {
 	command, err := readString(&line)
 	if err != nil {
 		return fmt.Errorf("reading command: %w", err)
@@ -355,133 +498,26 @@ func readTrackFields(track *Track, line string) (err error) {
 
 	switch command {
 	case "FLAGS":
-		if track.Flags != None {
-			return ErrorDuplicateTrackFlags
-		}
-		track.Flags = None
-		for len(line) > 0 {
-			flag, err := readString(&line)
-			if err != nil {
-				log.Warn("Unclosed quote in FLAGS, using rest of line", "value", flag)
-				if flag != "" {
-					switch flag {
-					case "DCP":
-						track.Flags |= Dcp
-					case "4CH":
-						track.Flags |= FourCh
-					case "PRE":
-						track.Flags |= Pre
-					case "SCMS":
-						track.Flags |= Scms
-					}
-				}
-				break
-			}
-			switch flag {
-			case "DCP":
-				track.Flags |= Dcp
-			case "4CH":
-				track.Flags |= FourCh
-			case "PRE":
-				track.Flags |= Pre
-			case "SCMS":
-				track.Flags |= Scms
-			default:
-			}
-		}
+		return readTrackFlags(track, line)
 	case "ISRC":
-		if len(track.ISRC) > 0 {
-			err = ErrorDuplicateTrackISRC
-			break
-		}
-		if !isrcRegex.MatchString(line) {
-			err = ErrorInvalidISRC
-			break
-		}
-		track.ISRC = line
+		return readTrackISRC(track, line)
 	case "TITLE":
-		value, closed := unquote(line)
-		if !closed {
-			log.Warn("Unclosed quote in track TITLE, using rest of line", "value", value)
-		}
-		err = setTagOrError(&track.Title, value, ErrorDuplicateTrackTitle, true)
+		return readTrackStringField(&track.Title, line, ErrorDuplicateTrackTitle, "TITLE")
 	case "PERFORMER":
-		value, closed := unquote(line)
-		if !closed {
-			log.Warn("Unclosed quote in track PERFORMER, using rest of line", "value", value)
-		}
-		err = setTagOrError(&track.Performer, value, ErrorDuplicateTrackPerformer, true)
+		return readTrackStringField(&track.Performer, line, ErrorDuplicateTrackPerformer, "PERFORMER")
 	case "SONGWRITER":
-		value, closed := unquote(line)
-		if !closed {
-			log.Warn("Unclosed quote in track SONGWRITER, using rest of line", "value", value)
-		}
-		err = setTagOrError(&track.SongWriter, value, ErrorDuplicateTrackSongwriter, true)
+		return readTrackStringField(&track.SongWriter, line, ErrorDuplicateTrackSongwriter, "SONGWRITER")
 	case "PREGAP":
-		if track.PreGap > 0 {
-			err = ErrorDuplicateTrackPreGap
-			break
-		}
-		value, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("PREGAP: %w", err)
-		}
-		track.PreGap, err = frameFromString(value)
+		return readTrackPreGap(track, line)
 	case "POSTGAP":
-		if track.PostGap > 0 {
-			err = ErrorDuplicateTrackPostGap
-			break
-		}
-		value, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("POSTGAP: %w", err)
-		}
-		track.PostGap, err = frameFromString(value)
-		if err != nil {
-			break
-		}
+		return readTrackPostGap(track, line)
 	case "INDEX":
-		index := TrackIndex{}
-		index.Number, err = readUint(&line)
-		if err != nil {
-			return fmt.Errorf("INDEX number: %w", err)
-		}
-		value, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("INDEX frame: %w", err)
-		}
-		index.Frame, err = frameFromString(value)
-		if err != nil {
-			return err
-		}
-		if len(track.Index) == 0 && index.Number > 1 {
-			return ErrorIndexOutOfOrder
-		} else if len(track.Index) > 0 && track.Index[len(track.Index)-1].Number != index.Number-1 {
-			return ErrorIndexOutOfOrder
-		}
-		track.Index = append(track.Index, index)
+		return readTrackIndex(track, line)
 	case "REM":
-		if track.Rem == nil {
-			track.Rem = RemData{}
-		}
-		key, err := readString(&line)
-		if err != nil {
-			return fmt.Errorf("REM command key: %w", err)
-		}
-		trimmedLine := strings.TrimLeft(line, delims)
-		if len(trimmedLine) > 0 && isQuoted(trimmedLine) {
-			value, closed := unquote(trimmedLine)
-			if !closed {
-				return ErrorUnclosedQuote
-			}
-			track.Rem[key] = value
-		} else {
-			track.Rem[key] = line
-		}
+		return readTrackRem(track, line)
 	default:
+		return nil
 	}
-
-	return err
 }
 
 // ReadCue loads and parses CUESHEET from reader
@@ -563,183 +599,6 @@ func ReadCue(r io.Reader) (*Cuesheet, error) {
 	return cuesheet, nil
 }
 
-// WriteCue writes CUESHEET to writer
-//
-//gocyclo:ignore
-func WriteCue(w io.Writer, cuesheet *Cuesheet) error {
-	ws := bufio.NewWriter(w)
-	for k := range cuesheet.Rem {
-		_, err := ws.WriteString("REM " + k + " " + cuesheet.Rem[k] + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(cuesheet.Catalog) > 0 {
-		_, err := ws.WriteString("CATALOG " + cuesheet.Catalog + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(cuesheet.CdTextFile) > 0 {
-		_, err := ws.WriteString("CDTEXTFILE " + formatString(cuesheet.CdTextFile) + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(cuesheet.Title) > 0 {
-		_, err := ws.WriteString("TITLE " + formatString(cuesheet.Title) + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(cuesheet.Performer) > 0 {
-		_, err := ws.WriteString("PERFORMER " + formatString(cuesheet.Performer) + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(cuesheet.SongWriter) > 0 {
-		_, err := ws.WriteString("SONGWRITER " + formatString(cuesheet.SongWriter) + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if cuesheet.Pregap > 0 {
-		_, err := ws.WriteString("PREGAP " + cuesheet.Pregap.String() + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	if cuesheet.Postgap > 0 {
-		_, err := ws.WriteString("POSTGAP " + cuesheet.Postgap.String() + eol)
-		if err != nil {
-			return err
-		}
-	}
-
-	for i := 0; i < len(cuesheet.File); i++ {
-		file := &cuesheet.File[i]
-		_, err := ws.WriteString("FILE " + formatString(file.FileName) +
-			" " + file.FileType + eol)
-		if err != nil {
-			return err
-		}
-
-		for i := 0; i < len(file.Tracks); i++ {
-			track := &file.Tracks[i]
-
-			_, err := ws.WriteString("  TRACK " + formatTrackNumber(track.TrackNumber) +
-				" " + track.TrackDataType + eol)
-			if err != nil {
-				return err
-			}
-
-			if track.Flags != None {
-				_, err := ws.WriteString("    FLAGS")
-				if err != nil {
-					return err
-				}
-				if (track.Flags & Dcp) != 0 {
-					_, err := ws.WriteString(" DCP")
-					if err != nil {
-						return err
-					}
-				}
-				if (track.Flags & FourCh) != 0 {
-					_, err := ws.WriteString(" 4CH")
-					if err != nil {
-						return err
-					}
-				}
-				if (track.Flags & Pre) != 0 {
-					_, err := ws.WriteString(" PRE")
-					if err != nil {
-						return err
-					}
-				}
-				if (track.Flags & Scms) != 0 {
-					_, err := ws.WriteString(" SCMS")
-					if err != nil {
-						return err
-					}
-				}
-				if _, err := ws.WriteString(eol); err != nil {
-					return err
-				}
-			}
-
-			if len(track.ISRC) > 0 {
-				_, err := ws.WriteString("    ISRC " + track.ISRC + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if len(track.Title) > 0 {
-				_, err := ws.WriteString("    TITLE " + formatString(track.Title) + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if len(track.Performer) > 0 {
-				_, err := ws.WriteString("    PERFORMER " + formatString(track.Performer) + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if len(track.SongWriter) > 0 {
-				_, err := ws.WriteString("    SONGWRITER " + formatString(track.SongWriter) + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if track.PreGap > 0 {
-				_, err := ws.WriteString("    PREGAP " + track.PreGap.String() + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if track.PostGap > 0 {
-				_, err := ws.WriteString("    POSTGAP " + track.PostGap.String() + eol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if track.Rem != nil {
-				for k := range track.Rem {
-					_, err := ws.WriteString("    REM " + k + " " + track.Rem[k] + eol)
-					if err != nil {
-						return err
-					}
-				}
-			}
-
-			for i := 0; i < len(track.Index); i++ {
-				index := &track.Index[i]
-				_, err := ws.WriteString("    INDEX " + formatTrackNumber(index.Number) +
-					" " + index.Frame.String() + eol)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return ws.Flush()
-}
-
 func readString(s *string) (string, error) {
 	*s = strings.TrimLeft(*s, delims)
 
@@ -775,35 +634,11 @@ func readUint(s *string) (uint, error) {
 	return uint(n), nil
 }
 
-func formatString(s string) string {
-	return quote(s, '"')
-}
-
-func formatTrackNumber(n uint) string {
-	return leftPad(strconv.FormatUint(uint64(n), 10), "0", 2)
-}
-
 func isQuoted(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
 	return s[0] == '"' || s[0] == '\''
-}
-
-func quote(s string, quote byte) string {
-	buf := make([]byte, 0, 3*len(s)/2)
-	buf = append(buf, quote)
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == quote || c == '\\' {
-			buf = append(buf, '\\')
-			buf = append(buf, c)
-		} else {
-			buf = append(buf, c)
-		}
-	}
-	buf = append(buf, quote)
-	return string(buf)
 }
 
 func unquote(s string) (string, bool) {
@@ -822,12 +657,6 @@ func unquote(s string) (string, bool) {
 		}
 	}
 	return s[1:], false
-}
-
-func leftPad(s, padStr string, overallLen int) string {
-	padCountInt := 1 + ((overallLen - len(padStr)) / len(padStr))
-	var retStr = strings.Repeat(padStr, padCountInt) + s
-	return retStr[(len(retStr) - overallLen):]
 }
 
 func (rem *RemData) DiscNumber() int {
