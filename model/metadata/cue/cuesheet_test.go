@@ -255,6 +255,80 @@ func TestCueReader(t *testing.T) {
 			inputFile: "invalid.binary",
 			error:     ErrorParseCUE,
 		},
+		// Recoverable errors
+		{
+			inputFile: "parser-unclosed-quote-performer.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, "Pink Floyd", output.Performer)
+				assert.Equal(t, "The Dark Side of the Moon", output.Title)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-title.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, "Greatest Hits", output.Title)
+				assert.Equal(t, "Various Artists", output.Performer)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-songwriter.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, "John Lennon", output.SongWriter)
+				assert.Equal(t, "Artist Name", output.Performer)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-track-title.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, 1, len(output.File[0].Tracks))
+				assert.Equal(t, "Song Title Without Closing Quote", output.File[0].Tracks[0].Title)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-track-performer.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, 1, len(output.File[0].Tracks))
+				assert.Equal(t, "Track Artist", output.File[0].Tracks[0].Performer)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-track-songwriter.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, 1, len(output.File[0].Tracks))
+				assert.Equal(t, "Paul McCartney", output.File[0].Tracks[0].SongWriter)
+			},
+		},
+		{
+			inputFile: "parser-unclosed-quote-cdtextfile.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, "cdtext.cdt", output.CdTextFile)
+				assert.Equal(t, "Artist", output.Performer)
+			},
+		},
+		// Unrecoverable errors
+		{
+			inputFile: "parser-unclosed-quote-file.cue",
+			error:     ErrorUnclosedQuote,
+		},
+		{
+			inputFile: "parser-unclosed-quote-file-type.cue",
+			error:     ErrorUnclosedQuote,
+		},
+		{
+			inputFile: "parser-unclosed-quote-rem-key.cue",
+			error:     ErrorUnclosedQuote,
+		},
+		{
+			inputFile: "parser-unclosed-quote-rem-value.cue",
+			error:     ErrorUnclosedQuote,
+		},
+		// Special cases
+		{
+			inputFile: "parser-unclosed-quote-escaped-end.cue",
+			check: func(output *Cuesheet) {
+				assert.Equal(t, `Artist Name\"`, output.Performer)
+			},
+		},
 	}
 
 	for _, test := range tests {
