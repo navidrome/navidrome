@@ -104,7 +104,6 @@ var _ = Describe("MediaFiles", func() {
 				})
 			})
 
-
 			When("we have multiple songs with different dates", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
