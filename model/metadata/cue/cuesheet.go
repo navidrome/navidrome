@@ -84,7 +84,7 @@ var (
 )
 
 var (
-	catalogRegex = regexp.MustCompile(`^0\d{12}$`)
+	catalogRegex = regexp.MustCompile(`^\d{13}$`)
 	isrcRegex    = regexp.MustCompile(`^[\da-zA-Z]{12}$`)
 	cueRegex     = regexp.MustCompile(`^\S+( )+\S+.+`)
 )
