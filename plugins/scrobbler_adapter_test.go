@@ -117,6 +117,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				Duration:    180,
 				TrackNumber: 1,
 				DiscNumber:  1,
+				Participants: model.Participants{
+					model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
+					model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
+				},
 			}
 
 			err := s.NowPlaying(ctxWithUser(), "user-1", track, 30)
@@ -150,6 +154,10 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 					Duration:    180,
 					TrackNumber: 1,
 					DiscNumber:  1,
+					Participants: model.Participants{
+						model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
+						model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
+					},
 				},
 				TimeStamp: time.Now(),
 			}

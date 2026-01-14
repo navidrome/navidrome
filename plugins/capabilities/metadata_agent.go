@@ -90,16 +90,6 @@ type SimilarArtistsRequest struct {
 	Limit int32 `json:"limit"`
 }
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
-
 // SimilarArtistsResponse is the response for GetSimilarArtists.
 type SimilarArtistsResponse struct {
 	// Artists is the list of similar artists.

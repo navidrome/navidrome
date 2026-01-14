@@ -12,6 +12,20 @@ pub const SCROBBLER_ERROR_NOT_AUTHORIZED: ScrobblerError = "scrobbler(not_author
 pub const SCROBBLER_ERROR_RETRY_LATER: ScrobblerError = "scrobbler(retry_later)";
 /// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
 pub const SCROBBLER_ERROR_UNRECOVERABLE: ScrobblerError = "scrobbler(unrecoverable)";
+/// ArtistRef is a reference to an artist with name and optional MBID.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistRef {
+    /// ID is the internal Navidrome artist ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
+    /// Name is the artist name.
+    #[serde(default)]
+    pub name: String,
+    /// MBID is the MusicBrainz ID for the artist.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mbid: String,
+}
 /// IsAuthorizedRequest is the request for authorization check.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,12 +75,18 @@ pub struct TrackInfo {
     /// Album is the album name.
     #[serde(default)]
     pub album: String,
-    /// Artist is the track artist.
+    /// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
     #[serde(default)]
     pub artist: String,
-    /// AlbumArtist is the album artist.
+    /// AlbumArtist is the formatted album artist name for display.
     #[serde(default)]
     pub album_artist: String,
+    /// Artists is the list of track artists.
+    #[serde(default)]
+    pub artists: Vec<ArtistRef>,
+    /// AlbumArtists is the list of album artists.
+    #[serde(default)]
+    pub album_artists: Vec<ArtistRef>,
     /// Duration is the track duration in seconds.
     #[serde(default)]
     pub duration: f32,
@@ -82,15 +102,9 @@ pub struct TrackInfo {
     /// MBZAlbumID is the MusicBrainz album/release ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbz_album_id: String,
-    /// MBZArtistID is the MusicBrainz artist ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_artist_id: String,
     /// MBZReleaseGroupID is the MusicBrainz release group ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbz_release_group_id: String,
-    /// MBZAlbumArtistID is the MusicBrainz album artist ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_album_artist_id: String,
     /// MBZReleaseTrackID is the MusicBrainz release track ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbz_release_track_id: String,

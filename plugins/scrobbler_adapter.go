@@ -117,16 +117,29 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 		Album:             mf.Album,
 		Artist:            mf.Artist,
 		AlbumArtist:       mf.AlbumArtist,
+		Artists:           participantsToArtistRefs(mf.Participants[model.RoleArtist]),
+		AlbumArtists:      participantsToArtistRefs(mf.Participants[model.RoleAlbumArtist]),
 		Duration:          mf.Duration,
 		TrackNumber:       int32(mf.TrackNumber),
 		DiscNumber:        int32(mf.DiscNumber),
 		MBZRecordingID:    mf.MbzRecordingID,
 		MBZAlbumID:        mf.MbzAlbumID,
-		MBZArtistID:       mf.MbzArtistID,
 		MBZReleaseGroupID: mf.MbzReleaseGroupID,
-		MBZAlbumArtistID:  mf.MbzAlbumArtistID,
 		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
+}
+
+// participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef
+func participantsToArtistRefs(participants model.ParticipantList) []capabilities.ArtistRef {
+	refs := make([]capabilities.ArtistRef, len(participants))
+	for i, p := range participants {
+		refs[i] = capabilities.ArtistRef{
+			ID:   p.ID,
+			Name: p.Name,
+			MBID: p.MbzArtistID,
+		}
+	}
+	return refs
 }
 
 // mapScrobblerError converts plugin errors to scrobbler errors based on error message, as errors are returned as

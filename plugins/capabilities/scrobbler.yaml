@@ -20,6 +20,20 @@ exports:
             contentType: application/json
 components:
     schemas:
+        ArtistRef:
+            description: ArtistRef is a reference to an artist with name and optional MBID.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
             properties:
@@ -76,10 +90,20 @@ components:
                     description: Album is the album name.
                 artist:
                     type: string
-                    description: Artist is the track artist.
+                    description: Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
                 albumArtist:
                     type: string
-                    description: AlbumArtist is the album artist.
+                    description: AlbumArtist is the formatted album artist name for display.
+                artists:
+                    type: array
+                    description: Artists is the list of track artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                albumArtists:
+                    type: array
+                    description: AlbumArtists is the list of album artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
                 duration:
                     type: number
                     format: float
@@ -98,15 +122,9 @@ components:
                 mbzAlbumId:
                     type: string
                     description: MBZAlbumID is the MusicBrainz album/release ID.
-                mbzArtistId:
-                    type: string
-                    description: MBZArtistID is the MusicBrainz artist ID.
                 mbzReleaseGroupId:
                     type: string
                     description: MBZReleaseGroupID is the MusicBrainz release group ID.
-                mbzAlbumArtistId:
-                    type: string
-                    description: MBZAlbumArtistID is the MusicBrainz album artist ID.
                 mbzReleaseTrackId:
                     type: string
                     description: MBZReleaseTrackID is the MusicBrainz release track ID.
@@ -116,6 +134,8 @@ components:
                 - album
                 - artist
                 - albumArtist
+                - artists
+                - albumArtists
                 - duration
                 - trackNumber
                 - discNumber

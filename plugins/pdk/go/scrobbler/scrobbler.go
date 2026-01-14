@@ -26,6 +26,16 @@ const (
 // Error implements the error interface for ScrobblerError.
 func (e ScrobblerError) Error() string { return string(e) }
 
+// ArtistRef is a reference to an artist with name and optional MBID.
+type ArtistRef struct {
+	// ID is the internal Navidrome artist ID (if known).
+	ID string `json:"id,omitempty"`
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz ID for the artist.
+	MBID string `json:"mbid,omitempty"`
+}
+
 // IsAuthorizedRequest is the request for authorization check.
 type IsAuthorizedRequest struct {
 	// Username is the username of the user.
@@ -60,10 +70,14 @@ type TrackInfo struct {
 	Title string `json:"title"`
 	// Album is the album name.
 	Album string `json:"album"`
-	// Artist is the track artist.
+	// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
 	Artist string `json:"artist"`
-	// AlbumArtist is the album artist.
+	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`
+	// Artists is the list of track artists.
+	Artists []ArtistRef `json:"artists"`
+	// AlbumArtists is the list of album artists.
+	AlbumArtists []ArtistRef `json:"albumArtists"`
 	// Duration is the track duration in seconds.
 	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.
@@ -74,12 +88,8 @@ type TrackInfo struct {
 	MBZRecordingID string `json:"mbzRecordingId,omitempty"`
 	// MBZAlbumID is the MusicBrainz album/release ID.
 	MBZAlbumID string `json:"mbzAlbumId,omitempty"`
-	// MBZArtistID is the MusicBrainz artist ID.
-	MBZArtistID string `json:"mbzArtistId,omitempty"`
 	// MBZReleaseGroupID is the MusicBrainz release group ID.
 	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
-	// MBZAlbumArtistID is the MusicBrainz album artist ID.
-	MBZAlbumArtistID string `json:"mbzAlbumArtistId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
 }

@@ -29,7 +29,11 @@ func (t *testScrobbler) NowPlaying(input scrobbler.NowPlayingRequest) error {
 	}
 
 	// Log the now playing (for potential debugging)
-	pdk.Log(pdk.LogInfo, "NowPlaying: "+input.Track.Title+" by "+input.Track.Artist)
+	artistName := ""
+	if len(input.Track.Artists) > 0 {
+		artistName = input.Track.Artists[0].Name
+	}
+	pdk.Log(pdk.LogInfo, "NowPlaying: "+input.Track.Title+" by "+artistName)
 	return nil
 }
 
@@ -41,7 +45,11 @@ func (t *testScrobbler) Scrobble(input scrobbler.ScrobbleRequest) error {
 	}
 
 	// Log the scrobble (for potential debugging)
-	pdk.Log(pdk.LogInfo, "Scrobble: "+input.Track.Title+" by "+input.Track.Artist)
+	artistName := ""
+	if len(input.Track.Artists) > 0 {
+		artistName = input.Track.Artists[0].Name
+	}
+	pdk.Log(pdk.LogInfo, "Scrobble: "+input.Track.Title+" by "+artistName)
 	return nil
 }
 

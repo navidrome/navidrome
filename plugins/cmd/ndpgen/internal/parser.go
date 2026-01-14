@@ -64,9 +64,14 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 		return nil, fmt.Errorf("reading directory: %w", err)
 	}
 
-	var capabilities []Capability
 	fset := token.NewFileSet()
 
+	// First pass: collect all structs and type aliases from all files in the package
+	sharedStructMap := make(map[string]StructDef)
+	sharedAliasMap := make(map[string]TypeAlias)
+	var allConstGroups []ConstGroup
+
+	var goFiles []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
 			continue
@@ -77,11 +82,29 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 			entry.Name() == "doc.go" {
 			continue
 		}
+		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
+	}
 
-		path := filepath.Join(dir, entry.Name())
-		parsed, err := parseCapabilityFile(fset, path)
+	for _, path := range goFiles {
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
+			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
+		}
+		for _, s := range parseStructs(f) {
+			sharedStructMap[s.Name] = s
+		}
+		for _, a := range parseTypeAliases(f) {
+			sharedAliasMap[a.Name] = a
+		}
+		allConstGroups = append(allConstGroups, parseConstGroups(f)...)
+	}
+
+	// Second pass: parse capabilities using the shared type maps
+	var capabilities []Capability
+	for _, path := range goFiles {
+		parsed, err := parseCapabilityFile(fset, path, sharedStructMap, sharedAliasMap, allConstGroups)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
 		}
 		capabilities = append(capabilities, parsed...)
 	}
@@ -90,26 +113,11 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 }
 
 // parseCapabilityFile parses a single Go source file and extracts capabilities.
-func parseCapabilityFile(fset *token.FileSet, path string) ([]Capability, error) {
+func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup) ([]Capability, error) {
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
-
-	// First pass: collect all struct definitions in the file
-	allStructs := parseStructs(f)
-	structMap := make(map[string]StructDef)
-	for _, s := range allStructs {
-		structMap[s.Name] = s
-	}
-
-	// Collect type aliases and consts
-	allTypeAliases := parseTypeAliases(f)
-	aliasMap := make(map[string]TypeAlias)
-	for _, a := range allTypeAliases {
-		aliasMap[a.Name] = a
-	}
-	allConstGroups := parseConstGroups(f)
 
 	var capabilities []Capability
 
