@@ -106,6 +106,8 @@ export const ConfigCard = ({
                       fullWidth
                       size="small"
                       variant="outlined"
+                      multiline
+                      minRows={1}
                       value={pair.value}
                       onChange={(e) => handleValueChange(index, e.target.value)}
                       placeholder={translate(
@@ -113,6 +115,9 @@ export const ConfigCard = ({
                       )}
                       InputProps={{
                         className: classes.configTableInput,
+                      }}
+                      inputProps={{
+                        style: { resize: 'vertical' },
                       }}
                     />
                   </TableCell>
