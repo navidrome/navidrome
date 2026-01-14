@@ -19,49 +19,47 @@ struct ConfigGetResponse {
     value: String,
     #[serde(default)]
     exists: bool,
+    #[serde(default)]
+    error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ConfigGetIntRequest {
+struct ConfigSetRequest {
+    key: String,
+    value: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConfigSetResponse {
+    #[serde(default)]
+    error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConfigHasRequest {
     key: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ConfigGetIntResponse {
-    #[serde(default)]
-    value: i64,
+struct ConfigHasResponse {
     #[serde(default)]
     exists: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ConfigKeysRequest {
-    prefix: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ConfigKeysResponse {
     #[serde(default)]
-    keys: Vec<String>,
+    error: Option<String>,
 }
 
 #[host_fn]
 extern "ExtismHost" {
     fn config_get(input: Json<ConfigGetRequest>) -> Json<ConfigGetResponse>;
-    fn config_getint(input: Json<ConfigGetIntRequest>) -> Json<ConfigGetIntResponse>;
-    fn config_keys(input: Json<ConfigKeysRequest>) -> Json<ConfigKeysResponse>;
+    fn config_set(input: Json<ConfigSetRequest>) -> Json<ConfigSetResponse>;
+    fn config_has(input: Json<ConfigHasRequest>) -> Json<ConfigHasResponse>;
 }
 
-/// Get retrieves a configuration value as a string.
-/// 
-/// Parameters:
-///   - key: The configuration key
-/// 
-/// Returns the value and whether the key exists.
+/// Calls the config_get host function.
 ///
 /// # Arguments
 /// * `key` - String parameter.
@@ -78,6 +76,10 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
         }))?
     };
 
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
     if response.0.exists {
         Ok(Some(response.0.value))
     } else {
@@ -85,57 +87,49 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
     }
 }
 
-/// GetInt retrieves a configuration value as an integer.
-/// 
-/// Parameters:
-///   - key: The configuration key
-/// 
-/// Returns the value and whether the key exists. If the key exists but the
-/// value cannot be parsed as an integer, exists will be false.
+/// Calls the config_set host function.
+///
+/// # Arguments
+/// * `key` - String parameter.
+/// * `value` - String parameter.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn set(key: &str, value: &str) -> Result<(), Error> {
+    let response = unsafe {
+        config_set(Json(ConfigSetRequest {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(())
+}
+
+/// Calls the config_has host function.
 ///
 /// # Arguments
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// `Some(value)` if found, `None` otherwise.
+/// The exists value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
+pub fn has(key: &str) -> Result<bool, Error> {
     let response = unsafe {
-        config_getint(Json(ConfigGetIntRequest {
+        config_has(Json(ConfigHasRequest {
             key: key.to_owned(),
         }))?
     };
 
-    if response.0.exists {
-        Ok(Some(response.0.value))
-    } else {
-        Ok(None)
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
     }
-}
 
-/// Keys returns configuration keys matching the given prefix.
-/// 
-/// Parameters:
-///   - prefix: Key prefix to filter by. If empty, returns all keys.
-/// 
-/// Returns a sorted slice of matching configuration keys.
-///
-/// # Arguments
-/// * `prefix` - String parameter.
-///
-/// # Returns
-/// The keys value.
-///
-/// # Errors
-/// Returns an error if the host function call fails.
-pub fn keys(prefix: &str) -> Result<Vec<String>, Error> {
-    let response = unsafe {
-        config_keys(Json(ConfigKeysRequest {
-            prefix: prefix.to_owned(),
-        }))?
-    };
-
-    Ok(response.0.keys)
+    Ok(response.0.exists)
 }

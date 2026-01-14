@@ -279,6 +279,9 @@ type ServiceB interface {
 
 			Entry("bytes",
 				"codec_service.go.txt", "codec_client_expected.go.txt", "codec_client_expected.py", "codec_client_expected.rs"),
+
+			Entry("option pattern (value, exists bool)",
+				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.py", "config_client_expected.rs"),
 		)
 
 		It("generates compilable client code for comprehensive service", func() {

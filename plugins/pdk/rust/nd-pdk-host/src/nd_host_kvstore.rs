@@ -139,11 +139,11 @@ pub fn set(key: &str, value: Vec<u8>) -> Result<(), Error> {
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// A tuple of (value, exists).
+/// `Some(value)` if found, `None` otherwise.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get(key: &str) -> Result<(Vec<u8>, bool), Error> {
+pub fn get(key: &str) -> Result<Option<Vec<u8>>, Error> {
     let response = unsafe {
         kvstore_get(Json(KVStoreGetRequest {
             key: key.to_owned(),
@@ -154,7 +154,11 @@ pub fn get(key: &str) -> Result<(Vec<u8>, bool), Error> {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.value, response.0.exists))
+    if response.0.exists {
+        Ok(Some(response.0.value))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Delete removes a value from storage.

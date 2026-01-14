@@ -220,11 +220,11 @@ pub fn set_string(key: &str, value: &str, ttl_seconds: i64) -> Result<(), Error>
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// A tuple of (value, exists).
+/// `Some(value)` if found, `None` otherwise.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_string(key: &str) -> Result<(String, bool), Error> {
+pub fn get_string(key: &str) -> Result<Option<String>, Error> {
     let response = unsafe {
         cache_getstring(Json(CacheGetStringRequest {
             key: key.to_owned(),
@@ -235,7 +235,11 @@ pub fn get_string(key: &str) -> Result<(String, bool), Error> {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.value, response.0.exists))
+    if response.0.exists {
+        Ok(Some(response.0.value))
+    } else {
+        Ok(None)
+    }
 }
 
 /// SetInt stores an integer value in the cache.
@@ -282,11 +286,11 @@ pub fn set_int(key: &str, value: i64, ttl_seconds: i64) -> Result<(), Error> {
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// A tuple of (value, exists).
+/// `Some(value)` if found, `None` otherwise.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_int(key: &str) -> Result<(i64, bool), Error> {
+pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
     let response = unsafe {
         cache_getint(Json(CacheGetIntRequest {
             key: key.to_owned(),
@@ -297,7 +301,11 @@ pub fn get_int(key: &str) -> Result<(i64, bool), Error> {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.value, response.0.exists))
+    if response.0.exists {
+        Ok(Some(response.0.value))
+    } else {
+        Ok(None)
+    }
 }
 
 /// SetFloat stores a float value in the cache.
@@ -344,11 +352,11 @@ pub fn set_float(key: &str, value: f64, ttl_seconds: i64) -> Result<(), Error> {
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// A tuple of (value, exists).
+/// `Some(value)` if found, `None` otherwise.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_float(key: &str) -> Result<(f64, bool), Error> {
+pub fn get_float(key: &str) -> Result<Option<f64>, Error> {
     let response = unsafe {
         cache_getfloat(Json(CacheGetFloatRequest {
             key: key.to_owned(),
@@ -359,7 +367,11 @@ pub fn get_float(key: &str) -> Result<(f64, bool), Error> {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.value, response.0.exists))
+    if response.0.exists {
+        Ok(Some(response.0.value))
+    } else {
+        Ok(None)
+    }
 }
 
 /// SetBytes stores a byte slice in the cache.
@@ -406,11 +418,11 @@ pub fn set_bytes(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), Erro
 /// * `key` - String parameter.
 ///
 /// # Returns
-/// A tuple of (value, exists).
+/// `Some(value)` if found, `None` otherwise.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_bytes(key: &str) -> Result<(Vec<u8>, bool), Error> {
+pub fn get_bytes(key: &str) -> Result<Option<Vec<u8>>, Error> {
     let response = unsafe {
         cache_getbytes(Json(CacheGetBytesRequest {
             key: key.to_owned(),
@@ -421,7 +433,11 @@ pub fn get_bytes(key: &str) -> Result<(Vec<u8>, bool), Error> {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.value, response.0.exists))
+    if response.0.exists {
+        Ok(Some(response.0.value))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Has checks if a key exists in the cache.

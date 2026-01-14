@@ -315,6 +315,109 @@ var _ = Describe("Generator", func() {
 		})
 	})
 
+	Describe("Method.IsOptionPattern", func() {
+		It("should return true for (value, exists bool) pattern", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+					{Name: "exists", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeTrue())
+		})
+
+		It("should return true for (value, ok bool) pattern", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "int64"},
+					{Name: "ok", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeTrue())
+		})
+
+		It("should return true for (value, found bool) pattern", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "data", Type: "[]byte"},
+					{Name: "found", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeTrue())
+		})
+
+		It("should be case insensitive for bool name", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+					{Name: "EXISTS", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeTrue())
+		})
+
+		It("should return false for single return", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+
+		It("should return false for more than two returns", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+					{Name: "count", Type: "int"},
+					{Name: "exists", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+
+		It("should return false when second return is not bool", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+					{Name: "count", Type: "int"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+
+		It("should return false when bool is not named exists/ok/found", func() {
+			m := Method{
+				Returns: []Param{
+					{Name: "value", Type: "string"},
+					{Name: "success", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+
+		It("should return false for Has() pattern where first return is bool", func() {
+			// Has(key) -> (exists bool) should NOT be treated as Option pattern
+			m := Method{
+				Returns: []Param{
+					{Name: "exists", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+
+		It("should return false when first return is bool (preserves Has-like methods)", func() {
+			// Even with two returns, if first is bool, don't convert to Option<bool>
+			m := Method{
+				Returns: []Param{
+					{Name: "result", Type: "bool"},
+					{Name: "exists", Type: "bool"},
+				},
+			}
+			Expect(m.IsOptionPattern()).To(BeFalse())
+		})
+	})
+
 	Describe("Python type and name helpers", func() {
 		Describe("ToPythonType", func() {
 			It("should map Go types to Python types", func() {
@@ -1326,6 +1429,95 @@ var _ = Describe("Rust Generation", func() {
 
 			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<f32>>"))
 			Expect(codeStr).To(ContainSubstring("FnResult<extism_pdk::Json<f64>>"))
+		})
+	})
+
+	Describe("GenerateClientRust", func() {
+		It("should generate Option<T> for (value, exists bool) pattern", func() {
+			svc := Service{
+				Name:       "Config",
+				Permission: "config",
+				Interface:  "ConfigService",
+				Methods: []Method{
+					{
+						Name: "Get",
+						Params: []Param{
+							{Name: "key", Type: "string", JSONName: "key"},
+						},
+						Returns: []Param{
+							{Name: "value", Type: "string", JSONName: "value"},
+							{Name: "exists", Type: "bool", JSONName: "exists"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should generate Option<String> return type, not (String, bool)
+			Expect(codeStr).To(ContainSubstring("Result<Option<String>, Error>"))
+			Expect(codeStr).NotTo(ContainSubstring("Result<(String, bool), Error>"))
+
+			// Should generate Some/None logic
+			Expect(codeStr).To(ContainSubstring("Ok(Some("))
+			Expect(codeStr).To(ContainSubstring("Ok(None)"))
+		})
+
+		It("should generate tuple for non-option multi-return", func() {
+			svc := Service{
+				Name:       "Test",
+				Permission: "test",
+				Interface:  "TestService",
+				Methods: []Method{
+					{
+						Name: "GetStats",
+						Returns: []Param{
+							{Name: "count", Type: "int64", JSONName: "count"},
+							{Name: "size", Type: "int64", JSONName: "size"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should generate tuple return type
+			Expect(codeStr).To(ContainSubstring("Result<(i64, i64), Error>"))
+			Expect(codeStr).NotTo(ContainSubstring("Option<"))
+		})
+
+		It("should NOT generate Option for Has() pattern where first return is bool", func() {
+			svc := Service{
+				Name:       "Cache",
+				Permission: "cache",
+				Interface:  "CacheService",
+				Methods: []Method{
+					{
+						Name: "Has",
+						Params: []Param{
+							{Name: "key", Type: "string", JSONName: "key"},
+						},
+						Returns: []Param{
+							{Name: "exists", Type: "bool", JSONName: "exists"},
+						},
+					},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should generate simple bool return, not Option
+			Expect(codeStr).To(ContainSubstring("Result<bool, Error>"))
+			Expect(codeStr).NotTo(ContainSubstring("Option<bool>"))
 		})
 	})
 })

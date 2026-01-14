@@ -65,10 +65,9 @@ struct DiscordPlugin;
 // ============================================================================
 
 fn get_config() -> Result<(String, std::collections::HashMap<String, String>), Error> {
-    let (client_id, exists) = config::get(CLIENT_ID_KEY)?;
-    if !exists || client_id.is_empty() {
-        return Err(Error::msg("missing clientid in configuration"));
-    }
+    let client_id = config::get(CLIENT_ID_KEY)?
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::msg("missing clientid in configuration"))?;
 
     // Get all user keys with the "user." prefix
     let user_keys = config::keys(USER_KEY_PREFIX)?;
@@ -76,8 +75,7 @@ fn get_config() -> Result<(String, std::collections::HashMap<String, String>), E
     let mut users = std::collections::HashMap::new();
     for key in user_keys {
         let username = key.strip_prefix(USER_KEY_PREFIX).unwrap_or(&key);
-        let (token, token_exists) = config::get(&key)?;
-        if token_exists && !token.is_empty() {
+        if let Some(token) = config::get(&key)?.filter(|s| !s.is_empty()) {
             users.insert(username.to_string(), token);
         }
     }

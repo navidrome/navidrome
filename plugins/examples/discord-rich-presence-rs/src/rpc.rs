@@ -129,8 +129,8 @@ pub fn cleanup_connection(username: &str) {
     
     // Try to close the WebSocket connection
     let conn_key = connection_key(username);
-    if let Ok((conn_id, exists)) = cache::get_string(&conn_key) {
-        if exists && !conn_id.is_empty() {
+    if let Ok(Some(conn_id)) = cache::get_string(&conn_key) {
+        if !conn_id.is_empty() {
             if let Err(e) = websocket::close_connection(&conn_id, 1000, "Reconnecting") {
                 trace!("Failed to close WebSocket for user {}: {:?}", username, e);
             }
@@ -264,24 +264,22 @@ pub fn handle_clear_activity_callback(username: &str) -> Result<(), Error> {
     info!("Clearing activity for user {}", username);
 
     let conn_key = connection_key(username);
-    if let Ok((conn_id, exists)) = cache::get_string(&conn_key) {
-        if exists && !conn_id.is_empty() {
-            // Send empty presence to clear activity
-            let msg = GatewayMessage {
-                op: PRESENCE_OP_CODE,
-                d: PresencePayload {
-                    activities: vec![],
-                    since: 0,
-                    status: "dnd".to_string(),
-                    afk: false,
-                },
-            };
+    if let Some(conn_id) = cache::get_string(&conn_key)?.filter(|s| !s.is_empty()) {
+        // Send empty presence to clear activity
+        let msg = GatewayMessage {
+            op: PRESENCE_OP_CODE,
+            d: PresencePayload {
+                activities: vec![],
+                since: 0,
+                status: "dnd".to_string(),
+                afk: false,
+            },
+        };
 
-            let json = serde_json::to_string(&msg)
-                .map_err(|e| Error::msg(format!("Failed to serialize message: {}", e)))?;
+        let json = serde_json::to_string(&msg)
+            .map_err(|e| Error::msg(format!("Failed to serialize message: {}", e)))?;
 
-            websocket::send_text(&conn_id, &json)?;
-        }
+        websocket::send_text(&conn_id, &json)?;
     }
 
     Ok(())
@@ -298,15 +296,13 @@ pub fn disconnect(username: &str) -> Result<(), Error> {
     
     // Close the WebSocket connection
     let conn_key = connection_key(username);
-    if let Ok((conn_id, exists)) = cache::get_string(&conn_key) {
-        if exists && !conn_id.is_empty() {
-            if let Err(e) = websocket::close_connection(&conn_id, 1000, "Navidrome disconnect") {
-                warn!("Failed to close WebSocket connection: {:?}", e);
-            }
-            // Clean up reverse mapping
-            let reverse_key = format!("discord.reverse.{}", conn_id);
-            let _ = cache::remove(&reverse_key);
+    if let Some(conn_id) = cache::get_string(&conn_key)?.filter(|s| !s.is_empty()) {
+        if let Err(e) = websocket::close_connection(&conn_id, 1000, "Navidrome disconnect") {
+            warn!("Failed to close WebSocket connection: {:?}", e);
         }
+        // Clean up reverse mapping
+        let reverse_key = format!("discord.reverse.{}", conn_id);
+        let _ = cache::remove(&reverse_key);
     }
     
     // Clean up cache entries
@@ -324,10 +320,9 @@ pub fn send_activity(
     mut activity: Activity,
 ) -> Result<(), Error> {
     let conn_key = connection_key(username);
-    let (conn_id, exists) = cache::get_string(&conn_key)?;
-    if !exists || conn_id.is_empty() {
-        return Err(Error::msg("Not connected to Discord"));
-    }
+    let conn_id = cache::get_string(&conn_key)?
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::msg("Not connected to Discord"))?;
 
     // Process image URL
     activity.assets.large_image = process_image(&activity.assets.large_image, client_id, token)?;
@@ -361,12 +356,7 @@ fn find_username_for_connection(connection_id: &str) -> Result<Option<String>, E
     // The connection ID is stored as cache value, so we need to scan for it
     // Since we can't iterate cache, we'll use a workaround with a reverse mapping
     let reverse_key = format!("discord.reverse.{}", connection_id);
-    if let Ok((username, exists)) = cache::get_string(&reverse_key) {
-        if exists && !username.is_empty() {
-            return Ok(Some(username));
-        }
-    }
-    Ok(None)
+    Ok(cache::get_string(&reverse_key)?.filter(|s| !s.is_empty()))
 }
 
 fn get_discord_gateway() -> Result<String, Error> {
@@ -394,16 +384,14 @@ fn identify(username: &str) -> Result<(), Error> {
     info!("Identifying with Discord for user {}", username);
 
     let conn_key = connection_key(username);
-    let (conn_id, exists) = cache::get_string(&conn_key)?;
-    if !exists || conn_id.is_empty() {
-        return Err(Error::msg("No connection found"));
-    }
+    let conn_id = cache::get_string(&conn_key)?
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::msg("No connection found"))?;
 
     let token_k = token_key(username);
-    let (token, exists) = cache::get_string(&token_k)?;
-    if !exists || token.is_empty() {
-        return Err(Error::msg("No token found"));
-    }
+    let token = cache::get_string(&token_k)?
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::msg("No token found"))?;
 
     // Store reverse mapping for connection -> username
     let reverse_key = format!("discord.reverse.{}", conn_id);
@@ -440,19 +428,14 @@ fn identify(username: &str) -> Result<(), Error> {
 
 fn send_heartbeat(username: &str) -> Result<(), Error> {
     let conn_key = connection_key(username);
-    let (conn_id, exists) = cache::get_string(&conn_key)?;
-    if !exists || conn_id.is_empty() {
-        return Err(Error::msg("No connection found"));
-    }
+    let conn_id = cache::get_string(&conn_key)?
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::msg("No connection found"))?;
 
     // Get sequence number
     let seq_key = sequence_key(username);
-    let (seq_str, exists) = cache::get_string(&seq_key)?;
-    let seq: Option<i64> = if exists && !seq_str.is_empty() {
-        seq_str.parse().ok()
-    } else {
-        None
-    };
+    let seq: Option<i64> = cache::get_string(&seq_key)?
+        .and_then(|s| s.parse().ok());
 
     // Send heartbeat
     let msg = GatewayMessage {
@@ -493,10 +476,8 @@ fn process_image_inner(
 
     // Check cache
     let cache_key = format!("discord.image.{:x}", md5_hash(url));
-    if let Ok((cached, exists)) = cache::get_string(&cache_key) {
-        if exists && !cached.is_empty() {
-            return Ok(cached);
-        }
+    if let Some(cached) = cache::get_string(&cache_key)?.filter(|s| !s.is_empty()) {
+        return Ok(cached);
     }
 
     // Process via Discord API

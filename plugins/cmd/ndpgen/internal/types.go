@@ -246,6 +246,25 @@ func (m Method) IsMultiReturn() bool {
 	return len(m.Returns) > 1
 }
 
+// IsOptionPattern returns true if the method returns (value, bool) where the bool
+// indicates existence (named "exists", "ok", or "found"). This pattern is used to
+// generate Option<T> in Rust instead of a tuple.
+func (m Method) IsOptionPattern() bool {
+	if len(m.Returns) != 2 {
+		return false
+	}
+	if m.Returns[1].Type != "bool" {
+		return false
+	}
+	// Only treat as option pattern if the first return has a meaningful value type
+	// (not just a bool check like Has())
+	if m.Returns[0].Type == "bool" {
+		return false
+	}
+	name := strings.ToLower(m.Returns[1].Name)
+	return name == "exists" || name == "ok" || name == "found"
+}
+
 // ReturnSignature returns the Go return type signature for the wrapper function.
 // For error-only: "error"
 // For single return with error: "(Type, error)"

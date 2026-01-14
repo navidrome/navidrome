@@ -69,7 +69,9 @@ extern "ExtismHost" {
 {{- if .HasReturns}}
 ///
 /// # Returns
-{{- if eq (len .Returns) 1}}
+{{- if .IsOptionPattern}}
+/// `Some({{(index .Returns 0).RustName}})` if found, `None` otherwise.
+{{- else if eq (len .Returns) 1}}
 /// The {{(index .Returns 0).RustName}} value.
 {{- else}}
 /// A tuple of ({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r.RustName}}{{end}}).
@@ -78,6 +80,31 @@ extern "ExtismHost" {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
+{{- if .IsOptionPattern}}
+pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<Option<{{rustType (index .Returns 0)}}>, Error> {
+    let response = unsafe {
+{{- if .HasParams}}
+        {{exportName .}}(Json({{requestType .}} {
+{{- range .Params}}
+            {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
+{{- end}}
+        }))?
+{{- else}}
+        {{exportName .}}(Json(serde_json::json!({})))?
+{{- end}}
+    };
+{{if .HasError}}
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+{{end}}
+    if response.0.{{(index .Returns 1).RustName}} {
+        Ok(Some(response.0.{{(index .Returns 0).RustName}}))
+    } else {
+        Ok(None)
+    }
+}
+{{- else}}
 pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<{{if eq (len .Returns) 0}}(){{else if eq (len .Returns) 1}}{{rustType (index .Returns 0)}}{{else}}({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{rustType $r}}{{end}}){{end}}, Error> {
     let response = unsafe {
 {{- if .HasParams}}
@@ -103,4 +130,5 @@ pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName
     Ok(({{range $i, $r := .Returns}}{{if $i}}, {{end}}response.0.{{$r.RustName}}{{end}}))
 {{- end}}
 }
+{{- end}}
 {{- end}}
