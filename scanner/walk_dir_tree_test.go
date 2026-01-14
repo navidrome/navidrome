@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"testing/fstest"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"golang.org/x/sync/errgroup"
 )
 
 var _ = Describe("walk_dir_tree", func() {
@@ -213,6 +214,182 @@ var _ = Describe("walk_dir_tree", func() {
 
 				// Folders not in targets should remain in lastUpdates
 				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
+			})
+		})
+
+		Context("with CUE files", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				ctx = GinkgoT().Context()
+			})
+
+			It("should detect CUE files when external CUE support is enabled", func() {
+				conf.Server.Scanner.CUESheetSupport = "external"
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"root/album1/album.cue":   {},
+						"root/album1/album.flac":  {},
+						"root/album1/cover.jpg":   {},
+						"root/album2/track1.mp3":  {},
+						"root/album2/track2.mp3":  {},
+						"root/album3/disc.cue":    {},
+						"root/album3/disc1.flac":  {},
+						"root/album3/disc2.flac":  {},
+						"root/album3/booklet.pdf": {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				// Check album1 with CUE file
+				Expect(folders).To(HaveKey("root/album1"))
+				album1 := folders["root/album1"]
+				Expect(album1.cueFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("album.cue"),
+				))
+				Expect(album1.audioFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("album.flac"),
+				))
+				Expect(album1.imageFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("cover.jpg"),
+				))
+
+				// Check album2 without CUE files
+				Expect(folders).To(HaveKey("root/album2"))
+				album2 := folders["root/album2"]
+				Expect(album2.cueFiles).To(BeEmpty())
+				Expect(album2.audioFiles).To(HaveLen(2))
+
+				// Check album3 with CUE file and multiple audio files
+				Expect(folders).To(HaveKey("root/album3"))
+				album3 := folders["root/album3"]
+				Expect(album3.cueFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("disc.cue"),
+				))
+				Expect(album3.audioFiles).To(HaveLen(2))
+			})
+
+			It("should not detect CUE files when external CUE support is disabled", func() {
+				conf.Server.Scanner.CUESheetSupport = "none"
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"root/album/album.cue":  {},
+						"root/album/album.flac": {},
+						"root/album/cover.jpg":  {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				Expect(folders).To(HaveKey("root/album"))
+				album := folders["root/album"]
+				Expect(album.cueFiles).To(BeEmpty())
+				Expect(album.audioFiles).To(HaveLen(1))
+				Expect(album.imageFiles).To(HaveLen(1))
+			})
+
+			It("should handle folders with only CUE files", func() {
+				conf.Server.Scanner.CUESheetSupport = "external"
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"root/album/album.cue": {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				Expect(folders).To(HaveKey("root/album"))
+				album := folders["root/album"]
+				Expect(album.cueFiles).To(HaveLen(1))
+				Expect(album.audioFiles).To(BeEmpty())
+				Expect(album.hasNoFiles()).To(BeFalse()) // CUE files count as content
+			})
+
+			It("should handle multiple CUE files in one folder", func() {
+				conf.Server.Scanner.CUESheetSupport = "external"
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"root/album/disc1.cue":  {},
+						"root/album/disc1.flac": {},
+						"root/album/disc2.cue":  {},
+						"root/album/disc2.flac": {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				Expect(folders).To(HaveKey("root/album"))
+				album := folders["root/album"]
+				Expect(album.cueFiles).To(SatisfyAll(
+					HaveLen(2),
+					HaveKey("disc1.cue"),
+					HaveKey("disc2.cue"),
+				))
+				Expect(album.audioFiles).To(HaveLen(2))
 			})
 		})
 	})

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -90,6 +91,10 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	return nil
 }
 
+func isExternalCUEEnabled() bool {
+	return strings.Contains(strings.ToLower(conf.Server.Scanner.CUESheetSupport), consts.CUEExternal)
+}
+
 func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
 	// Check if directory exists before creating the folder entry
 	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
@@ -155,6 +160,8 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			case model.IsImageFile(entry.Name()):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
+			case model.IsCueSheetFile(entry.Name()) && isExternalCUEEnabled():
+				folder.cueFiles[entry.Name()] = entry
 			}
 		}
 	}

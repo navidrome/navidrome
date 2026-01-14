@@ -12,11 +12,12 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
+	"github.com/pocketbase/dbx"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
-	"github.com/pocketbase/dbx"
 )
 
 type mediaFileRepository struct {
@@ -130,7 +131,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.CreatedAt = time.Now()
-	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
+	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID, "sub_track": m.SubTrack}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
 	}

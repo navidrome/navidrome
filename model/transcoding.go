@@ -1,5 +1,9 @@
 package model
 
+const (
+	RawTranscodeCmd = "zero_copy_subtrack_transcode"
+)
+
 type Transcoding struct {
 	ID             string `structs:"id" json:"id"`
 	Name           string `structs:"name" json:"name"`
