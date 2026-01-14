@@ -24,8 +24,8 @@ import (
 
 // Configuration keys
 const (
-	clientIDKey = "clientid"
-	usersKey    = "users"
+	clientIDKey   = "clientid"
+	userKeyPrefix = "user."
 )
 
 // discordPlugin implements the scrobbler and scheduler interfaces.
@@ -49,20 +49,27 @@ func getConfig() (clientID string, users map[string]string, err error) {
 		return "", nil, nil
 	}
 
-	cfgUsers, ok := pdk.GetConfig(usersKey)
-	if !ok || cfgUsers == "" {
+	// Get all user keys with the "user." prefix
+	userKeys := host.ConfigKeys(userKeyPrefix)
+	if len(userKeys) == 0 {
 		pdk.Log(pdk.LogWarn, "no users configured")
 		return clientID, nil, nil
 	}
 
 	users = make(map[string]string)
-	for _, user := range strings.Split(cfgUsers, ",") {
-		tuple := strings.Split(user, ":")
-		if len(tuple) != 2 {
-			return clientID, nil, fmt.Errorf("invalid user config: %s", user)
+	for _, key := range userKeys {
+		username := strings.TrimPrefix(key, userKeyPrefix)
+		token, exists := host.ConfigGet(key)
+		if exists && token != "" {
+			users[username] = token
 		}
-		users[strings.TrimSpace(tuple[0])] = strings.TrimSpace(tuple[1])
 	}
+
+	if len(users) == 0 {
+		pdk.Log(pdk.LogWarn, "no users configured")
+		return clientID, nil, nil
+	}
+
 	return clientID, users, nil
 }
 

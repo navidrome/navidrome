@@ -65,10 +65,12 @@ To work within this model the plugin stores no in-memory state. Connections are 
 
 Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
-| Key        | Description                                              | Example                        |
-|------------|----------------------------------------------------------|--------------------------------|
-| `clientid` | Your Discord application ID                              | `123456789012345678`           |
-| `users`    | Comma-separated list of `username:token` pairs           | `alice:token123,bob:token456`  |
+| Key           | Description                                | Example                        |
+|---------------|-------------------------------------------|--------------------------------|
+| `clientid`    | Your Discord application ID               | `123456789012345678`           |
+| `user.<name>` | Discord token for the specified user      | `user.alice` = `token123`      |
+
+Each user is configured as a separate key with the `user.` prefix.
 
 ## Building
 

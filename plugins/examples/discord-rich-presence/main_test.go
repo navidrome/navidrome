@@ -28,6 +28,8 @@ var _ = Describe("discordPlugin", func() {
 		pdk.ResetMock()
 		host.CacheMock.ExpectedCalls = nil
 		host.CacheMock.Calls = nil
+		host.ConfigMock.ExpectedCalls = nil
+		host.ConfigMock.Calls = nil
 		host.WebSocketMock.ExpectedCalls = nil
 		host.WebSocketMock.Calls = nil
 		host.SchedulerMock.ExpectedCalls = nil
@@ -39,7 +41,9 @@ var _ = Describe("discordPlugin", func() {
 	Describe("getConfig", func() {
 		It("returns config values when properly set", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("user1:token1,user2:token2", true)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{"user.user1", "user.user2"})
+			host.ConfigMock.On("Get", "user.user1").Return("token1", true)
+			host.ConfigMock.On("Get", "user.user2").Return("token2", true)
 			pdk.PDKMock.On("Log", mock.Anything, mock.Anything).Maybe()
 
 			clientID, users, err := getConfig()
@@ -62,23 +66,13 @@ var _ = Describe("discordPlugin", func() {
 
 		It("returns nil users when users not configured", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("", false)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{})
 			pdk.PDKMock.On("Log", mock.Anything, mock.Anything).Maybe()
 
 			clientID, users, err := getConfig()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(clientID).To(Equal("test-client-id"))
 			Expect(users).To(BeNil())
-		})
-
-		It("returns error for invalid user format", func() {
-			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("invalid-format", true)
-			pdk.PDKMock.On("Log", mock.Anything, mock.Anything).Maybe()
-
-			_, _, err := getConfig()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("invalid user config"))
 		})
 	})
 
@@ -89,7 +83,8 @@ var _ = Describe("discordPlugin", func() {
 
 		It("returns true for authorized user", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("testuser:token123", true)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{"user.testuser"})
+			host.ConfigMock.On("Get", "user.testuser").Return("token123", true)
 
 			authorized, err := plugin.IsAuthorized(scrobbler.IsAuthorizedRequest{
 				Username: "testuser",
@@ -100,23 +95,14 @@ var _ = Describe("discordPlugin", func() {
 
 		It("returns false for unauthorized user", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("otheruser:token123", true)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{"user.otheruser"})
+			host.ConfigMock.On("Get", "user.otheruser").Return("token123", true)
 
 			authorized, err := plugin.IsAuthorized(scrobbler.IsAuthorizedRequest{
 				Username: "testuser",
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(authorized).To(BeFalse())
-		})
-
-		It("returns error when config parsing fails", func() {
-			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("invalid-format", true)
-
-			_, err := plugin.IsAuthorized(scrobbler.IsAuthorizedRequest{
-				Username: "testuser",
-			})
-			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -125,21 +111,10 @@ var _ = Describe("discordPlugin", func() {
 			pdk.PDKMock.On("Log", mock.Anything, mock.Anything).Maybe()
 		})
 
-		It("returns error when config parsing fails", func() {
-			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("invalid-format", true)
-
-			err := plugin.NowPlaying(scrobbler.NowPlayingRequest{
-				Username: "testuser",
-				Track:    scrobbler.TrackInfo{Title: "Test Song"},
-			})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to get config"))
-		})
-
 		It("returns not authorized error when user not in config", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("otheruser:token", true)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{"user.otheruser"})
+			host.ConfigMock.On("Get", "user.otheruser").Return("token", true)
 
 			err := plugin.NowPlaying(scrobbler.NowPlayingRequest{
 				Username: "testuser",
@@ -151,7 +126,8 @@ var _ = Describe("discordPlugin", func() {
 
 		It("successfully sends now playing update", func() {
 			pdk.PDKMock.On("GetConfig", clientIDKey).Return("test-client-id", true)
-			pdk.PDKMock.On("GetConfig", usersKey).Return("testuser:test-token", true)
+			host.ConfigMock.On("Keys", userKeyPrefix).Return([]string{"user.testuser"})
+			host.ConfigMock.On("Get", "user.testuser").Return("test-token", true)
 
 			// Connect mocks (isConnected check via heartbeat)
 			host.CacheMock.On("GetInt", "discord.seq.testuser").Return(int64(0), false, errors.New("not found"))

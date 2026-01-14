@@ -31,10 +31,12 @@ This plugin implements three capabilities to demonstrate the nd-host library:
 
 Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
-| Key        | Description                                              | Example                        |
-|------------|----------------------------------------------------------|--------------------------------|
-| `clientid` | Your Discord application ID                              | `123456789012345678`           |
-| `users`    | Comma-separated list of `username:token` pairs           | `alice:token123,bob:token456`  |
+| Key           | Description                                | Example                        |
+|---------------|-------------------------------------------|--------------------------------|
+| `clientid`    | Your Discord application ID               | `123456789012345678`           |
+| `user.<name>` | Discord token for the specified user      | `user.alice` = `token123`      |
+
+Each user is configured as a separate key with the `user.` prefix.
 
 
 ### Getting Configuration Values
@@ -43,9 +45,10 @@ Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
 2. **Discord Token**: This requires extracting your user token from Discord (not recommended for security reasons)
 
-3. **Multiple Users**: Separate user mappings with commas:
+3. **Multiple Users**: Add multiple user keys:
    ```properties
-   users = "user1:token1,user2:token2"
+   user.user1 = "token1"
+   user.user2 = "token2"
    ```
 
 ## Building
