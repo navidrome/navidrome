@@ -91,7 +91,7 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 
 	pluginName := strings.TrimSuffix(filepath.Base(path), PackageExtension)
 
-	log.Debug(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
+	log.Trace(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
 
 	// Debounce: cancel any pending timer for this plugin and start a new one
 	m.debounceMu.Lock()

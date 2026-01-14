@@ -77,12 +77,6 @@ struct GatewayMessage<T> {
 }
 
 #[derive(Deserialize)]
-struct HelloMessage {
-    #[allow(dead_code)]
-    heartbeat_interval: i64,
-}
-
-#[derive(Deserialize)]
 struct GatewayResponse {
     op: i32,
     #[serde(default)]
@@ -123,8 +117,9 @@ fn is_connected(username: &str) -> bool {
     }
 }
 
-/// Cleans up a failed connection for a user.
-fn cleanup_connection(username: &str) {
+/// Cleans up a connection for a user.
+/// Called when heartbeat fails or connection is lost.
+pub fn cleanup_connection(username: &str) {
     info!("Cleaning up failed connection for user {}", username);
     
     // Cancel the heartbeat schedule
@@ -139,6 +134,9 @@ fn cleanup_connection(username: &str) {
             if let Err(e) = websocket::close_connection(&conn_id, 1000, "Reconnecting") {
                 trace!("Failed to close WebSocket for user {}: {:?}", username, e);
             }
+            // Clean up reverse mapping
+            let reverse_key = format!("discord.reverse.{}", conn_id);
+            let _ = cache::remove(&reverse_key);
         }
     }
     
@@ -147,6 +145,39 @@ fn cleanup_connection(username: &str) {
     let _ = cache::remove(&sequence_key(username));
     
     info!("Cleaned up connection for user {}", username);
+}
+
+/// Handles connection close by connection ID (called from WebSocket close callback).
+/// This cleans up all state associated with the connection.
+pub fn handle_connection_close(connection_id: &str) {
+    // Find the username for this connection using the reverse mapping
+    if let Ok(Some(username)) = find_username_for_connection(connection_id) {
+        info!("Connection closed for user {}, cleaning up", username);
+        
+        // Cancel the heartbeat schedule
+        if let Err(e) = scheduler::cancel_schedule(&username) {
+            // Not an error if schedule doesn't exist
+            trace!("Failed to cancel heartbeat schedule for user {}: {:?}", username, e);
+        }
+        
+        // Cancel any pending clear-activity schedule
+        let _ = scheduler::cancel_schedule(&format!("{}-clear", username));
+        
+        // Clean up cache entries
+        let conn_key = connection_key(&username);
+        let _ = cache::remove(&conn_key);
+        let _ = cache::remove(&sequence_key(&username));
+        
+        // Clean up reverse mapping
+        let reverse_key = format!("discord.reverse.{}", connection_id);
+        let _ = cache::remove(&reverse_key);
+        
+        info!("Cleaned up connection state for user {}", username);
+    } else {
+        // Just clean up the reverse mapping if we can't find the username
+        let reverse_key = format!("discord.reverse.{}", connection_id);
+        let _ = cache::remove(&reverse_key);
+    }
 }
 
 /// Connects to the Discord gateway for a user.
@@ -165,10 +196,14 @@ pub fn connect(username: &str, token: &str) -> Result<(), Error> {
     // Store token for later use
     cache::set_string(&token_key(username), token, 86400)?;
 
+    // Get Discord Gateway URL
+    let gateway = get_discord_gateway()?;
+    info!("Using gateway: {}", gateway);
+
     // Connect to Discord gateway
     let headers = std::collections::HashMap::new();
     let conn_id = websocket::connect(
-        "wss://gateway.discord.gg/?v=10&encoding=json",
+        &gateway,
         headers,
         username, // Use username as connection ID for easy lookup
     )?;
@@ -237,7 +272,7 @@ pub fn handle_clear_activity_callback(username: &str) -> Result<(), Error> {
                 d: PresencePayload {
                     activities: vec![],
                     since: 0,
-                    status: "online".to_string(),
+                    status: "dnd".to_string(),
                     afk: false,
                 },
             };
@@ -249,6 +284,35 @@ pub fn handle_clear_activity_callback(username: &str) -> Result<(), Error> {
         }
     }
 
+    Ok(())
+}
+
+/// Disconnects from Discord for a user.
+pub fn disconnect(username: &str) -> Result<(), Error> {
+    info!("Disconnecting from Discord for user {}", username);
+    
+    // Cancel the heartbeat schedule
+    if let Err(e) = scheduler::cancel_schedule(username) {
+        warn!("Failed to cancel heartbeat schedule: {:?}", e);
+    }
+    
+    // Close the WebSocket connection
+    let conn_key = connection_key(username);
+    if let Ok((conn_id, exists)) = cache::get_string(&conn_key) {
+        if exists && !conn_id.is_empty() {
+            if let Err(e) = websocket::close_connection(&conn_id, 1000, "Navidrome disconnect") {
+                warn!("Failed to close WebSocket connection: {:?}", e);
+            }
+            // Clean up reverse mapping
+            let reverse_key = format!("discord.reverse.{}", conn_id);
+            let _ = cache::remove(&reverse_key);
+        }
+    }
+    
+    // Clean up cache entries
+    let _ = cache::remove(&conn_key);
+    let _ = cache::remove(&sequence_key(username));
+    
     Ok(())
 }
 
@@ -274,7 +338,7 @@ pub fn send_activity(
         d: PresencePayload {
             activities: vec![activity],
             since: 0,
-            status: "online".to_string(),
+            status: "dnd".to_string(),
             afk: false,
         },
     };
@@ -305,6 +369,27 @@ fn find_username_for_connection(connection_id: &str) -> Result<Option<String>, E
     Ok(None)
 }
 
+fn get_discord_gateway() -> Result<String, Error> {
+    let req = HttpRequest::new("https://discord.com/api/gateway")
+        .with_method("GET");
+
+    let resp = http::request::<String>(&req, None::<String>)?;
+    if resp.status_code() >= 400 {
+        return Err(Error::msg(format!(
+            "Failed to get Discord gateway: HTTP {}",
+            resp.status_code()
+        )));
+    }
+
+    let body = resp.body();
+    let data: std::collections::HashMap<String, String> = serde_json::from_slice(&body)
+        .map_err(|e| Error::msg(format!("Failed to parse gateway response: {}", e)))?;
+
+    data.get("url")
+        .map(|url| url.to_string())
+        .ok_or_else(|| Error::msg("No URL in gateway response"))
+}
+
 fn identify(username: &str) -> Result<(), Error> {
     info!("Identifying with Discord for user {}", username);
 
@@ -331,9 +416,9 @@ fn identify(username: &str) -> Result<(), Error> {
             token,
             intents: 0,
             properties: IdentifyProperties {
-                os: "navidrome".to_string(),
-                browser: "navidrome".to_string(),
-                device: "navidrome".to_string(),
+                os: "Windows 10".to_string(),
+                browser: "Discord Client".to_string(),
+                device: "Discord Client".to_string(),
             },
         },
     };

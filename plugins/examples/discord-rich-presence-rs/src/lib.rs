@@ -208,13 +208,22 @@ impl CallbackProvider for DiscordPlugin {
         match req.payload.as_str() {
             PAYLOAD_HEARTBEAT => {
                 // Heartbeat callback - schedule_id is the username
-                rpc::handle_heartbeat_callback(&req.schedule_id)
-                    .map_err(|e| SchedulerError::new(e.to_string()))?;
+                if let Err(e) = rpc::handle_heartbeat_callback(&req.schedule_id) {
+                    // On heartbeat failure, clean up the connection (like the original Go plugin)
+                    // The next NowPlaying call will reconnect if needed
+                    warn!("Heartbeat failed for user {}, cleaning up connection: {:?}", req.schedule_id, e);
+                    rpc::cleanup_connection(&req.schedule_id);
+                    return Err(SchedulerError::new(format!("heartbeat failed, connection cleaned up: {}", e)));
+                }
             }
             PAYLOAD_CLEAR_ACTIVITY => {
                 // Clear activity callback - schedule_id is "username-clear"
                 let username = req.schedule_id.trim_end_matches("-clear");
+                info!("Removing presence for user {}", username);
                 rpc::handle_clear_activity_callback(username)
+                    .map_err(|e| SchedulerError::new(e.to_string()))?;
+                info!("Disconnecting user {}", username);
+                rpc::disconnect(username)
                     .map_err(|e| SchedulerError::new(e.to_string()))?;
             }
             _ => {
@@ -251,6 +260,8 @@ impl ErrorProvider for DiscordPlugin {
             "WebSocket error for connection '{}': {}",
             req.connection_id, req.error
         );
+        // Clean up all state associated with this connection since it's likely broken
+        rpc::handle_connection_close(&req.connection_id);
         Ok(())
     }
 }
@@ -261,6 +272,8 @@ impl CloseProvider for DiscordPlugin {
             "WebSocket connection '{}' closed with code {}: {}",
             req.connection_id, req.code, req.reason
         );
+        // Clean up all state associated with this connection
+        rpc::handle_connection_close(&req.connection_id);
         Ok(())
     }
 }
