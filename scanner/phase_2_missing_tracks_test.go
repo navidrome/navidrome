@@ -29,7 +29,8 @@ var _ = Describe("phaseMissingTracks", func() {
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
 		ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
 		state = &scanState{
-			libraries: model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			libraries:         model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			totalLibraryCount: 1,
 		}
 		phase = createPhaseMissingTracks(ctx, state, ds)
 	})
@@ -332,7 +333,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		It("should skip cross-library move detection when only one library is configured", func() {
 			// Default BeforeEach sets up single library, so we just need to verify skip behavior
-			Expect(len(state.libraries)).To(Equal(1))
+			Expect(state.totalLibraryCount).To(Equal(1))
 
 			missingTrack := model.MediaFile{
 				ID:                "missing1",
@@ -368,6 +369,7 @@ var _ = Describe("phaseMissingTracks", func() {
 					{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)},
 					{ID: 2, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)},
 				}
+				state.totalLibraryCount = 2
 			})
 
 			It("should process cross-library moves using MusicBrainz Track ID", func() {
