@@ -166,6 +166,19 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 	return
 }
 
+func isClientInList(clientList, client string) bool {
+	if clientList == "" || client == "" {
+		return false
+	}
+	clients := strings.Split(clientList, ",")
+	for _, c := range clients {
+		if strings.TrimSpace(c) == client {
+			return true
+		}
+	}
+	return false
+}
+
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
@@ -173,7 +186,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.IsDir = false
 
 	player, ok := request.PlayerFrom(ctx)
-	if ok && strings.Contains(conf.Server.Subsonic.MinimalClients, player.Client) {
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
 		return child
 	}
 
@@ -217,8 +230,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 }
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
-	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}

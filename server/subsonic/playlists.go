@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -26,9 +25,7 @@ func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 	}
 	response := newResponse()
 	response.Playlists = &responses.Playlists{
-		Playlist: slice.Map(allPls, func(p model.Playlist) responses.Playlist {
-			return api.buildPlaylist(ctx, p)
-		}),
+		Playlist: slice.MapWithArg(allPls, ctx, api.buildPlaylist),
 	}
 	return response, nil
 }
@@ -171,7 +168,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	}
 
 	player, ok := request.PlayerFrom(ctx)
-	if ok && strings.Contains(conf.Server.Subsonic.MinimalClients, player.Client) {
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
 		return pls
 	}
 
