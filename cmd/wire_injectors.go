@@ -6,10 +6,10 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/adapters/lastfm"
+	"github.com/navidrome/navidrome/adapters/listenbrainz"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/agents/lastfm"
-	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"

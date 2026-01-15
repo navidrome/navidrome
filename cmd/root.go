@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
@@ -22,6 +21,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
+
+	// Import adapters to register them
+	_ "github.com/navidrome/navidrome/adapters/deezer"
+	_ "github.com/navidrome/navidrome/adapters/lastfm"
+	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
+	_ "github.com/navidrome/navidrome/adapters/spotify"
+	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 var (

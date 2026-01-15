@@ -9,10 +9,10 @@ package cmd
 import (
 	"context"
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/adapters/lastfm"
+	"github.com/navidrome/navidrome/adapters/listenbrainz"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/agents/lastfm"
-	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -32,6 +32,10 @@ import (
 )
 
 import (
+	_ "github.com/navidrome/navidrome/adapters/deezer"
+	_ "github.com/navidrome/navidrome/adapters/lastfm"
+	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
+	_ "github.com/navidrome/navidrome/adapters/spotify"
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
