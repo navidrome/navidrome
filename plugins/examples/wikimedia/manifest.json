@@ -1,20 +1,17 @@
 {
-  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
-  "name": "wikimedia",
+  "name": "Wikimedia",
   "author": "Navidrome",
   "version": "1.0.0",
-  "description": "Artist information and images from Wikimedia Commons",
-  "website": "https://commons.wikimedia.org",
-  "capabilities": ["MetadataAgent"],
+  "description": "Fetches artist metadata from Wikidata, DBpedia and Wikipedia",
+  "website": "https://navidrome.org",
   "permissions": {
     "http": {
-      "reason": "To fetch artist information and images from Wikimedia Commons API",
-      "allowedUrls": {
-        "https://*.wikimedia.org": ["GET"],
-        "https://*.wikipedia.org": ["GET"],
-        "https://commons.wikimedia.org": ["GET"]
-      },
-      "allowLocalNetwork": false
+      "reason": "Fetch metadata from Wikimedia APIs",
+      "requiredHosts": [
+        "query.wikidata.org",
+        "dbpedia.org",
+        "en.wikipedia.org"
+      ]
     }
   }
 }

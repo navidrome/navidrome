@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
@@ -22,6 +21,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
+
+	// Import adapters to register them
+	_ "github.com/navidrome/navidrome/adapters/deezer"
+	_ "github.com/navidrome/navidrome/adapters/lastfm"
+	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
+	_ "github.com/navidrome/navidrome/adapters/spotify"
+	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 var (
@@ -330,16 +336,13 @@ func startPlaybackServer(ctx context.Context) func() error {
 // startPluginManager starts the plugin manager, if configured.
 func startPluginManager(ctx context.Context) func() error {
 	return func() error {
+		manager := GetPluginManager(ctx)
 		if !conf.Server.Plugins.Enabled {
-			log.Debug("Plugins are DISABLED")
+			log.Debug("Plugin system is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Starting plugin manager")
-		// Get the manager instance and scan for plugins
-		manager := GetPluginManager(ctx)
-		manager.ScanPlugins()
-
-		return nil
+		return manager.Start(ctx)
 	}
 }
 

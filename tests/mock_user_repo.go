@@ -70,6 +70,17 @@ func (u *MockedUserRepo) Get(id string) (*model.User, error) {
 	return nil, model.ErrNotFound
 }
 
+func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	var users model.Users
+	for _, usr := range u.Data {
+		users = append(users, *usr)
+	}
+	return users, nil
+}
+
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
@@ -122,4 +133,35 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 	}
 	u.UserLibraries[userID] = libraryIDs
 	return nil
+}
+
+func (u *MockedUserRepo) Delete(id string) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	for key, usr := range u.Data {
+		if usr.ID == id {
+			delete(u.Data, key)
+			delete(u.UserLibraries, id)
+			return nil
+		}
+	}
+	return model.ErrNotFound
+}
+
+func (u *MockedUserRepo) Save(entity interface{}) (string, error) {
+	usr := entity.(*model.User)
+	if err := u.Put(usr); err != nil {
+		return "", err
+	}
+	return usr.ID, nil
+}
+
+func (u *MockedUserRepo) Update(id string, entity interface{}, cols ...string) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	usr := entity.(*model.User)
+	usr.ID = id
+	return u.Put(usr)
 }

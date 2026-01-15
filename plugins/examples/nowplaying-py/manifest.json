@@ -1,0 +1,18 @@
+{
+  "name": "Now Playing Logger (Python)",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Periodically logs currently playing tracks - Python example demonstrating Scheduler and SubsonicAPI host services",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/nowplaying-py",
+  "permissions": {
+    "scheduler": {
+      "reason": "Schedule periodic checks for now playing status"
+    },
+    "subsonicapi": {
+      "reason": "Query the getNowPlaying API endpoint"
+    },
+    "users": {
+      "reason": "Access user information for SubsonicAPI authorization"
+    }
+  }
+}

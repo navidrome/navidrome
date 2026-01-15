@@ -1,144 +1,366 @@
 package plugins
 
 import (
-	"os"
-	"path/filepath"
+	"encoding/json"
 
-	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Plugin Manifest", func() {
-	var tempDir string
-
-	BeforeEach(func() {
-		tempDir = GinkgoT().TempDir()
-	})
-
-	It("should load and parse a valid manifest", func() {
-		manifestPath := filepath.Join(tempDir, "manifest.json")
-		manifestContent := []byte(`{
-			"name": "test-plugin",
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "A test plugin",
-			"website": "https://test.navidrome.org/test-plugin",
-			"capabilities": ["MetadataAgent", "Scrobbler"],
-			"permissions": {
-				"http": {
-					"reason": "To fetch metadata",
-					"allowedUrls": {
-						"https://api.example.com/*": ["GET"]
+var _ = Describe("Manifest", func() {
+	Describe("UnmarshalJSON", func() {
+		It("parses a valid manifest", func() {
+			data := []byte(`{
+				"name": "Test Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"description": "A test plugin",
+				"website": "https://example.com",
+				"permissions": {
+					"http": {
+						"reason": "Fetch metadata",
+						"requiredHosts": ["api.example.com", "*.spotify.com"]
 					}
 				}
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).To(Equal("Test Plugin"))
+			Expect(m.Author).To(Equal("Test Author"))
+			Expect(m.Version).To(Equal("1.0.0"))
+			Expect(*m.Description).To(Equal("A test plugin"))
+			Expect(*m.Website).To(Equal("https://example.com"))
+			Expect(m.Permissions.Http).ToNot(BeNil())
+			Expect(*m.Permissions.Http.Reason).To(Equal("Fetch metadata"))
+			Expect(m.Permissions.Http.RequiredHosts).To(ContainElements("api.example.com", "*.spotify.com"))
+		})
+
+		It("parses a minimal manifest", func() {
+			data := []byte(`{
+				"name": "Minimal Plugin",
+				"author": "Author",
+				"version": "1.0.0"
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).To(Equal("Minimal Plugin"))
+			Expect(m.Author).To(Equal("Author"))
+			Expect(m.Version).To(Equal("1.0.0"))
+			Expect(m.Description).To(BeNil())
+			Expect(m.Permissions).To(BeNil())
+		})
+
+		It("returns an error for invalid JSON", func() {
+			data := []byte(`{invalid json}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns an error when name is missing", func() {
+			data := []byte(`{"author": "Test Author", "version": "1.0.0"}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("name"))
+		})
+
+		It("returns an error when author is missing", func() {
+			data := []byte(`{"name": "Test Plugin", "version": "1.0.0"}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("author"))
+		})
+
+		It("returns an error when version is missing", func() {
+			data := []byte(`{"name": "Test Plugin", "author": "Test Author"}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("version"))
+		})
+
+		It("returns an error when name is empty", func() {
+			data := []byte(`{"name": "", "author": "Test Author", "version": "1.0.0"}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("name"))
+		})
+
+		It("returns an error when author is empty", func() {
+			data := []byte(`{"name": "Test Plugin", "author": "", "version": "1.0.0"}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("author"))
+		})
+
+		It("returns an error when version is empty", func() {
+			data := []byte(`{"name": "Test Plugin", "author": "Test Author", "version": ""}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("version"))
+		})
+	})
+
+	Describe("HasExperimentalThreads", func() {
+		It("returns false when no experimental section", func() {
+			m := &Manifest{}
+			Expect(m.HasExperimentalThreads()).To(BeFalse())
+		})
+
+		It("returns false when experimental section has no threads", func() {
+			m := &Manifest{
+				Experimental: &Experimental{},
 			}
-		}`)
+			Expect(m.HasExperimentalThreads()).To(BeFalse())
+		})
 
-		err := os.WriteFile(manifestPath, manifestContent, 0600)
-		Expect(err).NotTo(HaveOccurred())
+		It("returns true when threads feature is present", func() {
+			m := &Manifest{
+				Experimental: &Experimental{
+					Threads: &ThreadsFeature{},
+				},
+			}
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
 
-		manifest, err := LoadManifest(tempDir)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manifest).NotTo(BeNil())
-		Expect(manifest.Name).To(Equal("test-plugin"))
-		Expect(manifest.Author).To(Equal("Test Author"))
-		Expect(manifest.Version).To(Equal("1.0.0"))
-		Expect(manifest.Description).To(Equal("A test plugin"))
-		Expect(manifest.Capabilities).To(HaveLen(2))
-		Expect(manifest.Capabilities[0]).To(Equal(schema.PluginManifestCapabilitiesElemMetadataAgent))
-		Expect(manifest.Capabilities[1]).To(Equal(schema.PluginManifestCapabilitiesElemScrobbler))
-		Expect(manifest.Permissions.Http).NotTo(BeNil())
-		Expect(manifest.Permissions.Http.Reason).To(Equal("To fetch metadata"))
+		It("returns true when threads feature has a reason", func() {
+			reason := "Required for concurrent processing"
+			m := &Manifest{
+				Experimental: &Experimental{
+					Threads: &ThreadsFeature{
+						Reason: &reason,
+					},
+				},
+			}
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
+
+		It("parses experimental.threads from JSON", func() {
+			data := []byte(`{
+				"name": "Threaded Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"experimental": {
+					"threads": {
+						"reason": "To use multi-threaded WASM module"
+					}
+				}
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+			Expect(m.Experimental.Threads.Reason).ToNot(BeNil())
+			Expect(*m.Experimental.Threads.Reason).To(Equal("To use multi-threaded WASM module"))
+		})
+
+		It("parses experimental.threads without reason from JSON", func() {
+			data := []byte(`{
+				"name": "Threaded Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"experimental": {
+					"threads": {}
+				}
+			}`)
+
+			var m Manifest
+			err := json.Unmarshal(data, &m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.HasExperimentalThreads()).To(BeTrue())
+		})
 	})
 
-	It("should fail with proper error for non-existent manifest", func() {
-		_, err := LoadManifest(filepath.Join(tempDir, "non-existent"))
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("failed to read manifest file"))
+	Describe("ParseManifest", func() {
+		It("parses a valid manifest with users permission", func() {
+			data := []byte(`{
+				"name": "Test Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"permissions": {
+					"subsonicapi": {},
+					"users": {}
+				}
+			}`)
+
+			m, err := ParseManifest(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).To(Equal("Test Plugin"))
+			Expect(m.Permissions.Subsonicapi).ToNot(BeNil())
+			Expect(m.Permissions.Users).ToNot(BeNil())
+		})
+
+		It("returns error for invalid JSON", func() {
+			data := []byte(`{invalid}`)
+
+			_, err := ParseManifest(data)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when subsonicapi is requested without users permission", func() {
+			data := []byte(`{
+				"name": "Test Plugin",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"permissions": {
+					"subsonicapi": {}
+				}
+			}`)
+
+			_, err := ParseManifest(data)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
 	})
 
-	It("should fail with JSON parse error for invalid JSON", func() {
-		// Create invalid JSON
-		invalidJSON := `{
-			"name": "test-plugin",
-			"author": "Test Author"
-			"version": "1.0.0"
-			"description": "A test plugin",
-			"capabilities": ["MetadataAgent"],
-			"permissions": {}
-		}`
+	Describe("Validate", func() {
+		It("validates manifest with subsonicapi and users permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Subsonicapi: &SubsonicAPIPermission{},
+					Users:       &UsersPermission{},
+				},
+			}
 
-		pluginDir := filepath.Join(tempDir, "invalid-json")
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidJSON), 0600)).To(Succeed())
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// Test validation fails
-		_, err := LoadManifest(pluginDir)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("invalid manifest"))
+		It("returns error when subsonicapi without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Subsonicapi: &SubsonicAPIPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+		})
+
+		It("validates manifest without subsonicapi", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Http: &HTTPPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates manifest without any permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
-	It("should validate manifest against schema with detailed error for missing required field", func() {
-		// Create manifest missing required name field
-		manifestContent := `{
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "A test plugin",
-			"website": "https://test.navidrome.org/test-plugin",
-			"capabilities": ["MetadataAgent"],
-			"permissions": {}
-		}`
+	Describe("ValidateWithCapabilities", func() {
+		It("validates scrobbler capability with users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Users: &UsersPermission{},
+				},
+			}
 
-		pluginDir := filepath.Join(tempDir, "test-plugin")
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
+			err := ValidateWithCapabilities(m, []Capability{CapabilityScrobbler})
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		_, err := LoadManifest(pluginDir)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("field name in PluginManifest: required"))
-	})
+		It("returns error when scrobbler capability without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
 
-	It("should validate manifest with wrong capability type", func() {
-		// Create manifest with invalid capability
-		manifestContent := `{
-			"name": "test-plugin",
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "A test plugin",
-			"website": "https://test.navidrome.org/test-plugin",
-			"capabilities": ["UnsupportedService"],
-			"permissions": {}
-		}`
+			err := ValidateWithCapabilities(m, []Capability{CapabilityScrobbler})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("scrobbler"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
 
-		pluginDir := filepath.Join(tempDir, "test-plugin")
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
+		It("validates non-scrobbler capability without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
 
-		_, err := LoadManifest(pluginDir)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("invalid value"))
-		Expect(err.Error()).To(ContainSubstring("UnsupportedService"))
-	})
+			err := ValidateWithCapabilities(m, []Capability{CapabilityMetadataAgent})
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-	It("should validate manifest with empty capabilities array", func() {
-		// Create manifest with empty capabilities array
-		manifestContent := `{
-			"name": "test-plugin",
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "A test plugin",
-			"website": "https://test.navidrome.org/test-plugin",
-			"capabilities": [],
-			"permissions": {}
-		}`
+		It("validates multiple capabilities including scrobbler", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Users: &UsersPermission{},
+				},
+			}
 
-		pluginDir := filepath.Join(tempDir, "test-plugin")
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
+			err := ValidateWithCapabilities(m, []Capability{CapabilityMetadataAgent, CapabilityScrobbler})
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		_, err := LoadManifest(pluginDir)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("field capabilities length: must be >= 1"))
+		It("validates with nil capabilities", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates with empty capabilities", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{})
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })

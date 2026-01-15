@@ -7,10 +7,13 @@ import (
 	"path"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -78,7 +81,7 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 
 func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 	s.URL = ShareURL(r, s.ID)
-	s.ImageURL = ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
+	s.ImageURL = publicurl.ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}
@@ -88,7 +91,19 @@ func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 	for i := range s.Tracks {
 		id := encodeMediafileShare(s, s.Tracks[i].ID)
-		s.Tracks[i].Path = publicURL(r, path.Join(consts.URLPathPublic, "s", id), nil)
+		s.Tracks[i].Path = publicurl.PublicURL(r, path.Join(consts.URLPathPublic, "s", id), nil)
 	}
 	return &s
+}
+
+func encodeMediafileShare(s model.Share, id string) string {
+	claims := map[string]any{"id": id}
+	if s.Format != "" {
+		claims["f"] = s.Format
+	}
+	if s.MaxBitRate != 0 {
+		claims["b"] = s.MaxBitRate
+	}
+	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
+	return token
 }

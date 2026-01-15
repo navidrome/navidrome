@@ -2,399 +2,441 @@ package plugins
 
 import (
 	"context"
-	"encoding/binary"
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	gorillaws "github.com/gorilla/websocket"
-	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/gorilla/websocket"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/host/websocket"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/host"
 )
 
-// WebSocketConnection represents a WebSocket connection
-type WebSocketConnection struct {
-	Conn         *gorillaws.Conn
-	PluginName   string
-	ConnectionID string
-	Done         chan struct{}
-	mu           sync.Mutex
+// CapabilityWebSocket indicates the plugin can receive WebSocket callbacks.
+// Detected when the plugin exports any of the WebSocket callback functions.
+const CapabilityWebSocket Capability = "WebSocket"
+
+// webSocketCallbackTimeout is the maximum duration allowed for a WebSocket callback.
+const webSocketCallbackTimeout = 30 * time.Second
+
+// WebSocket callback function names
+const (
+	FuncWebSocketOnTextMessage   = "nd_websocket_on_text_message"
+	FuncWebSocketOnBinaryMessage = "nd_websocket_on_binary_message"
+	FuncWebSocketOnError         = "nd_websocket_on_error"
+	FuncWebSocketOnClose         = "nd_websocket_on_close"
+)
+
+func init() {
+	registerCapability(
+		CapabilityWebSocket,
+		FuncWebSocketOnTextMessage,
+		FuncWebSocketOnBinaryMessage,
+		FuncWebSocketOnError,
+		FuncWebSocketOnClose,
+	)
 }
 
-// WebSocketHostFunctions implements the websocket.WebSocketService interface
-type WebSocketHostFunctions struct {
-	ws          *websocketService
-	pluginID    string
-	permissions *webSocketPermissions
+// wsConnection represents an active WebSocket connection.
+type wsConnection struct {
+	conn     *websocket.Conn
+	done     chan struct{}
+	closeMu  sync.Mutex
+	isClosed bool
 }
 
-func (s WebSocketHostFunctions) Connect(ctx context.Context, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
-	return s.ws.connect(ctx, s.pluginID, req, s.permissions)
-}
+// webSocketServiceImpl implements host.WebSocketService.
+// It provides plugins with WebSocket communication capabilities.
+type webSocketServiceImpl struct {
+	pluginName    string
+	manager       *Manager
+	requiredHosts []string
 
-func (s WebSocketHostFunctions) SendText(ctx context.Context, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
-	return s.ws.sendText(ctx, s.pluginID, req)
-}
-
-func (s WebSocketHostFunctions) SendBinary(ctx context.Context, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
-	return s.ws.sendBinary(ctx, s.pluginID, req)
-}
-
-func (s WebSocketHostFunctions) Close(ctx context.Context, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
-	return s.ws.close(ctx, s.pluginID, req)
-}
-
-// websocketService implements the WebSocket service functionality
-type websocketService struct {
-	connections map[string]*WebSocketConnection
-	manager     *managerImpl
 	mu          sync.RWMutex
+	connections map[string]*wsConnection
 }
 
-// newWebsocketService creates a new websocketService instance
-func newWebsocketService(manager *managerImpl) *websocketService {
-	return &websocketService{
-		connections: make(map[string]*WebSocketConnection),
-		manager:     manager,
+// newWebSocketService creates a new WebSocketService for a plugin.
+func newWebSocketService(pluginName string, manager *Manager, permission *WebSocketPermission) *webSocketServiceImpl {
+	return &webSocketServiceImpl{
+		pluginName:    pluginName,
+		manager:       manager,
+		requiredHosts: permission.RequiredHosts,
+		connections:   make(map[string]*wsConnection),
 	}
 }
 
-// HostFunctions returns the WebSocketHostFunctions for the given plugin
-func (s *websocketService) HostFunctions(pluginID string, permissions *webSocketPermissions) WebSocketHostFunctions {
-	return WebSocketHostFunctions{
-		ws:          s,
-		pluginID:    pluginID,
-		permissions: permissions,
-	}
-}
-
-// Safe accessor methods
-
-// hasConnection safely checks if a connection exists
-func (s *websocketService) hasConnection(id string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	_, exists := s.connections[id]
-	return exists
-}
-
-// connectionCount safely returns the number of connections
-func (s *websocketService) connectionCount() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return len(s.connections)
-}
-
-// getConnection safely retrieves a connection by internal ID
-func (s *websocketService) getConnection(internalConnectionID string) (*WebSocketConnection, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	conn, exists := s.connections[internalConnectionID]
-
-	if !exists {
-		return nil, fmt.Errorf("connection not found")
-	}
-	return conn, nil
-}
-
-// internalConnectionID builds the internal connection ID from plugin and connection ID
-func internalConnectionID(pluginName, connectionID string) string {
-	return pluginName + ":" + connectionID
-}
-
-// extractConnectionID extracts the original connection ID from an internal ID
-func extractConnectionID(internalID string) (string, error) {
-	parts := strings.Split(internalID, ":")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid internal connection ID format: %s", internalID)
-	}
-	return parts[1], nil
-}
-
-// connect establishes a new WebSocket connection
-func (s *websocketService) connect(ctx context.Context, pluginID string, req *websocket.ConnectRequest, permissions *webSocketPermissions) (*websocket.ConnectResponse, error) {
-	if s.manager == nil {
-		return nil, fmt.Errorf("websocket service not properly initialized")
-	}
-
-	// Check permissions if they exist
-	if permissions != nil {
-		if err := permissions.IsConnectionAllowed(req.Url); err != nil {
-			log.Warn(ctx, "WebSocket connection blocked by permissions", "plugin", pluginID, "url", req.Url, err)
-			return &websocket.ConnectResponse{Error: "Connection blocked by plugin permissions: " + err.Error()}, nil
-		}
-	}
-
-	// Create websocket dialer with the headers
-	dialer := gorillaws.DefaultDialer
-	header := make(map[string][]string)
-	for k, v := range req.Headers {
-		header[k] = []string{v}
-	}
-
-	// Connect to the WebSocket server
-	conn, resp, err := dialer.DialContext(ctx, req.Url, header)
+func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, headers map[string]string, connectionID string) (string, error) {
+	// Parse and validate URL
+	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to WebSocket server: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Generate a connection ID
-	if req.ConnectionId == "" {
-		req.ConnectionId, _ = gonanoid.New(10)
-	}
-	connectionID := req.ConnectionId
-	internal := internalConnectionID(pluginID, connectionID)
-
-	// Create the connection object
-	wsConn := &WebSocketConnection{
-		Conn:         conn,
-		PluginName:   pluginID,
-		ConnectionID: connectionID,
-		Done:         make(chan struct{}),
+		return "", fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Store the connection
+	// Validate scheme
+	if parsedURL.Scheme != "ws" && parsedURL.Scheme != "wss" {
+		return "", fmt.Errorf("invalid URL scheme: must be ws:// or wss://")
+	}
+
+	// Validate host against allowed hosts
+	if !s.isHostAllowed(parsedURL.Host) {
+		return "", fmt.Errorf("host %q is not allowed", parsedURL.Host)
+	}
+
+	// Generate connection ID if not provided
+	if connectionID == "" {
+		connectionID = id.NewRandom()
+	}
+
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.connections[internal] = wsConn
+	if _, exists := s.connections[connectionID]; exists {
+		s.mu.Unlock()
+		return "", fmt.Errorf("connection ID %q already exists", connectionID)
+	}
+	s.mu.Unlock()
 
-	log.Debug("WebSocket connection established", "plugin", pluginID, "connectionID", connectionID, "url", req.Url)
+	// Create HTTP headers for handshake
+	httpHeaders := http.Header{}
+	for k, v := range headers {
+		httpHeaders.Set(k, v)
+	}
 
-	// Start the message handling goroutine
-	go s.handleMessages(internal, wsConn)
+	// Establish WebSocket connection
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 30 * time.Second,
+	}
 
-	return &websocket.ConnectResponse{
-		ConnectionId: connectionID,
-	}, nil
+	conn, resp, err := dialer.DialContext(ctx, urlStr, httpHeaders)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to connect: %w", err)
+	}
+
+	wsConn := &wsConnection{
+		conn: conn,
+		done: make(chan struct{}),
+	}
+
+	s.mu.Lock()
+	s.connections[connectionID] = wsConn
+	s.mu.Unlock()
+
+	// Start read goroutine with manager's context.
+	// We use manager.ctx instead of the caller's ctx because the readLoop must
+	// outlive the Connect() call. The manager's context is cancelled during
+	// application shutdown, ensuring graceful cleanup.
+	go s.readLoop(s.manager.ctx, connectionID, wsConn)
+
+	log.Debug(ctx, "WebSocket connected", "plugin", s.pluginName, "connectionID", connectionID, "url", urlStr)
+	return connectionID, nil
 }
 
-// writeMessage is a helper to send messages to a websocket connection
-func (s *websocketService) writeMessage(pluginID string, connID string, messageType int, data []byte) error {
-	internal := internalConnectionID(pluginID, connID)
-
-	conn, err := s.getConnection(internal)
+func (s *webSocketServiceImpl) SendText(ctx context.Context, connectionID, message string) error {
+	wsConn, err := s.getConnection(connectionID)
 	if err != nil {
 		return err
 	}
 
-	conn.mu.Lock()
-	defer conn.mu.Unlock()
-
-	if err := conn.Conn.WriteMessage(messageType, data); err != nil {
-		return fmt.Errorf("failed to send message: %w", err)
+	if err := wsConn.conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+		return fmt.Errorf("failed to send text message: %w", err)
 	}
 
 	return nil
 }
 
-// sendText sends a text message over a WebSocket connection
-func (s *websocketService) sendText(ctx context.Context, pluginID string, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
-	if err := s.writeMessage(pluginID, req.ConnectionId, gorillaws.TextMessage, []byte(req.Message)); err != nil {
-		return &websocket.SendTextResponse{Error: err.Error()}, nil //nolint:nilerr
+func (s *webSocketServiceImpl) SendBinary(ctx context.Context, connectionID string, data []byte) error {
+	wsConn, err := s.getConnection(connectionID)
+	if err != nil {
+		return err
 	}
-	return &websocket.SendTextResponse{}, nil
+
+	if err := wsConn.conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		return fmt.Errorf("failed to send binary message: %w", err)
+	}
+
+	return nil
 }
 
-// sendBinary sends binary data over a WebSocket connection
-func (s *websocketService) sendBinary(ctx context.Context, pluginID string, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
-	if err := s.writeMessage(pluginID, req.ConnectionId, gorillaws.BinaryMessage, req.Data); err != nil {
-		return &websocket.SendBinaryResponse{Error: err.Error()}, nil //nolint:nilerr
-	}
-	return &websocket.SendBinaryResponse{}, nil
-}
-
-// close closes a WebSocket connection
-func (s *websocketService) close(ctx context.Context, pluginID string, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
-	internal := internalConnectionID(pluginID, req.ConnectionId)
-
+func (s *webSocketServiceImpl) CloseConnection(ctx context.Context, connectionID string, code int32, reason string) error {
 	s.mu.Lock()
-	conn, exists := s.connections[internal]
+	wsConn, exists := s.connections[connectionID]
 	if !exists {
 		s.mu.Unlock()
-		return &websocket.CloseResponse{Error: "connection not found"}, nil
+		return fmt.Errorf("connection ID %q not found", connectionID)
 	}
-	delete(s.connections, internal)
+	delete(s.connections, connectionID)
 	s.mu.Unlock()
 
-	// Signal the message handling goroutine to stop
-	close(conn.Done)
+	// Mark as closed to prevent callback
+	wsConn.closeMu.Lock()
+	wsConn.isClosed = true
+	wsConn.closeMu.Unlock()
 
-	// Close the connection with the specified code and reason
-	conn.mu.Lock()
-	defer conn.mu.Unlock()
+	// Send close message
+	closeMsg := websocket.FormatCloseMessage(int(code), reason)
+	_ = wsConn.conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(5*time.Second))
+	_ = wsConn.conn.Close()
 
-	err := conn.Conn.WriteControl(
-		gorillaws.CloseMessage,
-		gorillaws.FormatCloseMessage(int(req.Code), req.Reason),
-		time.Now().Add(time.Second),
-	)
-	if err != nil {
-		log.Error("Error sending close message", "plugin", pluginID, "error", err)
-	}
+	// Signal read goroutine to stop
+	close(wsConn.done)
 
-	if err := conn.Conn.Close(); err != nil {
-		return nil, fmt.Errorf("error closing connection: %w", err)
-	}
+	// Invoke close callback
+	s.invokeOnClose(ctx, connectionID, code, reason)
 
-	log.Debug("WebSocket connection closed", "plugin", pluginID, "connectionID", req.ConnectionId)
-	return &websocket.CloseResponse{}, nil
+	log.Debug(ctx, "WebSocket connection closed", "plugin", s.pluginName, "connectionID", connectionID, "code", code)
+	return nil
 }
 
-// handleMessages processes incoming WebSocket messages
-func (s *websocketService) handleMessages(internalID string, conn *WebSocketConnection) {
-	// Get the original connection ID (without plugin prefix)
-	connectionID, err := extractConnectionID(internalID)
-	if err != nil {
-		log.Error("Invalid internal connection ID", "id", internalID, "error", err)
-		return
+// Close closes all connections for this plugin.
+// This is called when the plugin is unloaded.
+func (s *webSocketServiceImpl) Close() error {
+	s.mu.Lock()
+	connections := make(map[string]*wsConnection, len(s.connections))
+	for k, v := range s.connections {
+		connections[k] = v
+	}
+	s.connections = make(map[string]*wsConnection)
+	s.mu.Unlock()
+
+	ctx := context.Background()
+	for connID, wsConn := range connections {
+		wsConn.closeMu.Lock()
+		wsConn.isClosed = true
+		wsConn.closeMu.Unlock()
+
+		closeMsg := websocket.FormatCloseMessage(websocket.CloseGoingAway, "plugin unloaded")
+		err := wsConn.conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(2*time.Second))
+		if err != nil {
+			log.Warn("Failed to send WebSocket close message on plugin unload", "plugin", s.pluginName, "connectionID", connID, "error", err)
+		}
+		err = wsConn.conn.Close()
+		if err != nil {
+			log.Warn("Failed to close WebSocket connection on plugin unload", "plugin", s.pluginName, "connectionID", connID, "error", err)
+		}
+		close(wsConn.done)
+
+		s.invokeOnClose(ctx, connID, websocket.CloseGoingAway, "plugin unloaded")
+		log.Debug("WebSocket connection closed on plugin unload", "plugin", s.pluginName, "connectionID", connID)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	return nil
+}
 
+func (s *webSocketServiceImpl) getConnection(connectionID string) (*wsConnection, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	wsConn, exists := s.connections[connectionID]
+	if !exists {
+		return nil, fmt.Errorf("connection ID %q not found", connectionID)
+	}
+	return wsConn, nil
+}
+
+func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
+	// Strip port from host if present
+	hostWithoutPort := host
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		hostWithoutPort = host[:idx]
+	}
+
+	for _, pattern := range s.requiredHosts {
+		if matchHostPattern(pattern, hostWithoutPort) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchHostPattern matches a host against a pattern.
+// Supports wildcards like *.example.com
+func matchHostPattern(pattern, host string) bool {
+	if pattern == host {
+		return true
+	}
+
+	// Handle wildcard patterns like *.example.com
+	if strings.HasPrefix(pattern, "*.") {
+		suffix := pattern[1:] // Get .example.com
+		return strings.HasSuffix(host, suffix)
+	}
+
+	return false
+}
+
+func (s *webSocketServiceImpl) readLoop(ctx context.Context, connectionID string, wsConn *wsConnection) {
 	defer func() {
-		// Ensure the connection is removed from the map if not already removed
+		// Remove connection if still present
 		s.mu.Lock()
-		defer s.mu.Unlock()
-		delete(s.connections, internalID)
-
-		log.Debug("WebSocket message handler stopped", "plugin", conn.PluginName, "connectionID", connectionID)
+		delete(s.connections, connectionID)
+		s.mu.Unlock()
 	}()
-
-	// Add connection info to context
-	ctx = log.NewContext(ctx,
-		"connectionID", connectionID,
-		"plugin", conn.PluginName,
-	)
 
 	for {
 		select {
-		case <-conn.Done:
-			// Connection was closed by a Close call
+		case <-wsConn.done:
 			return
 		default:
-			// Set a read deadline
-			_ = conn.Conn.SetReadDeadline(time.Now().Add(time.Second * 60))
+		}
 
-			// Read the next message
-			messageType, message, err := conn.Conn.ReadMessage()
-			if err != nil {
-				s.notifyErrorCallback(ctx, connectionID, conn, err.Error())
+		messageType, data, err := wsConn.conn.ReadMessage()
+		if err != nil {
+			wsConn.closeMu.Lock()
+			isClosed := wsConn.isClosed
+			wsConn.closeMu.Unlock()
+
+			if isClosed {
 				return
 			}
 
-			// Reset the read deadline
-			_ = conn.Conn.SetReadDeadline(time.Time{})
-
-			// Process the message based on its type
-			switch messageType {
-			case gorillaws.TextMessage:
-				s.notifyTextCallback(ctx, connectionID, conn, string(message))
-			case gorillaws.BinaryMessage:
-				s.notifyBinaryCallback(ctx, connectionID, conn, message)
-			case gorillaws.CloseMessage:
-				code := gorillaws.CloseNormalClosure
-				reason := ""
-				if len(message) >= 2 {
-					code = int(binary.BigEndian.Uint16(message[:2]))
-					if len(message) > 2 {
-						reason = string(message[2:])
-					}
+			// Check if it's a close error
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+				closeCode := websocket.CloseNoStatusReceived
+				closeReason := ""
+				var ce *websocket.CloseError
+				if errors.As(err, &ce) {
+					closeCode = ce.Code
+					closeReason = ce.Text
 				}
-				s.notifyCloseCallback(ctx, connectionID, conn, code, reason)
+				s.invokeOnClose(ctx, connectionID, int32(closeCode), closeReason)
 				return
 			}
+
+			// Other read error
+			s.invokeOnError(ctx, connectionID, err.Error())
+			return
+		}
+
+		switch messageType {
+		case websocket.TextMessage:
+			s.invokeOnTextMessage(ctx, connectionID, string(data))
+		case websocket.BinaryMessage:
+			s.invokeOnBinaryMessage(ctx, connectionID, data)
 		}
 	}
 }
 
-// executeCallback is a common function that handles the plugin loading and execution
-// for all types of callbacks
-func (s *websocketService) executeCallback(ctx context.Context, pluginID, methodName string, fn func(context.Context, api.WebSocketCallback) error) {
-	log.Debug(ctx, "WebSocket received")
-
-	start := time.Now()
-
-	// Get the plugin
-	p := s.manager.LoadPlugin(pluginID, CapabilityWebSocketCallback)
-	if p == nil {
-		log.Error(ctx, "Plugin not found for WebSocket callback")
+func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connectionID, message string) {
+	instance := s.getPluginInstance()
+	if instance == nil {
 		return
 	}
 
-	_, _ = callMethod(ctx, p, methodName, func(inst api.WebSocketCallback) (struct{}, error) {
-		// Call the appropriate callback function
-		log.Trace(ctx, "Executing WebSocket callback")
-		if err := fn(ctx, inst); err != nil {
-			log.Error(ctx, "Error executing WebSocket callback", "elapsed", time.Since(start), err)
-			return struct{}{}, fmt.Errorf("error executing WebSocket callback: %w", err)
-		}
-		log.Debug(ctx, "WebSocket callback executed", "elapsed", time.Since(start))
-		return struct{}{}, nil
-	})
-}
-
-// notifyTextCallback notifies the plugin of a text message
-func (s *websocketService) notifyTextCallback(ctx context.Context, connectionID string, conn *WebSocketConnection, message string) {
-	req := &api.OnTextMessageRequest{
-		ConnectionId: connectionID,
+	input := capabilities.OnTextMessageRequest{
+		ConnectionID: connectionID,
 		Message:      message,
 	}
 
-	ctx = log.NewContext(ctx, "callback", "OnTextMessage", "size", len(message))
+	// Create a timeout context for this callback invocation
+	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
+	defer cancel()
 
-	s.executeCallback(ctx, conn.PluginName, "OnTextMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := checkErr(plugin.OnTextMessage(ctx, req))
-		return err
-	})
+	start := time.Now()
+	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnTextMessage, input)
+	if err != nil {
+		// Don't log error if function simply doesn't exist (optional callback)
+		if !errors.Is(errFunctionNotFound, err) {
+			log.Error(ctx, "WebSocket text message callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
+		}
+	}
 }
 
-// notifyBinaryCallback notifies the plugin of a binary message
-func (s *websocketService) notifyBinaryCallback(ctx context.Context, connectionID string, conn *WebSocketConnection, data []byte) {
-	req := &api.OnBinaryMessageRequest{
-		ConnectionId: connectionID,
-		Data:         data,
+func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connectionID string, data []byte) {
+	instance := s.getPluginInstance()
+	if instance == nil {
+		return
 	}
 
-	ctx = log.NewContext(ctx, "callback", "OnBinaryMessage", "size", len(data))
+	input := capabilities.OnBinaryMessageRequest{
+		ConnectionID: connectionID,
+		Data:         base64.StdEncoding.EncodeToString(data),
+	}
 
-	s.executeCallback(ctx, conn.PluginName, "OnBinaryMessage", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := checkErr(plugin.OnBinaryMessage(ctx, req))
-		return err
-	})
+	// Create a timeout context for this callback invocation
+	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
+	defer cancel()
+
+	start := time.Now()
+	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnBinaryMessage, input)
+	if err != nil {
+		// Don't log error if function simply doesn't exist (optional callback)
+		if !errors.Is(errFunctionNotFound, err) {
+			log.Error(ctx, "WebSocket binary message callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
+		}
+	}
 }
 
-// notifyErrorCallback notifies the plugin of an error
-func (s *websocketService) notifyErrorCallback(ctx context.Context, connectionID string, conn *WebSocketConnection, errorMsg string) {
-	req := &api.OnErrorRequest{
-		ConnectionId: connectionID,
+func (s *webSocketServiceImpl) invokeOnError(ctx context.Context, connectionID, errorMsg string) {
+	instance := s.getPluginInstance()
+	if instance == nil {
+		return
+	}
+
+	input := capabilities.OnErrorRequest{
+		ConnectionID: connectionID,
 		Error:        errorMsg,
 	}
 
-	ctx = log.NewContext(ctx, "callback", "OnError", "error", errorMsg)
+	// Create a timeout context for this callback invocation
+	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
+	defer cancel()
 
-	s.executeCallback(ctx, conn.PluginName, "OnError", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := checkErr(plugin.OnError(ctx, req))
-		return err
-	})
+	start := time.Now()
+	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnError, input)
+	if err != nil {
+		// Don't log error if function simply doesn't exist (optional callback)
+		if !errors.Is(errFunctionNotFound, err) {
+			log.Error(ctx, "WebSocket error callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
+		}
+	}
 }
 
-// notifyCloseCallback notifies the plugin that the connection was closed
-func (s *websocketService) notifyCloseCallback(ctx context.Context, connectionID string, conn *WebSocketConnection, code int, reason string) {
-	req := &api.OnCloseRequest{
-		ConnectionId: connectionID,
-		Code:         int32(code),
+func (s *webSocketServiceImpl) invokeOnClose(ctx context.Context, connectionID string, code int32, reason string) {
+	instance := s.getPluginInstance()
+	if instance == nil {
+		return
+	}
+
+	input := capabilities.OnCloseRequest{
+		ConnectionID: connectionID,
+		Code:         code,
 		Reason:       reason,
 	}
 
-	ctx = log.NewContext(ctx, "callback", "OnClose", "code", code, "reason", reason)
+	// Create a timeout context for this callback invocation
+	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
+	defer cancel()
 
-	s.executeCallback(ctx, conn.PluginName, "OnClose", func(ctx context.Context, plugin api.WebSocketCallback) error {
-		_, err := checkErr(plugin.OnClose(ctx, req))
-		return err
-	})
+	start := time.Now()
+	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnClose, input)
+	if err != nil {
+		// Don't log error if function simply doesn't exist (optional callback)
+		if !errors.Is(errFunctionNotFound, err) {
+			log.Error(ctx, "WebSocket close callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
+		}
+	}
 }
+
+func (s *webSocketServiceImpl) getPluginInstance() *plugin {
+	s.manager.mu.RLock()
+	instance, ok := s.manager.plugins[s.pluginName]
+	s.manager.mu.RUnlock()
+
+	if !ok {
+		log.Warn("Plugin not loaded for WebSocket callback", "plugin", s.pluginName)
+		return nil
+	}
+
+	return instance
+}
+
+// Verify interface implementation
+var _ host.WebSocketService = (*webSocketServiceImpl)(nil)
