@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://navidrome.org/schemas/Manifest.json",
+  "title": "Manifest",
+  "description": "Plugin manifest for Navidrome plugins",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "author", "version"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The display name of the plugin",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "description": "The author of the plugin",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "The version of the plugin (semver recommended)",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief description of what the plugin does"
+    },
+    "website": {
+      "type": "string",
+      "description": "URL to the plugin's website or repository",
+      "format": "uri"
+    },
+    "permissions": {
+      "$ref": "#/$defs/Permissions"
+    },
+    "experimental": {
+      "$ref": "#/$defs/Experimental"
+    }
+  },
+  "$defs": {
+    "Experimental": {
+      "type": "object",
+      "description": "Experimental features that may change or be removed in future versions",
+      "additionalProperties": false,
+      "properties": {
+        "threads": {
+          "$ref": "#/$defs/ThreadsFeature"
+        }
+      }
+    },
+    "ThreadsFeature": {
+      "type": "object",
+      "description": "Enable experimental WebAssembly threads support",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why threads support is needed"
+        }
+      }
+    },
+    "Permissions": {
+      "type": "object",
+      "description": "Permissions required by the plugin",
+      "additionalProperties": false,
+      "properties": {
+        "http": {
+          "$ref": "#/$defs/HTTPPermission"
+        },
+        "subsonicapi": {
+          "$ref": "#/$defs/SubsonicAPIPermission"
+        },
+        "scheduler": {
+          "$ref": "#/$defs/SchedulerPermission"
+        },
+        "websocket": {
+          "$ref": "#/$defs/WebSocketPermission"
+        },
+        "artwork": {
+          "$ref": "#/$defs/ArtworkPermission"
+        },
+        "cache": {
+          "$ref": "#/$defs/CachePermission"
+        },
+        "library": {
+          "$ref": "#/$defs/LibraryPermission"
+        },
+        "kvstore": {
+          "$ref": "#/$defs/KVStorePermission"
+        },
+        "users": {
+          "$ref": "#/$defs/UsersPermission"
+        }
+      }
+    },
+    "ArtworkPermission": {
+      "type": "object",
+      "description": "Artwork service permissions for generating artwork URLs",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why artwork access is needed"
+        }
+      }
+    },
+    "CachePermission": {
+      "type": "object",
+      "description": "Cache service permissions for storing and retrieving data",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why cache access is needed"
+        }
+      }
+    },
+    "HTTPPermission": {
+      "type": "object",
+      "description": "HTTP access permissions for a plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why HTTP access is needed"
+        },
+        "requiredHosts": {
+          "type": "array",
+          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.spotify.com')",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ConfigPermission": {
+      "type": "object",
+      "description": "Configuration access permissions for a plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why config access is needed"
+        }
+      }
+    },
+    "SubsonicAPIPermission": {
+      "type": "object",
+      "description": "SubsonicAPI service permissions. Requires 'users' permission to be declared.",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why SubsonicAPI access is needed"
+        }
+      }
+    },
+    "SchedulerPermission": {
+      "type": "object",
+      "description": "Scheduler service permissions for scheduling tasks",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why scheduler access is needed"
+        }
+      }
+    },
+    "WebSocketPermission": {
+      "type": "object",
+      "description": "WebSocket service permissions for establishing WebSocket connections",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why WebSocket access is needed"
+        },
+        "requiredHosts": {
+          "type": "array",
+          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.spotify.com')",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "LibraryPermission": {
+      "type": "object",
+      "description": "Library service permissions for accessing library metadata and optionally filesystem",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why library access is needed"
+        },
+        "filesystem": {
+          "type": "boolean",
+          "description": "Whether the plugin requires read-only filesystem access to library directories",
+          "default": false
+        }
+      }
+    },
+    "KVStorePermission": {
+      "type": "object",
+      "description": "Key-value store permissions for persistent plugin storage",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why key-value store access is needed"
+        },
+        "maxSize": {
+          "type": "string",
+          "description": "Maximum storage size (e.g., '1MB', '500KB'). Default: 1MB"
+        }
+      }
+    },
+    "UsersPermission": {
+      "type": "object",
+      "description": "Users service permissions for accessing user information",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why users access is needed"
+        }
+      }
+    }
+  }
+}

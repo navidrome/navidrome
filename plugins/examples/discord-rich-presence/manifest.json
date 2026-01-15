@@ -1,26 +1,24 @@
 {
-  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
-  "name": "discord-rich-presence",
+  "name": "Discord Rich Presence",
   "author": "Navidrome Team",
   "version": "1.0.0",
   "description": "Discord Rich Presence integration for Navidrome",
   "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence",
-  "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"],
   "permissions": {
+    "users": {
+      "reason": "To process scrobbles on behalf of users"
+    },
     "http": {
       "reason": "To communicate with Discord API for gateway discovery and image uploads",
-      "allowedUrls": {
-        "https://discord.com/api/*": ["GET", "POST"]
-      },
-      "allowLocalNetwork": false
+      "requiredHosts": [
+        "discord.com"
+      ]
     },
     "websocket": {
       "reason": "To maintain real-time connection with Discord gateway",
-      "allowedUrls": ["wss://gateway.discord.gg"],
-      "allowLocalNetwork": false
-    },
-    "config": {
-      "reason": "To access plugin configuration (client ID and user tokens)"
+      "requiredHosts": [
+        "gateway.discord.gg"
+      ]
     },
     "cache": {
       "reason": "To store connection state and sequence numbers"

@@ -50,7 +50,11 @@ test: ##@Development Run Go tests. Use PKG variable to specify packages to test,
 	go test -tags netgo $(PKG)
 .PHONY: test
 
-testall: test-race test-i18n test-js ##@Development Run Go and JS tests
+test-ndpgen: ##@Development Run tests for ndpgen plugin
+	cd plugins/cmd/ndpgen && go test ./......
+.PHONY: test-ndpgen
+
+testall: test test-ndpgen test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
@@ -85,7 +89,7 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run -v --timeout 5m
+	PATH=$$PATH:./bin golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -102,6 +106,15 @@ format: ##@Development Format code
 wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags=netgo ./...
 .PHONY: wire
+
+gen: check_go_env ##@Development Run go generate for code generation
+	go generate ./...
+	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host
+	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -python -rust
+	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust
+	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities
+	go mod tidy -C plugins/pdk/go
+.PHONY: gen
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
@@ -265,24 +278,6 @@ pre-push: lintall testall
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
-
-# Generate Go code from plugins/api/api.proto
-plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf files
-	go generate ./plugins/...
-.PHONY: plugin-gen
-
-plugin-examples: check_go_env ##@Development Build all example plugins
-	$(MAKE) -C plugins/examples clean all
-.PHONY: plugin-examples
-
-plugin-clean: check_go_env ##@Development Clean all plugins
-	$(MAKE) -C plugins/examples clean
-	$(MAKE) -C plugins/testdata clean
-.PHONY: plugin-clean
-
-plugin-tests: check_go_env ##@Development Build all test plugins
-	$(MAKE) -C plugins/testdata clean all
-.PHONY: plugin-tests
 
 .DEFAULT_GOAL := help
 

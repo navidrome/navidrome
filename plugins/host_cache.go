@@ -2,53 +2,41 @@ package plugins
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/navidrome/navidrome/log"
-	cacheproto "github.com/navidrome/navidrome/plugins/host/cache"
+	"github.com/navidrome/navidrome/plugins/host"
 )
 
 const (
 	defaultCacheTTL = 24 * time.Hour
 )
 
-// cacheServiceImpl implements the cache.CacheService interface
+// cacheServiceImpl implements the host.CacheService interface.
+// Each plugin gets its own cache instance for isolation.
 type cacheServiceImpl struct {
-	pluginID   string
+	pluginName string
+	cache      *ttlcache.Cache[string, any]
 	defaultTTL time.Duration
 }
 
-var (
-	_cache        *ttlcache.Cache[string, any]
-	initCacheOnce sync.Once
-)
-
-// newCacheService creates a new cacheServiceImpl instance
-func newCacheService(pluginID string) *cacheServiceImpl {
-	initCacheOnce.Do(func() {
-		opts := []ttlcache.Option[string, any]{
-			ttlcache.WithTTL[string, any](defaultCacheTTL),
-		}
-		_cache = ttlcache.New[string, any](opts...)
-
-		// Start the janitor goroutine to clean up expired entries
-		go _cache.Start()
-	})
+// newCacheService creates a new cacheServiceImpl instance with its own cache.
+func newCacheService(pluginName string) *cacheServiceImpl {
+	cache := ttlcache.New[string, any](
+		ttlcache.WithTTL[string, any](defaultCacheTTL),
+	)
+	// Start the janitor goroutine to clean up expired entries
+	go cache.Start()
 
 	return &cacheServiceImpl{
-		pluginID:   pluginID,
+		pluginName: pluginName,
+		cache:      cache,
 		defaultTTL: defaultCacheTTL,
 	}
 }
 
-// mapKey combines the plugin name and a provided key to create a unique cache key.
-func (s *cacheServiceImpl) mapKey(key string) string {
-	return s.pluginID + ":" + key
-}
-
-// getTTL converts seconds to a duration, using default if 0
+// getTTL converts seconds to a duration, using default if 0 or negative
 func (s *cacheServiceImpl) getTTL(seconds int64) time.Duration {
 	if seconds <= 0 {
 		return s.defaultTTL
@@ -56,97 +44,110 @@ func (s *cacheServiceImpl) getTTL(seconds int64) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-// setCacheValue is a generic function to set a value in the cache
-func setCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, value T, ttlSeconds int64) (*cacheproto.SetResponse, error) {
-	ttl := cs.getTTL(ttlSeconds)
-	key = cs.mapKey(key)
-	_cache.Set(key, value, ttl)
-	return &cacheproto.SetResponse{Success: true}, nil
+// SetString stores a string value in the cache.
+func (s *cacheServiceImpl) SetString(ctx context.Context, key string, value string, ttlSeconds int64) error {
+	s.cache.Set(key, value, s.getTTL(ttlSeconds))
+	return nil
 }
 
-// getCacheValue is a generic function to get a value from the cache
-func getCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, typeName string) (T, bool, error) {
-	key = cs.mapKey(key)
-	var zero T
-	item := _cache.Get(key)
+// GetString retrieves a string value from the cache.
+func (s *cacheServiceImpl) GetString(ctx context.Context, key string) (string, bool, error) {
+	item := s.cache.Get(key)
 	if item == nil {
-		return zero, false, nil
+		return "", false, nil
 	}
 
-	value, ok := item.Value().(T)
+	value, ok := item.Value().(string)
 	if !ok {
-		log.Debug(ctx, "Type mismatch in cache", "plugin", cs.pluginID, "key", key, "expected", typeName)
-		return zero, false, nil
+		log.Debug(ctx, "Cache type mismatch", "plugin", s.pluginName, "key", key, "expected", "string")
+		return "", false, nil
 	}
 	return value, true, nil
 }
 
-// SetString sets a string value in the cache
-func (s *cacheServiceImpl) SetString(ctx context.Context, req *cacheproto.SetStringRequest) (*cacheproto.SetResponse, error) {
-	return setCacheValue(ctx, s, req.Key, req.Value, req.TtlSeconds)
+// SetInt stores an integer value in the cache.
+func (s *cacheServiceImpl) SetInt(ctx context.Context, key string, value int64, ttlSeconds int64) error {
+	s.cache.Set(key, value, s.getTTL(ttlSeconds))
+	return nil
 }
 
-// GetString gets a string value from the cache
-func (s *cacheServiceImpl) GetString(ctx context.Context, req *cacheproto.GetRequest) (*cacheproto.GetStringResponse, error) {
-	value, exists, err := getCacheValue[string](ctx, s, req.Key, "string")
-	if err != nil {
-		return nil, err
+// GetInt retrieves an integer value from the cache.
+func (s *cacheServiceImpl) GetInt(ctx context.Context, key string) (int64, bool, error) {
+	item := s.cache.Get(key)
+	if item == nil {
+		return 0, false, nil
 	}
-	return &cacheproto.GetStringResponse{Exists: exists, Value: value}, nil
-}
 
-// SetInt sets an integer value in the cache
-func (s *cacheServiceImpl) SetInt(ctx context.Context, req *cacheproto.SetIntRequest) (*cacheproto.SetResponse, error) {
-	return setCacheValue(ctx, s, req.Key, req.Value, req.TtlSeconds)
-}
-
-// GetInt gets an integer value from the cache
-func (s *cacheServiceImpl) GetInt(ctx context.Context, req *cacheproto.GetRequest) (*cacheproto.GetIntResponse, error) {
-	value, exists, err := getCacheValue[int64](ctx, s, req.Key, "int64")
-	if err != nil {
-		return nil, err
+	value, ok := item.Value().(int64)
+	if !ok {
+		log.Debug(ctx, "Cache type mismatch", "plugin", s.pluginName, "key", key, "expected", "int64")
+		return 0, false, nil
 	}
-	return &cacheproto.GetIntResponse{Exists: exists, Value: value}, nil
+	return value, true, nil
 }
 
-// SetFloat sets a float value in the cache
-func (s *cacheServiceImpl) SetFloat(ctx context.Context, req *cacheproto.SetFloatRequest) (*cacheproto.SetResponse, error) {
-	return setCacheValue(ctx, s, req.Key, req.Value, req.TtlSeconds)
+// SetFloat stores a float value in the cache.
+func (s *cacheServiceImpl) SetFloat(ctx context.Context, key string, value float64, ttlSeconds int64) error {
+	s.cache.Set(key, value, s.getTTL(ttlSeconds))
+	return nil
 }
 
-// GetFloat gets a float value from the cache
-func (s *cacheServiceImpl) GetFloat(ctx context.Context, req *cacheproto.GetRequest) (*cacheproto.GetFloatResponse, error) {
-	value, exists, err := getCacheValue[float64](ctx, s, req.Key, "float64")
-	if err != nil {
-		return nil, err
+// GetFloat retrieves a float value from the cache.
+func (s *cacheServiceImpl) GetFloat(ctx context.Context, key string) (float64, bool, error) {
+	item := s.cache.Get(key)
+	if item == nil {
+		return 0, false, nil
 	}
-	return &cacheproto.GetFloatResponse{Exists: exists, Value: value}, nil
-}
 
-// SetBytes sets a byte slice value in the cache
-func (s *cacheServiceImpl) SetBytes(ctx context.Context, req *cacheproto.SetBytesRequest) (*cacheproto.SetResponse, error) {
-	return setCacheValue(ctx, s, req.Key, req.Value, req.TtlSeconds)
-}
-
-// GetBytes gets a byte slice value from the cache
-func (s *cacheServiceImpl) GetBytes(ctx context.Context, req *cacheproto.GetRequest) (*cacheproto.GetBytesResponse, error) {
-	value, exists, err := getCacheValue[[]byte](ctx, s, req.Key, "[]byte")
-	if err != nil {
-		return nil, err
+	value, ok := item.Value().(float64)
+	if !ok {
+		log.Debug(ctx, "Cache type mismatch", "plugin", s.pluginName, "key", key, "expected", "float64")
+		return 0, false, nil
 	}
-	return &cacheproto.GetBytesResponse{Exists: exists, Value: value}, nil
+	return value, true, nil
 }
 
-// Remove removes a value from the cache
-func (s *cacheServiceImpl) Remove(ctx context.Context, req *cacheproto.RemoveRequest) (*cacheproto.RemoveResponse, error) {
-	key := s.mapKey(req.Key)
-	_cache.Delete(key)
-	return &cacheproto.RemoveResponse{Success: true}, nil
+// SetBytes stores a byte slice in the cache.
+func (s *cacheServiceImpl) SetBytes(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
+	s.cache.Set(key, value, s.getTTL(ttlSeconds))
+	return nil
 }
 
-// Has checks if a key exists in the cache
-func (s *cacheServiceImpl) Has(ctx context.Context, req *cacheproto.HasRequest) (*cacheproto.HasResponse, error) {
-	key := s.mapKey(req.Key)
-	item := _cache.Get(key)
-	return &cacheproto.HasResponse{Exists: item != nil}, nil
+// GetBytes retrieves a byte slice from the cache.
+func (s *cacheServiceImpl) GetBytes(ctx context.Context, key string) ([]byte, bool, error) {
+	item := s.cache.Get(key)
+	if item == nil {
+		return nil, false, nil
+	}
+
+	value, ok := item.Value().([]byte)
+	if !ok {
+		log.Debug(ctx, "Cache type mismatch", "plugin", s.pluginName, "key", key, "expected", "[]byte")
+		return nil, false, nil
+	}
+	return value, true, nil
 }
+
+// Has checks if a key exists in the cache.
+func (s *cacheServiceImpl) Has(ctx context.Context, key string) (bool, error) {
+	item := s.cache.Get(key)
+	return item != nil, nil
+}
+
+// Remove deletes a value from the cache.
+func (s *cacheServiceImpl) Remove(ctx context.Context, key string) error {
+	s.cache.Delete(key)
+	return nil
+}
+
+// Close stops the cache's janitor goroutine and clears all entries.
+// This is called when the plugin is unloaded.
+func (s *cacheServiceImpl) Close() error {
+	s.cache.Stop()
+	s.cache.DeleteAll()
+	log.Debug("Closed plugin cache", "plugin", s.pluginName)
+	return nil
+}
+
+// Ensure cacheServiceImpl implements host.CacheService
+var _ host.CacheService = (*cacheServiceImpl)(nil)

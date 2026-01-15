@@ -1,0 +1,12 @@
+{
+  "name": "Test WebSocket",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test WebSocket plugin for integration testing",
+  "permissions": {
+    "websocket": {
+      "reason": "For testing WebSocket callbacks",
+      "requiredHosts": ["*.example.com", "localhost:*", "echo.websocket.org"]
+    }
+  }
+}

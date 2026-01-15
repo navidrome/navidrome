@@ -8,9 +8,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -230,9 +230,9 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
-	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
-	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 1200)
+	response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
+	response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
@@ -296,9 +296,9 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 
 	base := responses.ArtistInfoBase{}
 	base.Biography = artist.Biography
-	base.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
-	base.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
-	base.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 1200)
+	base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
+	base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
+	base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
 	base.LastFmUrl = artist.ExternalUrl
 	base.MusicBrainzID = artist.MbzArtistID
 

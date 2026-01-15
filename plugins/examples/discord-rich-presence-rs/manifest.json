@@ -1,0 +1,29 @@
+{
+  "name": "Discord Rich Presence (Rust)",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
+  "description": "Discord Rich Presence integration for Navidrome - Rust implementation",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence-rs",
+  "permissions": {
+    "users": {
+      "reason": "To process scrobbles on behalf of users"
+    },
+    "http": {
+      "reason": "To communicate with Discord API for gateway discovery and image uploads",
+      "requiredHosts": ["discord.com"]
+    },
+    "websocket": {
+      "reason": "To maintain real-time connection with Discord gateway",
+      "requiredHosts": ["gateway.discord.gg"]
+    },
+    "cache": {
+      "reason": "To store connection state and sequence numbers"
+    },
+    "scheduler": {
+      "reason": "To schedule heartbeat messages and activity clearing"
+    },
+    "artwork": {
+      "reason": "To get track artwork URLs for rich presence display"
+    }
+  }
+}

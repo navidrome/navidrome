@@ -88,6 +88,16 @@ jobs:
             exit 1
           fi
 
+      - name: Run go generate
+        run: go generate ./...
+      - name: Verify no changes from go generate
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'Generated code is out of date. Run "make gen" and commit the changes'
+            exit 1
+          fi
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
@@ -107,6 +117,13 @@ jobs:
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
           go test -shuffle=on -tags netgo -race ./... -v
+
+      - name: Test ndpgen
+        run: |
+          cd plugins/cmd/ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen .
+          ./ndpgen --help
 
   js:
     name: Test JS code
