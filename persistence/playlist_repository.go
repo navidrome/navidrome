@@ -230,7 +230,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	// Only refresh for owners, unless the playlist is marked as global
 	usr := loggedUser(r.ctx)
 	if pls.OwnerID != usr.ID && !pls.Global {
-		log.Debug(r.ctx, "Not refreshing smart playlist from other user", "playlist", pls.Name, "id", pls.ID)
+		log.Trace(r.ctx, "Not refreshing smart playlist from other user", "playlist", pls.Name, "id", pls.ID)
 		return false
 	}
 
