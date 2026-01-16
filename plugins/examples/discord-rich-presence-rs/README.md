@@ -1,6 +1,6 @@
 # Discord Rich Presence Plugin (Rust)
 
-A Navidrome plugin that displays your currently playing track on Discord using Rich Presence. This is the Rust implementation demonstrating how to use the generated `nd-host` library.
+A Navidrome plugin that displays your currently playing track on Discord using Rich Presence. This is the Rust implementation demonstrating how to use the `nd-pdk` library.
 
 ## ⚠️ Warning
 
@@ -21,20 +21,20 @@ This plugin is for **demonstration purposes only**. It requires storing your Dis
 
 ## Capabilities
 
-This plugin implements three capabilities to demonstrate the nd-host library:
+This plugin implements multiple capabilities to demonstrate the nd-pdk library:
 
 - **Scrobbler**: Receives now-playing events from Navidrome
 - **SchedulerCallback**: Handles heartbeat and activity clearing timers
-- **WebSocketCallback**: Communicates with Discord gateway
+- **WebSocketCallback**: Communicates with Discord gateway (text, binary, error, and close handlers)
 
 ## Configuration
 
 Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
 
-| Key           | Description                                | Example                        |
-|---------------|-------------------------------------------|--------------------------------|
-| `clientid`    | Your Discord application ID               | `123456789012345678`           |
-| `user.<name>` | Discord token for the specified user      | `user.alice` = `token123`      |
+| Key           | Description                          | Example                   |
+|---------------|--------------------------------------|---------------------------|
+| `clientid`    | Your Discord application ID          | `123456789012345678`      |
+| `user.<name>` | Discord token for the specified user | `user.alice` = `token123` |
 
 Each user is configured as a separate key with the `user.` prefix.
 
@@ -69,27 +69,30 @@ make discord-rich-presence-rs.ndp
 3. Enable and configure the plugin in the Navidrome UI (Settings → Plugins)
 4. Restart Navidrome if needed
 
-## Using nd-host Library
+## Using nd-pdk Library
 
-This plugin demonstrates how to use the generated Rust host function wrappers:
+This plugin demonstrates how to use the Rust plugin development kit:
 
 ```rust
-use nd_host::{artwork, cache, scheduler, websocket};
+use nd_pdk::host::{artwork, cache, scheduler, websocket};
+use std::collections::HashMap;
 
 // Get artwork URL
-let (url, _) = artwork::artwork_get_track_url(track_id, 300)?;
+let url = artwork::get_track_url(track_id, 300)?;
 
 // Cache operations
-cache::cache_set_string("key", "value", 3600)?;
-let (value, exists) = cache::cache_get_string("key")?;
+cache::set_string("key", "value", 3600)?;
+if let Some(value) = cache::get_string("key")? {
+    // Use the cached value
+}
 
 // Schedule tasks
-scheduler::scheduler_schedule_one_time(60, "payload", "task-id")?;
-scheduler::scheduler_schedule_recurring("@every 30s", "heartbeat", "heartbeat-task")?;
+scheduler::schedule_one_time(60, "payload", "task-id")?;
+scheduler::schedule_recurring("@every 30s", "heartbeat", "heartbeat-task")?;
 
 // WebSocket operations
-let conn_id = websocket::websocket_connect("wss://example.com/socket")?;
-websocket::websocket_send_text(&conn_id, "Hello")?;
+let conn_id = websocket::connect("wss://example.com/socket", HashMap::new(), "my-conn")?;
+websocket::send_text(&conn_id, "Hello")?;
 ```
 
 ## License
