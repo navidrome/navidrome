@@ -442,6 +442,40 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
 		})
 
+		It("matches Japanese Katakana with dakuten when DB stores NFC (regression #4884)", func() {
+			relativeNFC := "artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3" // アイドル/ドリームソング.mp3 (NFC)
+			Expect(norm.NFD.String(relativeNFC)).ToNot(Equal(relativeNFC))                                  // ensure it actually decomposes
+
+			// Simulate Linux/Windows: DB stores NFC (composed) path from filesystem scan
+			repo.data = []string{relativeNFC}
+
+			// Playlist entry uses NFC (common), but current v0.59.0 code normalizes to NFD before DB lookup.
+			m3u := "/music/" + relativeNFC + "\n"
+			f := strings.NewReader(m3u)
+
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].Path).To(Equal(relativeNFC))
+		})
+
+		It("matches Japanese Katakana with dakuten when DB stores NFD and playlist uses NFC (#4884)", func() {
+			relativeNFC := "artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3" // アイドル/ドリームソング.mp3 (NFC)
+			relativeNFD := norm.NFD.String(relativeNFC)
+
+			// Simulate macOS: DB stores NFD (decomposed) path from filesystem scan
+			repo.data = []string{relativeNFD}
+
+			// Playlist entry uses NFC (composed)
+			m3u := "/music/" + relativeNFC + "\n"
+			f := strings.NewReader(m3u)
+
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].Path).To(Equal(relativeNFD))
+		})
+
 	})
 
 	Describe("InPlaylistsPath", func() {
@@ -542,9 +576,6 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
-		// Normalize the data path to NFD (simulates macOS filesystem storage)
-		normalizedDataPath := norm.NFD.String(dataPath)
-
 		for _, requestPath := range paths {
 			// Strip library qualifier if present (format: "libraryID:path")
 			actualPath := requestPath
@@ -556,12 +587,9 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 				}
 			}
 
-			// The request path should already be normalized to NFD by production code
-			// before calling FindByPaths (to match DB storage)
-			normalizedRequestPath := norm.NFD.String(actualPath)
-
-			// Case-insensitive comparison (like SQL's "collate nocase")
-			if strings.EqualFold(normalizedRequestPath, normalizedDataPath) {
+			// Case-insensitive comparison (like SQL's "collate nocase"), but with no
+			// implicit Unicode normalization (SQLite does not normalize NFC/NFD).
+			if strings.EqualFold(actualPath, dataPath) {
 				mfs = append(mfs, model.MediaFile{
 					ID:        strconv.Itoa(idx),
 					Path:      dataPath, // Return original path from DB

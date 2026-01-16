@@ -201,32 +201,48 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			continue
 		}
 
-		// Normalize to NFD for filesystem compatibility (macOS). Database stores paths in NFD.
-		// See https://github.com/navidrome/navidrome/issues/4663
-		resolvedPaths = slice.Map(resolvedPaths, func(path string) string {
-			return strings.ToLower(norm.NFD.String(path))
-		})
+		// SQLite comparisons do not perform Unicode normalization, and filesystem normalization
+		// differs across platforms (macOS often yields NFD, while Linux/Windows typically use NFC).
+		// Generate lookup candidates for both forms so playlist entries match DB paths regardless
+		// of the original normalization. See https://github.com/navidrome/navidrome/issues/4884
+		lookupCandidates := make([]string, 0, len(resolvedPaths)*2)
+		seen := make(map[string]struct{}, len(resolvedPaths)*2)
+		for _, path := range resolvedPaths {
+			nfc := strings.ToLower(norm.NFC.String(path))
+			if _, ok := seen[nfc]; !ok {
+				seen[nfc] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfc)
+			}
+			nfd := strings.ToLower(norm.NFD.String(path))
+			if _, ok := seen[nfd]; !ok {
+				seen[nfd] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfd)
+			}
+		}
 
-		found, err := mediaFileRepository.FindByPaths(resolvedPaths)
+		found, err := mediaFileRepository.FindByPaths(lookupCandidates)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		// Build lookup map with library-qualified keys, normalized for comparison
+
+		// Build lookup map with library-qualified keys, normalized for comparison.
+		// Canonicalize to NFC so NFD/NFC become comparable.
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			// Normalize to lowercase for case-insensitive comparison
-			// Key format: "libraryID:path"
-			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(found[idx].Path))
+			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(norm.NFC.String(found[idx].Path)))
 			existing[key] = idx
 		}
 
 		// Find media files in the order of the resolved paths, to keep playlist order
 		for _, path := range resolvedPaths {
-			idx, ok := existing[path]
+			key := strings.ToLower(norm.NFC.String(path))
+			idx, ok := existing[key]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
+				// Prefer logging a composed representation when possible to avoid confusing output
+				// with decomposed combining marks.
 				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
 			}
 		}
