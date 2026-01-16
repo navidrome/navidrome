@@ -1,6 +1,8 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
+export CGO_CFLAGS_ALLOW=--define-prefix
+
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT
@@ -16,7 +18,7 @@ DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
 CROSS_TAGLIB_VERSION ?= 2.1.1-1
-GOLANGCI_LINT_VERSION ?= v2.7.2
+GOLANGCI_LINT_VERSION ?= v2.8.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
