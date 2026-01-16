@@ -15,6 +15,7 @@ concurrency:
 
 env:
   CROSS_TAGLIB_VERSION: "2.1.1-1"
+  CGO_CFLAGS_ALLOW: "--define-prefix"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
