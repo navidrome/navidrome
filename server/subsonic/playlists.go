@@ -174,7 +174,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 
 	pls.Comment = p.Comment
 	pls.Owner = p.OwnerName
-	pls.Public = &p.Public
+	pls.Public = p.Public
 	pls.CoverArt = p.CoverArtID().String()
 
 	return pls

@@ -62,7 +62,7 @@ var _ = Describe("buildPlaylist", func() {
 			// These should not be set
 			Expect(result.Comment).To(BeEmpty())
 			Expect(result.Owner).To(BeEmpty())
-			Expect(result.Public).To(BeNil())
+			Expect(result.Public).To(BeFalse())
 			Expect(result.CoverArt).To(BeEmpty())
 		})
 	})
@@ -85,8 +85,7 @@ var _ = Describe("buildPlaylist", func() {
 			Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 			Expect(result.Comment).To(Equal("Test comment"))
 			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).ToNot(BeNil())
-			Expect(*result.Public).To(BeTrue())
+			Expect(result.Public).To(BeTrue())
 		})
 	})
 
@@ -102,8 +101,7 @@ var _ = Describe("buildPlaylist", func() {
 
 			Expect(result.Comment).To(Equal("Test comment"))
 			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).ToNot(BeNil())
-			Expect(*result.Public).To(BeTrue())
+			Expect(result.Public).To(BeTrue())
 		})
 	})
 
@@ -113,8 +111,7 @@ var _ = Describe("buildPlaylist", func() {
 
 			Expect(result.Comment).To(Equal("Test comment"))
 			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).ToNot(BeNil())
-			Expect(*result.Public).To(BeTrue())
+			Expect(result.Public).To(BeTrue())
 		})
 	})
 

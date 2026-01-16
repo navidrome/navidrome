@@ -533,7 +533,6 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			timestamp, _ := time.Parse(time.RFC3339, "2020-04-11T16:43:00Z04:00")
 			BeforeEach(func() {
-				public := true
 				pls := make([]Playlist, 2)
 				pls[0] = Playlist{
 					Id:        "111",
@@ -541,14 +540,13 @@ var _ = Describe("Responses", func() {
 					Comment:   "comment",
 					SongCount: 2,
 					Duration:  120,
-					Public:    &public,
+					Public:    true,
 					Owner:     "admin",
 					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
 				}
-				private := false
-				pls[1] = Playlist{Id: "222", Name: "bbb", Public: &private}
+				pls[1] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
 			})
 
