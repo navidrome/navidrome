@@ -114,6 +114,55 @@ var _ = Describe("Playlists", func() {
 			})
 		})
 
+		DescribeTable("Playlist filename Unicode normalization (regression fix-playlist-filename-normalization)",
+			func(storedForm, filesystemForm string) {
+				// Use Polish characters that decompose: ó (U+00F3) -> o + combining acute (U+006F + U+0301)
+				plsNameNFC := "Piosenki_Polskie_zółć" // NFC form (composed)
+				plsNameNFD := norm.NFD.String(plsNameNFC)
+				Expect(plsNameNFD).ToNot(Equal(plsNameNFC)) // Verify they differ
+
+				nameByForm := map[string]string{"NFC": plsNameNFC, "NFD": plsNameNFD}
+				storedName := nameByForm[storedForm]
+				filesystemName := nameByForm[filesystemForm]
+
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
+				ps = core.NewPlaylists(ds)
+
+				// Create the playlist file on disk with the filesystem's normalization form
+				plsFile := tmpDir + "/" + filesystemName + ".m3u"
+				Expect(os.WriteFile(plsFile, []byte("#PLAYLIST:Test\n"), 0600)).To(Succeed())
+
+				// Pre-populate mock repo with the stored normalization form
+				storedPath := tmpDir + "/" + storedName + ".m3u"
+				existingPls := &model.Playlist{
+					ID:   "existing-id",
+					Name: "Existing Playlist",
+					Path: storedPath,
+					Sync: true,
+				}
+				mockPlsRepo.data = map[string]*model.Playlist{storedPath: existingPls}
+
+				// Import using the filesystem's normalization form
+				plsFolder := &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: tmpDir,
+					Path:        "",
+					Name:        "",
+				}
+				pls, err := ps.ImportFile(ctx, plsFolder, filesystemName+".m3u")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should update existing playlist, not create new one
+				Expect(pls.ID).To(Equal("existing-id"))
+				Expect(pls.Name).To(Equal("Existing Playlist"))
+			},
+			Entry("finds NFD-stored playlist when filesystem provides NFC path", "NFD", "NFC"),
+			Entry("finds NFC-stored playlist when filesystem provides NFD path", "NFC", "NFD"),
+		)
+
 		Describe("Cross-library relative paths", func() {
 			var tmpDir, plsDir, songsDir string
 
@@ -611,10 +660,16 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 
 type mockedPlaylistRepo struct {
 	last *model.Playlist
+	data map[string]*model.Playlist // keyed by path
 	model.PlaylistRepository
 }
 
-func (r *mockedPlaylistRepo) FindByPath(string) (*model.Playlist, error) {
+func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
+	if r.data != nil {
+		if pls, ok := r.data[path]; ok {
+			return pls, nil
+		}
+	}
 	return nil, model.ErrNotFound
 }
 

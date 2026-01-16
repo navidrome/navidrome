@@ -405,7 +405,20 @@ func (s *playlists) resolvePaths(ctx context.Context, folder *model.Folder, line
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UserFrom(ctx)
 
+	// Try to find existing playlist by path. Since filesystem normalization differs across
+	// platforms (macOS uses NFD, Linux/Windows use NFC), we try both forms to match
+	// playlists that may have been imported on a different platform.
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
+	if errors.Is(err, model.ErrNotFound) {
+		// Try alternate normalization form
+		altPath := norm.NFD.String(newPls.Path)
+		if altPath == newPls.Path {
+			altPath = norm.NFC.String(newPls.Path)
+		}
+		if altPath != newPls.Path {
+			pls, err = s.ds.Playlist(ctx).FindByPath(altPath)
+		}
+	}
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
