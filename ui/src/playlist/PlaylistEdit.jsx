@@ -11,7 +11,16 @@ import {
   ReferenceInput,
   SelectInput,
 } from 'react-admin'
-import { isWritable, Title } from '../common'
+import { useForm } from 'react-final-form'
+import Tooltip from '@material-ui/core/Tooltip'
+import { makeStyles } from '@material-ui/core/styles'
+import { isWritable, isSmartPlaylist, Title } from '../common'
+
+const useStyles = makeStyles({
+  tooltipWrapper: {
+    display: 'inline-block',
+  },
+})
 
 const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
@@ -28,9 +37,48 @@ const PlaylistTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} "${record ? record.name : ''}"`} />
 }
 
+const PublicInput = ({ record, formData }) => {
+  const translate = useTranslate()
+  const classes = useStyles()
+  const isGlobal = isSmartPlaylist(record) && formData?.global
+  const disabled = !isWritable(record.ownerId) || isGlobal
+
+  const input = <BooleanInput source="public" disabled={disabled} />
+
+  if (isGlobal) {
+    return (
+      <Tooltip
+        title={translate(
+          'resources.playlist.message.globalPlaylistPublicDisabled',
+        )}
+      >
+        <div className={classes.tooltipWrapper}>{input}</div>
+      </Tooltip>
+    )
+  }
+  return input
+}
+
+const GlobalInput = ({ record }) => {
+  const form = useForm()
+  const handleChange = (value) => {
+    if (value) {
+      form.change('public', true)
+    }
+  }
+  return (
+    <BooleanInput
+      source="global"
+      disabled={!isWritable(record.ownerId)}
+      onChange={handleChange}
+    />
+  )
+}
+
 const PlaylistEditForm = (props) => {
   const { record } = props
   const { permissions } = usePermissions()
+  const isSmart = isSmartPlaylist(record)
   return (
     <SimpleForm redirect="list" variant={'outlined'} {...props}>
       <TextInput source="name" validate={required()} />
@@ -50,7 +98,10 @@ const PlaylistEditForm = (props) => {
       ) : (
         <TextField source="ownerName" />
       )}
-      <BooleanInput source="public" disabled={!isWritable(record.ownerId)} />
+      <FormDataConsumer>
+        {({ formData }) => <PublicInput record={record} formData={formData} />}
+      </FormDataConsumer>
+      {isSmart && <GlobalInput record={record} />}
       <FormDataConsumer>
         {(formDataProps) => <SyncFragment {...formDataProps} />}
       </FormDataConsumer>

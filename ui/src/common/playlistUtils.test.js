@@ -2,6 +2,7 @@ import {
   isWritable,
   isReadOnly,
   isSmartPlaylist,
+  isGlobalPlaylist,
   canChangeTracks,
 } from './playlistUtils'
 
@@ -53,6 +54,28 @@ describe('playlistUtils', () => {
     it('returns false if playlist does not have rules', () => {
       const playlist = {}
       expect(isSmartPlaylist(playlist)).toBe(false)
+    })
+  })
+
+  describe('isGlobalPlaylist', () => {
+    it('returns true if playlist is smart and global', () => {
+      const playlist = { rules: [], global: true }
+      expect(isGlobalPlaylist(playlist)).toBe(true)
+    })
+
+    it('returns false if playlist is smart but not global', () => {
+      const playlist = { rules: [], global: false }
+      expect(isGlobalPlaylist(playlist)).toBe(false)
+    })
+
+    it('returns false if playlist is not smart even if global is true', () => {
+      const playlist = { global: true }
+      expect(isGlobalPlaylist(playlist)).toBe(false)
+    })
+
+    it('returns false if playlist is not smart and not global', () => {
+      const playlist = {}
+      expect(isGlobalPlaylist(playlist)).toBe(false)
     })
   })
 

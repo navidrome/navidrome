@@ -14,8 +14,10 @@ import {
   useRecordContext,
   BulkDeleteButton,
   usePermissions,
+  useTranslate,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
+import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -23,6 +25,7 @@ import {
   List,
   Writable,
   isWritable,
+  isGlobalPlaylist,
   useSelectedFields,
   useResourceRefresh,
 } from '../common'
@@ -59,6 +62,7 @@ const PlaylistFilter = (props) => {
 const TogglePublicInput = ({ resource, source }) => {
   const record = useRecordContext()
   const notify = useNotify()
+  const translate = useTranslate()
   const [togglePublic] = useUpdate(
     resource,
     record.id,
@@ -79,13 +83,29 @@ const TogglePublicInput = ({ resource, source }) => {
     e.stopPropagation()
   }
 
-  return (
+  const isGlobal = isGlobalPlaylist(record)
+  const disabled = !isWritable(record.ownerId) || isGlobal
+
+  const switchElement = (
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!isWritable(record.ownerId)}
+      disabled={disabled}
     />
   )
+
+  if (isGlobal) {
+    return (
+      <Tooltip
+        title={translate(
+          'resources.playlist.message.globalPlaylistPublicDisabled',
+        )}
+      >
+        <span>{switchElement}</span>
+      </Tooltip>
+    )
+  }
+  return switchElement
 }
 
 const ToggleAutoImport = ({ resource, source }) => {

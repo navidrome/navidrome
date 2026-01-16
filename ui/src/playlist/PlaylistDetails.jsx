@@ -2,15 +2,22 @@ import {
   Card,
   CardContent,
   CardMedia,
+  Chip,
   Typography,
   useMediaQuery,
 } from '@material-ui/core'
+import PublicIcon from '@material-ui/icons/Public'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import { useCallback, useState, useEffect } from 'react'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
-import { CollapsibleComment, DurationField, SizeField } from '../common'
+import {
+  CollapsibleComment,
+  DurationField,
+  SizeField,
+  isGlobalPlaylist,
+} from '../common'
 import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
@@ -76,6 +83,10 @@ const useStyles = makeStyles(
     stats: {
       marginTop: '1em',
       marginBottom: '0.5em',
+    },
+    globalChip: {
+      marginLeft: '0.5em',
+      verticalAlign: 'middle',
     },
   }),
   {
@@ -146,6 +157,14 @@ const PlaylistDetails = (props) => {
               className={classes.title}
             >
               {record.name || translate('ra.page.loading')}
+              {isGlobalPlaylist(record) && (
+                <Chip
+                  icon={<PublicIcon />}
+                  label={translate('resources.playlist.fields.global')}
+                  size="small"
+                  className={classes.globalChip}
+                />
+              )}
             </Typography>
             <Typography component="p" className={classes.stats}>
               {record.songCount ? (

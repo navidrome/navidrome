@@ -11,5 +11,7 @@ export const isReadOnly = (ownerId) => {
 
 export const isSmartPlaylist = (pls) => !!pls.rules
 
+export const isGlobalPlaylist = (pls) => isSmartPlaylist(pls) && pls.global
+
 export const canChangeTracks = (pls) =>
   isWritable(pls.ownerId) && !isSmartPlaylist(pls)
