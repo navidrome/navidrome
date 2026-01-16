@@ -1,0 +1,10 @@
+{
+  "name": "Global Smart Playlist",
+  "comment": "Available for evaluation by any user",
+  "global": true,
+  "all": [
+    {"is": {"loved": true}}
+  ],
+  "sort": "title",
+  "order": "asc"
+}

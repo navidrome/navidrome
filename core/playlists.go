@@ -168,6 +168,10 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 	if nsp.Comment != "" {
 		pls.Comment = nsp.Comment
 	}
+	pls.Global = nsp.Global
+	if nsp.Global {
+		pls.Public = true
+	}
 	return nil
 }
 
@@ -404,12 +408,18 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 		newPls.Name = pls.Name
 		newPls.Comment = pls.Comment
 		newPls.OwnerID = pls.OwnerID
-		newPls.Public = pls.Public
+		// Preserve Public from existing playlist, unless the new playlist is Global
+		if !newPls.Global {
+			newPls.Public = pls.Public
+		}
 		newPls.EvaluatedAt = &time.Time{}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
-		newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+		// Only apply default visibility if not a global playlist (which is always public)
+		if !newPls.Global {
+			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+		}
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
 }
@@ -473,6 +483,7 @@ type nspFile struct {
 	criteria.Criteria
 	Name    string `json:"name"`
 	Comment string `json:"comment"`
+	Global  bool   `json:"global"`
 }
 
 func (i *nspFile) UnmarshalJSON(data []byte) error {
@@ -483,5 +494,6 @@ func (i *nspFile) UnmarshalJSON(data []byte) error {
 	}
 	i.Name, _ = m["name"].(string)
 	i.Comment, _ = m["comment"].(string)
+	i.Global, _ = m["global"].(bool)
 	return json.Unmarshal(data, &i.Criteria)
 }

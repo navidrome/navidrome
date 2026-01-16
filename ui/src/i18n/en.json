@@ -200,6 +200,7 @@
         "duration": "Duration",
         "ownerName": "Owner",
         "public": "Public",
+        "global": "Global",
         "updatedAt": "Updated at",
         "createdAt": "Created at",
         "songCount": "Songs",
@@ -222,7 +223,8 @@
         "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
         "noPlaylistsFound": "No playlists found",
-        "noPlaylists": "No playlists available"
+        "noPlaylists": "No playlists available",
+        "globalPlaylistPublicDisabled": "Global playlists are always public"
       }
     },
     "radio": {

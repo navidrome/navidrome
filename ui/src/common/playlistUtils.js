@@ -9,7 +9,9 @@ export const isReadOnly = (ownerId) => {
   return !isWritable(ownerId)
 }
 
-export const isSmartPlaylist = (pls) => !!pls.rules
+export const isSmartPlaylist = (pls) => !!pls?.rules
+
+export const isGlobalPlaylist = (pls) => isSmartPlaylist(pls) && !!pls?.global
 
 export const canChangeTracks = (pls) =>
-  isWritable(pls.ownerId) && !isSmartPlaylist(pls)
+  isWritable(pls?.ownerId) && !isSmartPlaylist(pls)
