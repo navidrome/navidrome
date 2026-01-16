@@ -35,7 +35,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	artId, err := decodeArtworkID(id)
 	if err != nil {
 		log.Error(r, "Error decoding artwork id", "id", id, err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	size := p.IntOr("size", 0)
