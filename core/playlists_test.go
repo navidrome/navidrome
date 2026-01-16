@@ -425,56 +425,63 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
 		})
 
-		It("handles Unicode normalization when comparing paths (NFD vs NFC)", func() {
-			// Simulate macOS filesystem: stores paths in NFD (decomposed) form
-			// "è" (U+00E8) in NFC becomes "e" + "◌̀" (U+0065 + U+0300) in NFD
-			nfdPath := "artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
-			repo.data = []string{nfdPath}
+		// Unicode normalization tests: NFC (composed) vs NFD (decomposed) forms
+		// macOS stores paths in NFD, Linux/Windows use NFC. Playlists may use either form.
+		DescribeTable("matches paths across Unicode NFC/NFD normalization",
+			func(description, pathNFC string, dbForm, playlistForm norm.Form) {
+				pathNFD := norm.NFD.String(pathNFC)
+				Expect(pathNFD).ToNot(Equal(pathNFC), "test path should have decomposable characters")
 
-			// Simulate Apple Music M3U: uses NFC (composed) form
-			nfcPath := "/music/artist/Mich\u00E8le/song.mp3" // NFC: single è character
-			m3u := nfcPath + "\n"
-			f := strings.NewReader(m3u)
-			pls, err := ps.ImportM3U(ctx, f)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pls.Tracks).To(HaveLen(1))
-			// Should match despite different Unicode normalization forms
-			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
-		})
+				// Set up DB with specified normalization form
+				var dbPath string
+				if dbForm == norm.NFC {
+					dbPath = pathNFC
+				} else {
+					dbPath = pathNFD
+				}
+				repo.data = []string{dbPath}
 
-		It("matches Japanese Katakana with dakuten when DB stores NFC (regression #4884)", func() {
-			relativeNFC := "artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3" // アイドル/ドリームソング.mp3 (NFC)
-			Expect(norm.NFD.String(relativeNFC)).ToNot(Equal(relativeNFC))                                  // ensure it actually decomposes
+				// Set up playlist with specified normalization form
+				var playlistPath string
+				if playlistForm == norm.NFC {
+					playlistPath = pathNFC
+				} else {
+					playlistPath = pathNFD
+				}
+				m3u := "/music/" + playlistPath + "\n"
+				f := strings.NewReader(m3u)
 
-			// Simulate Linux/Windows: DB stores NFC (composed) path from filesystem scan
-			repo.data = []string{relativeNFC}
+				pls, err := ps.ImportM3U(ctx, f)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].Path).To(Equal(dbPath))
+			},
+			// French: è (U+00E8) decomposes to e + combining grave (U+0065 + U+0300)
+			Entry("French diacritics - DB:NFD, playlist:NFC",
+				"macOS DB with Apple Music playlist",
+				"artist/Michèle/song.mp3", norm.NFD, norm.NFC),
 
-			// Playlist entry uses NFC (common), but current v0.59.0 code normalizes to NFD before DB lookup.
-			m3u := "/music/" + relativeNFC + "\n"
-			f := strings.NewReader(m3u)
+			// Japanese Katakana: ド (U+30C9) decomposes to ト (U+30C8) + combining dakuten (U+3099)
+			Entry("Japanese Katakana with dakuten - DB:NFC, playlist:NFC (#4884)",
+				"Linux/Windows DB with NFC playlist",
+				"artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3", norm.NFC, norm.NFC),
+			Entry("Japanese Katakana with dakuten - DB:NFD, playlist:NFC (#4884)",
+				"macOS DB with NFC playlist",
+				"artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3", norm.NFD, norm.NFC),
 
-			pls, err := ps.ImportM3U(ctx, f)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pls.Tracks).To(HaveLen(1))
-			Expect(pls.Tracks[0].Path).To(Equal(relativeNFC))
-		})
+			// Cyrillic: й (U+0439) decomposes to и (U+0438) + combining breve (U+0306)
+			Entry("Cyrillic characters - DB:NFD, playlist:NFC (#4791)",
+				"macOS DB with NFC playlist",
+				"Жуки/Батарейка/01 - Разлюбила.mp3", norm.NFD, norm.NFC),
 
-		It("matches Japanese Katakana with dakuten when DB stores NFD and playlist uses NFC (#4884)", func() {
-			relativeNFC := "artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3" // アイドル/ドリームソング.mp3 (NFC)
-			relativeNFD := norm.NFD.String(relativeNFC)
-
-			// Simulate macOS: DB stores NFD (decomposed) path from filesystem scan
-			repo.data = []string{relativeNFD}
-
-			// Playlist entry uses NFC (composed)
-			m3u := "/music/" + relativeNFC + "\n"
-			f := strings.NewReader(m3u)
-
-			pls, err := ps.ImportM3U(ctx, f)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pls.Tracks).To(HaveLen(1))
-			Expect(pls.Tracks[0].Path).To(Equal(relativeNFD))
-		})
+			// Polish: ó (U+00F3) decomposes to o + combining acute (U+0301)
+			Entry("Polish diacritics - DB:NFD, playlist:NFC (#4663)",
+				"macOS DB with NFC playlist",
+				"Zespół/Człowiek/Piosenka o miłości.mp3", norm.NFD, norm.NFC),
+			Entry("Polish diacritics - DB:NFC, playlist:NFD",
+				"Linux/Windows DB with macOS-exported playlist",
+				"Zespół/Człowiek/Piosenka o miłości.mp3", norm.NFC, norm.NFD),
+		)
 
 	})
 
