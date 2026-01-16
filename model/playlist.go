@@ -27,6 +27,7 @@ type Playlist struct {
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
+	Global      bool               `structs:"global" json:"global"`
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {

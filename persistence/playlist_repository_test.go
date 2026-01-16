@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -144,6 +145,67 @@ var _ = Describe("PlaylistRepository", func() {
 				savedPls, err := repo.Get(newPls.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(savedPls.Rules).To(Equal(rules))
+			})
+		})
+
+		Context("Global smart playlists", func() {
+			var globalPls model.Playlist
+			var otherUserRepo model.PlaylistRepository
+
+			BeforeEach(func() {
+				// Force smart playlist refresh
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+				// Create a global smart playlist owned by the admin user
+				globalPls = model.Playlist{Name: "Global Smart", OwnerID: "userid", Rules: rules, Global: true, Public: true}
+				Expect(repo.Put(&globalPls)).To(Succeed())
+
+				// Create a different user context (using regularUser who has library access)
+				otherCtx := log.NewContext(GinkgoT().Context())
+				otherCtx = request.WithUser(otherCtx, regularUser)
+				otherUserRepo = NewPlaylistRepository(otherCtx, GetDBXBuilder())
+			})
+
+			AfterEach(func() {
+				_ = repo.Delete(globalPls.ID)
+			})
+
+			It("stores and retrieves the Global attribute", func() {
+				savedPls, err := repo.Get(globalPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(savedPls.Global).To(BeTrue())
+			})
+
+			It("allows non-owner to refresh a global smart playlist", func() {
+				// Verify the playlist can be retrieved by non-owner and has Global=true
+				plsCheck, err := otherUserRepo.Get(globalPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plsCheck.Global).To(BeTrue(), "Global should be true when retrieved by non-owner")
+				Expect(plsCheck.IsSmartPlaylist()).To(BeTrue(), "Should be smart playlist")
+				Expect(plsCheck.EvaluatedAt).To(BeNil(), "Should not be evaluated yet")
+
+				// Non-owner requests the playlist with refresh
+				_, err = otherUserRepo.GetWithTracks(globalPls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Re-fetch to verify EvaluatedAt was updated in DB
+				pls, err := otherUserRepo.Get(globalPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.EvaluatedAt).ToNot(BeNil(), "Global smart playlist should be refreshed for non-owner")
+			})
+
+			It("does not allow non-owner to refresh a non-global smart playlist", func() {
+				// Create a non-global smart playlist
+				nonGlobalPls := model.Playlist{Name: "Non-Global Smart", OwnerID: "userid", Rules: rules, Global: false, Public: true}
+				Expect(repo.Put(&nonGlobalPls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(nonGlobalPls.ID) })
+
+				// Non-owner requests the playlist with refresh
+				pls, err := otherUserRepo.GetWithTracks(nonGlobalPls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				// EvaluatedAt should be nil because the playlist was not refreshed
+				Expect(pls.EvaluatedAt).To(BeNil())
 			})
 		})
 

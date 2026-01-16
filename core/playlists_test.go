@@ -107,10 +107,19 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Rules.Order).To(Equal("desc"))
 				Expect(pls.Rules.Limit).To(Equal(100))
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
+				Expect(pls.Global).To(BeFalse())
+				Expect(pls.Public).To(BeFalse())
 			})
 			It("returns an error if the playlist is not well-formed", func() {
 				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
 				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
+			})
+			It("parses global attribute and sets playlist to public", func() {
+				pls, err := ps.ImportFile(ctx, folder, "global_smart_playlist.nsp")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Name).To(Equal("Global Smart Playlist"))
+				Expect(pls.Global).To(BeTrue())
+				Expect(pls.Public).To(BeTrue())
 			})
 		})
 
