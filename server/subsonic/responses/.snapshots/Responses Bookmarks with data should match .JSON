@@ -10,8 +10,7 @@
         "entry": {
           "id": "1",
           "isDir": false,
-          "title": "title",
-          "isVideo": false
+          "title": "title"
         },
         "position": 123,
         "username": "user2",

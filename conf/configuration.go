@@ -153,6 +153,7 @@ type subsonicOptions struct {
 	ArtistParticipations  bool
 	DefaultReportRealPath bool
 	LegacyClients         string
+	MinimalClients        string
 }
 
 type TagConf struct {

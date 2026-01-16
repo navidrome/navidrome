@@ -166,11 +166,30 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 	return
 }
 
+func isClientInList(clientList, client string) bool {
+	if clientList == "" || client == "" {
+		return false
+	}
+	clients := strings.Split(clientList, ",")
+	for _, c := range clients {
+		if strings.TrimSpace(c) == client {
+			return true
+		}
+	}
+	return false
+}
+
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
 	child.Title = mf.FullTitle()
 	child.IsDir = false
+
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+		return child
+	}
+
 	child.Parent = mf.AlbumID
 	child.Album = mf.Album
 	child.Year = int32(mf.Year)
@@ -183,7 +202,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BitRate = int32(mf.BitRate)
 	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
-	player, ok := request.PlayerFrom(ctx)
+
 	if ok && player.ReportRealPath {
 		child.Path = mf.AbsolutePath()
 	} else {
@@ -211,8 +230,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 }
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
-	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}

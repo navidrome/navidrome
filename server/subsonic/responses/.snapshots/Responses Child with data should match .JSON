@@ -24,7 +24,6 @@
         "transcodedSuffix": "mp3",
         "duration": 146,
         "bitRate": 320,
-        "isVideo": false,
         "bpm": 127,
         "comment": "a comment",
         "sortName": "sorted title",
@@ -116,7 +115,6 @@
       {
         "id": "",
         "isDir": false,
-        "isVideo": false,
         "bpm": 0,
         "comment": "",
         "sortName": "",

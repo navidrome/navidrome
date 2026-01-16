@@ -161,7 +161,7 @@ type Child struct {
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	UserRating            int32      `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
-	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
+	IsVideo               bool       `xml:"isVideo,attr,omitempty"                  json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
@@ -177,7 +177,7 @@ type OpenSubsonicChild struct {
 	SortName           string              `xml:"sortName,attr,omitempty"           json:"sortName"`
 	MediaType          MediaType           `xml:"mediaType,attr,omitempty"          json:"mediaType"`
 	MusicBrainzId      string              `xml:"musicBrainzId,attr,omitempty"      json:"musicBrainzId"`
-	Isrc               Array[string]       `xml:"isrc,omitempty"                  json:"isrc"`
+	Isrc               Array[string]       `xml:"isrc,omitempty"                    json:"isrc"`
 	Genres             Array[ItemGenre]    `xml:"genres,omitempty"                  json:"genres"`
 	ReplayGain         ReplayGain          `xml:"replayGain,omitempty"              json:"replayGain"`
 	ChannelCount       int32               `xml:"channelCount,attr,omitempty"       json:"channelCount"`
@@ -308,7 +308,7 @@ type Playlist struct {
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
 	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
 	Duration  int32     `xml:"duration,attr"                 json:"duration"`
-	Public    bool      `xml:"public,attr"                   json:"public"`
+	Public    bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`

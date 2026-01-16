@@ -1,5 +1,5 @@
 <subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <albumList>
-    <album id="1" isDir="false" title="title" isVideo="false"></album>
+    <album id="1" isDir="false" title="title"></album>
   </albumList>
 </subsonic-response>

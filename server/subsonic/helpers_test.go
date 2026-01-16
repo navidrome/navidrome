@@ -169,6 +169,190 @@ var _ = Describe("helpers", func() {
 		})
 	})
 
+	DescribeTable("isClientInList",
+		func(list, client string, expected bool) {
+			Expect(isClientInList(list, client)).To(Equal(expected))
+		},
+		Entry("returns false when clientList is empty", "", "some-client", false),
+		Entry("returns false when client is empty", "client1,client2", "", false),
+		Entry("returns false when both are empty", "", "", false),
+		Entry("returns true when client matches single entry", "my-client", "my-client", true),
+		Entry("returns true when client matches first in list", "client1,client2,client3", "client1", true),
+		Entry("returns true when client matches middle in list", "client1,client2,client3", "client2", true),
+		Entry("returns true when client matches last in list", "client1,client2,client3", "client3", true),
+		Entry("returns false when client does not match", "client1,client2", "client3", false),
+		Entry("trims whitespace from client list entries", "client1, client2 , client3", "client2", true),
+		Entry("does not trim the client parameter", "client1,client2", " client1", false),
+	)
+
+	Describe("childFromMediaFile", func() {
+		var mf model.MediaFile
+		var ctx context.Context
+
+		BeforeEach(func() {
+			mf = model.MediaFile{
+				ID:          "mf-1",
+				Title:       "Test Song",
+				Album:       "Test Album",
+				AlbumID:     "album-1",
+				Artist:      "Test Artist",
+				ArtistID:    "artist-1",
+				Year:        2023,
+				Genre:       "Rock",
+				TrackNumber: 5,
+				Duration:    180.5,
+				Size:        5000000,
+				Suffix:      "mp3",
+				BitRate:     320,
+			}
+			ctx = context.Background()
+		})
+
+		Context("with minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "minimal-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns only basic fields", func() {
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Id).To(Equal("mf-1"))
+				Expect(child.Title).To(Equal("Test Song"))
+				Expect(child.IsDir).To(BeFalse())
+
+				// These should not be set
+				Expect(child.Album).To(BeEmpty())
+				Expect(child.Artist).To(BeEmpty())
+				Expect(child.Parent).To(BeEmpty())
+				Expect(child.Year).To(BeZero())
+				Expect(child.Genre).To(BeEmpty())
+				Expect(child.Track).To(BeZero())
+				Expect(child.Duration).To(BeZero())
+				Expect(child.Size).To(BeZero())
+				Expect(child.Suffix).To(BeEmpty())
+				Expect(child.BitRate).To(BeZero())
+				Expect(child.CoverArt).To(BeEmpty())
+				Expect(child.ContentType).To(BeEmpty())
+				Expect(child.Path).To(BeEmpty())
+			})
+
+			It("does not include OpenSubsonic extension", func() {
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.OpenSubsonicChild).To(BeNil())
+			})
+		})
+
+		Context("with non-minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all fields", func() {
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Id).To(Equal("mf-1"))
+				Expect(child.Title).To(Equal("Test Song"))
+				Expect(child.IsDir).To(BeFalse())
+				Expect(child.Album).To(Equal("Test Album"))
+				Expect(child.Artist).To(Equal("Test Artist"))
+				Expect(child.Parent).To(Equal("album-1"))
+				Expect(child.Year).To(Equal(int32(2023)))
+				Expect(child.Genre).To(Equal("Rock"))
+				Expect(child.Track).To(Equal(int32(5)))
+				Expect(child.Duration).To(Equal(int32(180)))
+				Expect(child.Size).To(Equal(int64(5000000)))
+				Expect(child.Suffix).To(Equal("mp3"))
+				Expect(child.BitRate).To(Equal(int32(320)))
+			})
+		})
+
+		Context("when minimal clients list is empty", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = ""
+				player := model.Player{Client: "any-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all fields", func() {
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Album).To(Equal("Test Album"))
+				Expect(child.Artist).To(Equal("Test Artist"))
+			})
+		})
+
+		Context("when no player in context", func() {
+			It("returns all fields", func() {
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Album).To(Equal("Test Album"))
+				Expect(child.Artist).To(Equal("Test Artist"))
+			})
+		})
+	})
+
+	Describe("osChildFromMediaFile", func() {
+		var mf model.MediaFile
+		var ctx context.Context
+
+		BeforeEach(func() {
+			mf = model.MediaFile{
+				ID:      "mf-1",
+				Title:   "Test Song",
+				Artist:  "Test Artist",
+				Comment: "Test Comment",
+			}
+			ctx = context.Background()
+		})
+
+		Context("with minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "minimal-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns nil", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).To(BeNil())
+			})
+		})
+
+		Context("with non-minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns OpenSubsonic child fields", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+				Expect(osChild.Comment).To(Equal("Test Comment"))
+			})
+		})
+
+		Context("when minimal clients list is empty", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = ""
+				player := model.Player{Client: "any-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns OpenSubsonic child fields", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+			})
+		})
+
+		Context("when no player in context", func() {
+			It("returns OpenSubsonic child fields", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+			})
+		})
+	})
+
 	Describe("selectedMusicFolderIds", func() {
 		var user model.User
 		var ctx context.Context
