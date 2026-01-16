@@ -243,7 +243,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			} else {
 				// Prefer logging a composed representation when possible to avoid confusing output
 				// with decomposed combining marks.
-				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
+				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", norm.NFC.String(path))
 			}
 		}
 	}
