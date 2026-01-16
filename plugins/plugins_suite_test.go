@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -42,10 +43,11 @@ func TestPlugins(t *testing.T) {
 
 func buildTestPlugins(t *testing.T, path string) {
 	t.Helper()
+	start := time.Now()
 	t.Logf("[BeforeSuite] Current working directory: %s", path)
 	cmd := exec.Command("make", "-C", path)
 	out, err := cmd.CombinedOutput()
-	t.Logf("[BeforeSuite] Make output: %s", string(out))
+	t.Logf("[BeforeSuite] Make output: %s elapsed: %s", string(out), time.Since(start))
 	if err != nil {
 		t.Fatalf("Failed to build test plugins: %v", err)
 	}
