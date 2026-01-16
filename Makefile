@@ -1,7 +1,9 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
+# Set global environment variables, required for most targets
 export CGO_CFLAGS_ALLOW=--define-prefix
+export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
@@ -28,11 +30,11 @@ setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First In
 .PHONY: setup
 
 dev: check_env   ##@Development Start Navidrome in development mode, with hot-reload for both frontend and backend
-	ND_ENABLEINSIGHTSCOLLECTOR="false" npx foreman -j Procfile.dev -p 4533 start
+	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
+	go tool reflex -d none -c reflex.conf
 .PHONY: server
 
 stop: ##@Development Stop development servers (UI and backend)
