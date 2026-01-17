@@ -301,14 +301,19 @@
       "actions": {
         "scan": "Skeniraj knjižnico",
         "manageUsers": "Upravljanje dostopa uporabnikov",
-        "viewDetails": "Ogled podrobnosti"
+        "viewDetails": "Ogled podrobnosti",
+        "quickScan": "Hitro skeniranje",
+        "fullScan": "Popolno skeniranje"
       },
       "notifications": {
         "created": "Knjižnica je uspešno ustvarjena",
         "updated": "Knjižnica je bila uspešno posodobljena",
         "deleted": "Knjižnica je uspešno izbrisana",
         "scanStarted": "Skeniranje knjižnice se je začelo",
-        "scanCompleted": "Skeniranje knjižnice končano"
+        "scanCompleted": "Skeniranje knjižnice končano",
+        "quickScanStarted": "Hitro skeniranje se je začelo",
+        "fullScanStarted": "Popolno skeniranje se je začelo",
+        "scanError": "Napaka pri začetku skeniranja. Preverite dnevnike"
       },
       "validation": {
         "nameRequired": "Ime knjižnice je obvezno",
@@ -322,6 +327,78 @@
         "deleteConfirm": "Ali ste prepričani, da želite izbrisati to knjižnico? S tem boste odstranili vse povezane podatke in dostop uporabnikov.",
         "scanInProgress": "Skeniranje v teku...",
         "noLibrariesAssigned": "Uporabnik nima dodeljenih knjižnic"
+      }
+    },
+    "plugin": {
+      "name": "",
+      "fields": {
+        "id": "",
+        "name": "",
+        "description": "",
+        "version": "",
+        "author": "",
+        "website": "",
+        "permissions": "",
+        "enabled": "",
+        "status": "",
+        "path": "",
+        "lastError": "",
+        "hasError": "",
+        "updatedAt": "",
+        "createdAt": "",
+        "configKey": "",
+        "configValue": "",
+        "allUsers": "",
+        "selectedUsers": "",
+        "allLibraries": "",
+        "selectedLibraries": ""
+      },
+      "sections": {
+        "status": "",
+        "info": "",
+        "configuration": "",
+        "manifest": "",
+        "usersPermission": "",
+        "libraryPermission": ""
+      },
+      "status": {
+        "enabled": "",
+        "disabled": ""
+      },
+      "actions": {
+        "enable": "",
+        "disable": "",
+        "disabledDueToError": "",
+        "disabledUsersRequired": "",
+        "disabledLibrariesRequired": "",
+        "addConfig": "",
+        "rescan": ""
+      },
+      "notifications": {
+        "enabled": "",
+        "disabled": "",
+        "updated": "",
+        "error": ""
+      },
+      "validation": {
+        "invalidJson": ""
+      },
+      "messages": {
+        "configHelp": "",
+        "clickPermissions": "",
+        "noConfig": "",
+        "allUsersHelp": "",
+        "noUsers": "",
+        "permissionReason": "",
+        "usersRequired": "",
+        "allLibrariesHelp": "",
+        "noLibraries": "",
+        "librariesRequired": "",
+        "requiredHosts": ""
+      },
+      "placeholders": {
+        "configKey": "",
+        "configValue": ""
       }
     }
   },
@@ -604,7 +681,8 @@
     "serverDown": "NEPOVEZAN",
     "scanType": "Tip",
     "status": "Napaka pri skeniranju",
-    "elapsedTime": "Pretečeni čas"
+    "elapsedTime": "Pretečeni čas",
+    "selectiveScan": "Selektivno"
   },
   "help": {
     "title": "Hitre tipke",

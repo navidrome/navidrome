@@ -328,6 +328,78 @@
         "scanInProgress": "Scan is bezig...",
         "noLibrariesAssigned": "Geen bibliotheken aan deze gebruiker toegewezen"
       }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Naam",
+        "description": "Omschrijving",
+        "version": "Versie",
+        "author": "Auteur",
+        "website": "Website",
+        "permissions": "Permissies",
+        "enabled": "Aangezet",
+        "status": "Status",
+        "path": "Pad",
+        "lastError": "Fout",
+        "hasError": "Fout",
+        "updatedAt": "Geupdate",
+        "createdAt": "Geinstalleerd",
+        "configKey": "Sleutel",
+        "configValue": "Waarde",
+        "allUsers": "Alle gebruikers toelaten",
+        "selectedUsers": "Geselecteerde gebruikers",
+        "allLibraries": "Alle bibliotheken toestaan",
+        "selectedLibraries": "Geselecteerde bibliotheken"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin informatie",
+        "configuration": "Configuratie",
+        "manifest": "Manifest",
+        "usersPermission": "Gebruikers permissie",
+        "libraryPermission": ""
+      },
+      "status": {
+        "enabled": "",
+        "disabled": ""
+      },
+      "actions": {
+        "enable": "",
+        "disable": "",
+        "disabledDueToError": "",
+        "disabledUsersRequired": "",
+        "disabledLibrariesRequired": "",
+        "addConfig": "",
+        "rescan": ""
+      },
+      "notifications": {
+        "enabled": "",
+        "disabled": "",
+        "updated": "",
+        "error": ""
+      },
+      "validation": {
+        "invalidJson": "Configuratie moet geldige JSON zijn"
+      },
+      "messages": {
+        "configHelp": "",
+        "clickPermissions": "Klik op permissie voor details",
+        "noConfig": "Geen configuratie ingesteld",
+        "allUsersHelp": "",
+        "noUsers": "Geen gebruikers geselecteerd",
+        "permissionReason": "Reden",
+        "usersRequired": "",
+        "allLibrariesHelp": "",
+        "noLibraries": "Geen bibliotheken geselecteerd",
+        "librariesRequired": "",
+        "requiredHosts": ""
+      },
+      "placeholders": {
+        "configKey": "Sleutel",
+        "configValue": "Waarde"
+      }
     }
   },
   "ra": {
