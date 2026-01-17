@@ -158,9 +158,9 @@ func parseID3v2Frames(rawFrames map[string][]string, tags map[string][]string) {
 
 		// Handle USLT:xxx and SYLT:xxx (lyrics with language codes)
 		if strings.HasPrefix(lowerKey, "uslt:") || strings.HasPrefix(lowerKey, "sylt:") {
-			lang := strings.TrimPrefix(lowerKey, "uslt:")
-			lang = strings.TrimPrefix(lang, "sylt:")
-			if lang != "" {
+			parts := strings.SplitN(lowerKey, ":", 2)
+			if len(parts) == 2 && parts[1] != "" {
+				lang := parts[1]
 				lyricsKey := "lyrics:" + lang
 				tags[lyricsKey] = append(tags[lyricsKey], values...)
 			}

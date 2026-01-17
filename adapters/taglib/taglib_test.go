@@ -85,7 +85,6 @@ var _ = Describe("Extractor", func() {
 			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 19, 39, 40, 43, 49))
 			Expect(m.AudioProperties.Channels).To(BeElementOf(2))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
-			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
 			Expect(m.HasPicture).To(BeTrue())
 		})
 
