@@ -119,6 +119,82 @@ var _ = Describe("MediaRepository", func() {
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 		})
 
+		Describe("AverageRating", func() {
+			var raw *mediaFileRepository
+
+			BeforeEach(func() {
+				raw = mr.(*mediaFileRepository)
+			})
+
+			It("returns 0 when no ratings exist", func() {
+				newID := id.NewRandom()
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/no-rating.mp3"})).To(Succeed())
+
+				mf, err := mr.Get(newID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.AverageRating).To(Equal(0.0))
+
+				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+			})
+
+			It("returns the user's rating as average when only one user rated", func() {
+				newID := id.NewRandom()
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/single-rating.mp3"})).To(Succeed())
+				Expect(mr.SetRating(5, newID)).To(Succeed())
+
+				mf, err := mr.Get(newID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.AverageRating).To(Equal(5.0))
+
+				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+			})
+
+			It("calculates average across multiple users", func() {
+				newID := id.NewRandom()
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/multi-rating.mp3"})).To(Succeed())
+
+				Expect(mr.SetRating(3, newID)).To(Succeed())
+
+				_, err := raw.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
+					"user_id":   "2222", // regularUser from test fixtures
+					"item_id":   newID,
+					"item_type": "media_file",
+					"rating":    5,
+				}))
+				Expect(err).ToNot(HaveOccurred())
+
+				mf, err := mr.Get(newID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.AverageRating).To(Equal(4.0))
+
+				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+			})
+
+			It("excludes zero ratings from average calculation", func() {
+				newID := id.NewRandom()
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/zero-excluded.mp3"})).To(Succeed())
+
+				Expect(mr.SetRating(4, newID)).To(Succeed())
+
+				_, err := raw.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
+					"user_id":   "2222",
+					"item_id":   newID,
+					"item_type": "media_file",
+					"rating":    0,
+				}))
+				Expect(err).ToNot(HaveOccurred())
+
+				mf, err := mr.Get(newID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.AverageRating).To(Equal(4.0))
+
+				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+			})
+		})
+
 		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
 			Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())

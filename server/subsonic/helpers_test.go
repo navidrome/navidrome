@@ -456,4 +456,88 @@ var _ = Describe("helpers", func() {
 			})
 		})
 	})
+
+	Describe("AverageRating in responses", func() {
+		var ctx context.Context
+
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
+
+		Describe("childFromMediaFile", func() {
+			It("includes averageRating when set", func() {
+				mf := model.MediaFile{
+					ID:    "mf-avg-1",
+					Title: "Test Song",
+					Annotations: model.Annotations{
+						AverageRating: 4.5,
+					},
+				}
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.AverageRating).To(Equal(4.5))
+			})
+
+			It("returns 0 for averageRating when not set", func() {
+				mf := model.MediaFile{
+					ID:    "mf-avg-2",
+					Title: "Test Song No Rating",
+				}
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.AverageRating).To(Equal(0.0))
+			})
+		})
+
+		Describe("childFromAlbum", func() {
+			It("includes averageRating when set", func() {
+				al := model.Album{
+					ID:   "al-avg-1",
+					Name: "Test Album",
+					Annotations: model.Annotations{
+						AverageRating: 3.75,
+					},
+				}
+				child := childFromAlbum(ctx, al)
+				Expect(child.AverageRating).To(Equal(3.75))
+			})
+
+			It("returns 0 for averageRating when not set", func() {
+				al := model.Album{
+					ID:   "al-avg-2",
+					Name: "Test Album No Rating",
+				}
+				child := childFromAlbum(ctx, al)
+				Expect(child.AverageRating).To(Equal(0.0))
+			})
+		})
+
+		Describe("toArtist", func() {
+			It("includes averageRating when set", func() {
+				r := httptest.NewRequest("GET", "/test", nil)
+				a := model.Artist{
+					ID:   "ar-avg-1",
+					Name: "Test Artist",
+					Annotations: model.Annotations{
+						AverageRating: 5.0,
+					},
+				}
+				artist := toArtist(r, a)
+				Expect(artist.AverageRating).To(Equal(5.0))
+			})
+		})
+
+		Describe("toArtistID3", func() {
+			It("includes averageRating when set", func() {
+				r := httptest.NewRequest("GET", "/test", nil)
+				a := model.Artist{
+					ID:   "ar-avg-2",
+					Name: "Test Artist ID3",
+					Annotations: model.Annotations{
+						AverageRating: 2.5,
+					},
+				}
+				artist := toArtistID3(r, a)
+				Expect(artist.AverageRating).To(Equal(2.5))
+			})
+		})
+	})
 })

@@ -126,6 +126,110 @@ var _ = Describe("AlbumRepository", func() {
 		)
 	})
 
+	Describe("Album.AverageRating", func() {
+		// Implementation is in withAnnotation() method
+		It("returns 0 when no ratings exist", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "no ratings album"})).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(0.0))
+
+			// Cleanup
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("returns the user's rating as average when only one user rated", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "single rating album"})).To(Succeed())
+			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.0))
+
+			// Cleanup
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("calculates average across multiple users", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "multi rating album"})).To(Succeed())
+
+			// User 1 (current user) rates 4
+			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+
+			// Insert rating from second user directly
+			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
+				"user_id":   "2222", // regularUser from test fixtures
+				"item_id":   newID,
+				"item_type": "album",
+				"rating":    5,
+			}))
+			Expect(err).ToNot(HaveOccurred())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.5)) // (4 + 5) / 2 = 4.5
+
+			// Cleanup
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("excludes zero ratings from average calculation", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "zero rating excluded album"})).To(Succeed())
+
+			// User 1 rates 3
+			Expect(albumRepo.SetRating(3, newID)).To(Succeed())
+
+			// Insert zero rating from second user (should be excluded)
+			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
+				"user_id":   "2222",
+				"item_id":   newID,
+				"item_type": "album",
+				"rating":    0,
+			}))
+			Expect(err).ToNot(HaveOccurred())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(3.0)) // Only user 1's rating counts
+
+			// Cleanup
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("rounds to 2 decimal places", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "rounding test album"})).To(Succeed())
+
+			// User 1 rates 5
+			Expect(albumRepo.SetRating(5, newID)).To(Succeed())
+
+			// User 2 rates 4 - average will be (5 + 4) / 2 = 4.5
+			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
+				"user_id":   "2222",
+				"item_id":   newID,
+				"item_type": "album",
+				"rating":    4,
+			}))
+			Expect(err).ToNot(HaveOccurred())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.5)) // (5 + 4) / 2 = 4.5
+
+			// Cleanup
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+	})
+
 	Describe("dbAlbum mapping", func() {
 		var (
 			a    model.Album
