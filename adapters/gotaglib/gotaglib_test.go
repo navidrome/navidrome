@@ -163,8 +163,7 @@ var _ = Describe("Extractor", func() {
 			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, 0, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false, true, false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
-			// Note: go-taglib doesn't return replaygain for WMA files
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true, true),
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true, false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
 			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, true, false),

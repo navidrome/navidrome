@@ -237,13 +237,33 @@ var _ = Describe("Extractor", func() {
 			Entry("AIFF format", "aiff"),
 		)
 
-		It("should parse wma with limited support", func() {
+		It("should parse wma", func() {
 			mf := parseTestFile("tests/fixtures/test.wma")
 
-			// Note: go-taglib has limited WMA participant support
-			// It returns some participants but not all roles
-			// Just verify basic tags are present
-			Expect(mf.Participants).ToNot(BeNil())
+			for _, data := range roles {
+				role := data.Role
+				artists := data.ParticipantList
+				actual := mf.Participants[role]
+
+				// WMA has no Arranger role
+				if role == model.RoleArranger {
+					Expect(actual).To(HaveLen(0))
+					continue
+				}
+
+				Expect(actual).To(HaveLen(len(artists)), role.String())
+
+				// For some bizarre reason, the order is inverted. We also don't get
+				// sort names or MBIDs
+				for i := range artists {
+					idx := len(artists) - 1 - i
+
+					actualArtist := actual[i]
+					expectedArtist := artists[idx]
+
+					Expect(actualArtist.Name).To(Equal(expectedArtist.Name))
+				}
+			}
 		})
 	})
 })

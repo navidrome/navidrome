@@ -3,13 +3,9 @@
 //
 // This extractor aims for parity with the CGO-based taglib extractor. It uses
 // TagLib's PropertyMap interface for standard tags, ReadID3v2Frames for
-// ID3v2-specific frames like USLT and SYLT with proper language codes, and
-// ReadMP4Atoms for iTunes-specific M4A tags.
-//
-// Known Limitations:
-//
-//   - WMA/ASF specific tags: Some ASF-specific tags (like replaygain) may not be
-//     available. The CGO extractor reads from asfFile->tag()->attributeListMap().
+// ID3v2-specific frames like USLT and SYLT with proper language codes,
+// ReadMP4Atoms for iTunes-specific M4A tags, and ReadASFAttributes for
+// WMA/ASF extended tags.
 //
 // For full feature parity, use the CGO-based taglib extractor. This extractor
 // is provided for environments where CGO is not available (e.g., cross-compilation).
@@ -107,6 +103,11 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		parseMP4Atoms(fullPath, normalizedTags)
 	}
 
+	// For WMA files, read ASF attributes for extended tags (like replaygain)
+	if ext == ".wma" {
+		parseASFAttributes(fullPath, normalizedTags)
+	}
+
 	// Parse track/disc totals from "N/Total" format
 	parseTuple(normalizedTags, "track")
 	parseTuple(normalizedTags, "disc")
@@ -196,6 +197,24 @@ func parseMP4Atoms(fullPath string, tags map[string][]string) {
 		// Strip iTunes prefix and convert to lowercase
 		normalizedKey := strings.TrimPrefix(key, iTunesKeyPrefix)
 		normalizedKey = strings.ToLower(normalizedKey)
+
+		// Only add if the tag doesn't already exist (avoid duplication with PropertyMap)
+		if _, exists := tags[normalizedKey]; !exists {
+			tags[normalizedKey] = values
+		}
+	}
+}
+
+// parseASFAttributes reads ASF attributes directly to get WMA-specific tags.
+func parseASFAttributes(fullPath string, tags map[string][]string) {
+	attrs, err := taglib.ReadASFAttributes(fullPath)
+	if err != nil {
+		return
+	}
+
+	// Process all attributes and add them to tags
+	for key, values := range attrs {
+		normalizedKey := strings.ToLower(key)
 
 		// Only add if the tag doesn't already exist (avoid duplication with PropertyMap)
 		if _, exists := tags[normalizedKey]; !exists {
