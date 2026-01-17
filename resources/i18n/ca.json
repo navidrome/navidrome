@@ -557,7 +557,7 @@
         "noSimilarSongsFound": "No s'ha trobat cap cançó similar",
         "noTopSongsFound": "No s'han trobat cançons destacades",
         "noPlaylistsAvailable": "No n'hi ha cap disponible",
-        "delete_user_title": "Esborra usuari '%{nom}'",
+        "delete_user_title": "Esborra usuari '%{name}'",
         "delete_user_content": "Segur que voleu eliminar aquest usuari i les seues dades\n(incloent-hi llistes i preferències)",
         "remove_missing_title": "Eliminar fitxers faltants",
         "remove_missing_content": "Segur que vols eliminar els fitxers faltants seleccionats de la base de dades? Això eliminarà permanentment les referències a ells, incloent-hi el nombre de reproduccions i les valoracions.",
