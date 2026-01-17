@@ -319,7 +319,7 @@
       },
       "validation": {
         "nameRequired": "El nom de la biblioteca és obligatori",
-        "pathRequired": "La ruta de la biblioteca és obligatoria",
+        "pathRequired": "La ruta de la biblioteca és obligatòria",
         "pathNotDirectory": "La ruta de la biblioteca ha de ser un directori",
         "pathNotFound": "La ruta de la biblioteca no s'ha trobat",
         "pathNotAccessible": "La ruta de la biblioteca no és accessible",
