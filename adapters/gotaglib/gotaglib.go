@@ -1,18 +1,15 @@
 // Package gotaglib provides an alternative metadata extractor using go-taglib,
 // a pure Go (WASM-based) implementation of TagLib.
 //
-// This extractor aims for parity with the CGO-based taglib extractor but has some
-// known limitations due to go-taglib's use of TagLib's PropertyMap interface:
+// This extractor aims for parity with the CGO-based taglib extractor. It uses
+// TagLib's PropertyMap interface for standard tags and ReadID3v2Frames for
+// ID3v2-specific frames like USLT and SYLT with proper language codes.
 //
 // Known Limitations:
 //
 //   - BitDepth: Not available. go-taglib's WASM module only exposes generic audio
 //     properties (length, channels, sampleRate, bitrate), not format-specific
 //     properties like bitsPerSample. MediaFile.BitDepth will always be 0.
-//
-//   - ID3v2 USLT/SYLT frames: Language codes are not preserved. All lyrics are
-//     returned under the generic "LYRICS" tag, and after post-processing they
-//     become "lyrics:xxx" instead of "lyrics:eng" or other language codes.
 //
 //   - M4A/iTunes specific tags: Some iTunes-specific tags may not be available.
 //     The CGO extractor reads from m4afile->tag()->itemMap() which provides
@@ -107,6 +104,12 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		normalizedTags[lowerKey] = values
 	}
 
+	// For MP3 files, read ID3v2 frames directly to get USLT/SYLT with language codes
+	ext := strings.ToLower(filepath.Ext(fullPath))
+	if ext == ".mp3" {
+		parseID3v2Frames(fullPath, normalizedTags)
+	}
+
 	// Parse track/disc totals from "N/Total" format
 	parseTuple(normalizedTags, "track")
 	parseTuple(normalizedTags, "disc")
@@ -147,6 +150,38 @@ func parseLyrics(tags map[string][]string) {
 	if len(lyrics) > 0 {
 		tags["lyrics:xxx"] = lyrics
 		delete(tags, "lyrics")
+	}
+}
+
+// parseID3v2Frames reads ID3v2 frames directly to get USLT/SYLT with language codes.
+// This extracts language-specific lyrics that the standard ReadTags doesn't provide.
+func parseID3v2Frames(fullPath string, tags map[string][]string) {
+	frames, err := taglib.ReadID3v2Frames(fullPath)
+	if err != nil {
+		return
+	}
+
+	// Process frames that have language-specific data
+	for key, values := range frames {
+		lowerKey := strings.ToLower(key)
+
+		// Handle USLT:xxx and SYLT:xxx (lyrics with language codes)
+		if strings.HasPrefix(lowerKey, "uslt:") || strings.HasPrefix(lowerKey, "sylt:") {
+			lang := strings.TrimPrefix(lowerKey, "uslt:")
+			lang = strings.TrimPrefix(lang, "sylt:")
+			if lang != "" {
+				lyricsKey := "lyrics:" + lang
+				tags[lyricsKey] = append(tags[lyricsKey], values...)
+			}
+		}
+	}
+
+	// If we found any language-specific lyrics from ID3v2 frames, remove the generic lyrics
+	for key := range tags {
+		if strings.HasPrefix(key, "lyrics:") && key != "lyrics" {
+			delete(tags, "lyrics")
+			break
+		}
 	}
 }
 

@@ -5,6 +5,8 @@ go 1.25
 // Fork to fix https://github.com/navidrome/navidrome/issues/3254
 replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
+replace go.senan.xyz/taglib v0.11.1 => ../go-taglib
+
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0

@@ -114,6 +114,20 @@ var _ = Describe("Extractor", func() {
 	})
 
 	Describe("lyrics", func() {
+		makeLyrics := func(code, secondLine string) model.Lyrics {
+			return model.Lyrics{
+				DisplayArtist: "",
+				DisplayTitle:  "",
+				Lang:          code,
+				Line: []model.Line{
+					{Start: gg.P(int64(0)), Value: "This is"},
+					{Start: gg.P(int64(2500)), Value: secondLine},
+				},
+				Offset: nil,
+				Synced: true,
+			}
+		}
+
 		It("should fetch both synced and unsynced lyrics in mixed flac", func() {
 			mf := parseTestFile("tests/fixtures/mixed-lyrics.flac")
 
@@ -130,8 +144,14 @@ var _ = Describe("Extractor", func() {
 
 			lyrics, err := mf.StructuredLyrics()
 			Expect(err).ToNot(HaveOccurred())
-			// Note: go-taglib returns 2 lyrics entries (doesn't separate USLT/SYLT)
-			Expect(lyrics).To(HaveLen(2))
+			Expect(lyrics).To(HaveLen(4))
+
+			engSylt := makeLyrics("eng", "English SYLT")
+			engUslt := makeLyrics("eng", "English")
+			unsSylt := makeLyrics("xxx", "unspecified SYLT")
+			unsUslt := makeLyrics("xxx", "unspecified")
+
+			Expect(lyrics).To(ConsistOf(engSylt, engUslt, unsSylt, unsUslt))
 		})
 
 		DescribeTable("format-specific lyrics", func(file string, isId3 bool) {
