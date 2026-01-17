@@ -157,13 +157,9 @@ var _ = Describe("AlbumRepository", func() {
 
 			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
 
-			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-				"user_id":   "2222",
-				"item_id":   newID,
-				"item_type": "album",
-				"rating":    5,
-			}))
-			Expect(err).ToNot(HaveOccurred())
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(5, newID)).To(Succeed())
 
 			album, err := albumRepo.Get(newID)
 			Expect(err).ToNot(HaveOccurred())
@@ -178,13 +174,9 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "zero rating excluded album"})).To(Succeed())
 			Expect(albumRepo.SetRating(3, newID)).To(Succeed())
 
-			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-				"user_id":   "2222",
-				"item_id":   newID,
-				"item_type": "album",
-				"rating":    0,
-			}))
-			Expect(err).ToNot(HaveOccurred())
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(0, newID)).To(Succeed())
 
 			album, err := albumRepo.Get(newID)
 			Expect(err).ToNot(HaveOccurred())
@@ -200,27 +192,18 @@ var _ = Describe("AlbumRepository", func() {
 
 			Expect(albumRepo.SetRating(5, newID)).To(Succeed())
 
-			_, err := albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-				"user_id":   "2222",
-				"item_id":   newID,
-				"item_type": "album",
-				"rating":    4,
-			}))
-			Expect(err).ToNot(HaveOccurred())
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(4, newID)).To(Succeed())
 
-			_, err = albumRepo.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-				"user_id":   "3333",
-				"item_id":   newID,
-				"item_type": "album",
-				"rating":    4,
-			}))
-			Expect(err).ToNot(HaveOccurred())
+			user3Ctx := request.WithUser(GinkgoT().Context(), thirdUser)
+			user3Repo := NewAlbumRepository(user3Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user3Repo.SetRating(4, newID)).To(Succeed())
 
 			album, err := albumRepo.Get(newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.33)) // (5 + 4 + 4) / 3 = 4.333...
 
-			// Cleanup
 			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
 			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})

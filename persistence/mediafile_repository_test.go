@@ -156,13 +156,9 @@ var _ = Describe("MediaRepository", func() {
 
 				Expect(mr.SetRating(3, newID)).To(Succeed())
 
-				_, err := raw.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-					"user_id":   "2222", // regularUser from test fixtures
-					"item_id":   newID,
-					"item_type": "media_file",
-					"rating":    5,
-				}))
-				Expect(err).ToNot(HaveOccurred())
+				user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+				user2Repo := NewMediaFileRepository(user2Ctx, GetDBXBuilder())
+				Expect(user2Repo.SetRating(5, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())
@@ -178,13 +174,9 @@ var _ = Describe("MediaRepository", func() {
 
 				Expect(mr.SetRating(4, newID)).To(Succeed())
 
-				_, err := raw.executeSQL(squirrel.Insert("annotation").SetMap(map[string]interface{}{
-					"user_id":   "2222",
-					"item_id":   newID,
-					"item_type": "media_file",
-					"rating":    0,
-				}))
-				Expect(err).ToNot(HaveOccurred())
+				user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+				user2Repo := NewMediaFileRepository(user2Ctx, GetDBXBuilder())
+				Expect(user2Repo.SetRating(0, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())

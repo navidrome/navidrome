@@ -17,7 +17,7 @@ const annotationTable = "annotation"
 func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
 	userID := loggedUser(r.ctx).ID
 	if userID == invalidUserId {
-		return query
+		return query.Columns(fmt.Sprintf("%s.avg_rating as average_rating", r.tableName))
 	}
 	query = query.
 		LeftJoin("annotation on ("+
@@ -38,9 +38,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
-	query = query.Columns(
-		fmt.Sprintf("coalesce((select round(avg(rating), 2) from annotation where annotation.item_id = %s and annotation.item_type = '%s' and annotation.rating > 0), 0) as average_rating", idField, r.tableName),
-	)
+	query = query.Columns(fmt.Sprintf("%s.avg_rating as average_rating", r.tableName))
 
 	return query
 }
@@ -83,7 +81,22 @@ func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {
 	ratedAt := time.Now()
-	return r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
+	err := r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
+	if err != nil {
+		return err
+	}
+	return r.updateAvgRating(itemID)
+}
+
+func (r sqlRepository) updateAvgRating(itemID string) error {
+	upd := Update(r.tableName).
+		Where(Eq{"id": itemID}).
+		Set("avg_rating", Expr(
+			"coalesce((select round(avg(rating), 2) from annotation where item_id = ? and item_type = ? and rating > 0), 0)",
+			itemID, r.tableName,
+		))
+	_, err := r.executeSQL(upd)
+	return err
 }
 
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
