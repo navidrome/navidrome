@@ -2,7 +2,6 @@ GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
 # Set global environment variables, required for most targets
-export CGO_CFLAGS_ALLOW=--define-prefix
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
