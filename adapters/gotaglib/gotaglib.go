@@ -2,10 +2,9 @@
 // a pure Go (WASM-based) implementation of TagLib.
 //
 // This extractor aims for parity with the CGO-based taglib extractor. It uses
-// TagLib's PropertyMap interface for standard tags, ReadID3v2Frames for
-// ID3v2-specific frames like USLT and SYLT with proper language codes,
-// ReadMP4Atoms for iTunes-specific M4A tags, and ReadASFAttributes for
-// WMA/ASF extended tags.
+// TagLib's PropertyMap interface for standard tags. The File handle API provides
+// efficient access to format-specific tags (ID3v2 frames, MP4 atoms, ASF attributes)
+// through a single file open operation.
 //
 // For full feature parity, use the CGO-based taglib extractor. This extractor
 // is provided for environments where CGO is not available (e.g., cross-compilation).
@@ -47,8 +46,9 @@ func (e extractor) Version() string {
 
 func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	fullPath := filepath.Join(e.baseDir, filePath)
-	// Read tags
-	tags, err := taglib.ReadTags(fullPath)
+
+	// Open the file once and read all data
+	f, err := taglib.OpenReadOnly(fullPath)
 	if err != nil {
 		// Check if file doesn't exist
 		if _, statErr := os.Stat(fullPath); os.IsNotExist(statErr) {
@@ -57,24 +57,22 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		// Check if permission denied
 		if errors.Is(err, taglib.ErrInvalidFile) {
 			// Try to open the file to check for permission errors
-			if f, openErr := os.Open(fullPath); openErr != nil {
+			if osFile, openErr := os.Open(fullPath); openErr != nil {
 				if os.IsPermission(openErr) {
 					return nil, os.ErrPermission
 				}
 			} else {
-				f.Close()
+				osFile.Close()
 			}
 		}
 		log.Warn("gotaglib extractor: Error reading metadata from file. Skipping", "filePath", fullPath, err)
 		return nil, err
 	}
+	defer f.Close()
 
-	// Read audio properties
-	props, err := taglib.ReadProperties(fullPath)
-	if err != nil {
-		log.Warn("gotaglib extractor: Error reading properties from file. Skipping", "filePath", fullPath, err)
-		return nil, err
-	}
+	// Get all tags and properties in one go
+	allTags := f.AllTags()
+	props := f.Properties()
 
 	// Map properties to AudioProperties
 	ap := metadata.AudioProperties{
@@ -85,22 +83,15 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		BitDepth:   int(props.BitsPerSample),
 	}
 
-	// Convert tags to lowercase keys (go-taglib returns UPPERCASE keys)
+	// Convert normalized tags to lowercase keys (go-taglib returns UPPERCASE keys)
 	normalizedTags := make(map[string][]string)
-	for key, values := range tags {
+	for key, values := range allTags.Tags {
 		lowerKey := strings.ToLower(key)
 		normalizedTags[lowerKey] = values
 	}
 
-	// Format-specific parsing for extended tags
-	switch strings.ToLower(filepath.Ext(fullPath)) {
-	case ".mp3", ".wav", ".aiff":
-		parseID3v2Frames(fullPath, normalizedTags)
-	case ".m4a":
-		parseMP4Atoms(fullPath, normalizedTags)
-	case ".wma":
-		parseASFAttributes(fullPath, normalizedTags)
-	}
+	// Process format-specific raw tags
+	processRawTags(allTags, normalizedTags)
 
 	// Parse track/disc totals from "N/Total" format
 	parseTuple(normalizedTags, "track")
@@ -145,16 +136,24 @@ func parseLyrics(tags map[string][]string) {
 	}
 }
 
-// parseID3v2Frames reads ID3v2 frames directly to get USLT/SYLT with language codes.
-// This extracts language-specific lyrics that the standard ReadTags doesn't provide.
-func parseID3v2Frames(fullPath string, tags map[string][]string) {
-	frames, err := taglib.ReadID3v2Frames(fullPath)
-	if err != nil {
-		return
+// processRawTags processes format-specific raw tags based on the detected file format.
+// This handles ID3v2 frames (MP3/WAV/AIFF), MP4 atoms, and ASF attributes.
+func processRawTags(allTags taglib.AllTags, normalizedTags map[string][]string) {
+	switch allTags.Format {
+	case taglib.FormatMPEG, taglib.FormatWAV, taglib.FormatAIFF:
+		parseID3v2Frames(allTags.Raw, normalizedTags)
+	case taglib.FormatMP4:
+		parseMP4Atoms(allTags.Raw, normalizedTags)
+	case taglib.FormatASF:
+		parseASFAttributes(allTags.Raw, normalizedTags)
 	}
+}
 
+// parseID3v2Frames processes ID3v2 raw frames to extract USLT/SYLT with language codes.
+// This extracts language-specific lyrics that the standard Tags() doesn't provide.
+func parseID3v2Frames(rawFrames map[string][]string, tags map[string][]string) {
 	// Process frames that have language-specific data
-	for key, values := range frames {
+	for key, values := range rawFrames {
 		lowerKey := strings.ToLower(key)
 
 		// Handle USLT:xxx and SYLT:xxx (lyrics with language codes)
@@ -179,15 +178,10 @@ func parseID3v2Frames(fullPath string, tags map[string][]string) {
 
 const iTunesKeyPrefix = "----:com.apple.iTunes:"
 
-// parseMP4Atoms reads MP4 atoms directly to get iTunes-specific tags.
-func parseMP4Atoms(fullPath string, tags map[string][]string) {
-	atoms, err := taglib.ReadMP4Atoms(fullPath)
-	if err != nil {
-		return
-	}
-
+// parseMP4Atoms processes MP4 raw atoms to get iTunes-specific tags.
+func parseMP4Atoms(rawAtoms map[string][]string, tags map[string][]string) {
 	// Process all atoms and add them to tags
-	for key, values := range atoms {
+	for key, values := range rawAtoms {
 		// Strip iTunes prefix and convert to lowercase
 		normalizedKey := strings.TrimPrefix(key, iTunesKeyPrefix)
 		normalizedKey = strings.ToLower(normalizedKey)
@@ -199,15 +193,10 @@ func parseMP4Atoms(fullPath string, tags map[string][]string) {
 	}
 }
 
-// parseASFAttributes reads ASF attributes directly to get WMA-specific tags.
-func parseASFAttributes(fullPath string, tags map[string][]string) {
-	attrs, err := taglib.ReadASFAttributes(fullPath)
-	if err != nil {
-		return
-	}
-
+// parseASFAttributes processes ASF raw attributes to get WMA-specific tags.
+func parseASFAttributes(rawAttrs map[string][]string, tags map[string][]string) {
 	// Process all attributes and add them to tags
-	for key, values := range attrs {
+	for key, values := range rawAttrs {
 		normalizedKey := strings.ToLower(key)
 
 		// Only add if the tag doesn't already exist (avoid duplication with PropertyMap)
