@@ -1,0 +1,11 @@
+{
+  "name": "Private Playlist",
+  "comment": "A smart playlist that is explicitly private",
+  "public": false,
+  "all": [
+    {"is": {"loved": true}}
+  ],
+  "sort": "title",
+  "order": "asc",
+  "limit": 100
+}

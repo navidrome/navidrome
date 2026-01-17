@@ -168,6 +168,11 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 	if nsp.Comment != "" {
 		pls.Comment = nsp.Comment
 	}
+	if nsp.Public != nil {
+		pls.Public = *nsp.Public
+	} else {
+		pls.Public = conf.Server.DefaultPlaylistPublicVisibility
+	}
 	return nil
 }
 
@@ -409,7 +414,10 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
-		newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+		// For NSP files, Public may already be set from the file; for M3U, use server default
+		if !newPls.IsSmartPlaylist() {
+			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+		}
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
 }
@@ -473,6 +481,7 @@ type nspFile struct {
 	criteria.Criteria
 	Name    string `json:"name"`
 	Comment string `json:"comment"`
+	Public  *bool  `json:"public"`
 }
 
 func (i *nspFile) UnmarshalJSON(data []byte) error {
@@ -483,5 +492,8 @@ func (i *nspFile) UnmarshalJSON(data []byte) error {
 	}
 	i.Name, _ = m["name"].(string)
 	i.Comment, _ = m["comment"].(string)
+	if public, ok := m["public"].(bool); ok {
+		i.Public = &public
+	}
 	return json.Unmarshal(data, &i.Criteria)
 }

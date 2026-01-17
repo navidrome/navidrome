@@ -112,6 +112,27 @@ var _ = Describe("Playlists", func() {
 				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
 				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
+			It("parses NSP with public: true and creates public playlist", func() {
+				pls, err := ps.ImportFile(ctx, folder, "public_playlist.nsp")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Name).To(Equal("Public Playlist"))
+				Expect(pls.Public).To(BeTrue())
+			})
+			It("parses NSP with public: false and creates private playlist", func() {
+				pls, err := ps.ImportFile(ctx, folder, "private_playlist.nsp")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Name).To(Equal("Private Playlist"))
+				Expect(pls.Public).To(BeFalse())
+			})
+			It("uses server default when public field is absent", func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.DefaultPlaylistPublicVisibility = true
+
+				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Name).To(Equal("Recently Played"))
+				Expect(pls.Public).To(BeTrue()) // Should be true since server default is true
+			})
 		})
 
 		Describe("Cross-library relative paths", func() {
