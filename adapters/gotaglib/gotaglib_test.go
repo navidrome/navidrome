@@ -91,9 +91,7 @@ var _ = Describe("Extractor", func() {
 				Expect(m.AudioProperties.Duration.String()).To(Equal(duration))
 				Expect(m.AudioProperties.Channels).To(Equal(channels))
 				Expect(m.AudioProperties.SampleRate).To(Equal(samplerate))
-				// Note: go-taglib doesn't expose BitDepth in Properties struct
-				// so we skip this check or accept 0
-				// Expect(m.AudioProperties.BitDepth).To(Equal(bitdepth))
+				Expect(m.AudioProperties.BitDepth).To(Equal(bitdepth))
 
 				if !skipReplayGain {
 					Expect(m.Tags).To(Or(

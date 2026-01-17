@@ -8,10 +8,6 @@
 //
 // Known Limitations:
 //
-//   - BitDepth: Not available. go-taglib's WASM module only exposes generic audio
-//     properties (length, channels, sampleRate, bitrate), not format-specific
-//     properties like bitsPerSample. MediaFile.BitDepth will always be 0.
-//
 //   - WMA/ASF specific tags: Some ASF-specific tags (like replaygain) may not be
 //     available. The CGO extractor reads from asfFile->tag()->attributeListMap().
 //
@@ -90,8 +86,7 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		BitRate:    int(props.Bitrate),
 		Channels:   int(props.Channels),
 		SampleRate: int(props.SampleRate),
-		// Note: go-taglib doesn't expose bit depth directly in Properties
-		// BitDepth will be 0 for formats where it's not available
+		BitDepth:   int(props.BitsPerSample),
 	}
 
 	// Convert tags to lowercase keys (go-taglib returns UPPERCASE keys)
