@@ -60,6 +60,7 @@ require (
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
+	go.senan.xyz/taglib v0.11.1
 	go.uber.org/goleak v1.3.0
 	golang.org/x/image v0.35.0
 	golang.org/x/net v0.49.0
