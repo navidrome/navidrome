@@ -97,13 +97,10 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // Check if there's a current track and audio is actually playing
-      if (playerState.current && Object.keys(playerState.current).length > 0) {
-        // Check if audio is actually playing (not paused)
-        if (audioInstance && !audioInstance.paused) {
-          e.preventDefault()
-          e.returnValue = '' // Chrome requires returnValue to be set
-        }
+      // Check there's a current track and is actually playing/not paused
+      if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
+        e.preventDefault()
+        e.returnValue = '' // Chrome requires returnValue to be set
       }
     }
 
