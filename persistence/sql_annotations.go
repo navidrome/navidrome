@@ -38,6 +38,10 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
+	query = query.Columns(
+		fmt.Sprintf("coalesce((select round(avg(rating), 2) from annotation where annotation.item_id = %s and annotation.item_type = '%s' and annotation.rating > 0), 0) as average_rating", idField, r.tableName),
+	)
+
 	return query
 }
 

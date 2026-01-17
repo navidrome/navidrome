@@ -410,6 +410,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	}
 	dir.AlbumCount = getArtistAlbumCount(artist)
 	dir.UserRating = int32(artist.Rating)
+	dir.AverageRating = artist.AverageRating
 	if artist.Starred {
 		dir.Starred = artist.StarredAt
 	}
@@ -447,6 +448,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	dir.AverageRating = album.AverageRating
 	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {
