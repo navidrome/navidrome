@@ -2,18 +2,15 @@
 // a pure Go (WASM-based) implementation of TagLib.
 //
 // This extractor aims for parity with the CGO-based taglib extractor. It uses
-// TagLib's PropertyMap interface for standard tags and ReadID3v2Frames for
-// ID3v2-specific frames like USLT and SYLT with proper language codes.
+// TagLib's PropertyMap interface for standard tags, ReadID3v2Frames for
+// ID3v2-specific frames like USLT and SYLT with proper language codes, and
+// ReadMP4Atoms for iTunes-specific M4A tags.
 //
 // Known Limitations:
 //
 //   - BitDepth: Not available. go-taglib's WASM module only exposes generic audio
 //     properties (length, channels, sampleRate, bitrate), not format-specific
 //     properties like bitsPerSample. MediaFile.BitDepth will always be 0.
-//
-//   - M4A/iTunes specific tags: Some iTunes-specific tags may not be available.
-//     The CGO extractor reads from m4afile->tag()->itemMap() which provides
-//     additional metadata not exposed through PropertyMap.
 //
 //   - WMA/ASF specific tags: Some ASF-specific tags (like replaygain) may not be
 //     available. The CGO extractor reads from asfFile->tag()->attributeListMap().
@@ -110,6 +107,11 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		parseID3v2Frames(fullPath, normalizedTags)
 	}
 
+	// For M4A files, read MP4 atoms for iTunes-specific tags
+	if ext == ".m4a" {
+		parseMP4Atoms(fullPath, normalizedTags)
+	}
+
 	// Parse track/disc totals from "N/Total" format
 	parseTuple(normalizedTags, "track")
 	parseTuple(normalizedTags, "disc")
@@ -181,6 +183,28 @@ func parseID3v2Frames(fullPath string, tags map[string][]string) {
 		if strings.HasPrefix(key, "lyrics:") && key != "lyrics" {
 			delete(tags, "lyrics")
 			break
+		}
+	}
+}
+
+const iTunesKeyPrefix = "----:com.apple.iTunes:"
+
+// parseMP4Atoms reads MP4 atoms directly to get iTunes-specific tags.
+func parseMP4Atoms(fullPath string, tags map[string][]string) {
+	atoms, err := taglib.ReadMP4Atoms(fullPath)
+	if err != nil {
+		return
+	}
+
+	// Process all atoms and add them to tags
+	for key, values := range atoms {
+		// Strip iTunes prefix and convert to lowercase
+		normalizedKey := strings.TrimPrefix(key, iTunesKeyPrefix)
+		normalizedKey = strings.ToLower(normalizedKey)
+
+		// Only add if the tag doesn't already exist (avoid duplication with PropertyMap)
+		if _, exists := tags[normalizedKey]; !exists {
+			tags[normalizedKey] = values
 		}
 	}
 }
