@@ -92,19 +92,13 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		normalizedTags[lowerKey] = values
 	}
 
-	// For MP3 files, read ID3v2 frames directly to get USLT/SYLT with language codes
-	ext := strings.ToLower(filepath.Ext(fullPath))
-	if ext == ".mp3" {
+	// Format-specific parsing for extended tags
+	switch strings.ToLower(filepath.Ext(fullPath)) {
+	case ".mp3", ".wav", ".aiff":
 		parseID3v2Frames(fullPath, normalizedTags)
-	}
-
-	// For M4A files, read MP4 atoms for iTunes-specific tags
-	if ext == ".m4a" {
+	case ".m4a":
 		parseMP4Atoms(fullPath, normalizedTags)
-	}
-
-	// For WMA files, read ASF attributes for extended tags (like replaygain)
-	if ext == ".wma" {
+	case ".wma":
 		parseASFAttributes(fullPath, normalizedTags)
 	}
 

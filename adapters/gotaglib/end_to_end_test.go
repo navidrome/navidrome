@@ -161,12 +161,16 @@ var _ = Describe("Extractor", func() {
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(lyrics).To(HaveLen(2))
 
-			// Note: go-taglib returns "xxx" for all lyrics regardless of format
-			// It doesn't preserve "eng" language codes like the original taglib
-			for _, l := range lyrics {
-				Expect(l.Lang).To(Equal("xxx"))
-				Expect(l.Synced).To(BeTrue())
+			unspec := makeLyrics("xxx", "unspecified")
+			eng := makeLyrics("xxx", "English")
+
+			if isId3 {
+				eng.Lang = "eng"
 			}
+
+			Expect(lyrics).To(Or(
+				Equal(model.LyricList{unspec, eng}),
+				Equal(model.LyricList{eng, unspec})))
 		},
 			Entry("flac", "test.flac", false),
 			Entry("m4a", "test.m4a", false),
@@ -187,7 +191,7 @@ var _ = Describe("Extractor", func() {
 				artists := data.ParticipantList
 
 				actual := mf.Participants[role]
-				Expect(actual).To(HaveLen(len(artists)), "role: %s", role)
+				Expect(actual).To(HaveLen(len(artists)))
 
 				for i := range artists {
 					actualArtist := actual[i]
@@ -229,9 +233,10 @@ var _ = Describe("Extractor", func() {
 			}
 		},
 			Entry("FLAC format", "flac"),
+			Entry("M4a format", "m4a"),
 			Entry("OGG format", "ogg"),
 			Entry("WV format", "wv"),
-			Entry("M4A format", "m4a"),
+
 			Entry("MP3 format", "mp3"),
 			Entry("WAV format", "wav"),
 			Entry("AIFF format", "aiff"),

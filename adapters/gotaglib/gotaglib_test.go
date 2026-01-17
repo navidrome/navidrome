@@ -60,9 +60,20 @@ var _ = Describe("Extractor", func() {
 			Expect(m.Tags).To(HaveKeyWithValue("tracktotal", []string{"10"}))
 
 			Expect(m.Tags).ToNot(HaveKey("lyrics"))
-			// Note: go-taglib handles lyrics differently - it doesn't separate USLT and SYLT frames
-			// and returns lyrics with language code "xxx" instead of language-specific codes
-			Expect(m.Tags).To(HaveKey("lyrics:xxx"))
+			Expect(m.Tags).To(Or(HaveKeyWithValue("lyrics:eng", []string{
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
+				"[00:00.00]This is\n[00:02.50]English",
+			}), HaveKeyWithValue("lyrics:eng", []string{
+				"[00:00.00]This is\n[00:02.50]English",
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
+			})))
+			Expect(m.Tags).To(Or(HaveKeyWithValue("lyrics:xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
+				"[00:00.00]This is\n[00:02.50]unspecified",
+			}), HaveKeyWithValue("lyrics:xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified",
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
+			})))
 
 			// Test OGG
 			m = mds["tests/fixtures/test.ogg"]
@@ -79,7 +90,7 @@ var _ = Describe("Extractor", func() {
 		})
 
 		DescribeTable("Format-Specific tests",
-			func(file, duration string, channels, samplerate, bitdepth int, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool, image bool, skipReplayGain bool) {
+			func(file, duration string, channels, samplerate, bitdepth int, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool, image bool) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -93,39 +104,33 @@ var _ = Describe("Extractor", func() {
 				Expect(m.AudioProperties.SampleRate).To(Equal(samplerate))
 				Expect(m.AudioProperties.BitDepth).To(Equal(bitdepth))
 
-				if !skipReplayGain {
-					Expect(m.Tags).To(Or(
-						HaveKeyWithValue("replaygain_album_gain", []string{albumGain}),
-						HaveKeyWithValue("----:com.apple.itunes:replaygain_track_gain", []string{albumGain}),
-					))
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("replaygain_album_gain", []string{albumGain}),
+					HaveKeyWithValue("----:com.apple.itunes:replaygain_track_gain", []string{albumGain}),
+				))
 
-					Expect(m.Tags).To(Or(
-						HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}),
-						HaveKeyWithValue("----:com.apple.itunes:replaygain_album_peak", []string{albumPeak}),
-					))
-					Expect(m.Tags).To(Or(
-						HaveKeyWithValue("replaygain_track_gain", []string{trackGain}),
-						HaveKeyWithValue("----:com.apple.itunes:replaygain_track_gain", []string{trackGain}),
-					))
-					Expect(m.Tags).To(Or(
-						HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}),
-						HaveKeyWithValue("----:com.apple.itunes:replaygain_track_peak", []string{trackPeak}),
-					))
-				}
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}),
+					HaveKeyWithValue("----:com.apple.itunes:replaygain_album_peak", []string{albumPeak}),
+				))
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("replaygain_track_gain", []string{trackGain}),
+					HaveKeyWithValue("----:com.apple.itunes:replaygain_track_gain", []string{trackGain}),
+				))
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}),
+					HaveKeyWithValue("----:com.apple.itunes:replaygain_track_peak", []string{trackPeak}),
+				))
 
-				Expect(m.Tags).To(HaveKeyWithValue("title", Or(Equal([]string{"Title"}), Equal([]string{"Song"}))))
+				Expect(m.Tags).To(HaveKeyWithValue("title", []string{"Title"}))
 				Expect(m.Tags).To(HaveKeyWithValue("album", []string{"Album"}))
 				Expect(m.Tags).To(HaveKeyWithValue("artist", []string{"Artist"}))
 				Expect(m.Tags).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
 				Expect(m.Tags).To(HaveKeyWithValue("genre", []string{"Rock"}))
-				Expect(m.Tags).To(Or(
-					HaveKeyWithValue("date", []string{"2014"}),
-					HaveKeyWithValue("date", []string{"2014-05-21"}),
-				))
+				Expect(m.Tags).To(HaveKeyWithValue("date", []string{"2014"}))
 
 				Expect(m.Tags).To(HaveKeyWithValue("bpm", []string{"123"}))
 				Expect(m.Tags).To(Or(
-					HaveKeyWithValue("tracknumber", []string{"2"}),
 					HaveKeyWithValue("tracknumber", []string{"3"}),
 					HaveKeyWithValue("tracknumber", []string{"3/10"}),
 				))
@@ -140,39 +145,47 @@ var _ = Describe("Extractor", func() {
 				Expect(m.Tags).To(HaveKeyWithValue("disctotal", []string{"2"}))
 
 				// WMA does not have a "compilation" tag, but "wm/iscompilation"
-				// Note: go-taglib may not return compilation for WMA
-				if !strings.HasSuffix(file, "test.wma") {
-					Expect(m.Tags).To(Or(
-						HaveKeyWithValue("compilation", []string{"1"}),
-						HaveKeyWithValue("wm/iscompilation", []string{"1"})),
-					)
-				}
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("compilation", []string{"1"}),
+					HaveKeyWithValue("wm/iscompilation", []string{"1"})),
+				)
 
-				// Note: go-taglib handles lyrics differently for some formats.
-				// For WAV/AIFF (ID3), it doesn't preserve language codes properly.
-				Expect(m.Tags).To(HaveKey("lyrics:xxx"))
+				if id3Lyrics {
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:eng", []string{
+						"[00:00.00]This is\n[00:02.50]English",
+					}))
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:xxx", []string{
+						"[00:00.00]This is\n[00:02.50]unspecified",
+					}))
+				} else {
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:xxx", []string{
+						"[00:00.00]This is\n[00:02.50]unspecified",
+						"[00:00.00]This is\n[00:02.50]English",
+					}))
+				}
 
 				Expect(m.Tags).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			},
 
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
-			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, 16, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false, true, false),
+			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, 16, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false, true),
 
-			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true, false),
-			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true, false),
-			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, 0, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false, true, false),
+			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true),
+			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, 0, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true, false),
+			// Weird note: for the tag parsing to work, the lyrics are actually stored in the reverse order
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, true, false),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
-			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, 16, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true, true, false),
+			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, 16, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
-			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, 16, "2.00 dB", "0.124972", "2.00 dB", "0.124972", true, true, false),
+			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, 16, "2.00 dB", "0.124972", "2.00 dB", "0.124972", true, true),
 		)
 
 		// Skip these tests when running as root
