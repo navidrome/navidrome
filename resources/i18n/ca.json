@@ -12,6 +12,7 @@
                 "artist": "Artista",
                 "album": "Àlbum",
                 "path": "Ruta del fitxer",
+                "libraryName": "Biblioteca",
                 "genre": "Gènere",
                 "compilation": "Compilació",
                 "year": "Any",
@@ -26,7 +27,7 @@
                 "comment": "Comentari",
                 "rating": "Valoració",
                 "quality": "Qualitat",
-                "bpm": "tempo",
+                "bpm": "Tempo",
                 "playDate": "Darrer resproduït",
                 "createdAt": "Creat el",
                 "grouping": "Agrupació",
@@ -34,12 +35,14 @@
                 "participants": "Participants",
                 "tags": "Etiquetes",
                 "mappedTags": "Etiquetes assignades",
-                "rawTags": "Etiquetes sense processar"
+                "rawTags": "Etiquetes sense processar",
+                "missing": "Falta"
             },
             "actions": {
                 "addToQueue": "Reprodueix després",
                 "playNow": "Reprodueix ara",
                 "addToPlaylist": "Afegeix a la llista",
+                "showInPlaylist": "Mostra a la llista",
                 "shuffleAll": "Aleatori",
                 "download": "Descarrega",
                 "playNext": "Reprodueix següent",
@@ -56,24 +59,26 @@
                 "playCount": "Reproduccions",
                 "size": "Mida",
                 "name": "Nom",
+                "libraryName": "Biblioteca",
                 "genre": "Gènere",
                 "compilation": "Compilació",
                 "year": "Any",
+                "date": "Data de gravació",
+                "originalDate": "Original",
+                "releaseDate": "Publicat",
+                "releases": "Llançament |||| Llançaments",
+                "released": "Publicat",
                 "updatedAt": "Actualitzat ",
                 "comment": "Comentari",
                 "rating": "Valoració",
                 "createdAt": "Creat el",
-                "size": "Mida",
-                "originalDate": "Original",
-                "releaseDate": "Publicat",
-                "releases": "LLançament |||| Llançaments",
-                "released": "Publicat",
                 "recordLabel": "Discogràfica",
                 "catalogNum": "Número de catàleg",
                 "releaseType": "Tipus de publicació",
                 "grouping": "Agrupació",
                 "media": "Mitjà",
-                "mood": "Sentiment"
+                "mood": "Sentiment",
+                "missing": "Falta"
             },
             "actions": {
                 "playAll": "Reprodueix",
@@ -105,22 +110,29 @@
                 "playCount": "Reproduccions",
                 "rating": "Valoració",
                 "genre": "Gènere",
-                "role": "Rol"
+                "role": "Rol",
+                "missing": "Falta"
             },
             "roles": {
-            "albumartist": "Artista de l'Àlbum |||| Artistes de l'Àlbum",
-            "artist": "Artista |||| Artistes",
-            "composer": "Compositor |||| Compositors",
-            "conductor": "Conductor |||| Conductors",
-            "lyricist": "Lletrista |||| Lletristes",
-            "arranger": "Arranjador |||| Arranjadors",
-            "producer": "Productor |||| Productors",
-            "director": "Director |||| Directors",
-            "engineer": "Enginyer |||| Enginyers",
-            "mixer": "Mesclador |||| Mescladors",
-            "remixer": "Remesclador |||| Remescladors",
-            "djmixer": "DJ Mesclador |||| DJ Mescladors",
-            "performer": "Intèrpret |||| Intèrprets"
+              "albumartist": "Artista de l'Àlbum |||| Artistes de l'Àlbum",
+              "artist": "Artista |||| Artistes",
+              "composer": "Compositor |||| Compositors",
+              "conductor": "Conductor |||| Conductors",
+              "lyricist": "Lletrista |||| Lletristes",
+              "arranger": "Arranjador |||| Arranjadors",
+              "producer": "Productor |||| Productors",
+              "director": "Director |||| Directors",
+              "engineer": "Enginyer |||| Enginyers",
+              "mixer": "Mesclador |||| Mescladors",
+              "remixer": "Remesclador |||| Remescladors",
+              "djmixer": "DJ Mesclador |||| DJ Mescladors",
+              "performer": "Intèrpret |||| Intèrprets",
+              "maincredit": "Artista de l'Àlbum o Artista |||| Artistes de l'Àlbum o Artistes"
+            },
+            "actions": {
+              "topSongs": "Cançons Destacades",
+              "shuffle": "Aleatori",
+              "radio": "Ràdio"
             }
         },
         "user": {
@@ -137,19 +149,26 @@
                 "changePassword": "Canviar la contrasenya?",
                 "currentPassword": "Contrasenya actual",
                 "newPassword": "Contrasenya nova",
-                "token": "Token"
+                "token": "Token",
+                "libraries": "Biblioteques"
             },
             "helperTexts": {
-                "name": "Els canvis en el nom s'hi aplicaran en la següent connexió"
+                "name": "Els canvis en el nom s'hi aplicaran en la següent connexió",
+                "libraries": "Seleccioneu biblioteques específiques per aquest usuari, o deixeu-ho en blanc per seleccionar les biblioteques per defecte."
             },
             "notifications": {
                 "created": "Usuari creat",
                 "updated": "Usuari actualitzat",
                 "deleted": "Usuari eliminat"
             },
+            "validation": {
+                "librariesRequired": "S'ha de seleccionar almenys una biblioteca pels usuaris no administradors"
+            },
             "message": {
                 "listenBrainzToken": "Introduïu el vostre token d'usuari de ListenBrainz",
-                "clickHereForToken": "Feu clic ací per a obtenir el vostre token"
+                "clickHereForToken": "Feu clic ací per a obtenir el vostre token",
+                "selectAllLibraries": "Seleccionar totes les biblioteques",
+                "adminAutoLibraries": "Els usuaris admin tenen accés automàtic a totes les biblioteques"
             }
         },
         "player": {
@@ -190,14 +209,20 @@
             },
             "actions": {
                 "selectPlaylist": "Selecciona una llista:",
-                "addNewPlaylist": "Crea \"%{nom}",
+                "addNewPlaylist": "Crea \"%{name}",
                 "export": "Exporta",
+                "saveQueue": "Guarda cua a una llista",
                 "makePublic": "Fes públic",
-                "makePrivate": "Fes privat"
+                "makePrivate": "Fes privat",
+                "searchOrCreate": "Cerca llistes de reproducció o escriu per crear-ne una de nova",
+                "pressEnterToCreate": "Prem Retorn per crear una llista nova",
+                "removeFromSelection": "Elimina de la selecció"
             },
             "message": {
                 "duplicate_song": "Afegeix cançons duplicades",
-                "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?"
+                "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?",
+                "noPlaylistsFound": "No s'ha trobat cap llista de reproducció",
+                "noPlaylists": "No hi ha cap llista de reproducció disponible"
             }
         },
         "radio": {
@@ -233,18 +258,149 @@
             "actions": {}
         },
       "missing": {
-      "name": "Fitxer faltant |||| Fitxers Faltants",
-      "empty": "No falten fitxers",
-      "fields": {
-        "path": "Directori",
-        "size": "Mida",
-        "updatedAt": "Desaparegut"
+        "name": "Fitxer faltant |||| Fitxers Faltants",
+        "empty": "No falten fitxers",
+        "fields": {
+          "path": "Directori",
+          "size": "Mida",
+          "libraryName": "Biblioteca",
+          "updatedAt": "Desaparegut"
       },
       "actions": {
-        "remove": "Eliminar"
+        "remove": "Eliminar",
+        "remove_all": "Eliminar Tot"
       },
       "notifications": {
         "removed": "Fitxers faltants eliminats"
+      }
+  },
+  "library": {
+      "name": "Biblioteca |||| Biblioteques",
+      "fields": {
+        "name": "Nom",
+        "path": "Ruta",
+        "remotePath": "Ruta Remota",
+        "lastScanAt": "Últim Escaneig",
+        "songCount": "Cançons",
+        "albumCount": "Àlbums",
+        "artistCount": "Artistes",
+        "totalSongs": "Cançons",
+        "totalAlbums": "Àlbums",
+        "totalArtists": "Artistes",
+        "totalFolders": "Carpetes",
+        "totalFiles": "Fitxers",
+        "totalMissingFiles": "Fitxers Faltants",
+        "totalSize": "Mida Total",
+        "totalDuration": "Duració",
+        "defaultNewUsers": "Per Defecte per a Nous Usuaris",
+        "createdAt": "Creada",
+        "updatedAt": "Actualitzada"
+      },
+      "sections": {
+        "basic": "Informació Bàsica",
+        "statistics": "Estadístiques"
+      },
+      "actions": {
+        "scan": "Escanejar Biblioteca",
+        "quickScan": "Escaneig Ràpid",
+        "fullScan": "Escaneig Complet",
+        "manageUsers": "Gestionar l'accés d'usuaris",
+        "viewDetails": "Veure Detalls"
+      },
+      "notifications": {
+        "created": "Biblioteca creada correctament",
+        "updated": "Biblioteca actualitzada correctament",
+        "deleted": "Biblioteca eliminada correctament",
+        "scanStarted": "Escaneig de la biblioteca iniciat",
+        "quickScanStarted": "Escaneig ràpid iniciat",
+        "fullScanStarted": "Escaneig complet iniciat",
+        "scanError": "Error a l'iniciar l'escaneig. Comprova els logs",
+        "scanCompleted": "Escaneig de la biblioteca completat"
+      },
+      "validation": {
+        "nameRequired": "El nom de la biblioteca és obligatori",
+        "pathRequired": "La ruta de la biblioteca és obligatoria",
+        "pathNotDirectory": "La ruta de la biblioteca ha de ser un directori",
+        "pathNotFound": "La ruta de la biblioteca no s'ha trobat",
+        "pathNotAccessible": "La ruta de la biblioteca no és accessible",
+        "pathInvalid": "La ruta de la biblioteca no és vàlida"
+      },
+      "messages": {
+        "deleteConfirm": "Segur que voleu eliminar aquesta biblioteca? S'eliminaran totes les dades associades i l'accés als usuaris.",
+        "scanInProgress": "Escaneig en curs...",
+        "noLibrariesAssigned": "L'usuari no té assignada cap biblioteca"
+      }
+    },
+    "plugin": {
+      "name": "Connector |||| Connectors",
+      "fields": {
+        "id": "ID",
+        "name": "Nom",
+        "description": "Descripció",
+        "version": "Versió",
+        "author": "Autor",
+        "website": "Web",
+        "permissions": "Permisos",
+        "enabled": "Activat",
+        "status": "Estat",
+        "path": "Ruta",
+        "lastError": "Error",
+        "hasError": "Error",
+        "updatedAt": "Actualitzat",
+        "createdAt": "Instal·lat",
+        "configKey": "Clau",
+        "configValue": "Valor",
+        "allUsers": "Permet tots els usuaris",
+        "selectedUsers": "Usuaris seleccionats",
+        "allLibraries": "Permet totes les biblioteques",
+        "selectedLibraries": "Biblioteques seleccionades"
+      },
+      "sections": {
+        "status": "Estat",
+        "info": "Informació del connector",
+        "configuration": "Configuració",
+        "manifest": "Manifest",
+        "usersPermission": "Permís d'usuari",
+        "libraryPermission": "Permís de la biblioteca"
+      },
+      "status": {
+        "enabled": "Activat",
+        "disabled": "Desactivat"
+      },
+      "actions": {
+        "enable": "Activar",
+        "disable": "Desactivar",
+        "disabledDueToError": "Corregiu l'error abans d'activar",
+        "disabledUsersRequired": "Seleccioneu usuaris abans d'activar",
+        "disabledLibrariesRequired": "Seleccioneu biblioteques abans d'activar",
+        "addConfig": "Afegeix una configuració",
+        "rescan": "Reescaneja"
+      },
+      "notifications": {
+        "enabled": "Connector activat",
+        "disabled": "Connector desactivat",
+        "updated": "Connector actualitzat",
+        "error": "Error en actualitzar el connector"
+      },
+      "validation": {
+        "invalidJson": "La configuració ha de ser un JSON vàlid"
+      },
+      "messages": {
+        "configHelp": "Configura el connector amb parells clau-valor. Deixa'l en blanc si el connector no requereix configuració.",
+        "clickPermissions": "Feu clic a un permís per veure els detalls",
+        "noConfig": "No s'ha establert cap configuració",
+        "allUsersHelp": "Quan s'hagi activat, el connector tindrà accés a tots els usuaris, inclosos els que es creen en el futur.",
+        "noUsers": "No s'han seleccionat usuaris",
+        "permissionReason": "Motiu",
+        "usersRequired": "Aquest connector requereix accés a la informació dels usuaris. Selecciona quins usuaris poden accedir-hi, o habilita 'Permet tots els usuaris'.",
+        "allLibrariesHelp": "Quan s'hagi activat, el connector tindrà accés a totes les biblioteques, incloses les que es creïn en el futur.",
+        "noLibraries": "No s'han seleccionat biblioteques",
+        "librariesRequired": "Aquest connector requereix accés a la informació de les biblioteques. Selecciona quines biblioteques poden accedir-hi, o habilita 'Permet totes les biblioteques'.",
+        "requiredHosts": "Amfitrions requerits"
+      },
+      "placeholders": {
+        "configKey": "clau",
+        "configValue": "valor"
       }
     }
   },
@@ -315,7 +471,7 @@
             "false": "No"
         },
         "page": {
-            "create": "Crea %{nom}",
+            "create": "Crea %{name}",
             "dashboard": "Tauler",
             "edit": "%{name} #%{id}",
             "error": "Alguna cosa ha fallat",
@@ -398,11 +554,15 @@
         "transcodingDisabled": "Per motius de seguretat, el canvi de configuració del trasnscodificador amb la interfície web no està habilitat. Si voleu canviar les opcions de transcodificació (sia editar-les sia afegir-ne), reinicieu el servidor amb l'opció %{config}.",
         "transcodingEnabled": "Ara Navidrome s'executa amb %{config}, cosa que fa possible executar ordres del sistema des de les opcions de transcodificació usant la interfície web. Per motius de seguretat us recomanem que només l'activeu quan necessiteu configurar les opcions de transcodificació.",
         "songsAddedToPlaylist": "S'ha afegit 1 cançó a la llista |||| S'han afegit %{smart_count} a la llista",
+        "noSimilarSongsFound": "No s'ha trobat cap cançó similar",
+        "noTopSongsFound": "No s'han trobat cançons destacades",
         "noPlaylistsAvailable": "No n'hi ha cap disponible",
         "delete_user_title": "Esborra usuari '%{nom}'",
         "delete_user_content": "Segur que voleu eliminar aquest usuari i les seues dades\n(incloent-hi llistes i preferències)",
-         "remove_missing_title": "Eliminar fitxers faltants",
-        "remove_missing_content": "Segur que vols eliminar els fitxers faltants seleccionats de la base de dades? Això eliminarà permanentment les referències a ells, incloent-hi el nombre de reproduccions i les valoracions.", 
+        "remove_missing_title": "Eliminar fitxers faltants",
+        "remove_missing_content": "Segur que vols eliminar els fitxers faltants seleccionats de la base de dades? Això eliminarà permanentment les referències a ells, incloent-hi el nombre de reproduccions i les valoracions.",
+        "remove_all_missing_title": "Eliminar tots els fitxers faltants",
+        "remove_all_missing_content": "Segur que vols eliminar tots els fitxers faltants de la base de dades? Això suprimirà permanentment totes les referències a ells, incloent-hi el nombre de reproduccions i les valoracions.", 
         "notifications_blocked": "Heu blocat les notificacions d'escriptori en les preferències del navegador",
         "notifications_not_available": "El navegador no suporta les notificacions o no heu connectat a Navidrome per https",
         "lastfmLinkSuccess": "Ha reexit la vinculació amb Last.fm i se n'ha activat el seguiment",
@@ -428,7 +588,13 @@
         "downloadOriginalFormat": "Descarregar en format original"
     },
     "menu": {
-        "library": "Discoteca",
+        "library": "Biblioteca",
+        "librarySelector": {
+            "allLibraries": "Totes les biblioteques (%{count})",
+            "multipleLibraries": "%{selected} de %{total} biblioteques",
+            "selectLibraries": "Selecciona biblioteques",
+            "none": "Cap"
+        },
         "settings": "Configuració",
         "version": "Versió",
         "theme": "Tema",
@@ -452,9 +618,9 @@
             }
         },
         "albumList": "Àlbums",
-        "about": "Quant a...",
         "playlists": "Llistes",
-        "sharedPlaylists": "Llistes compartides"
+        "sharedPlaylists": "Llistes compartides",
+        "about": "Quant a..."
     },
     "player": {
         "playListsText": "Reprodueix la cua",
@@ -491,6 +657,21 @@
                 "disabled": "Desactivada",
                 "waiting": "Esperant"
             }
+        },
+        "tabs": {
+            "about": "Quant a...",
+            "config": "Configuració"
+        },
+        "config": {
+            "configName": "Nom de la configuració",
+            "environmentVariable": "Variable d'entorn",
+            "currentValue": "Valor actual",
+            "configurationFile": "Fitxer de configuració",
+            "exportToml": "Exportar la configuració (TOML)",
+            "exportSuccess": "La configuració s'ha exportat al porta-retalls en format TOML",
+            "exportFailed": "No s'ha pogut copiar la configuració",
+            "devFlagsHeader": "Indicadors de desenvolupament (són susceptibles de canviar o eliminar)",
+            "devFlagsComment": "Aquestes són configuracions experimentals i podrien suprimir-se'n en futures versions"
         }
     },
     "activity": {
@@ -498,8 +679,17 @@
         "totalScanned": "Carpetes escanejades en total",
         "quickScan": "Escaneig ràpid",
         "fullScan": "Escaneig complet",
+        "selectiveScan": "Escaneig selectiu",
         "serverUptime": "Temps de funcionament del servidor",
-        "serverDown": "Sense connexió"
+        "serverDown": "Sense connexió",
+        "scanType": "Últim escaneig",
+        "status": "Error d'escaneig",
+        "elapsedTime": "Temps transcorregut"
+    },
+    "nowPlaying": {
+    "title": "En reproducció",
+    "empty": "Res en reproducció",
+    "minutesAgo": "fa %{smart_count} minut |||| fa %{smart_count} minuts"
     },
     "help": {
         "title": "Dreceres de teclat de Navidrome",
@@ -509,10 +699,10 @@
             "toggle_play": "Reprodueix / Pausa",
             "prev_song": "Cançó anterior",
             "next_song": "Cançó següent",
+            "current_song": "Anar a la cançó actual",
             "vol_up": "Apuja el volum",
             "vol_down": "Abaixa el volum",
-            "toggle_love": "Afegeix la pista a favorits",
-            "current_song": "Anar a la cançó actual"
+            "toggle_love": "Afegeix la pista a favorits"
         }
     }
 }
