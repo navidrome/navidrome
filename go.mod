@@ -5,7 +5,7 @@ go 1.25
 // Fork to fix https://github.com/navidrome/navidrome/issues/3254
 replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
-replace go.senan.xyz/taglib v0.11.1 => ../go-taglib
+replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260117155904-b1e90a7ce1d6
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -62,7 +62,7 @@ require (
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
-	go.senan.xyz/taglib v0.11.1
+	go.senan.xyz/taglib v0.0.0-00010101000000-000000000000
 	go.uber.org/goleak v1.3.0
 	golang.org/x/image v0.35.0
 	golang.org/x/net v0.49.0
