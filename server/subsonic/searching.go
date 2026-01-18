@@ -10,9 +10,9 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/sanitize"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -119,7 +119,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			Name:           artist.Name,
 			UserRating:     int32(artist.Rating),
 			CoverArt:       artist.CoverArtID().String(),
-			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
+			ArtistImageUrl: publicurl.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
 			a.Starred = artist.StarredAt

@@ -88,11 +88,11 @@ func SetLevel(l Level) {
 }
 
 func SetLevelString(l string) {
-	level := levelFromString(l)
+	level := ParseLogLevel(l)
 	SetLevel(level)
 }
 
-func levelFromString(l string) Level {
+func ParseLogLevel(l string) Level {
 	envLevel := strings.ToLower(l)
 	var level Level
 	switch envLevel {
@@ -118,7 +118,7 @@ func SetLogLevels(levels map[string]string) {
 	defer loggerMu.Unlock()
 	logLevels = nil
 	for k, v := range levels {
-		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
+		logLevels = append(logLevels, levelPath{path: k, level: ParseLogLevel(v)})
 	}
 	sort.Slice(logLevels, func(i, j int) bool {
 		return logLevels[i].path > logLevels[j].path
@@ -185,31 +185,31 @@ func IsGreaterOrEqualTo(level Level) bool {
 }
 
 func Fatal(args ...interface{}) {
-	log(LevelFatal, args...)
+	Log(LevelFatal, args...)
 	os.Exit(1)
 }
 
 func Error(args ...interface{}) {
-	log(LevelError, args...)
+	Log(LevelError, args...)
 }
 
 func Warn(args ...interface{}) {
-	log(LevelWarn, args...)
+	Log(LevelWarn, args...)
 }
 
 func Info(args ...interface{}) {
-	log(LevelInfo, args...)
+	Log(LevelInfo, args...)
 }
 
 func Debug(args ...interface{}) {
-	log(LevelDebug, args...)
+	Log(LevelDebug, args...)
 }
 
 func Trace(args ...interface{}) {
-	log(LevelTrace, args...)
+	Log(LevelTrace, args...)
 }
 
-func log(level Level, args ...interface{}) {
+func Log(level Level, args ...interface{}) {
 	if !shouldLog(level, 3) {
 		return
 	}

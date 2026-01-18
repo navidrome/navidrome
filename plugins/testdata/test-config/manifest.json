@@ -1,0 +1,6 @@
+{
+  "name": "Test Config Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for config service integration testing"
+}
