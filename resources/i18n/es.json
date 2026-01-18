@@ -611,7 +611,7 @@
         "replaygain": "Modo de ReplayGain",
         "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {
-          "none": "Ninguno",
+          "none": "Desactivado",
           "album": "Ganancia del álbum",
           "track": "Ganancia de pista"
         }
