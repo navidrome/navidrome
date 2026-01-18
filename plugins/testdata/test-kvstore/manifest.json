@@ -1,0 +1,12 @@
+{
+  "name": "Test KVStore Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test kvstore plugin for integration testing",
+  "permissions": {
+    "kvstore": {
+      "reason": "For testing kvstore operations",
+      "maxSize": "10KB"
+    }
+  }
+}

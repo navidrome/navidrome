@@ -23,5 +23,7 @@ RUN DOWNLOAD_ARCH="linux-${TARGETARCH}" \
     && rmdir /usr/include/taglib \
     && rm /tmp/cross-taglib.tar.gz /usr/provenance.json
 
+ENV CGO_CFLAGS_ALLOW="--define-prefix"
+
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1

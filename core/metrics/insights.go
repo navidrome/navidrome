@@ -23,7 +23,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/plugins/schema"
+	"github.com/navidrome/navidrome/plugins"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -37,18 +38,12 @@ var (
 )
 
 type insightsCollector struct {
-	ds           model.DataStore
-	pluginLoader PluginLoader
-	lastRun      atomic.Int64
-	lastStatus   atomic.Bool
+	ds         model.DataStore
+	lastRun    atomic.Int64
+	lastStatus atomic.Bool
 }
 
-// PluginLoader defines an interface for loading plugins
-type PluginLoader interface {
-	PluginList() map[string]schema.PluginManifest
-}
-
-func GetInstance(ds model.DataStore, pluginLoader PluginLoader) Insights {
+func GetInstance(ds model.DataStore) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
 		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
 		if err != nil {
@@ -60,7 +55,7 @@ func GetInstance(ds model.DataStore, pluginLoader PluginLoader) Insights {
 			}
 		}
 		insightsID = id
-		return &insightsCollector{ds: ds, pluginLoader: pluginLoader}
+		return &insightsCollector{ds: ds}
 	})
 }
 
@@ -319,12 +314,16 @@ func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error)
 
 // collectPlugins collects information about installed plugins
 func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
-	plugins := make(map[string]insights.PluginInfo)
-	for id, manifest := range c.pluginLoader.PluginList() {
-		plugins[id] = insights.PluginInfo{
-			Name:    manifest.Name,
-			Version: manifest.Version,
+	// TODO Fix import/inject cycles
+	manager := plugins.GetManager(c.ds, events.GetBroker(), nil)
+	info := manager.GetPluginInfo()
+
+	result := make(map[string]insights.PluginInfo, len(info))
+	for name, p := range info {
+		result[name] = insights.PluginInfo{
+			Name:    p.Name,
+			Version: p.Version,
 		}
 	}
-	return plugins
+	return result
 }

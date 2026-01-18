@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/pem"
@@ -10,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -240,24 +238,6 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	r.Handle("/", Index(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
-}
-
-func AbsoluteURL(r *http.Request, u string, params url.Values) string {
-	buildUrl, _ := url.Parse(u)
-	if strings.HasPrefix(u, "/") {
-		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
-		if conf.Server.BaseHost != "" {
-			buildUrl.Scheme = cmp.Or(conf.Server.BaseScheme, "http")
-			buildUrl.Host = conf.Server.BaseHost
-		} else {
-			buildUrl.Scheme = r.URL.Scheme
-			buildUrl.Host = r.Host
-		}
-	}
-	if len(params) > 0 {
-		buildUrl.RawQuery = params.Encode()
-	}
-	return buildUrl.String()
 }
 
 // validateTLSCertificates validates the TLS certificate and key files before starting the server.

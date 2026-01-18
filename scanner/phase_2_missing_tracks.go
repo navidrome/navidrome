@@ -187,6 +187,13 @@ func (p *phaseMissingTracks) processCrossLibraryMoves(in *missingTracks) (*missi
 		return nil, nil
 	}
 
+	// Skip cross-library move detection when only one library is configured
+	// since there are no other libraries to search in.
+	if p.state.totalLibraryCount == 1 {
+		log.Debug(p.ctx, "Scanner: Skipping cross-library move detection (single library)")
+		return in, nil
+	}
+
 	log.Debug(p.ctx, "Scanner: Processing cross-library moves", "pid", in.pid, "missing", len(in.missing), "lib", in.lib.Name)
 
 	for _, missing := range in.missing {

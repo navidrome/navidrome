@@ -151,11 +151,7 @@ var _ = Describe("Extractor", func() {
 			unsSylt := makeLyrics("xxx", "unspecified SYLT")
 			unsUslt := makeLyrics("xxx", "unspecified")
 
-			// Why is the order inconsistent between runs? Nobody knows
-			Expect(lyrics).To(Or(
-				Equal(model.LyricList{engSylt, engUslt, unsSylt, unsUslt}),
-				Equal(model.LyricList{unsSylt, unsUslt, engSylt, engUslt}),
-			))
+			Expect(lyrics).To(ConsistOf(engSylt, engUslt, unsSylt, unsUslt))
 		})
 
 		DescribeTable("format-specific lyrics", func(file string, isId3 bool) {

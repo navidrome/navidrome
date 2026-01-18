@@ -23,7 +23,6 @@
         "name": "bbb",
         "songCount": 0,
         "duration": 0,
-        "public": false,
         "created": "0001-01-01T00:00:00Z",
         "changed": "0001-01-01T00:00:00Z"
       }
