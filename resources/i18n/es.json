@@ -383,7 +383,7 @@
         "error": "Error al actualizar el plugin"
       },
       "validation": {
-        "invalidJson": "La configuración ha de ser un JSON válido"
+        "invalidJson": "La configuración debe ser un JSON válido"
       },
       "messages": {
         "configHelp": "Configura el plugin utilizando pares de clave-valor. Déjalo en blanco si el plugin no requiere configuración.",
