@@ -571,7 +571,7 @@
     "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
     "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activó el scrobbling como el usuario: %{user}",
     "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
-    "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
+    "listenBrainzUnlinkSuccess": "Se desconectó ListenBrainz y se desactivó el scrobbling",
     "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
     "openIn": {
       "lastfm": "Ver en Last.fm",
