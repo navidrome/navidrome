@@ -12,6 +12,7 @@ import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import NuclearTheme from './nuclear'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
+import nautilineTheme from './nautiline'
 
 export default {
   // Classic default themes
@@ -31,4 +32,5 @@ export default {
   NuclearTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
+  nautilineTheme
 }
