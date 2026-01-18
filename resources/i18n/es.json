@@ -387,7 +387,7 @@
       },
       "messages": {
         "configHelp": "Configura el plugin utilizando pares de clave-valor. Déjalo en blanco si el plugin no requiere configuración.",
-        "clickPermissions": "Clica un permiso para ver los detalles",
+        "clickPermissions": "Haz clic en un permiso para ver los detalles",
         "noConfig": "No hay configuración establecida",
         "allUsersHelp": "Cuando se active, el plugin tendrá acceso a todos los usuarios, incluidos los que se creen en el futuro.",
         "noUsers": "Ningún usuario seleccionado",
