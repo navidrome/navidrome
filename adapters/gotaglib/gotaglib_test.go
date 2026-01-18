@@ -1,4 +1,4 @@
-package taglib
+package gotaglib
 
 import (
 	"io/fs"
@@ -14,7 +14,7 @@ var _ = Describe("Extractor", func() {
 	var e *extractor
 
 	BeforeEach(func() {
-		e = &extractor{}
+		e = &extractor{fs: os.DirFS(".")}
 	})
 
 	Describe("Parse", func() {
@@ -199,6 +199,8 @@ var _ = Describe("Extractor", func() {
 			// Only run permission tests if we are not root
 			RegularUserContext("when run without root privileges", func() {
 				BeforeEach(func() {
+					// Use root fs for absolute paths in temp directory
+					e = &extractor{fs: os.DirFS("/")}
 					accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
 
 					f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)
@@ -211,20 +213,25 @@ var _ = Describe("Extractor", func() {
 				})
 
 				It("correctly handle unreadable file due to insufficient read permission", func() {
-					_, err := e.extractMetadata(accessForbiddenFile)
+					// Strip leading slash for DirFS rooted at "/"
+					_, err := e.extractMetadata(accessForbiddenFile[1:])
 					Expect(err).To(MatchError(os.ErrPermission))
 				})
 
 				It("skips the file if it cannot be read", func() {
+					// Get current working directory to construct paths relative to root
+					cwd, err := os.Getwd()
+					Expect(err).ToNot(HaveOccurred())
+					// Strip leading slash for DirFS rooted at "/"
 					files := []string{
-						"tests/fixtures/test.mp3",
-						"tests/fixtures/test.ogg",
-						accessForbiddenFile,
+						cwd[1:] + "/tests/fixtures/test.mp3",
+						cwd[1:] + "/tests/fixtures/test.ogg",
+						accessForbiddenFile[1:],
 					}
 					mds, err := e.Parse(files...)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(mds).To(HaveLen(2))
-					Expect(mds).ToNot(HaveKey(accessForbiddenFile))
+					Expect(mds).ToNot(HaveKey(accessForbiddenFile[1:]))
 				})
 			})
 		})

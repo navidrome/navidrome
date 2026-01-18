@@ -1,4 +1,4 @@
-package taglib
+package gotaglib
 
 import (
 	"io/fs"
@@ -96,7 +96,7 @@ var _ = Describe("Extractor", func() {
 	}
 
 	BeforeEach(func() {
-		e = &extractor{}
+		e = &extractor{fs: os.DirFS(".")}
 	})
 
 	Describe("ReplayGain", func() {

@@ -33,6 +33,7 @@ import (
 
 import (
 	_ "github.com/navidrome/navidrome/adapters/deezer"
+	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
 	_ "github.com/navidrome/navidrome/adapters/spotify"
