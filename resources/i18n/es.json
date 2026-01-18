@@ -569,7 +569,7 @@
     "lastfmLinkFailure": "No se pudo conectar con Last.fm",
     "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
     "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
-    "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activo el scrobbling como el usuario: %{user}",
+    "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activó el scrobbling como el usuario: %{user}",
     "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
     "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
     "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
