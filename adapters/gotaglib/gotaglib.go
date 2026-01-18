@@ -5,9 +5,6 @@
 // TagLib's PropertyMap interface for standard tags. The File handle API provides
 // efficient access to format-specific tags (ID3v2 frames, MP4 atoms, ASF attributes)
 // through a single file open operation.
-//
-// For full feature parity, use the CGO-based taglib extractor. This extractor
-// is provided for environments where CGO is not available (e.g., cross-compilation).
 package gotaglib
 
 import (
