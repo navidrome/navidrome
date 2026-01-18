@@ -561,7 +561,7 @@
     "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
     "remove_missing_title": "Eliminar archivos faltantes",
     "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
-    "remove_all_missing_title": "Eliminar todos los archivos perdidos",
+    "remove_all_missing_title": "Eliminar todos los archivos faltantes",
     "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
     "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https",
