@@ -101,6 +101,9 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
+	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
 	}
@@ -115,6 +118,9 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
+	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -218,6 +224,9 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = mf.AverageRating
+	}
 
 	format, _ := getTranscoding(ctx)
 	if mf.Suffix != "" && format != "" && mf.Suffix != format {
@@ -329,6 +338,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = al.AverageRating
+	}
 	child.OpenSubsonicChild = osChildFromAlbum(ctx, al)
 	return child
 }
@@ -422,6 +434,9 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = album.AverageRating
+	}
 	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
 		return responses.RecordLabel{Name: s}
 	})
