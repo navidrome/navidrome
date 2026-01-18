@@ -5,24 +5,26 @@
 // TagLib's PropertyMap interface for standard tags. The File handle API provides
 // efficient access to format-specific tags (ID3v2 frames, MP4 atoms, ASF attributes)
 // through a single file open operation.
+//
+// This extractor is registered under the name "gotaglib". It only works with a filesystem
+// (fs.FS) and does not support direct local file paths. Files returned by the filesystem
+// must implement io.ReadSeeker for go-taglib to read them.
 package gotaglib
 
 import (
 	"errors"
+	"io"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage/local"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
 	"go.senan.xyz/taglib"
 )
 
 type extractor struct {
-	baseDir string
+	fs fs.FS
 }
 
 func (e extractor) Parse(files ...string) (map[string]metadata.Info, error) {
@@ -42,30 +44,11 @@ func (e extractor) Version() string {
 }
 
 func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
-	fullPath := filepath.Join(e.baseDir, filePath)
-
-	// Open the file once and read all data
-	f, err := taglib.OpenReadOnly(fullPath)
+	f, close, err := e.openFile(filePath)
 	if err != nil {
-		// Check if file doesn't exist
-		if _, statErr := os.Stat(fullPath); os.IsNotExist(statErr) {
-			return nil, fs.ErrNotExist
-		}
-		// Check if permission denied
-		if errors.Is(err, taglib.ErrInvalidFile) {
-			// Try to open the file to check for permission errors
-			if osFile, openErr := os.Open(fullPath); openErr != nil {
-				if os.IsPermission(openErr) {
-					return nil, os.ErrPermission
-				}
-			} else {
-				osFile.Close()
-			}
-		}
-		log.Warn("gotaglib extractor: Error reading metadata from file. Skipping", "filePath", fullPath, err)
 		return nil, err
 	}
-	defer f.Close()
+	defer close()
 
 	// Get all tags and properties in one go
 	allTags := f.AllTags()
@@ -81,7 +64,7 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	}
 
 	// Convert normalized tags to lowercase keys (go-taglib returns UPPERCASE keys)
-	normalizedTags := make(map[string][]string)
+	normalizedTags := make(map[string][]string, len(allTags.Tags))
 	for key, values := range allTags.Tags {
 		lowerKey := strings.ToLower(key)
 		normalizedTags[lowerKey] = values
@@ -107,6 +90,31 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		AudioProperties: ap,
 		HasPicture:      hasPicture,
 	}, nil
+}
+
+// openFile opens the file at filePath using the extractor's filesystem.
+// It returns a TagLib File handle and a cleanup function to close resources.
+func (e extractor) openFile(filePath string) (*taglib.File, func(), error) {
+	// Open the file from the filesystem
+	file, err := e.fs.Open(filePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	rs, isSeekable := file.(io.ReadSeeker)
+	if !isSeekable {
+		file.Close()
+		return nil, nil, errors.New("file is not seekable")
+	}
+	f, err := taglib.OpenStream(rs)
+	if err != nil {
+		file.Close()
+		return nil, nil, err
+	}
+	closeFunc := func() {
+		f.Close()
+		file.Close()
+	}
+	return f, closeFunc, nil
 }
 
 // parseTuple parses track/disc numbers in "N/Total" format and separates them.
@@ -249,7 +257,7 @@ func parseTIPL(tags map[string][]string) {
 var _ local.Extractor = (*extractor)(nil)
 
 func init() {
-	local.RegisterExtractor("gotaglib", func(_ fs.FS, baseDir string) local.Extractor {
-		return &extractor{baseDir}
+	local.RegisterExtractor("gotaglib", func(fsys fs.FS, baseDir string) local.Extractor {
+		return &extractor{fsys}
 	})
 }
