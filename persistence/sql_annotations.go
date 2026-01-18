@@ -17,7 +17,7 @@ const annotationTable = "annotation"
 func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
 	userID := loggedUser(r.ctx).ID
 	if userID == invalidUserId {
-		return query.Columns(fmt.Sprintf("%s.avg_rating as average_rating", r.tableName))
+		return query.Columns(fmt.Sprintf("%s.avg_rating", r.tableName))
 	}
 	query = query.
 		LeftJoin("annotation on ("+
@@ -38,7 +38,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
-	query = query.Columns(fmt.Sprintf("%s.avg_rating as average_rating", r.tableName))
+	query = query.Columns(fmt.Sprintf("%s.avg_rating", r.tableName))
 
 	return query
 }
