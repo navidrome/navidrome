@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/deluan/rest"
-	_ "github.com/navidrome/navidrome/adapters/taglib" // Register taglib extractor
+	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage

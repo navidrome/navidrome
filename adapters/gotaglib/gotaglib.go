@@ -257,7 +257,7 @@ func parseTIPL(tags map[string][]string) {
 var _ local.Extractor = (*extractor)(nil)
 
 func init() {
-	local.RegisterExtractor("gotaglib", func(fsys fs.FS, baseDir string) local.Extractor {
+	local.RegisterExtractor("taglib", func(fsys fs.FS, baseDir string) local.Extractor {
 		return &extractor{fsys}
 	})
 }
