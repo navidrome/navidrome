@@ -1,4 +1,4 @@
-package taglib
+package gotaglib
 
 import (
 	"io/fs"

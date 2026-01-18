@@ -366,10 +366,6 @@ func Load(noConfigDump bool) {
 		disableExternalServices()
 	}
 
-	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
-		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
-		Server.Scanner.Extractor = consts.DefaultScannerExtractor
-	}
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
 	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
