@@ -9,7 +9,7 @@ type Annotations struct {
 	RatedAt       *time.Time `structs:"rated_at"       json:"ratedAt,omitempty"  `
 	Starred       bool       `structs:"starred"        json:"starred,omitempty"  `
 	StarredAt     *time.Time `structs:"starred_at"     json:"starredAt,omitempty"`
-	AverageRating float64    `structs:"avg_rating"     json:"averageRating,omitempty" db:"avg_rating"`
+	AverageRating float64    `structs:"average_rating" json:"averageRating,omitempty"`
 }
 
 type AnnotatedRepository interface {
