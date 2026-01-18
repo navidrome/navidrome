@@ -41,6 +41,44 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.CountAll()).To(Equal(int64(10)))
 	})
 
+	Describe("CountBySuffix", func() {
+		var mp3File, flacFile1, flacFile2, flacUpperFile model.MediaFile
+
+		BeforeEach(func() {
+			mp3File = model.MediaFile{ID: "suffix-mp3", LibraryID: 1, Suffix: "mp3", Path: "/test/file.mp3"}
+			flacFile1 = model.MediaFile{ID: "suffix-flac1", LibraryID: 1, Suffix: "flac", Path: "/test/file1.flac"}
+			flacFile2 = model.MediaFile{ID: "suffix-flac2", LibraryID: 1, Suffix: "flac", Path: "/test/file2.flac"}
+			flacUpperFile = model.MediaFile{ID: "suffix-FLAC", LibraryID: 1, Suffix: "FLAC", Path: "/test/file.FLAC"}
+
+			Expect(mr.Put(&mp3File)).To(Succeed())
+			Expect(mr.Put(&flacFile1)).To(Succeed())
+			Expect(mr.Put(&flacFile2)).To(Succeed())
+			Expect(mr.Put(&flacUpperFile)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = mr.Delete(mp3File.ID)
+			_ = mr.Delete(flacFile1.ID)
+			_ = mr.Delete(flacFile2.ID)
+			_ = mr.Delete(flacUpperFile.ID)
+		})
+
+		It("counts media files grouped by suffix with lowercase normalization", func() {
+			counts, err := mr.CountBySuffix()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should have lowercase keys only
+			Expect(counts).To(HaveKey("mp3"))
+			Expect(counts).To(HaveKey("flac"))
+			Expect(counts).ToNot(HaveKey("FLAC"))
+
+			// mp3: 1 file
+			Expect(counts["mp3"]).To(Equal(int64(1)))
+			// flac: 3 files (2 lowercase + 1 uppercase normalized)
+			Expect(counts["flac"]).To(Equal(int64(3)))
+		})
+	})
+
 	It("returns songs ordered by lyrics with a specific title/artist", func() {
 		// attempt to mimic filters.SongsByArtistTitleWithLyricsFirst, except we want all items
 		results, err := mr.GetAll(model.QueryOptions{
