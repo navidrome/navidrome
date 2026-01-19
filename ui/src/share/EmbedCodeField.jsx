@@ -9,6 +9,7 @@ import {
   makeStyles,
   Snackbar,
 } from '@material-ui/core'
+import { useTranslate } from 'react-admin'
 import FileCopyIcon from '@material-ui/icons/FileCopy'
 
 const useStyles = makeStyles((theme) => ({
@@ -52,6 +53,7 @@ const TabPanel = ({ children, value, index, ...other }) => {
 
 export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   const classes = useStyles()
+  const translate = useTranslate()
   const [tabValue, setTabValue] = useState(0)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
 
@@ -209,31 +211,31 @@ document.addEventListener('click', function(event) {
 
   const embedOptions = [
     {
-      label: '左下角悬浮播放器',
+      label: translate('message.floatingPlayerLeft'),
       code: floatingPlayerEmbed,
-      description: '可折叠的左下角悬浮播放器，用户可点击展开/收起',
+      description: translate('message.floatingPlayerLeftDesc'),
     },
     {
-      label: '基础 iframe',
+      label: translate('message.basicIframe'),
       code: iframeEmbed,
-      description: '简单的 iframe 嵌入，适合固定位置显示',
+      description: translate('message.basicIframeDesc'),
     },
     {
-      label: '响应式 iframe',
+      label: translate('message.responsiveIframe'),
       code: responsiveEmbed,
-      description: '16:9 响应式布局，自适应不同屏幕宽度',
+      description: translate('message.responsiveIframeDesc'),
     },
     {
-      label: '右下角悬浮播放器',
+      label: translate('message.floatingPlayerRight'),
       code: floatingPlayerRightEmbed,
-      description: '可折叠的右下角悬浮播放器（备选位置）',
+      description: translate('message.floatingPlayerRightDesc'),
     },
   ]
 
   return (
     <Box className={classes.root}>
       <Typography variant="body2" color="textSecondary" gutterBottom>
-        嵌入代码 (Embed Code)
+        {translate('message.embedCode')}
       </Typography>
 
       <Tabs
@@ -277,14 +279,14 @@ document.addEventListener('click', function(event) {
               onClick={() => handleCopy(option.code)}
               color="primary"
               size="small"
-              title="复制代码"
+              title={translate('message.copyCode')}
             >
               <FileCopyIcon />
             </IconButton>
           </Box>
 
           <Typography variant="caption" color="textSecondary" display="block">
-            提示：将此代码复制并粘贴到您的网页 HTML 中即可使用
+            {translate('message.embedTip')}
           </Typography>
         </TabPanel>
       ))}
@@ -293,7 +295,7 @@ document.addEventListener('click', function(event) {
         open={snackbarOpen}
         autoHideDuration={2000}
         onClose={handleSnackbarClose}
-        message="代码已复制到剪贴板"
+        message={translate('message.codeCopied')}
       />
     </Box>
   )
