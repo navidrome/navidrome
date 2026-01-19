@@ -93,20 +93,21 @@ func (p *cryptoTickerPlugin) OnInit() error {
 
 // getSymbols reads the symbols array from config
 func getSymbols() []string {
-	symbolsJSON, ok := pdk.GetConfig(symbolsKey)
-	if !ok || symbolsJSON == "" {
-		return []string{"BTC-USD"} // Default
-	}
+defaultSymbols := []string{"BTC-USD"}
+symbolsJSON, ok := pdk.GetConfig(symbolsKey)
+if !ok || symbolsJSON == "" {
+	return defaultSymbols
+}
 
-	var symbols []string
-	if err := json.Unmarshal([]byte(symbolsJSON), &symbols); err != nil {
-		pdk.Log(pdk.LogWarn, fmt.Sprintf("failed to parse symbols config: %v, using defaults", err))
-		return []string{"BTC-USD"}
-	}
+var symbols []string
+if err := json.Unmarshal([]byte(symbolsJSON), &symbols); err != nil {
+	pdk.Log(pdk.LogWarn, fmt.Sprintf("failed to parse symbols config: %v, using defaults", err))
+	return defaultSymbols
+}
 
-	if len(symbols) == 0 {
-		return []string{"BTC-USD"}
-	}
+if len(symbols) == 0 {
+	return defaultSymbols
+}
 
 	// Normalize symbols - add -USD suffix if not present
 	for i, s := range symbols {
