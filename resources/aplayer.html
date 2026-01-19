@@ -37,8 +37,8 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            color: #333;
             padding: 30px;
             text-align: center;
         }
@@ -56,16 +56,27 @@
 
         .player-wrapper {
             padding: 20px;
-            min-height: 300px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin: 20px 0;
         }
 
         #aplayer {
             margin: 0;
             width: 100% !important;
-            height: auto !important;
-            min-height: 200px !important;
+            height: 300px !important;
+            min-height: 300px !important;
             visibility: visible !important;
             display: block !important;
+            opacity: 1 !important;
+            z-index: 10 !important;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .footer {

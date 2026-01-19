@@ -9,8 +9,17 @@
   function initAPlayer() {
     console.log('APlayer initialization started');
     
+    // Check if APlayer is loaded
     if (typeof APlayer === 'undefined') {
-      console.error('APlayer library not loaded');
+      console.error('APlayer library not loaded - checking if script loaded');
+      
+      // Try to load APlayer if not available
+      const aplayerScript = document.querySelector('script[src*="APlayer.min.js"]');
+      if (!aplayerScript) {
+        console.error('APlayer script tag not found in DOM');
+      } else {
+        console.log('APlayer script tag found:', aplayerScript.src);
+      }
       return;
     }
     console.log('APlayer library loaded');
@@ -63,28 +72,49 @@
       return;
     }
     console.log('APlayer container found:', container);
+    console.log('Container dimensions:', container.offsetWidth, 'x', container.offsetHeight);
+    console.log('Container styles:', window.getComputedStyle(container));
 
     console.log('Creating APlayer with playlist:', playlist);
     
-    const ap = new APlayer({
-      container: container,
-      lrcType: 0,
-      audio: playlist,
-      autoplay: false,
-      theme: '#b7daff',
-      loop: 'all',
-      order: 'list',
-      preload: 'auto',
-      volume: 0.7,
-      mutex: true,
-      listFolded: false,
-      listMaxHeight: 90,
-      fixed: false,
-      mini: false,
-    });
+    try {
+      const ap = new APlayer({
+        container: container,
+        lrcType: 0,
+        audio: playlist,
+        autoplay: false,
+        theme: '#b7daff',
+        loop: 'all',
+        order: 'list',
+        preload: 'auto',
+        volume: 0.7,
+        mutex: true,
+        listFolded: false,
+        listMaxHeight: 90,
+        fixed: false,
+        mini: false,
+      });
 
-    // Log initialization
-    console.log('APlayer initialized with', playlist.length, 'tracks');
+      // Log initialization
+      console.log('APlayer initialized with', playlist.length, 'tracks');
+      console.log('APlayer instance:', ap);
+      
+      // Check if APlayer created DOM elements
+      setTimeout(() => {
+        const aplayerElements = container.querySelectorAll('*');
+        console.log('APlayer created', aplayerElements.length, 'child elements');
+        
+        if (aplayerElements.length === 0) {
+          console.error('APlayer did not create any child elements - initialization failed');
+        } else {
+          console.log('APlayer child elements:', aplayerElements);
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('APlayer initialization failed:', error);
+      return;
+    }
 
     // Optional: Add event listeners
     ap.on('play', function() {
