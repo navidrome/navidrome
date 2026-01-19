@@ -5,6 +5,7 @@ import {
   NumberField,
   SimpleForm,
   TextInput,
+  useTranslate,
 } from 'react-admin'
 import { sharePlayerUrl, shareAPlayerUrl } from '../utils'
 import { Link, Box, Typography, Divider } from '@material-ui/core'
@@ -14,6 +15,7 @@ import { EmbedCodeField } from './EmbedCodeField'
 
 export const ShareEdit = (props) => {
   const { id, basePath, hasCreate, ...rest } = props
+  const translate = useTranslate()
   const url = sharePlayerUrl(id)
   const aplayerUrl = shareAPlayerUrl(id)
   return (
@@ -21,7 +23,7 @@ export const ShareEdit = (props) => {
       <SimpleForm {...rest}>
         <Box mb={2}>
           <Typography variant="body2" color="textSecondary" gutterBottom>
-            Share URL
+            {translate('message.shareUrl')}
           </Typography>
           <Link href={url} target="_blank" rel="noopener noreferrer">
             {url}
@@ -29,7 +31,7 @@ export const ShareEdit = (props) => {
         </Box>
         <Box mb={2}>
           <Typography variant="body2" color="textSecondary" gutterBottom>
-            APlayer Embed URL
+            {translate('message.aplayerEmbedUrl')}
           </Typography>
           <Link href={aplayerUrl} target="_blank" rel="noopener noreferrer">
             {aplayerUrl}
@@ -38,7 +40,7 @@ export const ShareEdit = (props) => {
         <Box mb={3}>
           <Divider />
         </Box>
-        <EmbedCodeField url={aplayerUrl} title="Navidrome Music Player" />
+        <EmbedCodeField url={aplayerUrl} title={translate('message.navidromeMusicPlayer')} />
         <Box mb={3}>
           <Divider />
         </Box>
