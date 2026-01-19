@@ -15,7 +15,7 @@ import {
 } from '@jsonforms/react'
 import range from 'lodash/range'
 import merge from 'lodash/merge'
-import { Box, Grid, IconButton, Tooltip, Typography } from '@material-ui/core'
+import { Box, IconButton, Tooltip, Typography } from '@material-ui/core'
 import { Add, Delete } from '@material-ui/icons'
 import { makeStyles } from '@material-ui/core/styles'
 

@@ -169,19 +169,23 @@ const PluginShowLayout = () => {
 
   const handleSaveConfig = useCallback(() => {
     if (!record) return
-    const config =
-      Object.keys(configData).length > 0 ? JSON.stringify(configData) : ''
-    const data = { config }
+    const parsedManifest = record.manifest ? JSON.parse(record.manifest) : null
+    const data = {}
+
+    // Only include config if the plugin has a config schema
+    if (parsedManifest?.config?.schema) {
+      data.config =
+        Object.keys(configData).length > 0 ? JSON.stringify(configData) : ''
+    }
 
     // Include users data if users permission is present
-    const manifest = record.manifest ? JSON.parse(record.manifest) : null
-    if (manifest?.permissions?.users) {
+    if (parsedManifest?.permissions?.users) {
       data.users = JSON.stringify(selectedUsers)
       data.allUsers = allUsers
     }
 
     // Include libraries data if library permission is present
-    if (manifest?.permissions?.library) {
+    if (parsedManifest?.permissions?.library) {
       data.libraries = JSON.stringify(selectedLibraries)
       data.allLibraries = allLibraries
     }
