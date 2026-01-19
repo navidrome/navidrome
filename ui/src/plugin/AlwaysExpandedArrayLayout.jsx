@@ -5,9 +5,9 @@ import {
   createDefaultValue,
   isObjectArrayWithNesting,
   isPrimitiveArrayControl,
-  or,
   rankWith,
   findUISchema,
+  hasType,
 } from '@jsonforms/core'
 import {
   JsonFormsDispatch,
@@ -241,9 +241,56 @@ const WrappedArrayLayout = withJsonFormsArrayLayoutProps(
   AlwaysExpandedArrayLayoutComponent,
 )
 
+// Custom tester that matches arrays but NOT enum arrays
+// Enum arrays should be handled by MaterialEnumArrayRenderer (for checkboxes)
+const isNonEnumArrayControl = (uischema, schema, context) => {
+  // First check if it matches our base conditions (object array or primitive array)
+  const baseCheck =
+    isObjectArrayWithNesting(uischema, schema, context) ||
+    isPrimitiveArrayControl(uischema, schema, context)
+
+  if (!baseCheck) {
+    return false
+  }
+
+  // Get the root schema to check the actual property definition
+  const rootSchema = context?.rootSchema ?? schema
+  const scope = uischema?.scope
+
+  // Resolve the schema from the scope path
+  if (scope && scope.startsWith('#/properties/')) {
+    const propName = scope.replace('#/properties/', '')
+    const propSchema = rootSchema?.properties?.[propName]
+
+    // Check if it's an enum array that should be rendered as checkboxes
+    if (
+      propSchema &&
+      hasType(propSchema, 'array') &&
+      !Array.isArray(propSchema.items) &&
+      propSchema.uniqueItems === true &&
+      propSchema.items
+    ) {
+      const items = propSchema.items
+      // Has oneOf with const values
+      const hasOneOfItems =
+        items.oneOf !== undefined &&
+        items.oneOf.length > 0 &&
+        items.oneOf.every((entry) => entry.const !== undefined)
+      // Has enum values
+      const hasEnumItems = items.type === 'string' && items.enum !== undefined
+
+      if (hasOneOfItems || hasEnumItems) {
+        return false // Exclude - let MaterialEnumArrayRenderer handle this
+      }
+    }
+  }
+
+  return true
+}
+
 // Export as a renderer entry with high priority (5 > default 4)
-// Matches both object arrays with nesting and primitive arrays
+// Matches both object arrays with nesting and primitive arrays, but NOT enum arrays
 export const AlwaysExpandedArrayLayout = {
-  tester: rankWith(5, or(isObjectArrayWithNesting, isPrimitiveArrayControl)),
+  tester: rankWith(5, isNonEnumArrayControl),
   renderer: WrappedArrayLayout,
 }
