@@ -3,8 +3,34 @@ import PropTypes from 'prop-types'
 import { JsonForms } from '@jsonforms/react'
 import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
 import { makeStyles } from '@material-ui/core/styles'
+import { Typography } from '@material-ui/core'
+import { useTranslate } from 'react-admin'
 import Ajv from 'ajv'
 import { AlwaysExpandedArrayLayout } from './AlwaysExpandedArrayLayout'
+
+// Error boundary for catching JSONForms rendering errors
+class SchemaErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback(this.state.error)
+    }
+    return this.props.children
+  }
+}
+
+SchemaErrorBoundary.propTypes = {
+  children: PropTypes.node.isRequired,
+  fallback: PropTypes.func.isRequired,
+}
 
 // Create AJV instance with useDefaults to auto-apply schema defaults
 const ajv = new Ajv({
@@ -104,6 +130,26 @@ const useStyles = makeStyles(
         color: theme.palette.primary.main,
       },
     },
+    errorContainer: {
+      padding: theme.spacing(2),
+      backgroundColor:
+        theme.palette.type === 'dark'
+          ? 'rgba(244, 67, 54, 0.1)'
+          : 'rgba(244, 67, 54, 0.05)',
+      borderRadius: theme.shape.borderRadius,
+      border: `1px solid ${theme.palette.error.main}`,
+    },
+    errorMessage: {
+      color: theme.palette.error.main,
+      marginBottom: theme.spacing(1),
+    },
+    errorDetails: {
+      color: theme.palette.text.secondary,
+      fontSize: '0.85em',
+      fontFamily: 'monospace',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+    },
   }),
   { name: 'NDSchemaConfigEditor' },
 )
@@ -124,6 +170,7 @@ export const SchemaConfigEditor = ({
   readOnly = false,
 }) => {
   const classes = useStyles()
+  const translate = useTranslate()
   const containerRef = useRef(null)
 
   // Disable browser autocomplete on all inputs
@@ -178,19 +225,30 @@ export const SchemaConfigEditor = ({
     return null
   }
 
+  const renderError = (error) => (
+    <div className={classes.errorContainer}>
+      <Typography className={classes.errorMessage}>
+        {translate('resources.plugin.messages.schemaRenderError')}
+      </Typography>
+      <Typography className={classes.errorDetails}>{error?.message}</Typography>
+    </div>
+  )
+
   return (
     <div ref={containerRef} className={classes.root}>
-      <JsonForms
-        schema={normalizedSchema}
-        uischema={uiSchema}
-        data={data || {}}
-        renderers={renderers}
-        cells={cells}
-        config={config}
-        onChange={handleChange}
-        readonly={readOnly}
-        ajv={ajv}
-      />
+      <SchemaErrorBoundary fallback={renderError}>
+        <JsonForms
+          schema={normalizedSchema}
+          uischema={uiSchema}
+          data={data || {}}
+          renderers={renderers}
+          cells={cells}
+          config={config}
+          onChange={handleChange}
+          readonly={readOnly}
+          ajv={ajv}
+        />
+      </SchemaErrorBoundary>
     </div>
   )
 }
