@@ -8,7 +8,15 @@ import {
   useTranslate,
 } from 'react-admin'
 import { sharePlayerUrl, shareAPlayerUrl } from '../utils'
-import { Link, Box, Typography, Divider, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core'
+import {
+  Link,
+  Box,
+  Typography,
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from '@material-ui/core'
 import { DateField } from '../common'
 import config from '../config'
 import { EmbedCodeField } from './EmbedCodeField'
@@ -32,7 +40,7 @@ export const ShareEdit = (props) => {
         <NumberField source="visitCount" disabled />
         <DateField source="lastVisitedAt" disabled showTime />
         <DateField source="createdAt" disabled showTime />
-        
+
         <Accordion>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
@@ -40,7 +48,8 @@ export const ShareEdit = (props) => {
             id="share-urls-header"
           >
             <Typography variant="body2" color="textSecondary">
-              {translate('message.shareUrl')} & {translate('message.aplayerEmbedUrl')}
+              {translate('message.shareUrl')} &{' '}
+              {translate('message.aplayerEmbedUrl')}
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -63,7 +72,10 @@ export const ShareEdit = (props) => {
             <Box mb={3}>
               <Divider />
             </Box>
-            <EmbedCodeField url={aplayerUrl} title={translate('message.navidromeMusicPlayer')} />
+            <EmbedCodeField
+              url={aplayerUrl}
+              title={translate('message.navidromeMusicPlayer')}
+            />
           </AccordionDetails>
         </Accordion>
       </SimpleForm>
