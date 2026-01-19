@@ -28,6 +28,9 @@ import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles((theme) => ({
   user: {},
+  button: {
+    color: 'inherit',
+  },
   avatar: {
     width: theme.spacing(4),
     height: theme.spacing(4),
@@ -72,12 +75,11 @@ const UserMenu = (props) => {
     <div className={classes.user}>
       <Tooltip title={label && translate(label, { _: label })}>
         <IconButton
+          className={classes.button}
           aria-label={label && translate(label, { _: label })}
           aria-owns={open ? 'menu-appbar' : null}
           aria-haspopup={true}
-          color="inherit"
           onClick={handleMenu}
-          size={'small'}
         >
           {loaded && identity.avatar ? (
             <Avatar
