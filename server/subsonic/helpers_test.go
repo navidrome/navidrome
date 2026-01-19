@@ -6,9 +6,11 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -461,6 +463,8 @@ var _ = Describe("helpers", func() {
 		var ctx context.Context
 
 		BeforeEach(func() {
+			ds := &tests.MockDataStore{}
+			auth.Init(ds)
 			ctx = context.Background()
 			conf.Server.Subsonic.EnableAverageRating = true
 		})
