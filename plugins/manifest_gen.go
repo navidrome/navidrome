@@ -17,6 +17,34 @@ type CachePermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
+// Configuration schema for the plugin using JSON Schema (draft-07) and optional
+// JSONForms UI Schema
+type ConfigDefinition struct {
+	// JSON Schema (draft-07) defining the plugin's configuration options
+	Schema map[string]interface{} `json:"schema" yaml:"schema" mapstructure:"schema"`
+
+	// Optional JSONForms UI Schema for customizing form layout
+	UiSchema map[string]interface{} `json:"uiSchema,omitempty" yaml:"uiSchema,omitempty" mapstructure:"uiSchema,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["schema"]; raw != nil && !ok {
+		return fmt.Errorf("field schema in ConfigDefinition: required")
+	}
+	type Plain ConfigDefinition
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = ConfigDefinition(plain)
+	return nil
+}
+
 // Configuration access permissions for a plugin
 type ConfigPermission struct {
 	// Explanation for why config access is needed
@@ -80,6 +108,9 @@ func (j *LibraryPermission) UnmarshalJSON(value []byte) error {
 type Manifest struct {
 	// The author of the plugin
 	Author string `json:"author" yaml:"author" mapstructure:"author"`
+
+	// Config corresponds to the JSON schema field "config".
+	Config *ConfigDefinition `json:"config,omitempty" yaml:"config,omitempty" mapstructure:"config,omitempty"`
 
 	// A brief description of what the plugin does
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" mapstructure:"description,omitempty"`

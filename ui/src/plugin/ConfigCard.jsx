@@ -1,55 +1,33 @@
-import React, { useCallback } from 'react'
-import {
-  Card,
-  CardContent,
-  Typography,
-  TextField as MuiTextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Paper,
-} from '@material-ui/core'
-import { MdDelete } from 'react-icons/md'
+import React, { useCallback, useState } from 'react'
+import { Card, CardContent, Typography, Box } from '@material-ui/core'
+import Alert from '@material-ui/lab/Alert'
+import { SchemaConfigEditor } from './SchemaConfigEditor'
 
 export const ConfigCard = ({
-  configPairs,
-  onConfigPairsChange,
+  manifest,
+  configData,
+  onConfigDataChange,
   classes,
   translate,
 }) => {
-  const handleKeyChange = useCallback(
-    (index, newKey) => {
-      const newPairs = [...configPairs]
-      newPairs[index] = { ...newPairs[index], key: newKey }
-      onConfigPairsChange(newPairs)
+  const [validationErrors, setValidationErrors] = useState([])
+
+  // Handle changes from JSONForms
+  const handleChange = useCallback(
+    (newData, errors) => {
+      setValidationErrors(errors || [])
+      onConfigDataChange(newData, errors)
     },
-    [configPairs, onConfigPairsChange],
+    [onConfigDataChange],
   )
 
-  const handleValueChange = useCallback(
-    (index, newValue) => {
-      const newPairs = [...configPairs]
-      newPairs[index] = { ...newPairs[index], value: newValue }
-      onConfigPairsChange(newPairs)
-    },
-    [configPairs, onConfigPairsChange],
-  )
+  // Only show config card if manifest has config schema defined
+  const hasConfigSchema = manifest?.config?.schema
+  if (!hasConfigSchema) {
+    return null
+  }
 
-  const handleDeleteRow = useCallback(
-    (index) => {
-      const newPairs = configPairs.filter((_, i) => i !== index)
-      onConfigPairsChange(newPairs)
-    },
-    [configPairs, onConfigPairsChange],
-  )
-
-  const handleAddRow = useCallback(() => {
-    onConfigPairsChange([...configPairs, { key: '', value: '' }])
-  }, [configPairs, onConfigPairsChange])
+  const { schema, uiSchema } = manifest.config
 
   return (
     <Card className={classes.section}>
@@ -57,94 +35,29 @@ export const ConfigCard = ({
         <Typography variant="h6" className={classes.sectionTitle}>
           {translate('resources.plugin.sections.configuration')}
         </Typography>
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          {translate('resources.plugin.messages.configHelp')}
-        </Typography>
 
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small" className={classes.configTable}>
-            <TableHead>
-              <TableRow>
-                <TableCell width="40%">
-                  {translate('resources.plugin.fields.configKey')}
-                </TableCell>
-                <TableCell width="50%">
-                  {translate('resources.plugin.fields.configValue')}
-                </TableCell>
-                <TableCell width="10%" align="right">
-                  <IconButton
-                    size="small"
-                    onClick={handleAddRow}
-                    aria-label={translate('resources.plugin.actions.addConfig')}
-                    className={classes.configActionIconButton}
-                  >
-                    +
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {configPairs.map((pair, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <MuiTextField
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={pair.key}
-                      onChange={(e) => handleKeyChange(index, e.target.value)}
-                      placeholder={translate(
-                        'resources.plugin.placeholders.configKey',
-                      )}
-                      InputProps={{
-                        className: classes.configTableInput,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <MuiTextField
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      multiline
-                      minRows={1}
-                      value={pair.value}
-                      onChange={(e) => handleValueChange(index, e.target.value)}
-                      placeholder={translate(
-                        'resources.plugin.placeholders.configValue',
-                      )}
-                      InputProps={{
-                        className: classes.configTableInput,
-                      }}
-                      inputProps={{
-                        style: { resize: 'vertical' },
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteRow(index)}
-                      aria-label={translate('ra.action.delete')}
-                      className={classes.configActionIconButton}
-                    >
-                      <MdDelete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {configPairs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    <Typography variant="body2" color="textSecondary">
-                      {translate('resources.plugin.messages.noConfig')}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {validationErrors.length > 0 && (
+          <Box mb={2}>
+            <Alert severity="error">
+              {translate('resources.plugin.messages.configValidationError')}
+              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                {validationErrors.map((error, index) => (
+                  <li key={index}>
+                    <strong>{error.instancePath || 'root'}</strong>:{' '}
+                    {error.message}
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          </Box>
+        )}
+
+        <SchemaConfigEditor
+          schema={schema}
+          uiSchema={uiSchema}
+          data={configData}
+          onChange={handleChange}
+        />
       </CardContent>
     </Card>
   )

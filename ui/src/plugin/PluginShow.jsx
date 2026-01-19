@@ -33,7 +33,8 @@ const PluginShowLayout = () => {
   const isSmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   useResourceRefresh('plugin')
 
-  const [configPairs, setConfigPairs] = useState([])
+  const [configData, setConfigData] = useState({})
+  const [configErrors, setConfigErrors] = useState([])
   const [isDirty, setIsDirty] = useState(false)
   const [lastRecordConfig, setLastRecordConfig] = useState(null)
 
@@ -49,41 +50,24 @@ const PluginShowLayout = () => {
   const [lastRecordLibraries, setLastRecordLibraries] = useState(null)
   const [lastRecordAllLibraries, setLastRecordAllLibraries] = useState(null)
 
-  // Convert JSON config to key-value pairs
-  const jsonToPairs = useCallback((jsonString) => {
-    if (!jsonString || jsonString.trim() === '') return []
+  // Parse JSON config to object
+  const jsonToObject = useCallback((jsonString) => {
+    if (!jsonString || jsonString.trim() === '') return {}
     try {
-      const obj = JSON.parse(jsonString)
-      return Object.entries(obj).map(([key, value]) => ({
-        key,
-        value: typeof value === 'string' ? value : JSON.stringify(value),
-      }))
+      return JSON.parse(jsonString)
     } catch {
-      return []
+      return {}
     }
-  }, [])
-
-  // Convert key-value pairs to JSON config
-  const pairsToJson = useCallback((pairs) => {
-    if (pairs.length === 0) return ''
-    const obj = {}
-    pairs.forEach((pair) => {
-      if (pair.key.trim()) {
-        // Always store values as strings (backend expects map[string]string)
-        obj[pair.key] = pair.value
-      }
-    })
-    return JSON.stringify(obj)
   }, [])
 
   // Initialize/update config when record loads or changes (e.g., from SSE refresh)
   React.useEffect(() => {
     const recordConfig = record?.config || ''
     if (record && recordConfig !== lastRecordConfig && !isDirty) {
-      setConfigPairs(jsonToPairs(recordConfig))
+      setConfigData(jsonToObject(recordConfig))
       setLastRecordConfig(recordConfig)
     }
-  }, [record, lastRecordConfig, isDirty, jsonToPairs])
+  }, [record, lastRecordConfig, isDirty, jsonToObject])
 
   // Initialize/update users permission state when record loads or changes
   React.useEffect(() => {
@@ -131,8 +115,9 @@ const PluginShowLayout = () => {
     }
   }, [record, lastRecordLibraries, lastRecordAllLibraries, isDirty])
 
-  const handleConfigPairsChange = useCallback((newPairs) => {
-    setConfigPairs(newPairs)
+  const handleConfigDataChange = useCallback((newData, errors) => {
+    setConfigData(newData)
+    setConfigErrors(errors || [])
     setIsDirty(true)
   }, [])
 
@@ -184,7 +169,7 @@ const PluginShowLayout = () => {
 
   const handleSaveConfig = useCallback(() => {
     if (!record) return
-    const config = pairsToJson(configPairs)
+    const config = Object.keys(configData).length > 0 ? JSON.stringify(configData) : ''
     const data = { config }
 
     // Include users data if users permission is present
@@ -204,8 +189,7 @@ const PluginShowLayout = () => {
   }, [
     updatePlugin,
     record,
-    configPairs,
-    pairsToJson,
+    configData,
     selectedUsers,
     allUsers,
     selectedLibraries,
@@ -273,8 +257,9 @@ const PluginShowLayout = () => {
         />
 
         <ConfigCard
-          configPairs={configPairs}
-          onConfigPairsChange={handleConfigPairsChange}
+          manifest={manifest}
+          configData={configData}
+          onConfigDataChange={handleConfigDataChange}
           classes={classes}
           translate={translate}
         />
@@ -303,7 +288,7 @@ const PluginShowLayout = () => {
             color="primary"
             startIcon={<MdSave />}
             onClick={handleSaveConfig}
-            disabled={!isDirty || loading}
+            disabled={!isDirty || loading || configErrors.length > 0}
             className={classes.saveButton}
           >
             {translate('ra.action.save')}

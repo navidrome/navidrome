@@ -1,0 +1,186 @@
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import { JsonForms } from '@jsonforms/react'
+import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
+import { makeStyles } from '@material-ui/core/styles'
+import { AlwaysExpandedArrayLayout } from './AlwaysExpandedArrayLayout'
+
+const useStyles = makeStyles(
+  (theme) => ({
+    root: {
+      // Override JSONForms to use outlined-style inputs (matching Navidrome's design)
+      '& .MuiFormControl-root': {
+        marginBottom: theme.spacing(2),
+      },
+      // Style the Input to look like outlined variant
+      '& .MuiInput-root': {
+        position: 'relative',
+        border: `1px solid ${theme.palette.type === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)'}`,
+        borderRadius: theme.shape.borderRadius,
+        padding: '10px 14px',
+        marginTop: theme.spacing(2),
+        '&:hover': {
+          borderColor: theme.palette.text.primary,
+        },
+        '&.Mui-focused': {
+          borderColor: theme.palette.primary.main,
+          borderWidth: 2,
+          padding: '9px 13px', // Adjust for border width change
+        },
+        '&.Mui-error': {
+          borderColor: theme.palette.error.main,
+        },
+        '&:before, &:after': {
+          display: 'none', // Hide the default underline
+        },
+      },
+      '& .MuiInput-input': {
+        padding: 0,
+      },
+      // Position label like outlined variant (floating above the border)
+      '& .MuiInputLabel-root': {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        transform: 'translate(14px, 20px) scale(1)',
+        transformOrigin: 'top left',
+        transition: theme.transitions.create(['transform', 'color'], {
+          duration: theme.transitions.duration.shorter,
+        }),
+        '&.MuiInputLabel-shrink': {
+          transform: 'translate(14px, -6px) scale(0.75)',
+          backgroundColor: theme.palette.background.paper,
+          padding: '0 4px',
+          marginLeft: '-4px',
+        },
+        '&.Mui-focused': {
+          color: theme.palette.primary.main,
+        },
+        '&.Mui-error': {
+          color: theme.palette.error.main,
+        },
+      },
+      '& .MuiFormHelperText-root': {
+        marginTop: theme.spacing(0.5),
+        marginLeft: theme.spacing(1.75),
+      },
+      '& .MuiFormHelperText-root.Mui-error': {
+        color: theme.palette.error.main,
+      },
+      // Group/array styling
+      '& .MuiPaper-root': {
+        backgroundColor: 'transparent',
+      },
+      // Array items styling
+      '& .MuiAccordion-root': {
+        marginBottom: theme.spacing(1),
+        '&:before': {
+          display: 'none',
+        },
+      },
+      '& .MuiAccordionSummary-root': {
+        backgroundColor:
+          theme.palette.type === 'dark'
+            ? theme.palette.grey[800]
+            : theme.palette.grey[100],
+        // Hide expand icon - items are always expanded
+        '& .MuiAccordionSummary-expandIcon': {
+          display: 'none',
+        },
+      },
+      // Checkbox/switch styling
+      '& .MuiCheckbox-root, & .MuiSwitch-root': {
+        color: theme.palette.text.secondary,
+      },
+      '& .Mui-checked': {
+        color: theme.palette.primary.main,
+      },
+    },
+  }),
+  { name: 'NDSchemaConfigEditor' },
+)
+
+// Custom renderers with always-expanded array layout
+const customRenderers = [
+  // Put our custom renderer first (higher priority)
+  AlwaysExpandedArrayLayout,
+  // Then all the standard material renderers
+  ...materialRenderers,
+]
+
+export const SchemaConfigEditor = ({
+  schema,
+  uiSchema,
+  data,
+  onChange,
+  readOnly = false,
+}) => {
+  const classes = useStyles()
+  const containerRef = useRef(null)
+
+  // Disable browser autocomplete on all inputs
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const disableAutocomplete = () => {
+      const inputs = containerRef.current.querySelectorAll('input')
+      inputs.forEach((input) => {
+        input.setAttribute('autocomplete', 'off')
+      })
+    }
+
+    // Run immediately and observe for changes (new inputs added)
+    disableAutocomplete()
+    const observer = new MutationObserver(disableAutocomplete)
+    observer.observe(containerRef.current, { childList: true, subtree: true })
+
+    return () => observer.disconnect()
+  }, [data])
+
+  // Memoize the change handler to extract just the data
+  const handleChange = useCallback(
+    ({ data: newData, errors }) => {
+      if (onChange) {
+        onChange(newData, errors)
+      }
+    },
+    [onChange],
+  )
+
+  // Use custom renderers with always-expanded array layout
+  const renderers = useMemo(() => customRenderers, [])
+  const cells = useMemo(() => materialCells, [])
+
+  // JSONForms config - always show descriptions to avoid layout shifts
+  const config = {
+    showUnfocusedDescription: true,
+  }
+
+  // Ensure schema has required fields for JSONForms
+  const normalizedSchema = useMemo(() => {
+    if (!schema) return null
+    // JSONForms requires type to be set at root level
+    return {
+      type: 'object',
+      ...schema,
+    }
+  }, [schema])
+
+  if (!normalizedSchema) {
+    return null
+  }
+
+  return (
+    <div ref={containerRef} className={classes.root}>
+      <JsonForms
+        schema={normalizedSchema}
+        uischema={uiSchema}
+        data={data || {}}
+        renderers={renderers}
+        cells={cells}
+        config={config}
+        onChange={handleChange}
+        readonly={readOnly}
+      />
+    </div>
+  )
+}

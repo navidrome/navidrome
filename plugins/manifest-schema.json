@@ -36,9 +36,28 @@
     },
     "experimental": {
       "$ref": "#/$defs/Experimental"
+    },
+    "config": {
+      "$ref": "#/$defs/ConfigDefinition"
     }
   },
   "$defs": {
+    "ConfigDefinition": {
+      "type": "object",
+      "description": "Configuration schema for the plugin using JSON Schema (draft-07) and optional JSONForms UI Schema",
+      "additionalProperties": false,
+      "required": ["schema"],
+      "properties": {
+        "schema": {
+          "type": "object",
+          "description": "JSON Schema (draft-07) defining the plugin's configuration options"
+        },
+        "uiSchema": {
+          "type": "object",
+          "description": "Optional JSONForms UI Schema for customizing form layout"
+        }
+      }
+    },
     "Experimental": {
       "type": "object",
       "description": "Experimental features that may change or be removed in future versions",

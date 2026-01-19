@@ -5,7 +5,7 @@ import (
 )
 
 // MockPluginManager is a mock implementation of plugins.PluginManager for testing.
-// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, UpdatePluginUsers, UpdatePluginLibraries and RescanPlugins methods.
+// It implements EnablePlugin, DisablePlugin, UpdatePluginConfig, ValidatePluginConfig, UpdatePluginUsers, UpdatePluginLibraries and RescanPlugins methods.
 type MockPluginManager struct {
 	// EnablePluginFn is called when EnablePlugin is invoked. If nil, returns EnableError.
 	EnablePluginFn func(ctx context.Context, id string) error
@@ -13,6 +13,8 @@ type MockPluginManager struct {
 	DisablePluginFn func(ctx context.Context, id string) error
 	// UpdatePluginConfigFn is called when UpdatePluginConfig is invoked. If nil, returns ConfigError.
 	UpdatePluginConfigFn func(ctx context.Context, id, configJSON string) error
+	// ValidatePluginConfigFn is called when ValidatePluginConfig is invoked. If nil, returns ValidateError.
+	ValidatePluginConfigFn func(ctx context.Context, id, configJSON string) error
 	// UpdatePluginUsersFn is called when UpdatePluginUsers is invoked. If nil, returns UsersError.
 	UpdatePluginUsersFn func(ctx context.Context, id, usersJSON string, allUsers bool) error
 	// UpdatePluginLibrariesFn is called when UpdatePluginLibraries is invoked. If nil, returns LibrariesError.
@@ -24,6 +26,7 @@ type MockPluginManager struct {
 	EnableError    error
 	DisableError   error
 	ConfigError    error
+	ValidateError  error
 	UsersError     error
 	LibrariesError error
 	RescanError    error
@@ -32,6 +35,10 @@ type MockPluginManager struct {
 	EnablePluginCalls       []string
 	DisablePluginCalls      []string
 	UpdatePluginConfigCalls []struct {
+		ID         string
+		ConfigJSON string
+	}
+	ValidatePluginConfigCalls []struct {
 		ID         string
 		ConfigJSON string
 	}
@@ -73,6 +80,17 @@ func (m *MockPluginManager) UpdatePluginConfig(ctx context.Context, id, configJS
 		return m.UpdatePluginConfigFn(ctx, id, configJSON)
 	}
 	return m.ConfigError
+}
+
+func (m *MockPluginManager) ValidatePluginConfig(ctx context.Context, id, configJSON string) error {
+	m.ValidatePluginConfigCalls = append(m.ValidatePluginConfigCalls, struct {
+		ID         string
+		ConfigJSON string
+	}{ID: id, ConfigJSON: configJSON})
+	if m.ValidatePluginConfigFn != nil {
+		return m.ValidatePluginConfigFn(ctx, id, configJSON)
+	}
+	return m.ValidateError
 }
 
 func (m *MockPluginManager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error {

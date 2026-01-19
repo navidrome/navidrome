@@ -27,6 +27,10 @@ export default defineConfig({
     },
   },
   base: './',
+  define: {
+    // JSONForms uses process.env.NODE_ENV
+    'process.env': {},
+  },
   build: {
     outDir: 'build',
     sourcemap: true,

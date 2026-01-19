@@ -229,11 +229,27 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manager is stopped")
 	}
 
-	// Parse config from JSON
+	// Parse config from JSON - values can be strings, arrays, or objects
+	// For Extism, all values must be strings, so we serialize non-string values
 	var pluginConfig map[string]string
 	if p.Config != "" {
-		if err := json.Unmarshal([]byte(p.Config), &pluginConfig); err != nil {
+		var rawConfig map[string]any
+		if err := json.Unmarshal([]byte(p.Config), &rawConfig); err != nil {
 			return fmt.Errorf("parsing plugin config: %w", err)
+		}
+		pluginConfig = make(map[string]string)
+		for key, value := range rawConfig {
+			switch v := value.(type) {
+			case string:
+				pluginConfig[key] = v
+			default:
+				// Serialize non-string values as JSON
+				jsonBytes, err := json.Marshal(v)
+				if err != nil {
+					return fmt.Errorf("serializing config value %q: %w", key, err)
+				}
+				pluginConfig[key] = string(jsonBytes)
+			}
 		}
 	}
 
