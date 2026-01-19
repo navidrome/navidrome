@@ -7,7 +7,7 @@ import {
   isPrimitiveArrayControl,
   rankWith,
   findUISchema,
-  hasType,
+  Resolve,
 } from '@jsonforms/core'
 import {
   JsonFormsDispatch,
@@ -243,45 +243,25 @@ const WrappedArrayLayout = withJsonFormsArrayLayoutProps(
 
 // Custom tester that matches arrays but NOT enum arrays
 // Enum arrays should be handled by MaterialEnumArrayRenderer (for checkboxes)
-const isNonEnumArrayControl = (uischema, schema, context) => {
+const isNonEnumArrayControl = (uischema, schema) => {
   // First check if it matches our base conditions (object array or primitive array)
   const baseCheck =
-    isObjectArrayWithNesting(uischema, schema, context) ||
-    isPrimitiveArrayControl(uischema, schema, context)
+    isObjectArrayWithNesting(uischema, schema) ||
+    isPrimitiveArrayControl(uischema, schema)
 
   if (!baseCheck) {
     return false
   }
 
-  // Get the root schema to check the actual property definition
-  const rootSchema = context?.rootSchema ?? schema
-  const scope = uischema?.scope
+  // Resolve the actual schema for this control using JSONForms utility
+  const rootSchema = schema
+  const resolved = Resolve.schema(rootSchema, uischema?.scope, rootSchema)
 
-  // Resolve the schema from the scope path
-  if (scope && scope.startsWith('#/properties/')) {
-    const propName = scope.replace('#/properties/', '')
-    const propSchema = rootSchema?.properties?.[propName]
-
-    // Check if it's an enum array that should be rendered as checkboxes
-    if (
-      propSchema &&
-      hasType(propSchema, 'array') &&
-      !Array.isArray(propSchema.items) &&
-      propSchema.uniqueItems === true &&
-      propSchema.items
-    ) {
-      const items = propSchema.items
-      // Has oneOf with const values
-      const hasOneOfItems =
-        items.oneOf !== undefined &&
-        items.oneOf.length > 0 &&
-        items.oneOf.every((entry) => entry.const !== undefined)
-      // Has enum values
-      const hasEnumItems = items.type === 'string' && items.enum !== undefined
-
-      if (hasOneOfItems || hasEnumItems) {
-        return false // Exclude - let MaterialEnumArrayRenderer handle this
-      }
+  // Exclude enum arrays (uniqueItems + oneOf/enum) - let MaterialEnumArrayRenderer handle them
+  if (resolved?.uniqueItems && resolved?.items) {
+    const { items } = resolved
+    if (items.oneOf?.every((e) => e.const !== undefined) || items.enum) {
+      return false
     }
   }
 
