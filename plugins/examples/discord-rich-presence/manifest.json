@@ -26,12 +26,14 @@
               "username": {
                 "type": "string",
                 "title": "Navidrome Username",
-                "description": "The Navidrome username to associate with this Discord token"
+                "description": "The Navidrome username to associate with this Discord token",
+                "minLength": 1
               },
               "token": {
                 "type": "string",
                 "title": "Discord Token",
-                "description": "The user's Discord token (keep this secret!)"
+                "description": "The user's Discord token (keep this secret!)",
+                "minLength": 1
               }
             },
             "required": ["username", "token"]

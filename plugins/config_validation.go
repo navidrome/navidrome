@@ -45,18 +45,17 @@ func ValidateConfig(manifest *Manifest, configJSON string) error {
 		return fmt.Errorf("plugin has no configurable options")
 	}
 
-	// Empty config is valid (will use defaults from schema)
-	if configJSON == "" || configJSON == "{}" {
-		return nil
-	}
-
-	// Parse the config JSON
+	// Parse the config JSON (empty string treated as empty object)
 	var configData any
-	if err := json.Unmarshal([]byte(configJSON), &configData); err != nil {
-		return &ConfigValidationErrors{
-			Errors: []ConfigValidationError{{
-				Message: fmt.Sprintf("invalid JSON: %v", err),
-			}},
+	if configJSON == "" {
+		configData = map[string]any{}
+	} else {
+		if err := json.Unmarshal([]byte(configJSON), &configData); err != nil {
+			return &ConfigValidationErrors{
+				Errors: []ConfigValidationError{{
+					Message: fmt.Sprintf("invalid JSON: %v", err),
+				}},
+			}
 		}
 	}
 

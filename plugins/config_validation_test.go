@@ -61,12 +61,14 @@ var _ = Describe("Config Validation", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			It("accepts empty config (uses defaults)", func() {
+			It("rejects empty config when required fields are missing", func() {
 				err := ValidateConfig(manifest, "")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("apiKey"))
 
 				err = ValidateConfig(manifest, "{}")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("apiKey"))
 			})
 
 			It("rejects config missing required field", func() {
