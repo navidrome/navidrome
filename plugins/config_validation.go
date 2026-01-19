@@ -41,9 +41,9 @@ func (e *ConfigValidationErrors) Error() string {
 // Returns nil if validation passes, ConfigValidationErrors if validation fails.
 func ValidateConfig(manifest *Manifest, configJSON string) error {
 	// If no config schema defined, plugin has no configurable options
-if !manifest.HasConfigSchema() {
-	return fmt.Errorf("plugin has no configurable options")
-}
+	if !manifest.HasConfigSchema() {
+		return fmt.Errorf("plugin has no configurable options")
+	}
 
 	// Parse the config JSON (empty string treated as empty object)
 	var configData any
