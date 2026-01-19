@@ -150,6 +150,8 @@ var (
 	}
 )
 
+var HTTPUserAgent = "Navidrome" + "/" + Version
+
 var (
 	VariousArtists = "Various Artists"
 	// TODO This will be dynamic when using disambiguation

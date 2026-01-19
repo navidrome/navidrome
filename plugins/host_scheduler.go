@@ -3,336 +3,213 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/plugins/host/scheduler"
-	navidsched "github.com/navidrome/navidrome/scheduler"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/scheduler"
 )
 
-const (
-	ScheduleTypeOneTime   = "one-time"
-	ScheduleTypeRecurring = "recurring"
-)
+// CapabilityScheduler indicates the plugin can receive scheduled event callbacks.
+// Detected when the plugin exports the scheduler callback function.
+const CapabilityScheduler Capability = "Scheduler"
 
-// ScheduledCallback represents a registered schedule callback
-type ScheduledCallback struct {
-	ID       string
-	PluginID string
-	Type     string // "one-time" or "recurring"
-	Payload  []byte
-	EntryID  int                // Used for recurring schedules via the scheduler
-	Cancel   context.CancelFunc // Used for one-time schedules
+const FuncSchedulerCallback = "nd_scheduler_callback"
+
+func init() {
+	registerCapability(
+		CapabilityScheduler,
+		FuncSchedulerCallback,
+	)
 }
 
-// SchedulerHostFunctions implements the scheduler.SchedulerService interface
-type SchedulerHostFunctions struct {
-	ss       *schedulerService
-	pluginID string
+// timeAfterFunc is a variable for time.AfterFunc, allowing tests to override it.
+var timeAfterFunc = time.AfterFunc
+
+// scheduleEntry stores metadata about a scheduled task.
+type scheduleEntry struct {
+	pluginName  string
+	payload     string
+	isRecurring bool
+	entryID     int         // Internal scheduler entry ID (for recurring tasks)
+	timer       *time.Timer // Timer for one-time tasks (nil for recurring)
 }
 
-func (s SchedulerHostFunctions) ScheduleOneTime(ctx context.Context, req *scheduler.ScheduleOneTimeRequest) (*scheduler.ScheduleResponse, error) {
-	return s.ss.scheduleOneTime(ctx, s.pluginID, req)
+// schedulerServiceImpl implements host.SchedulerService.
+// It provides plugins with scheduling capabilities and invokes callbacks when schedules fire.
+type schedulerServiceImpl struct {
+	pluginName string
+	manager    *Manager
+	scheduler  scheduler.Scheduler
+
+	mu        sync.Mutex
+	schedules map[string]*scheduleEntry
 }
 
-func (s SchedulerHostFunctions) ScheduleRecurring(ctx context.Context, req *scheduler.ScheduleRecurringRequest) (*scheduler.ScheduleResponse, error) {
-	return s.ss.scheduleRecurring(ctx, s.pluginID, req)
-}
-
-func (s SchedulerHostFunctions) CancelSchedule(ctx context.Context, req *scheduler.CancelRequest) (*scheduler.CancelResponse, error) {
-	return s.ss.cancelSchedule(ctx, s.pluginID, req)
-}
-
-func (s SchedulerHostFunctions) TimeNow(ctx context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
-	return s.ss.timeNow(ctx, req)
-}
-
-type schedulerService struct {
-	// Map of schedule IDs to their callback info
-	schedules  map[string]*ScheduledCallback
-	manager    *managerImpl
-	navidSched navidsched.Scheduler // Navidrome scheduler for recurring jobs
-	mu         sync.Mutex
-}
-
-// newSchedulerService creates a new schedulerService instance
-func newSchedulerService(manager *managerImpl) *schedulerService {
-	return &schedulerService{
-		schedules:  make(map[string]*ScheduledCallback),
+// newSchedulerService creates a new SchedulerService for a plugin.
+func newSchedulerService(pluginName string, manager *Manager, sched scheduler.Scheduler) *schedulerServiceImpl {
+	return &schedulerServiceImpl{
+		pluginName: pluginName,
 		manager:    manager,
-		navidSched: navidsched.GetInstance(),
+		scheduler:  sched,
+		schedules:  make(map[string]*scheduleEntry),
 	}
 }
 
-func (s *schedulerService) HostFunctions(pluginID string) SchedulerHostFunctions {
-	return SchedulerHostFunctions{
-		ss:       s,
-		pluginID: pluginID,
-	}
-}
-
-// Safe accessor methods for tests
-
-// hasSchedule safely checks if a schedule exists
-func (s *schedulerService) hasSchedule(id string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	_, exists := s.schedules[id]
-	return exists
-}
-
-// scheduleCount safely returns the number of schedules
-func (s *schedulerService) scheduleCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.schedules)
-}
-
-// getScheduleType safely returns the type of a schedule
-func (s *schedulerService) getScheduleType(id string) string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if cb, exists := s.schedules[id]; exists {
-		return cb.Type
-	}
-	return ""
-}
-
-// scheduleJob is a helper function that handles the common logic for scheduling jobs
-func (s *schedulerService) scheduleJob(pluginID string, scheduleId string, jobType string, payload []byte) (string, *ScheduledCallback, context.CancelFunc, error) {
-	if s.manager == nil {
-		return "", nil, nil, fmt.Errorf("scheduler service not properly initialized")
+func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds int32, payload string, scheduleID string) (string, error) {
+	if scheduleID == "" {
+		scheduleID = id.NewRandom()
 	}
 
-	// Original scheduleId (what the plugin will see)
-	originalScheduleId := scheduleId
-	if originalScheduleId == "" {
-		// Generate a random ID if one wasn't provided
-		originalScheduleId, _ = gonanoid.New(10)
-	}
-
-	// Internal scheduleId (prefixed with plugin name to avoid conflicts)
-	internalScheduleId := pluginID + ":" + originalScheduleId
-
-	// Store any existing cancellation function to call after we've updated the map
-	var cancelExisting context.CancelFunc
-
-	// Check if there's an existing schedule with the same ID, we'll cancel it after updating the map
-	if existingSchedule, ok := s.schedules[internalScheduleId]; ok {
-		log.Debug("Replacing existing schedule with same ID", "plugin", pluginID, "scheduleID", originalScheduleId)
-
-		// Store cancel information but don't call it yet
-		if existingSchedule.Type == ScheduleTypeOneTime && existingSchedule.Cancel != nil {
-			// We'll set the Cancel to nil to prevent the old job from removing the new one
-			cancelExisting = existingSchedule.Cancel
-			existingSchedule.Cancel = nil
-		} else if existingSchedule.Type == ScheduleTypeRecurring {
-			existingRecurringEntryID := existingSchedule.EntryID
-			if existingRecurringEntryID != 0 {
-				s.navidSched.Remove(existingRecurringEntryID)
-			}
-		}
-	}
-
-	// Create the callback object
-	callback := &ScheduledCallback{
-		ID:       originalScheduleId,
-		PluginID: pluginID,
-		Type:     jobType,
-		Payload:  payload,
-	}
-
-	return internalScheduleId, callback, cancelExisting, nil
-}
-
-// scheduleOneTime registers a new one-time scheduled job
-func (s *schedulerService) scheduleOneTime(_ context.Context, pluginID string, req *scheduler.ScheduleOneTimeRequest) (*scheduler.ScheduleResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	internalScheduleId, callback, cancelExisting, err := s.scheduleJob(pluginID, req.ScheduleId, ScheduleTypeOneTime, req.Payload)
-	if err != nil {
-		return nil, err
+	if _, exists := s.schedules[scheduleID]; exists {
+		return "", fmt.Errorf("schedule ID %q already exists", scheduleID)
 	}
 
-	// Create a context with cancel for this one-time schedule
-	scheduleCtx, cancel := context.WithCancel(context.Background())
-	callback.Cancel = cancel
-
-	// Store the callback info
-	s.schedules[internalScheduleId] = callback
-
-	// Now that the new job is in the map, we can safely cancel the old one
-	if cancelExisting != nil {
-		// Cancel in a goroutine to avoid deadlock since we're already holding the lock
-		go cancelExisting()
-	}
-
-	log.Debug("One-time schedule registered", "plugin", pluginID, "scheduleID", callback.ID, "internalID", internalScheduleId)
-
-	// Start the timer goroutine with the internal ID
-	go s.runOneTimeSchedule(scheduleCtx, internalScheduleId, time.Duration(req.DelaySeconds)*time.Second)
-
-	// Return the original ID to the plugin
-	return &scheduler.ScheduleResponse{
-		ScheduleId: callback.ID,
-	}, nil
-}
-
-// scheduleRecurring registers a new recurring scheduled job
-func (s *schedulerService) scheduleRecurring(_ context.Context, pluginID string, req *scheduler.ScheduleRecurringRequest) (*scheduler.ScheduleResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	internalScheduleId, callback, cancelExisting, err := s.scheduleJob(pluginID, req.ScheduleId, ScheduleTypeRecurring, req.Payload)
-	if err != nil {
-		return nil, err
-	}
-
-	// Schedule the job with the Navidrome scheduler
-	entryID, err := s.navidSched.Add(req.CronExpression, func() {
-		s.executeCallback(context.Background(), internalScheduleId, true)
+	capturedID := scheduleID
+	timer := timeAfterFunc(time.Duration(delaySeconds)*time.Second, func() {
+		s.invokeCallback(context.Background(), capturedID)
+		// Clean up the entry after firing
+		s.mu.Lock()
+		delete(s.schedules, capturedID)
+		s.mu.Unlock()
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to schedule recurring job: %w", err)
+
+	s.schedules[scheduleID] = &scheduleEntry{
+		pluginName:  s.pluginName,
+		payload:     payload,
+		isRecurring: false,
+		timer:       timer,
 	}
 
-	// Store the entry ID so we can cancel it later
-	callback.EntryID = entryID
-
-	// Store the callback info
-	s.schedules[internalScheduleId] = callback
-
-	// Now that the new job is in the map, we can safely cancel the old one
-	if cancelExisting != nil {
-		// Cancel in a goroutine to avoid deadlock since we're already holding the lock
-		go cancelExisting()
-	}
-
-	log.Debug("Recurring schedule registered", "plugin", pluginID, "scheduleID", callback.ID, "internalID", internalScheduleId, "cron", req.CronExpression)
-
-	// Return the original ID to the plugin
-	return &scheduler.ScheduleResponse{
-		ScheduleId: callback.ID,
-	}, nil
+	log.Debug(ctx, "Scheduled one-time task", "plugin", s.pluginName, "scheduleID", scheduleID, "delaySeconds", delaySeconds)
+	return scheduleID, nil
 }
 
-// cancelSchedule cancels a scheduled job (either one-time or recurring)
-func (s *schedulerService) cancelSchedule(_ context.Context, pluginID string, req *scheduler.CancelRequest) (*scheduler.CancelResponse, error) {
+func (s *schedulerServiceImpl) ScheduleRecurring(ctx context.Context, cronExpression string, payload string, scheduleID string) (string, error) {
+	if scheduleID == "" {
+		scheduleID = id.NewRandom()
+	}
+
+	capturedID := scheduleID
+	callback := func() {
+		s.invokeCallback(context.Background(), capturedID)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	internalScheduleId := pluginID + ":" + req.ScheduleId
-	callback, exists := s.schedules[internalScheduleId]
-	if !exists {
-		return &scheduler.CancelResponse{
-			Success: false,
-			Error:   "schedule not found",
-		}, nil
+	if _, exists := s.schedules[scheduleID]; exists {
+		return "", fmt.Errorf("schedule ID %q already exists", scheduleID)
 	}
 
-	// Store the cancel functions to call after we've updated the schedule map
-	var cancelFunc context.CancelFunc
-	var recurringEntryID int
-
-	// Store cancel information but don't call it yet
-	if callback.Type == ScheduleTypeOneTime && callback.Cancel != nil {
-		cancelFunc = callback.Cancel
-		callback.Cancel = nil // Set to nil to prevent the cancel handler from removing the job
-	} else if callback.Type == ScheduleTypeRecurring {
-		recurringEntryID = callback.EntryID
+	entryID, err := s.scheduler.Add(cronExpression, callback)
+	if err != nil {
+		return "", fmt.Errorf("failed to schedule task: %w", err)
 	}
 
-	// First remove from the map
-	delete(s.schedules, internalScheduleId)
-
-	// Now perform the cancellation safely
-	if cancelFunc != nil {
-		// Execute in a goroutine to avoid deadlock since we're already holding the lock
-		go cancelFunc()
-	}
-	if recurringEntryID != 0 {
-		s.navidSched.Remove(recurringEntryID)
+	s.schedules[scheduleID] = &scheduleEntry{
+		pluginName:  s.pluginName,
+		payload:     payload,
+		isRecurring: true,
+		entryID:     entryID,
 	}
 
-	log.Debug("Schedule canceled", "plugin", pluginID, "scheduleID", req.ScheduleId, "internalID", internalScheduleId, "type", callback.Type)
-
-	return &scheduler.CancelResponse{
-		Success: true,
-	}, nil
+	log.Debug(ctx, "Scheduled recurring task", "plugin", s.pluginName, "scheduleID", scheduleID, "cron", cronExpression)
+	return scheduleID, nil
 }
 
-// timeNow returns the current time in multiple formats
-func (s *schedulerService) timeNow(_ context.Context, req *scheduler.TimeNowRequest) (*scheduler.TimeNowResponse, error) {
-	now := time.Now()
-
-	return &scheduler.TimeNowResponse{
-		Rfc3339Nano:   now.Format(time.RFC3339Nano),
-		UnixMilli:     now.UnixMilli(),
-		LocalTimeZone: now.Location().String(),
-	}, nil
-}
-
-// runOneTimeSchedule handles the one-time schedule execution and callback
-func (s *schedulerService) runOneTimeSchedule(ctx context.Context, internalScheduleId string, delay time.Duration) {
-	tmr := time.NewTimer(delay)
-	defer tmr.Stop()
-
-	select {
-	case <-ctx.Done():
-		// Schedule was cancelled via its context
-		// We're no longer removing the schedule here because that's handled by the code that
-		// cancelled the context
-		log.Debug("One-time schedule context canceled", "internalID", internalScheduleId)
-		return
-
-	case <-tmr.C:
-		// Timer fired, execute the callback
-		s.executeCallback(ctx, internalScheduleId, false)
-	}
-}
-
-// executeCallback calls the plugin's OnSchedulerCallback method
-func (s *schedulerService) executeCallback(ctx context.Context, internalScheduleId string, isRecurring bool) {
+func (s *schedulerServiceImpl) CancelSchedule(ctx context.Context, scheduleID string) error {
 	s.mu.Lock()
-	callback := s.schedules[internalScheduleId]
-	// Only remove one-time schedules from the map after execution
-	if callback != nil && callback.Type == ScheduleTypeOneTime {
-		delete(s.schedules, internalScheduleId)
+	entry, exists := s.schedules[scheduleID]
+	if !exists {
+		s.mu.Unlock()
+		return fmt.Errorf("schedule ID %q not found", scheduleID)
 	}
+	delete(s.schedules, scheduleID)
 	s.mu.Unlock()
 
-	if callback == nil {
-		log.Error("Schedule not found for callback", "internalID", internalScheduleId)
-		return
+	if entry.timer != nil {
+		entry.timer.Stop()
+	} else {
+		s.scheduler.Remove(entry.entryID)
 	}
-
-	ctx = log.NewContext(ctx, "plugin", callback.PluginID, "scheduleID", callback.ID, "type", callback.Type)
-	log.Debug("Executing schedule callback")
-	start := time.Now()
-
-	// Get the plugin
-	p := s.manager.LoadPlugin(callback.PluginID, CapabilitySchedulerCallback)
-	if p == nil {
-		log.Error("Plugin not found for callback", "plugin", callback.PluginID)
-		return
-	}
-
-	// Type-check the plugin
-	plugin, ok := p.(*wasmSchedulerCallback)
-	if !ok {
-		log.Error("Plugin does not implement SchedulerCallback", "plugin", callback.PluginID)
-		return
-	}
-
-	// Call the plugin's OnSchedulerCallback method
-	log.Trace(ctx, "Executing schedule callback")
-	err := plugin.OnSchedulerCallback(ctx, callback.ID, callback.Payload, isRecurring)
-	if err != nil {
-		log.Error("Error executing schedule callback", "elapsed", time.Since(start), err)
-		return
-	}
-	log.Debug("Schedule callback executed", "elapsed", time.Since(start))
+	log.Debug(ctx, "Cancelled schedule", "plugin", s.pluginName, "scheduleID", scheduleID)
+	return nil
 }
+
+// Close cancels all schedules for this plugin.
+// This is called when the plugin is unloaded.
+func (s *schedulerServiceImpl) Close() error {
+	s.mu.Lock()
+	schedules := maps.Clone(s.schedules)
+	s.schedules = make(map[string]*scheduleEntry)
+	s.mu.Unlock()
+
+	for scheduleID, entry := range schedules {
+		if entry.timer != nil {
+			entry.timer.Stop()
+		} else {
+			s.scheduler.Remove(entry.entryID)
+		}
+		log.Debug("Cancelled schedule on plugin unload", "plugin", s.pluginName, "scheduleID", scheduleID)
+	}
+	return nil
+}
+
+// invokeCallback calls the plugin's nd_scheduler_callback function.
+func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID string) {
+	log.Debug(ctx, "Scheduler callback invoked", "plugin", s.pluginName, "scheduleID", scheduleID)
+
+	s.mu.Lock()
+	entry, exists := s.schedules[scheduleID]
+	if !exists {
+		s.mu.Unlock()
+		log.Warn(ctx, "Schedule entry not found during callback", "plugin", s.pluginName, "scheduleID", scheduleID)
+		return
+	}
+	payload := entry.payload
+	isRecurring := entry.isRecurring
+	s.mu.Unlock()
+
+	// Get the plugin instance from the manager
+	s.manager.mu.RLock()
+	instance, ok := s.manager.plugins[s.pluginName]
+	s.manager.mu.RUnlock()
+
+	if !ok {
+		log.Warn(ctx, "Plugin not loaded when scheduler callback fired", "plugin", s.pluginName, "scheduleID", scheduleID)
+		return
+	}
+
+	// Check if plugin has the scheduler capability
+	if !hasCapability(instance.capabilities, CapabilityScheduler) {
+		log.Warn(ctx, "Plugin does not have scheduler capability", "plugin", s.pluginName, "scheduleID", scheduleID)
+		return
+	}
+
+	// Prepare callback input
+	input := capabilities.SchedulerCallbackRequest{
+		ScheduleID:  scheduleID,
+		Payload:     payload,
+		IsRecurring: isRecurring,
+	}
+
+	start := time.Now()
+	err := callPluginFunctionNoOutput(ctx, instance, FuncSchedulerCallback, input)
+	if err != nil {
+		log.Error(ctx, "Scheduler callback failed", "plugin", s.pluginName, "scheduleID", scheduleID, "duration", time.Since(start), err)
+		return
+	}
+
+	log.Debug(ctx, "Scheduler callback completed", "plugin", s.pluginName, "scheduleID", scheduleID, "duration", time.Since(start))
+}
+
+// Verify interface implementation
+var _ host.SchedulerService = (*schedulerServiceImpl)(nil)

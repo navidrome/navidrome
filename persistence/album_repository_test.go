@@ -126,6 +126,89 @@ var _ = Describe("AlbumRepository", func() {
 		)
 	})
 
+	Describe("Album.AverageRating", func() {
+		It("returns 0 when no ratings exist", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "no ratings album"})).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(0.0))
+
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("returns the user's rating as average when only one user rated", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "single rating album"})).To(Succeed())
+			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.0))
+
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("calculates average across multiple users", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "multi rating album"})).To(Succeed())
+
+			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(5, newID)).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.5))
+
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("excludes zero ratings from average calculation", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "zero rating excluded album"})).To(Succeed())
+			Expect(albumRepo.SetRating(3, newID)).To(Succeed())
+
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(0, newID)).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(3.0))
+
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+
+		It("rounds to 2 decimal places", func() {
+			newID := id.NewRandom()
+			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "rounding test album"})).To(Succeed())
+
+			Expect(albumRepo.SetRating(5, newID)).To(Succeed())
+
+			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
+			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user2Repo.SetRating(4, newID)).To(Succeed())
+
+			user3Ctx := request.WithUser(GinkgoT().Context(), thirdUser)
+			user3Repo := NewAlbumRepository(user3Ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(user3Repo.SetRating(4, newID)).To(Succeed())
+
+			album, err := albumRepo.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.AverageRating).To(Equal(4.33)) // (5 + 4 + 4) / 3 = 4.333...
+
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+		})
+	})
+
 	Describe("dbAlbum mapping", func() {
 		var (
 			a    model.Album

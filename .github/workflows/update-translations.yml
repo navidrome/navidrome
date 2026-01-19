@@ -24,7 +24,7 @@ jobs:
           git status --porcelain
           git diff
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.PAT }}
           author: "navidrome-bot <navidrome-bot@navidrome.org>"

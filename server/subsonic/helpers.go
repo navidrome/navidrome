@@ -13,9 +13,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
@@ -99,7 +99,10 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		Name:           a.Name,
 		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
+	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -113,8 +116,11 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     getArtistAlbumCount(&a),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
+	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -166,11 +172,30 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 	return
 }
 
+func isClientInList(clientList, client string) bool {
+	if clientList == "" || client == "" {
+		return false
+	}
+	clients := strings.Split(clientList, ",")
+	for _, c := range clients {
+		if strings.TrimSpace(c) == client {
+			return true
+		}
+	}
+	return false
+}
+
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
 	child.Title = mf.FullTitle()
 	child.IsDir = false
+
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+		return child
+	}
+
 	child.Parent = mf.AlbumID
 	child.Album = mf.Album
 	child.Year = int32(mf.Year)
@@ -183,7 +208,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BitRate = int32(mf.BitRate)
 	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
-	player, ok := request.PlayerFrom(ctx)
+
 	if ok && player.ReportRealPath {
 		child.Path = mf.AbsolutePath()
 	} else {
@@ -199,6 +224,9 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = mf.AverageRating
+	}
 
 	format, _ := getTranscoding(ctx)
 	if mf.Suffix != "" && format != "" && mf.Suffix != format {
@@ -211,8 +239,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 }
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
-	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -310,6 +338,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = al.AverageRating
+	}
 	child.OpenSubsonicChild = osChildFromAlbum(ctx, al)
 	return child
 }
@@ -403,6 +434,9 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = album.AverageRating
+	}
 	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
 		return responses.RecordLabel{Name: s}
 	})

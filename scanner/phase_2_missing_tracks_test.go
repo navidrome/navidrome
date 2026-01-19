@@ -29,7 +29,8 @@ var _ = Describe("phaseMissingTracks", func() {
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
 		ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
 		state = &scanState{
-			libraries: model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			libraries:         model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			totalLibraryCount: 1,
 		}
 		phase = createPhaseMissingTracks(ctx, state, ds)
 	})
@@ -330,8 +331,10 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(result).To(BeNil())
 		})
 
-		It("should process cross-library moves using MusicBrainz Track ID", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
+		It("should skip cross-library move detection when only one library is configured", func() {
+			// Default BeforeEach sets up single library, so we just need to verify skip behavior
+			Expect(state.totalLibraryCount).To(Equal(1))
+
 			missingTrack := model.MediaFile{
 				ID:                "missing1",
 				LibraryID:         1,
@@ -341,329 +344,6 @@ var _ = Describe("phaseMissingTracks", func() {
 				Suffix:            "mp3",
 				Path:              "/lib1/track.mp3",
 				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			movedTrack := model.MediaFile{
-				ID:                "moved1",
-				LibraryID:         2,
-				MbzReleaseTrackID: "mbz-track-123",
-				Title:             "Test Track",
-				Size:              1000,
-				Suffix:            "mp3",
-				Path:              "/lib2/track.mp3",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&movedTrack)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
-			Expect(state.changesDetected.Load()).To(BeTrue())
-
-			// Verify the move was performed
-			updatedTrack, _ := ds.MediaFile(ctx).Get("missing1")
-			Expect(updatedTrack.Path).To(Equal("/lib2/track.mp3"))
-			Expect(updatedTrack.LibraryID).To(Equal(2))
-		})
-
-		It("should fall back to intrinsic properties when MBZ Track ID is empty", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
-			missingTrack := model.MediaFile{
-				ID:                "missing2",
-				LibraryID:         1,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 2",
-				Size:              2000,
-				Suffix:            "flac",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib1/track2.flac",
-				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			movedTrack := model.MediaFile{
-				ID:                "moved2",
-				LibraryID:         2,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 2",
-				Size:              2000,
-				Suffix:            "flac",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib2/track2.flac",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&movedTrack)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
-			Expect(state.changesDetected.Load()).To(BeTrue())
-
-			// Verify the move was performed
-			updatedTrack, _ := ds.MediaFile(ctx).Get("missing2")
-			Expect(updatedTrack.Path).To(Equal("/lib2/track2.flac"))
-			Expect(updatedTrack.LibraryID).To(Equal(2))
-		})
-
-		It("should not match files in the same library", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
-			missingTrack := model.MediaFile{
-				ID:                "missing3",
-				LibraryID:         1,
-				MbzReleaseTrackID: "mbz-track-456",
-				Title:             "Test Track 3",
-				Size:              3000,
-				Suffix:            "mp3",
-				Path:              "/lib1/track3.mp3",
-				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			sameLibTrack := model.MediaFile{
-				ID:                "same1",
-				LibraryID:         1, // Same library
-				MbzReleaseTrackID: "mbz-track-456",
-				Title:             "Test Track 3",
-				Size:              3000,
-				Suffix:            "mp3",
-				Path:              "/lib1/other/track3.mp3",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&sameLibTrack)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
-			Expect(state.changesDetected.Load()).To(BeFalse())
-		})
-
-		It("should prioritize MBZ Track ID over intrinsic properties", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
-			missingTrack := model.MediaFile{
-				ID:                "missing4",
-				LibraryID:         1,
-				MbzReleaseTrackID: "mbz-track-789",
-				Title:             "Test Track 4",
-				Size:              4000,
-				Suffix:            "mp3",
-				Path:              "/lib1/track4.mp3",
-				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			// Track with same MBZ ID
-			mbzTrack := model.MediaFile{
-				ID:                "mbz1",
-				LibraryID:         2,
-				MbzReleaseTrackID: "mbz-track-789",
-				Title:             "Test Track 4",
-				Size:              4000,
-				Suffix:            "mp3",
-				Path:              "/lib2/track4.mp3",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			// Track with same intrinsic properties but no MBZ ID
-			intrinsicTrack := model.MediaFile{
-				ID:                "intrinsic1",
-				LibraryID:         3,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 4",
-				Size:              4000,
-				Suffix:            "mp3",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib3/track4.mp3",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-5 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&mbzTrack)
-			_ = ds.MediaFile(ctx).Put(&intrinsicTrack)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
-			Expect(state.changesDetected.Load()).To(BeTrue())
-
-			// Verify the MBZ track was chosen (not the intrinsic one)
-			updatedTrack, _ := ds.MediaFile(ctx).Get("missing4")
-			Expect(updatedTrack.Path).To(Equal("/lib2/track4.mp3"))
-			Expect(updatedTrack.LibraryID).To(Equal(2))
-		})
-
-		It("should handle equivalent matches correctly", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
-			missingTrack := model.MediaFile{
-				ID:                "missing5",
-				LibraryID:         1,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 5",
-				Size:              5000,
-				Suffix:            "mp3",
-				Path:              "/lib1/path/track5.mp3",
-				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			// Equivalent match (same filename, different directory)
-			equivalentTrack := model.MediaFile{
-				ID:                "equiv1",
-				LibraryID:         2,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 5",
-				Size:              5000,
-				Suffix:            "mp3",
-				Path:              "/lib2/different/track5.mp3",
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&equivalentTrack)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
-			Expect(state.changesDetected.Load()).To(BeTrue())
-
-			// Verify the equivalent match was accepted
-			updatedTrack, _ := ds.MediaFile(ctx).Get("missing5")
-			Expect(updatedTrack.Path).To(Equal("/lib2/different/track5.mp3"))
-			Expect(updatedTrack.LibraryID).To(Equal(2))
-		})
-
-		It("should skip matching when multiple matches are found but none are exact", func() {
-			scanStartTime := time.Now().Add(-1 * time.Hour)
-			missingTrack := model.MediaFile{
-				ID:                "missing6",
-				LibraryID:         1,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 6",
-				Size:              6000,
-				Suffix:            "mp3",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib1/track6.mp3",
-				Missing:           true,
-				CreatedAt:         scanStartTime.Add(-30 * time.Minute),
-			}
-
-			// Multiple matches with different metadata (not exact matches)
-			match1 := model.MediaFile{
-				ID:                "match1",
-				LibraryID:         2,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 6",
-				Size:              6000,
-				Suffix:            "mp3",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib2/different_track.mp3",
-				Artist:            "Different Artist", // This makes it non-exact
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-10 * time.Minute),
-			}
-
-			match2 := model.MediaFile{
-				ID:                "match2",
-				LibraryID:         3,
-				MbzReleaseTrackID: "",
-				Title:             "Test Track 6",
-				Size:              6000,
-				Suffix:            "mp3",
-				DiscNumber:        1,
-				TrackNumber:       1,
-				Album:             "Test Album",
-				Path:              "/lib3/another_track.mp3",
-				Artist:            "Another Artist", // This makes it non-exact
-				Missing:           false,
-				CreatedAt:         scanStartTime.Add(-5 * time.Minute),
-			}
-
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&match1)
-			_ = ds.MediaFile(ctx).Put(&match2)
-
-			in := &missingTracks{
-				lib:     model.Library{ID: 1, Name: "Library 1"},
-				missing: []model.MediaFile{missingTrack},
-			}
-
-			result, err := phase.processCrossLibraryMoves(in)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(in))
-			Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
-			Expect(state.changesDetected.Load()).To(BeFalse())
-
-			// Verify no move was performed
-			unchangedTrack, _ := ds.MediaFile(ctx).Get("missing6")
-			Expect(unchangedTrack.Path).To(Equal("/lib1/track6.mp3"))
-			Expect(unchangedTrack.LibraryID).To(Equal(1))
-		})
-
-		It("should handle errors gracefully", func() {
-			// Set up mock to return error
-			mr.Err = true
-
-			missingTrack := model.MediaFile{
-				ID:                "missing7",
-				LibraryID:         1,
-				MbzReleaseTrackID: "mbz-track-error",
-				Title:             "Test Track 7",
-				Size:              7000,
-				Suffix:            "mp3",
-				Path:              "/lib1/track7.mp3",
-				Missing:           true,
 				CreatedAt:         time.Now().Add(-30 * time.Minute),
 			}
 
@@ -672,13 +352,376 @@ var _ = Describe("phaseMissingTracks", func() {
 				missing: []model.MediaFile{missingTrack},
 			}
 
-			// Should not fail completely, just skip the problematic file
 			result, err := phase.processCrossLibraryMoves(in)
 			Expect(err).ToNot(HaveOccurred())
+			// Should return input unchanged (no processing done)
 			Expect(result).To(Equal(in))
+			// No matches should be found since cross-library search was skipped
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+			// No changes should be detected
 			Expect(state.changesDetected.Load()).To(BeFalse())
 		})
+
+		Context("with multiple libraries", func() {
+			BeforeEach(func() {
+				// Set up multiple libraries for cross-library move tests
+				state.libraries = model.Libraries{
+					{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)},
+					{ID: 2, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)},
+				}
+				state.totalLibraryCount = 2
+			})
+
+			It("should process cross-library moves using MusicBrainz Track ID", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing1",
+					LibraryID:         1,
+					MbzReleaseTrackID: "mbz-track-123",
+					Title:             "Test Track",
+					Size:              1000,
+					Suffix:            "mp3",
+					Path:              "/lib1/track.mp3",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				movedTrack := model.MediaFile{
+					ID:                "moved1",
+					LibraryID:         2,
+					MbzReleaseTrackID: "mbz-track-123",
+					Title:             "Test Track",
+					Size:              1000,
+					Suffix:            "mp3",
+					Path:              "/lib2/track.mp3",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&movedTrack)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+				Expect(state.changesDetected.Load()).To(BeTrue())
+
+				// Verify the move was performed
+				updatedTrack, _ := ds.MediaFile(ctx).Get("missing1")
+				Expect(updatedTrack.Path).To(Equal("/lib2/track.mp3"))
+				Expect(updatedTrack.LibraryID).To(Equal(2))
+			})
+
+			It("should fall back to intrinsic properties when MBZ Track ID is empty", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing2",
+					LibraryID:         1,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 2",
+					Size:              2000,
+					Suffix:            "flac",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib1/track2.flac",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				movedTrack := model.MediaFile{
+					ID:                "moved2",
+					LibraryID:         2,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 2",
+					Size:              2000,
+					Suffix:            "flac",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib2/track2.flac",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&movedTrack)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+				Expect(state.changesDetected.Load()).To(BeTrue())
+
+				// Verify the move was performed
+				updatedTrack, _ := ds.MediaFile(ctx).Get("missing2")
+				Expect(updatedTrack.Path).To(Equal("/lib2/track2.flac"))
+				Expect(updatedTrack.LibraryID).To(Equal(2))
+			})
+
+			It("should not match files in the same library", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing3",
+					LibraryID:         1,
+					MbzReleaseTrackID: "mbz-track-456",
+					Title:             "Test Track 3",
+					Size:              3000,
+					Suffix:            "mp3",
+					Path:              "/lib1/track3.mp3",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				sameLibTrack := model.MediaFile{
+					ID:                "same1",
+					LibraryID:         1, // Same library
+					MbzReleaseTrackID: "mbz-track-456",
+					Title:             "Test Track 3",
+					Size:              3000,
+					Suffix:            "mp3",
+					Path:              "/lib1/other/track3.mp3",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&sameLibTrack)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+				Expect(state.changesDetected.Load()).To(BeFalse())
+			})
+
+			It("should prioritize MBZ Track ID over intrinsic properties", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing4",
+					LibraryID:         1,
+					MbzReleaseTrackID: "mbz-track-789",
+					Title:             "Test Track 4",
+					Size:              4000,
+					Suffix:            "mp3",
+					Path:              "/lib1/track4.mp3",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				// Track with same MBZ ID
+				mbzTrack := model.MediaFile{
+					ID:                "mbz1",
+					LibraryID:         2,
+					MbzReleaseTrackID: "mbz-track-789",
+					Title:             "Test Track 4",
+					Size:              4000,
+					Suffix:            "mp3",
+					Path:              "/lib2/track4.mp3",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				// Track with same intrinsic properties but no MBZ ID
+				intrinsicTrack := model.MediaFile{
+					ID:                "intrinsic1",
+					LibraryID:         3,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 4",
+					Size:              4000,
+					Suffix:            "mp3",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib3/track4.mp3",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-5 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&mbzTrack)
+				_ = ds.MediaFile(ctx).Put(&intrinsicTrack)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+				Expect(state.changesDetected.Load()).To(BeTrue())
+
+				// Verify the MBZ track was chosen (not the intrinsic one)
+				updatedTrack, _ := ds.MediaFile(ctx).Get("missing4")
+				Expect(updatedTrack.Path).To(Equal("/lib2/track4.mp3"))
+				Expect(updatedTrack.LibraryID).To(Equal(2))
+			})
+
+			It("should handle equivalent matches correctly", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing5",
+					LibraryID:         1,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 5",
+					Size:              5000,
+					Suffix:            "mp3",
+					Path:              "/lib1/path/track5.mp3",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				// Equivalent match (same filename, different directory)
+				equivalentTrack := model.MediaFile{
+					ID:                "equiv1",
+					LibraryID:         2,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 5",
+					Size:              5000,
+					Suffix:            "mp3",
+					Path:              "/lib2/different/track5.mp3",
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&equivalentTrack)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+				Expect(state.changesDetected.Load()).To(BeTrue())
+
+				// Verify the equivalent match was accepted
+				updatedTrack, _ := ds.MediaFile(ctx).Get("missing5")
+				Expect(updatedTrack.Path).To(Equal("/lib2/different/track5.mp3"))
+				Expect(updatedTrack.LibraryID).To(Equal(2))
+			})
+
+			It("should skip matching when multiple matches are found but none are exact", func() {
+				scanStartTime := time.Now().Add(-1 * time.Hour)
+				missingTrack := model.MediaFile{
+					ID:                "missing6",
+					LibraryID:         1,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 6",
+					Size:              6000,
+					Suffix:            "mp3",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib1/track6.mp3",
+					Missing:           true,
+					CreatedAt:         scanStartTime.Add(-30 * time.Minute),
+				}
+
+				// Multiple matches with different metadata (not exact matches)
+				match1 := model.MediaFile{
+					ID:                "match1",
+					LibraryID:         2,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 6",
+					Size:              6000,
+					Suffix:            "mp3",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib2/different_track.mp3",
+					Artist:            "Different Artist", // This makes it non-exact
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
+				}
+
+				match2 := model.MediaFile{
+					ID:                "match2",
+					LibraryID:         3,
+					MbzReleaseTrackID: "",
+					Title:             "Test Track 6",
+					Size:              6000,
+					Suffix:            "mp3",
+					DiscNumber:        1,
+					TrackNumber:       1,
+					Album:             "Test Album",
+					Path:              "/lib3/another_track.mp3",
+					Artist:            "Another Artist", // This makes it non-exact
+					Missing:           false,
+					CreatedAt:         scanStartTime.Add(-5 * time.Minute),
+				}
+
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&match1)
+				_ = ds.MediaFile(ctx).Put(&match2)
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+				Expect(state.changesDetected.Load()).To(BeFalse())
+
+				// Verify no move was performed
+				unchangedTrack, _ := ds.MediaFile(ctx).Get("missing6")
+				Expect(unchangedTrack.Path).To(Equal("/lib1/track6.mp3"))
+				Expect(unchangedTrack.LibraryID).To(Equal(1))
+			})
+
+			It("should handle errors gracefully", func() {
+				// Set up mock to return error
+				mr.Err = true
+
+				missingTrack := model.MediaFile{
+					ID:                "missing7",
+					LibraryID:         1,
+					MbzReleaseTrackID: "mbz-track-error",
+					Title:             "Test Track 7",
+					Size:              7000,
+					Suffix:            "mp3",
+					Path:              "/lib1/track7.mp3",
+					Missing:           true,
+					CreatedAt:         time.Now().Add(-30 * time.Minute),
+				}
+
+				in := &missingTracks{
+					lib:     model.Library{ID: 1, Name: "Library 1"},
+					missing: []model.MediaFile{missingTrack},
+				}
+
+				// Should not fail completely, just skip the problematic file
+				result, err := phase.processCrossLibraryMoves(in)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(in))
+				Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+				Expect(state.changesDetected.Load()).To(BeFalse())
+			})
+		}) // End of Context "with multiple libraries"
 	})
 
 	Describe("Album Annotation Reassignment", func() {

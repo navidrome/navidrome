@@ -2,115 +2,269 @@ package plugins
 
 import (
 	"archive/zip"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Plugin Package", func() {
-	var tempDir string
-	var ndpPath string
+var _ = Describe("ndpPackage", func() {
+	var tmpDir string
 
 	BeforeEach(func() {
-		tempDir = GinkgoT().TempDir()
-
-		// Create a test .ndp file
-		ndpPath = filepath.Join(tempDir, "test-plugin.ndp")
-
-		// Create the required plugin files
-		manifestContent := []byte(`{
-			"name": "test-plugin",
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "A test plugin",
-			"website": "https://test.navidrome.org/test-plugin",
-			"capabilities": ["MetadataAgent"],
-			"permissions": {}
-		}`)
-
-		wasmContent := []byte("dummy wasm content")
-		readmeContent := []byte("# Test Plugin\nThis is a test plugin")
-
-		// Create the zip file
-		zipFile, err := os.Create(ndpPath)
-		Expect(err).NotTo(HaveOccurred())
-		defer zipFile.Close()
-
-		zipWriter := zip.NewWriter(zipFile)
-		defer zipWriter.Close()
-
-		// Add manifest.json
-		manifestWriter, err := zipWriter.Create("manifest.json")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = manifestWriter.Write(manifestContent)
-		Expect(err).NotTo(HaveOccurred())
-
-		// Add plugin.wasm
-		wasmWriter, err := zipWriter.Create("plugin.wasm")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = wasmWriter.Write(wasmContent)
-		Expect(err).NotTo(HaveOccurred())
-
-		// Add README.md
-		readmeWriter, err := zipWriter.Create("README.md")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = readmeWriter.Write(readmeContent)
-		Expect(err).NotTo(HaveOccurred())
+		var err error
+		tmpDir, err = os.MkdirTemp("", "plugin-package-test-*")
+		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should load and validate a plugin package", func() {
-		pkg, err := LoadPackage(ndpPath)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(pkg).NotTo(BeNil())
-
-		// Check manifest was parsed
-		Expect(pkg.Manifest).NotTo(BeNil())
-		Expect(pkg.Manifest.Name).To(Equal("test-plugin"))
-		Expect(pkg.Manifest.Author).To(Equal("Test Author"))
-		Expect(pkg.Manifest.Version).To(Equal("1.0.0"))
-		Expect(pkg.Manifest.Description).To(Equal("A test plugin"))
-		Expect(pkg.Manifest.Capabilities).To(HaveLen(1))
-		Expect(pkg.Manifest.Capabilities[0]).To(Equal(schema.PluginManifestCapabilitiesElemMetadataAgent))
-
-		// Check WASM file was loaded
-		Expect(pkg.WasmBytes).NotTo(BeEmpty())
-
-		// Check docs were loaded
-		Expect(pkg.Docs).To(HaveKey("README.md"))
+	AfterEach(func() {
+		os.RemoveAll(tmpDir)
 	})
 
-	It("should extract a plugin package to a directory", func() {
-		targetDir := filepath.Join(tempDir, "extracted")
+	Describe("openPackage", func() {
+		It("should load a valid .ndp package", func() {
+			ndpPath := filepath.Join(tmpDir, "test.ndp")
+			manifest := &Manifest{
+				Name:    "Test Plugin",
+				Author:  "Test Author",
+				Version: "1.0.0",
+			}
+			wasmBytes := []byte{0x00, 0x61, 0x73, 0x6d} // Minimal wasm header
 
-		err := ExtractPackage(ndpPath, targetDir)
-		Expect(err).NotTo(HaveOccurred())
+			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			Expect(err).ToNot(HaveOccurred())
 
-		// Check files were extracted
-		Expect(filepath.Join(targetDir, "manifest.json")).To(BeARegularFile())
-		Expect(filepath.Join(targetDir, "plugin.wasm")).To(BeARegularFile())
-		Expect(filepath.Join(targetDir, "README.md")).To(BeARegularFile())
+			pkg, err := openPackage(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pkg.Manifest.Name).To(Equal("Test Plugin"))
+			Expect(pkg.Manifest.Author).To(Equal("Test Author"))
+			Expect(pkg.Manifest.Version).To(Equal("1.0.0"))
+			Expect(pkg.WasmBytes).To(Equal(wasmBytes))
+		})
+
+		It("should return error for missing manifest.json", func() {
+			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
+
+			// Create a zip with only plugin.wasm
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+
+			zw := newTestZipWriter(f)
+			err = zw.addFile("plugin.wasm", []byte{0x00})
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.close()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = openPackage(ndpPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
+		})
+
+		It("should return error for missing plugin.wasm", func() {
+			ndpPath := filepath.Join(tmpDir, "no-wasm.ndp")
+
+			// Create a zip with only manifest.json
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+
+			zw := newTestZipWriter(f)
+			err = zw.addFile("manifest.json", []byte(`{"name":"Test","author":"Test","version":"1.0.0"}`))
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.close()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = openPackage(ndpPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("missing plugin.wasm"))
+		})
+
+		It("should return error for invalid manifest JSON", func() {
+			ndpPath := filepath.Join(tmpDir, "invalid-json.ndp")
+
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+
+			zw := newTestZipWriter(f)
+			err = zw.addFile("manifest.json", []byte(`{invalid json}`))
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.addFile("plugin.wasm", []byte{0x00})
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.close()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = openPackage(ndpPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("parsing manifest"))
+		})
+
+		It("should return error for manifest missing required fields", func() {
+			ndpPath := filepath.Join(tmpDir, "invalid-manifest.ndp")
+
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+
+			zw := newTestZipWriter(f)
+			err = zw.addFile("manifest.json", []byte(`{"name":"Test"}`)) // Missing author and version
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.addFile("plugin.wasm", []byte{0x00})
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.close()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = openPackage(ndpPath)
+			Expect(err).To(HaveOccurred())
+			// JSON schema validation happens during unmarshaling
+			Expect(err.Error()).To(ContainSubstring("parsing manifest"))
+			Expect(err.Error()).To(ContainSubstring("author"))
+		})
+
+		It("should return error for non-existent file", func() {
+			_, err := openPackage(filepath.Join(tmpDir, "nonexistent.ndp"))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("opening package"))
+		})
 	})
 
-	It("should fail to load an invalid package", func() {
-		// Create an invalid package (missing required files)
-		invalidPath := filepath.Join(tempDir, "invalid.ndp")
-		zipFile, err := os.Create(invalidPath)
-		Expect(err).NotTo(HaveOccurred())
+	Describe("readManifest", func() {
+		It("should read only the manifest without loading wasm", func() {
+			ndpPath := filepath.Join(tmpDir, "test.ndp")
+			desc := "A test plugin"
+			manifest := &Manifest{
+				Name:        "Test Plugin",
+				Author:      "Test Author",
+				Version:     "1.0.0",
+				Description: &desc,
+			}
+			wasmBytes := make([]byte, 1024*1024) // 1MB of zeros
 
-		zipWriter := zip.NewWriter(zipFile)
-		// Only add a README, missing manifest and wasm
-		readmeWriter, err := zipWriter.Create("README.md")
-		Expect(err).NotTo(HaveOccurred())
-		_, err = readmeWriter.Write([]byte("Invalid package"))
-		Expect(err).NotTo(HaveOccurred())
-		zipWriter.Close()
-		zipFile.Close()
+			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			Expect(err).ToNot(HaveOccurred())
 
-		// Test loading fails
-		_, err = LoadPackage(invalidPath)
-		Expect(err).To(HaveOccurred())
+			m, err := readManifest(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).To(Equal("Test Plugin"))
+			Expect(*m.Description).To(Equal("A test plugin"))
+		})
+
+		It("should return error for missing manifest", func() {
+			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
+
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+
+			zw := newTestZipWriter(f)
+			err = zw.addFile("plugin.wasm", []byte{0x00})
+			Expect(err).ToNot(HaveOccurred())
+			err = zw.close()
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = readManifest(ndpPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
+		})
+	})
+
+	Describe("ComputePackageSHA256", func() {
+		It("should compute consistent hash for same file", func() {
+			ndpPath := filepath.Join(tmpDir, "test.ndp")
+			manifest := &Manifest{
+				Name:    "Test Plugin",
+				Author:  "Test Author",
+				Version: "1.0.0",
+			}
+			wasmBytes := []byte{0x00, 0x61, 0x73, 0x6d}
+
+			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			Expect(err).ToNot(HaveOccurred())
+
+			hash1, err := computeFileSHA256(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			hash2, err := computeFileSHA256(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(hash1).To(Equal(hash2))
+			Expect(hash1).To(HaveLen(64)) // SHA-256 produces 64 hex characters
+		})
 	})
 })
+
+// testZipHelper is a helper for creating test zip files with specific contents
+type testZipHelper struct {
+	f       *os.File
+	entries []zipEntry
+}
+
+type zipEntry struct {
+	name string
+	data []byte
+}
+
+func newTestZipWriter(f *os.File) *testZipHelper {
+	return &testZipHelper{f: f}
+}
+
+func (h *testZipHelper) addFile(name string, data []byte) error {
+	h.entries = append(h.entries, zipEntry{name: name, data: data})
+	return nil
+}
+
+func (h *testZipHelper) close() error {
+	zw := zip.NewWriter(h.f)
+	for _, e := range h.entries {
+		w, err := zw.Create(e.name)
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(e.data); err != nil {
+			return err
+		}
+	}
+	return zw.Close()
+}
+
+// createTestPackage creates an .ndp package file from a manifest and wasm bytes.
+// This is primarily used for testing.
+func createTestPackage(ndpPath string, manifest *Manifest, wasmBytes []byte) error {
+	f, err := os.Create(ndpPath)
+	if err != nil {
+		return fmt.Errorf("creating package file: %w", err)
+	}
+	defer f.Close()
+
+	zw := zip.NewWriter(f)
+	defer zw.Close()
+
+	// Write manifest.json
+	manifestBytes, err := json.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("marshaling manifest: %w", err)
+	}
+
+	mw, err := zw.Create(manifestFileName)
+	if err != nil {
+		return fmt.Errorf("creating manifest in zip: %w", err)
+	}
+	if _, err := mw.Write(manifestBytes); err != nil {
+		return fmt.Errorf("writing manifest: %w", err)
+	}
+
+	// Write plugin.wasm
+	ww, err := zw.Create(wasmFileName)
+	if err != nil {
+		return fmt.Errorf("creating wasm in zip: %w", err)
+	}
+	if _, err := ww.Write(wasmBytes); err != nil {
+		return fmt.Errorf("writing wasm: %w", err)
+	}
+
+	return nil
+}
