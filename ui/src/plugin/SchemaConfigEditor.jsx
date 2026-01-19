@@ -76,16 +76,19 @@ const useStyles = makeStyles(
         position: 'absolute',
         left: 0,
         top: 0,
-        transform: 'translate(14px, 20px) scale(1)',
+        transform: 'translate(14px, 28px) scale(1)', // Accounts for marginTop on input
         transformOrigin: 'top left',
         transition: theme.transitions.create(['transform', 'color'], {
           duration: theme.transitions.duration.shorter,
         }),
         '&.MuiInputLabel-shrink': {
-          transform: 'translate(14px, -6px) scale(0.75)',
+          transform: 'translate(14px, 7px) scale(0.75)',
           backgroundColor: theme.palette.background.paper,
-          padding: '0 4px',
-          marginLeft: '-4px',
+          padding: '0 5px',
+          marginLeft: '-5px',
+          zIndex: 1,
+          // Use box-shadow to extend background coverage and hide border
+          boxShadow: `0 0 0 3px ${theme.palette.background.paper}`,
         },
         '&.Mui-focused': {
           color: theme.palette.primary.main,
