@@ -7,10 +7,13 @@
 
   // Wait for DOM and APlayer to be ready
   function initAPlayer() {
+    console.log('APlayer initialization started');
+    
     if (typeof APlayer === 'undefined') {
       console.error('APlayer library not loaded');
       return;
     }
+    console.log('APlayer library loaded');
 
     // Get share info from the page (injected by server)
     const shareInfoElement = document.getElementById('share-info');
@@ -18,6 +21,7 @@
       console.error('Share info not found');
       return;
     }
+    console.log('Share info element found:', shareInfoElement.textContent);
 
     let shareInfo;
     try {
@@ -58,7 +62,10 @@
       console.error('APlayer container not found');
       return;
     }
+    console.log('APlayer container found:', container);
 
+    console.log('Creating APlayer with playlist:', playlist);
+    
     const ap = new APlayer({
       container: container,
       lrcType: 0,
@@ -72,6 +79,8 @@
       mutex: true,
       listFolded: false,
       listMaxHeight: 90,
+      fixed: false,
+      mini: false,
     });
 
     // Log initialization
