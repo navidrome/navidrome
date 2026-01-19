@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import PropTypes from 'prop-types'
 import { JsonForms } from '@jsonforms/react'
 import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
 import { makeStyles } from '@material-ui/core/styles'
@@ -183,4 +184,12 @@ export const SchemaConfigEditor = ({
       />
     </div>
   )
+}
+
+SchemaConfigEditor.propTypes = {
+  schema: PropTypes.object,
+  uiSchema: PropTypes.object,
+  data: PropTypes.object,
+  onChange: PropTypes.func,
+  readOnly: PropTypes.bool,
 }

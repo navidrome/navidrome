@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react'
+import PropTypes from 'prop-types'
 import { Card, CardContent, Typography, Box } from '@material-ui/core'
 import Alert from '@material-ui/lab/Alert'
 import { SchemaConfigEditor } from './SchemaConfigEditor'
@@ -142,4 +143,17 @@ export const ConfigCard = ({
       </CardContent>
     </Card>
   )
+}
+
+ConfigCard.propTypes = {
+  manifest: PropTypes.shape({
+    config: PropTypes.shape({
+      schema: PropTypes.object,
+      uiSchema: PropTypes.object,
+    }),
+  }),
+  configData: PropTypes.object,
+  onConfigDataChange: PropTypes.func.isRequired,
+  classes: PropTypes.object.isRequired,
+  translate: PropTypes.func.isRequired,
 }
