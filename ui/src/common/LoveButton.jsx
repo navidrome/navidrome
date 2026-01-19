@@ -15,7 +15,11 @@ const useStyles = makeStyles(
     love: {
       color: (props) => props.color,
       visibility: (props) =>
-        props.visible === false ? 'hidden' : props.loved ? 'visible' : 'inherit',
+        props.visible === false
+          ? 'hidden'
+          : props.loved
+            ? 'visible'
+            : 'inherit',
     },
   },
   { name: 'NDLoveButton' },
