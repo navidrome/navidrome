@@ -11,9 +11,12 @@
         "symbols": {
           "type": "array",
           "title": "Trading Pairs",
-          "description": "Cryptocurrency trading pairs to track (e.g., BTC-USD, ETH-USD)",
+          "description": "Cryptocurrency trading pairs to track (default: BTC-USD)",
           "items": {
-            "type": "string"
+            "type": "string",
+            "title": "Trading Pair",
+            "pattern": "^[A-Z]{3,5}-[A-Z]{3,5}$",
+            "description": "Trading pair in the format BASE-QUOTE (e.g., BTC-USD, ETH-USD)"
           },
           "default": ["BTC-USD"]
         },
@@ -31,8 +34,7 @@
           "description": "Whether to log price updates to the server log",
           "default": false
         }
-      },
-      "required": ["symbols"]
+      }
     },
     "uiSchema": {
       "type": "VerticalLayout",

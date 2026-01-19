@@ -4,6 +4,8 @@ import {
   computeLabel,
   createDefaultValue,
   isObjectArrayWithNesting,
+  isPrimitiveArrayControl,
+  or,
   rankWith,
   findUISchema,
 } from '@jsonforms/core'
@@ -113,6 +115,7 @@ const ArrayItem = ({
 // Array toolbar with add button
 const ArrayToolbar = ({
   label,
+  description,
   enabled,
   addItem,
   path,
@@ -120,21 +123,28 @@ const ArrayToolbar = ({
   translations,
   disableAdd,
 }) => (
-  <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-    <Typography variant="h6">{label}</Typography>
-    {!disableAdd && (
-      <Tooltip
-        title={translations.addTooltip}
-        aria-label={translations.addAriaLabel}
-      >
-        <IconButton
-          onClick={addItem(path, createDefault())}
-          disabled={!enabled}
-          size="small"
+  <Box mb={1}>
+    <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Typography variant="h6">{label}</Typography>
+      {!disableAdd && (
+        <Tooltip
+          title={translations.addTooltip}
+          aria-label={translations.addAriaLabel}
         >
-          <Add />
-        </IconButton>
-      </Tooltip>
+          <IconButton
+            onClick={addItem(path, createDefault())}
+            disabled={!enabled}
+            size="small"
+          >
+            <Add />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+    {description && (
+      <Typography variant="caption" color="textSecondary">
+        {description}
+      </Typography>
     )}
   </Box>
 )
@@ -152,6 +162,7 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
     renderers,
     cells,
     label,
+    description,
     required,
     rootSchema,
     config,
@@ -179,6 +190,7 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
           required,
           appliedUiSchemaOptions.hideRequiredAsterisk,
         )}
+        description={description}
         path={path}
         enabled={enabled}
         addItem={addItem}
@@ -220,7 +232,8 @@ const WrappedArrayLayout = withJsonFormsArrayLayoutProps(
 )
 
 // Export as a renderer entry with high priority (5 > default 4)
+// Matches both object arrays with nesting and primitive arrays
 export const AlwaysExpandedArrayLayout = {
-  tester: rankWith(5, isObjectArrayWithNesting),
+  tester: rankWith(5, or(isObjectArrayWithNesting, isPrimitiveArrayControl)),
   renderer: WrappedArrayLayout,
 }
