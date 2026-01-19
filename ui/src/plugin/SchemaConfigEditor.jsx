@@ -3,7 +3,15 @@ import PropTypes from 'prop-types'
 import { JsonForms } from '@jsonforms/react'
 import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
 import { makeStyles } from '@material-ui/core/styles'
+import Ajv from 'ajv'
 import { AlwaysExpandedArrayLayout } from './AlwaysExpandedArrayLayout'
+
+// Create AJV instance with useDefaults to auto-apply schema defaults
+const ajv = new Ajv({
+  useDefaults: true,
+  allErrors: true,
+  verbose: true,
+})
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -181,6 +189,7 @@ export const SchemaConfigEditor = ({
         config={config}
         onChange={handleChange}
         readonly={readOnly}
+        ajv={ajv}
       />
     </div>
   )

@@ -151,9 +151,16 @@ const ArrayToolbar = ({
   </Box>
 )
 
+const useArrayStyles = makeStyles((theme) => ({
+  container: {
+    marginBottom: theme.spacing(2),
+  },
+}))
+
 // Main array layout component - items always expanded
 // eslint-disable-next-line react-refresh/only-export-components
 const AlwaysExpandedArrayLayoutComponent = (props) => {
+  const arrayClasses = useArrayStyles()
   const {
     enabled,
     data,
@@ -185,7 +192,7 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
   const translations = defaultTranslations
 
   return (
-    <div>
+    <div className={arrayClasses.container}>
       <ArrayToolbar
         translations={translations}
         label={computeLabel(

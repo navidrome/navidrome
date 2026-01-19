@@ -37,6 +37,7 @@ const PluginShowLayout = () => {
   const [configErrors, setConfigErrors] = useState([])
   const [isDirty, setIsDirty] = useState(false)
   const [lastRecordConfig, setLastRecordConfig] = useState(null)
+  const [isConfigInitialized, setIsConfigInitialized] = useState(false)
 
   // Users permission state
   const [selectedUsers, setSelectedUsers] = useState([])
@@ -66,6 +67,8 @@ const PluginShowLayout = () => {
     if (record && recordConfig !== lastRecordConfig && !isDirty) {
       setConfigData(jsonToObject(recordConfig))
       setLastRecordConfig(recordConfig)
+      // Reset initialization flag - AJV will apply defaults on first render
+      setIsConfigInitialized(false)
     }
   }, [record, lastRecordConfig, isDirty, jsonToObject])
 
@@ -115,11 +118,19 @@ const PluginShowLayout = () => {
     }
   }, [record, lastRecordLibraries, lastRecordAllLibraries, isDirty])
 
-  const handleConfigDataChange = useCallback((newData, errors) => {
-    setConfigData(newData)
-    setConfigErrors(errors || [])
-    setIsDirty(true)
-  }, [])
+  const handleConfigDataChange = useCallback(
+    (newData, errors) => {
+      setConfigData(newData)
+      setConfigErrors(errors || [])
+      // Skip marking dirty on initial onChange (when AJV applies defaults)
+      if (isConfigInitialized) {
+        setIsDirty(true)
+      } else {
+        setIsConfigInitialized(true)
+      }
+    },
+    [isConfigInitialized],
+  )
 
   const handleSelectedUsersChange = useCallback((newSelectedUsers) => {
     setSelectedUsers(newSelectedUsers)
