@@ -32,5 +32,5 @@ export default {
   NuclearTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
-  nautilineTheme
+  nautilineTheme,
 }
