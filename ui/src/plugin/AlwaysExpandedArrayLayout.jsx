@@ -50,6 +50,7 @@ const defaultTranslations = {
 }
 
 // Simplified array item renderer - clean card layout
+// eslint-disable-next-line react-refresh/only-export-components
 const ArrayItem = ({
   index,
   path,
@@ -78,7 +79,7 @@ const ArrayItem = ({
         uischema,
         rootSchema,
       ),
-    [uischemas, schema, uischema.scope, path, uischema, rootSchema],
+    [uischemas, schema, path, uischema, rootSchema],
   )
 
   return (
@@ -113,6 +114,7 @@ const ArrayItem = ({
 }
 
 // Array toolbar with add button
+// eslint-disable-next-line react-refresh/only-export-components
 const ArrayToolbar = ({
   label,
   description,
@@ -150,6 +152,7 @@ const ArrayToolbar = ({
 )
 
 // Main array layout component - items always expanded
+// eslint-disable-next-line react-refresh/only-export-components
 const AlwaysExpandedArrayLayoutComponent = (props) => {
   const {
     enabled,

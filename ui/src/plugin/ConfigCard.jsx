@@ -96,19 +96,24 @@ export const ConfigCard = ({
 
   // Only show config card if manifest has config schema defined
   const hasConfigSchema = manifest?.config?.schema
+
+  // Format validation errors with proper field names
+  const formattedErrors = useMemo(() => {
+    if (!hasConfigSchema) {
+      return []
+    }
+    const { schema } = manifest.config
+    return validationErrors.map((error) => ({
+      fieldName: getFieldName(error, schema),
+      message: error.message,
+    }))
+  }, [validationErrors, manifest, hasConfigSchema])
+
   if (!hasConfigSchema) {
     return null
   }
 
   const { schema, uiSchema } = manifest.config
-
-  // Format validation errors with proper field names
-  const formattedErrors = useMemo(() => {
-    return validationErrors.map((error) => ({
-      fieldName: getFieldName(error, schema),
-      message: error.message,
-    }))
-  }, [validationErrors, schema])
 
   return (
     <Card className={classes.section}>
