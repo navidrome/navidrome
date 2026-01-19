@@ -7,6 +7,12 @@ import { Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
 import Ajv from 'ajv'
 import { AlwaysExpandedArrayLayout } from './AlwaysExpandedArrayLayout'
+import {
+  OutlinedTextRenderer,
+  OutlinedNumberRenderer,
+  OutlinedEnumRenderer,
+  OutlinedOneOfEnumRenderer,
+} from './OutlinedRenderers'
 
 // Error boundary for catching JSONForms rendering errors
 class SchemaErrorBoundary extends React.Component {
@@ -42,67 +48,8 @@ const ajv = new Ajv({
 const useStyles = makeStyles(
   (theme) => ({
     root: {
-      // Override JSONForms to use outlined-style inputs (matching Navidrome's design)
       '& .MuiFormControl-root': {
         marginBottom: theme.spacing(2),
-      },
-      // Style the Input to look like outlined variant
-      '& .MuiInput-root': {
-        position: 'relative',
-        border: `1px solid ${theme.palette.type === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)'}`,
-        borderRadius: theme.shape.borderRadius,
-        padding: '10px 14px',
-        marginTop: theme.spacing(2),
-        '&:hover': {
-          borderColor: theme.palette.text.primary,
-        },
-        '&.Mui-focused': {
-          borderColor: theme.palette.primary.main,
-          borderWidth: 2,
-          padding: '9px 13px', // Adjust for border width change
-        },
-        '&.Mui-error': {
-          borderColor: theme.palette.error.main,
-        },
-        '&:before, &:after': {
-          display: 'none', // Hide the default underline
-        },
-      },
-      '& .MuiInput-input': {
-        padding: 0,
-      },
-      // Position label like outlined variant (floating above the border)
-      '& .MuiInputLabel-root': {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        transform: 'translate(14px, 28px) scale(1)', // Accounts for marginTop on input
-        transformOrigin: 'top left',
-        transition: theme.transitions.create(['transform', 'color'], {
-          duration: theme.transitions.duration.shorter,
-        }),
-        '&.MuiInputLabel-shrink': {
-          transform: 'translate(14px, 7px) scale(0.75)',
-          backgroundColor: theme.palette.background.paper,
-          padding: '0 5px',
-          marginLeft: '-5px',
-          zIndex: 1,
-          // Use box-shadow to extend background coverage and hide border
-          boxShadow: `0 0 0 3px ${theme.palette.background.paper}`,
-        },
-        '&.Mui-focused': {
-          color: theme.palette.primary.main,
-        },
-        '&.Mui-error': {
-          color: theme.palette.error.main,
-        },
-      },
-      '& .MuiFormHelperText-root': {
-        marginTop: theme.spacing(0.5),
-        marginLeft: theme.spacing(1.75),
-      },
-      '& .MuiFormHelperText-root.Mui-error': {
-        color: theme.palette.error.main,
       },
       // Group/array styling
       '& .MuiPaper-root': {
@@ -157,9 +104,13 @@ const useStyles = makeStyles(
   { name: 'NDSchemaConfigEditor' },
 )
 
-// Custom renderers with always-expanded array layout
+// Custom renderers with outlined text inputs and always-expanded array layout
 const customRenderers = [
-  // Put our custom renderer first (higher priority)
+  // Put our custom renderers first (higher priority)
+  OutlinedTextRenderer,
+  OutlinedNumberRenderer,
+  OutlinedEnumRenderer,
+  OutlinedOneOfEnumRenderer,
   AlwaysExpandedArrayLayout,
   // Then all the standard material renderers
   ...materialRenderers,
@@ -209,7 +160,7 @@ export const SchemaConfigEditor = ({
   const renderers = useMemo(() => customRenderers, [])
   const cells = useMemo(() => materialCells, [])
 
-  // JSONForms config - always show descriptions to avoid layout shifts
+  // JSONForms config - always show descriptions
   const config = {
     showUnfocusedDescription: true,
   }
