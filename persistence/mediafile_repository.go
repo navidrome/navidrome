@@ -124,6 +124,25 @@ func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, er
 	return r.count(query, options...)
 }
 
+func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[string]int64, error) {
+	sel := r.newSelect(options...).
+		Columns("lower(suffix) as suffix", "count(*) as count").
+		GroupBy("lower(suffix)")
+	var res []struct {
+		Suffix string
+		Count  int64
+	}
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(res))
+	for _, c := range res {
+		counts[c.Suffix] = c.Count
+	}
+	return counts, nil
+}
+
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
 	return r.exists(Eq{"media_file.id": id})
 }

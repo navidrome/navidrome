@@ -456,4 +456,131 @@ var _ = Describe("helpers", func() {
 			})
 		})
 	})
+
+	Describe("AverageRating in responses", func() {
+		var ctx context.Context
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			conf.Server.Subsonic.EnableAverageRating = true
+		})
+
+		Describe("childFromMediaFile", func() {
+			It("includes averageRating when set", func() {
+				mf := model.MediaFile{
+					ID:    "mf-avg-1",
+					Title: "Test Song",
+					Annotations: model.Annotations{
+						AverageRating: 4.5,
+					},
+				}
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.AverageRating).To(Equal(4.5))
+			})
+
+			It("returns 0 for averageRating when not set", func() {
+				mf := model.MediaFile{
+					ID:    "mf-avg-2",
+					Title: "Test Song No Rating",
+				}
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.AverageRating).To(Equal(0.0))
+			})
+		})
+
+		Describe("childFromAlbum", func() {
+			It("includes averageRating when set", func() {
+				al := model.Album{
+					ID:   "al-avg-1",
+					Name: "Test Album",
+					Annotations: model.Annotations{
+						AverageRating: 3.75,
+					},
+				}
+				child := childFromAlbum(ctx, al)
+				Expect(child.AverageRating).To(Equal(3.75))
+			})
+
+			It("returns 0 for averageRating when not set", func() {
+				al := model.Album{
+					ID:   "al-avg-2",
+					Name: "Test Album No Rating",
+				}
+				child := childFromAlbum(ctx, al)
+				Expect(child.AverageRating).To(Equal(0.0))
+			})
+		})
+
+		Describe("toArtist", func() {
+			It("includes averageRating when set", func() {
+				conf.Server.Subsonic.EnableAverageRating = true
+				r := httptest.NewRequest("GET", "/test", nil)
+				a := model.Artist{
+					ID:   "ar-avg-1",
+					Name: "Test Artist",
+					Annotations: model.Annotations{
+						AverageRating: 5.0,
+					},
+				}
+				artist := toArtist(r, a)
+				Expect(artist.AverageRating).To(Equal(5.0))
+			})
+		})
+
+		Describe("toArtistID3", func() {
+			It("includes averageRating when set", func() {
+				conf.Server.Subsonic.EnableAverageRating = true
+				r := httptest.NewRequest("GET", "/test", nil)
+				a := model.Artist{
+					ID:   "ar-avg-2",
+					Name: "Test Artist ID3",
+					Annotations: model.Annotations{
+						AverageRating: 2.5,
+					},
+				}
+				artist := toArtistID3(r, a)
+				Expect(artist.AverageRating).To(Equal(2.5))
+			})
+		})
+
+		Describe("EnableAverageRating config", func() {
+			It("excludes averageRating when disabled", func() {
+				conf.Server.Subsonic.EnableAverageRating = false
+
+				mf := model.MediaFile{
+					ID:    "mf-cfg-1",
+					Title: "Test Song",
+					Annotations: model.Annotations{
+						AverageRating: 4.5,
+					},
+				}
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.AverageRating).To(Equal(0.0))
+
+				al := model.Album{
+					ID:   "al-cfg-1",
+					Name: "Test Album",
+					Annotations: model.Annotations{
+						AverageRating: 3.75,
+					},
+				}
+				albumChild := childFromAlbum(ctx, al)
+				Expect(albumChild.AverageRating).To(Equal(0.0))
+
+				r := httptest.NewRequest("GET", "/test", nil)
+				a := model.Artist{
+					ID:   "ar-cfg-1",
+					Name: "Test Artist",
+					Annotations: model.Annotations{
+						AverageRating: 5.0,
+					},
+				}
+				artist := toArtist(r, a)
+				Expect(artist.AverageRating).To(Equal(0.0))
+
+				artistID3 := toArtistID3(r, a)
+				Expect(artistID3.AverageRating).To(Equal(0.0))
+			})
+		})
+	})
 })

@@ -265,6 +265,10 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
+	data.Library.FileSuffixes, err = c.ds.MediaFile(ctx).CountBySuffix()
+	if err != nil {
+		log.Trace(ctx, "Error reading file suffixes count", err)
+	}
 
 	// Check for smart playlists
 	data.Config.HasSmartPlaylists, err = c.hasSmartPlaylists(ctx)

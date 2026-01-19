@@ -40,6 +40,7 @@ type Data struct {
 		Libraries     int64            `json:"libraries"`
 		ActiveUsers   int64            `json:"activeUsers"`
 		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
+		FileSuffixes  map[string]int64 `json:"fileSuffixes,omitempty"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`

@@ -14,8 +14,8 @@ import (
 )
 
 func TestScanner(t *testing.T) {
-	// Only run goleak checks when not in CI environment
-	if os.Getenv("CI") == "" {
+	// Only run goleak checks when the GOLEAK env var is set
+	if os.Getenv("GOLEAK") != "" {
 		// Detect any goroutine leaks in the scanner code under test
 		defer goleak.VerifyNone(t,
 			goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),

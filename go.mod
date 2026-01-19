@@ -7,7 +7,7 @@ replace (
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
 	// Fork to implement raw tags support
-	go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260118171208-db06bab917c7
+	go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260119020817-8753c7531798
 )
 
 require (
