@@ -105,7 +105,7 @@ func (e extractor) openFile(filePath string) (*taglib.File, func(), error) {
 		file.Close()
 		return nil, nil, errors.New("file is not seekable")
 	}
-	f, err := taglib.OpenStream(rs)
+	f, err := taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
 	if err != nil {
 		file.Close()
 		return nil, nil, err
