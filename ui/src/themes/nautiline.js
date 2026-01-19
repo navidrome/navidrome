@@ -162,7 +162,6 @@ const nautilineTheme = {
         },
         body2: {
             fontWeight: 400,
-            color: nautilineColors.text.secondary,
         },
         button: {
             fontWeight: 500,
@@ -247,6 +246,9 @@ const nautilineTheme = {
             colorPrimary: {
                 color: nautilineColors.accent.main,
             },
+            sizeSmall: {
+                padding: '0.75rem',
+            },
         },
         MuiSvgIcon: {
             colorPrimary: {
@@ -290,6 +292,9 @@ const nautilineTheme = {
                 fontSize: '0.75rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
+            },
+            body: {
+                color: nautilineColors.text.primary,
             },
         },
         MuiListItem: {
@@ -425,6 +430,23 @@ const nautilineTheme = {
                 borderRadius: '0.5rem',
             },
         },
+        MuiRating: {
+            iconFilled: {
+                color: nautilineColors.accent.main,
+            },
+            iconHover: {
+                color: nautilineColors.accent.main,
+            },
+        },
+        MuiTooltip: {
+            tooltip: {
+                backgroundColor: nautilineColors.text.primary,
+                color: nautilineColors.background.primary,
+                fontSize: '0.75rem',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '0.25rem',
+            },
+        },
         MuiBottomNavigation: {
             root: {
                 backgroundColor: nautilineColors.ui.glassBg,
@@ -539,6 +561,9 @@ const nautilineTheme = {
             },
             genreList: {
                 marginTop: '0.75rem',
+            },
+            loveButton: {
+                marginLeft: '0.5rem',
             },
         },
         NDAlbumShow: {
@@ -698,6 +723,9 @@ const nautilineTheme = {
                 '& .MuiTypography-root': {
                     color: nautilineColors.text.primary,
                 },
+            },
+            actionIcon: {
+                marginLeft: '0.5rem',
             },
         },
         RaMenuItemLink: {
