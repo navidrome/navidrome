@@ -387,6 +387,7 @@
       },
       "messages": {
         "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
+        "configValidationError": "Falha na validação da configuração:",
         "clickPermissions": "Clique em uma permissão para ver detalhes",
         "noConfig": "Nenhuma configuração definida",
         "allUsersHelp": "Quando habilitado, o plugin terá acesso a todos os usuários, incluindo os criados no futuro.",
