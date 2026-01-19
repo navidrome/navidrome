@@ -63,8 +63,15 @@ const tokens = {
       ].join(','),
       heading: '"Unbounded", sans-serif',
     },
-    fontUrl:
-      'https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&display=swap',
+    fontFace: `
+      @font-face {
+        font-family: 'Unbounded';
+        font-style: normal;
+        font-weight: 300 800;
+        font-display: swap;
+        src: url('/fonts/Unbounded-Variable.woff2') format('woff2');
+      }
+    `,
   },
   spacing: {
     xs: '0.25rem',
@@ -263,7 +270,13 @@ const NautilineTheme = {
   overrides: {
     MuiCssBaseline: {
       '@global': {
-        '@import': `url('${typography.fontUrl}')`,
+        '@font-face': {
+          fontFamily: 'Unbounded',
+          fontStyle: 'normal',
+          fontWeight: '300 800',
+          fontDisplay: 'swap',
+          src: "url('/fonts/Unbounded-Variable.woff2') format('woff2')",
+        },
         body: {
           backgroundColor: colors.background.primary,
         },
@@ -748,7 +761,13 @@ const NautilineTheme = {
   player: {
     theme: 'light',
     stylesheet: `
-      @import url('${typography.fontUrl}');
+      @font-face {
+        font-family: 'Unbounded';
+        font-style: normal;
+        font-weight: 300 800;
+        font-display: swap;
+        src: url('/fonts/Unbounded-Variable.woff2') format('woff2');
+      }
 
       .react-jinke-music-player-main {
         background-color: ${colors.background.primary} !important;
