@@ -16,12 +16,14 @@ import (
 	"time"
 
 	"github.com/dhowden/tag"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"go.senan.xyz/taglib"
 )
 
 func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
@@ -84,6 +86,13 @@ var picTypeRegexes = []*regexp.Regexp{
 }
 
 func fromTag(ctx context.Context, path string) sourceFunc {
+	if conf.Server.DevLegacyEmbedImage {
+		return fromTagLegacy(ctx, path)
+	}
+	return fromTagGoTaglib(ctx, path)
+}
+
+func fromTagLegacy(ctx context.Context, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
 			return nil, "", nil
@@ -126,6 +135,44 @@ func fromTag(ctx context.Context, path string) sourceFunc {
 		}
 		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
 	}
+}
+
+func fromTagGoTaglib(ctx context.Context, path string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		if path == "" {
+			return nil, "", nil
+		}
+		f, err := taglib.OpenReadOnly(path, taglib.WithReadStyle(taglib.ReadStyleFast))
+		if err != nil {
+			return nil, "", err
+		}
+		defer f.Close()
+
+		images := f.Properties().Images
+		if len(images) == 0 {
+			return nil, "", fmt.Errorf("no embedded image found in %s", path)
+		}
+
+		imageIndex := findBestImageIndex(ctx, images, path)
+		data, err := f.Image(imageIndex)
+		if err != nil || len(data) == 0 {
+			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
+		}
+		return io.NopCloser(bytes.NewReader(data)), path, nil
+	}
+}
+
+func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path string) int {
+	for _, regex := range picTypeRegexes {
+		for i, img := range images {
+			if regex.MatchString(img.Type) {
+				log.Trace(ctx, "Found embedded image", "type", img.Type, "path", path)
+				return i
+			}
+		}
+	}
+	log.Trace(ctx, "Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
+	return 0
 }
 
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
