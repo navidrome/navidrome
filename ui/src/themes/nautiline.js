@@ -25,7 +25,8 @@ const hexToRgb = (hex) => {
 }
 
 const rgb = hexToRgb(ACCENT_COLOR)
-const rgba = (alpha) => `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+const rgba = (alpha) =>
+  rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})` : 'transparent'
 
 const tokens = {
   colors: {
@@ -204,11 +205,19 @@ const menuIconStyle = () => ({
   },
 })
 
+const activeLinkStyle = {
+  color: `${colors.accent.main} !important`,
+  '& .MuiListItemIcon-root': {
+    color: `${colors.accent.main} !important`,
+  },
+}
+
 // ============================================
 // THEME DEFINITION
 // ============================================
 
-const nautilineTheme = {
+// Note: !important declarations are required to override react-admin and third-party component styles
+const NautilineTheme = {
   themeName: 'Nautiline',
   palette: {
     type: 'light',
@@ -651,19 +660,9 @@ const nautilineTheme = {
       root: {
         color: colors.text.primary,
         '& .MuiListItemIcon-root': menuIconStyle(),
-        '&[class*="makeStyles-active"]': {
-          color: `${colors.accent.main} !important`,
-          '& .MuiListItemIcon-root': {
-            color: `${colors.accent.main} !important`,
-          },
-        },
+        '&[class*="makeStyles-active"]': activeLinkStyle,
       },
-      active: {
-        color: `${colors.accent.main} !important`,
-        '& .MuiListItemIcon-root': {
-          color: `${colors.accent.main} !important`,
-        },
-      },
+      active: activeLinkStyle,
     },
     NDDesktopArtistDetails: {
       root: {
@@ -856,4 +855,4 @@ const nautilineTheme = {
   },
 }
 
-export default nautilineTheme
+export default NautilineTheme
