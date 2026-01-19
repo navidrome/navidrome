@@ -169,7 +169,8 @@ const PluginShowLayout = () => {
 
   const handleSaveConfig = useCallback(() => {
     if (!record) return
-    const config = Object.keys(configData).length > 0 ? JSON.stringify(configData) : ''
+    const config =
+      Object.keys(configData).length > 0 ? JSON.stringify(configData) : ''
     const data = { config }
 
     // Include users data if users permission is present

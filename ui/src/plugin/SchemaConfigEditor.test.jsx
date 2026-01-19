@@ -46,7 +46,9 @@ describe('SchemaConfigEditor', () => {
       <SchemaConfigEditor schema={basicSchema} data={{}} onChange={vi.fn()} />,
     )
     // Check that the wrapper div is rendered (class name is generated)
-    expect(container.querySelector('[class*="NDSchemaConfigEditor-root"]')).toBeTruthy()
+    expect(
+      container.querySelector('[class*="NDSchemaConfigEditor-root"]'),
+    ).toBeTruthy()
   })
 
   it('calls onChange on initial render', () => {

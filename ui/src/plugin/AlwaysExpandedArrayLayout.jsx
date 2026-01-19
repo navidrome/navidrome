@@ -7,7 +7,10 @@ import {
   rankWith,
   findUISchema,
 } from '@jsonforms/core'
-import { JsonFormsDispatch, withJsonFormsArrayLayoutProps } from '@jsonforms/react'
+import {
+  JsonFormsDispatch,
+  withJsonFormsArrayLayoutProps,
+} from '@jsonforms/react'
 import range from 'lodash/range'
 import merge from 'lodash/merge'
 import { Box, Grid, IconButton, Tooltip, Typography } from '@material-ui/core'
@@ -63,14 +66,26 @@ const ArrayItem = ({
   const childPath = composePaths(path, `${index}`)
 
   const foundUISchema = useMemo(
-    () => findUISchema(uischemas, schema, uischema.scope, path, undefined, uischema, rootSchema),
+    () =>
+      findUISchema(
+        uischemas,
+        schema,
+        uischema.scope,
+        path,
+        undefined,
+        uischema,
+        rootSchema,
+      ),
     [uischemas, schema, uischema.scope, path, uischema, rootSchema],
   )
 
   return (
     <Box className={classes.arrayItem}>
       {enabled && !disableRemove && (
-        <Tooltip title={translations.removeTooltip} className={classes.deleteButton}>
+        <Tooltip
+          title={translations.removeTooltip}
+          className={classes.deleteButton}
+        >
           <IconButton
             onClick={() => removeItems(path, [index])()}
             size="small"
@@ -96,12 +111,27 @@ const ArrayItem = ({
 }
 
 // Array toolbar with add button
-const ArrayToolbar = ({ label, enabled, addItem, path, createDefault, translations, disableAdd }) => (
+const ArrayToolbar = ({
+  label,
+  enabled,
+  addItem,
+  path,
+  createDefault,
+  translations,
+  disableAdd,
+}) => (
   <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
     <Typography variant="h6">{label}</Typography>
     {!disableAdd && (
-      <Tooltip title={translations.addTooltip} aria-label={translations.addAriaLabel}>
-        <IconButton onClick={addItem(path, createDefault())} disabled={!enabled} size="small">
+      <Tooltip
+        title={translations.addTooltip}
+        aria-label={translations.addAriaLabel}
+      >
+        <IconButton
+          onClick={addItem(path, createDefault())}
+          disabled={!enabled}
+          size="small"
+        >
           <Add />
         </IconButton>
       </Tooltip>
@@ -144,7 +174,11 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
     <div>
       <ArrayToolbar
         translations={translations}
-        label={computeLabel(label, required, appliedUiSchemaOptions.hideRequiredAsterisk)}
+        label={computeLabel(
+          label,
+          required,
+          appliedUiSchemaOptions.hideRequiredAsterisk,
+        )}
         path={path}
         enabled={enabled}
         addItem={addItem}
@@ -171,7 +205,9 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
             />
           ))
         ) : (
-          <Typography color="textSecondary">{translations.noDataMessage}</Typography>
+          <Typography color="textSecondary">
+            {translations.noDataMessage}
+          </Typography>
         )}
       </div>
     </div>
@@ -179,7 +215,9 @@ const AlwaysExpandedArrayLayoutComponent = (props) => {
 }
 
 // Wrap with JSONForms HOC
-const WrappedArrayLayout = withJsonFormsArrayLayoutProps(AlwaysExpandedArrayLayoutComponent)
+const WrappedArrayLayout = withJsonFormsArrayLayoutProps(
+  AlwaysExpandedArrayLayoutComponent,
+)
 
 // Export as a renderer entry with high priority (5 > default 4)
 export const AlwaysExpandedArrayLayout = {
