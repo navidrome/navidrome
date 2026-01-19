@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http/httptest"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -17,6 +19,7 @@ import (
 var _ = Describe("helpers", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 	})
 
 	Describe("fakePath", func() {
