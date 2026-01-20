@@ -38,12 +38,32 @@ SchemaErrorBoundary.propTypes = {
   fallback: PropTypes.func.isRequired,
 }
 
-// Create AJV instance with useDefaults to auto-apply schema defaults
+// Custom AJV instance that fixes "required" error paths for JSONForms.
+// AJV outputs required errors pointing to the parent (e.g., "/users/1") with
+// params.missingProperty. We transform them to point to the field directly
+// (e.g., "/users/1/username") so JSONForms displays them under the correct input.
 const ajv = new Ajv({
   useDefaults: true,
   allErrors: true,
   verbose: true,
+  jsonPointers: true,
 })
+const origCompile = ajv.compile.bind(ajv)
+ajv.compile = (schema) => {
+  const validate = origCompile(schema)
+  const wrapped = (data) => {
+    const valid = validate(data)
+    validate.errors?.forEach((e) => {
+      if (e.keyword === 'required' && e.params?.missingProperty) {
+        e.dataPath = `${e.dataPath || ''}/${e.params.missingProperty}`
+      }
+    })
+    wrapped.errors = validate.errors
+    return valid
+  }
+  wrapped.schema = validate.schema
+  return wrapped
+}
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -201,6 +221,7 @@ export const SchemaConfigEditor = ({
           onChange={handleChange}
           readonly={readOnly}
           ajv={ajv}
+          validationMode="ValidateAndShow"
         />
       </SchemaErrorBoundary>
     </div>

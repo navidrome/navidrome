@@ -30,13 +30,18 @@ import merge from 'lodash/merge'
 
 /**
  * Hook for common control state (focus, validation, description visibility)
+ * Tracks "touched" state to only show errors after the user has interacted with the field
  */
 const useControlState = (props) => {
-  const { config, uischema, errors, description, visible } = props
+  const { config, uischema, description, visible, errors } = props
   const [isFocused, setIsFocused] = useState(false)
+  const [isTouched, setIsTouched] = useState(false)
 
   const appliedUiSchemaOptions = merge({}, config, uischema?.options)
-  const isValid = errors?.length === 0
+  // errors is a string when there are validation errors, empty/undefined when valid
+  const hasErrors = errors && errors.length > 0
+  // Only show as invalid after the field has been touched (blurred)
+  const showError = isTouched && hasErrors
 
   const showDescription = !isDescriptionHidden(
     visible,
@@ -45,14 +50,21 @@ const useControlState = (props) => {
     appliedUiSchemaOptions.showUnfocusedDescription,
   )
 
-  const helperText = !isValid ? errors : showDescription ? description : ''
+  const helperText = showError ? errors : showDescription ? description : ''
+
+  const handleFocus = () => setIsFocused(true)
+  const handleBlur = () => {
+    setIsFocused(false)
+    setIsTouched(true)
+  }
 
   return {
     isFocused,
-    setIsFocused,
     appliedUiSchemaOptions,
-    isValid,
+    showError,
     helperText,
+    handleFocus,
+    handleBlur,
   }
 }
 
@@ -72,7 +84,7 @@ const OutlinedControl = (props) => {
     onChange,
   } = props
 
-  const { setIsFocused, appliedUiSchemaOptions, isValid, helperText } =
+  const { appliedUiSchemaOptions, showError, helperText, handleFocus, handleBlur } =
     useControlState(props)
 
   if (!visible) {
@@ -80,15 +92,15 @@ const OutlinedControl = (props) => {
   }
 
   return (
-    <FormControl fullWidth error={!isValid}>
+    <FormControl fullWidth error={showError}>
       <TextField
         id={id}
         label={label}
         type={type}
         value={data ?? ''}
         onChange={onChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         disabled={!enabled}
         autoFocus={appliedUiSchemaOptions.focus}
         multiline={type === 'text' && appliedUiSchemaOptions.multi}
@@ -96,7 +108,7 @@ const OutlinedControl = (props) => {
         variant="outlined"
         fullWidth
         size="small"
-        error={!isValid}
+        error={showError}
         helperText={helperText}
         inputProps={extraInputProps}
       />
@@ -159,7 +171,7 @@ const OutlinedNumberControl = (props) => {
 const OutlinedEnumControl = (props) => {
   const { data, id, enabled, path, handleChange, options, label, visible } =
     props
-  const { setIsFocused, appliedUiSchemaOptions, isValid, helperText } =
+  const { appliedUiSchemaOptions, showError, helperText, handleFocus, handleBlur } =
     useControlState(props)
 
   if (!visible) {
@@ -167,15 +179,15 @@ const OutlinedEnumControl = (props) => {
   }
 
   return (
-    <FormControl fullWidth variant="outlined" size="small" error={!isValid}>
+    <FormControl fullWidth variant="outlined" size="small" error={showError}>
       <InputLabel id={`${id}-label`}>{label}</InputLabel>
       <Select
         labelId={`${id}-label`}
         id={id}
         value={data ?? ''}
         onChange={(ev) => handleChange(path, ev.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         disabled={!enabled}
         autoFocus={appliedUiSchemaOptions.focus}
         label={label}
