@@ -71,6 +71,10 @@ const useStyles = makeStyles(
       '& .MuiFormControl-root': {
         marginBottom: theme.spacing(2),
       },
+      // Label elements (type: "Label" in UI schema) - make slightly smaller
+      '& .MuiTypography-h6': {
+        fontSize: '0.95rem',
+      },
       // Group/array styling
       '& .MuiPaper-root': {
         backgroundColor: 'transparent',
