@@ -34,7 +34,15 @@ const PlaylistEditForm = (props) => {
   return (
     <SimpleForm redirect="list" variant={'outlined'} {...props}>
       <TextInput source="name" validate={required()} />
-      <TextInput multiline source="comment" />
+      <TextInput
+        multiline
+        minRows={3}
+        source="comment"
+        fullWidth
+        inputProps={{
+          style: { resize: 'vertical' },
+        }}
+      />
       {permissions === 'admin' ? (
         <ReferenceInput
           source="ownerId"
