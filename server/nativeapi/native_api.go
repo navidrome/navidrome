@@ -25,6 +25,7 @@ import (
 type PluginManager interface {
 	EnablePlugin(ctx context.Context, id string) error
 	DisablePlugin(ctx context.Context, id string) error
+	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
 	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error

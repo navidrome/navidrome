@@ -11,6 +11,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -24,9 +25,15 @@ import (
 
 // Configuration keys
 const (
-	clientIDKey   = "clientid"
-	userKeyPrefix = "user."
+	clientIDKey = "clientid"
+	usersKey    = "users"
 )
+
+// userToken represents a user-token mapping from the config
+type userToken struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+}
 
 // discordPlugin implements the scrobbler and scheduler interfaces.
 type discordPlugin struct{}
@@ -49,24 +56,35 @@ func getConfig() (clientID string, users map[string]string, err error) {
 		return "", nil, nil
 	}
 
-	// Get all user keys with the "user." prefix
-	userKeys := host.ConfigKeys(userKeyPrefix)
-	if len(userKeys) == 0 {
+	// Get the users array from config
+	usersJSON, ok := pdk.GetConfig(usersKey)
+	if !ok || usersJSON == "" {
 		pdk.Log(pdk.LogWarn, "no users configured")
 		return clientID, nil, nil
 	}
 
+	// Parse the JSON array
+	var userTokens []userToken
+	if err := json.Unmarshal([]byte(usersJSON), &userTokens); err != nil {
+		pdk.Log(pdk.LogError, fmt.Sprintf("failed to parse users config: %v", err))
+		return clientID, nil, nil
+	}
+
+	if len(userTokens) == 0 {
+		pdk.Log(pdk.LogWarn, "no users configured")
+		return clientID, nil, nil
+	}
+
+	// Build the users map
 	users = make(map[string]string)
-	for _, key := range userKeys {
-		username := strings.TrimPrefix(key, userKeyPrefix)
-		token, exists := host.ConfigGet(key)
-		if exists && token != "" {
-			users[username] = token
+	for _, ut := range userTokens {
+		if ut.Username != "" && ut.Token != "" {
+			users[ut.Username] = ut.Token
 		}
 	}
 
 	if len(users) == 0 {
-		pdk.Log(pdk.LogWarn, "no users configured")
+		pdk.Log(pdk.LogWarn, "no valid users configured")
 		return clientID, nil, nil
 	}
 
