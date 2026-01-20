@@ -26,7 +26,17 @@ import {
   Select,
   MenuItem,
 } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import merge from 'lodash/merge'
+
+const useStyles = makeStyles(
+  (theme) => ({
+    control: {
+      marginBottom: theme.spacing(2),
+    },
+  }),
+  { name: 'NDOutlinedRenderers' },
+)
 
 /**
  * Hook for common control state (focus, validation, description visibility)
@@ -73,6 +83,7 @@ const useControlState = (props) => {
  * instead of the default Input component used by JSONForms 2.x
  */
 const OutlinedControl = (props) => {
+  const classes = useStyles()
   const {
     data,
     id,
@@ -97,27 +108,26 @@ const OutlinedControl = (props) => {
   }
 
   return (
-    <FormControl fullWidth error={showError}>
-      <TextField
-        id={id}
-        label={label}
-        type={type}
-        value={data ?? ''}
-        onChange={onChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        disabled={!enabled}
-        autoFocus={appliedUiSchemaOptions.focus}
-        multiline={type === 'text' && appliedUiSchemaOptions.multi}
-        rows={appliedUiSchemaOptions.multi ? 3 : undefined}
-        variant="outlined"
-        fullWidth
-        size="small"
-        error={showError}
-        helperText={helperText}
-        inputProps={extraInputProps}
-      />
-    </FormControl>
+    <TextField
+      id={id}
+      label={label}
+      type={type}
+      value={data ?? ''}
+      onChange={onChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      disabled={!enabled}
+      autoFocus={appliedUiSchemaOptions.focus}
+      multiline={type === 'text' && appliedUiSchemaOptions.multi}
+      rows={appliedUiSchemaOptions.multi ? 3 : undefined}
+      variant="outlined"
+      fullWidth
+      size="small"
+      error={showError}
+      helperText={helperText}
+      inputProps={extraInputProps}
+      className={classes.control}
+    />
   )
 }
 
@@ -174,6 +184,7 @@ const OutlinedNumberControl = (props) => {
 
 // Enum/Select control wrapper
 const OutlinedEnumControl = (props) => {
+  const classes = useStyles()
   const { data, id, enabled, path, handleChange, options, label, visible } =
     props
   const {
@@ -189,7 +200,13 @@ const OutlinedEnumControl = (props) => {
   }
 
   return (
-    <FormControl fullWidth variant="outlined" size="small" error={showError}>
+    <FormControl
+      fullWidth
+      variant="outlined"
+      size="small"
+      error={showError}
+      className={classes.control}
+    >
       <InputLabel id={`${id}-label`}>{label}</InputLabel>
       <Select
         labelId={`${id}-label`}
