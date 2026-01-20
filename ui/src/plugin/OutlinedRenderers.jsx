@@ -40,18 +40,14 @@ const useStyles = makeStyles(
 
 /**
  * Hook for common control state (focus, validation, description visibility)
- * Tracks "touched" state to only show errors after the user has interacted with the field
  */
 const useControlState = (props) => {
   const { config, uischema, description, visible, errors } = props
   const [isFocused, setIsFocused] = useState(false)
-  const [isTouched, setIsTouched] = useState(false)
 
   const appliedUiSchemaOptions = merge({}, config, uischema?.options)
   // errors is a string when there are validation errors, empty/undefined when valid
-  const hasErrors = errors && errors.length > 0
-  // Only show as invalid after the field has been touched (blurred)
-  const showError = isTouched && hasErrors
+  const showError = errors && errors.length > 0
 
   const showDescription = !isDescriptionHidden(
     visible,
@@ -63,10 +59,7 @@ const useControlState = (props) => {
   const helperText = showError ? errors : showDescription ? description : ''
 
   const handleFocus = () => setIsFocused(true)
-  const handleBlur = () => {
-    setIsFocused(false)
-    setIsTouched(true)
-  }
+  const handleBlur = () => setIsFocused(false)
 
   return {
     isFocused,
