@@ -1,0 +1,33 @@
+version: v1-draft
+exports:
+    nd_scheduler_callback:
+        description: |-
+            OnCallback is called when a scheduled task fires.
+            Errors are logged but do not affect the scheduling system.
+        input:
+            $ref: '#/components/schemas/SchedulerCallbackRequest'
+            contentType: application/json
+components:
+    schemas:
+        SchedulerCallbackRequest:
+            description: SchedulerCallbackRequest is the request provided when a scheduled task fires.
+            properties:
+                scheduleId:
+                    type: string
+                    description: |-
+                        ScheduleID is the unique identifier for this scheduled task.
+                        This is either the ID provided when scheduling, or an auto-generated UUID if none was specified.
+                payload:
+                    type: string
+                    description: |-
+                        Payload is the payload data that was provided when the task was scheduled.
+                        Can be used to pass context or parameters to the callback handler.
+                isRecurring:
+                    type: boolean
+                    description: |-
+                        IsRecurring is true if this is a recurring schedule (created via ScheduleRecurring),
+                        false if it's a one-time schedule (created via ScheduleOneTime).
+            required:
+                - scheduleId
+                - payload
+                - isRecurring

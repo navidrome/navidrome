@@ -1,19 +1,16 @@
 {
-  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
-  "name": "critiquebrainz",
+  "name": "CritiqueBrainz",
   "author": "Navidrome",
   "version": "1.0.0",
   "description": "Album reviews from CritiqueBrainz",
   "website": "https://critiquebrainz.org",
-  "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
       "reason": "To fetch album reviews from CritiqueBrainz API and release group info from MusicBrainz",
-      "allowedUrls": {
-        "https://critiquebrainz.org/*": ["GET"],
-        "https://musicbrainz.org/*": ["GET"]
-      },
-      "allowLocalNetwork": false
+      "requiredHosts": [
+        "critiquebrainz.org",
+        "musicbrainz.org"
+      ]
     },
     "cache": {
       "reason": "To cache release group mappings and review data"

@@ -1,0 +1,4 @@
+# Rust build artifacts
+# Cargo.lock is not needed for library crates (this is a cdylib)
+Cargo.lock
+target

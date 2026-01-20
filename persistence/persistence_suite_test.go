@@ -130,7 +130,8 @@ var (
 var (
 	adminUser   = model.User{ID: "userid", UserName: "userid", Name: "admin", Email: "admin@email.com", IsAdmin: true}
 	regularUser = model.User{ID: "2222", UserName: "regular-user", Name: "Regular User", Email: "regular@example.com"}
-	testUsers   = model.Users{adminUser, regularUser}
+	thirdUser   = model.User{ID: "3333", UserName: "third-user", Name: "Third User", Email: "third@example.com"}
+	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
 func p(path string) string {

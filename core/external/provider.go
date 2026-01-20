@@ -12,10 +12,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
-	_ "github.com/navidrome/navidrome/core/agents/deezer"
-	_ "github.com/navidrome/navidrome/core/agents/lastfm"
-	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
-	_ "github.com/navidrome/navidrome/core/agents/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -494,7 +490,7 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 	}
 	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
-			squirrel.Eq{"id": ids},
+			squirrel.Eq{"media_file.id": ids},
 			squirrel.Eq{"missing": false},
 		},
 	})
