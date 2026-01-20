@@ -381,6 +381,30 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	return nil
 }
 
+// ValidatePluginConfig validates a config JSON string against the plugin's config schema.
+// If the plugin has no config schema defined, it returns an error.
+// Returns nil if validation passes, or an error describing the validation failure.
+func (m *Manager) ValidatePluginConfig(ctx context.Context, id, configJSON string) error {
+	if m.ds == nil {
+		return fmt.Errorf("datastore not configured")
+	}
+
+	adminCtx := adminContext(ctx)
+	repo := m.ds.Plugin(adminCtx)
+
+	plugin, err := repo.Get(id)
+	if err != nil {
+		return fmt.Errorf("getting plugin from DB: %w", err)
+	}
+
+	manifest, err := readManifest(plugin.Path)
+	if err != nil {
+		return fmt.Errorf("reading manifest: %w", err)
+	}
+
+	return ValidateConfig(manifest, configJSON)
+}
+
 // UpdatePluginConfig updates the configuration for a plugin.
 // If the plugin is enabled, it will be reloaded with the new config.
 func (m *Manager) UpdatePluginConfig(ctx context.Context, id, configJSON string) error {

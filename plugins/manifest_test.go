@@ -286,6 +286,107 @@ var _ = Describe("Manifest", func() {
 			err := m.Validate()
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("validates manifest with valid config schema", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Config: &ConfigDefinition{
+					Schema: map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"api_key": map[string]any{
+								"type": "string",
+							},
+						},
+					},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("validates manifest with complex config schema", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Config: &ConfigDefinition{
+					Schema: map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"users": map[string]any{
+								"type": "array",
+								"items": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"username": map[string]any{"type": "string"},
+										"token":    map[string]any{"type": "string"},
+									},
+									"required": []any{"username", "token"},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error for invalid config schema - bad type", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Config: &ConfigDefinition{
+					Schema: map[string]any{
+						"type": "invalid_type",
+					},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("config schema"))
+		})
+
+		It("returns error for invalid config schema - bad minLength", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Config: &ConfigDefinition{
+					Schema: map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name": map[string]any{
+								"type":      "string",
+								"minLength": "not_a_number",
+							},
+						},
+					},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("config schema"))
+		})
+
+		It("validates manifest without config", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Describe("ValidateWithCapabilities", func() {
