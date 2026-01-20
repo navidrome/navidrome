@@ -8,12 +8,9 @@
 //!
 //! ## Configuration
 //!
-//! ```toml
-//! [PluginConfig.discord-rich-presence-rs]
-//! clientid = "YOUR_DISCORD_APPLICATION_ID"
-//! "user.username1" = "discord_token1"
-//! "user.username2" = "discord_token2"
-//! ```
+//! Configure this plugin through the Navidrome UI with:
+//! - Discord Application Client ID
+//! - User tokens array mapping Navidrome usernames to Discord tokens
 //!
 //! **WARNING**: This plugin is for demonstration purposes only. Storing Discord tokens
 //! in configuration files is not secure and may violate Discord's terms of service.
@@ -32,6 +29,7 @@ use nd_pdk::websocket::{
     OnBinaryMessageRequest, OnCloseRequest, OnErrorRequest, OnTextMessageRequest,
     TextMessageProvider,
 };
+use serde::Deserialize;
 
 mod rpc;
 
@@ -48,7 +46,7 @@ nd_pdk::register_websocket_close!(DiscordPlugin);
 // ============================================================================
 
 const CLIENT_ID_KEY: &str = "clientid";
-const USER_KEY_PREFIX: &str = "user.";
+const USERS_KEY: &str = "users";
 const PAYLOAD_HEARTBEAT: &str = "heartbeat";
 const PAYLOAD_CLEAR_ACTIVITY: &str = "clear-activity";
 
@@ -64,19 +62,31 @@ struct DiscordPlugin;
 // Configuration
 // ============================================================================
 
+/// User token entry from the config schema
+#[derive(Debug, Deserialize)]
+struct UserToken {
+    username: String,
+    token: String,
+}
+
 fn get_config() -> Result<(String, std::collections::HashMap<String, String>), Error> {
     let client_id = config::get(CLIENT_ID_KEY)?
         .filter(|s| !s.is_empty())
         .ok_or_else(|| Error::msg("missing clientid in configuration"))?;
 
-    // Get all user keys with the "user." prefix
-    let user_keys = config::keys(USER_KEY_PREFIX)?;
-
+    // Get users array from config (JSON format)
+    let users_json = config::get(USERS_KEY)?.unwrap_or_default();
+    
     let mut users = std::collections::HashMap::new();
-    for key in user_keys {
-        let username = key.strip_prefix(USER_KEY_PREFIX).unwrap_or(&key);
-        if let Some(token) = config::get(&key)?.filter(|s| !s.is_empty()) {
-            users.insert(username.to_string(), token);
+    if !users_json.is_empty() {
+        // Parse JSON array of user tokens
+        let user_tokens: Vec<UserToken> = serde_json::from_str(&users_json)
+            .map_err(|e| Error::msg(format!("failed to parse users config: {}", e)))?;
+        
+        for user_token in user_tokens {
+            if !user_token.username.is_empty() && !user_token.token.is_empty() {
+                users.insert(user_token.username, user_token.token);
+            }
         }
     }
 

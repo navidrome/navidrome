@@ -25,6 +25,14 @@ const (
 
 	// ID for the reconnection schedule
 	reconnectScheduleID = "crypto-ticker-reconnect"
+
+	// Config keys (must match manifest.json schema property names)
+	symbolsKey        = "symbols"
+	reconnectDelayKey = "reconnectDelay"
+	logPricesKey      = "logPrices"
+
+	// Default values
+	defaultReconnectDelay = 5
 )
 
 // CoinbaseSubscription message structure
@@ -74,36 +82,67 @@ var (
 func (p *cryptoTickerPlugin) OnInit() error {
 	pdk.Log(pdk.LogInfo, "Crypto Ticker Plugin initializing...")
 
-	// Get ticker configuration
-	tickerConfig, ok := pdk.GetConfig("tickers")
-	if !ok || tickerConfig == "" {
-		tickerConfig = "BTC,ETH" // Default tickers
-	}
-
-	tickers := parseTickerSymbols(tickerConfig)
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("Configured tickers: %v", tickers))
+	// Get ticker configuration from JSON schema config
+	symbols := getSymbols()
+	pdk.Log(pdk.LogInfo, fmt.Sprintf("Configured symbols: %v", symbols))
 
 	// Connect to WebSocket
 	// Errors won't fail init - reconnect logic will handle it
-	return connectAndSubscribe(tickers)
+	return connectAndSubscribe(symbols)
 }
 
-// parseTickerSymbols parses a comma-separated list of ticker symbols
-func parseTickerSymbols(tickerConfig string) []string {
-	parts := strings.Split(tickerConfig, ",")
-	tickers := make([]string, 0, len(parts))
-	for _, ticker := range parts {
-		ticker = strings.TrimSpace(ticker)
-		if ticker == "" {
-			continue
-		}
-		// Add -USD suffix if not present
-		if !strings.Contains(ticker, "-") {
-			ticker = ticker + "-USD"
-		}
-		tickers = append(tickers, ticker)
+// getSymbols reads the symbols array from config
+func getSymbols() []string {
+	defaultSymbols := []string{"BTC-USD"}
+	symbolsJSON, ok := pdk.GetConfig(symbolsKey)
+	if !ok || symbolsJSON == "" {
+		return defaultSymbols
 	}
-	return tickers
+
+	var symbols []string
+	if err := json.Unmarshal([]byte(symbolsJSON), &symbols); err != nil {
+		pdk.Log(pdk.LogWarn, fmt.Sprintf("failed to parse symbols config: %v, using defaults", err))
+		return defaultSymbols
+	}
+
+	if len(symbols) == 0 {
+		return defaultSymbols
+	}
+
+	// Normalize symbols - add -USD suffix if not present
+	for i, s := range symbols {
+		s = strings.TrimSpace(s)
+		if !strings.Contains(s, "-") {
+			symbols[i] = s + "-USD"
+		} else {
+			symbols[i] = s
+		}
+	}
+
+	return symbols
+}
+
+// getReconnectDelay reads the reconnect delay from config
+func getReconnectDelay() int32 {
+	delayStr, ok := pdk.GetConfig(reconnectDelayKey)
+	if !ok || delayStr == "" {
+		return defaultReconnectDelay
+	}
+
+	var delay int
+	if _, err := fmt.Sscanf(delayStr, "%d", &delay); err != nil || delay < 1 {
+		return defaultReconnectDelay
+	}
+	return int32(delay)
+}
+
+// shouldLogPrices reads the logPrices setting from config
+func shouldLogPrices() bool {
+	logStr, ok := pdk.GetConfig(logPricesKey)
+	if !ok || logStr == "" {
+		return false
+	}
+	return logStr == "true"
 }
 
 // connectAndSubscribe connects to Coinbase WebSocket and subscribes to tickers
@@ -164,14 +203,16 @@ func (p *cryptoTickerPlugin) OnTextMessage(input websocket.OnTextMessageRequest)
 	// Calculate 24h change percentage
 	change := calculatePercentChange(ticker.Open24h, ticker.Price)
 
-	// Log ticker information
-	pdk.Log(pdk.LogInfo, fmt.Sprintf("💰 %s: $%s (24h: %s%%) Bid: $%s Ask: $%s",
-		ticker.ProductID,
-		ticker.Price,
-		change,
-		ticker.BestBid,
-		ticker.BestAsk,
-	))
+	// Log ticker information (only if enabled in config)
+	if shouldLogPrices() {
+		pdk.Log(pdk.LogInfo, fmt.Sprintf("💰 %s: $%s (24h: %s%%) Bid: $%s Ask: $%s",
+			ticker.ProductID,
+			ticker.Price,
+			change,
+			ticker.BestBid,
+			ticker.BestAsk,
+		))
+	}
 
 	return nil
 }
@@ -196,10 +237,11 @@ func (p *cryptoTickerPlugin) OnClose(input websocket.OnCloseRequest) error {
 
 	// Only attempt reconnect for our connection
 	if input.ConnectionID == connectionID {
-		pdk.Log(pdk.LogInfo, "Scheduling reconnection attempt in 5 seconds...")
+		delay := getReconnectDelay()
+		pdk.Log(pdk.LogInfo, fmt.Sprintf("Scheduling reconnection attempt in %d seconds...", delay))
 
 		// Schedule a one-time reconnection attempt
-		_, err := host.SchedulerScheduleOneTime(5, "reconnect", reconnectScheduleID)
+		_, err := host.SchedulerScheduleOneTime(delay, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule reconnection: %v", err))
 		}
@@ -218,20 +260,16 @@ func (p *cryptoTickerPlugin) OnCallback(input scheduler.SchedulerCallbackRequest
 	pdk.Log(pdk.LogInfo, "Attempting to reconnect to Coinbase WebSocket API...")
 
 	// Get ticker configuration
-	tickerConfig, ok := pdk.GetConfig("tickers")
-	if !ok || tickerConfig == "" {
-		tickerConfig = "BTC,ETH"
-	}
-
-	tickers := parseTickerSymbols(tickerConfig)
+	symbols := getSymbols()
 
 	// Try to connect and subscribe
-	err := connectAndSubscribe(tickers)
+	err := connectAndSubscribe(symbols)
 	if err != nil {
-		pdk.Log(pdk.LogError, fmt.Sprintf("Reconnection failed: %v - will retry in 10 seconds", err))
+		delay := getReconnectDelay() * 2 // Double delay on failure
+		pdk.Log(pdk.LogError, fmt.Sprintf("Reconnection failed: %v - will retry in %d seconds", err, delay))
 
 		// Schedule another attempt
-		_, err := host.SchedulerScheduleOneTime(10, "reconnect", reconnectScheduleID)
+		_, err := host.SchedulerScheduleOneTime(delay, "reconnect", reconnectScheduleID)
 		if err != nil {
 			pdk.Log(pdk.LogError, fmt.Sprintf("Failed to schedule retry: %v", err))
 		}
