@@ -183,8 +183,8 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{
 		"ShareDescription": description,
-		"ShareInfo":        string(shareInfoJSON),
-		"APlayerScript":    string(scriptContent),
+		"ShareInfo":        template.JS(shareInfoJSON),
+		"APlayerScript":    template.JS(scriptContent),
 		"BaseURL":          baseURL,
 	}
 
