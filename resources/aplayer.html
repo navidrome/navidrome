@@ -18,7 +18,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #ffffff;
+            background: #f5f5f5;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -31,65 +31,55 @@
             width: 100%;
             max-width: 800px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            background: #ffffff;
             color: #333;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
+            border-bottom: 1px solid #e9ecef;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 10px;
             font-weight: 600;
+            color: #2c3e50;
         }
 
         .header p {
             font-size: 14px;
-            opacity: 0.9;
+            color: #7f8c8d;
         }
 
         .player-wrapper {
-            padding: 20px;
-            min-height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f9f9f9;
-            border-radius: 8px;
-            margin: 20px 0;
+            padding: 30px;
+            background: #ffffff;
         }
 
         #aplayer {
-            margin: 0;
-            width: 100% !important;
-            height: 300px !important;
-            min-height: 300px !important;
-            visibility: visible !important;
-            display: block !important;
-            opacity: 1 !important;
-            z-index: 10 !important;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            box-shadow: none !important;
+            border-radius: 0 !important;
         }
 
         .footer {
             padding: 20px;
             text-align: center;
             font-size: 12px;
-            color: #666;
-            border-top: 1px solid #eee;
+            color: #999;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
         }
 
         .footer a {
             color: #667eea;
             text-decoration: none;
+            font-weight: 500;
         }
 
         .footer a:hover {
@@ -98,13 +88,26 @@
 
         /* Make APlayer responsive */
         @media (max-width: 600px) {
-            .header h1 {
-                font-size: 20px;
+            body {
+                padding: 0;
+                background: #ffffff;
             }
 
             .container {
-                margin: 0;
                 border-radius: 0;
+                box-shadow: none;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .player-wrapper {
+                padding: 20px;
             }
         }
     </style>
