@@ -84,8 +84,13 @@ const OutlinedControl = (props) => {
     onChange,
   } = props
 
-  const { appliedUiSchemaOptions, showError, helperText, handleFocus, handleBlur } =
-    useControlState(props)
+  const {
+    appliedUiSchemaOptions,
+    showError,
+    helperText,
+    handleFocus,
+    handleBlur,
+  } = useControlState(props)
 
   if (!visible) {
     return null
@@ -171,8 +176,13 @@ const OutlinedNumberControl = (props) => {
 const OutlinedEnumControl = (props) => {
   const { data, id, enabled, path, handleChange, options, label, visible } =
     props
-  const { appliedUiSchemaOptions, showError, helperText, handleFocus, handleBlur } =
-    useControlState(props)
+  const {
+    appliedUiSchemaOptions,
+    showError,
+    helperText,
+    handleFocus,
+    handleBlur,
+  } = useControlState(props)
 
   if (!visible) {
     return null
