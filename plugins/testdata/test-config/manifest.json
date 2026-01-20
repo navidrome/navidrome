@@ -2,5 +2,60 @@
   "name": "Test Config Plugin",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "A test plugin for config service integration testing"
+  "description": "A test plugin for config service integration testing",
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "api_key": {
+          "type": "string",
+          "title": "API Key",
+          "minLength": 1
+        },
+        "max_retries": {
+          "type": "string",
+          "title": "Max Retries"
+        },
+        "timeout": {
+          "type": "string",
+          "title": "Timeout"
+        },
+        "users": {
+          "type": "array",
+          "title": "Users",
+          "items": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "title": "Username",
+                "minLength": 1
+              },
+              "token": {
+                "type": "string",
+                "title": "Token",
+                "minLength": 1
+              }
+            },
+            "required": ["username", "token"]
+          }
+        },
+        "settings": {
+          "type": "object",
+          "title": "Settings",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled"
+            },
+            "count": {
+              "type": "integer",
+              "title": "Count"
+            }
+          }
+        }
+      },
+      "required": ["api_key"]
+    }
+  }
 }

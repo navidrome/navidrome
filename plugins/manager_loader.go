@@ -230,11 +230,9 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Parse config from JSON
-	var pluginConfig map[string]string
-	if p.Config != "" {
-		if err := json.Unmarshal([]byte(p.Config), &pluginConfig); err != nil {
-			return fmt.Errorf("parsing plugin config: %w", err)
-		}
+	pluginConfig, err := parsePluginConfig(p.Config)
+	if err != nil {
+		return err
 	}
 
 	// Parse users from JSON
@@ -378,4 +376,31 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	callPluginInit(m.ctx, m.plugins[p.ID])
 
 	return nil
+}
+
+// parsePluginConfig parses a JSON config string into a map of string values.
+// For Extism, all config values must be strings, so non-string values are serialized as JSON.
+func parsePluginConfig(configJSON string) (map[string]string, error) {
+	if configJSON == "" {
+		return nil, nil
+	}
+	var rawConfig map[string]any
+	if err := json.Unmarshal([]byte(configJSON), &rawConfig); err != nil {
+		return nil, fmt.Errorf("parsing plugin config: %w", err)
+	}
+	pluginConfig := make(map[string]string)
+	for key, value := range rawConfig {
+		switch v := value.(type) {
+		case string:
+			pluginConfig[key] = v
+		default:
+			// Serialize non-string values as JSON
+			jsonBytes, err := json.Marshal(v)
+			if err != nil {
+				return nil, fmt.Errorf("serializing config value %q: %w", key, err)
+			}
+			pluginConfig[key] = string(jsonBytes)
+		}
+	}
+	return pluginConfig, nil
 }

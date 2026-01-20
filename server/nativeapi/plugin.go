@@ -171,13 +171,26 @@ func isValidJSON(s string) bool {
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 
-// validateAndUpdateConfig validates the config JSON and updates the plugin.
+// validateAndUpdateConfig validates the config JSON against the plugin's schema and updates the plugin.
 // Returns an error if validation or update fails (error response already written).
 func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJSON string, w http.ResponseWriter) error {
+	// Basic JSON syntax check
 	if configJSON != "" && !isValidJSON(configJSON) {
 		http.Error(w, "Invalid JSON in config field", http.StatusBadRequest)
 		return errors.New("invalid JSON")
 	}
+
+	// Validate against plugin's config schema
+	if err := pm.ValidatePluginConfig(ctx, id, configJSON); err != nil {
+		log.Warn(ctx, "Config validation failed", "id", id, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		// Try to return structured validation errors if available
+		response := map[string]any{"message": err.Error()}
+		_ = json.NewEncoder(w).Encode(response)
+		return err
+	}
+
 	if err := pm.UpdatePluginConfig(ctx, id, configJSON); err != nil {
 		log.Error(ctx, "Error updating plugin config", "id", id, err)
 		http.Error(w, "Error updating plugin configuration: "+err.Error(), http.StatusInternalServerError)
