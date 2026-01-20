@@ -84,7 +84,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
 <div id="navidrome-floating-player">
   <div id="nav-player-container" class="nav-collapsed">
     <div id="nav-player-toggle" onclick="toggleNavPlayer()">
-      <span id="nav-toggle-icon">🎵</span>
+      <span id="nav-toggle-icon">♪</span>
     </div>
     <div id="nav-player-content">
       <iframe src="${url}" frameborder="0" allowfullscreen></iframe>
@@ -107,6 +107,8 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 #nav-player-container.nav-collapsed {
@@ -122,13 +124,22 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
 #nav-player-toggle {
   width: 60px;
   height: 60px;
+  min-height: 60px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 12px;
   transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+#nav-player-container.nav-expanded #nav-player-toggle {
+  border-radius: 12px 12px 0 0;
+}
+
+#nav-player-container.nav-collapsed #nav-player-toggle {
+  border-radius: 12px;
 }
 
 #nav-player-toggle:hover {
@@ -138,17 +149,20 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
 
 #nav-toggle-icon {
   font-size: 28px;
+  color: white;
   transition: transform 0.3s ease;
+  user-select: none;
 }
 
 #nav-player-container.nav-expanded #nav-toggle-icon {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 #nav-player-content {
   display: none;
-  width: 380px;
-  height: 460px;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
 }
 
 #nav-player-container.nav-expanded #nav-player-content {
@@ -159,6 +173,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   width: 100%;
   height: 100%;
   border: none;
+  display: block;
 }
 
 /* 移动端适配 */
@@ -172,10 +187,6 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
     width: calc(100vw - 20px);
     height: 480px;
     max-width: 380px;
-  }
-
-  #nav-player-content {
-    width: 100%;
   }
 }
 </style>
