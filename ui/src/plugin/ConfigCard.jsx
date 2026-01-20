@@ -139,12 +139,14 @@ export const ConfigCard = ({
           </Box>
         )}
 
-        <SchemaConfigEditor
-          schema={schema}
-          uiSchema={uiSchema}
-          data={configData}
-          onChange={handleChange}
-        />
+        <Box mt={formattedErrors.length > 0 ? 0 : 2}>
+          <SchemaConfigEditor
+            schema={schema}
+            uiSchema={uiSchema}
+            data={configData}
+            onChange={handleChange}
+          />
+        </Box>
       </CardContent>
     </Card>
   )
