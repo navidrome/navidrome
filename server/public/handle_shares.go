@@ -197,6 +197,9 @@ func (pub *Router) handleAPlayer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 		return
 	}
+
+	// Allow embedding in iframes for APlayer share pages
+	w.Header().Set("X-Frame-Options", "ALLOWALL")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(buf.Bytes())
 }
