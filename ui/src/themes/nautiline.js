@@ -414,6 +414,13 @@ const NautilineTheme = {
           },
         },
       },
+      button: {
+        color: colors.text.primary,
+        '&:hover': {
+          backgroundColor: colors.accent.faded,
+          color: colors.text.primary,
+        },
+      },
     },
     MuiListItemIcon: {
       root: menuIconStyle(),
@@ -421,6 +428,17 @@ const NautilineTheme = {
     MuiListItemText: {
       primary: {
         color: 'inherit',
+      },
+    },
+    MuiMenuItem: {
+      root: {
+        fontSize: '0.875rem',
+        paddingTop: '4px',
+        paddingBottom: '4px',
+        paddingLeft: '10px',
+        margin: '5px',
+        borderRadius: radii.md,
+        color: colors.text.primary,
       },
     },
     MuiDrawer: {
@@ -563,6 +581,11 @@ const NautilineTheme = {
         },
       },
     },
+    NDAppBar: {
+      root: {
+        color: colors.text.primary,
+      },
+    },
     NDLogin: {
       main: {
         backgroundColor: colors.background.primary,
@@ -671,7 +694,7 @@ const NautilineTheme = {
     },
     RaMenuItemLink: {
       root: {
-        color: colors.text.primary,
+        color: `${colors.text.primary} !important`,
         '& .MuiListItemIcon-root': menuIconStyle(),
         '&[class*="makeStyles-active"]': activeLinkStyle,
       },
@@ -755,6 +778,11 @@ const NautilineTheme = {
             color: colors.text.secondary,
           },
         },
+      },
+    },
+    RaPaginationActions: {
+      currentPageButton: {
+        backgroundColor: colors.accent.faded,
       },
     },
   },
