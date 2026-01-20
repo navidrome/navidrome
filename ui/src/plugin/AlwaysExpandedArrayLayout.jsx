@@ -29,6 +29,10 @@ const useStyles = makeStyles((theme) => ({
     '&:last-child': {
       marginBottom: 0,
     },
+    // Remove margin from last form control inside array items
+    '& .MuiFormControl-root:last-child': {
+      marginBottom: 0,
+    },
   },
   deleteButton: {
     position: 'absolute',
