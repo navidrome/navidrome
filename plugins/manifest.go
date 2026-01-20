@@ -3,6 +3,8 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:generate go tool go-jsonschema -p plugins --struct-name-from-title -o manifest_gen.go manifest-schema.json
@@ -28,6 +30,26 @@ func (m *Manifest) Validate() error {
 		if m.Permissions.Users == nil {
 			return fmt.Errorf("'subsonicapi' permission requires 'users' permission to be declared")
 		}
+	}
+
+	// Validate config schema if present
+	if m.Config != nil && m.Config.Schema != nil {
+		if err := validateConfigSchema(m.Config.Schema); err != nil {
+			return fmt.Errorf("invalid config schema: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// validateConfigSchema validates that the schema is a valid JSON Schema that can be compiled.
+func validateConfigSchema(schema map[string]any) error {
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource("schema.json", schema); err != nil {
+		return fmt.Errorf("invalid schema structure: %w", err)
+	}
+	if _, err := compiler.Compile("schema.json"); err != nil {
+		return err
 	}
 	return nil
 }

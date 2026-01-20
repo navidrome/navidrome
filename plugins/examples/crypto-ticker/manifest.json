@@ -4,6 +4,61 @@
   "version": "1.0.0",
   "description": "Real-time cryptocurrency price ticker using Coinbase WebSocket API",
   "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/crypto-ticker",
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "symbols": {
+          "type": "array",
+          "title": "Trading Pairs",
+          "description": "Cryptocurrency trading pairs to track (default: BTC-USD)",
+          "items": {
+            "type": "string",
+            "title": "Trading Pair",
+            "pattern": "^[A-Z]{3,5}-[A-Z]{3,5}$",
+            "description": "Trading pair in the format BASE-QUOTE (e.g., BTC-USD, ETH-USD)"
+          },
+          "default": ["BTC-USD"]
+        },
+        "reconnectDelay": {
+          "type": "integer",
+          "title": "Reconnect Delay",
+          "description": "Delay in seconds before attempting to reconnect after connection loss",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60
+        },
+        "logPrices": {
+          "type": "boolean",
+          "title": "Log Prices",
+          "description": "Whether to log price updates to the server log",
+          "default": false
+        }
+      }
+    },
+    "uiSchema": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/symbols"
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/reconnectDelay"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/logPrices"
+            }
+          ]
+        }
+      ]
+    }
+  },
   "permissions": {
     "config": {
       "reason": "To read ticker symbols configuration"

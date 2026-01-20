@@ -388,6 +388,8 @@
       },
       "messages": {
         "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
+        "configValidationError": "Configuration validation failed:",
+        "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
         "clickPermissions": "Click a permission for details",
         "noConfig": "No configuration set",
         "allUsersHelp": "When enabled, the plugin will have access to all users, including those created in the future.",

@@ -1,55 +1,119 @@
-import React, { useCallback } from 'react'
-import {
-  Card,
-  CardContent,
-  Typography,
-  TextField as MuiTextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Paper,
-} from '@material-ui/core'
-import { MdDelete } from 'react-icons/md'
+import React, { useCallback, useState, useMemo } from 'react'
+import PropTypes from 'prop-types'
+import { Card, CardContent, Typography, Box } from '@material-ui/core'
+import Alert from '@material-ui/lab/Alert'
+import { SchemaConfigEditor } from './SchemaConfigEditor'
+
+// Navigate schema by path parts to find the title for a field
+const findFieldTitle = (schema, parts) => {
+  let currentSchema = schema
+  let fieldName = parts[parts.length - 1] // Default to last part
+
+  for (const part of parts) {
+    if (!currentSchema) break
+
+    // Skip array indices (just move to items schema)
+    if (/^\d+$/.test(part)) {
+      if (currentSchema.items) {
+        currentSchema = currentSchema.items
+      }
+      continue
+    }
+
+    // Navigate to property and always update fieldName
+    if (currentSchema.properties?.[part]) {
+      const propSchema = currentSchema.properties[part]
+      fieldName = propSchema.title || part
+      currentSchema = propSchema
+    }
+  }
+
+  return fieldName
+}
+
+// Extract human-readable field name from JSONForms error
+const getFieldName = (error, schema) => {
+  // JSONForms errors can have different path formats:
+  // - dataPath: "users.1.token" (dot-separated)
+  // - instancePath: "/users/1/token" (slash-separated)
+  // - property: "users.1.username" (dot-separated)
+  const dataPath = error.dataPath || ''
+  const instancePath = error.instancePath || ''
+  const property = error.property || ''
+
+  // Try dataPath first (dot-separated like "users.1.token")
+  if (dataPath) {
+    const parts = dataPath.split('.').filter(Boolean)
+    if (parts.length > 0) {
+      return findFieldTitle(schema, parts)
+    }
+  }
+
+  // Try property (also dot-separated)
+  if (property) {
+    const parts = property.split('.').filter(Boolean)
+    if (parts.length > 0) {
+      return findFieldTitle(schema, parts)
+    }
+  }
+
+  // Fall back to instancePath (slash-separated like "/users/1/token")
+  if (instancePath) {
+    const parts = instancePath.split('/').filter(Boolean)
+    if (parts.length > 0) {
+      return findFieldTitle(schema, parts)
+    }
+  }
+
+  // Try to extract from schemaPath like "#/properties/users/items/properties/username/minLength"
+  const schemaPath = error.schemaPath || ''
+  const propMatches = [...schemaPath.matchAll(/\/properties\/([^/]+)/g)]
+  if (propMatches.length > 0) {
+    const parts = propMatches.map((m) => m[1])
+    return findFieldTitle(schema, parts)
+  }
+
+  return null
+}
 
 export const ConfigCard = ({
-  configPairs,
-  onConfigPairsChange,
+  manifest,
+  configData,
+  onConfigDataChange,
   classes,
   translate,
 }) => {
-  const handleKeyChange = useCallback(
-    (index, newKey) => {
-      const newPairs = [...configPairs]
-      newPairs[index] = { ...newPairs[index], key: newKey }
-      onConfigPairsChange(newPairs)
+  const [validationErrors, setValidationErrors] = useState([])
+
+  // Handle changes from JSONForms
+  const handleChange = useCallback(
+    (newData, errors) => {
+      setValidationErrors(errors || [])
+      onConfigDataChange(newData, errors)
     },
-    [configPairs, onConfigPairsChange],
+    [onConfigDataChange],
   )
 
-  const handleValueChange = useCallback(
-    (index, newValue) => {
-      const newPairs = [...configPairs]
-      newPairs[index] = { ...newPairs[index], value: newValue }
-      onConfigPairsChange(newPairs)
-    },
-    [configPairs, onConfigPairsChange],
-  )
+  // Only show config card if manifest has config schema defined
+  const hasConfigSchema = manifest?.config?.schema
 
-  const handleDeleteRow = useCallback(
-    (index) => {
-      const newPairs = configPairs.filter((_, i) => i !== index)
-      onConfigPairsChange(newPairs)
-    },
-    [configPairs, onConfigPairsChange],
-  )
+  // Format validation errors with proper field names
+  const formattedErrors = useMemo(() => {
+    if (!hasConfigSchema) {
+      return []
+    }
+    const { schema } = manifest.config
+    return validationErrors.map((error) => ({
+      fieldName: getFieldName(error, schema),
+      message: error.message,
+    }))
+  }, [validationErrors, manifest, hasConfigSchema])
 
-  const handleAddRow = useCallback(() => {
-    onConfigPairsChange([...configPairs, { key: '', value: '' }])
-  }, [configPairs, onConfigPairsChange])
+  if (!hasConfigSchema) {
+    return null
+  }
+
+  const { schema, uiSchema } = manifest.config
 
   return (
     <Card className={classes.section}>
@@ -57,95 +121,44 @@ export const ConfigCard = ({
         <Typography variant="h6" className={classes.sectionTitle}>
           {translate('resources.plugin.sections.configuration')}
         </Typography>
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          {translate('resources.plugin.messages.configHelp')}
-        </Typography>
 
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small" className={classes.configTable}>
-            <TableHead>
-              <TableRow>
-                <TableCell width="40%">
-                  {translate('resources.plugin.fields.configKey')}
-                </TableCell>
-                <TableCell width="50%">
-                  {translate('resources.plugin.fields.configValue')}
-                </TableCell>
-                <TableCell width="10%" align="right">
-                  <IconButton
-                    size="small"
-                    onClick={handleAddRow}
-                    aria-label={translate('resources.plugin.actions.addConfig')}
-                    className={classes.configActionIconButton}
-                  >
-                    +
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {configPairs.map((pair, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <MuiTextField
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={pair.key}
-                      onChange={(e) => handleKeyChange(index, e.target.value)}
-                      placeholder={translate(
-                        'resources.plugin.placeholders.configKey',
-                      )}
-                      InputProps={{
-                        className: classes.configTableInput,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <MuiTextField
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      multiline
-                      minRows={1}
-                      value={pair.value}
-                      onChange={(e) => handleValueChange(index, e.target.value)}
-                      placeholder={translate(
-                        'resources.plugin.placeholders.configValue',
-                      )}
-                      InputProps={{
-                        className: classes.configTableInput,
-                      }}
-                      inputProps={{
-                        style: { resize: 'vertical' },
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteRow(index)}
-                      aria-label={translate('ra.action.delete')}
-                      className={classes.configActionIconButton}
-                    >
-                      <MdDelete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {configPairs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    <Typography variant="body2" color="textSecondary">
-                      {translate('resources.plugin.messages.noConfig')}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {formattedErrors.length > 0 && (
+          <Box mb={2}>
+            <Alert severity="error">
+              {translate('resources.plugin.messages.configValidationError')}
+              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                {formattedErrors.map((error, index) => (
+                  <li key={index}>
+                    {error.fieldName && <strong>{error.fieldName}</strong>}
+                    {error.fieldName && ': '}
+                    {error.message}
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          </Box>
+        )}
+
+        <SchemaConfigEditor
+          schema={schema}
+          uiSchema={uiSchema}
+          data={configData}
+          onChange={handleChange}
+        />
       </CardContent>
     </Card>
   )
+}
+
+ConfigCard.propTypes = {
+  manifest: PropTypes.shape({
+    config: PropTypes.shape({
+      schema: PropTypes.object,
+      uiSchema: PropTypes.object,
+    }),
+  }),
+  configData: PropTypes.object,
+  onConfigDataChange: PropTypes.func.isRequired,
+  classes: PropTypes.object.isRequired,
+  translate: PropTypes.func.isRequired,
 }

@@ -25,5 +25,74 @@
     "artwork": {
       "reason": "To get track artwork URLs for rich presence display"
     }
+  },
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "clientid": {
+          "type": "string",
+          "title": "Discord Application Client ID",
+          "description": "The Client ID from your Discord Developer Application. Create one at https://discord.com/developers/applications",
+          "minLength": 17,
+          "maxLength": 20,
+          "pattern": "^[0-9]+$"
+        },
+        "users": {
+          "type": "array",
+          "title": "User Tokens",
+          "description": "Discord tokens for each Navidrome user. WARNING: Store tokens securely!",
+          "default": [{}],
+          "items": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "title": "Navidrome Username",
+                "description": "The Navidrome username to associate with this Discord token",
+                "minLength": 1
+              },
+              "token": {
+                "type": "string",
+                "title": "Discord Token",
+                "description": "The user's Discord token (keep this secret!)",
+                "minLength": 1
+              }
+            },
+            "required": ["username", "token"]
+          }
+        }
+      },
+      "required": ["clientid"]
+    },
+    "uiSchema": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/clientid"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/users",
+          "options": {
+            "elementLabelProp": "username",
+            "detail": {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/username"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/token"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
   }
 }

@@ -22,6 +22,15 @@ const useStyles = makeStyles((theme) => ({
         theme.palette.success?.main || theme.palette.primary.main,
     },
   },
+  errorSwitch: {
+    '& .MuiSwitch-thumb': {
+      backgroundColor: theme.palette.warning.main,
+    },
+    '& .MuiSwitch-track': {
+      backgroundColor: theme.palette.warning.light,
+      opacity: 0.7,
+    },
+  },
 }))
 
 /**
@@ -146,7 +155,7 @@ const ToggleEnabledSwitch = ({
       checked={record?.enabled ?? false}
       onClick={handleClick}
       disabled={isDisabled}
-      className={classes.enabledSwitch}
+      className={isDisabled ? classes.errorSwitch : classes.enabledSwitch}
       size={size}
       color="primary"
     />
