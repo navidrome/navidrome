@@ -572,6 +572,8 @@
     "embedTip": "Tip: Copy this code and paste it into your webpage HTML to use",
     "floatingPlayerLeft": "Bottom Left Floating Player",
     "floatingPlayerLeftDesc": "Collapsible floating player in bottom left corner, users can click to expand/collapse",
+    "fixedBottomPlayer": "Fixed Bottom Player",
+    "fixedBottomPlayerDesc": "Fixed at bottom of page, always visible (similar to MetingJS fixed mode)",
     "basicIframe": "Basic iframe",
     "basicIframeDesc": "Simple iframe embed, suitable for fixed position display",
     "responsiveIframe": "Responsive iframe",

@@ -79,7 +79,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   <iframe src="${url}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe>
 </div>`
 
-  // 左下角悬浮播放器嵌入代码
+  // 左下角悬浮播放器嵌入代码 - 参考 MetingJS 风格
   const floatingPlayerEmbed = `<!-- Navidrome 悬浮播放器 -->
 <div id="navidrome-floating-player">
   <div id="nav-player-container" class="nav-collapsed">
@@ -106,7 +106,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
 }
@@ -130,7 +130,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 
@@ -150,7 +150,7 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
 #nav-toggle-icon {
   font-size: 28px;
   color: white;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
 }
 
@@ -194,13 +194,8 @@ export const EmbedCodeField = ({ url, title = 'Music Player' }) => {
 <script>
 function toggleNavPlayer() {
   const container = document.getElementById('nav-player-container');
-  if (container.classList.contains('nav-collapsed')) {
-    container.classList.remove('nav-collapsed');
-    container.classList.add('nav-expanded');
-  } else {
-    container.classList.remove('nav-expanded');
-    container.classList.add('nav-collapsed');
-  }
+  container.classList.toggle('nav-collapsed');
+  container.classList.toggle('nav-expanded');
 }
 
 // 可选：点击播放器外部区域时收起
@@ -215,6 +210,37 @@ document.addEventListener('click', function(event) {
 });
 </script>`
 
+  // 固定底部播放器 - 参考 MetingJS fixed 模式
+  const fixedBottomEmbed = `<!-- Navidrome 固定底部播放器 -->
+<div id="navidrome-fixed-player">
+  <iframe src="${url}" frameborder="0" allowfullscreen></iframe>
+</div>
+
+<style>
+#navidrome-fixed-player {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 80px;
+  z-index: 9999;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+#navidrome-fixed-player iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* 为页面内容添加底部边距，避免被播放器遮挡 */
+body {
+  padding-bottom: 80px;
+}
+</style>`
+
   // 右下角悬浮播放器（备选）
   const floatingPlayerRightEmbed = floatingPlayerEmbed
     .replace('left: 20px;', 'right: 20px;')
@@ -225,6 +251,11 @@ document.addEventListener('click', function(event) {
       label: translate('message.floatingPlayerLeft'),
       code: floatingPlayerEmbed,
       description: translate('message.floatingPlayerLeftDesc'),
+    },
+    {
+      label: translate('message.fixedBottomPlayer'),
+      code: fixedBottomEmbed,
+      description: translate('message.fixedBottomPlayerDesc'),
     },
     {
       label: translate('message.basicIframe'),
