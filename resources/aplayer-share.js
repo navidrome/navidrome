@@ -76,9 +76,10 @@
     console.log('Container styles:', window.getComputedStyle(container));
 
     console.log('Creating APlayer with playlist:', playlist);
-    
+
+    let ap;
     try {
-      const ap = new APlayer({
+      ap = new APlayer({
         container: container,
         lrcType: 0,
         audio: playlist,
@@ -98,19 +99,19 @@
       // Log initialization
       console.log('APlayer initialized with', playlist.length, 'tracks');
       console.log('APlayer instance:', ap);
-      
+
       // Check if APlayer created DOM elements
       setTimeout(() => {
         const aplayerElements = container.querySelectorAll('*');
         console.log('APlayer created', aplayerElements.length, 'child elements');
-        
+
         if (aplayerElements.length === 0) {
           console.error('APlayer did not create any child elements - initialization failed');
         } else {
           console.log('APlayer child elements:', aplayerElements);
         }
       }, 100);
-      
+
     } catch (error) {
       console.error('APlayer initialization failed:', error);
       return;
