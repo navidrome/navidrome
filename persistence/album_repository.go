@@ -119,7 +119,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
-		"starred":         optionalBoolFilter,
+		"starred":         starredFilter,
 		"has_rating":      hasRatingFilter,
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
