@@ -106,6 +106,11 @@ func booleanFilter(field string, value any) Sqlizer {
 	return Eq{field: v == "true"}
 }
 
+func optionalBoolFilter(field string, value any) Sqlizer {
+	v := strings.ToLower(value.(string))
+	return Expr("COALESCE("+field+", 0) = ?", v == "true")
+}
+
 func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {
 	return func(field string, value any) Sqlizer {
 		v := strings.ToLower(value.(string))
