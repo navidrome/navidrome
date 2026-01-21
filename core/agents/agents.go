@@ -131,26 +131,14 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 	case consts.VariousArtistsID:
 		return "", nil
 	}
-	start := time.Now()
-	for _, enabledAgent := range a.getEnabledAgentNames() {
-		ag := a.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
+
+	return callAgentMethod(ctx, a, "GetArtistMBID", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistMBIDRetriever)
 		if !ok {
-			continue
+			return "", ErrNotFound
 		}
-		mbid, err := retriever.GetArtistMBID(ctx, id, name)
-		if mbid != "" && err == nil {
-			log.Debug(ctx, "Got MBID", "agent", ag.AgentName(), "artist", name, "mbid", mbid, "elapsed", time.Since(start))
-			return mbid, nil
-		}
-	}
-	return "", ErrNotFound
+		return retriever.GetArtistMBID(ctx, id, name)
+	})
 }
 
 func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
@@ -160,26 +148,14 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 	case consts.VariousArtistsID:
 		return "", nil
 	}
-	start := time.Now()
-	for _, enabledAgent := range a.getEnabledAgentNames() {
-		ag := a.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
+
+	return callAgentMethod(ctx, a, "GetArtistURL", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistURLRetriever)
 		if !ok {
-			continue
+			return "", ErrNotFound
 		}
-		url, err := retriever.GetArtistURL(ctx, id, name, mbid)
-		if url != "" && err == nil {
-			log.Debug(ctx, "Got External Url", "agent", ag.AgentName(), "artist", name, "url", url, "elapsed", time.Since(start))
-			return url, nil
-		}
-	}
-	return "", ErrNotFound
+		return retriever.GetArtistURL(ctx, id, name, mbid)
+	})
 }
 
 func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
@@ -189,26 +165,14 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 	case consts.VariousArtistsID:
 		return "", nil
 	}
-	start := time.Now()
-	for _, enabledAgent := range a.getEnabledAgentNames() {
-		ag := a.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
+
+	return callAgentMethod(ctx, a, "GetArtistBiography", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistBiographyRetriever)
 		if !ok {
-			continue
+			return "", ErrNotFound
 		}
-		bio, err := retriever.GetArtistBiography(ctx, id, name, mbid)
-		if err == nil {
-			log.Debug(ctx, "Got Biography", "agent", ag.AgentName(), "artist", name, "len", len(bio), "elapsed", time.Since(start))
-			return bio, nil
-		}
-	}
-	return "", ErrNotFound
+		return retriever.GetArtistBiography(ctx, id, name, mbid)
+	})
 }
 
 // GetSimilarArtists returns similar artists by id, name, and/or mbid. Because some artists returned from an enabled
@@ -257,7 +221,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 		return nil, nil
 	}
 
-	return callAgentMethod(ctx, a, "GetArtistImages", func(ag Interface) ([]ExternalImage, error) {
+	return callAgentSliceMethod(ctx, a, "GetArtistImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(ArtistImageRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -278,7 +242,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 
 	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
 
-	return callAgentMethod(ctx, a, "GetArtistTopSongs", func(ag Interface) ([]Song, error) {
+	return callAgentSliceMethod(ctx, a, "GetArtistTopSongs", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(ArtistTopSongsRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -291,27 +255,14 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 	if name == consts.UnknownAlbum {
 		return nil, ErrNotFound
 	}
-	start := time.Now()
-	for _, enabledAgent := range a.getEnabledAgentNames() {
-		ag := a.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
+
+	return callAgentMethod(ctx, a, "GetAlbumInfo", func(ag Interface) (*AlbumInfo, error) {
 		retriever, ok := ag.(AlbumInfoRetriever)
 		if !ok {
-			continue
+			return nil, ErrNotFound
 		}
-		album, err := retriever.GetAlbumInfo(ctx, name, artist, mbid)
-		if err == nil {
-			log.Debug(ctx, "Got Album Info", "agent", ag.AgentName(), "album", name, "artist", artist,
-				"mbid", mbid, "elapsed", time.Since(start))
-			return album, nil
-		}
-	}
-	return nil, ErrNotFound
+		return retriever.GetAlbumInfo(ctx, name, artist, mbid)
+	})
 }
 
 func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]ExternalImage, error) {
@@ -319,7 +270,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 		return nil, ErrNotFound
 	}
 
-	return callAgentMethod(ctx, a, "GetAlbumImages", func(ag Interface) ([]ExternalImage, error) {
+	return callAgentSliceMethod(ctx, a, "GetAlbumImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(AlbumImageRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -331,7 +282,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 // GetSimilarSongsByTrack returns similar songs for a given track. Because some songs returned from an enabled
 // agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
-	return callAgentMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
+	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByTrackRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -343,7 +294,7 @@ func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, m
 // GetSimilarSongsByAlbum returns similar songs for a given album. Because some songs returned from an enabled
 // agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
-	return callAgentMethod(ctx, a, "GetSimilarSongsByAlbum", func(ag Interface) ([]Song, error) {
+	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByAlbum", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByAlbumRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -362,7 +313,7 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 		return nil, nil
 	}
 
-	return callAgentMethod(ctx, a, "GetSimilarSongsByArtist", func(ag Interface) ([]Song, error) {
+	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByArtist", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByArtistRetriever)
 		if !ok {
 			return nil, ErrNotFound
@@ -371,7 +322,32 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 	})
 }
 
-func callAgentMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
+func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
+	var zero T
+	start := time.Now()
+	for _, enabledAgent := range agents.getEnabledAgentNames() {
+		ag := agents.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		result, err := fn(ag)
+		if err != nil {
+			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
+			continue
+		}
+
+		if result != zero {
+			log.Debug(ctx, "Got result", "method", methodName, "agent", ag.AgentName(), "elapsed", time.Since(start))
+			return result, nil
+		}
+	}
+	return zero, ErrNotFound
+}
+
+func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
 	start := time.Now()
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
 		ag := agents.getAgent(enabledAgent)
