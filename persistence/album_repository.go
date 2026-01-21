@@ -150,7 +150,11 @@ func recentlyPlayedFilter(string, interface{}) Sqlizer {
 }
 
 func hasRatingFilter(field string, value any) Sqlizer {
-	v := strings.ToLower(value.(string))
+	v, ok := value.(string)
+	if !ok {
+		return nil
+	}
+	v = strings.ToLower(v)
 	if v == "false" {
 		return Expr("COALESCE(rating, 0) = ?", 0)
 	}

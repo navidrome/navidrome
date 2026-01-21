@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -414,6 +415,50 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
+		})
+	})
+
+	Context("Filters", func() {
+		var mfWithoutAnnotation model.MediaFile
+
+		BeforeEach(func() {
+			mfWithoutAnnotation = model.MediaFile{ID: "no-annotation-file", LibraryID: 1, Path: "/test/no-annotation.mp3", Title: "No Annotation"}
+			Expect(mr.Put(&mfWithoutAnnotation)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = mr.Delete(mfWithoutAnnotation.ID)
+		})
+
+		Describe("starred", func() {
+			It("false includes items without annotations", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				var found bool
+				for _, f := range files {
+					if f.ID == mfWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "MediaFile without annotation should be included in starred=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				for _, f := range files {
+					Expect(f.ID).ToNot(Equal(mfWithoutAnnotation.ID))
+				}
+			})
 		})
 	})
 

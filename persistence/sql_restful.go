@@ -107,7 +107,11 @@ func booleanFilter(field string, value any) Sqlizer {
 }
 
 func starredFilter(_ string, value any) Sqlizer {
-	v := strings.ToLower(value.(string))
+	v, ok := value.(string)
+	if !ok {
+		return nil
+	}
+	v = strings.ToLower(v)
 	return Expr("COALESCE(starred, 0) = ?", v == "true")
 }
 
