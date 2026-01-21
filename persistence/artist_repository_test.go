@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
@@ -382,6 +383,54 @@ var _ = Describe("ArtistRepository", func() {
 					idx, err = repo.GetIndex(false, []int{999})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(0)) // Even admin users need valid library associations
+				})
+			})
+		})
+
+		Describe("Filters", func() {
+			var artistWithoutAnnotation model.Artist
+
+			BeforeEach(func() {
+				// Create artist without any annotation
+				artistWithoutAnnotation = model.Artist{ID: "no-annotation-artist", Name: "No Annotation Artist"}
+				err := createArtistWithLibrary(repo, &artistWithoutAnnotation, 1)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				if raw, ok := repo.(*artistRepository); ok {
+					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithoutAnnotation.ID}))
+				}
+			})
+
+			Describe("starred", func() {
+				It("false includes items without annotations", func() {
+					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+						Filters: map[string]any{"starred": "false"},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					artists := res.(model.Artists)
+
+					var found bool
+					for _, a := range artists {
+						if a.ID == artistWithoutAnnotation.ID {
+							found = true
+							break
+						}
+					}
+					Expect(found).To(BeTrue(), "Artist without annotation should be included in starred=false filter")
+				})
+
+				It("true excludes items without annotations", func() {
+					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+						Filters: map[string]any{"starred": "true"},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					artists := res.(model.Artists)
+
+					for _, a := range artists {
+						Expect(a.ID).ToNot(Equal(artistWithoutAnnotation.ID))
+					}
 				})
 			})
 		})
