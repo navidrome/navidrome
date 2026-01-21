@@ -174,7 +174,9 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
-	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
+	// Chunk size of 100 lines, as each line can generate up to 4 lookup candidates
+	// (NFC/NFD × raw/lowercase), and SQLite has a max expression tree depth of 1000.
+	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 100) {
 		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
