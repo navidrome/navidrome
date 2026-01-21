@@ -32,7 +32,7 @@ const (
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
-	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -256,7 +256,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
-	g.Go(func() error { e.callGetSimilar(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
+	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
@@ -275,22 +275,22 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
+	e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
+		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 		return nil, ctx.Err()
 	}
 
 	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
 	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
+			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 			return ctx.Err()
 		}
 
@@ -614,7 +614,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	}
 }
 
-func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
+func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
 	artistName := artist.Name()
 	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artistName, artist.MbzArtistID, limit)
