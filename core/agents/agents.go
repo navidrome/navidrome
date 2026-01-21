@@ -279,8 +279,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 	})
 }
 
-// GetSimilarSongsByTrack returns similar songs for a given track. Because some songs returned from an enabled
-// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+// GetSimilarSongsByTrack returns similar songs for a given track.
 func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByTrackRetriever)
@@ -291,8 +290,7 @@ func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, m
 	})
 }
 
-// GetSimilarSongsByAlbum returns similar songs for a given album. Because some songs returned from an enabled
-// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+// GetSimilarSongsByAlbum returns similar songs for a given album.
 func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByAlbum", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByAlbumRetriever)
@@ -303,8 +301,7 @@ func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, m
 	})
 }
 
-// GetSimilarSongsByArtist returns similar songs for a given artist. Because some songs returned from an enabled
-// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+// GetSimilarSongsByArtist returns similar songs for a given artist.
 func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]Song, error) {
 	switch id {
 	case consts.UnknownArtistID:
