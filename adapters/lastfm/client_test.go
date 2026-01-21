@@ -126,12 +126,13 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.trackGetSimilar(context.Background(), "Believe", "Cher", 3)
+			similar, err := client.trackGetSimilar(context.Background(), "Just Can't Get Enough", "Depeche Mode", 5)
 			Expect(err).To(BeNil())
-			Expect(len(similar.Track)).To(Equal(3))
-			Expect(similar.Track[0].Name).To(Equal("Ray of Light"))
-			Expect(similar.Track[0].Artist.Name).To(Equal("Madonna"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=Cher&format=json&limit=3&method=track.getSimilar&track=Believe"))
+			Expect(len(similar.Track)).To(Equal(5))
+			Expect(similar.Track[0].Name).To(Equal("Dreaming of Me"))
+			Expect(similar.Track[0].Artist.Name).To(Equal("Depeche Mode"))
+			Expect(similar.Track[0].Match).To(Equal(1.0))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=Depeche+Mode&format=json&limit=5&method=track.getSimilar&track=Just+Can%27t+Get+Enough"))
 		})
 
 		It("returns empty list when no similar tracks found", func() {

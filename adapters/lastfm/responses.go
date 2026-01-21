@@ -68,7 +68,7 @@ type SimilarTracks struct {
 type SimilarTrack struct {
 	Name   string             `json:"name"`
 	MBID   string             `json:"mbid"`
-	Match  string             `json:"match"`
+	Match  float64            `json:"match"`
 	Artist SimilarTrackArtist `json:"artist"`
 }
 

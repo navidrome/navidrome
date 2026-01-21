@@ -33,9 +33,13 @@ type ExternalImage struct {
 }
 
 type Song struct {
-	ID   string
-	Name string
-	MBID string
+	ID         string
+	Name       string
+	MBID       string
+	Artist     string
+	ArtistMBID string
+	Album      string
+	AlbumMBID  string
 }
 
 var (

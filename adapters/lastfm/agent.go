@@ -203,8 +203,10 @@ func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, arti
 	var res []agents.Song
 	for _, t := range resp {
 		res = append(res, agents.Song{
-			Name: t.Name,
-			MBID: t.MBID,
+			Name:       t.Name,
+			MBID:       t.MBID,
+			Artist:     t.Artist.Name,
+			ArtistMBID: t.Artist.MBID,
 		})
 	}
 	return res, nil
