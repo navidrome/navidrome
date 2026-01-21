@@ -4,18 +4,26 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
+import clsx from 'clsx'
 import { useToggleLove } from './useToggleLove'
 import { useRecordContext } from 'react-admin'
 import config from '../config'
 import { isDateSet } from '../utils/validations'
 
-const useStyles = makeStyles({
-  love: {
-    color: (props) => props.color,
-    visibility: (props) =>
-      props.visible === false ? 'hidden' : props.loved ? 'visible' : 'inherit',
+const useStyles = makeStyles(
+  {
+    love: {
+      color: (props) => props.color,
+      visibility: (props) =>
+        props.visible === false
+          ? 'hidden'
+          : props.loved
+            ? 'visible'
+            : 'inherit',
+    },
   },
-})
+  { name: 'NDLoveButton' },
+)
 
 export const LoveButton = ({
   resource,
@@ -25,9 +33,11 @@ export const LoveButton = ({
   component: Button,
   addLabel,
   disabled,
+  className,
+  record: recordProp,
   ...rest
 }) => {
-  const record = useRecordContext(rest) || {}
+  const record = useRecordContext({ record: recordProp }) || {}
   const classes = useStyles({ color, visible, loved: record.starred })
   const [toggleLove, loading] = useToggleLove(resource, record)
 
@@ -48,7 +58,7 @@ export const LoveButton = ({
       onClick={handleToggleLove}
       size={'small'}
       disabled={disabled || loading || record.missing}
-      className={classes.love}
+      className={clsx(classes.love, className)}
       title={
         isDateSet(record.starredAt)
           ? new Date(record.starredAt).toLocaleString()
