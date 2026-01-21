@@ -121,6 +121,29 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("trackGetSimilar", func() {
+		It("returns similar tracks for a successful response", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			similar, err := client.trackGetSimilar(context.Background(), "Believe", "Cher", 3)
+			Expect(err).To(BeNil())
+			Expect(len(similar.Track)).To(Equal(3))
+			Expect(similar.Track[0].Name).To(Equal("Ray of Light"))
+			Expect(similar.Track[0].Artist.Name).To(Equal("Madonna"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=Cher&format=json&limit=3&method=track.getSimilar&track=Believe"))
+		})
+
+		It("returns empty list when no similar tracks found", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			similar, err := client.trackGetSimilar(context.Background(), "UnknownTrack", "UnknownArtist", 3)
+			Expect(err).To(BeNil())
+			Expect(similar.Track).To(BeEmpty())
+		})
+	})
+
 	Describe("GetToken", func() {
 		It("returns a token when the request is successful", func() {
 			httpClient.Res = http.Response{

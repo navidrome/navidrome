@@ -295,6 +295,86 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(BeEmpty())
 			})
 		})
+
+		Describe("GetSimilarSongsByTrack", func() {
+			It("returns on first match", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Similar Song",
+					MBID: "mbid555",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+			It("fetches with multiplier", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 2
+				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Similar Song",
+					MBID: "mbid555",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 4))
+			})
+		})
+
+		Describe("GetSimilarSongsByAlbum", func() {
+			It("returns on first match", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				Expect(ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Album Similar Song",
+					MBID: "mbid666",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test album", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test album", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+		})
+
+		Describe("GetSimilarSongsByArtist", func() {
+			It("returns on first match", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				Expect(ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Artist Similar Song",
+					MBID: "mbid777",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+		})
 	})
 })
 
@@ -375,6 +455,39 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 		Description: "A Description",
 		URL:         "External URL",
 	}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByTrack(_ context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	a.Args = []interface{}{id, name, artist, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Similar Song",
+		MBID: "mbid555",
+	}}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByAlbum(_ context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	a.Args = []interface{}{id, name, artist, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Album Similar Song",
+		MBID: "mbid666",
+	}}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByArtist(_ context.Context, id, name, mbid string, count int) ([]Song, error) {
+	a.Args = []interface{}{id, name, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Artist Similar Song",
+		MBID: "mbid777",
+	}}, nil
 }
 
 type emptyAgent struct {

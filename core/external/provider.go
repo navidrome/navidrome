@@ -80,6 +80,9 @@ type Agents interface {
 	agents.ArtistSimilarRetriever
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
+	agents.SimilarSongsByTrackRetriever
+	agents.SimilarSongsByAlbumRetriever
+	agents.SimilarSongsByArtistRetriever
 }
 
 func NewProvider(ds model.DataStore, agents Agents) Provider {
@@ -276,6 +279,95 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 }
 
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var songs []agents.Song
+
+	// Try entity-specific similarity first
+	switch v := entity.(type) {
+	case *model.MediaFile:
+		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+	case *model.Album:
+		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+	case *model.Artist:
+		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+	}
+
+	if err == nil && len(songs) > 0 {
+		return e.matchSongsToLibrary(ctx, songs, count)
+	}
+
+	// Fallback to existing similar artists + top songs algorithm
+	return e.similarSongsFallback(ctx, id, count)
+}
+
+// matchSongsToLibrary matches agent song results to local library tracks
+func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
+	idMatches, err := e.loadTracksByID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
+	}
+	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
+	}
+
+	// For similar songs we don't have a single artist to filter by, so we do a broader title search
+	titleMatches, err := e.loadTracksByTitleOnly(ctx, songs, idMatches, mbidMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
+
+	return e.selectTopSongs(songs, idMatches, mbidMatches, titleMatches, count), nil
+}
+
+// loadTracksByTitleOnly loads tracks matching by title without artist filtering (for similar songs)
+func (e *provider) loadTracksByTitleOnly(ctx context.Context, songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	titleMap := map[string]string{}
+	for _, s := range songs {
+		// Skip if already matched by ID or MBID
+		if s.ID != "" && idMatches[s.ID].ID != "" {
+			continue
+		}
+		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		sanitized := str.SanitizeFieldForSorting(s.Name)
+		titleMap[sanitized] = s.Name
+	}
+	matches := map[string]model.MediaFile{}
+	if len(titleMap) == 0 {
+		return matches, nil
+	}
+	titleFilters := squirrel.Or{}
+	for sanitized := range titleMap {
+		titleFilters = append(titleFilters, squirrel.Like{"order_title": sanitized})
+	}
+
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			titleFilters,
+			squirrel.Eq{"missing": false},
+		},
+		Sort: "starred desc, rating desc, year asc, compilation asc",
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, mf := range res {
+		sanitized := str.SanitizeFieldForSorting(mf.Title)
+		if _, ok := matches[sanitized]; !ok {
+			matches[sanitized] = mf
+		}
+	}
+	return matches, nil
+}
+
+// similarSongsFallback uses the original similar artists + top songs algorithm
+func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err

@@ -22,6 +22,8 @@ type PluginLoader interface {
 	LoadMediaAgent(name string) (Interface, bool)
 }
 
+// Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
+// until one returns valid data.
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
@@ -367,6 +369,94 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 	return nil, ErrNotFound
 }
 
+// GetSimilarSongsByTrack returns similar songs for a given track. Because some songs returned from an enabled
+// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
+
+	start := time.Now()
+	for _, enabledAgent := range a.getEnabledAgentNames() {
+		ag := a.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(SimilarSongsByTrackRetriever)
+		if !ok {
+			continue
+		}
+		songs, err := retriever.GetSimilarSongsByTrack(ctx, id, name, artist, mbid, overLimit)
+		if len(songs) > 0 && err == nil {
+			log.Debug(ctx, "Got Similar Songs by Track", "agent", ag.AgentName(), "track", name, "artist", artist, "count", len(songs), "elapsed", time.Since(start))
+			return songs, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+// GetSimilarSongsByAlbum returns similar songs for a given album. Because some songs returned from an enabled
+// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
+
+	start := time.Now()
+	for _, enabledAgent := range a.getEnabledAgentNames() {
+		ag := a.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(SimilarSongsByAlbumRetriever)
+		if !ok {
+			continue
+		}
+		songs, err := retriever.GetSimilarSongsByAlbum(ctx, id, name, artist, mbid, overLimit)
+		if len(songs) > 0 && err == nil {
+			log.Debug(ctx, "Got Similar Songs by Album", "agent", ag.AgentName(), "album", name, "artist", artist, "count", len(songs), "elapsed", time.Since(start))
+			return songs, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+// GetSimilarSongsByArtist returns similar songs for a given artist. Because some songs returned from an enabled
+// agent may not exist in the database, return at most count * conf.Server.DevExternalArtistFetchMultiplier items.
+func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]Song, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return nil, ErrNotFound
+	case consts.VariousArtistsID:
+		return nil, nil
+	}
+
+	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
+
+	start := time.Now()
+	for _, enabledAgent := range a.getEnabledAgentNames() {
+		ag := a.getAgent(enabledAgent)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(SimilarSongsByArtistRetriever)
+		if !ok {
+			continue
+		}
+		songs, err := retriever.GetSimilarSongsByArtist(ctx, id, name, mbid, overLimit)
+		if len(songs) > 0 && err == nil {
+			log.Debug(ctx, "Got Similar Songs by Artist", "agent", ag.AgentName(), "artist", name, "count", len(songs), "elapsed", time.Since(start))
+			return songs, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 var _ Interface = (*Agents)(nil)
 var _ ArtistMBIDRetriever = (*Agents)(nil)
 var _ ArtistURLRetriever = (*Agents)(nil)
@@ -376,3 +466,6 @@ var _ ArtistImageRetriever = (*Agents)(nil)
 var _ ArtistTopSongsRetriever = (*Agents)(nil)
 var _ AlbumInfoRetriever = (*Agents)(nil)
 var _ AlbumImageRetriever = (*Agents)(nil)
+var _ SimilarSongsByTrackRetriever = (*Agents)(nil)
+var _ SimilarSongsByAlbumRetriever = (*Agents)(nil)
+var _ SimilarSongsByArtistRetriever = (*Agents)(nil)

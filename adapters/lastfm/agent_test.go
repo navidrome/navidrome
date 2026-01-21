@@ -177,6 +177,52 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 
+	Describe("GetSimilarSongsByTrack", func() {
+		var agent *lastfmAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			agent = lastFMConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns similar songs", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)).To(Equal([]agents.Song{
+				{Name: "Ray of Light", MBID: ""},
+				{Name: "Frozen", MBID: "1b632b90-ef2b-4e67-9ec8-f62b8eecb00c"},
+				{Name: "One More Time", MBID: "9b1c4ebd-395f-4a9c-9f28-1f0c8fbb4875"},
+			}))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("track")).To(Equal("Believe"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Cher"))
+		})
+
+		It("returns ErrNotFound when no similar songs found", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "UnknownTrack", "UnknownArtist", "", 3)
+			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		It("returns an error if Last.fm call fails", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		It("returns an error if Last.fm call returns an error", func() {
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+	})
+
 	Describe("Scrobbling", func() {
 		var agent *lastfmAgent
 		var httpClient *tests.FakeHttpClient

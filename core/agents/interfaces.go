@@ -76,6 +76,41 @@ type ArtistTopSongsRetriever interface {
 	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }
 
+// SimilarSongsByTrackRetriever provides similar songs based on a specific track
+type SimilarSongsByTrackRetriever interface {
+	// GetSimilarSongsByTrack returns songs similar to the given track.
+	// Parameters:
+	//   - id: local mediafile ID
+	//   - name: track title
+	//   - artist: artist name
+	//   - mbid: MusicBrainz recording ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error)
+}
+
+// SimilarSongsByAlbumRetriever provides similar songs based on an album
+type SimilarSongsByAlbumRetriever interface {
+	// GetSimilarSongsByAlbum returns songs similar to tracks on the given album.
+	// Parameters:
+	//   - id: local album ID
+	//   - name: album name
+	//   - artist: album artist name
+	//   - mbid: MusicBrainz release ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error)
+}
+
+// SimilarSongsByArtistRetriever provides similar songs based on an artist
+type SimilarSongsByArtistRetriever interface {
+	// GetSimilarSongsByArtist returns songs similar to the artist's catalog.
+	// Parameters:
+	//   - id: local artist ID
+	//   - name: artist name
+	//   - mbid: MusicBrainz artist ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]Song, error)
+}
+
 var Map map[string]Constructor
 
 func Register(name string, init Constructor) {

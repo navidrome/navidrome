@@ -62,6 +62,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			return opt.Max == 1 && opt.Filters != nil
 		})).Return(model.Artists{artist1}, nil).Once()
 
+		// New similar songs by artist returns ErrNotFound to trigger fallback
+		agentsCombined.(*mockAgents).On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
+			Return(nil, agents.ErrNotFound).Once()
+
 		similarAgentsResp := []agents.Artist{
 			{Name: "Similar Artist", MBID: "similar-mbid"},
 		}
@@ -126,6 +130,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			return opt.Max == 1 && opt.Filters != nil
 		})).Return(model.Artists{artist1}, nil).Maybe()
 
+		// New similar songs by artist returns ErrNotFound to trigger fallback
+		agentsCombined.(*mockAgents).On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
+			Return(nil, agents.ErrNotFound).Once()
+
 		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist One", "", 15).
 			Return(nil, errors.New("error getting similar artists")).Once()
 
@@ -155,6 +163,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			return opt.Max == 1 && opt.Filters != nil
 		})).Return(model.Artists{artist1}, nil).Maybe()
 
+		// New similar songs by artist returns ErrNotFound to trigger fallback
+		agentsCombined.(*mockAgents).On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
+			Return(nil, agents.ErrNotFound).Once()
+
 		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist One", "", 15).
 			Return([]agents.Artist{}, nil).Once()
 
@@ -180,6 +192,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 			return opt.Max == 1 && opt.Filters != nil
 		})).Return(model.Artists{artist1}, nil).Maybe()
+
+		// New similar songs by artist returns ErrNotFound to trigger fallback
+		agentsCombined.(*mockAgents).On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
+			Return(nil, agents.ErrNotFound).Once()
 
 		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist One", "", 15).
 			Return([]agents.Artist{}, nil).Once()
