@@ -178,8 +178,17 @@ const OutlinedNumberControl = (props) => {
 // Enum/Select control wrapper
 const OutlinedEnumControl = (props) => {
   const classes = useStyles()
-  const { data, id, enabled, path, handleChange, options, label, visible } =
-    props
+  const {
+    data,
+    id,
+    enabled,
+    path,
+    handleChange,
+    options,
+    label,
+    visible,
+    required,
+  } = props
   const {
     appliedUiSchemaOptions,
     showError,
@@ -205,7 +214,12 @@ const OutlinedEnumControl = (props) => {
         labelId={`${id}-label`}
         id={id}
         value={data ?? ''}
-        onChange={(ev) => handleChange(path, ev.target.value)}
+        onChange={(ev) => {
+          handleChange(
+            path,
+            ev.target.value === '' ? undefined : ev.target.value,
+          )
+        }}
         onFocus={handleFocus}
         onBlur={handleBlur}
         disabled={!enabled}
@@ -213,6 +227,11 @@ const OutlinedEnumControl = (props) => {
         label={label}
         fullWidth
       >
+        {!required && (
+          <MenuItem value="">
+            <em>None</em>
+          </MenuItem>
+        )}
         {options?.map((option) => (
           <MenuItem key={option.value} value={option.value}>
             {option.label}
