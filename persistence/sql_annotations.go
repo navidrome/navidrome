@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -41,6 +42,17 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 	query = query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
 
 	return query
+}
+
+func annotationBoolFilter(field string) func(string, any) Sqlizer {
+	return func(_ string, value any) Sqlizer {
+		v, ok := value.(string)
+		if !ok {
+			return nil
+		}
+		v = strings.ToLower(v)
+		return Expr(fmt.Sprintf("COALESCE(%s, 0) = ?", field), v == "true")
+	}
 }
 
 func (r sqlRepository) annId(itemID ...string) And {

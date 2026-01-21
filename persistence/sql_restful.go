@@ -106,15 +106,6 @@ func booleanFilter(field string, value any) Sqlizer {
 	return Eq{field: v == "true"}
 }
 
-func starredFilter(_ string, value any) Sqlizer {
-	v, ok := value.(string)
-	if !ok {
-		return nil
-	}
-	v = strings.ToLower(v)
-	return Expr("COALESCE(starred, 0) = ?", v == "true")
-}
-
 func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {
 	return func(field string, value any) Sqlizer {
 		v := strings.ToLower(value.(string))

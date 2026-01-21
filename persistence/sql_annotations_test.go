@@ -32,7 +32,7 @@ var _ = Describe("Annotation Filters", func() {
 	Describe("starredFilter", func() {
 		It("false includes items without annotations", func() {
 			albums, err := albumRepo.GetAll(model.QueryOptions{
-				Filters: starredFilter("starred", "false"),
+				Filters: annotationBoolFilter("starred")("starred", "false"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -48,7 +48,7 @@ var _ = Describe("Annotation Filters", func() {
 
 		It("true excludes items without annotations", func() {
 			albums, err := albumRepo.GetAll(model.QueryOptions{
-				Filters: starredFilter("starred", "true"),
+				Filters: annotationBoolFilter("starred")("starred", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -61,7 +61,7 @@ var _ = Describe("Annotation Filters", func() {
 	Describe("hasRatingFilter", func() {
 		It("false includes items without annotations", func() {
 			albums, err := albumRepo.GetAll(model.QueryOptions{
-				Filters: hasRatingFilter("has_rating", "false"),
+				Filters: annotationBoolFilter("rating")("rating", "false"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -77,7 +77,7 @@ var _ = Describe("Annotation Filters", func() {
 
 		It("true excludes items without annotations", func() {
 			albums, err := albumRepo.GetAll(model.QueryOptions{
-				Filters: hasRatingFilter("has_rating", "true"),
+				Filters: annotationBoolFilter("rating")("rating", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 
