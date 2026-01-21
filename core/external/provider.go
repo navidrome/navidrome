@@ -304,7 +304,9 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	return e.similarSongsFallback(ctx, id, count)
 }
 
-// similarSongsFallback uses the original similar artists + top songs algorithm
+// similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
+// get the artist of the given entity, retrieve similar artists, get their top songs, and pick
+// a weighted random selection of songs to return as similar songs.
 func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
