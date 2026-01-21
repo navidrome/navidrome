@@ -298,7 +298,6 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetSimilarSongsByTrack", func() {
 			It("returns on first match", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
 					Name: "Similar Song",
 					MBID: "mbid555",
@@ -306,7 +305,6 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				mock.Err = errors.New("error")
 				_, err := ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
@@ -318,19 +316,10 @@ var _ = Describe("Agents", func() {
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
 			})
-			It("fetches with multiplier", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 2
-				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
-					Name: "Similar Song",
-					MBID: "mbid555",
-				}}))
-				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 4))
-			})
 		})
 
 		Describe("GetSimilarSongsByAlbum", func() {
 			It("returns on first match", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				Expect(ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)).To(Equal([]Song{{
 					Name: "Album Similar Song",
 					MBID: "mbid666",
@@ -338,7 +327,6 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test album", "test artist", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				mock.Err = errors.New("error")
 				_, err := ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
@@ -354,7 +342,6 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetSimilarSongsByArtist", func() {
 			It("returns on first match", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				Expect(ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)).To(Equal([]Song{{
 					Name: "Artist Similar Song",
 					MBID: "mbid777",
@@ -362,7 +349,6 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test artist", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
 				mock.Err = errors.New("error")
 				_, err := ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
