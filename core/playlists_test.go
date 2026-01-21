@@ -474,6 +474,21 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
 		})
 
+		// Fullwidth characters (e.g., ＡＢＣＤ) are not handled by SQLite's NOCASE collation,
+		// so we need exact matching for non-ASCII characters.
+		It("matches fullwidth characters exactly (SQLite NOCASE limitation)", func() {
+			// Fullwidth uppercase ＡＣＲＯＳＳ (U+FF21, U+FF23, U+FF32, U+FF2F, U+FF33, U+FF33)
+			repo.data = []string{
+				"plex/02 - ＡＣＲＯＳＳ.flac",
+			}
+			m3u := "/music/plex/02 - ＡＣＲＯＳＳ.flac\n"
+			f := strings.NewReader(m3u)
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].Path).To(Equal("plex/02 - ＡＣＲＯＳＳ.flac"))
+		})
+
 		// Unicode normalization tests: NFC (composed) vs NFD (decomposed) forms
 		// macOS stores paths in NFD, Linux/Windows use NFC. Playlists may use either form.
 		DescribeTable("matches paths across Unicode NFC/NFD normalization",

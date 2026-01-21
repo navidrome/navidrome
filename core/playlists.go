@@ -205,15 +205,32 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		// differs across platforms (macOS often yields NFD, while Linux/Windows typically use NFC).
 		// Generate lookup candidates for both forms so playlist entries match DB paths regardless
 		// of the original normalization. See https://github.com/navidrome/navidrome/issues/4884
-		lookupCandidates := make([]string, 0, len(resolvedPaths)*2)
-		seen := make(map[string]struct{}, len(resolvedPaths)*2)
+		//
+		// We also include the original (non-lowercased) paths because SQLite's COLLATE NOCASE
+		// only handles ASCII case-insensitivity. Non-ASCII characters like fullwidth letters
+		// (e.g., ＡＢＣＤ vs ａｂｃｄ) are not matched case-insensitively by NOCASE.
+		lookupCandidates := make([]string, 0, len(resolvedPaths)*4)
+		seen := make(map[string]struct{}, len(resolvedPaths)*4)
 		for _, path := range resolvedPaths {
-			nfc := strings.ToLower(norm.NFC.String(path))
+			// Add original paths first (for exact matching of non-ASCII characters)
+			nfcRaw := norm.NFC.String(path)
+			if _, ok := seen[nfcRaw]; !ok {
+				seen[nfcRaw] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfcRaw)
+			}
+			nfdRaw := norm.NFD.String(path)
+			if _, ok := seen[nfdRaw]; !ok {
+				seen[nfdRaw] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfdRaw)
+			}
+
+			// Add lowercased paths (for ASCII case-insensitive matching via NOCASE)
+			nfc := strings.ToLower(nfcRaw)
 			if _, ok := seen[nfc]; !ok {
 				seen[nfc] = struct{}{}
 				lookupCandidates = append(lookupCandidates, nfc)
 			}
-			nfd := strings.ToLower(norm.NFD.String(path))
+			nfd := strings.ToLower(nfdRaw)
 			if _, ok := seen[nfd]; !ok {
 				seen[nfd] = struct{}{}
 				lookupCandidates = append(lookupCandidates, nfd)
