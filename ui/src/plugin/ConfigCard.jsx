@@ -4,76 +4,37 @@ import { Card, CardContent, Typography, Box } from '@material-ui/core'
 import Alert from '@material-ui/lab/Alert'
 import { SchemaConfigEditor } from './SchemaConfigEditor'
 
-// Navigate schema by path parts to find the title for a field
-const findFieldTitle = (schema, parts) => {
+// Format error with field title and full path for nested fields
+const formatError = (error, schema) => {
+  // Get path parts from various error formats
+  const rawPath =
+    error.dataPath || error.property || error.instancePath?.replace(/\//g, '.')
+  const parts = rawPath?.split('.').filter(Boolean) || []
+
+  // Navigate schema to find field title, build bracket-notation path
   let currentSchema = schema
-  let fieldName = parts[parts.length - 1] // Default to last part
+  let fieldName = parts[parts.length - 1]
+  const pathParts = []
 
   for (const part of parts) {
-    if (!currentSchema) break
-
-    // Skip array indices (just move to items schema)
     if (/^\d+$/.test(part)) {
-      if (currentSchema.items) {
-        currentSchema = currentSchema.items
-      }
-      continue
-    }
-
-    // Navigate to property and always update fieldName
-    if (currentSchema.properties?.[part]) {
-      const propSchema = currentSchema.properties[part]
-      fieldName = propSchema.title || part
-      currentSchema = propSchema
+      pathParts.push(`[${part}]`)
+      currentSchema = currentSchema?.items
+    } else {
+      fieldName = currentSchema?.properties?.[part]?.title || part
+      pathParts.push(part)
+      currentSchema = currentSchema?.properties?.[part]
     }
   }
 
-  return fieldName
-}
+  const path = pathParts.join('.').replace(/\.\[/g, '[')
+  const isNested = path.includes('[') || path.includes('.')
+  // Replace property name in message with full path for nested fields
+  const message = isNested
+    ? error.message.replace(/'[^']+'\s*$/, `'${path}'`)
+    : error.message
 
-// Extract human-readable field name from JSONForms error
-const getFieldName = (error, schema) => {
-  // JSONForms errors can have different path formats:
-  // - dataPath: "users.1.token" (dot-separated)
-  // - instancePath: "/users/1/token" (slash-separated)
-  // - property: "users.1.username" (dot-separated)
-  const dataPath = error.dataPath || ''
-  const instancePath = error.instancePath || ''
-  const property = error.property || ''
-
-  // Try dataPath first (dot-separated like "users.1.token")
-  if (dataPath) {
-    const parts = dataPath.split('.').filter(Boolean)
-    if (parts.length > 0) {
-      return findFieldTitle(schema, parts)
-    }
-  }
-
-  // Try property (also dot-separated)
-  if (property) {
-    const parts = property.split('.').filter(Boolean)
-    if (parts.length > 0) {
-      return findFieldTitle(schema, parts)
-    }
-  }
-
-  // Fall back to instancePath (slash-separated like "/users/1/token")
-  if (instancePath) {
-    const parts = instancePath.split('/').filter(Boolean)
-    if (parts.length > 0) {
-      return findFieldTitle(schema, parts)
-    }
-  }
-
-  // Try to extract from schemaPath like "#/properties/users/items/properties/username/minLength"
-  const schemaPath = error.schemaPath || ''
-  const propMatches = [...schemaPath.matchAll(/\/properties\/([^/]+)/g)]
-  if (propMatches.length > 0) {
-    const parts = propMatches.map((m) => m[1])
-    return findFieldTitle(schema, parts)
-  }
-
-  return null
+  return { fieldName, message }
 }
 
 export const ConfigCard = ({
@@ -99,14 +60,10 @@ export const ConfigCard = ({
 
   // Format validation errors with proper field names
   const formattedErrors = useMemo(() => {
-    if (!hasConfigSchema) {
-      return []
-    }
-    const { schema } = manifest.config
-    return validationErrors.map((error) => ({
-      fieldName: getFieldName(error, schema),
-      message: error.message,
-    }))
+    if (!hasConfigSchema) return []
+    return validationErrors.map((error) =>
+      formatError(error, manifest.config.schema),
+    )
   }, [validationErrors, manifest, hasConfigSchema])
 
   if (!hasConfigSchema) {
@@ -139,12 +96,14 @@ export const ConfigCard = ({
           </Box>
         )}
 
-        <SchemaConfigEditor
-          schema={schema}
-          uiSchema={uiSchema}
-          data={configData}
-          onChange={handleChange}
-        />
+        <Box mt={formattedErrors.length > 0 ? 0 : 2}>
+          <SchemaConfigEditor
+            schema={schema}
+            uiSchema={uiSchema}
+            data={configData}
+            onChange={handleChange}
+          />
+        </Box>
       </CardContent>
     </Card>
   )
