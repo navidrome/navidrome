@@ -51,6 +51,41 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
+		setupExpectations := func(returnedSongs []agents.Song, idMatches, mbidMatches, titleMatches model.MediaFiles) {
+			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+				Return(returnedSongs, nil).Once()
+
+			// loadTracksByID
+			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				_, ok := opt.Filters.(squirrel.Eq)
+				return ok
+			})).Return(idMatches, nil).Once()
+
+			// loadTracksByMBID
+			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				and, ok := opt.Filters.(squirrel.And)
+				if !ok || len(and) < 1 {
+					return false
+				}
+				eq, hasEq := and[0].(squirrel.Eq)
+				if !hasEq {
+					return false
+				}
+				_, hasMBID := eq["mbz_recording_id"]
+				return hasMBID
+			})).Return(mbidMatches, nil).Once()
+
+			// loadTracksByTitleAndArtist
+			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				and, ok := opt.Filters.(squirrel.And)
+				if !ok || len(and) < 2 {
+					return false
+				}
+				_, hasOr := and[0].(squirrel.Or)
+				return hasOr
+			})).Return(titleMatches, nil).Once()
+		}
+
 		Context("when agent returns artist and album metadata", func() {
 			It("matches by title + artist MBID + album MBID (highest priority)", func() {
 				// Song in library with all MBIDs
@@ -63,41 +98,11 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong-match", Title: "Similar Song", Artist: "Depeche Mode", Album: "Some Other Album",
 					MbzArtistID: "artist-mbid-123", MbzAlbumID: "different-album-mbid",
 				}
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
+				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
-					}, nil).Once()
-
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty (no song MBID)
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns both songs
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{wrongMatch, correctMatch}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -116,40 +121,11 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
 				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"}, // No MBIDs
-					}, nil).Once()
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"}, // No MBIDs
+				}
 
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns both songs
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{wrongMatch, correctMatch}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -167,41 +143,11 @@ var _ = Describe("Provider - Song Matching", func() {
 				wrongMatch := model.MediaFile{
 					ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
 				}
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Depeche Mode"}, // No album info
+				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Similar Song", Artist: "Depeche Mode"}, // No album info
-					}, nil).Once()
-
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns both songs
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{wrongMatch, correctMatch}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -216,40 +162,11 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "title-match", Title: "Similar Song", Artist: "Random Artist",
 				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Similar Song"}, // No artist/album info at all
-					}, nil).Once()
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song"}, // No artist/album info at all
+				}
 
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns the song
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{titleMatch}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{titleMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -272,42 +189,13 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "cover-3", Title: "Yesterday", Artist: "Frank Sinatra", Album: "My Way",
 				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
-						{Name: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits"},
-						{Name: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"},
-					}, nil).Once()
+				returnedSongs := []agents.Song{
+					{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
+					{Name: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits"},
+					{Name: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"},
+				}
 
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns all three covers
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{cover1, cover2, cover3}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{cover1, cover2, cover3})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -335,41 +223,12 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "title-only", Title: "Song B", Artist: "Different Artist",
 				}
 
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{
-						{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
-						{Name: "Song B"}, // Title only
-					}, nil).Once()
+				returnedSongs := []agents.Song{
+					{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
+					{Name: "Song B"}, // Title only
+				}
 
-				// loadTracksByID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					_, ok := opt.Filters.(squirrel.Eq)
-					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByMBID returns empty
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 1 {
-						return false
-					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
-					}
-					_, hasMBID := eq["mbz_recording_id"]
-					return hasMBID
-				})).Return(model.MediaFiles{}, nil).Once()
-
-				// loadTracksByTitleAndArtist returns all candidates
-				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
-						return false
-					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{lessAccurateMatch, preciseMatch, titleOnlyMatch}, nil).Once()
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{lessAccurateMatch, preciseMatch, titleOnlyMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
