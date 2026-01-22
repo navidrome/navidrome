@@ -215,8 +215,10 @@ func (e *provider) matchQueriesAgainstIndices(queries []songQuery, indices *trac
 
 	for _, q := range queries {
 		if mf, found := e.findBestMatch(q, indices); found {
-			if _, ok := matches[q.title]; !ok {
-				matches[q.title] = mf
+			// Use composite key (title+artist) to preserve matches for duplicate titles
+			key := q.title + "|" + q.artist
+			if _, ok := matches[key]; !ok {
+				matches[key] = mf
 			}
 		}
 	}
@@ -275,7 +277,7 @@ func (e *provider) findBestMatch(q songQuery, indices *trackIndices) (model.Medi
 	return model.MediaFile{}, false
 }
 
-func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
+func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
 	var mfs model.MediaFiles
 	for _, t := range songs {
 		if len(mfs) == count {
@@ -295,8 +297,9 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 				continue
 			}
 		}
-		// Fall back to title match
-		if mf, ok := byTitle[str.SanitizeFieldForSorting(t.Name)]; ok {
+		// Fall back to title+artist match (composite key preserves duplicate titles)
+		key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSorting(t.Artist)
+		if mf, ok := byTitleArtist[key]; ok {
 			mfs = append(mfs, mf)
 		}
 	}

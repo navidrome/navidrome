@@ -259,6 +259,67 @@ var _ = Describe("Provider - Song Matching", func() {
 			})
 		})
 
+		Context("when matching multiple songs with the same title but different artists", func() {
+			It("returns distinct matches for each artist's version (covers scenario)", func() {
+				// Multiple covers of the same song by different artists
+				cover1 := model.MediaFile{
+					ID: "cover-1", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
+				}
+				cover2 := model.MediaFile{
+					ID: "cover-2", Title: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits",
+				}
+				cover3 := model.MediaFile{
+					ID: "cover-3", Title: "Yesterday", Artist: "Frank Sinatra", Album: "My Way",
+				}
+
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{
+						{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
+						{Name: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits"},
+						{Name: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"},
+					}, nil).Once()
+
+				// loadTracksByID returns empty
+				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					_, ok := opt.Filters.(squirrel.Eq)
+					return ok
+				})).Return(model.MediaFiles{}, nil).Once()
+
+				// loadTracksByMBID returns empty
+				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					and, ok := opt.Filters.(squirrel.And)
+					if !ok || len(and) < 1 {
+						return false
+					}
+					eq, hasEq := and[0].(squirrel.Eq)
+					if !hasEq {
+						return false
+					}
+					_, hasMBID := eq["mbz_recording_id"]
+					return hasMBID
+				})).Return(model.MediaFiles{}, nil).Once()
+
+				// loadTracksByTitleAndArtist returns all three covers
+				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					and, ok := opt.Filters.(squirrel.And)
+					if !ok || len(and) < 2 {
+						return false
+					}
+					_, hasOr := and[0].(squirrel.Or)
+					return hasOr
+				})).Return(model.MediaFiles{cover1, cover2, cover3}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				// All three covers should be returned, not just the first one
+				Expect(songs).To(HaveLen(3))
+				// Verify all three different versions are included
+				ids := []string{songs[0].ID, songs[1].ID, songs[2].ID}
+				Expect(ids).To(ContainElements("cover-1", "cover-2", "cover-3"))
+			})
+		})
+
 		Context("when matching multiple songs with different precision levels", func() {
 			It("prefers more precise matches for each song", func() {
 				// Library has multiple versions of same song
