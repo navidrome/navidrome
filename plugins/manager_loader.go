@@ -334,8 +334,9 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	extismConfig := extism.PluginConfig{
-		EnableWasi:    true,
-		RuntimeConfig: runtimeConfig,
+		EnableWasi:                true,
+		RuntimeConfig:             runtimeConfig,
+		EnableHttpResponseHeaders: true,
 	}
 	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
 	if err != nil {
