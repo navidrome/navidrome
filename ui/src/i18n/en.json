@@ -10,8 +10,10 @@
         "playCount": "Plays",
         "title": "Title",
         "artist": "Artist",
+        "composer": "Composer",
         "album": "Album",
         "path": "File path",
+        "libraryName": "Library",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
@@ -58,6 +60,7 @@
         "playCount": "Plays",
         "size": "Size",
         "name": "Name",
+        "libraryName": "Library",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
@@ -124,7 +127,13 @@
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Performer |||| Performers"
+        "performer": "Performer |||| Performers",
+        "maincredit": "Album Artist or Artist |||| Album Artists or Artists"
+      },
+      "actions": {
+        "topSongs": "Top Songs",
+        "shuffle": "Shuffle",
+        "radio": "Radio"
       }
     },
     "user": {
@@ -141,19 +150,26 @@
         "changePassword": "Change Password?",
         "currentPassword": "Current Password",
         "newPassword": "New Password",
-        "token": "Token"
+        "token": "Token",
+        "libraries": "Libraries"
       },
       "helperTexts": {
-        "name": "Changes to your name will only be reflected on next login"
+        "name": "Changes to your name will only be reflected on next login",
+        "libraries": "Select specific libraries for this user, or leave empty to use default libraries"
       },
       "notifications": {
         "created": "User created",
         "updated": "User updated",
         "deleted": "User deleted"
       },
+      "validation": {
+        "librariesRequired": "At least one library must be selected for non-admin users"
+      },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",
-        "clickHereForToken": "Click here to get your token"
+        "clickHereForToken": "Click here to get your token",
+        "selectAllLibraries": "Select all libraries",
+        "adminAutoLibraries": "Admin users automatically have access to all libraries"
       }
     },
     "player": {
@@ -201,8 +217,7 @@
         "makePrivate": "Make Private",
         "searchOrCreate": "Search playlists or type to create new...",
         "pressEnterToCreate": "Press Enter to create new playlist",
-        "removeFromSelection": "Remove from selection",
-        "removeSymbol": "×"
+        "removeFromSelection": "Remove from selection"
       },
       "message": {
         "duplicate_song": "Add duplicated songs",
@@ -249,6 +264,7 @@
       "fields": {
         "path": "Path",
         "size": "Size",
+        "libraryName": "Library",
         "updatedAt": "Disappeared on"
       },
       "actions": {
@@ -257,6 +273,137 @@
       },
       "notifications": {
         "removed": "Missing file(s) removed"
+      }
+    },
+    "library": {
+      "name": "Library |||| Libraries",
+      "fields": {
+        "name": "Name",
+        "path": "Path",
+        "remotePath": "Remote Path",
+        "lastScanAt": "Last Scan",
+        "songCount": "Songs",
+        "albumCount": "Albums",
+        "artistCount": "Artists",
+        "totalSongs": "Songs",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artists",
+        "totalFolders": "Folders",
+        "totalFiles": "Files",
+        "totalMissingFiles": "Missing Files",
+        "totalSize": "Total Size",
+        "totalDuration": "Duration",
+        "defaultNewUsers": "Default for New Users",
+        "createdAt": "Created",
+        "updatedAt": "Updated"
+      },
+      "sections": {
+        "basic": "Basic Information",
+        "statistics": "Statistics"
+      },
+      "actions": {
+        "scan": "Scan Library",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
+        "manageUsers": "Manage User Access",
+        "viewDetails": "View Details"
+      },
+      "notifications": {
+        "created": "Library created successfully",
+        "updated": "Library updated successfully",
+        "deleted": "Library deleted successfully",
+        "scanStarted": "Library scan started",
+        "quickScanStarted": "Quick scan started",
+        "fullScanStarted": "Full scan started",
+        "scanError": "Error starting scan. Check logs",
+        "scanCompleted": "Library scan completed"
+      },
+      "validation": {
+        "nameRequired": "Library name is required",
+        "pathRequired": "Library path is required",
+        "pathNotDirectory": "Library path must be a directory",
+        "pathNotFound": "Library path not found",
+        "pathNotAccessible": "Library path is not accessible",
+        "pathInvalid": "Invalid library path"
+      },
+      "messages": {
+        "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
+        "scanInProgress": "Scan in progress...",
+        "noLibrariesAssigned": "No libraries assigned to this user"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description",
+        "version": "Version",
+        "author": "Author",
+        "website": "Website",
+        "permissions": "Permissions",
+        "enabled": "Enabled",
+        "status": "Status",
+        "path": "Path",
+        "lastError": "Error",
+        "hasError": "Error",
+        "updatedAt": "Updated",
+        "createdAt": "Installed",
+        "configKey": "Key",
+        "configValue": "Value",
+        "allUsers": "Allow all users",
+        "selectedUsers": "Selected users",
+        "allLibraries": "Allow all libraries",
+        "selectedLibraries": "Selected libraries"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Configuration",
+        "manifest": "Manifest",
+        "usersPermission": "Users Permission",
+        "libraryPermission": "Library Permission"
+      },
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "actions": {
+        "enable": "Enable",
+        "disable": "Disable",
+        "disabledDueToError": "Fix the error before enabling",
+        "disabledUsersRequired": "Select users before enabling",
+        "disabledLibrariesRequired": "Select libraries before enabling",
+        "addConfig": "Add Configuration",
+        "rescan": "Rescan"
+      },
+      "notifications": {
+        "enabled": "Plugin enabled",
+        "disabled": "Plugin disabled",
+        "updated": "Plugin updated",
+        "error": "Error updating plugin"
+      },
+      "validation": {
+        "invalidJson": "Configuration must be valid JSON"
+      },
+      "messages": {
+        "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
+        "configValidationError": "Configuration validation failed:",
+        "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
+        "clickPermissions": "Click a permission for details",
+        "noConfig": "No configuration set",
+        "allUsersHelp": "When enabled, the plugin will have access to all users, including those created in the future.",
+        "noUsers": "No users selected",
+        "permissionReason": "Reason",
+        "usersRequired": "This plugin requires access to user information. Select which users the plugin can access, or enable 'Allow all users'.",
+        "allLibrariesHelp": "When enabled, the plugin will have access to all libraries, including those created in the future.",
+        "noLibraries": "No libraries selected",
+        "librariesRequired": "This plugin requires access to library information. Select which libraries the plugin can access, or enable 'Allow all libraries'.",
+        "requiredHosts": "Required hosts"
+      },
+      "placeholders": {
+        "configKey": "key",
+        "configValue": "value"
       }
     }
   },
@@ -410,6 +557,8 @@
     "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",
     "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
+    "noSimilarSongsFound": "No similar songs found",
+    "noTopSongsFound": "No top songs found",
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",
     "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
@@ -443,6 +592,12 @@
   },
   "menu": {
     "library": "Library",
+    "librarySelector": {
+      "allLibraries": "All Libraries (%{count})",
+      "multipleLibraries": "%{selected} of %{total} Libraries",
+      "selectLibraries": "Select Libraries",
+      "none": "None"
+    },
     "settings": "Settings",
     "version": "Version",
     "theme": "Theme",
@@ -525,13 +680,19 @@
   "activity": {
     "title": "Activity",
     "totalScanned": "Total Folders Scanned",
-    "quickScan": "Quick Scan",
-    "fullScan": "Full Scan",
+    "quickScan": "Quick",
+    "fullScan": "Full",
+    "selectiveScan": "Selective",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "scanType": "Type",
+    "scanType": "Last Scan",
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
+  },
+  "nowPlaying": {
+    "title": "Now Playing",
+    "empty": "Nothing playing",
+    "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
   },
   "help": {
     "title": "Navidrome Hotkeys",

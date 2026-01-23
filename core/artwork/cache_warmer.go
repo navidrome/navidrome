@@ -96,8 +96,11 @@ func (a *cacheWarmer) run(ctx context.Context) {
 
 		// If cache not available, keep waiting
 		if !a.cache.Available(ctx) {
-			if len(a.buffer) > 0 {
-				log.Trace(ctx, "Cache not available, buffering precache request", "bufferLen", len(a.buffer))
+			a.mutex.Lock()
+			bufferLen := len(a.buffer)
+			a.mutex.Unlock()
+			if bufferLen > 0 {
+				log.Trace(ctx, "Cache not available, buffering precache request", "bufferLen", bufferLen)
 			}
 			continue
 		}

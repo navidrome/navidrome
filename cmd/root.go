@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
@@ -22,6 +21,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
+
+	// Import adapters to register them
+	_ "github.com/navidrome/navidrome/adapters/deezer"
+	_ "github.com/navidrome/navidrome/adapters/gotaglib"
+	_ "github.com/navidrome/navidrome/adapters/lastfm"
+	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
+	_ "github.com/navidrome/navidrome/adapters/spotify"
+	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 var (
@@ -82,8 +89,9 @@ func runNavidrome(ctx context.Context) {
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(startPluginManager(ctx))
+	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
-		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
 		g.Go(schedulePeriodicScan(ctx))
 	} else {
@@ -109,7 +117,7 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer()
-		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
+		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {
@@ -147,7 +155,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			_, err := s.ScanAll(ctx, false)
 			if err != nil {
 				log.Error(ctx, "Error executing periodic scan", err)
@@ -172,6 +180,7 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
 }
 
+// runInitialScan runs an initial scan of the music library if needed.
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
@@ -190,7 +199,7 @@ func runInitialScan(ctx context.Context) func() error {
 		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
-			scanner := CreateScanner(ctx)
+			s := CreateScanner(ctx)
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
@@ -204,7 +213,7 @@ func runInitialScan(ctx context.Context) func() error {
 				log.Info("Executing initial scan")
 			}
 
-			_, err = scanner.ScanAll(ctx, fullScanRequired == "1")
+			_, err = s.ScanAll(ctx, fullScanRequired == "1")
 			if err != nil {
 				log.Error(ctx, "Scan failed", err)
 			} else {
@@ -243,7 +252,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic backup", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			start := time.Now()
 			path, err := db.Backup(ctx)
 			elapsed := time.Since(start)
@@ -271,7 +280,7 @@ func scheduleDBOptimizer(ctx context.Context) func() error {
 	return func() error {
 		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
+		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
 			if scanner.IsScanning() {
 				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
 				return
@@ -325,10 +334,23 @@ func startPlaybackServer(ctx context.Context) func() error {
 	}
 }
 
+// startPluginManager starts the plugin manager, if configured.
+func startPluginManager(ctx context.Context) func() error {
+	return func() error {
+		manager := GetPluginManager(ctx)
+		if !conf.Server.Plugins.Enabled {
+			log.Debug("Plugin system is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting plugin manager")
+		return manager.Start(ctx)
+	}
+}
+
 // TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
-		conf.InitConfig(cfgFile)
+		conf.InitConfig(cfgFile, true)
 	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
@@ -356,6 +378,7 @@ func init() {
 	rootCmd.Flags().Duration("scaninterval", viper.GetDuration("scaninterval"), "how frequently to scan for changes in your music library")
 	rootCmd.Flags().String("uiloginbackgroundurl", viper.GetString("uiloginbackgroundurl"), "URL to a backaground image used in the Login page")
 	rootCmd.Flags().Bool("enabletranscodingconfig", viper.GetBool("enabletranscodingconfig"), "enables transcoding configuration in the UI")
+	rootCmd.Flags().Bool("enabletranscodingcancellation", viper.GetBool("enabletranscodingcancellation"), "enables transcoding context cancellation")
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
 	rootCmd.Flags().String("albumplaycountmode", viper.GetString("albumplaycountmode"), "how to compute playcount for albums. absolute (default) or normalized")
@@ -379,6 +402,7 @@ func init() {
 	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
 
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
+	_ = viper.BindPFlag("enabletranscodingcancellation", rootCmd.Flags().Lookup("enabletranscodingcancellation"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
 }

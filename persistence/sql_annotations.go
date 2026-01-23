@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -15,20 +16,20 @@ import (
 const annotationTable = "annotation"
 
 func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
-	if userId(r.ctx) == invalidUserId {
-		return query
+	userID := loggedUser(r.ctx).ID
+	if userID == invalidUserId {
+		return query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
 	}
 	query = query.
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
-			// item_ids are unique across different item_types, so the clause below is not needed
-			//" AND annotation.item_type = '"+r.tableName+"'"+
-			" AND annotation.user_id = '"+userId(r.ctx)+"')").
+			" AND annotation.user_id = '"+userID+"')").
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
+			"rated_at",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
@@ -38,12 +39,28 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
+	query = query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+
 	return query
 }
 
+func annotationBoolFilter(field string) func(string, any) Sqlizer {
+	return func(_ string, value any) Sqlizer {
+		v, ok := value.(string)
+		if !ok {
+			return nil
+		}
+		if strings.ToLower(v) == "true" {
+			return Expr(fmt.Sprintf("COALESCE(%s, 0) > 0", field))
+		}
+		return Expr(fmt.Sprintf("COALESCE(%s, 0) = 0", field))
+	}
+}
+
 func (r sqlRepository) annId(itemID ...string) And {
+	userID := loggedUser(r.ctx).ID
 	return And{
-		Eq{annotationTable + ".user_id": userId(r.ctx)},
+		Eq{annotationTable + ".user_id": userID},
 		Eq{annotationTable + ".item_type": r.tableName},
 		Eq{annotationTable + ".item_id": itemID},
 	}
@@ -56,8 +73,9 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 	}
 	c, err := r.executeSQL(upd)
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
+		userID := loggedUser(r.ctx).ID
 		for _, itemID := range itemIDs {
-			values["user_id"] = userId(r.ctx)
+			values["user_id"] = userID
 			values["item_type"] = r.tableName
 			values["item_id"] = itemID
 			ins := Insert(annotationTable).SetMap(values)
@@ -76,7 +94,23 @@ func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 }
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {
-	return r.annUpsert(map[string]interface{}{"rating": rating}, itemID)
+	ratedAt := time.Now()
+	err := r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
+	if err != nil {
+		return err
+	}
+	return r.updateAvgRating(itemID)
+}
+
+func (r sqlRepository) updateAvgRating(itemID string) error {
+	upd := Update(r.tableName).
+		Where(Eq{"id": itemID}).
+		Set("average_rating", Expr(
+			"coalesce((select round(avg(rating), 2) from annotation where item_id = ? and item_type = ? and rating > 0), 0)",
+			itemID, r.tableName,
+		))
+	_, err := r.executeSQL(upd)
+	return err
 }
 
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
@@ -86,8 +120,9 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	c, err := r.executeSQL(upd)
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
+		userID := loggedUser(r.ctx).ID
 		values := map[string]interface{}{}
-		values["user_id"] = userId(r.ctx)
+		values["user_id"] = userID
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID
 		values["play_count"] = 1
@@ -117,7 +152,7 @@ func (r sqlRepository) cleanAnnotations() error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error cleaning up annotations: %w", err)
+		return fmt.Errorf("error cleaning up %s annotations: %w", r.tableName, err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)

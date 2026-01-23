@@ -49,6 +49,9 @@ cp "${DOWNLOAD_FOLDER}"/extracted_ffmpeg/${FFMPEG_FILE}/bin/ffmpeg.exe "$MSI_OUT
 cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"
 
+# package type indicator file
+echo "msi" > "$MSI_OUTPUT_DIR/.package"
+
 # workaround for wixl WixVariable not working to override bmp locations
 cp "$WORKSPACE"/release/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
 cp "$WORKSPACE"/release/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp

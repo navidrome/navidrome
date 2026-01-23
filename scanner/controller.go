@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -27,24 +26,8 @@ var (
 	ErrAlreadyScanning = errors.New("already scanning")
 )
 
-type Scanner interface {
-	// ScanAll starts a full scan of the music library. This is a blocking operation.
-	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
-	Status(context.Context) (*StatusInfo, error)
-}
-
-type StatusInfo struct {
-	Scanning    bool
-	LastScan    time.Time
-	Count       uint32
-	FolderCount uint32
-	LastError   string
-	ScanType    string
-	ElapsedTime time.Duration
-}
-
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
-	pls core.Playlists, m metrics.Metrics) Scanner {
+	pls core.Playlists, m metrics.Metrics) model.Scanner {
 	c := &controller{
 		rootCtx: rootCtx,
 		ds:      ds,
@@ -66,9 +49,10 @@ func (s *controller) getScanner() scanner {
 	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
-// CallScan starts an in-process scan of the music library.
+// CallScan starts an in-process scan of specific library/folder pairs.
+// If targets is empty, it scans all libraries.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool, targets []model.ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -80,7 +64,7 @@ func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullS
 	go func() {
 		defer close(progress)
 		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
-		scanner.scanAll(ctx, fullScan, progress)
+		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 	return progress, nil
 }
@@ -100,8 +84,11 @@ type ProgressInfo struct {
 	ForceUpdate     bool
 }
 
+// scanner defines the interface for different scanner implementations.
+// This allows for swapping between in-process and external scanners.
 type scanner interface {
-	scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo)
+	// scanFolders performs the actual scanning of folders. If targets is nil, it scans all libraries.
+	scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo)
 }
 
 type controller struct {
@@ -117,6 +104,24 @@ type controller struct {
 	changesDetected bool
 }
 
+// getLastScanTime returns the most recent scan time across all libraries
+func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
+	libs, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
+		Sort:  "last_scan_at",
+		Order: "desc",
+		Max:   1,
+	})
+	if err != nil {
+		return time.Time{}, fmt.Errorf("getting libraries: %w", err)
+	}
+
+	if len(libs) == 0 {
+		return time.Time{}, nil
+	}
+
+	return libs[0].LastScanAt, nil
+}
+
 // getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
 	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
@@ -129,10 +134,10 @@ func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed 
 			if running.Load() {
 				elapsed = time.Since(startTime)
 			} else {
-				// If scan is not running, try to get the last scan time for the library
-				lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
-				if err == nil {
-					elapsed = lib.LastScanAt.Sub(startTime)
+				// If scan is not running, calculate elapsed time using the most recent scan time
+				lastScanTime, err := s.getLastScanTime(ctx)
+				if err == nil && !lastScanTime.IsZero() {
+					elapsed = lastScanTime.Sub(startTime)
 				}
 			}
 		}
@@ -141,18 +146,18 @@ func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed 
 	return scanType, elapsed, lastErr
 }
 
-func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
-	lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
+func (s *controller) Status(ctx context.Context) (*model.ScannerStatus, error) {
+	lastScanTime, err := s.getLastScanTime(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("getting library: %w", err)
+		return nil, fmt.Errorf("getting last scan time: %w", err)
 	}
 
 	scanType, elapsed, lastErr := s.getScanInfo(ctx)
 
 	if running.Load() {
-		status := &StatusInfo{
+		status := &model.ScannerStatus{
 			Scanning:    true,
-			LastScan:    lib.LastScanAt,
+			LastScan:    lastScanTime,
 			Count:       s.count.Load(),
 			FolderCount: s.folderCount.Load(),
 			LastError:   lastErr,
@@ -166,9 +171,9 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting library stats: %w", err)
 	}
-	return &StatusInfo{
+	return &model.ScannerStatus{
 		Scanning:    false,
-		LastScan:    lib.LastScanAt,
+		LastScan:    lastScanTime,
 		Count:       uint32(count),
 		FolderCount: uint32(folderCount),
 		LastError:   lastErr,
@@ -178,25 +183,23 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	count, err := s.ds.MediaFile(ctx).CountAll()
+	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		return 0, 0, fmt.Errorf("media file count: %w", err)
+		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
-	folderCount, err := s.ds.Folder(ctx).CountAll(
-		model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Gt{"num_audio_files": 0},
-				squirrel.Eq{"missing": false},
-			},
-		},
-	)
-	if err != nil {
-		return 0, 0, fmt.Errorf("folder count: %w", err)
+	var count, folderCount int64
+	for _, l := range libs {
+		count += int64(l.TotalSongs)
+		folderCount += int64(l.TotalFolders)
 	}
 	return count, folderCount, nil
 }
 
 func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]string, error) {
+	return s.ScanFolders(requestCtx, fullScan, nil)
+}
+
+func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {
 	release, err := lockScan(requestCtx)
 	if err != nil {
 		return nil, err
@@ -205,7 +208,6 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 
 	// Prepare the context for the scan
 	ctx := request.AddValues(s.rootCtx, requestCtx)
-	ctx = events.BroadcastToAll(ctx)
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
 	// Send the initial scan status event
@@ -214,7 +216,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	go func() {
 		defer close(progress)
 		scanner := s.getScanner()
-		scanner.scanAll(ctx, fullScan, progress)
+		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients
@@ -225,7 +227,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
 		log.Debug(ctx, "Library changes imported. Sending refresh event")
-		s.broker.SendMessage(ctx, &events.RefreshResource{})
+		s.broker.SendBroadcastMessage(ctx, &events.RefreshResource{})
 	}
 	// Send the final scan status event, with totals
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
@@ -304,5 +306,5 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 }
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
-	s.broker.SendMessage(ctx, status)
+	s.broker.SendBroadcastMessage(ctx, status)
 }

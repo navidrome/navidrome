@@ -2,6 +2,7 @@ package str
 
 import (
 	"strings"
+	"unicode/utf8"
 )
 
 var utf8ToAscii = func() *strings.Replacer {
@@ -38,4 +39,26 @@ func LongestCommonPrefix(list []string) string {
 		}
 	}
 	return list[0]
+}
+
+// TruncateRunes truncates a string to a maximum number of runes, adding a suffix if truncated.
+// The suffix is included in the rune count, so if maxRunes is 30 and suffix is "...", the actual
+// string content will be truncated to fit within the maxRunes limit including the suffix.
+func TruncateRunes(s string, maxRunes int, suffix string) string {
+	if utf8.RuneCountInString(s) <= maxRunes {
+		return s
+	}
+
+	suffixRunes := utf8.RuneCountInString(suffix)
+	truncateAt := maxRunes - suffixRunes
+	if truncateAt < 0 {
+		truncateAt = 0
+	}
+
+	runes := []rune(s)
+	if truncateAt >= len(runes) {
+		return s + suffix
+	}
+
+	return string(runes[:truncateAt]) + suffix
 }

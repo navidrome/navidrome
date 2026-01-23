@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -17,7 +18,8 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	libraries, _ := api.ds.Library(r.Context()).GetAll()
+	libraries := getUserAccessibleLibraries(r.Context())
+
 	folders := make([]responses.MusicFolder, len(libraries))
 	for i, f := range libraries {
 		folders[i].Id = int32(f.ID)
@@ -28,28 +30,37 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
+func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
 	ctx := r.Context()
-	lib, err := api.ds.Library(ctx).Get(libId)
+
+	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
 	if err != nil {
-		log.Error(ctx, "Error retrieving Library", "id", libId, err)
+		log.Error(ctx, "Error retrieving last scan start time", err)
 		return nil, 0, err
+	}
+	lastScan := time.Now()
+	if lastScanStr != "" {
+		lastScan, err = time.Parse(time.RFC3339, lastScanStr)
 	}
 
 	var indexes model.ArtistIndexes
-	if lib.LastScanAt.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex(false, model.RoleAlbumArtist)
+	if lastScan.After(ifModifiedSince) {
+		indexes, err = api.ds.Artist(ctx).GetIndex(false, libIds, model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
 		}
+		if len(indexes) == 0 {
+			log.Debug(ctx, "No artists found in library", "libId", libIds)
+			return nil, 0, newError(responses.ErrorDataNotFound, "Library not found or empty")
+		}
 	}
 
-	return indexes, lib.LastScanAt.UnixMilli(), err
+	return indexes, lastScan.UnixMilli(), err
 }
 
-func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+func (api *Router) getArtistIndex(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +78,8 @@ func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince ti
 	return res, nil
 }
 
-func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Artists, error) {
-	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+func (api *Router) getArtistIndexID3(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Artists, error) {
+	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +99,10 @@ func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince
 
 func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 1)
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
 	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
 
-	res, err := api.getArtistIndex(r, musicFolderId, ifModifiedSince)
+	res, err := api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +113,9 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
-	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 1)
-	res, err := api.getArtistIndexID3(r, musicFolderId, time.Time{})
+	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+
+	res, err := api.getArtistIndexID3(r, musicFolderIds, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -219,9 +230,9 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
-	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
-	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 1200)
+	response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
+	response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
@@ -285,9 +296,9 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 
 	base := responses.ArtistInfoBase{}
 	base.Biography = artist.Biography
-	base.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
-	base.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
-	base.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 1200)
+	base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
+	base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
+	base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
 	base.LastFmUrl = artist.ExternalUrl
 	base.MusicBrainzID = artist.MbzArtistID
 
@@ -343,7 +354,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.provider.SimilarSongs(ctx, id, count)
+	songs, err := api.provider.ArtistRadio(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -397,8 +408,11 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	if artist.PlayCount > 0 {
 		dir.Played = artist.PlayDate
 	}
-	dir.AlbumCount = int32(artist.AlbumCount)
+	dir.AlbumCount = getArtistAlbumCount(artist)
 	dir.UserRating = int32(artist.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = artist.AverageRating
+	}
 	if artist.Starred {
 		dir.Starred = artist.StarredAt
 	}
@@ -436,6 +450,9 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = album.AverageRating
+	}
 	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {

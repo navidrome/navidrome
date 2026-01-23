@@ -169,6 +169,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" />,
       bpm: isDesktop && <NumberField source="bpm" />,
+      genre: <TextField source="genre" />,
       rating: config.enableStarRating && (
         <RatingField
           source="rating"
@@ -190,6 +191,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       'playCount',
       'playDate',
       'albumArtist',
+      'genre',
       'rating',
     ],
   })

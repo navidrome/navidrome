@@ -12,6 +12,7 @@
         "artist": "아티스트",
         "album": "앨범",
         "path": "파일 경로",
+		"libraryName": "라이브러리",
         "genre": "장르",
         "compilation": "컴필레이션",
         "year": "년",
@@ -34,7 +35,8 @@
         "participants": "추가 참가자",
         "tags": "추가 태그",
         "mappedTags": "매핑된 태그",
-        "rawTags": "원시 태그"
+        "rawTags": "원시 태그",
+        "missing": "누락"
       },
       "actions": {
         "addToQueue": "나중에 재생",
@@ -56,6 +58,7 @@
         "playCount": "재생 횟수",
         "size": "크기",
         "name": "이름",
+        "libraryName": "라이브러리",
         "genre": "장르",
         "compilation": "컴필레이션",
         "year": "년",
@@ -73,7 +76,8 @@
         "releaseType": "유형",
         "grouping": "그룹",
         "media": "미디어",
-        "mood": "분위기"
+        "mood": "분위기",
+        "missing": "누락"
       },
       "actions": {
         "playAll": "재생",
@@ -105,7 +109,8 @@
         "playCount": "재생 횟수",
         "rating": "평가",
         "genre": "장르",
-        "role": "역할"
+        "role": "역할",
+        "missing": "누락"
       },
       "roles": {
         "albumartist": "앨범 아티스트 |||| 앨범 아티스트들",
@@ -120,7 +125,13 @@
         "mixer": "믹서 |||| 믹서들",
         "remixer": "리믹서 |||| 리믹서들",
         "djmixer": "DJ 믹서 |||| DJ 믹서들",
-        "performer": "공연자 |||| 공연자들"
+        "performer": "공연자 |||| 공연자들",
+        "maincredit": "앨범 아티스트 또는 아티스트 |||| 앨범 아티스트들 또는 아티스트들"
+      },
+      "actions": {
+        "topSongs": "인기곡",
+        "shuffle": "셔플",
+        "radio": "라디오"
       }
     },
     "user": {
@@ -137,19 +148,26 @@
         "changePassword": "비밀번호를 변경할까요?",
         "currentPassword": "현재 비밀번호",
         "newPassword": "새 비밀번호",
-        "token": "토큰"
+        "token": "토큰",
+        "libraries": "라이브러리"
       },
       "helperTexts": {
-        "name": "이름 변경 사항은 다음 로그인 시에만 반영됨"
+        "name": "이름 변경 사항은 다음 로그인 시에만 반영됨",
+        "libraries": "이 사용자에 대한 특정 라이브러리를 선택하거나 기본 라이브러리를 사용하려면 비움"
       },
       "notifications": {
         "created": "사용자 생성됨",
         "updated": "사용자 업데이트됨",
         "deleted": "사용자 삭제됨"
       },
+      "validation": {
+        "librariesRequired": "관리자가 아닌 사용자의 경우 최소한 하나의 라이브러리를 선택해야 함"
+      },
       "message": {
         "listenBrainzToken": "ListenBrainz 사용자 토큰을 입력하세요.",
-        "clickHereForToken": "여기를 클릭하여 토큰을 얻으세요"
+        "clickHereForToken": "여기를 클릭하여 토큰을 얻으세요",
+        "selectAllLibraries": "모든 라이브러리 선택",
+        "adminAutoLibraries": "관리자 사용자는 자동으로 모든 라이브러리에 접속할 수 있음"
       }
     },
     "player": {
@@ -192,12 +210,18 @@
         "selectPlaylist": "재생목록 선택:",
         "addNewPlaylist": "\"%{name}\" 만들기",
         "export": "내보내기",
+        "saveQueue": "재생목록에 대기열 저장",
         "makePublic": "공개 만들기",
-        "makePrivate": "비공개 만들기"
+        "makePrivate": "비공개 만들기",
+        "searchOrCreate": "재생목록을 검색하거나 입력하여 새 재생목록을 만드세요...",
+        "pressEnterToCreate": "새 재생목록을 만드려면 Enter 키를 누름",
+        "removeFromSelection": "선택에서 제거"
       },
       "message": {
         "duplicate_song": "중복된 노래 추가",
-        "song_exist": "이미 재생목록에 존재하는 노래입니다. 중복을 추가할까요 아니면 건너뛸까요?"
+        "song_exist": "이미 재생목록에 존재하는 노래입니다. 중복을 추가할까요 아니면 건너뛸까요?",
+        "noPlaylistsFound": "재생목록을 찾을 수 없음",
+        "noPlaylists": "사용 가능한 재생 목록이 없음"
       }
     },
     "radio": {
@@ -238,13 +262,67 @@
       "fields": {
         "path": "경로",
         "size": "크기",
+        "libraryName": "라이브러리",
         "updatedAt": "사라짐"
       },
       "actions": {
-        "remove": "제거"
+        "remove": "제거",
+        "remove_all": "모두 제거"
       },
       "notifications": {
         "removed": "누락된 파일이 제거되었음"
+      }
+    },
+    "library": {
+      "name": "라이브러리 |||| 라이브러리들",
+      "fields": {
+        "name": "이름",
+        "path": "경로",
+        "remotePath": "원격 경로",
+        "lastScanAt": "최근 스캔",
+        "songCount": "노래",
+        "albumCount": "앨범",
+        "artistCount": "아티스트",
+        "totalSongs": "노래",
+        "totalAlbums": "앨범",
+        "totalArtists": "아티스트",
+        "totalFolders": "폴더",
+        "totalFiles": "파일",
+        "totalMissingFiles": "누락된 파일",
+        "totalSize": "총 크기",
+        "totalDuration": "기간",
+        "defaultNewUsers": "신규 사용자 기본값",
+        "createdAt": "생성됨",
+        "updatedAt": "업데이트됨"
+      },
+      "sections": {
+        "basic": "기본 정보",
+        "statistics": "통계"
+      },
+      "actions": {
+        "scan": "라이브러리 스캔",
+        "manageUsers": "자용자 접속 관리",
+        "viewDetails": "상세 보기"
+      },
+      "notifications": {
+        "created": "라이브러리가 성공적으로 생성됨",
+        "updated": "라이브러리가 성공적으로 업데이트됨",
+        "deleted": "라이브러리가 성공적으로 삭제됨",
+        "scanStarted": "라이브러리 스캔 스작됨",
+        "scanCompleted": "라이브러리 스캔 완료됨"
+      },
+      "validation": {
+        "nameRequired": "라이브러리 이름이 필요함",
+        "pathRequired": "라이브러리 경로가 필요함",
+        "pathNotDirectory": "라이브러리 경로는 디렉터리여야 함",
+        "pathNotFound": "라이브러리 경로를 찾을 수 없음",
+        "pathNotAccessible": "라이브러리 경로에 접근할 수 없음",
+        "pathInvalid": "잘못된 라이브러리 경로"
+      },
+      "messages": {
+        "deleteConfirm": "이 라이브러리를 삭제할까요? 삭제하면 연결된 모든 데이터와 사용자 접속 권한이 제거됩니다.",
+        "scanInProgress": "스캔 진행 중...",
+        "noLibrariesAssigned": "이 사용자에게 할당된 라이브러리가 없음"
       }
     }
   },
@@ -398,11 +476,15 @@
     "transcodingDisabled": "웹 인터페이스를 통한 트랜스코딩 구성 변경은 보안상의 이유로 비활성화되어 있습니다. 트랜스코딩 옵션을 변경(편집 또는 추가)하려면, %{config} 구성 옵션으로 서버를 다시 시작하세요.",
     "transcodingEnabled": "Navidrome은 현재 %{config}로 실행 중이므로 웹 인터페이스를 사용하여 트랜스코딩 설정에서 시스템 명령을 실행할 수 있습니다. 보안상의 이유로 비활성화하고 트랜스코딩 옵션을 구성할 때만 활성화하는 것이 좋습니다.",
     "songsAddedToPlaylist": "1 개의 노래를 재생목록에 추가하였음 |||| %{smart_count} 개의 노래를 재생 목록에 추가하였음",
+    "noSimilarSongsFound": "비슷한 노래를 찾을 수 없음",
+    "noTopSongsFound": "인기곡을 찾을 수 없음",
     "noPlaylistsAvailable": "사용 가능한 노래 없음",
     "delete_user_title": "사용자 '%{name}' 삭제",
     "delete_user_content": "이 사용자와 해당 사용자의 모든 데이터(재생 목록 및 환경 설정 포함)를 삭제할까요?",
     "remove_missing_title": "누락된 파일들 제거",
     "remove_missing_content": "선택한 누락된 파일을 데이터베이스에서 삭제할까요? 삭제하면 재생 횟수 및 평점을 포함하여 해당 파일에 대한 모든 참조가 영구적으로 삭제됩니다.",
+    "remove_all_missing_title": "누락된 모든 파일 제거",
+    "remove_all_missing_content": "데이터베이스에서 누락된 모든 파일을 제거할까요? 이렇게 하면 해당 게임의 플레이 횟수와 평점을 포함한 모든 참조 내용이 영구적으로 삭제됩니다.",
     "notifications_blocked": "브라우저 설정에서 이 사이트의 알림을 차단하였음",
     "notifications_not_available": "이 브라우저는 데스크톱 알림을 지원하지 않거나 https를 통해 Navidrome에 접속하고 있지 않음",
     "lastfmLinkSuccess": "Last.fm이 성공적으로 연결되었고 스크로블링이 활성화되었음",
@@ -429,6 +511,12 @@
   },
   "menu": {
     "library": "라이브러리",
+    "librarySelector": {
+      "allLibraries": "모든 라이브러리 (%{count})",
+      "multipleLibraries": "%{selected} / %{total} 라이브러리",
+      "selectLibraries": "라이브러리 선택",
+      "none": "없음"
+    },
     "settings": "설정",
     "version": "버전",
     "theme": "테마",
@@ -491,6 +579,21 @@
         "disabled": "비활성화",
         "waiting": "대기중"
       }
+    },
+    "tabs": {
+      "about": "정보",
+      "config": "구성"
+    },
+    "config": {
+      "configName": "구성 이름",
+      "environmentVariable": "환경 변수",
+      "currentValue": "현재 값",
+      "configurationFile": "구성 파일",
+      "exportToml": "구성 내보내기 (TOML)",
+      "exportSuccess": "TOML 형식으로 클립보드로 내보낸 구성",
+      "exportFailed": "구성 복사 실패",
+      "devFlagsHeader": "개발 플래그 (변경/삭제 가능)",
+      "devFlagsComment": "이는 실험적 설정이므로 향후 버전에서 제거될 수 있음"
     }
   },
   "activity": {
@@ -499,7 +602,15 @@
     "quickScan": "빠른 스캔",
     "fullScan": "전체 스캔",
     "serverUptime": "서버 가동 시간",
-    "serverDown": "오프라인"
+    "serverDown": "오프라인",
+    "scanType": "유형",
+    "status": "스캔 오류",
+    "elapsedTime": "경과 시간"
+  },
+  "nowPlaying": {
+    "title": "현재 재생 중",
+    "empty": "재생 중인 콘텐츠 없음",
+    "minutesAgo": "%{smart_count} 분 전"
   },
   "help": {
     "title": "Navidrome 단축키",

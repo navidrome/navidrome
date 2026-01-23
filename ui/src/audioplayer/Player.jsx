@@ -95,6 +95,19 @@ const Player = () => {
     }
   }, [audioInstance, context, gainNode, playerState, gainInfo])
 
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Check there's a current track and is actually playing/not paused
+      if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
+        e.preventDefault()
+        e.returnValue = '' // Chrome requires returnValue to be set
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [playerState, audioInstance])
+
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
@@ -127,6 +140,7 @@ const Player = () => {
         />
       ),
       locale: locale(translate),
+      sortableOptions: { delay: 200, delayOnTouchOnly: true },
     }),
     [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
   )
@@ -214,7 +228,8 @@ const Player = () => {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         if (!info.isRadio) {
-          subsonic.nowPlaying(info.trackId)
+          const pos = startTime === null ? null : Math.floor(info.currentTime)
+          subsonic.nowPlaying(info.trackId, pos)
         }
         setPreload(false)
         if (config.gaTrackingId) {

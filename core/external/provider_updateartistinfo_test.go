@@ -226,4 +226,88 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist.ID).To(Equal("ar-agent-fail"))
 		ag.AssertExpectations(GinkgoT())
 	})
+
+	It("matches similar artists by ID first when agent provides IDs", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-id-match",
+			Name: "ID Match Artist",
+		}
+		similarByID := model.Artist{ID: "ar-similar-by-id", Name: "Similar By ID", MbzArtistID: "mbid-similar"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByID})
+
+		// Agent returns similar artist with ID (highest priority matching)
+		rawSimilar := []agents.Artist{
+			{ID: "ar-similar-by-id", Name: "Different Name", MBID: "different-mbid"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-id-match", "ID Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-id-match", "ID Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-id-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should match by ID, not by name or MBID
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-id"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By ID"))
+	})
+
+	It("matches similar artists by MBID when ID is empty", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-mbid-match",
+			Name: "MBID Match Artist",
+		}
+		similarByMBID := model.Artist{ID: "ar-similar-by-mbid", Name: "Similar By MBID", MbzArtistID: "mbid-similar"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByMBID})
+
+		// Agent returns similar artist with only MBID (no ID)
+		rawSimilar := []agents.Artist{
+			{Name: "Different Name", MBID: "mbid-similar"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-mbid-match", "MBID Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-mbid-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should match by MBID since ID was empty
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-mbid"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By MBID"))
+	})
+
+	It("falls back to name matching when ID and MBID don't match", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-name-match",
+			Name: "Name Match Artist",
+		}
+		similarByName := model.Artist{ID: "ar-similar-by-name", Name: "Similar By Name"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByName})
+
+		// Agent returns similar artist with non-matching ID and MBID
+		rawSimilar := []agents.Artist{
+			{ID: "non-existent-id", Name: "Similar By Name", MBID: "non-existent-mbid"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-name-match", "Name Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-name-match", "Name Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-name-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should fall back to name matching since ID and MBID didn't match
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-name"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By Name"))
+	})
 })

@@ -240,24 +240,79 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
 
 				// Create multiple matching files
-				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("jpg image"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.abc"), []byte("text file"), 0600)).To(Succeed())
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.png"), []byte("png image"), 0600)).To(Succeed())
-				Expect(os.WriteFile(filepath.Join(artistDir, "artist.txt"), []byte("text file"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("jpg image"), 0600)).To(Succeed())
 
 				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
 			})
 
-			It("returns the first valid image file", func() {
+			It("returns the first valid image file in sorted order", func() {
 				reader, path, err := testFunc()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reader).ToNot(BeNil())
 
-				// Should return an image file, not the text file
-				Expect(path).To(SatisfyAny(
-					ContainSubstring("artist.jpg"),
-					ContainSubstring("artist.png"),
-				))
-				Expect(path).ToNot(ContainSubstring("artist.txt"))
+				// Should return an image file,
+				// Files are sorted: jpg comes before png alphabetically.
+				// .abc comes first, but it's not an image.
+				Expect(path).To(ContainSubstring("artist.jpg"))
+				reader.Close()
+			})
+		})
+
+		When("prioritizing files without numeric suffixes", func() {
+			BeforeEach(func() {
+				// Test case for issue #4683: artist.jpg should come before artist.1.jpg
+				artistDir := filepath.Join(tempDir, "artist")
+				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
+
+				// Create multiple matches with and without numeric suffixes
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.1.jpg"), []byte("artist 1"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("artist main"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.2.jpg"), []byte("artist 2"), 0600)).To(Succeed())
+
+				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+			})
+
+			It("returns artist.jpg before artist.1.jpg and artist.2.jpg", func() {
+				reader, path, err := testFunc()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reader).ToNot(BeNil())
+				Expect(path).To(ContainSubstring("artist.jpg"))
+
+				// Verify it's the main file, not a numbered variant
+				data, err := io.ReadAll(reader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("artist main"))
+				reader.Close()
+			})
+		})
+
+		When("handling case-insensitive sorting", func() {
+			BeforeEach(func() {
+				// Test case to ensure case-insensitive natural sorting
+				artistDir := filepath.Join(tempDir, "artist")
+				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
+
+				// Create files with mixed case names
+				Expect(os.WriteFile(filepath.Join(artistDir, "Folder.jpg"), []byte("folder"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("artist"), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(artistDir, "BACK.jpg"), []byte("back"), 0600)).To(Succeed())
+
+				testFunc = fromArtistFolder(ctx, artistDir, "*.*")
+			})
+
+			It("sorts case-insensitively", func() {
+				reader, path, err := testFunc()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reader).ToNot(BeNil())
+
+				// Should return artist.jpg first (case-insensitive: "artist" < "back" < "folder")
+				Expect(path).To(ContainSubstring("artist.jpg"))
+
+				data, err := io.ReadAll(reader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("artist"))
 				reader.Close()
 			})
 		})

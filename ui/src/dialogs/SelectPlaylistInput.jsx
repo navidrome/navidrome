@@ -226,7 +226,7 @@ const SelectedPlaylistChip = ({ playlist, onRemove }) => {
         onClick={() => onRemove(playlist)}
         title={translate('resources.playlist.actions.removeFromSelection')}
       >
-        {translate('resources.playlist.actions.removeSymbol')}
+        {'×'}
       </IconButton>
     </span>
   )
@@ -318,11 +318,10 @@ export const SelectPlaylistInput = ({ onChange }) => {
 
   const canCreateNew = Boolean(
     searchText.trim() &&
-      !filteredOptions.some(
-        (option) =>
-          option.name.toLowerCase() === searchText.toLowerCase().trim(),
-      ) &&
-      !selectedPlaylists.some((p) => p.name === searchText.trim()),
+    !filteredOptions.some(
+      (option) => option.name.toLowerCase() === searchText.toLowerCase().trim(),
+    ) &&
+    !selectedPlaylists.some((p) => p.name === searchText.trim()),
   )
 
   return (

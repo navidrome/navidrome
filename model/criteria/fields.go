@@ -10,43 +10,53 @@ import (
 )
 
 var fieldMap = map[string]*mappedField{
-	"title":           {field: "media_file.title"},
-	"album":           {field: "media_file.album"},
-	"hascoverart":     {field: "media_file.has_cover_art"},
-	"tracknumber":     {field: "media_file.track_number"},
-	"discnumber":      {field: "media_file.disc_number"},
-	"year":            {field: "media_file.year"},
-	"date":            {field: "media_file.date", alias: "recordingdate"},
-	"originalyear":    {field: "media_file.original_year"},
-	"originaldate":    {field: "media_file.original_date"},
-	"releaseyear":     {field: "media_file.release_year"},
-	"releasedate":     {field: "media_file.release_date"},
-	"size":            {field: "media_file.size"},
-	"compilation":     {field: "media_file.compilation"},
-	"dateadded":       {field: "media_file.created_at"},
-	"datemodified":    {field: "media_file.updated_at"},
-	"discsubtitle":    {field: "media_file.disc_subtitle"},
-	"comment":         {field: "media_file.comment"},
-	"lyrics":          {field: "media_file.lyrics"},
-	"sorttitle":       {field: "media_file.sort_title"},
-	"sortalbum":       {field: "media_file.sort_album_name"},
-	"sortartist":      {field: "media_file.sort_artist_name"},
-	"sortalbumartist": {field: "media_file.sort_album_artist_name"},
-	"albumtype":       {field: "media_file.mbz_album_type", alias: "releasetype"},
-	"albumcomment":    {field: "media_file.mbz_album_comment"},
-	"catalognumber":   {field: "media_file.catalog_num"},
-	"filepath":        {field: "media_file.path"},
-	"filetype":        {field: "media_file.suffix"},
-	"duration":        {field: "media_file.duration"},
-	"bitrate":         {field: "media_file.bit_rate"},
-	"bitdepth":        {field: "media_file.bit_depth"},
-	"bpm":             {field: "media_file.bpm"},
-	"channels":        {field: "media_file.channels"},
-	"loved":           {field: "COALESCE(annotation.starred, false)"},
-	"dateloved":       {field: "annotation.starred_at"},
-	"lastplayed":      {field: "annotation.play_date"},
-	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
-	"rating":          {field: "COALESCE(annotation.rating, 0)"},
+	"title":                {field: "media_file.title"},
+	"album":                {field: "media_file.album"},
+	"hascoverart":          {field: "media_file.has_cover_art"},
+	"tracknumber":          {field: "media_file.track_number"},
+	"discnumber":           {field: "media_file.disc_number"},
+	"year":                 {field: "media_file.year"},
+	"date":                 {field: "media_file.date", alias: "recordingdate"},
+	"originalyear":         {field: "media_file.original_year"},
+	"originaldate":         {field: "media_file.original_date"},
+	"releaseyear":          {field: "media_file.release_year"},
+	"releasedate":          {field: "media_file.release_date"},
+	"size":                 {field: "media_file.size"},
+	"compilation":          {field: "media_file.compilation"},
+	"dateadded":            {field: "media_file.created_at"},
+	"datemodified":         {field: "media_file.updated_at"},
+	"discsubtitle":         {field: "media_file.disc_subtitle"},
+	"comment":              {field: "media_file.comment"},
+	"lyrics":               {field: "media_file.lyrics"},
+	"sorttitle":            {field: "media_file.sort_title"},
+	"sortalbum":            {field: "media_file.sort_album_name"},
+	"sortartist":           {field: "media_file.sort_artist_name"},
+	"sortalbumartist":      {field: "media_file.sort_album_artist_name"},
+	"albumcomment":         {field: "media_file.mbz_album_comment"},
+	"catalognumber":        {field: "media_file.catalog_num"},
+	"filepath":             {field: "media_file.path"},
+	"filetype":             {field: "media_file.suffix"},
+	"duration":             {field: "media_file.duration"},
+	"bitrate":              {field: "media_file.bit_rate"},
+	"bitdepth":             {field: "media_file.bit_depth"},
+	"bpm":                  {field: "media_file.bpm"},
+	"channels":             {field: "media_file.channels"},
+	"loved":                {field: "COALESCE(annotation.starred, false)"},
+	"dateloved":            {field: "annotation.starred_at"},
+	"lastplayed":           {field: "annotation.play_date"},
+	"daterated":            {field: "annotation.rated_at"},
+	"playcount":            {field: "COALESCE(annotation.play_count, 0)"},
+	"rating":               {field: "COALESCE(annotation.rating, 0)"},
+	"mbz_album_id":         {field: "media_file.mbz_album_id"},
+	"mbz_album_artist_id":  {field: "media_file.mbz_album_artist_id"},
+	"mbz_artist_id":        {field: "media_file.mbz_artist_id"},
+	"mbz_recording_id":     {field: "media_file.mbz_recording_id"},
+	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
+	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
+	"library_id":           {field: "media_file.library_id", numeric: true},
+
+	// Backward compatibility: albumtype is an alias for releasetype tag
+	"albumtype": {field: "releasetype", isTag: true},
 
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
@@ -147,13 +157,19 @@ type tagCond struct {
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
 
-	// Check if this tag is marked as numeric in the fieldMap
-	if fm, ok := fieldMap[e.tag]; ok && fm.numeric {
-		cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+	// Resolve the actual tag name (handles aliases like albumtype -> releasetype)
+	tagName := e.tag
+	if fm, ok := fieldMap[e.tag]; ok {
+		if fm.field != "" {
+			tagName = fm.field
+		}
+		if fm.numeric {
+			cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+		}
 	}
 
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
-		e.tag, cond)
+		tagName, cond)
 	if e.not {
 		cond = "not " + cond
 	}

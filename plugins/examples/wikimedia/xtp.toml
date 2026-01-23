@@ -1,0 +1,17 @@
+app_id = ""
+
+# This is where 'xtp plugin push' expects to find the wasm file after the build script has run.
+bin = "dist/plugin.wasm"
+extension_point_id = ""
+name = "wikimedia-plugin"
+
+[scripts]
+
+  # xtp plugin build runs this script to generate the wasm file
+  build = "mkdir -p dist && tinygo build -buildmode c-shared -target wasip1 -o dist/plugin.wasm ."
+
+  # xtp plugin init runs this script to format the plugin code
+  format = "go fmt && go mod tidy && goimports -w main.go"
+
+  # xtp plugin init runs this script before running the format script
+  prepare = "bash prepare.sh && go get ./..."

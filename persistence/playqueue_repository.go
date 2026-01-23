@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -27,7 +28,7 @@ func NewPlayQueueRepository(ctx context.Context, db dbx.Builder) model.PlayQueue
 type playQueue struct {
 	ID        string    `structs:"id"`
 	UserID    string    `structs:"user_id"`
-	Current   string    `structs:"current"`
+	Current   int       `structs:"current"`
 	Position  int64     `structs:"position"`
 	ChangedBy string    `structs:"changed_by"`
 	Items     string    `structs:"items"`
@@ -35,22 +36,39 @@ type playQueue struct {
 	UpdatedAt time.Time `structs:"updated_at"`
 }
 
-func (r *playQueueRepository) Store(q *model.PlayQueue) error {
+func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) error {
 	u := loggedUser(r.ctx)
-	err := r.clearPlayQueue(q.UserID)
-	if err != nil {
-		log.Error(r.ctx, "Error deleting previous playqueue", "user", u.UserName, err)
+
+	// Always find existing playqueue for this user
+	existingQueue, err := r.Retrieve(q.UserID)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		log.Error(r.ctx, "Error retrieving existing playqueue", "user", u.UserName, err)
 		return err
 	}
-	if len(q.Items) == 0 {
-		return nil
+
+	// Use existing ID if found, otherwise keep the provided ID (which may be empty for new records)
+	if !errors.Is(err, model.ErrNotFound) && existingQueue.ID != "" {
+		q.ID = existingQueue.ID
 	}
+
+	// When no specific columns are provided, we replace the whole queue
+	if len(colNames) == 0 {
+		err := r.clearPlayQueue(q.UserID)
+		if err != nil {
+			log.Error(r.ctx, "Error deleting previous playqueue", "user", u.UserName, err)
+			return err
+		}
+		if len(q.Items) == 0 {
+			return nil
+		}
+	}
+
 	pq := r.fromModel(q)
 	if pq.ID == "" {
 		pq.CreatedAt = time.Now()
 	}
 	pq.UpdatedAt = time.Now()
-	_, err = r.put(pq.ID, pq)
+	_, err = r.put(pq.ID, pq, colNames...)
 	if err != nil {
 		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
 		return err
@@ -58,12 +76,21 @@ func (r *playQueueRepository) Store(q *model.PlayQueue) error {
 	return nil
 }
 
+func (r *playQueueRepository) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
+	var res playQueue
+	err := r.queryOne(sel, &res)
+	q := r.toModel(&res)
+	q.Items = r.loadTracks(q.Items)
+	return &q, err
+}
+
 func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
 	err := r.queryOne(sel, &res)
-	pls := r.toModel(&res)
-	return &pls, err
+	q := r.toModel(&res)
+	return &q, err
 }
 
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {
@@ -100,7 +127,6 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 			q.Items = append(q.Items, model.MediaFile{ID: t})
 		}
 	}
-	q.Items = r.loadTracks(q.Items)
 	return q
 }
 
@@ -143,6 +169,10 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 
 func (r *playQueueRepository) clearPlayQueue(userId string) error {
 	return r.delete(Eq{"user_id": userId})
+}
+
+func (r *playQueueRepository) Clear(userId string) error {
+	return r.clearPlayQueue(userId)
 }
 
 var _ model.PlayQueueRepository = (*playQueueRepository)(nil)

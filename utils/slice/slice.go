@@ -6,9 +6,8 @@ import (
 	"cmp"
 	"io"
 	"iter"
+	"maps"
 	"slices"
-
-	"golang.org/x/exp/maps"
 )
 
 func Map[T any, R any](t []T, mapFunc func(T) R) []R {
@@ -49,11 +48,9 @@ func CompactByFrequency[T comparable](list []T) []T {
 		counters[item]++
 	}
 
-	sorted := maps.Keys(counters)
-	slices.SortFunc(sorted, func(i, j T) int {
+	return slices.SortedFunc(maps.Keys(counters), func(i, j T) int {
 		return cmp.Compare(counters[j], counters[i])
 	})
-	return sorted
 }
 
 func MostFrequent[T comparable](list []T) T {
@@ -170,4 +167,15 @@ func SeqFunc[I, O any](s []I, f func(I) O) iter.Seq[O] {
 			}
 		}
 	}
+}
+
+// Filter returns a new slice containing only the elements of s for which filterFunc returns true
+func Filter[T any](s []T, filterFunc func(T) bool) []T {
+	var result []T
+	for _, item := range s {
+		if filterFunc(item) {
+			result = append(result, item)
+		}
+	}
+	return result
 }

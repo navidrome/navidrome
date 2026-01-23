@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <typeinfo>
 
 #define TAGLIB_STATIC
 #include <apeproperties.h>
@@ -46,30 +45,62 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
-  goPutInt(id, (char *)"_lengthinmilliseconds", props->lengthInMilliseconds());
-  goPutInt(id, (char *)"_bitrate", props->bitrate());
-  goPutInt(id, (char *)"_channels", props->channels());
-  goPutInt(id, (char *)"_samplerate", props->sampleRate());
+  goPutInt(id, (char *)"__lengthinmilliseconds", props->lengthInMilliseconds());
+  goPutInt(id, (char *)"__bitrate", props->bitrate());
+  goPutInt(id, (char *)"__channels", props->channels());
+  goPutInt(id, (char *)"__samplerate", props->sampleRate());
 
+  // Extract bits per sample for supported formats
+  int bitsPerSample = 0;
   if (const auto* apeProperties{ dynamic_cast<const TagLib::APE::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  apeProperties->bitsPerSample());
-  if (const auto* asfProperties{ dynamic_cast<const TagLib::ASF::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  asfProperties->bitsPerSample());
+      bitsPerSample = apeProperties->bitsPerSample();
+  else if (const auto* asfProperties{ dynamic_cast<const TagLib::ASF::Properties*>(props) })
+      bitsPerSample = asfProperties->bitsPerSample();
   else if (const auto* flacProperties{ dynamic_cast<const TagLib::FLAC::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  flacProperties->bitsPerSample());
+      bitsPerSample = flacProperties->bitsPerSample();
   else if (const auto* mp4Properties{ dynamic_cast<const TagLib::MP4::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  mp4Properties->bitsPerSample());
+      bitsPerSample = mp4Properties->bitsPerSample();
   else if (const auto* wavePackProperties{ dynamic_cast<const TagLib::WavPack::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  wavePackProperties->bitsPerSample());
+      bitsPerSample = wavePackProperties->bitsPerSample();
   else if (const auto* aiffProperties{ dynamic_cast<const TagLib::RIFF::AIFF::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  aiffProperties->bitsPerSample());
+      bitsPerSample = aiffProperties->bitsPerSample();
   else if (const auto* wavProperties{ dynamic_cast<const TagLib::RIFF::WAV::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  wavProperties->bitsPerSample());
+      bitsPerSample = wavProperties->bitsPerSample();
   else if (const auto* dsfProperties{ dynamic_cast<const TagLib::DSF::Properties*>(props) })
-      goPutInt(id, (char *)"_bitspersample",  dsfProperties->bitsPerSample());
+      bitsPerSample = dsfProperties->bitsPerSample();
+  
+  if (bitsPerSample > 0) {
+      goPutInt(id, (char *)"__bitspersample", bitsPerSample);
+  }
 
   // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
+
+  // Make sure at least the basic properties are extracted
+  TagLib::Tag *basic = f.file()->tag();
+  if (!basic->isEmpty()) {
+    if (!basic->title().isEmpty()) {
+      tags.insert("__title", basic->title());
+    }
+    if (!basic->artist().isEmpty()) {
+      tags.insert("__artist", basic->artist());
+    }
+    if (!basic->album().isEmpty()) {
+      tags.insert("__album", basic->album());
+    }
+    if (!basic->comment().isEmpty()) {
+      tags.insert("__comment", basic->comment());
+    }
+    if (!basic->genre().isEmpty()) {
+      tags.insert("__genre", basic->genre());
+    }
+    if (basic->year() > 0) {
+      tags.insert("__year", TagLib::String::number(basic->year()));
+    }
+    if (basic->track() > 0) {
+      tags.insert("__track", TagLib::String::number(basic->track()));
+    }
+  }
 
   TagLib::ID3v2::Tag *id3Tags = NULL;
 
@@ -113,7 +144,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             strncpy(language, bv.data(), 3);
           }
 
-          char *val = (char *)frame->text().toCString(true);
+          char *val = const_cast<char*>(frame->text().toCString(true));
 
           goPutLyrics(id, language, val);
         }
@@ -132,7 +163,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
 
             for (const auto &line: frame->synchedText()) {
-              char *text = (char *)line.text.toCString(true);
+              char *text = const_cast<char*>(line.text.toCString(true));
               goPutLyricLine(id, language, text, line.time);
             }
           } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
@@ -141,7 +172,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             if (sampleRate != 0) {
               for (const auto &line: frame->synchedText()) {
                 const int timeInMs = (line.time * 1000) / sampleRate;
-                char *text = (char *)line.text.toCString(true);
+                char *text = const_cast<char*>(line.text.toCString(true));
                 goPutLyricLine(id, language, text, timeInMs);
               }
             }
@@ -160,9 +191,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   if (m4afile != NULL) {
     const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      char *key = (char *)item.first.toCString(true);
+      char *key = const_cast<char*>(item.first.toCString(true));
       for (const auto value: item.second.toStringList()) {
-        char *val = (char *)value.toCString(true);
+        char *val = const_cast<char*>(value.toCString(true));
         goPutM4AStr(id, key, val);
       }
     }
@@ -174,17 +205,24 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      tags.insert(item.first, item.second.front().toString());
+      char *key = const_cast<char*>(item.first.toCString(true));
+
+      for (auto j = item.second.begin();
+           j != item.second.end(); ++j) {
+
+        char *val = const_cast<char*>(j->toString().toCString(true));
+        goPutStr(id, key, val);
+      }
     }
   }
 
   // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
-    char *key = (char *)i->first.toCString(true);
+    char *key = const_cast<char*>(i->first.toCString(true));
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *val = (char *)(*j).toCString(true);
+      char *val = const_cast<char*>((*j).toCString(true));
       goPutStr(id, key, val);
     }
   }
@@ -242,7 +280,19 @@ char has_cover(const TagLib::FileRef f) {
   // ----- WMA
   else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
     const TagLib::ASF::Tag *tag{ asfFile->tag() };
-    hasCover = tag && asfFile->tag()->attributeListMap().contains("WM/Picture");
+    hasCover = tag && tag->attributeListMap().contains("WM/Picture");
+  }
+  // ----- DSF
+  else if (TagLib::DSF::File * dsffile{ dynamic_cast<TagLib::DSF::File *>(f.file())}) {
+    const TagLib::ID3v2::Tag *tag { dsffile->tag() };
+    hasCover = tag && !tag->frameListMap()["APIC"].isEmpty();
+  }
+  // ----- WAVPAK (APE tag)
+  else if (TagLib::WavPack::File * wvFile{dynamic_cast<TagLib::WavPack::File *>(f.file())}) {
+    if (wvFile->hasAPETag()) {
+      // This is the particular string that Picard uses
+      hasCover = !wvFile->APETag()->itemListMap()["COVER ART (FRONT)"].isEmpty();
+    }
   }
 
   return hasCover;

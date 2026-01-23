@@ -145,6 +145,7 @@ const SongList = (props) => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
+      composer: <ArtistLinkField source="composer" />,
       albumArtist: <ArtistLinkField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
       playCount: isDesktop && (
@@ -182,7 +183,9 @@ const SongList = (props) => {
       ),
       comment: <TextField source="comment" />,
       path: <PathField source="path" />,
-      createdAt: <DateField source="createdAt" showTime />,
+      createdAt: (
+        <DateField source="createdAt" sortBy="recently_added" showTime />
+      ),
     }
   }, [isDesktop, classes.ratingField])
 
@@ -190,6 +193,7 @@ const SongList = (props) => {
     resource: 'song',
     columns: toggleableFields,
     defaultOff: [
+      'composer',
       'channels',
       'bpm',
       'playDate',

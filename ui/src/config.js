@@ -29,13 +29,16 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableExternalServices: true,
   enableCoverAnimation: true,
+  enableNowPlaying: true,
   devShowArtistPage: true,
   devUIShowConfig: true,
+  devNewEventStream: false,
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
   separator: '/',
   enableInspect: true,
+  pluginsEnabled: true,
 }
 
 let config

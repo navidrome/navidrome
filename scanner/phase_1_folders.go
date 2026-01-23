@@ -26,28 +26,18 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library) *phaseFolders {
+func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer) *phaseFolders {
 	var jobs []*scanJob
-	for _, lib := range libs {
-		if lib.LastScanStartedAt.IsZero() {
-			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
-				state.sendWarning(err.Error())
-				continue
-			}
-			// Reload library to get updated state
-			l, err := ds.Library(ctx).Get(lib.ID)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
-				state.sendWarning(err.Error())
-				continue
-			}
-			lib = *l
-		} else {
-			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt, "fullScan", lib.FullScanInProgress)
+
+	// Create scan jobs for all libraries
+	for _, lib := range state.libraries {
+		// Get target folders for this library if selective scan
+		var targetFolders []string
+		if state.isSelectiveScan() {
+			targetFolders = state.targets[lib.ID]
 		}
-		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan)
+
+		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.sendWarning(err.Error())
@@ -55,23 +45,27 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		}
 		jobs = append(jobs, job)
 	}
+
 	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }
 
 type scanJob struct {
-	lib         model.Library
-	fs          storage.MusicFS
-	cw          artwork.CacheWarmer
-	lastUpdates map[string]time.Time
-	lock        sync.Mutex
-	numFolders  atomic.Int64
+	lib           model.Library
+	fs            storage.MusicFS
+	cw            artwork.CacheWarmer
+	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
+	targetFolders []string                          // Specific folders to scan (including all descendants)
+	lock          sync.Mutex
+	numFolders    atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool) (*scanJob, error) {
-	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
+func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
+	// Get folder updates, optionally filtered to specific target folders
+	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
+
 	fileStore, err := storage.For(lib.Path)
 	if err != nil {
 		log.Error(ctx, "Error getting storage for library", "library", lib.Name, "path", lib.Path, err)
@@ -82,22 +76,39 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 		log.Error(ctx, "Error getting fs for library", "library", lib.Name, "path", lib.Path, err)
 		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
+
+	// Ensure FullScanInProgress reflects the current scan request.
+	// This is important when resuming an interrupted quick scan as a full scan:
+	// the DB may have FullScanInProgress=false, but we need it true for isOutdated() to work correctly.
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
+
 	return &scanJob{
-		lib:         lib,
-		fs:          fsys,
-		cw:          cw,
-		lastUpdates: lastUpdates,
+		lib:           lib,
+		fs:            fsys,
+		cw:            cw,
+		lastUpdates:   lastUpdates,
+		targetFolders: targetFolders,
 	}, nil
 }
 
-func (j *scanJob) popLastUpdate(folderID string) time.Time {
+// popLastUpdate retrieves and removes the last update info for the given folder ID
+// This is used to track which folders have been found during the walk_dir_tree
+func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
 	lastUpdate := j.lastUpdates[folderID]
 	delete(j.lastUpdates, folderID)
 	return lastUpdate
+}
+
+// createFolderEntry creates a new folderEntry for the given path, using the last update info from the job
+// to populate the previous update time and hash. It also removes the folder from the job's lastUpdates map.
+// This is used to track which folders have been found during the walk_dir_tree.
+func (j *scanJob) createFolderEntry(path string) *folderEntry {
+	id := model.FolderID(j.lib, path)
+	info := j.popLastUpdate(id)
+	return newFolderEntry(j, id, path, info.UpdatedAt, info.Hash)
 }
 
 // phaseFolders represents the first phase of the scanning process, which is responsible
@@ -138,7 +149,8 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			if utils.IsCtxDone(p.ctx) {
 				break
 			}
-			outputChan, err := walkDirTree(p.ctx, job)
+
+			outputChan, err := walkDirTree(p.ctx, job, job.targetFolders...)
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
 			}
@@ -164,7 +176,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
-						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
+						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
 					}
 					totalChanged++
 					folder.elapsed.Stop()
@@ -318,6 +330,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	defer p.measure(entry)()
 	p.state.changesDetected.Store(true)
 
+	// Collect artwork IDs to pre-cache after the transaction commits
+	var artworkIDs []model.ArtworkID
+
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
 		folderRepo := tx.Folder(p.ctx)
@@ -336,7 +351,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.tags...)
+		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err
@@ -345,7 +360,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
 			err = artistRepo.Put(&entry.artists[i], "name",
-				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text")
+				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "updated_at")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
@@ -356,7 +371,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				entry.job.cw.PreCache(entry.artists[i].CoverArtID())
+				artworkIDs = append(artworkIDs, entry.artists[i].CoverArtID())
 			}
 		}
 
@@ -368,7 +383,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
-				entry.job.cw.PreCache(entry.albums[i].CoverArtID())
+				artworkIDs = append(artworkIDs, entry.albums[i].CoverArtID())
 			}
 		}
 
@@ -405,6 +420,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
 	}
+
+	// Pre-cache artwork after the transaction commits successfully
+	if err == nil {
+		for _, artID := range artworkIDs {
+			entry.job.cw.PreCache(artID)
+		}
+	}
+
 	return entry, err
 }
 
@@ -418,12 +441,14 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if prevID == "" {
 		return nil
 	}
+
 	// Reassign annotation from previous album to new album
 	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
+
 	// Keep created_at field from previous instance of the album
 	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
 		// Silently ignore when the previous album is not found
@@ -439,7 +464,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	logCall := log.Info
-	if entry.hasNoFiles() {
+	if entry.isEmpty() {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",

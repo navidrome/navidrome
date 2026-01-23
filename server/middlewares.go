@@ -107,7 +107,7 @@ func secureMiddleware() func(http.Handler) http.Handler {
 		FrameDeny:               true,
 		ReferrerPolicy:          "same-origin",
 		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
-		CustomFrameOptionsValue: conf.Server.HTTPSecurityHeaders.CustomFrameOptionsValue,
+		CustomFrameOptionsValue: conf.Server.HTTPHeaders.FrameOptions,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
@@ -168,7 +168,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 // realIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
 // context if navidrome is behind a trusted reverse proxy.
 func realIPMiddleware(next http.Handler) http.Handler {
-	if conf.Server.ReverseProxyWhitelist != "" {
+	if conf.Server.ExtAuth.TrustedSources != "" {
 		return chi.Chain(
 			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
 			middleware.RealIP,

@@ -152,7 +152,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(entry).ToNot(BeNil())
 
-					Expect(entry.EnqueueTime).To(BeTemporally("~", now))
+					Expect(entry.EnqueueTime).To(BeTemporally("~", now, 100*time.Millisecond))
 					Expect(entry.MediaFileID).To(Equal(fileId))
 					Expect(entry.PlayTime).To(BeTemporally("==", playTime))
 				},

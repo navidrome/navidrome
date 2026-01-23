@@ -233,19 +233,29 @@ export const SongContextMenu = ({
         open={open}
         onClose={handleMainMenuClose}
       >
-        {Object.keys(options).map(
-          (key) =>
+        {Object.keys(options).map((key) => {
+          const showInPlaylistDisabled =
+            key === 'showInPlaylist' && !playlists.length
+          return (
             options[key].enabled && (
               <MenuItem
                 value={key}
                 key={key}
-                onClick={handleItemClick}
-                disabled={key === 'showInPlaylist' && !playlists.length}
+                onClick={
+                  showInPlaylistDisabled
+                    ? (e) => e.stopPropagation()
+                    : handleItemClick
+                }
+                disabled={showInPlaylistDisabled}
+                style={
+                  showInPlaylistDisabled ? { pointerEvents: 'auto' } : undefined
+                }
               >
                 {options[key].label}
               </MenuItem>
-            ),
-        )}
+            )
+          )
+        })}
       </Menu>
       <Menu
         anchorEl={playlistAnchorEl}

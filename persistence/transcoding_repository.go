@@ -41,7 +41,7 @@ func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding,
 }
 
 func (r *transcodingRepository) Put(t *model.Transcoding) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.put(t.ID, t)
@@ -72,7 +72,7 @@ func (r *transcodingRepository) NewInstance() interface{} {
 }
 
 func (r *transcodingRepository) Save(entity interface{}) (string, error) {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return "", rest.ErrPermissionDenied
 	}
 	t := entity.(*model.Transcoding)
@@ -84,7 +84,7 @@ func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 }
 
 func (r *transcodingRepository) Update(id string, entity interface{}, cols ...string) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	t := entity.(*model.Transcoding)
@@ -97,7 +97,7 @@ func (r *transcodingRepository) Update(id string, entity interface{}, cols ...st
 }
 
 func (r *transcodingRepository) Delete(id string) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})

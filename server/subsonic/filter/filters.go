@@ -108,20 +108,51 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	return addDefaultFilters(options)
 }
 
-func SongWithLyrics(artist, title string) Options {
+func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
 	return addDefaultFilters(Options{
-		Sort:  "updated_at",
+		Sort:  "lyrics, updated_at",
 		Order: "desc",
 		Max:   1,
 		Filters: And{
 			Eq{"title": title},
-			NotEq{"lyrics": "[]"},
 			Or{
 				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
 				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
 			},
 		},
 	})
+}
+
+func ApplyLibraryFilter(opts Options, musicFolderIds []int) Options {
+	if len(musicFolderIds) == 0 {
+		return opts
+	}
+
+	libraryFilter := Eq{"library_id": musicFolderIds}
+	if opts.Filters == nil {
+		opts.Filters = libraryFilter
+	} else {
+		opts.Filters = And{opts.Filters, libraryFilter}
+	}
+
+	return opts
+}
+
+// ApplyArtistLibraryFilter applies a filter to the given Options to ensure that only artists
+// that are associated with the specified music folders are included in the results.
+func ApplyArtistLibraryFilter(opts Options, musicFolderIds []int) Options {
+	if len(musicFolderIds) == 0 {
+		return opts
+	}
+
+	artistLibraryFilter := Eq{"library_artist.library_id": musicFolderIds}
+	if opts.Filters == nil {
+		opts.Filters = artistLibraryFilter
+	} else {
+		opts.Filters = And{opts.Filters, artistLibraryFilter}
+	}
+
+	return opts
 }
 
 func ByGenre(genre string) Options {
@@ -132,7 +163,7 @@ func ByGenre(genre string) Options {
 }
 
 func filterByGenre(genre string) Sqlizer {
-	return persistence.Exists("json_tree(tags)", And{
+	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
 		Like{"value": genre},
 		NotEq{"atom": nil},
 	})

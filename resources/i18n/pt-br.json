@@ -12,6 +12,7 @@
         "artist": "Artista",
         "album": "Álbum",
         "path": "Arquivo",
+        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -44,7 +45,8 @@
         "shuffleAll": "Aleatório",
         "download": "Baixar",
         "playNext": "Toca a seguir",
-        "info": "Detalhes"
+        "info": "Detalhes",
+        "showInPlaylist": "Ir para playlist"
       }
     },
     "album": {
@@ -56,6 +58,7 @@
         "songCount": "Músicas",
         "playCount": "Execuções",
         "name": "Nome",
+        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -123,7 +126,13 @@
         "mixer": "Mixador |||| Mixadores",
         "remixer": "Remixador |||| Remixadores",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Músico |||| Músicos"
+        "performer": "Músico |||| Músicos",
+        "maincredit": "Artista do Álbum ou Artista |||| Artistas do Álbum ou Artistas"
+      },
+      "actions": {
+        "topSongs": "Mais tocadas",
+        "shuffle": "Aleatório",
+        "radio": "Rádio"
       }
     },
     "user": {
@@ -140,19 +149,26 @@
         "currentPassword": "Senha Atual",
         "newPassword": "Nova Senha",
         "token": "Token",
-        "lastAccessAt": "Últ. Acesso"
+        "lastAccessAt": "Últ. Acesso",
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
-        "name": "Alterações no seu nome só serão refletidas no próximo login"
+        "name": "Alterações no seu nome só serão refletidas no próximo login",
+        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão"
       },
       "notifications": {
         "created": "Novo usuário criado",
         "updated": "Usuário atualizado com sucesso",
         "deleted": "Usuário deletado com sucesso"
       },
+      "validation": {
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
+      },
       "message": {
         "listenBrainzToken": "Entre seu token do ListenBrainz",
-        "clickHereForToken": "Clique aqui para obter seu token"
+        "clickHereForToken": "Clique aqui para obter seu token",
+        "selectAllLibraries": "Selecionar todas as bibliotecas",
+        "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
       }
     },
     "player": {
@@ -200,8 +216,7 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção",
-        "removeSymbol": "×"
+        "removeFromSelection": "Remover da seleção"
       },
       "message": {
         "duplicate_song": "Adicionar músicas duplicadas",
@@ -238,13 +253,16 @@
         "updatedAt": "Últ. Atualização",
         "createdAt": "Data de Criação",
         "downloadable": "Permitir Baixar?"
-      }
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
+        "libraryName": "Biblioteca",
         "updatedAt": "Desaparecido em"
       },
       "actions": {
@@ -255,6 +273,137 @@
         "removed": "Arquivo(s) ausente(s) removido(s)"
       },
       "empty": "Nenhum arquivo ausente"
+    },
+    "library": {
+      "name": "Biblioteca |||| Bibliotecas",
+      "fields": {
+        "name": "Nome",
+        "path": "Caminho",
+        "remotePath": "Caminho Remoto",
+        "lastScanAt": "Último Scan",
+        "songCount": "Músicas",
+        "albumCount": "Álbuns",
+        "artistCount": "Artistas",
+        "totalSongs": "Músicas",
+        "totalAlbums": "Álbuns",
+        "totalArtists": "Artistas",
+        "totalFolders": "Pastas",
+        "totalFiles": "Arquivos",
+        "totalMissingFiles": "Arquivos Ausentes",
+        "totalSize": "Tamanho Total",
+        "totalDuration": "Duração",
+        "defaultNewUsers": "Padrão para Novos Usuários",
+        "createdAt": "Data de Criação",
+        "updatedAt": "Últ. Atualização"
+      },
+      "sections": {
+        "basic": "Informações Básicas",
+        "statistics": "Estatísticas"
+      },
+      "actions": {
+        "scan": "Scanear Biblioteca",
+        "quickScan": "Scan Rápido",
+        "fullScan": "Scan Completo",
+        "manageUsers": "Gerenciar Acesso do Usuário",
+        "viewDetails": "Ver Detalhes"
+      },
+      "notifications": {
+        "created": "Biblioteca criada com sucesso",
+        "updated": "Biblioteca atualizada com sucesso",
+        "deleted": "Biblioteca excluída com sucesso",
+        "scanStarted": "Scan da biblioteca iniciada",
+        "quickScanStarted": "Scan rápido iniciado",
+        "fullScanStarted": "Scan completo iniciado",
+        "scanError": "Erro ao iniciar o scan. Verifique os logs",
+        "scanCompleted": "Scan da biblioteca concluída"
+      },
+      "validation": {
+        "nameRequired": "Nome da biblioteca é obrigatório",
+        "pathRequired": "Caminho da biblioteca é obrigatório",
+        "pathNotDirectory": "Caminho da biblioteca deve ser um diretório",
+        "pathNotFound": "Caminho da biblioteca não encontrado",
+        "pathNotAccessible": "Caminho da biblioteca não está acessível",
+        "pathInvalid": "Caminho da biblioteca inválido"
+      },
+      "messages": {
+        "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
+        "scanInProgress": "Scan em progresso...",
+        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Nome",
+        "description": "Descrição",
+        "version": "Versão",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Permissões",
+        "enabled": "Habilitado",
+        "status": "Status",
+        "path": "Caminho",
+        "lastError": "Erro",
+        "hasError": "Erro",
+        "updatedAt": "Atualizado",
+        "createdAt": "Instalado",
+        "configKey": "Chave",
+        "configValue": "Valor",
+        "allUsers": "Permitir todos os usuários",
+        "selectedUsers": "Usuários selecionados",
+        "allLibraries": "Permitir todas as bibliotecas",
+        "selectedLibraries": "Bibliotecas selecionadas"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informações do Plugin",
+        "configuration": "Configuração",
+        "manifest": "Manifesto",
+        "usersPermission": "Permissão de Usuários",
+        "libraryPermission": "Permissão de Bibliotecas"
+      },
+      "status": {
+        "enabled": "Habilitado",
+        "disabled": "Desabilitado"
+      },
+      "actions": {
+        "enable": "Habilitar",
+        "disable": "Desabilitar",
+        "disabledDueToError": "Corrija o erro antes de habilitar",
+        "disabledUsersRequired": "Selecione usuários antes de habilitar",
+        "disabledLibrariesRequired": "Selecione bibliotecas antes de habilitar",
+        "addConfig": "Adicionar configuração",
+        "rescan": "Rescanear"
+      },
+      "notifications": {
+        "enabled": "Plugin habilitado",
+        "disabled": "Plugin desabilitado",
+        "updated": "Plugin atualizado",
+        "error": "Erro ao atualizar plugin"
+      },
+      "validation": {
+        "invalidJson": "A configuração deve ser um JSON válido"
+      },
+      "messages": {
+        "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
+        "configValidationError": "Falha na validação da configuração:",
+        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
+        "clickPermissions": "Clique em uma permissão para ver detalhes",
+        "noConfig": "Nenhuma configuração definida",
+        "allUsersHelp": "Quando habilitado, o plugin terá acesso a todos os usuários, incluindo os criados no futuro.",
+        "noUsers": "Nenhum usuário selecionado",
+        "permissionReason": "Motivo",
+        "usersRequired": "Este plugin requer acesso a informações de usuário. Selecione quais usuários o plugin pode acessar, ou habilite 'Permitir todos os usuários'.",
+        "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
+        "noLibraries": "Nenhuma biblioteca selecionada",
+        "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
+        "requiredHosts": "Hosts necessários"
+      },
+      "placeholders": {
+        "configKey": "chave",
+        "configValue": "valor"
+      }
     }
   },
   "ra": {
@@ -407,6 +556,8 @@
     "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
     "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
+    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
@@ -440,6 +591,12 @@
   },
   "menu": {
     "library": "Biblioteca",
+    "librarySelector": {
+      "allLibraries": "Todas as Bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
+      "selectLibraries": "Selecionar Bibliotecas",
+      "none": "Nenhuma"
+    },
     "settings": "Configurações",
     "version": "Versão",
     "theme": "Tema",
@@ -521,14 +678,20 @@
   },
   "activity": {
     "title": "Atividade",
-    "totalScanned": "Total de pastas analisadas",
-    "quickScan": "Scan rápido",
-    "fullScan": "Scan completo",
+    "totalScanned": "Total de pastas scaneadas",
+    "quickScan": "Rápido",
+    "fullScan": "Completo",
+    "selectiveScan": "Seletivo",
     "serverUptime": "Uptime do servidor",
     "serverDown": "DESCONECTADO",
-    "scanType": "Tipo",
+    "scanType": "Último Scan",
     "status": "Erro",
     "elapsedTime": "Duração"
+  },
+  "nowPlaying": {
+    "title": "Tocando agora",
+    "empty": "Nada tocando",
+    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
   },
   "help": {
     "title": "Teclas de atalho",

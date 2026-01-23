@@ -16,6 +16,11 @@ export default {
         color: 'white',
       },
     },
+    MuiButton: {
+      textPrimary: {
+        color: '#fff',
+      },
+    },
     NDLogin: {
       systemNameLink: {
         color: '#0085ff',

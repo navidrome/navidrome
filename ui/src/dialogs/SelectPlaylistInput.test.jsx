@@ -205,9 +205,7 @@ describe('SelectPlaylistInput', () => {
       })
 
       // Find and click the remove button (translation key)
-      const removeButton = screen.getByText(
-        'resources.playlist.actions.removeSymbol',
-      )
+      const removeButton = screen.getByText('×')
       fireEvent.click(removeButton)
 
       await waitFor(() => {
@@ -480,9 +478,7 @@ describe('SelectPlaylistInput', () => {
       })
 
       // Remove the first selected playlist via chip
-      const removeButtons = screen.getAllByText(
-        'resources.playlist.actions.removeSymbol',
-      )
+      const removeButtons = screen.getAllByText('×')
       fireEvent.click(removeButtons[0])
 
       await waitFor(() => {

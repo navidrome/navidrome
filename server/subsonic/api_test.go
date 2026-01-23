@@ -9,8 +9,10 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("sendResponse", func() {
@@ -91,7 +93,7 @@ var _ = Describe("sendResponse", func() {
 		It("should return a fail response", func() {
 			payload.Song = &responses.Child{OpenSubsonicChild: &responses.OpenSubsonicChild{}}
 			// An +Inf value will cause an error when marshalling to JSON
-			payload.Song.ReplayGain = responses.ReplayGain{TrackGain: math.Inf(1)}
+			payload.Song.ReplayGain = responses.ReplayGain{TrackGain: gg.P(math.Inf(1))}
 			q := r.URL.Query()
 			q.Add("f", "json")
 			r.URL.RawQuery = q.Encode()
@@ -108,4 +110,18 @@ var _ = Describe("sendResponse", func() {
 		})
 	})
 
+	It("updates status pointer when an error occurs", func() {
+		pointer := int32(0)
+
+		ctx := context.WithValue(r.Context(), subsonicErrorPointer, &pointer)
+		r = r.WithContext(ctx)
+
+		payload.Status = responses.StatusFailed
+		payload.Error = &responses.Error{Code: responses.ErrorDataNotFound}
+
+		sendResponse(w, r, payload)
+		Expect(w.Code).To(Equal(http.StatusOK))
+
+		Expect(pointer).To(Equal(responses.ErrorDataNotFound))
+	})
 })

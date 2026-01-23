@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -139,11 +140,22 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 		return nil, "", err
 	}
 
+	// Filter to valid image files
+	var imagePaths []string
 	for _, m := range matches {
 		if !model.IsImageFile(m) {
 			continue
 		}
-		filePath := filepath.Join(folder, m)
+		imagePaths = append(imagePaths, m)
+	}
+
+	// Sort image files by prioritizing base filenames without numeric
+	// suffixes (e.g., artist.jpg before artist.1.jpg)
+	slices.SortFunc(imagePaths, compareImageFiles)
+
+	// Try to open files in sorted order
+	for _, p := range imagePaths {
+		filePath := filepath.Join(folder, p)
 		f, err := os.Open(filePath)
 		if err != nil {
 			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)

@@ -1,0 +1,16 @@
+{
+  "name": "Webhook Scrobbler",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
+  "description": "Sends HTTP webhooks on scrobble events",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/webhook-rs",
+  "permissions": {
+    "http": {
+      "reason": "To send webhook notifications to configured URLs",
+      "requiredHosts": ["*"]
+    },
+    "users": {
+      "reason": "Receive scrobble events for users assigned to this plugin"
+    }
+  }
+}

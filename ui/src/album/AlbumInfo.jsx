@@ -37,7 +37,8 @@ const AlbumInfo = (props) => {
   const translate = useTranslate()
   const record = useRecordContext(props)
   const data = {
-    album: <TextField source={'name'} />,
+    name: <TextField source={'name'} />,
+    libraryName: <TextField source="libraryName" />,
     albumArtist: (
       <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
     ),

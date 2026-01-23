@@ -57,6 +57,7 @@ const createAdminStore = ({
       const state = store.getState()
       saveState({
         theme: state.theme,
+        library: state.library,
         player: (({ queue, volume, savedPlayIndex }) => ({
           queue,
           volume,

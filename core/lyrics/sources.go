@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/ioutils"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -27,8 +28,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	externalLyric := basePath[0:len(basePath)-len(ext)] + suffix
 
-	contents, err := os.ReadFile(externalLyric)
-
+	contents, err := ioutils.UTF8ReadFile(externalLyric)
 	if errors.Is(err, os.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path", "path", externalLyric)
 		return nil, nil

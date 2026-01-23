@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const LocalSchemaID = "file"
@@ -36,7 +38,14 @@ func For(uri string) (Storage, error) {
 	if len(parts) < 2 {
 		uri, _ = filepath.Abs(uri)
 		uri = filepath.ToSlash(uri)
-		uri = LocalSchemaID + "://" + uri
+
+		// Properly escape each path component using URL standards
+		pathParts := strings.Split(uri, "/")
+		escapedParts := slice.Map(pathParts, func(s string) string {
+			return url.PathEscape(s)
+		})
+
+		uri = LocalSchemaID + "://" + strings.Join(escapedParts, "/")
 	}
 
 	u, err := url.Parse(uri)

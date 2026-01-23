@@ -1,6 +1,10 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
 
+# Set global environment variables, required for most targets
+export CGO_CFLAGS_ALLOW=--define-prefix
+export ND_ENABLEINSIGHTSCOLLECTOR=false
+
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
 GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT
@@ -15,7 +19,8 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.0.2-1
+CROSS_TAGLIB_VERSION ?= 2.1.1-1
+GOLANGCI_LINT_VERSION ?= v2.8.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -25,36 +30,70 @@ setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First In
 .PHONY: setup
 
 dev: check_env   ##@Development Start Navidrome in development mode, with hot-reload for both frontend and backend
-	ND_ENABLEINSIGHTSCOLLECTOR="false" npx foreman -j Procfile.dev -p 4533 start
+	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
+	go tool reflex -d none -c reflex.conf
 .PHONY: server
+
+stop: ##@Development Stop development servers (UI and backend)
+	@echo "Stopping development servers..."
+	@-pkill -f "vite"
+	@-pkill -f "go tool reflex.*reflex.conf"
+	@-pkill -f "go run.*netgo"
+	@echo "Development servers stopped."
+.PHONY: stop
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
 
 PKG ?= ./...
-test: ##@Development Run Go tests
+test: ##@Development Run Go tests. Use PKG variable to specify packages to test, e.g. make test PKG=./server
 	go test -tags netgo $(PKG)
 .PHONY: test
 
-testrace: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on ./...
-.PHONY: test
+test-ndpgen: ##@Development Run tests for ndpgen plugin
+	cd plugins/cmd/ndpgen && go test ./......
+.PHONY: test-ndpgen
 
-testall: testrace ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test)
+testall: test test-ndpgen test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
+test-race: ##@Development Run Go tests with race detector
+	go test -tags netgo -race -shuffle=on  $(PKG)
+.PHONY: test-race
+
+test-js: ##@Development Run JS tests
+	@(cd ./ui && npm run test)
+.PHONY: test-js
+
+test-i18n: ##@Development Validate all translations files
+	./.github/workflows/validate-translations.sh 
+.PHONY: test-i18n
+
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@INSTALL=false; \
+	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
+		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
+			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
+			rm -f ./bin/golangci-lint; \
+			INSTALL=true; \
+		fi; \
+	else \
+		INSTALL=true; \
+	fi; \
+	if [ "$$INSTALL" = "true" ]; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s $(GOLANGCI_LINT_VERSION); \
+	fi
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run -v --timeout 5m
+	PATH=$$PATH:./bin golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -64,13 +103,22 @@ lintall: lint ##@Development Lint Go and JS code
 
 format: ##@Development Format code
 	@(cd ./ui && npm run prettier)
-	@go tool goimports -w `find . -name '*.go' | grep -v _gen.go$$`
+	@go tool goimports -w `find . -name '*.go' | grep -v _gen.go$$ | grep -v .pb.go$$`
 	@go mod tidy
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags=netgo ./...
 .PHONY: wire
+
+gen: check_go_env ##@Development Run go generate for code generation
+	go generate ./...
+	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host
+	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -python -rust
+	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust
+	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities
+	go mod tidy -C plugins/pdk/go
+.PHONY: gen
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
@@ -152,6 +200,20 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
+
+run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
+    VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
+	if [ -f navidrome.toml ]; then \
+		VOLUMES="$$VOLUMES -v $(PWD)/navidrome.toml:/data/navidrome.toml:ro"; \
+		MUSIC_FOLDER=$$(grep '^MusicFolder' navidrome.toml | head -n1 | sed 's/.*= *"//' | sed 's/".*//'); \
+		if [ -n "$$MUSIC_FOLDER" ] && [ -d "$$MUSIC_FOLDER" ]; then \
+		  VOLUMES="$$VOLUMES -v $$MUSIC_FOLDER:/music:ro"; \
+	  	fi; \
+	fi; \
+	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
+.PHONY: run-docker
 
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi

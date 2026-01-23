@@ -35,7 +35,8 @@
         "rawTags": "Ham etiketler",
         "bitDepth": "Bit derinliği",
         "sampleRate": "Örnekleme Oranı",
-        "missing": ""
+        "missing": "Eksik",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -44,7 +45,8 @@
         "shuffleAll": "Tümünü karıştır",
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
-        "info": "Bilgiler"
+        "info": "Bilgiler",
+        "showInPlaylist": "Çalma Listesinde Göster"
       }
     },
     "album": {
@@ -75,7 +77,8 @@
         "media": "Medya",
         "mood": "Mod",
         "date": "Kayıt Tarihi",
-        "missing": ""
+        "missing": "Eksik",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "playAll": "Oynat",
@@ -108,7 +111,7 @@
         "genre": "Tür",
         "size": "Boyut",
         "role": "Rol",
-        "missing": ""
+        "missing": "Eksik"
       },
       "roles": {
         "albumartist": "Albüm Sanatçısı |||| Albüm Sanatçısı",
@@ -123,7 +126,13 @@
         "mixer": "Mikser |||| Mikser",
         "remixer": "Remiks |||| Remiks",
         "djmixer": "DJ Mikseri |||| DJ Mikseri",
-        "performer": "Sanatçı |||| Sanatçı"
+        "performer": "Sanatçı |||| Sanatçı",
+        "maincredit": "Albüm Sanatçısı veya Sanatçı |||| Albüm Sanatçısı veya Sanatçılar"
+      },
+      "actions": {
+        "shuffle": "Karıştır",
+        "radio": "Radyo",
+        "topSongs": "En İyi Şarkılar"
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Mevcut Şifre",
         "newPassword": "Yeni Şifre",
         "token": "Token",
-        "lastAccessAt": "Son Erişim Tarihi"
+        "lastAccessAt": "Son Erişim Tarihi",
+        "libraries": "Kütüphaneler"
       },
       "helperTexts": {
-        "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir"
+        "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir",
+        "libraries": "Bu kullanıcı için belirli kütüphaneleri seçin veya varsayılan kütüphaneleri kullanmak için boş bırakın"
       },
       "notifications": {
         "created": "Kullanıcı oluşturuldu",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "ListenBrainz kullanıcı Token'ınızı girin.",
-        "clickHereForToken": "Token almak için buraya tıklayın"
+        "clickHereForToken": "Token almak için buraya tıklayın",
+        "selectAllLibraries": "Tüm kütüphaneleri seç",
+        "adminAutoLibraries": "Yönetici yetkili kullanıcılar tüm kütüphanelere otomatik olarak erişebilir"
+      },
+      "validation": {
+        "librariesRequired": "Yönetici olmayan kullanıcılar için en az bir kütüphane seçilmelidir"
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Aktar",
         "makePublic": "Herkese Açık Yap",
         "makePrivate": "Özel Yap",
-        "saveQueue": ""
+        "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
+        "searchOrCreate": "Çalma listelerini arayın veya yenisini oluşturmak için yazın...",
+        "pressEnterToCreate": "Yeni çalma listesi oluşturmak için Enter'a basın",
+        "removeFromSelection": "Seçimden kaldır"
       },
       "message": {
         "duplicate_song": "Yinelenen şarkıları ekle",
-        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?"
+        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?",
+        "noPlaylistsFound": "Hiç çalma listesi bulunamadı",
+        "noPlaylists": "Çalma listesi mevcut değil"
       }
     },
     "radio": {
@@ -239,7 +260,8 @@
       "fields": {
         "path": "Yol",
         "size": "Boyut",
-        "updatedAt": "Kaybolma"
+        "updatedAt": "Kaybolma",
+        "libraryName": "Kütüphane"
       },
       "actions": {
         "remove": "Kaldır",
@@ -249,6 +271,63 @@
         "removed": "Eksik dosya(lar) kaldırıldı"
       },
       "empty": "Eksik Dosya Yok"
+    },
+    "library": {
+      "name": "Kütüphane |||| Kütüphaneler",
+      "fields": {
+        "name": "İsim",
+        "path": "Yol",
+        "remotePath": "Uzak Yol",
+        "lastScanAt": "Son Tarama",
+        "songCount": "Şarkılar",
+        "albumCount": "Albümler",
+        "artistCount": "Sanatçılar",
+        "totalSongs": "Şarkılar",
+        "totalAlbums": "Albümler",
+        "totalArtists": "Sanatçılar",
+        "totalFolders": "Klasörler",
+        "totalFiles": "Dosyalar",
+        "totalMissingFiles": "Eksik Dosyalar",
+        "totalSize": "Toplam Boyut",
+        "totalDuration": "Süre",
+        "defaultNewUsers": "Yeni Kullanıcılar için Varsayılan",
+        "createdAt": "Oluşturuldu",
+        "updatedAt": "Güncellendi"
+      },
+      "sections": {
+        "basic": "Temel Bilgiler",
+        "statistics": "İstatistikler"
+      },
+      "actions": {
+        "scan": "Kütüphaneyi Tara",
+        "manageUsers": "Kullanıcı Erişimini Yönet",
+        "viewDetails": "Ayrıntıları Görüntüle",
+        "quickScan": "Hızlı Tarama",
+        "fullScan": "Tam Tarama"
+      },
+      "notifications": {
+        "created": "Kütüphane başarıyla oluşturuldu",
+        "updated": "Kütüphane başarıyla güncellendi",
+        "deleted": "Kütüphane başarıyla silindi",
+        "scanStarted": "Kütüphane taraması başladı",
+        "scanCompleted": "Kütüphane taraması tamamlandı",
+        "quickScanStarted": "Hızlı tarama başlatıldı",
+        "fullScanStarted": "Tam tarama başlatıldı",
+        "scanError": "Tarama başlatılırken hata oluştu. Günlükleri kontrol edin."
+      },
+      "validation": {
+        "nameRequired": "Kütüphane adı gereklidir",
+        "pathRequired": "Kütüphane yolu gereklidir",
+        "pathNotDirectory": "Kütüphane yolu bir dizin olmalıdır",
+        "pathNotFound": "Kütüphane yolu bulunamadı",
+        "pathNotAccessible": "Kütüphane yoluna erişim sağlanamıyor",
+        "pathInvalid": "Geçersiz kütüphane yolu"
+      },
+      "messages": {
+        "deleteConfirm": "Bu kütüphaneyi silmek istediğinizden emin misiniz? Bu işlem, ilgili tüm verileri ve kullanıcı erişimini kaldıracaktır.",
+        "scanInProgress": "Tarama devam ediyor...",
+        "noLibrariesAssigned": "Bu kullanıcıya hiçbir kütüphane atanmadı"
+      }
     }
   },
   "ra": {
@@ -430,7 +509,9 @@
     "remove_missing_title": "Eksik dosyaları kaldır",
     "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
     "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
-    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır."
+    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
+    "noSimilarSongsFound": "Benzer şarkı bulunamadı",
+    "noTopSongsFound": "En iyi şarkı listesi boş"
   },
   "menu": {
     "library": "Kütüphane",
@@ -459,7 +540,13 @@
     "albumList": "Albümler",
     "about": "Hakkında",
     "playlists": "Çalma Listeleri",
-    "sharedPlaylists": "Paylaşılan Çalma Listeleri"
+    "sharedPlaylists": "Paylaşılan Çalma Listeleri",
+    "librarySelector": {
+      "allLibraries": "Tüm Kitaplıklar (%{count})",
+      "multipleLibraries": "%{total} kütüphaneden %{selected} tanesi seçildi",
+      "selectLibraries": "Seçili Kütüphaneler",
+      "none": "Hiçbiri"
+    }
   },
   "player": {
     "playListsText": "Oynatma Sırası",
@@ -496,6 +583,21 @@
         "disabled": "Pasif",
         "waiting": "Bekle"
       }
+    },
+    "tabs": {
+      "about": "Hakkında",
+      "config": "Yapılandırma"
+    },
+    "config": {
+      "configName": "Yapılandırma Adı",
+      "environmentVariable": "Çevre Değişkeni",
+      "currentValue": "Güncel Değer",
+      "configurationFile": "Yapılandırma Dosyası",
+      "exportToml": "Yapılandırmayı Dışa Aktar (TOML)",
+      "exportSuccess": "Yapılandırma TOML formatında dışa aktarıldı",
+      "exportFailed": "Yapılandırma kopyalanamadı",
+      "devFlagsHeader": "Geliştirme Bayrakları (değişime/kaldırılmaya tabidir)",
+      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir"
     }
   },
   "activity": {
@@ -507,7 +609,8 @@
     "serverDown": "ÇEVRİMDIŞI",
     "scanType": "Tür",
     "status": "Tarama Hatası",
-    "elapsedTime": "Geçen Süre"
+    "elapsedTime": "Geçen Süre",
+    "selectiveScan": "Seçmeli"
   },
   "help": {
     "title": "Navidrome Kısayolları",
@@ -522,5 +625,10 @@
       "toggle_love": "Bu şarkıyı favorilere ekle",
       "current_song": "Mevcut Şarkıya Git"
     }
+  },
+  "nowPlaying": {
+    "title": "Şu An Çalıyor",
+    "empty": "Çalan şarkı yok",
+    "minutesAgo": "%{smart_count} dakika önce"
   }
 }

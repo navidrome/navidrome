@@ -112,7 +112,7 @@ func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
 	j := &ffCmd{args: args}
 	j.PipeReader, j.out = io.Pipe()
-	err := j.start()
+	err := j.start(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +127,8 @@ type ffCmd struct {
 	cmd  *exec.Cmd
 }
 
-func (j *ffCmd) start() error {
-	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
+func (j *ffCmd) start(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
 	if log.IsGreaterOrEqualTo(log.LevelTrace) {
 		cmd.Stderr = os.Stderr

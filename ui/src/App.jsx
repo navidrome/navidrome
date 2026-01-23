@@ -15,9 +15,12 @@ import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
 import share from './share'
+import library from './library'
+import plugin from './plugin'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
+  libraryReducer,
   themeReducer,
   addToPlaylistDialogReducer,
   expandInfoDialogReducer,
@@ -56,6 +59,7 @@ const adminStore = createAdminStore({
   dataProvider,
   history,
   customReducers: {
+    library: libraryReducer,
     player: playerReducer,
     albumView: albumViewReducer,
     theme: themeReducer,
@@ -122,11 +126,24 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-
+        permissions === 'admin' ? (
+          <Resource
+            name="library"
+            {...library}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
         permissions === 'admin' ? (
           <Resource
             name="missing"
             {...missing}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+        permissions === 'admin' && config.pluginsEnabled ? (
+          <Resource
+            name="plugin"
+            {...plugin}
             options={{ subMenu: 'settings' }}
           />
         ) : null,
@@ -137,9 +154,7 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,
-        permissions === 'admin' && config.devUIShowConfig ? (
-          <Resource name="config" />
-        ) : null,
+        <Resource name="config" />,
         <Player />,
       ]}
     </RAAdmin>

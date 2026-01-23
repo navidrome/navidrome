@@ -2,11 +2,14 @@ package subsonic
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // buildUserResponse creates a User response object from a User model
@@ -19,6 +22,7 @@ func buildUserResponse(user model.User) responses.User {
 		ScrobblingEnabled: true,
 		DownloadRole:      conf.Server.EnableDownloads,
 		ShareRole:         conf.Server.EnableSharing,
+		Folder:            slice.Map(user.Libraries, func(lib model.Library) int32 { return int32(lib.ID) }),
 	}
 
 	if conf.Server.Jukebox.Enabled {
@@ -28,13 +32,18 @@ func buildUserResponse(user model.User) responses.User {
 	return userResponse
 }
 
-// TODO This is a placeholder. The real one has to read this info from a config file or the database
 func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	loggedUser, ok := request.UserFrom(r.Context())
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
-
+	username, err := req.Params(r).String("username")
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(username, loggedUser.UserName) {
+		return nil, newError(responses.ErrorAuthorizationFail)
+	}
 	response := newResponse()
 	user := buildUserResponse(loggedUser)
 	response.User = &user

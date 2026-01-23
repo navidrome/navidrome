@@ -23,7 +23,13 @@ const url = (command, id, options) => {
       delete options.ts
     }
     Object.keys(options).forEach((k) => {
-      params.append(k, options[k])
+      const value = options[k]
+      // Handle array parameters by appending each value separately
+      if (Array.isArray(value)) {
+        value.forEach((v) => params.append(k, v))
+      } else {
+        params.append(k, value)
+      }
     })
   }
   return `/rest/${command}?${params.toString()}`
@@ -31,15 +37,16 @@ const url = (command, id, options) => {
 
 const ping = () => httpClient(url('ping'))
 
-const scrobble = (id, time, submission = true) =>
+const scrobble = (id, time, submission = true, position = null) =>
   httpClient(
     url('scrobble', id, {
       ...(submission && time && { time }),
       submission,
+      ...(!submission && position !== null && { position }),
     }),
   )
 
-const nowPlaying = (id) => scrobble(id, null, false)
+const nowPlaying = (id, position = null) => scrobble(id, null, false, position)
 
 const star = (id) => httpClient(url('star', id))
 
@@ -53,6 +60,16 @@ const download = (id, format = 'raw', bitrate = '0') =>
 const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
+
+const getNowPlaying = () => httpClient(url('getNowPlaying'))
+
+const getAvatarUrl = (username, size) =>
+  baseUrl(
+    url('getAvatar', null, {
+      username,
+      ...(size && { size }),
+    }),
+  )
 
 const getCoverArtUrl = (record, size, square) => {
   const options = {
@@ -82,6 +99,14 @@ const getAlbumInfo = (id) => {
   return httpClient(url('getAlbumInfo', id))
 }
 
+const getSimilarSongs2 = (id, count = 100) => {
+  return httpClient(url('getSimilarSongs2', id, { count }))
+}
+
+const getTopSongs = (artist, count = 50) => {
+  return httpClient(url('getTopSongs', null, { artist, count }))
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -102,8 +127,12 @@ export default {
   setRating,
   startScan,
   getScanStatus,
+  getNowPlaying,
   getCoverArtUrl,
+  getAvatarUrl,
   streamUrl,
   getAlbumInfo,
   getArtistInfo,
+  getTopSongs,
+  getSimilarSongs2,
 }

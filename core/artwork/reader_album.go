@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"cmp"
 	"context"
 	"crypto/md5"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/maruel/natural"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
@@ -116,8 +118,30 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	}
 
 	// Sort image files to ensure consistent selection of cover art
-	// This prioritizes files from lower-numbered disc folders by sorting the paths
-	slices.Sort(imgFiles)
+	// This prioritizes files without numeric suffixes (e.g., cover.jpg over cover.1.jpg)
+	// by comparing base filenames without extensions
+	slices.SortFunc(imgFiles, compareImageFiles)
 
 	return paths, imgFiles, &updatedAt, nil
+}
+
+// compareImageFiles compares two image file paths for sorting.
+// It extracts the base filename (without extension) and compares case-insensitively.
+// This ensures that "cover.jpg" sorts before "cover.1.jpg" since "cover" < "cover.1".
+// Note: This function is called O(n log n) times during sorting, but in practice albums
+// typically have only 1-20 image files, making the repeated string operations negligible.
+func compareImageFiles(a, b string) int {
+	// Case-insensitive comparison
+	a = strings.ToLower(a)
+	b = strings.ToLower(b)
+
+	// Extract base filenames without extensions
+	baseA := strings.TrimSuffix(filepath.Base(a), filepath.Ext(a))
+	baseB := strings.TrimSuffix(filepath.Base(b), filepath.Ext(b))
+
+	// Compare base names first, then full paths if equal
+	return cmp.Or(
+		natural.Compare(baseA, baseB),
+		natural.Compare(a, b),
+	)
 }

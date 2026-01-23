@@ -80,7 +80,7 @@ var _ = Describe("Auth", func() {
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
 				conf.Server.UILoginBackgroundURL = ""
-				conf.Server.ReverseProxyWhitelist = "192.168.0.0/16,2001:4860:4860::/48"
+				conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
@@ -155,7 +155,7 @@ var _ = Describe("Auth", func() {
 
 			It("does not set auth data when listening on unix socket without whitelist", func() {
 				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ReverseProxyWhitelist = ""
+				conf.Server.ExtAuth.TrustedSources = ""
 
 				// No ReverseProxyIp in request context
 				serveIndex(ds, fs, nil)(resp, req)
@@ -176,7 +176,7 @@ var _ = Describe("Auth", func() {
 
 			It("sets auth data when listening on unix socket with correct whitelist", func() {
 				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ReverseProxyWhitelist = conf.Server.ReverseProxyWhitelist + ",@"
+				conf.Server.ExtAuth.TrustedSources = conf.Server.ExtAuth.TrustedSources + ",@"
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -302,8 +302,8 @@ var _ = Describe("Auth", func() {
 			ds = &tests.MockDataStore{}
 			req = httptest.NewRequest("GET", "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
-			conf.Server.ReverseProxyWhitelist = "192.168.0.0/16"
-			conf.Server.ReverseProxyUserHeader = "Remote-User"
+			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			conf.Server.ExtAuth.UserHeader = "Remote-User"
 		})
 
 		It("makes the first user an admin", func() {

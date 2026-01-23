@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/gob"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/utils/pl"
@@ -17,11 +21,15 @@ import (
 var (
 	fullScan   bool
 	subprocess bool
+	targets    []string
+	targetFile string
 )
 
 func init() {
 	scanCmd.Flags().BoolVarP(&fullScan, "full", "f", false, "check all subfolders, ignoring timestamps")
 	scanCmd.Flags().BoolVarP(&subprocess, "subprocess", "", false, "run as subprocess (internal use)")
+	scanCmd.Flags().StringArrayVarP(&targets, "target", "t", []string{}, "list of libraryID:folderPath pairs, can be repeated (e.g., \"-t 1:Music/Rock -t 1:Music/Jazz -t 2:Classical\")")
+	scanCmd.Flags().StringVar(&targetFile, "target-file", "", "path to file containing targets (one libraryID:folderPath per line)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -68,7 +76,25 @@ func runScanner(ctx context.Context) {
 	ds := persistence.New(sqlDB)
 	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.CallScan(ctx, ds, pls, fullScan)
+	// Parse targets from command line or file
+	var scanTargets []model.ScanTarget
+	var err error
+
+	if targetFile != "" {
+		scanTargets, err = readTargetsFromFile(targetFile)
+		if err != nil {
+			log.Fatal(ctx, "Failed to read targets from file", err)
+		}
+		log.Info(ctx, "Scanning specific folders from file", "numTargets", len(scanTargets))
+	} else if len(targets) > 0 {
+		scanTargets, err = model.ParseTargets(targets)
+		if err != nil {
+			log.Fatal(ctx, "Failed to parse targets", err)
+		}
+		log.Info(ctx, "Scanning specific folders", "numTargets", len(scanTargets))
+	}
+
+	progress, err := scanner.CallScan(ctx, ds, pls, fullScan, scanTargets)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}
@@ -79,4 +105,32 @@ func runScanner(ctx context.Context) {
 	} else {
 		trackScanInteractively(ctx, progress)
 	}
+}
+
+// readTargetsFromFile reads scan targets from a file, one per line.
+// Each line should be in the format "libraryID:folderPath".
+// Empty lines and lines starting with # are ignored.
+func readTargetsFromFile(filePath string) ([]model.ScanTarget, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open target file: %w", err)
+	}
+	defer file.Close()
+
+	var targetStrings []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// Skip empty lines and comments
+		if line == "" {
+			continue
+		}
+		targetStrings = append(targetStrings, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read target file: %w", err)
+	}
+
+	return model.ParseTargets(targetStrings)
 }

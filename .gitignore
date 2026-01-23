@@ -5,6 +5,7 @@
 /navidrome
 /iTunes*.xml
 /tmp
+/bin
 data/*
 vendor/*/
 wiki
@@ -16,6 +17,7 @@ master.zip
 testDB
 cache/*
 *.swp
+coverage.out
 dist
 music
 *.db*
@@ -23,7 +25,15 @@ music
 docker-compose.yml
 !contrib/docker-compose.yml
 binaries
-navidrome-master
+navidrome-*
+/ndpgen
 AGENTS.md
+.github/prompts
+.github/instructions
+.github/git-commit-instructions.md
 *.exe
-bin/
+*.test
+*.wasm
+*.ndp
+openspec/
+go.work*

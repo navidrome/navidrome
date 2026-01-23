@@ -95,7 +95,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.ctx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"id": ids})})
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
 		if err != nil {
 			return err
 		}

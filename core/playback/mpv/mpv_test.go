@@ -372,7 +372,7 @@ goto loop
 `
 	} else {
 		scriptExt = ".sh"
-		scriptContent = `#!/bin/bash
+		scriptContent = `#!/bin/sh
 echo "$0"
 for arg in "$@"; do
     echo "$arg"

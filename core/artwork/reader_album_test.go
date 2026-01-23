@@ -27,26 +27,7 @@ var _ = Describe("Album Artwork Reader", func() {
 			expectedAt = now.Add(5 * time.Minute)
 
 			// Set up the test folders with image files
-			repo = &fakeFolderRepo{
-				result: []model.Folder{
-					{
-						Path:            "Artist/Album/Disc1",
-						ImagesUpdatedAt: expectedAt,
-						ImageFiles:      []string{"cover.jpg", "back.jpg"},
-					},
-					{
-						Path:            "Artist/Album/Disc2",
-						ImagesUpdatedAt: now,
-						ImageFiles:      []string{"cover.jpg"},
-					},
-					{
-						Path:            "Artist/Album/Disc10",
-						ImagesUpdatedAt: now,
-						ImageFiles:      []string{"cover.jpg"},
-					},
-				},
-				err: nil,
-			}
+			repo = &fakeFolderRepo{}
 			ds = &fakeDataStore{
 				folderRepo: repo,
 			}
@@ -58,19 +39,82 @@ var _ = Describe("Album Artwork Reader", func() {
 		})
 
 		It("returns sorted image files", func() {
+			repo.result = []model.Folder{
+				{
+					Path:            "Artist/Album/Disc1",
+					ImagesUpdatedAt: expectedAt,
+					ImageFiles:      []string{"cover.jpg", "back.jpg", "cover.1.jpg"},
+				},
+				{
+					Path:            "Artist/Album/Disc2",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.jpg"},
+				},
+				{
+					Path:            "Artist/Album/Disc10",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.jpg"},
+				},
+			}
+
 			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
 
-			// Check that image files are sorted alphabetically
-			Expect(imgFiles).To(HaveLen(4))
+			// Check that image files are sorted by base name (without extension)
+			Expect(imgFiles).To(HaveLen(5))
 
-			// The files should be sorted by full path
+			// Files should be sorted by base filename without extension, then by full path
+			// "back" < "cover", so back.jpg comes first
+			// Then all cover.jpg files, sorted by path
 			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/back.jpg")))
 			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.jpg")))
-			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Disc10/cover.jpg")))
-			Expect(imgFiles[3]).To(Equal(filepath.FromSlash("Artist/Album/Disc2/cover.jpg")))
+			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Disc2/cover.jpg")))
+			Expect(imgFiles[3]).To(Equal(filepath.FromSlash("Artist/Album/Disc10/cover.jpg")))
+			Expect(imgFiles[4]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.1.jpg")))
+		})
+
+		It("prioritizes files without numeric suffixes", func() {
+			// Test case for issue #4683: cover.jpg should come before cover.1.jpg
+			repo.result = []model.Folder{
+				{
+					Path:            "Artist/Album",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.1.jpg", "cover.jpg", "cover.2.jpg"},
+				},
+			}
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(HaveLen(3))
+
+			// cover.jpg should come first because "cover" < "cover.1" < "cover.2"
+			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
+			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.1.jpg")))
+			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/cover.2.jpg")))
+		})
+
+		It("handles case-insensitive sorting", func() {
+			// Test that Cover.jpg and cover.jpg are treated as equivalent
+			repo.result = []model.Folder{
+				{
+					Path:            "Artist/Album",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"Folder.jpg", "cover.jpg", "BACK.jpg"},
+				},
+			}
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(HaveLen(3))
+
+			// Files should be sorted case-insensitively: BACK, cover, Folder
+			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/BACK.jpg")))
+			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
+			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Folder.jpg")))
 		})
 	})
 })

@@ -1,7 +1,7 @@
 package subsonic
 
 import (
-	"context"
+	"errors"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -36,9 +36,15 @@ var _ = Describe("Users", func() {
 			conf.Server.EnableSharing = true
 			conf.Server.Jukebox.Enabled = false
 
+			// Set up user with libraries
+			testUser.Libraries = model.Libraries{
+				{ID: 10, Name: "Music"},
+				{ID: 20, Name: "Podcasts"},
+			}
+
 			// Create request with user in context
-			req := httptest.NewRequest("GET", "/rest/getUser", nil)
-			ctx := request.WithUser(context.Background(), testUser)
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
 			userResponse, err1 := router.GetUser(req)
@@ -57,6 +63,7 @@ var _ = Describe("Users", func() {
 			Expect(userResponse.User.ScrobblingEnabled).To(BeTrue())
 			Expect(userResponse.User.DownloadRole).To(BeTrue())
 			Expect(userResponse.User.ShareRole).To(BeTrue())
+			Expect(userResponse.User.Folder).To(ContainElements(int32(10), int32(20)))
 
 			// Verify GetUsers response structure
 			Expect(usersResponse.Status).To(Equal(responses.StatusOK))
@@ -75,6 +82,7 @@ var _ = Describe("Users", func() {
 			Expect(singleUser.DownloadRole).To(Equal(userFromList.DownloadRole))
 			Expect(singleUser.ShareRole).To(Equal(userFromList.ShareRole))
 			Expect(singleUser.JukeboxRole).To(Equal(userFromList.JukeboxRole))
+			Expect(singleUser.Folder).To(Equal(userFromList.Folder))
 		})
 	})
 
@@ -93,4 +101,75 @@ var _ = Describe("Users", func() {
 		Entry("jukebox enabled, admin-only, regular user", true, true, false, false),
 		Entry("jukebox enabled, admin-only, admin user", true, true, true, true),
 	)
+
+	Describe("Folder list population", func() {
+		It("should populate Folder field with user's accessible library IDs", func() {
+			testUser.Libraries = model.Libraries{
+				{ID: 1, Name: "Music"},
+				{ID: 2, Name: "Podcasts"},
+				{ID: 5, Name: "Audiobooks"},
+			}
+
+			response := buildUserResponse(testUser)
+
+			Expect(response.Folder).To(HaveLen(3))
+			Expect(response.Folder).To(ContainElements(int32(1), int32(2), int32(5)))
+		})
+	})
+
+	Describe("GetUser authorization", func() {
+		It("should allow user to request their own information", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).ToNot(BeNil())
+			Expect(response.User).ToNot(BeNil())
+			Expect(response.User.Username).To(Equal("testuser"))
+		})
+
+		It("should deny user from requesting another user's information", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=anotheruser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorAuthorizationFail))
+		})
+
+		It("should return error when username parameter is missing", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser", nil)
+			ctx := request.WithUser(GinkgoT().Context(), testUser)
+			req = req.WithContext(ctx)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(MatchError("missing parameter: 'username'"))
+			Expect(response).To(BeNil())
+		})
+
+		It("should return error when user context is missing", func() {
+			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+
+			response, err := router.GetUser(req)
+
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+		})
+	})
 })

@@ -69,7 +69,7 @@ main:
   remixer:
     aliases: [ tpe4, remixer, mixartist, ----:com.apple.itunes:remixer, wm/modifiedby ]
   albumartist:
-    aliases: [ tpe2, albumartist, album artist, aart, wm/albumartist ]
+    aliases: [ tpe2, albumartist, album artist, album_artist, aart, wm/albumartist ]
   albumartistsort:
     aliases: [ tso2, txxx:albumartistsort, albumartistsort, soaa, wm/albumartistsortorder ]
   albumartists:
@@ -108,7 +108,8 @@ main:
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
-    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics, unsyncedlyrics ]
+    # Note, @lyr and wm/lyrics have been removed. Taglib somehow appears to always populate `lyrics:xxx`
+    aliases: [ uslt:description, lyrics, unsyncedlyrics ]
     maxLength: 32768
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:

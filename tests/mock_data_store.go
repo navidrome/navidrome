@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -19,11 +20,20 @@ type MockDataStore struct {
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
 	MockedPlaylist       model.PlaylistRepository
+	MockedPlayQueue      model.PlayQueueRepository
 	MockedShare          model.ShareRepository
 	MockedTranscoding    model.TranscodingRepository
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
+	MockedScrobble       model.ScrobbleRepository
 	MockedRadio          model.RadioRepository
+	MockedPlugin         model.PluginRepository
+	scrobbleBufferMu     sync.Mutex
+	repoMu               sync.Mutex
+
+	// GC tracking
+	GCCalled bool
+	GCError  error
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
@@ -82,6 +92,8 @@ func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
 }
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedMediaFile == nil {
 		if db.RealDS != nil {
 			db.MockedMediaFile = db.RealDS.MediaFile(ctx)
@@ -115,10 +127,14 @@ func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository 
 }
 
 func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	if db.RealDS != nil {
-		return db.RealDS.PlayQueue(ctx)
+	if db.MockedPlayQueue == nil {
+		if db.RealDS != nil {
+			db.MockedPlayQueue = db.RealDS.PlayQueue(ctx)
+		} else {
+			db.MockedPlayQueue = &MockPlayQueueRepo{}
+		}
 	}
-	return struct{ model.PlayQueueRepository }{}
+	return db.MockedPlayQueue
 }
 
 func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
@@ -188,14 +204,27 @@ func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
 }
 
 func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	db.scrobbleBufferMu.Lock()
+	defer db.scrobbleBufferMu.Unlock()
 	if db.MockedScrobbleBuffer == nil {
 		if db.RealDS != nil {
 			db.MockedScrobbleBuffer = db.RealDS.ScrobbleBuffer(ctx)
 		} else {
-			db.MockedScrobbleBuffer = CreateMockedScrobbleBufferRepo()
+			db.MockedScrobbleBuffer = &MockedScrobbleBufferRepo{}
 		}
 	}
 	return db.MockedScrobbleBuffer
+}
+
+func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
+	if db.MockedScrobble == nil {
+		if db.RealDS != nil {
+			db.MockedScrobble = db.RealDS.Scrobble(ctx)
+		} else {
+			db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
+		}
+	}
+	return db.MockedScrobble
 }
 
 func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
@@ -207,6 +236,17 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 		}
 	}
 	return db.MockedRadio
+}
+
+func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
+	if db.MockedPlugin == nil {
+		if db.RealDS != nil {
+			db.MockedPlugin = db.RealDS.Plugin(ctx)
+		} else {
+			db.MockedPlugin = CreateMockPluginRepo()
+		}
+	}
+	return db.MockedPlugin
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
@@ -241,11 +281,17 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 		return db.Transcoding(ctx).(model.ResourceRepository)
 	case model.Player, *model.Player:
 		return db.Player(ctx).(model.ResourceRepository)
+	case model.Plugin, *model.Plugin:
+		return db.Plugin(ctx).(model.ResourceRepository)
 	default:
 		return struct{ model.ResourceRepository }{}
 	}
 }
 
-func (db *MockDataStore) GC(context.Context) error {
+func (db *MockDataStore) GC(context.Context, ...int) error {
+	db.GCCalled = true
+	if db.GCError != nil {
+		return db.GCError
+	}
 	return nil
 }

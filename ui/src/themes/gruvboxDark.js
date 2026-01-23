@@ -40,6 +40,11 @@ export default {
         color: '#ebdbb2',
       },
     },
+    MuiIconButton: {
+      root: {
+        color: '#ebdbb2',
+      },
+    },
     MuiChip: {
       clickable: {
         background: '#49483e',

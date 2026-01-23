@@ -60,6 +60,7 @@ type Subsonic struct {
 	// OpenSubsonic extensions
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
+	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 }
 
 const (
@@ -94,11 +95,9 @@ type Artist struct {
 	Name           string     `xml:"name,attr"                         json:"name"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
 	UserRating     int32      `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	AverageRating  float64    `xml:"averageRating,attr,omitempty"      json:"averageRating,omitempty"`
 	CoverArt       string     `xml:"coverArt,attr,omitempty"           json:"coverArt,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
-	/* TODO:
-	<xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
-	*/
 }
 
 type Index struct {
@@ -159,13 +158,11 @@ type Child struct {
 	ArtistId              string     `xml:"artistId,attr,omitempty"                 json:"artistId,omitempty"`
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
 	UserRating            int32      `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
+	AverageRating         float64    `xml:"averageRating,attr,omitempty"            json:"averageRating,omitempty"`
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
-	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
+	IsVideo               bool       `xml:"isVideo,attr,omitempty"                  json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
-	/*
-	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
-	*/
-	*OpenSubsonicChild `xml:",omitempty" json:",omitempty"`
+	*OpenSubsonicChild    `xml:",omitempty" json:",omitempty"`
 }
 
 type OpenSubsonicChild struct {
@@ -176,7 +173,7 @@ type OpenSubsonicChild struct {
 	SortName           string              `xml:"sortName,attr,omitempty"           json:"sortName"`
 	MediaType          MediaType           `xml:"mediaType,attr,omitempty"          json:"mediaType"`
 	MusicBrainzId      string              `xml:"musicBrainzId,attr,omitempty"      json:"musicBrainzId"`
-	Isrc               Array[string]       `xml:"isrc,omitempty"                  json:"isrc"`
+	Isrc               Array[string]       `xml:"isrc,omitempty"                    json:"isrc"`
 	Genres             Array[ItemGenre]    `xml:"genres,omitempty"                  json:"genres"`
 	ReplayGain         ReplayGain          `xml:"replayGain,omitempty"              json:"replayGain"`
 	ChannelCount       int32               `xml:"channelCount,attr,omitempty"       json:"channelCount"`
@@ -197,14 +194,15 @@ type Songs struct {
 }
 
 type Directory struct {
-	Child      []Child    `xml:"child"                              json:"child,omitempty"`
-	Id         string     `xml:"id,attr"                            json:"id"`
-	Name       string     `xml:"name,attr"                          json:"name"`
-	Parent     string     `xml:"parent,attr,omitempty"              json:"parent,omitempty"`
-	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
-	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
-	UserRating int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	Child         []Child    `xml:"child"                              json:"child,omitempty"`
+	Id            string     `xml:"id,attr"                            json:"id"`
+	Name          string     `xml:"name,attr"                          json:"name"`
+	Parent        string     `xml:"parent,attr,omitempty"              json:"parent,omitempty"`
+	Starred       *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	PlayCount     int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
+	Played        *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
+	UserRating    int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	AverageRating float64    `xml:"averageRating,attr,omitempty"       json:"averageRating,omitempty"`
 
 	// ID3
 	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
@@ -216,10 +214,6 @@ type Directory struct {
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Year       int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
-
-	/*
-	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.13.0 -->
-	*/
 }
 
 // ArtistID3Ref is a reference to an artist, a simplified version of ArtistID3. This is used to resolve the
@@ -236,6 +230,7 @@ type ArtistID3 struct {
 	AlbumCount             int32      `xml:"albumCount,attr"                    json:"albumCount"`
 	Starred                *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	UserRating             int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	AverageRating          float64    `xml:"averageRating,attr,omitempty"       json:"averageRating,omitempty"`
 	ArtistImageUrl         string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 	*OpenSubsonicArtistID3 `xml:",omitempty" json:",omitempty"`
 }
@@ -267,6 +262,7 @@ type OpenSubsonicAlbumID3 struct {
 	// OpenSubsonic extensions
 	Played              *time.Time          `xml:"played,attr,omitempty"         json:"played,omitempty"`
 	UserRating          int32               `xml:"userRating,attr,omitempty"     json:"userRating"`
+	AverageRating       float64             `xml:"averageRating,attr,omitempty"  json:"averageRating,omitempty"`
 	Genres              Array[ItemGenre]    `xml:"genres,omitempty"              json:"genres"`
 	MusicBrainzId       string              `xml:"musicBrainzId,attr,omitempty"  json:"musicBrainzId"`
 	IsCompilation       bool                `xml:"isCompilation,attr,omitempty"  json:"isCompilation"`
@@ -307,7 +303,7 @@ type Playlist struct {
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
 	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
 	Duration  int32     `xml:"duration,attr"                 json:"duration"`
-	Public    bool      `xml:"public,attr"                   json:"public"`
+	Public    bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
 	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
@@ -439,12 +435,21 @@ type TopSongs struct {
 }
 
 type PlayQueue struct {
-	Entry     []Child    `xml:"entry,omitempty"         json:"entry,omitempty"`
-	Current   string     `xml:"current,attr,omitempty"  json:"current,omitempty"`
-	Position  int64      `xml:"position,attr,omitempty" json:"position,omitempty"`
-	Username  string     `xml:"username,attr"           json:"username"`
-	Changed   *time.Time `xml:"changed,attr,omitempty"  json:"changed,omitempty"`
-	ChangedBy string     `xml:"changedBy,attr"          json:"changedBy"`
+	Entry     []Child   `xml:"entry,omitempty"         json:"entry,omitempty"`
+	Current   string    `xml:"current,attr,omitempty"  json:"current,omitempty"`
+	Position  int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username  string    `xml:"username,attr"           json:"username"`
+	Changed   time.Time `xml:"changed,attr"            json:"changed"`
+	ChangedBy string    `xml:"changedBy,attr"          json:"changedBy"`
+}
+
+type PlayQueueByIndex struct {
+	Entry        []Child   `xml:"entry,omitempty"         json:"entry,omitempty"`
+	CurrentIndex *int      `xml:"currentIndex,attr,omitempty"  json:"currentIndex,omitempty"`
+	Position     int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
+	Username     string    `xml:"username,attr"           json:"username"`
+	Changed      time.Time `xml:"changed,attr"            json:"changed"`
+	ChangedBy    string    `xml:"changedBy,attr"          json:"changedBy"`
 }
 
 type Bookmark struct {
@@ -546,16 +551,16 @@ type ItemGenre struct {
 }
 
 type ReplayGain struct {
-	TrackGain    float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
-	AlbumGain    float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
-	TrackPeak    float64 `xml:"trackPeak,omitempty,attr"    json:"trackPeak,omitempty"`
-	AlbumPeak    float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
-	BaseGain     float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
-	FallbackGain float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
+	TrackGain    *float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
+	AlbumGain    *float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
+	TrackPeak    *float64 `xml:"trackPeak,omitempty,attr"    json:"trackPeak,omitempty"`
+	AlbumPeak    *float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
+	BaseGain     *float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
+	FallbackGain *float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
 }
 
 func (r ReplayGain) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	if r.TrackGain == 0 && r.AlbumGain == 0 && r.TrackPeak == 0 && r.AlbumPeak == 0 && r.BaseGain == 0 && r.FallbackGain == 0 {
+	if r.TrackGain == nil && r.AlbumGain == nil && r.TrackPeak == nil && r.AlbumPeak == nil && r.BaseGain == nil && r.FallbackGain == nil {
 		return nil
 	}
 	type replayGain ReplayGain

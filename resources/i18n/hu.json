@@ -12,6 +12,7 @@
         "artist": "Előadó",
         "album": "Album",
         "path": "Elérési út",
+        "libraryName": "Könyvtár",
         "genre": "Műfaj",
         "compilation": "Válogatásalbum",
         "year": "Év",
@@ -41,6 +42,7 @@
         "addToQueue": "Lejátszás útolsóként",
         "playNow": "Lejátszás",
         "addToPlaylist": "Lejátszási listához adás",
+        "showInPlaylist": "Megjelenítés a lejátszási listában",
         "shuffleAll": "Keverés",
         "download": "Letöltés",
         "playNext": "Lejátszás következőként",
@@ -56,6 +58,7 @@
         "songCount": "Számok",
         "playCount": "Lejátszások",
         "name": "Név",
+        "libraryName": "Könyvtár",
         "genre": "Stílus",
         "compilation": "Válogatásalbum",
         "year": "Év",
@@ -123,7 +126,13 @@
         "mixer": "Keverő |||| Keverők",
         "remixer": "Átdolgozó |||| Átdolgozók",
         "djmixer": "DJ keverő |||| DJ keverők",
-        "performer": "Előadóművész |||| Előadóművészek"
+        "performer": "Előadóművész |||| Előadóművészek",
+        "maincredit": "Album előadó vagy előadó |||| Album előadók vagy előadók"
+      },
+      "actions": {
+        "topSongs": "Top számok",
+        "shuffle": "Keverés",
+        "radio": "Rádió"
       }
     },
     "user": {
@@ -140,19 +149,26 @@
         "currentPassword": "Jelenlegi jelszó",
         "newPassword": "Új jelszó",
         "token": "Token",
-        "lastAccessAt": "Utolsó elérés"
+        "lastAccessAt": "Utolsó elérés",
+        "libraries": "Könyvtárak"
       },
       "helperTexts": {
-        "name": "A névváltoztatások csak a következő bejelentkezéskor jelennek meg"
+        "name": "A névváltoztatások csak a következő bejelentkezéskor jelennek meg",
+        "libraries": "Válassz könyvtárakat ehhez a felhasználóhoz vagy ne jelölj be egyet sem, az alapértelmezett könyvtárak használatához"
       },
       "notifications": {
         "created": "Felhasználó létrehozva",
         "updated": "Felhasználó frissítve",
         "deleted": "Felhasználó törölve"
       },
+      "validation": {
+        "librariesRequired": "Legalább egy könyvtárat ki kell választani nem admin felhasználókhoz"
+      },
       "message": {
         "listenBrainzToken": "Add meg a ListenBrainz felhasználó tokened.",
-        "clickHereForToken": "Kattints ide, hogy megszerezd a tokened"
+        "clickHereForToken": "Kattints ide, hogy megszerezd a tokened",
+        "selectAllLibraries": "Minden könyvtár kiválasztása",
+        "adminAutoLibraries": "Minden admin felhasználó hozzáfér bármely könyvtárhoz"
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Exportálás",
         "saveQueue": "Műsorlista elmentése lejátszási listaként",
         "makePublic": "Publikussá tétel",
-        "makePrivate": "Priváttá tétel"
+        "makePrivate": "Priváttá tétel",
+        "searchOrCreate": "Keress lejátszási listák között vagy hozz létre egyet...",
+        "pressEnterToCreate": "Nyomj Entert, hogy létrehozz egy lejátszási listát",
+        "removeFromSelection": "Eltávolítás a kiválasztásból"
       },
       "message": {
         "duplicate_song": "Duplikált számok hozzáadása",
-        "song_exist": "Egyes számok már hozzá vannak adva a listához. Még egyszer hozzá akarod adni?"
+        "song_exist": "Egyes számok már hozzá vannak adva a listához. Még egyszer hozzá akarod adni?",
+        "noPlaylistsFound": "Nem található lejátszási lista",
+        "noPlaylists": "Nincsenek lejátszási listák"
       }
     },
     "radio": {
@@ -240,6 +261,7 @@
       "fields": {
         "path": "Útvonal",
         "size": "Méret",
+        "libraryName": "Könyvtár",
         "updatedAt": "Eltűnt ekkor:"
       },
       "actions": {
@@ -248,6 +270,60 @@
       },
       "notifications": {
         "removed": "Hiányzó fájl(ok) eltávolítva"
+      }
+    },
+    "library": {
+      "name": "Könyvtár |||| Könyvtárak",
+      "fields": {
+        "name": "Név",
+        "path": "Elérési út",
+        "remotePath": "Távoli elérési út",
+        "lastScanAt": "Legutóbbi szkennelés",
+        "songCount": "Számok",
+        "albumCount": "Albumok",
+        "artistCount": "Előadók",
+        "totalSongs": "Számok",
+        "totalAlbums": "Albumok",
+        "totalArtists": "Előadók",
+        "totalFolders": "Mappák",
+        "totalFiles": "Fájlok",
+        "totalMissingFiles": "Hiányzó fájlok",
+        "totalSize": "Teljes méret",
+        "totalDuration": "Hossz",
+        "defaultNewUsers": "Alapértelmezett könyvtár új felhasználóknak",
+        "createdAt": "Létrehozva",
+        "updatedAt": "Frissítve"
+      },
+      "sections": {
+        "basic": "Alapinformációk",
+        "statistics": "Statisztikák"
+      },
+      "actions": {
+        "scan": "Könyvtár szkennelése",
+        "quickScan": "Gyors szkennelés",
+        "fullScan": "Teljes szkennelés",
+        "manageUsers": "Hozzáférés kezelése",
+        "viewDetails": "Részletek"
+      },
+      "notifications": {
+        "created": "Könyvtár létrehozva",
+        "updated": "Könyvtár frissítve",
+        "deleted": "Könyvtár törölve",
+        "scanStarted": "Szkennelés folyamatban",
+        "scanCompleted": "Könyvtár szkennelés befelyezve"
+      },
+      "validation": {
+        "nameRequired": "Adj meg egy könyvtárnevet",
+        "pathRequired": "Adj meg egy útvonalat",
+        "pathNotDirectory": "A könyvtárútvonalnak egy mappának kell lennie",
+        "pathNotFound": "A könyvtár útvonala nem található",
+        "pathNotAccessible": "A könyvtár útvonala nem elérhető",
+        "pathInvalid": "Helytelen könyvtár útvonal"
+      },
+      "messages": {
+        "deleteConfirm": "Biztosan törlöd ezt a könyvtárt? Minden adata törlődni fog és elérhetetlenné válik.",
+        "scanInProgress": "Szkennelés folyamatban...",
+        "noLibrariesAssigned": "Ehhez a felhasználóhoz nincsenek könyvtárak adva"
       }
     }
   },
@@ -401,6 +477,8 @@
     "transcodingDisabled": "Az átkódolási konfiguráció módosítása a webes felületen keresztül biztonsági okokból nem lehetséges. Ha módosítani szeretnéd az átkódolási beállításokat, indítsd újra a kiszolgálót a %{config} konfigurációs opcióval.",
     "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd ezt le, és csak az átkódolási beállítások konfigurálásának idejére kapcsold be.",
     "songsAddedToPlaylist": "1 szám hozzáadva a lejátszási listához |||| %{smart_count} szám hozzáadva a lejátszási listához",
+    "noSimilarSongsFound": "Nem találhatóak hasonló számok",
+    "noTopSongsFound": "Nincsenek top számok",
     "noPlaylistsAvailable": "Nem áll rendelkezésre",
     "delete_user_title": "Felhasználó törlése '%{name}'",
     "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival (beállítások és lejátszási listák) együtt?",
@@ -434,6 +512,12 @@
   },
   "menu": {
     "library": "Könyvtár",
+    "librarySelector": {
+      "allLibraries": "Minden %{count} könyvtár",
+      "multipleLibraries": "%{selected} kiválasztva %{total} könyvtárból",
+      "selectLibraries": "Kiválasztott kőnyvtárak",
+      "none": "Semmi"
+    },
     "settings": "Beállítások",
     "version": "Verzió",
     "theme": "Téma",
@@ -496,18 +580,39 @@
         "disabled": "Kikapcsolva",
         "waiting": "Várakozás"
       }
+    },
+    "tabs": {
+      "about": "Rólunk",
+      "config": "Konfiguráció"
+    },
+    "config": {
+      "configName": "Beállítás neve",
+      "environmentVariable": "Környezeti változó",
+      "currentValue": "Jelenlegi érték",
+      "configurationFile": "Konfigurációs fájl",
+      "exportToml": "Konfiguráció exportálása (TOML)",
+      "exportSuccess": "Konfiguráció kiexportálva a vágólapra, TOML formában",
+      "exportFailed": "Nem sikerült kimásolni a konfigurációt",
+      "devFlagsHeader": "Fejlesztői beállítások (változások/eltávolítás jogát fenntartjuk)",
+      "devFlagsComment": "Ezek kísérleti beállítások, és a jövőbeli verziókban eltávolíthatók"
     }
   },
   "activity": {
     "title": "Aktivitás",
     "totalScanned": "Összes beolvasott mappa:",
-    "quickScan": "Gyors beolvasás",
-    "fullScan": "Teljes beolvasás",
+    "quickScan": "Gyors",
+    "fullScan": "Teljes",
+    "selectiveScan": "Szelektív",
     "serverUptime": "Szerver üzemidő",
     "serverDown": "OFFLINE",
-    "scanType": "Típus",
+    "scanType": "Legutóbbi szkennelés",
     "status": "Szkennelési hiba",
     "elapsedTime": "Eltelt idő"
+  },
+  "nowPlaying": {
+    "title": "Most megy",
+    "empty": "Nem hallgatsz semmit",
+    "minutesAgo": "%{smart_count} perce |||| %{smart_count} perce"
   },
   "help": {
     "title": "Navidrome Gyorsbillentyűk",
