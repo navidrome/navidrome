@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
+	"github.com/xrash/smetrics"
 )
 
 // matchSongsToLibrary matches agent song results to local library tracks
@@ -96,6 +98,7 @@ type songQuery struct {
 
 // loadTracksByTitleAndArtist loads tracks matching by title with optional artist/album filtering.
 // Uses per-song artist/album info when available for more precise matching.
+// Falls back to fuzzy matching for unmatched queries if configured.
 // Returns a map keyed by sanitized title for compatibility with selectBestMatchingSongs.
 func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	queries := e.buildTitleQueries(songs, idMatches, mbidMatches)
@@ -110,7 +113,27 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 	}
 
 	indices := e.indexTracksByKeys(res)
-	return e.matchQueriesAgainstIndices(queries, indices), nil
+	matches = e.matchQueriesAgainstIndices(queries, indices)
+
+	// Find unmatched queries and try fuzzy matching
+	var unmatched []songQuery
+	for _, q := range queries {
+		key := q.title + "|" + q.artist
+		if _, ok := matches[key]; !ok {
+			unmatched = append(unmatched, q)
+		}
+	}
+
+	if len(unmatched) > 0 {
+		fuzzyMatches, err := e.fuzzyMatchUnmatched(ctx, unmatched, matches)
+		if err == nil && len(fuzzyMatches) > 0 {
+			for k, v := range fuzzyMatches {
+				matches[k] = v
+			}
+		}
+	}
+
+	return matches, nil
 }
 
 func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) []songQuery {
@@ -304,4 +327,87 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 		}
 	}
 	return mfs
+}
+
+// similarityRatio calculates the similarity between two strings using Jaro-Winkler algorithm.
+// Returns a value between 0.0 (completely different) and 1.0 (identical).
+// Jaro-Winkler is well-suited for matching song titles because it gives higher scores
+// when strings share a common prefix (e.g., "Song Title" vs "Song Title - Remastered").
+func similarityRatio(a, b string) float64 {
+	if a == b {
+		return 1.0
+	}
+	if len(a) == 0 || len(b) == 0 {
+		return 0.0
+	}
+	// JaroWinkler params: boostThreshold=0.7, prefixSize=4
+	return smetrics.JaroWinkler(a, b, 0.7, 4)
+}
+
+// fuzzyMatchUnmatched performs fuzzy title matching for songs that didn't match exactly.
+// It queries tracks by artist and then fuzzy-matches titles within that artist's catalog.
+func (e *provider) fuzzyMatchUnmatched(ctx context.Context, unmatched []songQuery, existingMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	// Skip fuzzy matching if threshold is 100 (exact match only)
+	threshold := float64(conf.Server.SimilarSongsMatchThreshold) / 100.0
+	if threshold >= 1.0 {
+		return nil, nil
+	}
+
+	// Group unmatched queries by artist
+	byArtist := map[string][]songQuery{}
+	for _, q := range unmatched {
+		if q.artist == "" {
+			continue
+		}
+		// Skip if already matched
+		key := q.title + "|" + q.artist
+		if _, ok := existingMatches[key]; ok {
+			continue
+		}
+		byArtist[q.artist] = append(byArtist[q.artist], q)
+	}
+
+	if len(byArtist) == 0 {
+		return nil, nil
+	}
+
+	matches := map[string]model.MediaFile{}
+	for artist, queries := range byArtist {
+		// Query all tracks by this artist
+		tracks, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Eq{"order_artist_name": artist},
+				squirrel.Eq{"missing": false},
+			},
+			Sort: "starred desc, rating desc, year asc, compilation asc",
+		})
+		if err != nil {
+			continue
+		}
+
+		// Fuzzy match each query against artist's tracks
+		for _, q := range queries {
+			if mf, found := e.findFuzzyTitleMatch(q.title, tracks, threshold); found {
+				key := q.title + "|" + q.artist
+				matches[key] = mf
+			}
+		}
+	}
+	return matches, nil
+}
+
+// findFuzzyTitleMatch finds the best fuzzy match for a title within a set of tracks.
+func (e *provider) findFuzzyTitleMatch(title string, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
+	var bestMatch model.MediaFile
+	bestRatio := 0.0
+
+	for _, mf := range tracks {
+		trackTitle := str.SanitizeFieldForSorting(mf.Title)
+		ratio := similarityRatio(title, trackTitle)
+		if ratio >= threshold && ratio > bestRatio {
+			bestMatch = mf
+			bestRatio = ratio
+		}
+	}
+	return bestMatch, bestRatio >= threshold
 }
