@@ -294,6 +294,9 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
 	case *model.Artist:
 		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+	default:
+		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
+		return nil, model.ErrNotFound
 	}
 
 	if err == nil && len(songs) > 0 {
