@@ -42,7 +42,7 @@
           "type": "array",
           "title": "User Tokens",
           "description": "Discord tokens for each Navidrome user. WARNING: Store tokens securely!",
-          "default": [{}],
+          "minItems": 1,
           "items": {
             "type": "object",
             "properties": {
@@ -63,7 +63,7 @@
           }
         }
       },
-      "required": ["clientid"]
+      "required": ["clientid", "users"]
     },
     "uiSchema": {
       "type": "VerticalLayout",

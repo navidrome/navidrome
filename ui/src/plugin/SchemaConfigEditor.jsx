@@ -6,7 +6,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import { Typography } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
 import Ajv from 'ajv'
-import { AlwaysExpandedArrayLayout } from './AlwaysExpandedArrayLayout'
 import {
   OutlinedTextRenderer,
   OutlinedNumberRenderer,
@@ -43,7 +42,7 @@ SchemaErrorBoundary.propTypes = {
 // params.missingProperty. We transform them to point to the field directly
 // (e.g., "/users/1/username") so JSONForms displays them under the correct input.
 const ajv = new Ajv({
-  useDefaults: true,
+  useDefaults: false,
   allErrors: true,
   verbose: true,
   jsonPointers: true,
@@ -135,7 +134,6 @@ const customRenderers = [
   OutlinedNumberRenderer,
   OutlinedEnumRenderer,
   OutlinedOneOfEnumRenderer,
-  AlwaysExpandedArrayLayout,
   // Then all the standard material renderers
   ...materialRenderers,
 ]

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -417,6 +418,50 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
+	Context("Filters", func() {
+		var mfWithoutAnnotation model.MediaFile
+
+		BeforeEach(func() {
+			mfWithoutAnnotation = model.MediaFile{ID: "no-annotation-file", LibraryID: 1, Path: "/test/no-annotation.mp3", Title: "No Annotation"}
+			Expect(mr.Put(&mfWithoutAnnotation)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = mr.Delete(mfWithoutAnnotation.ID)
+		})
+
+		Describe("starred", func() {
+			It("false includes items without annotations", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				var found bool
+				for _, f := range files {
+					if f.ID == mfWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "MediaFile without annotation should be included in starred=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				for _, f := range files {
+					Expect(f.ID).ToNot(Equal(mfWithoutAnnotation.ID))
+				}
+			})
+		})
+	})
+
 	Describe("Search", func() {
 		Context("text search", func() {
 			It("finds media files by title", func() {
@@ -514,6 +559,94 @@ var _ = Describe("MediaRepository", func() {
 				// Clean up
 				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
 			})
+		})
+	})
+
+	Describe("FindByPaths", func() {
+		// Test fixtures for Unicode and case-sensitivity tests
+		var testFiles []model.MediaFile
+
+		BeforeEach(func() {
+			testFiles = []model.MediaFile{
+				{ID: "findpath-1", LibraryID: 1, Path: "artist/Album/track.mp3", Title: "Track"},
+				{ID: "findpath-2", LibraryID: 1, Path: "artist/Album/UPPER.mp3", Title: "Upper"},
+				// Fullwidth uppercase: ＡＣＲＯＳＳ (U+FF21 U+FF23 U+FF32 U+FF2F U+FF33 U+FF33)
+				{ID: "findpath-3", LibraryID: 1, Path: "plex/02 - ＡＣＲＯＳＳ.flac", Title: "Fullwidth"},
+				// French diacritic: è (U+00E8, can decompose to e + combining grave)
+				{ID: "findpath-4", LibraryID: 1, Path: "artist/Michèle/song.mp3", Title: "French"},
+			}
+			for _, mf := range testFiles {
+				Expect(mr.Put(&mf)).To(Succeed())
+			}
+		})
+
+		AfterEach(func() {
+			for _, mf := range testFiles {
+				_ = mr.Delete(mf.ID)
+			}
+		})
+
+		It("finds files by exact path", func() {
+			results, err := mr.FindByPaths([]string{"1:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-1"))
+		})
+
+		It("finds files case-insensitively for ASCII characters (NOCASE)", func() {
+			// SQLite's COLLATE NOCASE handles ASCII case-insensitivity
+			results, err := mr.FindByPaths([]string{"1:ARTIST/ALBUM/TRACK.MP3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-1"))
+		})
+
+		It("finds fullwidth characters only with exact case match (SQLite NOCASE limitation)", func() {
+			// SQLite's NOCASE does NOT handle fullwidth uppercase/lowercase equivalence
+			// The DB has fullwidth uppercase ＡＣＲＯＳＳ, searching with exact match should work
+			results, err := mr.FindByPaths([]string{"1:plex/02 - ＡＣＲＯＳＳ.flac"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-3"))
+
+			// Searching with fullwidth lowercase ａｃｒｏｓｓ should NOT match
+			// (this is the SQLite limitation that requires exact matching for non-ASCII)
+			results, err = mr.FindByPaths([]string{"1:plex/02 - ａｃｒｏｓｓ.flac"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("returns multiple files when querying multiple paths", func() {
+			results, err := mr.FindByPaths([]string{
+				"1:artist/Album/track.mp3",
+				"1:artist/Album/UPPER.mp3",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(2))
+		})
+
+		It("returns empty slice for non-existent paths", func() {
+			results, err := mr.FindByPaths([]string{"1:nonexistent/path.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("returns empty slice for empty input", func() {
+			results, err := mr.FindByPaths([]string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("handles library-qualified paths correctly", func() {
+			// Library 1 should find the file
+			results, err := mr.FindByPaths([]string{"1:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+
+			// Library 2 should NOT find it (file is in library 1)
+			results, err = mr.FindByPaths([]string{"2:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
 		})
 	})
 })

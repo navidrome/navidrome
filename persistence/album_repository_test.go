@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -74,6 +75,82 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(GetAll(model.QueryOptions{Offset: 1, Max: 1})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 			}))
+		})
+	})
+
+	Context("Filters", func() {
+		var albumWithoutAnnotation model.Album
+
+		BeforeEach(func() {
+			// Create album without any annotation (no star, no rating)
+			albumWithoutAnnotation = model.Album{ID: "no-annotation-album", Name: "No Annotation", LibraryID: 1}
+			Expect(albumRepo.Put(&albumWithoutAnnotation)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
+		})
+
+		Describe("starred", func() {
+			It("false includes items without annotations", func() {
+				res, err := albumRepo.ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res.(model.Albums)
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == albumWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album without annotation should be included in starred=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := albumRepo.ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"starred": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res.(model.Albums)
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
+				}
+			})
+		})
+
+		Describe("has_rating", func() {
+			It("false includes items without annotations", func() {
+				res, err := albumRepo.ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"has_rating": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res.(model.Albums)
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == albumWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album without annotation should be included in has_rating=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := albumRepo.ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"has_rating": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res.(model.Albums)
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
+				}
+			})
 		})
 	})
 

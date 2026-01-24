@@ -114,6 +114,24 @@ var _ = Describe("getPID", func() {
 				Expect(getPID(mf, md, spec, false)).To(Equal("(album name)"))
 			})
 		})
+
+		When("albumid configuration refers to albumid recursively", func() {
+			It("should avoid infinite recursion", func() {
+				// Reproduce the issue from #4920
+				conf.Server.PID.Album = "albumid,album,albumversion,releasedate"
+				spec := conf.Server.PID.Album
+				md.tags = map[model.TagName][]string{
+					"album":        {"Album Name"},
+					"albumversion": {"Version"},
+					"releasedate":  {"2022"},
+				}
+				// Should not panic and return a valid PID ignoring the recursive "albumid"
+				Expect(func() {
+					pid := getPID(mf, md, spec, false)
+					Expect(pid).To(Equal("(\\album name\\Version\\2022)"))
+				}).To(Not(Panic()))
+			})
+		})
 	})
 
 	Context("edge cases", func() {
