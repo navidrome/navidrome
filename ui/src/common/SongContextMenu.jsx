@@ -91,9 +91,13 @@ export const SongContextMenu = ({
       enabled: config.enableExternalServices,
       label: translate('resources.song.actions.instantMix'),
       action: async (record) => {
+        notify('message.startingInstantMix', { type: 'info' })
         try {
           const id = record.mediaFileId || record.id
-          await playSimilar(dispatch, notify, id)
+          await playSimilar(dispatch, notify, id, {
+            seedRecord: record,
+            shuffle: true,
+          })
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error('Error starting instant mix:', e)
