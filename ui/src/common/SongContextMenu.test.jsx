@@ -3,12 +3,27 @@ import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SongContextMenu } from './SongContextMenu'
+import subsonic from '../subsonic'
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
 }))
 
-vi.mock('react-redux', () => ({ useDispatch: () => vi.fn() }))
+vi.mock('../subsonic', () => ({
+  default: { getSimilarSongs2: vi.fn() },
+}))
+
+vi.mock('../config', () => ({
+  default: {
+    enableDownloads: true,
+    enableFavourites: true,
+    enableSharing: true,
+    enableExternalServices: true,
+  },
+}))
+
+const mockDispatch = vi.fn()
+vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 
 const getPlaylistsMock = vi.fn()
 
@@ -34,6 +49,14 @@ describe('SongContextMenu', () => {
     window.location.hash = ''
     getPlaylistsMock.mockResolvedValue({
       data: [{ id: 'pl1', name: 'Pl 1' }],
+    })
+    subsonic.getSimilarSongs2.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'ok',
+          similarSongs2: { song: [{ id: 's1' }] },
+        },
+      },
     })
   })
 
@@ -103,5 +126,47 @@ describe('SongContextMenu', () => {
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  describe('Instant Mix action', () => {
+    it('calls getSimilarSongs2 with song id when clicked', async () => {
+      render(
+        <TestContext>
+          <SongContextMenu record={{ id: 'song1', size: 1 }} resource="song" />
+        </TestContext>,
+      )
+
+      fireEvent.click(screen.getAllByRole('button')[1])
+      await waitFor(() =>
+        screen.getByText(/resources\.song\.actions\.instantMix/),
+      )
+      fireEvent.click(screen.getByText(/resources\.song\.actions\.instantMix/))
+
+      await waitFor(() =>
+        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('song1', 100),
+      )
+      expect(mockDispatch).toHaveBeenCalled()
+    })
+
+    it('uses mediaFileId when available (playlist context)', async () => {
+      render(
+        <TestContext>
+          <SongContextMenu
+            record={{ id: 'playlistTrackId', mediaFileId: 'actualSongId', size: 1 }}
+            resource="song"
+          />
+        </TestContext>,
+      )
+
+      fireEvent.click(screen.getAllByRole('button')[1])
+      await waitFor(() =>
+        screen.getByText(/resources\.song\.actions\.instantMix/),
+      )
+      fireEvent.click(screen.getByText(/resources\.song\.actions\.instantMix/))
+
+      await waitFor(() =>
+        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('actualSongId', 100),
+      )
+    })
   })
 })

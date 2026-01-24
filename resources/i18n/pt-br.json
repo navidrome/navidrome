@@ -46,7 +46,8 @@
         "download": "Baixar",
         "playNext": "Toca a seguir",
         "info": "Detalhes",
-        "showInPlaylist": "Ir para playlist"
+        "showInPlaylist": "Ir para playlist",
+        "instantMix": "Mix Instantâneo"
       }
     },
     "album": {
