@@ -263,7 +263,12 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + usr.ID + "')")
+		" AND annotation.user_id = '" + usr.ID + "')").
+		LeftJoin("album on (album.id = media_file.album_id)").
+		LeftJoin("annotation as album_annotation on ("+
+		"album_annotation.item_id = album.id" +
+		" AND album_annotation.item_type = 'album'" +
+		" AND album_annotation.user_id = '" + usr.ID + "')")
 
 	// Only include media files from libraries the user has access to
 	sq = r.applyLibraryFilter(sq, "media_file")

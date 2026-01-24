@@ -47,6 +47,7 @@ var fieldMap = map[string]*mappedField{
 	"daterated":            {field: "annotation.rated_at"},
 	"playcount":            {field: "COALESCE(annotation.play_count, 0)"},
 	"rating":               {field: "COALESCE(annotation.rating, 0)"},
+	"albumrating":          {field: "COALESCE(album_annotation.rating, 0)"},
 	"mbz_album_id":         {field: "media_file.mbz_album_id"},
 	"mbz_album_artist_id":  {field: "media_file.mbz_album_artist_id"},
 	"mbz_artist_id":        {field: "media_file.mbz_artist_id"},
@@ -168,7 +169,7 @@ func (e tagCond) ToSql() (string, []any, error) {
 		}
 	}
 
-	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
+	cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and %s)",
 		tagName, cond)
 	if e.not {
 		cond = "not " + cond
