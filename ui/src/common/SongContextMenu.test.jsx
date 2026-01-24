@@ -152,7 +152,11 @@ describe('SongContextMenu', () => {
       render(
         <TestContext>
           <SongContextMenu
-            record={{ id: 'playlistTrackId', mediaFileId: 'actualSongId', size: 1 }}
+            record={{
+              id: 'playlistTrackId',
+              mediaFileId: 'actualSongId',
+              size: 1,
+            }}
             resource="song"
           />
         </TestContext>,
@@ -165,7 +169,10 @@ describe('SongContextMenu', () => {
       fireEvent.click(screen.getByText(/resources\.song\.actions\.instantMix/))
 
       await waitFor(() =>
-        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('actualSongId', 100),
+        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith(
+          'actualSongId',
+          100,
+        ),
       )
     })
   })
