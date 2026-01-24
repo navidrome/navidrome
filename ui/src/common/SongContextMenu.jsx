@@ -24,7 +24,7 @@ import {
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
-import { playSimilar } from '../artist/actions.js'
+import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
