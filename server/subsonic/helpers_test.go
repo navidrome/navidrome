@@ -308,10 +308,10 @@ var _ = Describe("helpers", func() {
 			ctx = context.Background()
 		})
 
-		Context("with minimal client", func() {
+		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
-				player := model.Player{Client: "minimal-client"}
+				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
 
@@ -321,9 +321,9 @@ var _ = Describe("helpers", func() {
 			})
 		})
 
-		Context("with non-minimal client", func() {
+		Context("with non-legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Server.Subsonic.LegacyClients = "legacy-client"
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -335,9 +335,9 @@ var _ = Describe("helpers", func() {
 			})
 		})
 
-		Context("when minimal clients list is empty", func() {
+		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Server.Subsonic.LegacyClients = ""
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
