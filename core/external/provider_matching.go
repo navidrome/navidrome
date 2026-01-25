@@ -96,57 +96,135 @@ type songQuery struct {
 	albumMBID  string
 }
 
+// matchScore combines title similarity with metadata specificity for ranking matches
+type matchScore struct {
+	titleSimilarity  float64 // 0.0-1.0 (Jaro-Winkler)
+	specificityLevel int     // 0-5 (higher = more specific metadata match)
+}
+
+// betterThan returns true if this score beats another.
+// Primary comparison: title similarity. Secondary: specificity level.
+func (s matchScore) betterThan(other matchScore) bool {
+	if s.titleSimilarity != other.titleSimilarity {
+		return s.titleSimilarity > other.titleSimilarity
+	}
+	return s.specificityLevel > other.specificityLevel
+}
+
+// computeSpecificityLevel determines how well query metadata matches a track (0-5).
+// Higher values indicate more specific matches (MBIDs > names > title only).
+func computeSpecificityLevel(q songQuery, mf model.MediaFile) int {
+	title := str.SanitizeFieldForSorting(mf.Title)
+	artist := str.SanitizeFieldForSortingNoArticle(mf.Artist)
+	album := str.SanitizeFieldForSorting(mf.Album)
+
+	// Level 5: Title + Artist MBID + Album MBID (most specific)
+	if q.artistMBID != "" && q.albumMBID != "" &&
+		mf.MbzArtistID == q.artistMBID && mf.MbzAlbumID == q.albumMBID {
+		return 5
+	}
+	// Level 4: Title + Artist MBID + Album name
+	if q.artistMBID != "" && q.album != "" &&
+		mf.MbzArtistID == q.artistMBID && album == q.album {
+		return 4
+	}
+	// Level 3: Title + Artist name + Album name
+	if q.artist != "" && q.album != "" &&
+		artist == q.artist && album == q.album {
+		return 3
+	}
+	// Level 2: Title + Artist MBID
+	if q.artistMBID != "" && mf.MbzArtistID == q.artistMBID {
+		return 2
+	}
+	// Level 1: Title + Artist name
+	if q.artist != "" && artist == q.artist {
+		return 1
+	}
+	// Level 0: Title only match (but for fuzzy, title matched via similarity)
+	// Check if at least the title matches exactly
+	if title == q.title {
+		return 0
+	}
+	return -1 // No exact title match, but could still be a fuzzy match
+}
+
 // loadTracksByTitleAndArtist loads tracks matching by title with optional artist/album filtering.
-// Uses per-song artist/album info when available for more precise matching.
-// Falls back to fuzzy matching for unmatched queries if configured.
-// Returns a map keyed by sanitized title for compatibility with selectBestMatchingSongs.
+// Uses a unified scoring approach that combines title similarity (Jaro-Winkler) with
+// metadata specificity (MBIDs, album names) for both exact and fuzzy matches.
+// Returns a map keyed by "title|artist" for compatibility with selectBestMatchingSongs.
 func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	queries := e.buildTitleQueries(songs, idMatches, mbidMatches)
-	matches := map[string]model.MediaFile{}
 	if len(queries) == 0 {
-		return matches, nil
+		return map[string]model.MediaFile{}, nil
 	}
 
-	res, err := e.queryTracksByTitles(ctx, queries)
-	if err != nil {
-		return matches, err
-	}
+	threshold := float64(conf.Server.SimilarSongsMatchThreshold) / 100.0
 
-	// Build index from query results
-	matcher := newTrackMatcher()
-	for _, mf := range res {
-		matcher.index(mf)
-	}
-
-	// Find best match for each query
+	// Group queries by artist for efficient DB access
+	byArtist := map[string][]songQuery{}
 	for _, q := range queries {
-		if mf, found := matcher.find(q); found {
-			key := q.title + "|" + q.artist
-			if _, ok := matches[key]; !ok {
-				matches[key] = mf
+		if q.artist != "" {
+			byArtist[q.artist] = append(byArtist[q.artist], q)
+		}
+	}
+
+	matches := map[string]model.MediaFile{}
+	for artist, artistQueries := range byArtist {
+		// Single DB query per artist - get all their tracks
+		tracks, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Eq{"order_artist_name": artist},
+				squirrel.Eq{"missing": false},
+			},
+			Sort: "starred desc, rating desc, year asc, compilation asc",
+		})
+		if err != nil {
+			continue
+		}
+
+		// Find best match for each query using unified scoring
+		for _, q := range artistQueries {
+			if mf, found := e.findBestMatch(q, tracks, threshold); found {
+				key := q.title + "|" + q.artist
+				if _, exists := matches[key]; !exists {
+					matches[key] = mf
+				}
 			}
 		}
 	}
-
-	// Find unmatched queries and try fuzzy matching
-	var unmatched []songQuery
-	for _, q := range queries {
-		key := q.title + "|" + q.artist
-		if _, ok := matches[key]; !ok {
-			unmatched = append(unmatched, q)
-		}
-	}
-
-	if len(unmatched) > 0 {
-		fuzzyMatches, err := e.fuzzyMatchUnmatched(ctx, unmatched, matches)
-		if err == nil && len(fuzzyMatches) > 0 {
-			for k, v := range fuzzyMatches {
-				matches[k] = v
-			}
-		}
-	}
-
 	return matches, nil
+}
+
+// findBestMatch finds the best matching track using combined title similarity and specificity scoring.
+// A track must meet the threshold for title similarity, then the best match is chosen by:
+// 1. Highest title similarity
+// 2. Highest specificity level (as tiebreaker)
+func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
+	var bestMatch model.MediaFile
+	bestScore := matchScore{titleSimilarity: -1}
+	found := false
+
+	for _, mf := range tracks {
+		trackTitle := str.SanitizeFieldForSorting(mf.Title)
+		titleSim := similarityRatio(q.title, trackTitle)
+
+		if titleSim < threshold {
+			continue
+		}
+
+		score := matchScore{
+			titleSimilarity:  titleSim,
+			specificityLevel: computeSpecificityLevel(q, mf),
+		}
+
+		if score.betterThan(bestScore) {
+			bestScore = score
+			bestMatch = mf
+			found = true
+		}
+	}
+	return bestMatch, found
 }
 
 func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) []songQuery {
@@ -161,128 +239,13 @@ func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches
 		}
 		queries = append(queries, songQuery{
 			title:      str.SanitizeFieldForSorting(s.Name),
-			artist:     str.SanitizeFieldForSorting(s.Artist),
+			artist:     str.SanitizeFieldForSortingNoArticle(s.Artist),
 			artistMBID: s.ArtistMBID,
 			album:      str.SanitizeFieldForSorting(s.Album),
 			albumMBID:  s.AlbumMBID,
 		})
 	}
 	return queries
-}
-
-func (e *provider) queryTracksByTitles(ctx context.Context, queries []songQuery) (model.MediaFiles, error) {
-	titleSet := map[string]struct{}{}
-	for _, q := range queries {
-		titleSet[q.title] = struct{}{}
-	}
-
-	titleFilters := squirrel.Or{}
-	for title := range titleSet {
-		titleFilters = append(titleFilters, squirrel.Like{"order_title": title})
-	}
-
-	return e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			titleFilters,
-			squirrel.Eq{"missing": false},
-		},
-		Sort: "starred desc, rating desc, year asc, compilation asc",
-	})
-}
-
-// keyFunc builds a lookup key from track metadata. Returns empty string if required fields are missing.
-type keyFunc func(title, artist, album, artistMBID, albumMBID string) string
-
-// Key builders - ordered from most to least specific. Empty string means "skip this level".
-func keyTitleArtistMBIDAlbumMBID(t, _, _, am, alm string) string {
-	if am == "" || alm == "" {
-		return ""
-	}
-	return t + "|" + am + "|" + alm
-}
-
-func keyTitleArtistMBIDAlbum(t, _, al, am, _ string) string {
-	if am == "" || al == "" {
-		return ""
-	}
-	return t + "|" + am + "|" + al
-}
-
-func keyTitleArtistAlbum(t, a, al, _, _ string) string {
-	if a == "" || al == "" {
-		return ""
-	}
-	return t + "|" + a + "|" + al
-}
-
-func keyTitleArtistMBID(t, _, _, am, _ string) string {
-	if am == "" {
-		return ""
-	}
-	return t + "|" + am
-}
-
-func keyTitleArtist(t, a, _, _, _ string) string {
-	if a == "" {
-		return ""
-	}
-	return t + "|" + a
-}
-
-func keyTitleOnly(t, _, _, _, _ string) string {
-	return t
-}
-
-// matchLevel defines one level of matching specificity
-type matchLevel struct {
-	index   map[string]model.MediaFile
-	makeKey keyFunc
-}
-
-// trackMatcher indexes tracks at multiple specificity levels for efficient lookup
-type trackMatcher struct {
-	levels []matchLevel
-}
-
-// newTrackMatcher creates a matcher with levels ordered from most to least specific
-func newTrackMatcher() *trackMatcher {
-	return &trackMatcher{
-		levels: []matchLevel{
-			{make(map[string]model.MediaFile), keyTitleArtistMBIDAlbumMBID},
-			{make(map[string]model.MediaFile), keyTitleArtistMBIDAlbum},
-			{make(map[string]model.MediaFile), keyTitleArtistAlbum},
-			{make(map[string]model.MediaFile), keyTitleArtistMBID},
-			{make(map[string]model.MediaFile), keyTitleArtist},
-			{make(map[string]model.MediaFile), keyTitleOnly},
-		},
-	}
-}
-
-// index adds a track to all applicable specificity levels
-func (m *trackMatcher) index(mf model.MediaFile) {
-	title := str.SanitizeFieldForSorting(mf.Title)
-	artist := str.SanitizeFieldForSorting(mf.Artist)
-	album := str.SanitizeFieldForSorting(mf.Album)
-
-	for i := range m.levels {
-		if key := m.levels[i].makeKey(title, artist, album, mf.MbzArtistID, mf.MbzAlbumID); key != "" {
-			if _, exists := m.levels[i].index[key]; !exists {
-				m.levels[i].index[key] = mf
-			}
-		}
-	}
-}
-
-// find returns the best match for a query, trying most specific levels first
-func (m *trackMatcher) find(q songQuery) (model.MediaFile, bool) {
-	for _, level := range m.levels {
-		if key := level.makeKey(q.title, q.artist, q.album, q.artistMBID, q.albumMBID); key != "" {
-			if mf, ok := level.index[key]; ok {
-				return mf, true
-			}
-		}
-	}
-	return model.MediaFile{}, false
 }
 
 func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
@@ -306,7 +269,7 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 			}
 		}
 		// Fall back to title+artist match (composite key preserves duplicate titles)
-		key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSorting(t.Artist)
+		key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
 		if mf, ok := byTitleArtist[key]; ok {
 			mfs = append(mfs, mf)
 		}
@@ -327,72 +290,4 @@ func similarityRatio(a, b string) float64 {
 	}
 	// JaroWinkler params: boostThreshold=0.7, prefixSize=4
 	return smetrics.JaroWinkler(a, b, 0.7, 4)
-}
-
-// fuzzyMatchUnmatched performs fuzzy title matching for songs that didn't match exactly.
-// It queries tracks by artist and then fuzzy-matches titles within that artist's catalog.
-func (e *provider) fuzzyMatchUnmatched(ctx context.Context, unmatched []songQuery, existingMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
-	// Skip fuzzy matching if threshold is 100 (exact match only)
-	threshold := float64(conf.Server.SimilarSongsMatchThreshold) / 100.0
-	if threshold >= 1.0 {
-		return nil, nil
-	}
-
-	// Group unmatched queries by artist
-	byArtist := map[string][]songQuery{}
-	for _, q := range unmatched {
-		if q.artist == "" {
-			continue
-		}
-		// Skip if already matched
-		key := q.title + "|" + q.artist
-		if _, ok := existingMatches[key]; ok {
-			continue
-		}
-		byArtist[q.artist] = append(byArtist[q.artist], q)
-	}
-
-	if len(byArtist) == 0 {
-		return nil, nil
-	}
-
-	matches := map[string]model.MediaFile{}
-	for artist, queries := range byArtist {
-		// Query all tracks by this artist
-		tracks, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"order_artist_name": artist},
-				squirrel.Eq{"missing": false},
-			},
-			Sort: "starred desc, rating desc, year asc, compilation asc",
-		})
-		if err != nil {
-			continue
-		}
-
-		// Fuzzy match each query against artist's tracks
-		for _, q := range queries {
-			if mf, found := e.findFuzzyTitleMatch(q.title, tracks, threshold); found {
-				key := q.title + "|" + q.artist
-				matches[key] = mf
-			}
-		}
-	}
-	return matches, nil
-}
-
-// findFuzzyTitleMatch finds the best fuzzy match for a title within a set of tracks.
-func (e *provider) findFuzzyTitleMatch(title string, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
-	var bestMatch model.MediaFile
-	bestRatio := 0.0
-
-	for _, mf := range tracks {
-		trackTitle := str.SanitizeFieldForSorting(mf.Title)
-		ratio := similarityRatio(title, trackTitle)
-		if ratio >= threshold && ratio > bestRatio {
-			bestMatch = mf
-			bestRatio = ratio
-		}
-	}
-	return bestMatch, bestRatio >= threshold
 }

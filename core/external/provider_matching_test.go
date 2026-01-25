@@ -57,7 +57,7 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
-		setupExpectations := func(returnedSongs []agents.Song, idMatches, mbidMatches, titleMatches model.MediaFiles) {
+		setupExpectations := func(returnedSongs []agents.Song, idMatches, mbidMatches, artistTracks model.MediaFiles) {
 			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 				Return(returnedSongs, nil).Once()
 
@@ -81,15 +81,19 @@ var _ = Describe("Provider - Song Matching", func() {
 				return hasMBID
 			})).Return(mbidMatches, nil).Once()
 
-			// loadTracksByTitleAndArtist
+			// loadTracksByTitleAndArtist - now queries by artist name
 			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 				and, ok := opt.Filters.(squirrel.And)
 				if !ok || len(and) < 2 {
 					return false
 				}
-				_, hasOr := and[0].(squirrel.Or)
-				return hasOr
-			})).Return(titleMatches, nil).Once()
+				eq, hasEq := and[0].(squirrel.Eq)
+				if !hasEq {
+					return false
+				}
+				_, hasArtist := eq["order_artist_name"]
+				return hasArtist
+			})).Return(artistTracks, nil).Maybe()
 		}
 
 		Context("when agent returns artist and album metadata", func() {
@@ -162,23 +166,19 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs[0].ID).To(Equal("correct-match"))
 			})
 
-			It("falls back to title-only match when no artist info available", func() {
-				// Song in library
-				titleMatch := model.MediaFile{
-					ID: "title-match", Title: "Similar Song", Artist: "Random Artist",
-				}
-
+			It("does not match songs without artist info", func() {
+				// Songs without artist info cannot be matched since we query by artist
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song"}, // No artist/album info at all
 				}
 
-				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{titleMatch})
+				// No artist to query, so no GetAll calls for title matching
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(songs).To(HaveLen(1))
-				Expect(songs[0].ID).To(Equal("title-match"))
+				Expect(songs).To(BeEmpty())
 			})
 		})
 
@@ -225,16 +225,16 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "less-accurate", Title: "Song A", Artist: "Artist One", Album: "Compilation",
 					MbzArtistID: "mbid-1",
 				}
-				titleOnlyMatch := model.MediaFile{
-					ID: "title-only", Title: "Song B", Artist: "Different Artist",
+				artistTwoMatch := model.MediaFile{
+					ID: "artist-two", Title: "Song B", Artist: "Artist Two",
 				}
 
 				returnedSongs := []agents.Song{
 					{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
-					{Name: "Song B"}, // Title only
+					{Name: "Song B", Artist: "Artist Two"}, // Different artist
 				}
 
-				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{lessAccurateMatch, preciseMatch, titleOnlyMatch})
+				setupExpectations(returnedSongs, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{lessAccurateMatch, preciseMatch, artistTwoMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -242,8 +242,8 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs).To(HaveLen(2))
 				// First song should be the precise match (has all MBIDs)
 				Expect(songs[0].ID).To(Equal("precise"))
-				// Second song should be title-only match
-				Expect(songs[1].ID).To(Equal("title-only"))
+				// Second song matches by title + artist
+				Expect(songs[1].ID).To(Equal("artist-two"))
 			})
 		})
 	})
@@ -261,18 +261,24 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
-		setupFuzzyExpectations := func(returnedSongs []agents.Song, titleMatches, artistTracks model.MediaFiles, expectFuzzyCall bool) {
+		setupFuzzyExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
 			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 				Return(returnedSongs, nil).Once()
 
-			// loadTracksByTitleAndArtist - exact title match returns titleMatches
+			// loadTracksByTitleAndArtist now queries by artist in a single pass
 			// Note: loadTracksByID and loadTracksByMBID return early when no IDs/MBIDs
-			mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(titleMatches, nil).Once()
-
-			// fuzzyMatchUnmatched - query by artist returns artistTracks
-			if expectFuzzyCall {
-				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(artistTracks, nil).Once()
-			}
+			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				and, ok := opt.Filters.(squirrel.And)
+				if !ok || len(and) < 2 {
+					return false
+				}
+				eq, hasEq := and[0].(squirrel.Eq)
+				if !hasEq {
+					return false
+				}
+				_, hasArtist := eq["order_artist_name"]
+				return hasArtist
+			})).Return(artistTracks, nil).Maybe()
 		}
 
 		Context("with default threshold (85%)", func() {
@@ -283,14 +289,12 @@ var _ = Describe("Provider - Song Matching", func() {
 				returnedSongs := []agents.Song{
 					{Name: "Paranoid Android", Artist: "Radiohead"},
 				}
-				// No exact title match
-				titleMatches := model.MediaFiles{}
-				// Artist catalog has the remastered version
+				// Artist catalog has the remastered version (fuzzy match will find it)
 				artistTracks := model.MediaFiles{
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, titleMatches, artistTracks, true)
+				setupFuzzyExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -305,12 +309,11 @@ var _ = Describe("Provider - Song Matching", func() {
 				returnedSongs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artist: "Queen"},
 				}
-				titleMatches := model.MediaFiles{}
 				artistTracks := model.MediaFiles{
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, titleMatches, artistTracks, true)
+				setupFuzzyExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -325,14 +328,13 @@ var _ = Describe("Provider - Song Matching", func() {
 				returnedSongs := []agents.Song{
 					{Name: "Yesterday", Artist: "The Beatles"},
 				}
-				titleMatches := model.MediaFiles{}
 				// Artist catalog has completely different songs
 				artistTracks := model.MediaFiles{
 					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles"},
 					{ID: "different2", Title: "Here Comes The Sun", Artist: "The Beatles"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, titleMatches, artistTracks, true)
+				setupFuzzyExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -341,17 +343,19 @@ var _ = Describe("Provider - Song Matching", func() {
 			})
 		})
 
-		Context("with threshold set to 100 (disabled)", func() {
-			It("does not perform fuzzy matching", func() {
+		Context("with threshold set to 100 (exact match only)", func() {
+			It("only matches exact titles", func() {
 				conf.Server.SimilarSongsMatchThreshold = 100
 
 				returnedSongs := []agents.Song{
 					{Name: "Paranoid Android", Artist: "Radiohead"},
 				}
-				// No exact title match, and fuzzy matching is disabled
-				titleMatches := model.MediaFiles{}
+				// Artist catalog has only remastered version - no exact match
+				artistTracks := model.MediaFiles{
+					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
+				}
 
-				setupFuzzyExpectations(returnedSongs, titleMatches, model.MediaFiles{}, false)
+				setupFuzzyExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -367,12 +371,11 @@ var _ = Describe("Provider - Song Matching", func() {
 				returnedSongs := []agents.Song{
 					{Name: "Song", Artist: "Artist"},
 				}
-				titleMatches := model.MediaFiles{}
 				artistTracks := model.MediaFiles{
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, titleMatches, artistTracks, true)
+				setupFuzzyExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 

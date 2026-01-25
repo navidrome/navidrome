@@ -73,25 +73,33 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					return ok
 				})).Return(model.MediaFiles{}, nil).Once()
 
-				// Mock loadTracksByMBID - no MBID matches (empty MBID)
+				// Mock loadTracksByMBID - no MBID matches (empty MBID means this won't be called)
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					eq, ok := opt.Filters.(squirrel.And)
-					if !ok || len(eq) < 1 {
+					and, ok := opt.Filters.(squirrel.And)
+					if !ok || len(and) < 1 {
 						return false
 					}
-					_, hasEq := eq[0].(squirrel.Eq)
-					return hasEq
-				})).Return(model.MediaFiles{}, nil).Once()
+					eq, hasEq := and[0].(squirrel.Eq)
+					if !hasEq {
+						return false
+					}
+					_, hasMBID := eq["mbz_recording_id"]
+					return hasMBID
+				})).Return(model.MediaFiles{}, nil).Maybe()
 
-				// Mock loadTracksByTitleOnly - title matches
+				// Mock loadTracksByTitleAndArtist - queries by artist name
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					and, ok := opt.Filters.(squirrel.And)
 					if !ok || len(and) < 2 {
 						return false
 					}
-					_, hasOr := and[0].(squirrel.Or)
-					return hasOr
-				})).Return(model.MediaFiles{matchedSong}, nil).Once()
+					eq, hasEq := and[0].(squirrel.Eq)
+					if !hasEq {
+						return false
+					}
+					_, hasArtist := eq["order_artist_name"]
+					return hasArtist
+				})).Return(model.MediaFiles{matchedSong}, nil).Maybe()
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
