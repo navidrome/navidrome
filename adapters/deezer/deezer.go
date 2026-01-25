@@ -135,7 +135,8 @@ func (s *deezerAgent) GetArtistTopSongs(ctx context.Context, _, artistName, _ st
 
 	res := slice.Map(tracks, func(r Track) agents.Song {
 		return agents.Song{
-			Name: r.Title,
+			Name:  r.Title,
+			Album: r.Album.Title,
 		}
 	})
 	return res, nil
