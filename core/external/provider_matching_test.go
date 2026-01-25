@@ -384,5 +384,77 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs[0].ID).To(Equal("extended"))
 			})
 		})
+
+		Context("with fuzzy album matching", func() {
+			It("matches album with (Remaster) suffix", func() {
+				conf.Server.SimilarSongsMatchThreshold = 85
+
+				// Agent returns "A Night at the Opera" but library has remastered version
+				returnedSongs := []agents.Song{
+					{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
+				}
+				// Library has same album with remaster suffix
+				correctMatch := model.MediaFile{
+					ID: "correct", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera (2011 Remaster)",
+				}
+				wrongMatch := model.MediaFile{
+					ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
+				}
+
+				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				// Should prefer the fuzzy album match (Level 3) over title+artist only (Level 1)
+				Expect(songs[0].ID).To(Equal("correct"))
+			})
+
+			It("matches album with (Deluxe Edition) suffix", func() {
+				conf.Server.SimilarSongsMatchThreshold = 85
+
+				returnedSongs := []agents.Song{
+					{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				}
+				correctMatch := model.MediaFile{
+					ID: "correct", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
+				}
+				wrongMatch := model.MediaFile{
+					ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
+				}
+
+				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("correct"))
+			})
+
+			It("prefers exact album match over fuzzy album match", func() {
+				conf.Server.SimilarSongsMatchThreshold = 85
+
+				returnedSongs := []agents.Song{
+					{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				}
+				exactMatch := model.MediaFile{
+					ID: "exact", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				}
+				fuzzyMatch := model.MediaFile{
+					ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
+				}
+
+				setupFuzzyExpectations(returnedSongs, model.MediaFiles{fuzzyMatch, exactMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				// Both have same title similarity (1.0), so should prefer exact album match (higher specificity via higher album similarity)
+				Expect(songs[0].ID).To(Equal("exact"))
+			})
+		})
 	})
 })

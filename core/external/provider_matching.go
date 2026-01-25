@@ -96,24 +96,29 @@ type songQuery struct {
 	albumMBID  string
 }
 
-// matchScore combines title similarity with metadata specificity for ranking matches
+// matchScore combines title/album similarity with metadata specificity for ranking matches
 type matchScore struct {
 	titleSimilarity  float64 // 0.0-1.0 (Jaro-Winkler)
+	albumSimilarity  float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
 	specificityLevel int     // 0-5 (higher = more specific metadata match)
 }
 
 // betterThan returns true if this score beats another.
-// Primary comparison: title similarity. Secondary: specificity level.
+// Comparison order: title similarity > specificity level > album similarity
 func (s matchScore) betterThan(other matchScore) bool {
 	if s.titleSimilarity != other.titleSimilarity {
 		return s.titleSimilarity > other.titleSimilarity
 	}
-	return s.specificityLevel > other.specificityLevel
+	if s.specificityLevel != other.specificityLevel {
+		return s.specificityLevel > other.specificityLevel
+	}
+	return s.albumSimilarity > other.albumSimilarity
 }
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5).
 // Higher values indicate more specific matches (MBIDs > names > title only).
-func computeSpecificityLevel(q songQuery, mf model.MediaFile) int {
+// Uses fuzzy matching for album names with the same threshold as title matching.
+func computeSpecificityLevel(q songQuery, mf model.MediaFile, albumThreshold float64) int {
 	title := str.SanitizeFieldForSorting(mf.Title)
 	artist := str.SanitizeFieldForSortingNoArticle(mf.Artist)
 	album := str.SanitizeFieldForSorting(mf.Album)
@@ -123,14 +128,14 @@ func computeSpecificityLevel(q songQuery, mf model.MediaFile) int {
 		mf.MbzArtistID == q.artistMBID && mf.MbzAlbumID == q.albumMBID {
 		return 5
 	}
-	// Level 4: Title + Artist MBID + Album name
+	// Level 4: Title + Artist MBID + Album name (fuzzy)
 	if q.artistMBID != "" && q.album != "" &&
-		mf.MbzArtistID == q.artistMBID && album == q.album {
+		mf.MbzArtistID == q.artistMBID && similarityRatio(album, q.album) >= albumThreshold {
 		return 4
 	}
-	// Level 3: Title + Artist name + Album name
+	// Level 3: Title + Artist name + Album name (fuzzy)
 	if q.artist != "" && q.album != "" &&
-		artist == q.artist && album == q.album {
+		artist == q.artist && similarityRatio(album, q.album) >= albumThreshold {
 		return 3
 	}
 	// Level 2: Title + Artist MBID
@@ -196,10 +201,11 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 	return matches, nil
 }
 
-// findBestMatch finds the best matching track using combined title similarity and specificity scoring.
+// findBestMatch finds the best matching track using combined title/album similarity and specificity scoring.
 // A track must meet the threshold for title similarity, then the best match is chosen by:
 // 1. Highest title similarity
-// 2. Highest specificity level (as tiebreaker)
+// 2. Highest specificity level
+// 3. Highest album similarity (as final tiebreaker)
 func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
@@ -213,9 +219,17 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 			continue
 		}
 
+		// Compute album similarity for tiebreaking (0.0 if no album in query)
+		var albumSim float64
+		if q.album != "" {
+			trackAlbum := str.SanitizeFieldForSorting(mf.Album)
+			albumSim = similarityRatio(q.album, trackAlbum)
+		}
+
 		score := matchScore{
 			titleSimilarity:  titleSim,
-			specificityLevel: computeSpecificityLevel(q, mf),
+			albumSimilarity:  albumSim,
+			specificityLevel: computeSpecificityLevel(q, mf, threshold),
 		}
 
 		if score.betterThan(bestScore) {
