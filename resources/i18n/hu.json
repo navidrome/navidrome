@@ -97,7 +97,8 @@
         "recentlyPlayed": "Nemrég lejátszott",
         "mostPlayed": "Legtöbbször lejátszott",
         "starred": "Kedvencek",
-        "topRated": "Legjobbra értékelt"
+        "topRated": "Legjobbra értékelt",
+        "compilations": "Compilations"
       }
     },
     "artist": {

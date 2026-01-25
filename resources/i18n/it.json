@@ -77,7 +77,8 @@
                 "recentlyPlayed": "Riprodotti di Recente",
                 "mostPlayed": "I Più Riprodotti",
                 "starred": "Preferiti",
-                "topRated": "Più votati"
+                "topRated": "Più votati",
+                "compilations": "Compilation"
             }
         },
         "artist": {

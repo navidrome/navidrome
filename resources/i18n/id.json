@@ -97,7 +97,8 @@
         "recentlyPlayed": "Terakhir Diputar",
         "mostPlayed": "Sering Diputar",
         "starred": "Favorit",
-        "topRated": "Peringkat Teratas"
+        "topRated": "Peringkat Teratas",
+        "compilations": "Compilations"
       }
     },
     "artist": {

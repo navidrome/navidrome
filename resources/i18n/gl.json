@@ -97,7 +97,8 @@
         "recentlyPlayed": "Reproducida recentemente",
         "mostPlayed": "Reproducida máis veces",
         "starred": "Favoritas",
-        "topRated": "Máis valoradas"
+        "topRated": "Máis valoradas",
+        "compilations": "Compilations"
       }
     },
     "artist": {

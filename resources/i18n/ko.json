@@ -96,7 +96,8 @@
         "recentlyPlayed": "최근 재생됨",
         "mostPlayed": "가장 많이 재생됨",
         "starred": "즐겨찾기",
-        "topRated": "높은 평가"
+        "topRated": "높은 평가",
+        "compilations": "컴필레이션"
       }
     },
     "artist": {

@@ -97,7 +97,8 @@
         "recentlyPlayed": "Viimeksi soitetut",
         "mostPlayed": "Useimmiten soitetut",
         "starred": "Suosikit",
-        "topRated": "Tykätyimmät"
+        "topRated": "Tykätyimmät",
+        "compilations": "Compilations"
       }
     },
     "artist": {

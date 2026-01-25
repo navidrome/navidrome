@@ -97,7 +97,8 @@
         "recentlyPlayed": "Nyligt Afspillet",
         "mostPlayed": "Mest Afspillet",
         "starred": "Stjernemarkerede",
-        "topRated": "Top bedømmelse"
+        "topRated": "Top bedømmelse",
+        "compilations": "Compilations"
       }
     },
     "artist": {

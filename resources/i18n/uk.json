@@ -97,7 +97,8 @@
         "recentlyPlayed": "Нещодавно відтворено",
         "mostPlayed": "Часто відтворювані",
         "starred": "Вибрані",
-        "topRated": "Найкраще"
+        "topRated": "Найкраще",
+        "compilations": "Compilations"
       }
     },
     "artist": {

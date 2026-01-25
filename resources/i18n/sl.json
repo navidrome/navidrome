@@ -97,7 +97,8 @@
         "recentlyPlayed": "Predvajan nedavno",
         "mostPlayed": "Največ predvajano",
         "starred": "Priljubljeni",
-        "topRated": "Najvišje ocenjeno"
+        "topRated": "Najvišje ocenjeno",
+        "compilations": "Compilations"
       }
     },
     "artist": {

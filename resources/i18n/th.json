@@ -97,7 +97,8 @@
         "recentlyPlayed": "เล่นล่าสุด",
         "mostPlayed": "เล่นมากที่สุด",
         "starred": "รายการโปรด",
-        "topRated": "ความนิยมสูง"
+        "topRated": "ความนิยมสูง",
+        "compilations": "Compilations"
       }
     },
     "artist": {

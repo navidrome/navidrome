@@ -97,7 +97,8 @@
         "recentlyPlayed": "Ostatnio Odtwarzane",
         "mostPlayed": "Najczęściej Odtwarzane",
         "starred": "Ulubione",
-        "topRated": "Najwyżej Oceniane"
+        "topRated": "Najwyżej Oceniane",
+        "compilations": "Compilations"
       }
     },
     "artist": {
