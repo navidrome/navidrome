@@ -112,8 +112,21 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 		return matches, err
 	}
 
-	indices := e.indexTracksByKeys(res)
-	matches = e.matchQueriesAgainstIndices(queries, indices)
+	// Build index from query results
+	matcher := newTrackMatcher()
+	for _, mf := range res {
+		matcher.index(mf)
+	}
+
+	// Find best match for each query
+	for _, q := range queries {
+		if mf, found := matcher.find(q); found {
+			key := q.title + "|" + q.artist
+			if _, ok := matches[key]; !ok {
+				matches[key] = mf
+			}
+		}
+	}
 
 	// Find unmatched queries and try fuzzy matching
 	var unmatched []songQuery
@@ -177,124 +190,96 @@ func (e *provider) queryTracksByTitles(ctx context.Context, queries []songQuery)
 	})
 }
 
-type trackIndices struct {
-	byTitleArtistMBIDAlbumMBID map[string]model.MediaFile
-	byTitleArtistMBIDAlbum     map[string]model.MediaFile
-	byTitleArtistAlbum         map[string]model.MediaFile
-	byTitleArtistMBID          map[string]model.MediaFile
-	byTitleArtist              map[string]model.MediaFile
-	byTitle                    map[string]model.MediaFile
+// keyFunc builds a lookup key from track metadata. Returns empty string if required fields are missing.
+type keyFunc func(title, artist, album, artistMBID, albumMBID string) string
+
+// Key builders - ordered from most to least specific. Empty string means "skip this level".
+func keyTitleArtistMBIDAlbumMBID(t, _, _, am, alm string) string {
+	if am == "" || alm == "" {
+		return ""
+	}
+	return t + "|" + am + "|" + alm
 }
 
-func (e *provider) indexTracksByKeys(tracks model.MediaFiles) *trackIndices {
-	indices := &trackIndices{
-		byTitleArtistMBIDAlbumMBID: map[string]model.MediaFile{},
-		byTitleArtistMBIDAlbum:     map[string]model.MediaFile{},
-		byTitleArtistAlbum:         map[string]model.MediaFile{},
-		byTitleArtistMBID:          map[string]model.MediaFile{},
-		byTitleArtist:              map[string]model.MediaFile{},
-		byTitle:                    map[string]model.MediaFile{},
+func keyTitleArtistMBIDAlbum(t, _, al, am, _ string) string {
+	if am == "" || al == "" {
+		return ""
 	}
-
-	for _, mf := range tracks {
-		title := str.SanitizeFieldForSorting(mf.Title)
-		artist := str.SanitizeFieldForSorting(mf.Artist)
-		album := str.SanitizeFieldForSorting(mf.Album)
-		artistMBID := mf.MbzArtistID
-		albumMBID := mf.MbzAlbumID
-
-		e.indexTrackBySpecificity(indices, title, artist, album, artistMBID, albumMBID, mf)
-	}
-	return indices
+	return t + "|" + am + "|" + al
 }
 
-func (e *provider) indexTrackBySpecificity(indices *trackIndices, title, artist, album, artistMBID, albumMBID string, mf model.MediaFile) {
-	addIfNotExists := func(m map[string]model.MediaFile, key string) {
-		if _, ok := m[key]; !ok {
-			m[key] = mf
+func keyTitleArtistAlbum(t, a, al, _, _ string) string {
+	if a == "" || al == "" {
+		return ""
+	}
+	return t + "|" + a + "|" + al
+}
+
+func keyTitleArtistMBID(t, _, _, am, _ string) string {
+	if am == "" {
+		return ""
+	}
+	return t + "|" + am
+}
+
+func keyTitleArtist(t, a, _, _, _ string) string {
+	if a == "" {
+		return ""
+	}
+	return t + "|" + a
+}
+
+func keyTitleOnly(t, _, _, _, _ string) string {
+	return t
+}
+
+// matchLevel defines one level of matching specificity
+type matchLevel struct {
+	index   map[string]model.MediaFile
+	makeKey keyFunc
+}
+
+// trackMatcher indexes tracks at multiple specificity levels for efficient lookup
+type trackMatcher struct {
+	levels []matchLevel
+}
+
+// newTrackMatcher creates a matcher with levels ordered from most to least specific
+func newTrackMatcher() *trackMatcher {
+	return &trackMatcher{
+		levels: []matchLevel{
+			{make(map[string]model.MediaFile), keyTitleArtistMBIDAlbumMBID},
+			{make(map[string]model.MediaFile), keyTitleArtistMBIDAlbum},
+			{make(map[string]model.MediaFile), keyTitleArtistAlbum},
+			{make(map[string]model.MediaFile), keyTitleArtistMBID},
+			{make(map[string]model.MediaFile), keyTitleArtist},
+			{make(map[string]model.MediaFile), keyTitleOnly},
+		},
+	}
+}
+
+// index adds a track to all applicable specificity levels
+func (m *trackMatcher) index(mf model.MediaFile) {
+	title := str.SanitizeFieldForSorting(mf.Title)
+	artist := str.SanitizeFieldForSorting(mf.Artist)
+	album := str.SanitizeFieldForSorting(mf.Album)
+
+	for i := range m.levels {
+		if key := m.levels[i].makeKey(title, artist, album, mf.MbzArtistID, mf.MbzAlbumID); key != "" {
+			if _, exists := m.levels[i].index[key]; !exists {
+				m.levels[i].index[key] = mf
+			}
 		}
 	}
-
-	if artistMBID != "" && albumMBID != "" {
-		addIfNotExists(indices.byTitleArtistMBIDAlbumMBID, title+"|"+artistMBID+"|"+albumMBID)
-	}
-	if artistMBID != "" && album != "" {
-		addIfNotExists(indices.byTitleArtistMBIDAlbum, title+"|"+artistMBID+"|"+album)
-	}
-	if artist != "" && album != "" {
-		addIfNotExists(indices.byTitleArtistAlbum, title+"|"+artist+"|"+album)
-	}
-	if artistMBID != "" {
-		addIfNotExists(indices.byTitleArtistMBID, title+"|"+artistMBID)
-	}
-	if artist != "" {
-		addIfNotExists(indices.byTitleArtist, title+"|"+artist)
-	}
-	addIfNotExists(indices.byTitle, title)
 }
 
-func (e *provider) matchQueriesAgainstIndices(queries []songQuery, indices *trackIndices) map[string]model.MediaFile {
-	matches := map[string]model.MediaFile{}
-
-	for _, q := range queries {
-		if mf, found := e.findBestMatch(q, indices); found {
-			// Use composite key (title+artist) to preserve matches for duplicate titles
-			key := q.title + "|" + q.artist
-			if _, ok := matches[key]; !ok {
-				matches[key] = mf
+// find returns the best match for a query, trying most specific levels first
+func (m *trackMatcher) find(q songQuery) (model.MediaFile, bool) {
+	for _, level := range m.levels {
+		if key := level.makeKey(q.title, q.artist, q.album, q.artistMBID, q.albumMBID); key != "" {
+			if mf, ok := level.index[key]; ok {
+				return mf, true
 			}
-		}
-	}
-	return matches
-}
-
-func (e *provider) findBestMatch(q songQuery, indices *trackIndices) (model.MediaFile, bool) {
-	// Try most specific matches first
-	lookupFuncs := []func() (model.MediaFile, bool){
-		func() (model.MediaFile, bool) {
-			if q.artistMBID != "" && q.albumMBID != "" {
-				mf, ok := indices.byTitleArtistMBIDAlbumMBID[q.title+"|"+q.artistMBID+"|"+q.albumMBID]
-				return mf, ok
-			}
-			return model.MediaFile{}, false
-		},
-		func() (model.MediaFile, bool) {
-			if q.artistMBID != "" && q.album != "" {
-				mf, ok := indices.byTitleArtistMBIDAlbum[q.title+"|"+q.artistMBID+"|"+q.album]
-				return mf, ok
-			}
-			return model.MediaFile{}, false
-		},
-		func() (model.MediaFile, bool) {
-			if q.artist != "" && q.album != "" {
-				mf, ok := indices.byTitleArtistAlbum[q.title+"|"+q.artist+"|"+q.album]
-				return mf, ok
-			}
-			return model.MediaFile{}, false
-		},
-		func() (model.MediaFile, bool) {
-			if q.artistMBID != "" {
-				mf, ok := indices.byTitleArtistMBID[q.title+"|"+q.artistMBID]
-				return mf, ok
-			}
-			return model.MediaFile{}, false
-		},
-		func() (model.MediaFile, bool) {
-			if q.artist != "" {
-				mf, ok := indices.byTitleArtist[q.title+"|"+q.artist]
-				return mf, ok
-			}
-			return model.MediaFile{}, false
-		},
-		func() (model.MediaFile, bool) {
-			mf, ok := indices.byTitle[q.title]
-			return mf, ok
-		},
-	}
-
-	for _, lookup := range lookupFuncs {
-		if mf, found := lookup(); found {
-			return mf, true
 		}
 	}
 	return model.MediaFile{}, false
