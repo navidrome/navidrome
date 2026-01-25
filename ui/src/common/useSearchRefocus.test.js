@@ -9,9 +9,15 @@ vi.mock('react-router-dom', () => ({
 
 describe('useSearchRefocus', () => {
   let container
+  let rafCallbacks
 
   beforeEach(() => {
-    vi.useFakeTimers()
+    rafCallbacks = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      rafCallbacks.push(cb)
+      return rafCallbacks.length
+    })
+
     container = document.createElement('div')
     container.innerHTML = `
       <div class="RaSearchInput-input">
@@ -23,9 +29,14 @@ describe('useSearchRefocus', () => {
   })
 
   afterEach(() => {
-    vi.useRealTimers()
+    vi.restoreAllMocks()
     document.body.removeChild(container)
   })
+
+  const flushRAF = () => {
+    rafCallbacks.forEach((cb) => cb())
+    rafCallbacks = []
+  }
 
   it('focuses the input when search filter is cleared', () => {
     const input = container.querySelector('input')
@@ -38,8 +49,7 @@ describe('useSearchRefocus', () => {
 
     mockLocation.search = '?filter={}'
     rerender()
-
-    vi.advanceTimersByTime(100)
+    flushRAF()
 
     expect(focusSpy).toHaveBeenCalledTimes(1)
   })
@@ -53,8 +63,7 @@ describe('useSearchRefocus', () => {
 
     mockLocation.search = '?filter={}'
     rerender()
-
-    vi.advanceTimersByTime(100)
+    flushRAF()
 
     expect(focusSpy).not.toHaveBeenCalled()
   })
@@ -68,8 +77,7 @@ describe('useSearchRefocus', () => {
 
     mockLocation.search = '?filter={"name":"other"}'
     rerender()
-
-    vi.advanceTimersByTime(100)
+    flushRAF()
 
     expect(focusSpy).not.toHaveBeenCalled()
   })
