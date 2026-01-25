@@ -2,6 +2,11 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react-hooks'
 import { useSearchRefocus } from './useSearchRefocus'
 
+const mockLocation = { search: '' }
+vi.mock('react-router-dom', () => ({
+  useLocation: () => mockLocation,
+}))
+
 describe('useSearchRefocus', () => {
   let container
 
@@ -9,12 +14,12 @@ describe('useSearchRefocus', () => {
     vi.useFakeTimers()
     container = document.createElement('div')
     container.innerHTML = `
-      <div class="MuiFormControl-root">
-        <input type="text" value="search term" />
-        <button aria-label="clear search">X</button>
+      <div class="RaSearchInput-input">
+        <input type="text" />
       </div>
     `
     document.body.appendChild(container)
+    mockLocation.search = ''
   })
 
   afterEach(() => {
@@ -22,44 +27,50 @@ describe('useSearchRefocus', () => {
     document.body.removeChild(container)
   })
 
-  it('focuses the input after clicking clear button', () => {
-    renderHook(() => useSearchRefocus())
-
-    const clearButton = container.querySelector('[aria-label="clear search"]')
+  it('focuses the input when search filter is cleared', () => {
     const input = container.querySelector('input')
     const focusSpy = vi.spyOn(input, 'focus')
 
-    clearButton.click()
+    mockLocation.search = '?filter={"name":"test"}'
+    const { rerender } = renderHook(() => useSearchRefocus())
 
     expect(focusSpy).not.toHaveBeenCalled()
 
-    vi.advanceTimersByTime(600)
+    mockLocation.search = '?filter={}'
+    rerender()
+
+    vi.advanceTimersByTime(100)
 
     expect(focusSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('does not focus if click is not on a clear button', () => {
-    renderHook(() => useSearchRefocus())
-
+  it('does not focus if filter was already empty', () => {
     const input = container.querySelector('input')
     const focusSpy = vi.spyOn(input, 'focus')
 
-    input.click()
+    mockLocation.search = '?filter={}'
+    const { rerender } = renderHook(() => useSearchRefocus())
 
-    vi.advanceTimersByTime(600)
+    mockLocation.search = '?filter={}'
+    rerender()
+
+    vi.advanceTimersByTime(100)
 
     expect(focusSpy).not.toHaveBeenCalled()
   })
 
-  it('cleans up event listener on unmount', () => {
-    const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener')
+  it('does not focus if filter value changed but not cleared', () => {
+    const input = container.querySelector('input')
+    const focusSpy = vi.spyOn(input, 'focus')
 
-    const { unmount } = renderHook(() => useSearchRefocus())
-    unmount()
+    mockLocation.search = '?filter={"name":"test"}'
+    const { rerender } = renderHook(() => useSearchRefocus())
 
-    expect(removeEventListenerSpy).toHaveBeenCalledWith(
-      'click',
-      expect.any(Function),
-    )
+    mockLocation.search = '?filter={"name":"other"}'
+    rerender()
+
+    vi.advanceTimersByTime(100)
+
+    expect(focusSpy).not.toHaveBeenCalled()
   })
 })
