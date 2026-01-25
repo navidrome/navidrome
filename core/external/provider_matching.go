@@ -12,7 +12,77 @@ import (
 	"github.com/xrash/smetrics"
 )
 
-// matchSongsToLibrary matches agent song results to local library tracks
+// matchSongsToLibrary matches agent song results to local library tracks using a multi-phase
+// matching algorithm that prioritizes accuracy over recall.
+//
+// # Algorithm Overview
+//
+// The algorithm matches songs from external agents (Last.fm, Deezer, etc.) to tracks in the
+// local music library using three matching strategies in priority order:
+//
+//  1. Direct ID match: Songs with an ID field are matched directly to MediaFiles by ID
+//  2. MusicBrainz Recording ID (MBID) match: Songs with MBID are matched to tracks with
+//     matching mbz_recording_id
+//  3. Title+Artist fuzzy match: Remaining songs are matched using fuzzy string comparison
+//     with metadata specificity scoring
+//
+// # Matching Priority
+//
+// When selecting the final result, matches are prioritized in order: ID > MBID > Title+Artist.
+// This ensures that more reliable identifiers take precedence over fuzzy text matching.
+//
+// # Fuzzy Matching Details
+//
+// For title+artist matching, the algorithm uses Jaro-Winkler similarity (threshold configurable
+// via SimilarSongsMatchThreshold, default 85%). Matches are ranked by:
+//
+//  1. Title similarity (Jaro-Winkler score, 0.0-1.0)
+//  2. Specificity level (0-5, based on metadata precision):
+//     - Level 5: Title + Artist MBID + Album MBID (most specific)
+//     - Level 4: Title + Artist MBID + Album name (fuzzy)
+//     - Level 3: Title + Artist name + Album name (fuzzy)
+//     - Level 2: Title + Artist MBID
+//     - Level 1: Title + Artist name
+//     - Level 0: Title only
+//  3. Album similarity (Jaro-Winkler, as final tiebreaker)
+//
+// # Examples
+//
+// Example 1 - MBID Priority:
+//
+//	Agent returns: {Name: "Paranoid Android", MBID: "abc-123", Artist: "Radiohead"}
+//	Library has: [
+//	  {ID: "t1", Title: "Paranoid Android", MbzRecordingID: "abc-123"},
+//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
+//	]
+//	Result: t1 (MBID match takes priority over title+artist)
+//
+// Example 2 - Specificity Ranking:
+//
+//	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
+//	Library has: [
+//	  {ID: "t1", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101"},           // Level 1
+//	  {ID: "t2", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},      // Level 3
+//	]
+//	Result: t2 (Level 3 beats Level 1 due to album match)
+//
+// Example 3 - Fuzzy Title Matching:
+//
+//	Agent returns: {Name: "Bohemian Rhapsody", Artist: "Queen"}
+//	Library has: {ID: "t1", Title: "Bohemian Rhapsody - Remastered", Artist: "Queen"}
+//	With threshold=85%: Match succeeds (similarity ~0.87)
+//	With threshold=100%: No match (not exact)
+//
+// # Parameters
+//
+//   - ctx: Context for database operations
+//   - songs: Slice of agent.Song results from external providers
+//   - count: Maximum number of matches to return
+//
+// # Returns
+//
+// Returns up to 'count' MediaFiles from the library that best match the input songs,
+// preserving the original order from the agent. Songs that cannot be matched are skipped.
 func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
 	idMatches, err := e.loadTracksByID(ctx, songs)
 	if err != nil {
@@ -30,6 +100,10 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 	return e.selectBestMatchingSongs(songs, idMatches, mbidMatches, titleMatches, count), nil
 }
 
+// loadTracksByID fetches MediaFiles from the library using direct ID matching.
+// It extracts all non-empty ID fields from the input songs and performs a single
+// batch query to the database. Returns a map keyed by MediaFile ID for O(1) lookup.
+// Only non-missing files are returned.
 func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
 	var ids []string
 	for _, s := range songs {
@@ -58,6 +132,10 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 	return matches, nil
 }
 
+// loadTracksByMBID fetches MediaFiles from the library using MusicBrainz Recording IDs.
+// It extracts all non-empty MBID fields from the input songs and performs a single
+// batch query against the mbz_recording_id column. Returns a map keyed by MBID for
+// O(1) lookup. Only non-missing files are returned.
 func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
 	var mbids []string
 	for _, s := range songs {
@@ -88,12 +166,15 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (m
 	return matches, nil
 }
 
+// songQuery represents a normalized query for matching a song to library tracks.
+// All string fields are sanitized (lowercased, diacritics removed) for comparison.
+// This struct is used internally by loadTracksByTitleAndArtist to group queries by artist.
 type songQuery struct {
-	title      string
-	artist     string
-	artistMBID string
-	album      string
-	albumMBID  string
+	title      string // Sanitized song title
+	artist     string // Sanitized artist name (without articles like "The")
+	artistMBID string // MusicBrainz Artist ID (optional, for higher specificity matching)
+	album      string // Sanitized album name (optional, for specificity scoring)
+	albumMBID  string // MusicBrainz Album ID (optional, for highest specificity matching)
 }
 
 // matchScore combines title/album similarity with metadata specificity for ranking matches
