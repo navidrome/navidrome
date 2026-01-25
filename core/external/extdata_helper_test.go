@@ -282,3 +282,27 @@ func (m *mockAgents) GetAlbumImages(ctx context.Context, name, artist, mbid stri
 	}
 	return nil, args.Error(1)
 }
+
+func (m *mockAgents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, artist, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, artist, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
+}

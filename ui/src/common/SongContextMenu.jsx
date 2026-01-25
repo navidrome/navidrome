@@ -24,6 +24,7 @@ import {
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
+import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
@@ -85,6 +86,24 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.addToQueue'),
       action: (record) => dispatch(addTracks({ [record.id]: record })),
+    },
+    instantMix: {
+      enabled: config.enableExternalServices,
+      label: translate('resources.song.actions.instantMix'),
+      action: async (record) => {
+        notify('message.startingInstantMix', { type: 'info' })
+        try {
+          const id = record.mediaFileId || record.id
+          await playSimilar(dispatch, notify, id, {
+            seedRecord: record,
+            shuffle: true,
+          })
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('Error starting instant mix:', e)
+          notify('ra.page.error', { type: 'warning' })
+        }
+      },
     },
     addToPlaylist: {
       enabled: true,

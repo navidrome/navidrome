@@ -46,7 +46,8 @@
         "download": "Baixar",
         "playNext": "Toca a seguir",
         "info": "Detalhes",
-        "showInPlaylist": "Ir para playlist"
+        "showInPlaylist": "Ir para playlist",
+        "instantMix": "Mix Instantâneo"
       }
     },
     "album": {
@@ -557,6 +558,7 @@
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
     "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
     "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "startingInstantMix": "Carregando Mix Instantâneo...",
     "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
