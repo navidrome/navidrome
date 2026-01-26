@@ -41,6 +41,26 @@ var _ = Describe("Provider - Song Matching", func() {
 		provider = NewProvider(ds, agentsCombined)
 	})
 
+	// Shared helper for tests that only need artist track queries (no ID/MBID matching)
+	setupSimilarSongsExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
+		agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(returnedSongs, nil).Once()
+
+		// loadTracksByTitleAndArtist - queries by artist name
+		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			and, ok := opt.Filters.(squirrel.And)
+			if !ok || len(and) < 2 {
+				return false
+			}
+			eq, hasEq := and[0].(squirrel.Eq)
+			if !hasEq {
+				return false
+			}
+			_, hasArtist := eq["order_artist_name"]
+			return hasArtist
+		})).Return(artistTracks, nil).Maybe()
+	}
+
 	Describe("matchSongsToLibrary priority matching", func() {
 		var track model.MediaFile
 
@@ -261,26 +281,6 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
-		setupFuzzyExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
-			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-				Return(returnedSongs, nil).Once()
-
-			// loadTracksByTitleAndArtist now queries by artist in a single pass
-			// Note: loadTracksByID and loadTracksByMBID return early when no IDs/MBIDs
-			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-				and, ok := opt.Filters.(squirrel.And)
-				if !ok || len(and) < 2 {
-					return false
-				}
-				eq, hasEq := and[0].(squirrel.Eq)
-				if !hasEq {
-					return false
-				}
-				_, hasArtist := eq["order_artist_name"]
-				return hasArtist
-			})).Return(artistTracks, nil).Maybe()
-		}
-
 		Context("with default threshold (85%)", func() {
 			It("matches songs with remastered suffix", func() {
 				conf.Server.SimilarSongsMatchThreshold = 85
@@ -294,7 +294,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -313,7 +313,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -334,7 +334,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "different2", Title: "Here Comes The Sun", Artist: "The Beatles"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -355,7 +355,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -375,7 +375,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -401,7 +401,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -424,7 +424,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -446,7 +446,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{fuzzyMatch, exactMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{fuzzyMatch, exactMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -473,25 +473,6 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
-		setupDurationExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
-			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-				Return(returnedSongs, nil).Once()
-
-			// loadTracksByTitleAndArtist - queries by artist name
-			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-				and, ok := opt.Filters.(squirrel.And)
-				if !ok || len(and) < 2 {
-					return false
-				}
-				eq, hasEq := and[0].(squirrel.Eq)
-				if !hasEq {
-					return false
-				}
-				_, hasArtist := eq["order_artist_name"]
-				return hasArtist
-			})).Return(artistTracks, nil).Maybe()
-		}
-
 		Context("when agent provides duration", func() {
 			It("prefers tracks with matching duration", func() {
 				// Agent returns song with duration 180000ms (180 seconds)
@@ -506,7 +487,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{wrongDuration, correctMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongDuration, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -525,7 +506,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "within-tolerance", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{withinTolerance})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{withinTolerance})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -547,7 +528,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "outside", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{outsideTolerance, withinTolerance})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{outsideTolerance, withinTolerance})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -566,7 +547,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{differentDuration})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{differentDuration})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -588,7 +569,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{anyTrack})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{anyTrack})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -599,25 +580,8 @@ var _ = Describe("Provider - Song Matching", func() {
 		})
 
 		Context("edge cases", func() {
-			It("handles exact duration match", func() {
-				returnedSongs := []agents.Song{
-					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
-				}
-				exactMatch := model.MediaFile{
-					ID: "exact", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
-				}
-
-				setupDurationExpectations(returnedSongs, model.MediaFiles{exactMatch})
-
-				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(songs).To(HaveLen(1))
-				Expect(songs[0].ID).To(Equal("exact"))
-			})
-
-			It("handles very short songs", func() {
-				// 30-second song
+			It("handles very short songs with duration tolerance", func() {
+				// 30-second song with 1-second difference (within 3-second tolerance)
 				returnedSongs := []agents.Song{
 					{Name: "Short Song", Artist: "Test Artist", Duration: 30000},
 				}
@@ -625,7 +589,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
 				}
 
-				setupDurationExpectations(returnedSongs, model.MediaFiles{shortTrack})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{shortTrack})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
