@@ -4,6 +4,20 @@
 // It is intended for use in Navidrome plugins built with extism-pdk.
 
 use serde::{Deserialize, Serialize};
+
+// Helper functions for skip_serializing_if with numeric types
+#[allow(dead_code)]
+fn is_zero_i32(value: &i32) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_u32(value: &u32) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_i64(value: &i64) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_u64(value: &u64) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
+#[allow(dead_code)]
+fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 /// AlbumImagesResponse is the response for GetAlbumImages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -241,7 +255,7 @@ pub struct SongRef {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album_mbid: String,
     /// Duration is the song duration in seconds.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
     pub duration: f32,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.

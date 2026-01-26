@@ -1234,6 +1234,37 @@ type OnInitOutput struct {
 })
 
 var _ = Describe("Rust Generation", func() {
+	Describe("skipSerializingFunc", func() {
+		It("should return Option::is_none for pointer, slice, and map types", func() {
+			Expect(skipSerializingFunc("*string")).To(Equal("Option::is_none"))
+			Expect(skipSerializingFunc("*MyStruct")).To(Equal("Option::is_none"))
+			Expect(skipSerializingFunc("[]string")).To(Equal("Option::is_none"))
+			Expect(skipSerializingFunc("[]int32")).To(Equal("Option::is_none"))
+			Expect(skipSerializingFunc("map[string]int")).To(Equal("Option::is_none"))
+		})
+
+		It("should return String::is_empty for string type", func() {
+			Expect(skipSerializingFunc("string")).To(Equal("String::is_empty"))
+		})
+
+		It("should return std::ops::Not::not for bool type", func() {
+			Expect(skipSerializingFunc("bool")).To(Equal("std::ops::Not::not"))
+		})
+
+		It("should return is_zero_* functions for numeric types", func() {
+			Expect(skipSerializingFunc("int32")).To(Equal("is_zero_i32"))
+			Expect(skipSerializingFunc("uint32")).To(Equal("is_zero_u32"))
+			Expect(skipSerializingFunc("int64")).To(Equal("is_zero_i64"))
+			Expect(skipSerializingFunc("uint64")).To(Equal("is_zero_u64"))
+			Expect(skipSerializingFunc("float32")).To(Equal("is_zero_f32"))
+			Expect(skipSerializingFunc("float64")).To(Equal("is_zero_f64"))
+		})
+
+		It("should return Option::is_none for unknown types", func() {
+			Expect(skipSerializingFunc("CustomType")).To(Equal("Option::is_none"))
+		})
+	})
+
 	Describe("rustOutputType", func() {
 		It("should convert Go primitives to Rust primitives", func() {
 			Expect(rustOutputType("bool")).To(Equal("bool"))
