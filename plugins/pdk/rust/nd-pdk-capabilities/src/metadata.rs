@@ -242,7 +242,7 @@ pub struct SongRef {
     pub album_mbid: String,
     /// Duration is the song duration in milliseconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub duration: serde_json::Value,
+    pub duration: u32,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

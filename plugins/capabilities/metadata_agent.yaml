@@ -356,7 +356,8 @@ components:
                     type: string
                     description: AlbumMBID is the MusicBrainz release ID.
                 duration:
-                    type: object
+                    type: integer
+                    format: int64
                     description: Duration is the song duration in milliseconds.
             required:
                 - name
