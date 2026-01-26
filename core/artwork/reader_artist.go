@@ -107,17 +107,17 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case strings.HasPrefix(pattern, "album/"):
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
-			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
+			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, a.artist.Name, pattern))
 		}
 	}
 	return ff
 }
 
-func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
+func fromArtistFolder(ctx context.Context, artistFolder string, artistName string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		current := artistFolder
 		for i := 0; i < maxArtistFolderTraversalDepth; i++ {
-			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
+			if reader, path, err := findImageInFolder(ctx, current, artistName, pattern); err == nil {
 				return reader, path, nil
 			}
 
@@ -131,8 +131,8 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 	}
 }
 
-func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadCloser, string, error) {
-	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", folder)
+func findImageInFolder(ctx context.Context, folder, artistName, pattern string) (io.ReadCloser, string, error) {
+	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", folder, "artistName", artistName)
 	fsys := os.DirFS(folder)
 	matches, err := fs.Glob(fsys, pattern)
 	if err != nil {
@@ -151,7 +151,7 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 
 	// Sort image files by prioritizing base filenames without numeric
 	// suffixes (e.g., artist.jpg before artist.1.jpg)
-	slices.SortFunc(imagePaths, compareImageFiles)
+	slices.SortFunc(imagePaths, makeArtistImageComparator(artistName))
 
 	// Try to open files in sorted order
 	for _, p := range imagePaths {
@@ -165,6 +165,22 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 	}
 
 	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, folder)
+}
+
+// Returns a function with the same parameters as the compareImageFiles
+func makeArtistImageComparator(artistName string) func(a, b string) int {
+	normalizedArtist := strings.ToLower(artistName)
+	return func(a, b string) int {
+		aHasArtist := strings.Contains(strings.ToLower(a), normalizedArtist)
+		bHasArtist := strings.Contains(strings.ToLower(b), normalizedArtist)
+		if aHasArtist && !bHasArtist {
+			return -1
+		}
+		if !aHasArtist && bHasArtist {
+			return 1
+		}
+		return compareImageFiles(a, b)
+	}
 }
 
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
