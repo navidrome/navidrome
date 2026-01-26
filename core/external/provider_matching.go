@@ -303,7 +303,7 @@ func durationMatches(durationMs uint32, mediaFileDurationSec float32) bool {
 // findBestMatch finds the best matching track using combined title/album similarity and specificity scoring.
 // When duration is known (durationMs > 0), it acts as a top-priority filter:
 // - First, only tracks with matching duration (±3 seconds) are considered
-// - If no duration matches exist, falls back to matching all tracks
+// - If no title match is found among duration-filtered tracks, falls back to matching all tracks
 // A track must meet the threshold for title similarity, then the best match is chosen by:
 // 1. Highest title similarity
 // 2. Highest specificity level
@@ -317,13 +317,22 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 				durationFiltered = append(durationFiltered, mf)
 			}
 		}
-		// If we have duration-filtered candidates, use only those
+		// If we have duration-filtered candidates, try matching those first
 		if len(durationFiltered) > 0 {
-			tracks = durationFiltered
+			if mf, found := findBestMatchInTracks(q, durationFiltered, threshold); found {
+				return mf, true
+			}
 		}
-		// Otherwise fall back to all tracks (duration filter didn't match anything)
+		// Fall through to try all tracks if no duration-filtered match found
 	}
 
+	return findBestMatchInTracks(q, tracks, threshold)
+}
+
+// findBestMatchInTracks performs the core matching logic on a set of tracks.
+// It finds the track with the best combined score based on title similarity,
+// specificity level, and album similarity.
+func findBestMatchInTracks(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
