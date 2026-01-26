@@ -137,7 +137,7 @@ func (s *deezerAgent) GetArtistTopSongs(ctx context.Context, _, artistName, _ st
 		return agents.Song{
 			Name:     r.Title,
 			Album:    r.Album.Title,
-			Duration: r.Duration * 1000, // Convert seconds to milliseconds
+			Duration: uint32(r.Duration * 1000), // Convert seconds to milliseconds
 		}
 	})
 	return res, nil

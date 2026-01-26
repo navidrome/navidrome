@@ -120,4 +120,64 @@ func (t *testMetadataAgent) GetAlbumImages(input metadata.AlbumRequest) (*metada
 	}, nil
 }
 
+func (t *testMetadataAgent) GetSimilarSongsByTrack(input metadata.SimilarSongsByTrackRequest) (*metadata.SimilarSongsResponse, error) {
+	if err := checkConfigError(); err != nil {
+		return nil, err
+	}
+	count := int(input.Count)
+	if count == 0 {
+		count = 5
+	}
+	songs := make([]metadata.SongRef, 0, count)
+	for i := range count {
+		songs = append(songs, metadata.SongRef{
+			ID:         "similar-track-id-" + strconv.Itoa(i+1),
+			Name:       "Similar to " + input.Name + " #" + strconv.Itoa(i+1),
+			MBID:       "similar-mbid-" + strconv.Itoa(i+1),
+			Artist:     input.Artist,
+			ArtistMBID: "artist-mbid-" + strconv.Itoa(i+1),
+		})
+	}
+	return &metadata.SimilarSongsResponse{Songs: songs}, nil
+}
+
+func (t *testMetadataAgent) GetSimilarSongsByAlbum(input metadata.SimilarSongsByAlbumRequest) (*metadata.SimilarSongsResponse, error) {
+	if err := checkConfigError(); err != nil {
+		return nil, err
+	}
+	count := int(input.Count)
+	if count == 0 {
+		count = 5
+	}
+	songs := make([]metadata.SongRef, 0, count)
+	for i := range count {
+		songs = append(songs, metadata.SongRef{
+			ID:     "album-similar-id-" + strconv.Itoa(i+1),
+			Name:   "Album Similar #" + strconv.Itoa(i+1),
+			Artist: input.Artist,
+			Album:  input.Name,
+		})
+	}
+	return &metadata.SimilarSongsResponse{Songs: songs}, nil
+}
+
+func (t *testMetadataAgent) GetSimilarSongsByArtist(input metadata.SimilarSongsByArtistRequest) (*metadata.SimilarSongsResponse, error) {
+	if err := checkConfigError(); err != nil {
+		return nil, err
+	}
+	count := int(input.Count)
+	if count == 0 {
+		count = 5
+	}
+	songs := make([]metadata.SongRef, 0, count)
+	for i := range count {
+		songs = append(songs, metadata.SongRef{
+			ID:     "artist-similar-id-" + strconv.Itoa(i+1),
+			Name:   input.Name + " Style Song #" + strconv.Itoa(i+1),
+			Artist: input.Name + " Similar Artist",
+		})
+	}
+	return &metadata.SimilarSongsResponse{Songs: songs}, nil
+}
+
 func main() {}

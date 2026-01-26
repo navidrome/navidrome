@@ -181,7 +181,7 @@ type songQuery struct {
 	artistMBID string // MusicBrainz Artist ID (optional, for higher specificity matching)
 	album      string // Sanitized album name (optional, for specificity scoring)
 	albumMBID  string // MusicBrainz Album ID (optional, for highest specificity matching)
-	durationMs int    // Duration in milliseconds (0 means unknown, skip duration filtering)
+	durationMs uint32 // Duration in milliseconds (0 means unknown, skip duration filtering)
 }
 
 // matchScore combines title/album similarity with metadata specificity for ranking matches
@@ -291,7 +291,7 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 
 // durationMatches checks if a track's duration is within tolerance of the target duration.
 // Returns true if durationMs is 0 (unknown) or if the difference is within durationToleranceSec.
-func durationMatches(durationMs int, mediaFileDurationSec float32) bool {
+func durationMatches(durationMs uint32, mediaFileDurationSec float32) bool {
 	if durationMs <= 0 {
 		return true // Unknown duration matches anything
 	}
