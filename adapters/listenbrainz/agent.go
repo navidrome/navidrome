@@ -139,12 +139,12 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 		return nil, agents.ErrNotFound
 	}
 
-	var res []agents.Song
-	for _, t := range resp {
-		res = append(res, agents.Song{
+	res := make([]agents.Song, len(resp))
+	for i, t := range resp {
+		res[i] = agents.Song{
 			Name: t.RecordingName,
 			MBID: t.RecordingMbid,
-		})
+		}
 	}
 	return res, nil
 }
@@ -153,7 +153,7 @@ func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*lastfmAgent)(nil)
+				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
 				// See https://go.dev/doc/faq#nil_error
 				a := listenBrainzConstructor(ds)
 				if a != nil {
@@ -168,7 +168,7 @@ func init() {
 				}
 
 				agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
-					// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*lastfmAgent)(nil)
+					// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
 					// See https://go.dev/doc/faq#nil_error
 					a := listenBrainzConstructor(ds)
 					if a != nil {

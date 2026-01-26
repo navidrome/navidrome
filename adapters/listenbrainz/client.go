@@ -212,7 +212,7 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 		var lbzError lbzHttpError
 		jsonErr := decoder.Decode(&lbzError)
 
-		if resp.StatusCode != 200 && jsonErr != nil {
+		if jsonErr != nil {
 			return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 		}
 
