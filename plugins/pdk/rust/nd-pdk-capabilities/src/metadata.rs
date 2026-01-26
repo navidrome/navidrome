@@ -240,9 +240,9 @@ pub struct SongRef {
     /// AlbumMBID is the MusicBrainz release ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album_mbid: String,
-    /// Duration is the song duration in milliseconds.
+    /// Duration is the song duration in seconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub duration: u32,
+    pub duration: f32,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

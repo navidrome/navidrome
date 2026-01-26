@@ -176,8 +176,8 @@ type SongRef struct {
 	Album string `json:"album,omitempty"`
 	// AlbumMBID is the MusicBrainz release ID.
 	AlbumMBID string `json:"albumMbid,omitempty"`
-	// Duration is the song duration in milliseconds.
-	Duration uint32 `json:"duration,omitempty"`
+	// Duration is the song duration in seconds.
+	Duration float32 `json:"duration,omitempty"`
 }
 
 // TopSongsRequest is the request for GetArtistTopSongs.

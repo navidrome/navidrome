@@ -234,7 +234,7 @@ func songRefsToAgentSongs(refs []capabilities.SongRef) []agents.Song {
 			ArtistMBID: s.ArtistMBID,
 			Album:      s.Album,
 			AlbumMBID:  s.AlbumMBID,
-			Duration:   s.Duration,
+			Duration:   uint32(s.Duration * 1000),
 		}
 	}
 	return songs
