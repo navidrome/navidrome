@@ -192,6 +192,26 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 	return res, nil
 }
 
+func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	resp, err := l.callTrackGetSimilar(ctx, name, artist, count)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+	res := make([]agents.Song, 0, len(resp))
+	for _, t := range resp {
+		res = append(res, agents.Song{
+			Name:       t.Name,
+			MBID:       t.MBID,
+			Artist:     t.Artist.Name,
+			ArtistMBID: t.Artist.MBID,
+		})
+	}
+	return res, nil
+}
+
 var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
@@ -288,6 +308,15 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName str
 		return nil, err
 	}
 	return t.Track, nil
+}
+
+func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist string, count int) ([]SimilarTrack, error) {
+	s, err := l.client.trackGetSimilar(ctx, name, artist, count)
+	if err != nil {
+		log.Error(ctx, "Error calling LastFM/track.getSimilar", "track", name, "artist", artist, err)
+		return nil, err
+	}
+	return s.Track, nil
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {

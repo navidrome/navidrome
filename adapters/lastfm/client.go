@@ -95,6 +95,19 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int)
 	return &response.TopTracks, nil
 }
 
+func (c *client) trackGetSimilar(ctx context.Context, name, artist string, limit int) (*SimilarTracks, error) {
+	params := url.Values{}
+	params.Add("method", "track.getSimilar")
+	params.Add("track", name)
+	params.Add("artist", artist)
+	params.Add("limit", strconv.Itoa(limit))
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
+	if err != nil {
+		return nil, err
+	}
+	return &response.SimilarTracks, nil
+}
+
 func (c *client) GetToken(ctx context.Context) (string, error) {
 	params := url.Values{}
 	params.Add("method", "auth.getToken")

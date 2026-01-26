@@ -5,6 +5,7 @@ type Response struct {
 	SimilarArtists SimilarArtists `json:"similarartists"`
 	TopTracks      TopTracks      `json:"toptracks"`
 	Album          Album          `json:"album"`
+	SimilarTracks  SimilarTracks  `json:"similartracks"`
 	Error          int            `json:"error"`
 	Message        string         `json:"message"`
 	Token          string         `json:"token"`
@@ -57,6 +58,28 @@ type Track struct {
 type TopTracks struct {
 	Track []Track `json:"track"`
 	Attr  Attr    `json:"@attr"`
+}
+
+type SimilarTracks struct {
+	Track []SimilarTrack `json:"track"`
+	Attr  SimilarAttr    `json:"@attr"`
+}
+
+type SimilarTrack struct {
+	Name   string             `json:"name"`
+	MBID   string             `json:"mbid"`
+	Match  float64            `json:"match"`
+	Artist SimilarTrackArtist `json:"artist"`
+}
+
+type SimilarTrackArtist struct {
+	Name string `json:"name"`
+	MBID string `json:"mbid"`
+}
+
+type SimilarAttr struct {
+	Artist string `json:"artist"`
+	Track  string `json:"track"`
 }
 
 type Session struct {

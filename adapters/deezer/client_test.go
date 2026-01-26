@@ -45,6 +45,28 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("TopTracks", func() {
+		It("returns top tracks with artist and album info from a successful request", func() {
+			f, err := os.Open("tests/fixtures/deezer.artist.top.json")
+			Expect(err).To(BeNil())
+			httpClient.mock("https://api.deezer.com/artist/27/top", http.Response{Body: f, StatusCode: 200})
+
+			tracks, err := client.getTopTracks(GinkgoT().Context(), 27, 5)
+			Expect(err).To(BeNil())
+			Expect(tracks).To(HaveLen(5))
+
+			// Verify first track has all expected fields
+			Expect(tracks[0].Title).To(Equal("Instant Crush (feat. Julian Casablancas)"))
+			Expect(tracks[0].Artist.Name).To(Equal("Daft Punk"))
+			Expect(tracks[0].Album.Title).To(Equal("Random Access Memories"))
+
+			// Verify second track
+			Expect(tracks[1].Title).To(Equal("One More Time"))
+			Expect(tracks[1].Artist.Name).To(Equal("Daft Punk"))
+			Expect(tracks[1].Album.Title).To(Equal("Discovery"))
+		})
+	})
+
 	Describe("ArtistBio", func() {
 		BeforeEach(func() {
 			// Mock the JWT token endpoint with a valid JWT that expires in 5 minutes

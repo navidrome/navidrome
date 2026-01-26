@@ -354,7 +354,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.provider.ArtistRadio(ctx, id, count)
+	songs, err := api.provider.SimilarSongs(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}

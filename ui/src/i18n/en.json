@@ -47,7 +47,8 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "info": "Get Info"
+        "info": "Get Info",
+        "instantMix": "Instant Mix"
       }
     },
     "album": {
@@ -558,6 +559,7 @@
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",
     "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
     "noSimilarSongsFound": "No similar songs found",
+    "startingInstantMix": "Loading Instant Mix...",
     "noTopSongsFound": "No top songs found",
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",
