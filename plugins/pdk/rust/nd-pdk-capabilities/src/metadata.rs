@@ -4,6 +4,20 @@
 // It is intended for use in Navidrome plugins built with extism-pdk.
 
 use serde::{Deserialize, Serialize};
+
+// Helper functions for skip_serializing_if with numeric types
+#[allow(dead_code)]
+fn is_zero_i32(value: &i32) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_u32(value: &u32) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_i64(value: &i64) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_u64(value: &u64) -> bool { *value == 0 }
+#[allow(dead_code)]
+fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
+#[allow(dead_code)]
+fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 /// AlbumImagesResponse is the response for GetAlbumImages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,7 +164,72 @@ pub struct SimilarArtistsResponse {
     #[serde(default)]
     pub artists: Vec<ArtistRef>,
 }
-/// SongRef is a reference to a song with name and optional MBID.
+/// SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimilarSongsByAlbumRequest {
+    /// ID is the internal Navidrome album ID.
+    #[serde(default)]
+    pub id: String,
+    /// Name is the album name.
+    #[serde(default)]
+    pub name: String,
+    /// Artist is the album artist name.
+    #[serde(default)]
+    pub artist: String,
+    /// MBID is the MusicBrainz release ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mbid: String,
+    /// Count is the maximum number of similar songs to return.
+    #[serde(default)]
+    pub count: i32,
+}
+/// SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimilarSongsByArtistRequest {
+    /// ID is the internal Navidrome artist ID.
+    #[serde(default)]
+    pub id: String,
+    /// Name is the artist name.
+    #[serde(default)]
+    pub name: String,
+    /// MBID is the MusicBrainz artist ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mbid: String,
+    /// Count is the maximum number of similar songs to return.
+    #[serde(default)]
+    pub count: i32,
+}
+/// SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimilarSongsByTrackRequest {
+    /// ID is the internal Navidrome mediafile ID.
+    #[serde(default)]
+    pub id: String,
+    /// Name is the track title.
+    #[serde(default)]
+    pub name: String,
+    /// Artist is the artist name.
+    #[serde(default)]
+    pub artist: String,
+    /// MBID is the MusicBrainz recording ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mbid: String,
+    /// Count is the maximum number of similar songs to return.
+    #[serde(default)]
+    pub count: i32,
+}
+/// SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimilarSongsResponse {
+    /// Songs is the list of similar songs.
+    #[serde(default)]
+    pub songs: Vec<SongRef>,
+}
+/// SongRef is a reference to a song with metadata for matching.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SongRef {
@@ -163,6 +242,21 @@ pub struct SongRef {
     /// MBID is the MusicBrainz ID for the song.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbid: String,
+    /// Artist is the artist name.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub artist: String,
+    /// ArtistMBID is the MusicBrainz artist ID.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub artist_mbid: String,
+    /// Album is the album name.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub album: String,
+    /// AlbumMBID is the MusicBrainz release ID.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub album_mbid: String,
+    /// Duration is the song duration in seconds.
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
+    pub duration: f32,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -373,6 +467,69 @@ macro_rules! register_metadata_album_images {
         ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::metadata::AlbumImagesResponse>> {
             let plugin = <$plugin_type>::default();
             let result = $crate::metadata::AlbumImagesProvider::get_album_images(&plugin, req.into_inner())?;
+            Ok(extism_pdk::Json(result))
+        }
+    };
+}
+
+/// SimilarSongsByTrackProvider provides the GetSimilarSongsByTrack function.
+pub trait SimilarSongsByTrackProvider {
+    fn get_similar_songs_by_track(&self, req: SimilarSongsByTrackRequest) -> Result<SimilarSongsResponse, Error>;
+}
+
+/// Register the get_similar_songs_by_track export.
+/// This macro generates the WASM export function for this method.
+#[macro_export]
+macro_rules! register_metadata_similar_songs_by_track {
+    ($plugin_type:ty) => {
+        #[extism_pdk::plugin_fn]
+        pub fn nd_get_similar_songs_by_track(
+            req: extism_pdk::Json<$crate::metadata::SimilarSongsByTrackRequest>
+        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::metadata::SimilarSongsResponse>> {
+            let plugin = <$plugin_type>::default();
+            let result = $crate::metadata::SimilarSongsByTrackProvider::get_similar_songs_by_track(&plugin, req.into_inner())?;
+            Ok(extism_pdk::Json(result))
+        }
+    };
+}
+
+/// SimilarSongsByAlbumProvider provides the GetSimilarSongsByAlbum function.
+pub trait SimilarSongsByAlbumProvider {
+    fn get_similar_songs_by_album(&self, req: SimilarSongsByAlbumRequest) -> Result<SimilarSongsResponse, Error>;
+}
+
+/// Register the get_similar_songs_by_album export.
+/// This macro generates the WASM export function for this method.
+#[macro_export]
+macro_rules! register_metadata_similar_songs_by_album {
+    ($plugin_type:ty) => {
+        #[extism_pdk::plugin_fn]
+        pub fn nd_get_similar_songs_by_album(
+            req: extism_pdk::Json<$crate::metadata::SimilarSongsByAlbumRequest>
+        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::metadata::SimilarSongsResponse>> {
+            let plugin = <$plugin_type>::default();
+            let result = $crate::metadata::SimilarSongsByAlbumProvider::get_similar_songs_by_album(&plugin, req.into_inner())?;
+            Ok(extism_pdk::Json(result))
+        }
+    };
+}
+
+/// SimilarSongsByArtistProvider provides the GetSimilarSongsByArtist function.
+pub trait SimilarSongsByArtistProvider {
+    fn get_similar_songs_by_artist(&self, req: SimilarSongsByArtistRequest) -> Result<SimilarSongsResponse, Error>;
+}
+
+/// Register the get_similar_songs_by_artist export.
+/// This macro generates the WASM export function for this method.
+#[macro_export]
+macro_rules! register_metadata_similar_songs_by_artist {
+    ($plugin_type:ty) => {
+        #[extism_pdk::plugin_fn]
+        pub fn nd_get_similar_songs_by_artist(
+            req: extism_pdk::Json<$crate::metadata::SimilarSongsByArtistRequest>
+        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::metadata::SimilarSongsResponse>> {
+            let plugin = <$plugin_type>::default();
+            let result = $crate::metadata::SimilarSongsByArtistProvider::get_similar_songs_by_artist(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))
         }
     };
