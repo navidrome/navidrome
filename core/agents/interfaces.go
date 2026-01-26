@@ -40,6 +40,7 @@ type Song struct {
 	ArtistMBID string
 	Album      string
 	AlbumMBID  string
+	Duration   int // Duration in milliseconds, 0 means unknown
 }
 
 var (

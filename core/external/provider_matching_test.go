@@ -457,4 +457,182 @@ var _ = Describe("Provider - Song Matching", func() {
 			})
 		})
 	})
+
+	Describe("Duration filtering", func() {
+		var track model.MediaFile
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SimilarSongsMatchThreshold = 100 // Exact title match for predictable tests
+
+			track = model.MediaFile{ID: "track-1", Title: "Test Track", Artist: "Test Artist"}
+
+			// Setup for GetEntityByID to return the track
+			artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
+		})
+
+		setupDurationExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
+			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+				Return(returnedSongs, nil).Once()
+
+			// loadTracksByTitleAndArtist - queries by artist name
+			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				and, ok := opt.Filters.(squirrel.And)
+				if !ok || len(and) < 2 {
+					return false
+				}
+				eq, hasEq := and[0].(squirrel.Eq)
+				if !hasEq {
+					return false
+				}
+				_, hasArtist := eq["order_artist_name"]
+				return hasArtist
+			})).Return(artistTracks, nil).Maybe()
+		}
+
+		Context("when agent provides duration", func() {
+			It("prefers tracks with matching duration", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has two versions: one matching duration, one not
+				correctMatch := model.MediaFile{
+					ID: "correct", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
+				}
+				wrongDuration := model.MediaFile{
+					ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{wrongDuration, correctMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("correct"))
+			})
+
+			It("matches within 3-second tolerance", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has track with 182 seconds (within tolerance)
+				withinTolerance := model.MediaFile{
+					ID: "within-tolerance", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{withinTolerance})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("within-tolerance"))
+			})
+
+			It("excludes tracks outside 3-second tolerance when other matches exist", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has one within tolerance, one outside
+				withinTolerance := model.MediaFile{
+					ID: "within", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
+				}
+				outsideTolerance := model.MediaFile{
+					ID: "outside", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{outsideTolerance, withinTolerance})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("within"))
+			})
+
+			It("falls back to normal matching when no duration matches", func() {
+				// Agent returns song with duration 180000ms
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library only has tracks with very different duration
+				differentDuration := model.MediaFile{
+					ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{differentDuration})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				// Should fall back and return the track despite duration mismatch
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("different"))
+			})
+		})
+
+		Context("when agent does not provide duration", func() {
+			It("matches without duration filtering (duration=0)", func() {
+				// Agent returns song without duration
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 0},
+				}
+				// Library tracks with various durations should all be candidates
+				anyTrack := model.MediaFile{
+					ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{anyTrack})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("any"))
+			})
+		})
+
+		Context("edge cases", func() {
+			It("handles exact duration match", func() {
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				exactMatch := model.MediaFile{
+					ID: "exact", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{exactMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("exact"))
+			})
+
+			It("handles very short songs", func() {
+				// 30-second song
+				returnedSongs := []agents.Song{
+					{Name: "Short Song", Artist: "Test Artist", Duration: 30000},
+				}
+				shortTrack := model.MediaFile{
+					ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
+				}
+
+				setupDurationExpectations(returnedSongs, model.MediaFiles{shortTrack})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("short"))
+			})
+		})
+	})
 })
