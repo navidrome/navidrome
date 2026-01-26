@@ -117,4 +117,113 @@ var _ = Describe("client", func() {
 			})
 		})
 	})
+
+	Context("getArtistUrl", func() {
+		baseUrl := "BASE_URL/metadata/artist?"
+		It("handles a malformed request with status code", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
+				StatusCode: 400,
+			}
+			_, err := client.getArtistUrl(context.Background(), "1")
+			Expect(err.Error()).To(Equal("ListenBrainz error(400): artist mbid 1 is not valid."))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("handles a malformed request without meaningful body", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(``)),
+				StatusCode: 501,
+			}
+			_, err := client.getArtistUrl(context.Background(), "1")
+			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (501)"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("It returns not found when the artist has no official homepage", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := client.getArtistUrl(context.Background(), "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err.Error()).To(Equal("listenbrainz: not found"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=7c2cc610-f998-43ef-a08f-dae3344b8973"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("It returns data when the artist has a homepage", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			url, err := client.getArtistUrl(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(url).To(Equal("http://projectmili.com/"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+	})
+
+	Context("getArtistTopSongs", func() {
+		baseUrl := "BASE_URL/popularity/top-recordings-for-artist/"
+
+		It("handles a malformed request with status code", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code":400,"error":"artist_mbid: '1' is not a valid uuid"}`)),
+				StatusCode: 400,
+			}
+			_, err := client.getArtistTopSongs(context.Background(), "1", 50)
+			Expect(err.Error()).To(Equal("ListenBrainz error(400): artist_mbid: '1' is not a valid uuid"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("handles a malformed request without standard body", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(``)),
+				StatusCode: 500,
+			}
+			_, err := client.getArtistTopSongs(context.Background(), "1", 1)
+			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (500)"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("It returns all tracks when given the opportunity", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
+			httpClient.Res = http.Response{
+				Body:       f,
+				StatusCode: 200,
+			}
+			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(Equal([]trackInfo{
+				{RecordingName: "world.execute(me);", RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be"},
+				{RecordingName: "String Theocracy", RecordingMbid: "afa2c83d-b17f-4029-b9da-790ea9250cf9"},
+			}))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("It returns a subset of tracks when allowed", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
+			httpClient.Res = http.Response{
+				Body:       f,
+				StatusCode: 200,
+			}
+			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(Equal([]trackInfo{
+				{RecordingName: "world.execute(me);", RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be"},
+			}))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+	})
 })

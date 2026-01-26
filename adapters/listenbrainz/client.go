@@ -4,12 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 
 	"github.com/navidrome/navidrome/log"
+)
+
+var (
+	ErrorNotFound = errors.New("listenbrainz: not found")
 )
 
 type listenBrainzError struct {
@@ -88,7 +93,7 @@ func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrain
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
-	response, err := c.makeRequest(ctx, http.MethodGet, "validate-token", r)
+	response, err := c.makeAuthenticatedRequest(ctx, http.MethodGet, "validate-token", r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +109,7 @@ func (c *client) updateNowPlaying(ctx context.Context, apiKey string, li listenI
 		},
 	}
 
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeAuthenticatedRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -122,7 +127,7 @@ func (c *client) scrobble(ctx context.Context, apiKey string, li listenInfo) err
 			Payload:    []listenInfo{li},
 		},
 	}
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeAuthenticatedRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -141,7 +146,7 @@ func (c *client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
+func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
 	b, _ := json.Marshal(r.Body)
 	uri, err := c.path(endpoint)
 	if err != nil {
@@ -176,4 +181,100 @@ func (c *client) makeRequest(ctx context.Context, method string, endpoint string
 	}
 
 	return &response, nil
+}
+
+type lbzHttpError struct {
+	Code  int    `json:"code"`
+	Error string `json:"error"`
+}
+
+func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint string, params url.Values) (*http.Response, error) {
+	uri, err := c.path(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	req, _ := http.NewRequestWithContext(ctx, method, uri, nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = params.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// On a 200 code, there is no code. Decode using using error message if it exists
+	if resp.StatusCode != 200 {
+		defer resp.Body.Close()
+		decoder := json.NewDecoder(resp.Body)
+
+		var lbzError lbzHttpError
+		jsonErr := decoder.Decode(&lbzError)
+
+		if resp.StatusCode != 200 && jsonErr != nil {
+			return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+		}
+
+		return nil, &listenBrainzError{Code: lbzError.Code, Message: lbzError.Error}
+	}
+
+	return resp, err
+}
+
+type artistMetadataResult struct {
+	Rels struct {
+		OfficialHomepage string `json:"official homepage,omitempty"`
+	} `json:"rels,omitzero"`
+}
+
+func (c *client) getArtistUrl(ctx context.Context, mbid string) (string, error) {
+	params := url.Values{}
+	params.Add("artist_mbids", mbid)
+	resp, err := c.makeGenericRequest(ctx, http.MethodGet, "metadata/artist", params)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response []artistMetadataResult
+	jsonErr := decoder.Decode(&response)
+	if jsonErr != nil {
+		return "", fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	if len(response) == 0 || response[0].Rels.OfficialHomepage == "" {
+		return "", ErrorNotFound
+	}
+
+	return response[0].Rels.OfficialHomepage, nil
+}
+
+type trackInfo struct {
+	RecordingName string `json:"recording_name"`
+	RecordingMbid string `json:"recording_mbid"`
+}
+
+func (c *client) getArtistTopSongs(ctx context.Context, mbid string, count int) ([]trackInfo, error) {
+	resp, err := c.makeGenericRequest(ctx, http.MethodGet, "popularity/top-recordings-for-artist/"+mbid, url.Values{})
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response []trackInfo
+	jsonErr := decoder.Decode(&response)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	if len(response) > count {
+		return response[0:count], nil
+	}
+
+	return response, nil
 }

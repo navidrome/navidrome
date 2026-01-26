@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
@@ -160,6 +162,53 @@ var _ = Describe("listenBrainzAgent", func() {
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+		})
+	})
+
+	Describe("GetArtistUrl", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns artist url when MBID present", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetArtistURL(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")).To(Equal("http://projectmili.com/"))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+		})
+
+		It("returns error when url not present", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
+		})
+
+		It("returns error when fListenBrainz returns an error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
 		})
 	})
 })

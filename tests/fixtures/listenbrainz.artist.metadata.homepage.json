@@ -1,0 +1,19 @@
+[
+	{
+		"area": "Japan",
+		"artist_mbid": "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+		"begin_year": 2012,
+		"mbid": "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+		"name": "Mili",
+		"rels": {
+			"free streaming": "https://www.deezer.com/artist/56563392",
+			"official homepage": "http://projectmili.com/",
+			"purchase for download": "https://recochoku.jp/artist/2000285803/",
+			"social network": "https://www.instagram.com/projectmili/",
+			"streaming": "https://tidal.com/artist/3848902",
+			"wikidata": "https://www.wikidata.org/wiki/Q27309228",
+			"youtube": "https://www.youtube.com/channel/UCVh47EKH9VLresRqiYi9txw"
+		},
+		"type": "Group"
+	}
+]
