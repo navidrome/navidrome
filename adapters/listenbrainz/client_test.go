@@ -195,15 +195,26 @@ var _ = Describe("client", func() {
 
 		It("It returns all tracks when given the opportunity", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{
-				Body:       f,
-				StatusCode: 200,
-			}
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 5)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]trackInfo{
-				{RecordingName: "world.execute(me);", RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be"},
-				{RecordingName: "String Theocracy", RecordingMbid: "afa2c83d-b17f-4029-b9da-790ea9250cf9"},
+				{
+					ArtistName:    "Mili",
+					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					RecordingName: "world.execute(me);",
+					RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be",
+					ReleaseName:   "Miracle Milk",
+					ReleaseMBID:   "38a8f6e1-0e34-4418-a89d-78240a367408",
+				},
+				{
+					ArtistName:    "Mili",
+					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					RecordingName: "String Theocracy",
+					RecordingMbid: "afa2c83d-b17f-4029-b9da-790ea9250cf9",
+					ReleaseName:   "String Theocracy",
+					ReleaseMBID:   "d79a38e3-7016-4f39-a31a-f495ce914b8e",
+				},
 			}))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
@@ -212,14 +223,18 @@ var _ = Describe("client", func() {
 
 		It("It returns a subset of tracks when allowed", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{
-				Body:       f,
-				StatusCode: 200,
-			}
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]trackInfo{
-				{RecordingName: "world.execute(me);", RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be"},
+				{
+					ArtistName:    "Mili",
+					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					RecordingName: "world.execute(me);",
+					RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be",
+					ReleaseName:   "Miracle Milk",
+					ReleaseMBID:   "38a8f6e1-0e34-4418-a89d-78240a367408",
+				},
 			}))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))

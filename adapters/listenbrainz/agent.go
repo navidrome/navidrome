@@ -141,9 +141,18 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 
 	res := make([]agents.Song, len(resp))
 	for i, t := range resp {
+		mbid := ""
+		if len(t.ArtistMBIDs) > 0 {
+			mbid = t.ArtistMBIDs[0]
+		}
+
 		res[i] = agents.Song{
-			Name: t.RecordingName,
-			MBID: t.RecordingMbid,
+			Album:      t.ReleaseName,
+			AlbumMBID:  t.ReleaseMBID,
+			Artist:     t.ArtistName,
+			ArtistMBID: mbid,
+			Name:       t.RecordingName,
+			MBID:       t.RecordingMbid,
 		}
 	}
 	return res, nil

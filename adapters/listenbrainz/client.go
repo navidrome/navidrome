@@ -253,8 +253,12 @@ func (c *client) getArtistUrl(ctx context.Context, mbid string) (string, error) 
 }
 
 type trackInfo struct {
-	RecordingName string `json:"recording_name"`
-	RecordingMbid string `json:"recording_mbid"`
+	ArtistName    string   `json:"artist_name"`
+	ArtistMBIDs   []string `json:"artist_mbids"`
+	RecordingName string   `json:"recording_name"`
+	RecordingMbid string   `json:"recording_mbid"`
+	ReleaseName   string   `json:"release_name"`
+	ReleaseMBID   string   `json:"release_mbid"`
 }
 
 func (c *client) getArtistTopSongs(ctx context.Context, mbid string, count int) ([]trackInfo, error) {
