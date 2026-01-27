@@ -76,6 +76,10 @@ func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, er
 	return nil, model.ErrNotFound
 }
 
+func (m *MockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(options...)
+}
+
 func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]

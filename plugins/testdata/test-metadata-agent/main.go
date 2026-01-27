@@ -134,6 +134,7 @@ func (t *testMetadataAgent) GetSimilarSongsByTrack(input metadata.SimilarSongsBy
 			ID:         "similar-track-id-" + strconv.Itoa(i+1),
 			Name:       "Similar to " + input.Name + " #" + strconv.Itoa(i+1),
 			MBID:       "similar-mbid-" + strconv.Itoa(i+1),
+			ISRC:       "similar-isrc-" + strconv.Itoa(i+1),
 			Artist:     input.Artist,
 			ArtistMBID: "artist-mbid-" + strconv.Itoa(i+1),
 		})
