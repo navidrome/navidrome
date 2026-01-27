@@ -8,11 +8,12 @@ import AppBar from './AppBar'
 import config from '../config'
 
 let store
+let mockPermissions = 'admin'
 
 vi.mock('react-admin', () => ({
   AppBar: ({ userMenu }) => <div data-testid="appbar">{userMenu}</div>,
   useTranslate: () => (x) => x,
-  usePermissions: () => ({ permissions: 'admin' }),
+  usePermissions: () => ({ permissions: mockPermissions }),
   getResources: () => [],
 }))
 
@@ -39,6 +40,8 @@ describe('<AppBar />', () => {
   beforeEach(() => {
     config.devActivityPanel = true
     config.enableNowPlaying = true
+    config.enableNowPlayingForAllUsers = false
+    mockPermissions = 'admin'
     store = createStore(combineReducers({ activity: activityReducer }), {
       activity: { nowPlayingCount: 0 },
     })
@@ -61,5 +64,26 @@ describe('<AppBar />', () => {
       </Provider>,
     )
     expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('hides NowPlayingPanel for non-admin users by default', () => {
+    mockPermissions = 'regular'
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('renders NowPlayingPanel for non-admin users when enableNowPlayingForAllUsers is true', () => {
+    mockPermissions = 'regular'
+    config.enableNowPlayingForAllUsers = true
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.getByTestId('now-playing-panel')).toBeInTheDocument()
   })
 })

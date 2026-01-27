@@ -121,7 +121,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   return (
     <>
       {config.devActivityPanel &&
-        permissions === 'admin' &&
+        (permissions === 'admin' || config.enableNowPlayingForAllUsers) &&
         config.enableNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>

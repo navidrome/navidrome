@@ -83,6 +83,7 @@ type configOptions struct {
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
+	EnableNowPlayingForAllUsers     bool
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -577,6 +578,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
+	viper.SetDefault("enablenowplayingforallusers", false)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)

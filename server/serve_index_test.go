@@ -87,6 +87,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultUIVolume", func() { conf.Server.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
+		Entry("enableNowPlayingForAllUsers", func() { conf.Server.EnableNowPlayingForAllUsers = true }, "enableNowPlayingForAllUsers", true),
 		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
 		Entry("defaultDownloadableShare", func() { conf.Server.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
 		Entry("devSidebarPlaylists", func() { conf.Server.DevSidebarPlaylists = true }, "devSidebarPlaylists", true),
