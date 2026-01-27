@@ -151,6 +151,7 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 			AlbumMBID:  t.ReleaseMBID,
 			Artist:     t.ArtistName,
 			ArtistMBID: mbid,
+			Duration:   t.DurationMs,
 			Name:       t.RecordingName,
 			MBID:       t.RecordingMbid,
 		}

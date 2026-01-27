@@ -202,6 +202,7 @@ var _ = Describe("client", func() {
 				{
 					ArtistName:    "Mili",
 					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					DurationMs:    211912,
 					RecordingName: "world.execute(me);",
 					RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be",
 					ReleaseName:   "Miracle Milk",
@@ -210,6 +211,7 @@ var _ = Describe("client", func() {
 				{
 					ArtistName:    "Mili",
 					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					DurationMs:    174000,
 					RecordingName: "String Theocracy",
 					RecordingMbid: "afa2c83d-b17f-4029-b9da-790ea9250cf9",
 					ReleaseName:   "String Theocracy",
@@ -230,6 +232,7 @@ var _ = Describe("client", func() {
 				{
 					ArtistName:    "Mili",
 					ArtistMBIDs:   []string{"d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"},
+					DurationMs:    211912,
 					RecordingName: "world.execute(me);",
 					RecordingMbid: "9980309d-3480-4e7e-89ce-fce971a452be",
 					ReleaseName:   "Miracle Milk",

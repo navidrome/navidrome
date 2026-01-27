@@ -256,6 +256,7 @@ var _ = Describe("listenBrainzAgent", func() {
 					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
 					Album:      "Miracle Milk",
 					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:   211912,
 				},
 				{
 					ID:         "",
@@ -265,6 +266,7 @@ var _ = Describe("listenBrainzAgent", func() {
 					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
 					Album:      "String Theocracy",
 					AlbumMBID:  "d79a38e3-7016-4f39-a31a-f495ce914b8e",
+					Duration:   174000,
 				},
 			}))
 		})
@@ -283,6 +285,7 @@ var _ = Describe("listenBrainzAgent", func() {
 					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
 					Album:      "Miracle Milk",
 					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:   211912,
 				},
 			}))
 		})
