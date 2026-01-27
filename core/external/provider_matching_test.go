@@ -458,7 +458,7 @@ var _ = Describe("Provider - Song Matching", func() {
 		})
 	})
 
-	Describe("Duration filtering", func() {
+	Describe("Duration matching", func() {
 		var track model.MediaFile
 
 		BeforeEach(func() {
@@ -537,7 +537,7 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs[0].ID).To(Equal("within"))
 			})
 
-			It("falls back to normal matching when no duration matches", func() {
+			It("still matches when no tracks have matching duration", func() {
 				// Agent returns song with duration 180000ms
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
@@ -552,19 +552,19 @@ var _ = Describe("Provider - Song Matching", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				// Should fall back and return the track despite duration mismatch
+				// Duration mismatch doesn't exclude the track; it's just scored lower
 				Expect(songs).To(HaveLen(1))
 				Expect(songs[0].ID).To(Equal("different"))
 			})
 
-			It("falls back to title match when duration-filtered tracks fail title threshold", func() {
+			It("prefers title match over duration match when titles differ", func() {
 				// Agent returns "Similar Song" with duration 180000ms
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
 				}
 				// Library has:
 				// - differentTitle: matches duration but has different title (won't pass title threshold)
-				// - correctTitle: doesn't match duration but has correct title (should be found via fallback)
+				// - correctTitle: doesn't match duration but has correct title (wins on title similarity)
 				differentTitle := model.MediaFile{
 					ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
 				}
@@ -577,7 +577,7 @@ var _ = Describe("Provider - Song Matching", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				// Should fall back to all tracks and find the title match
+				// Title similarity is the top priority, so the correct title wins despite duration mismatch
 				Expect(songs).To(HaveLen(1))
 				Expect(songs[0].ID).To(Equal("correct-title"))
 			})
