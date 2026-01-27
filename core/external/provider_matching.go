@@ -100,11 +100,11 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
 	}
-	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
+	mbidMatches, err := e.loadTracksByMBID(ctx, songs, idMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
-	isrcMatches, err := e.loadTracksByISRC(ctx, songs)
+	isrcMatches, err := e.loadTracksByISRC(ctx, songs, idMatches, mbidMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
 	}
@@ -114,6 +114,22 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 	}
 
 	return e.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
+}
+
+// songMatchedIn checks if a song has already been matched in any of the provided match maps.
+// It checks the song's ID, MBID, and ISRC fields against the corresponding map keys.
+func songMatchedIn(s agents.Song, priorMatches ...map[string]model.MediaFile) bool {
+	keys := []string{s.ID, s.MBID, s.ISRC}
+	for _, m := range priorMatches {
+		for _, key := range keys {
+			if key != "" {
+				if mf, ok := m[key]; ok && mf.ID != "" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // loadTracksByID fetches MediaFiles from the library using direct ID matching.
@@ -152,10 +168,10 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 // It extracts all non-empty MBID fields from the input songs and performs a single
 // batch query against the mbz_recording_id column. Returns a map keyed by MBID for
 // O(1) lookup. Only non-missing files are returned.
-func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	var mbids []string
 	for _, s := range songs {
-		if s.MBID != "" {
+		if s.MBID != "" && !songMatchedIn(s, priorMatches...) {
 			mbids = append(mbids, s.MBID)
 		}
 	}
@@ -186,10 +202,10 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (m
 // Recording Code) matching. It extracts all non-empty ISRC fields from the input songs and
 // queries the tags JSON column for matching ISRC values. Returns a map keyed by ISRC for
 // O(1) lookup. Only non-missing files are returned.
-func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	var isrcs []string
 	for _, s := range songs {
-		if s.ISRC != "" {
+		if s.ISRC != "" && !songMatchedIn(s, priorMatches...) {
 			isrcs = append(isrcs, s.ISRC)
 		}
 	}
@@ -291,8 +307,8 @@ func computeSpecificityLevel(q songQuery, mf model.MediaFile, albumThreshold flo
 // Uses a unified scoring approach that combines title similarity (Jaro-Winkler) with
 // metadata specificity (MBIDs, album names) for both exact and fuzzy matches.
 // Returns a map keyed by "title|artist" for compatibility with selectBestMatchingSongs.
-func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, idMatches, mbidMatches, isrcMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
-	queries := e.buildTitleQueries(songs, idMatches, mbidMatches, isrcMatches)
+func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	queries := e.buildTitleQueries(songs, priorMatches...)
 	if len(queries) == 0 {
 		return map[string]model.MediaFile{}, nil
 	}
@@ -389,17 +405,10 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 	return bestMatch, found
 }
 
-func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches, isrcMatches map[string]model.MediaFile) []songQuery {
+func (e *provider) buildTitleQueries(songs []agents.Song, priorMatches ...map[string]model.MediaFile) []songQuery {
 	var queries []songQuery
 	for _, s := range songs {
-		// Skip if already matched by ID, MBID, or ISRC
-		if s.ID != "" && idMatches[s.ID].ID != "" {
-			continue
-		}
-		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
-			continue
-		}
-		if s.ISRC != "" && isrcMatches[s.ISRC].ID != "" {
+		if songMatchedIn(s, priorMatches...) {
 			continue
 		}
 		queries = append(queries, songQuery{
