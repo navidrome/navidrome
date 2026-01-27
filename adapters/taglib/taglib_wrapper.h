@@ -16,6 +16,7 @@ extern void goPutStr(unsigned long id, char *key, char *val);
 extern void goPutInt(unsigned long id, char *key, int val);
 extern void goPutLyrics(unsigned long id, char *lang, char *val);
 extern void goPutLyricLine(unsigned long id, char *lang, char *text, int time);
+extern void goPutTagType(unsigned long id, char *tag);
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id);
 char* taglib_version();
 
