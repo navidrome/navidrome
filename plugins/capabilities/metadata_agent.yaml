@@ -343,6 +343,9 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the song.
+                isrc:
+                    type: string
+                    description: ISRC is the International Standard Recording Code for the song.
                 artist:
                     type: string
                     description: Artist is the artist name.
