@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -265,7 +266,8 @@ var _ = Describe("lastfmAgent", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				sentParams := httpClient.SavedRequest.URL.Query()
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
 				Expect(sentParams.Get("method")).To(Equal("track.updateNowPlaying"))
 				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
@@ -293,7 +295,8 @@ var _ = Describe("lastfmAgent", func() {
 					err := agent.NowPlaying(ctx, "user-1", track, 0)
 
 					Expect(err).ToNot(HaveOccurred())
-					sentParams := httpClient.SavedRequest.URL.Query()
+					body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+					sentParams, _ := url.ParseQuery(string(body))
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
@@ -309,7 +312,8 @@ var _ = Describe("lastfmAgent", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				sentParams := httpClient.SavedRequest.URL.Query()
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
 				Expect(sentParams.Get("method")).To(Equal("track.scrobble"))
 				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
@@ -334,7 +338,8 @@ var _ = Describe("lastfmAgent", func() {
 					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
 					Expect(err).ToNot(HaveOccurred())
-					sentParams := httpClient.SavedRequest.URL.Query()
+					body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+					sentParams, _ := url.ParseQuery(string(body))
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})

@@ -3,6 +3,7 @@ package external
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -11,6 +12,11 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/xrash/smetrics"
 )
+
+// durationToleranceSec is the maximum allowed difference in seconds when
+// matching tracks by duration. A tolerance of 3 seconds accounts for minor
+// encoding differences between sources.
+const durationToleranceSec = 3
 
 // matchSongsToLibrary matches agent song results to local library tracks using a multi-phase
 // matching algorithm that prioritizes accuracy over recall.
@@ -175,6 +181,7 @@ type songQuery struct {
 	artistMBID string // MusicBrainz Artist ID (optional, for higher specificity matching)
 	album      string // Sanitized album name (optional, for specificity scoring)
 	albumMBID  string // MusicBrainz Album ID (optional, for highest specificity matching)
+	durationMs uint32 // Duration in milliseconds (0 means unknown, skip duration filtering)
 }
 
 // matchScore combines title/album similarity with metadata specificity for ranking matches
@@ -282,12 +289,50 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 	return matches, nil
 }
 
+// durationMatches checks if a track's duration is within tolerance of the target duration.
+// Returns true if durationMs is 0 (unknown) or if the difference is within durationToleranceSec.
+func durationMatches(durationMs uint32, mediaFileDurationSec float32) bool {
+	if durationMs <= 0 {
+		return true // Unknown duration matches anything
+	}
+	durationSec := float64(durationMs) / 1000.0
+	diff := math.Abs(durationSec - float64(mediaFileDurationSec))
+	return diff <= durationToleranceSec
+}
+
 // findBestMatch finds the best matching track using combined title/album similarity and specificity scoring.
+// When duration is known (durationMs > 0), it acts as a top-priority filter:
+// - First, only tracks with matching duration (±3 seconds) are considered
+// - If no title match is found among duration-filtered tracks, falls back to matching all tracks
 // A track must meet the threshold for title similarity, then the best match is chosen by:
 // 1. Highest title similarity
 // 2. Highest specificity level
 // 3. Highest album similarity (as final tiebreaker)
 func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
+	// If duration is known, try to find matches among duration-filtered tracks first
+	if q.durationMs > 0 {
+		var durationFiltered model.MediaFiles
+		for _, mf := range tracks {
+			if durationMatches(q.durationMs, mf.Duration) {
+				durationFiltered = append(durationFiltered, mf)
+			}
+		}
+		// If we have duration-filtered candidates, try matching those first
+		if len(durationFiltered) > 0 {
+			if mf, found := findBestMatchInTracks(q, durationFiltered, threshold); found {
+				return mf, true
+			}
+		}
+		// Fall through to try all tracks if no duration-filtered match found
+	}
+
+	return findBestMatchInTracks(q, tracks, threshold)
+}
+
+// findBestMatchInTracks performs the core matching logic on a set of tracks.
+// It finds the track with the best combined score based on title similarity,
+// specificity level, and album similarity.
+func findBestMatchInTracks(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
@@ -338,6 +383,7 @@ func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches
 			artistMBID: s.ArtistMBID,
 			album:      str.SanitizeFieldForSorting(s.Album),
 			albumMBID:  s.AlbumMBID,
+			durationMs: s.Duration,
 		})
 	}
 	return queries

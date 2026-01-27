@@ -215,6 +215,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
 	data.Config.ScannerEnabled = conf.Server.Scanner.Enabled
+	data.Config.ScannerExtractor = conf.Server.Scanner.Extractor
 	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
 	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup

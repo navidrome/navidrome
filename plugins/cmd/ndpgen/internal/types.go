@@ -466,9 +466,7 @@ func RustDefaultValue(goType string) string {
 	switch goType {
 	case "string":
 		return `String::new()`
-	case "int", "int32":
-		return "0"
-	case "int64":
+	case "int", "int32", "int64", "uint", "uint32", "uint64":
 		return "0"
 	case "float32", "float64":
 		return "0.0"
@@ -602,6 +600,10 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		return "i32"
 	case "int64":
 		return "i64"
+	case "uint", "uint32":
+		return "u32"
+	case "uint64":
+		return "u64"
 	case "float32":
 		return "f32"
 	case "float64":

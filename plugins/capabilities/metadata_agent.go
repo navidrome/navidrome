@@ -40,6 +40,18 @@ type MetadataAgent interface {
 	// GetAlbumImages retrieves images for an album.
 	//nd:export name=nd_get_album_images
 	GetAlbumImages(AlbumRequest) (*AlbumImagesResponse, error)
+
+	// GetSimilarSongsByTrack retrieves songs similar to a specific track.
+	//nd:export name=nd_get_similar_songs_by_track
+	GetSimilarSongsByTrack(SimilarSongsByTrackRequest) (*SimilarSongsResponse, error)
+
+	// GetSimilarSongsByAlbum retrieves songs similar to tracks on an album.
+	//nd:export name=nd_get_similar_songs_by_album
+	GetSimilarSongsByAlbum(SimilarSongsByAlbumRequest) (*SimilarSongsResponse, error)
+
+	// GetSimilarSongsByArtist retrieves songs similar to an artist's catalog.
+	//nd:export name=nd_get_similar_songs_by_artist
+	GetSimilarSongsByArtist(SimilarSongsByArtistRequest) (*SimilarSongsResponse, error)
 }
 
 // ArtistMBIDRequest is the request for GetArtistMBID.
@@ -122,7 +134,7 @@ type TopSongsRequest struct {
 	Count int32 `json:"count"`
 }
 
-// SongRef is a reference to a song with name and optional MBID.
+// SongRef is a reference to a song with metadata for matching.
 type SongRef struct {
 	// ID is the internal Navidrome mediafile ID (if known).
 	ID string `json:"id,omitempty"`
@@ -130,6 +142,16 @@ type SongRef struct {
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.
 	MBID string `json:"mbid,omitempty"`
+	// Artist is the artist name.
+	Artist string `json:"artist,omitempty"`
+	// ArtistMBID is the MusicBrainz artist ID.
+	ArtistMBID string `json:"artistMbid,omitempty"`
+	// Album is the album name.
+	Album string `json:"album,omitempty"`
+	// AlbumMBID is the MusicBrainz release ID.
+	AlbumMBID string `json:"albumMbid,omitempty"`
+	// Duration is the song duration in seconds.
+	Duration float32 `json:"duration,omitempty"`
 }
 
 // TopSongsResponse is the response for GetArtistTopSongs.
@@ -164,4 +186,50 @@ type AlbumInfoResponse struct {
 type AlbumImagesResponse struct {
 	// Images is the list of album images.
 	Images []ImageInfo `json:"images"`
+}
+
+// SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
+type SimilarSongsByTrackRequest struct {
+	// ID is the internal Navidrome mediafile ID.
+	ID string `json:"id"`
+	// Name is the track title.
+	Name string `json:"name"`
+	// Artist is the artist name.
+	Artist string `json:"artist"`
+	// MBID is the MusicBrainz recording ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
+type SimilarSongsByAlbumRequest struct {
+	// ID is the internal Navidrome album ID.
+	ID string `json:"id"`
+	// Name is the album name.
+	Name string `json:"name"`
+	// Artist is the album artist name.
+	Artist string `json:"artist"`
+	// MBID is the MusicBrainz release ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
+type SimilarSongsByArtistRequest struct {
+	// ID is the internal Navidrome artist ID.
+	ID string `json:"id"`
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz artist ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
+type SimilarSongsResponse struct {
+	// Songs is the list of similar songs.
+	Songs []SongRef `json:"songs"`
 }

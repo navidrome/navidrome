@@ -47,6 +47,7 @@ type Data struct {
 		LogFileConfigured       bool   `json:"logFileConfigured,omitempty"`
 		TLSConfigured           bool   `json:"tlsConfigured,omitempty"`
 		ScannerEnabled          bool   `json:"scannerEnabled,omitempty"`
+		ScannerExtractor        string `json:"scannerExtractor,omitempty"`
 		ScanSchedule            string `json:"scanSchedule,omitempty"`
 		ScanWatcherWait         uint64 `json:"scanWatcherWait,omitempty"`
 		ScanOnStartup           bool   `json:"scanOnStartup,omitempty"`

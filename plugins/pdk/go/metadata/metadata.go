@@ -117,7 +117,53 @@ type SimilarArtistsResponse struct {
 	Artists []ArtistRef `json:"artists"`
 }
 
-// SongRef is a reference to a song with name and optional MBID.
+// SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
+type SimilarSongsByAlbumRequest struct {
+	// ID is the internal Navidrome album ID.
+	ID string `json:"id"`
+	// Name is the album name.
+	Name string `json:"name"`
+	// Artist is the album artist name.
+	Artist string `json:"artist"`
+	// MBID is the MusicBrainz release ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
+type SimilarSongsByArtistRequest struct {
+	// ID is the internal Navidrome artist ID.
+	ID string `json:"id"`
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz artist ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
+type SimilarSongsByTrackRequest struct {
+	// ID is the internal Navidrome mediafile ID.
+	ID string `json:"id"`
+	// Name is the track title.
+	Name string `json:"name"`
+	// Artist is the artist name.
+	Artist string `json:"artist"`
+	// MBID is the MusicBrainz recording ID (if known).
+	MBID string `json:"mbid,omitempty"`
+	// Count is the maximum number of similar songs to return.
+	Count int32 `json:"count"`
+}
+
+// SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
+type SimilarSongsResponse struct {
+	// Songs is the list of similar songs.
+	Songs []SongRef `json:"songs"`
+}
+
+// SongRef is a reference to a song with metadata for matching.
 type SongRef struct {
 	// ID is the internal Navidrome mediafile ID (if known).
 	ID string `json:"id,omitempty"`
@@ -125,6 +171,16 @@ type SongRef struct {
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.
 	MBID string `json:"mbid,omitempty"`
+	// Artist is the artist name.
+	Artist string `json:"artist,omitempty"`
+	// ArtistMBID is the MusicBrainz artist ID.
+	ArtistMBID string `json:"artistMbid,omitempty"`
+	// Album is the album name.
+	Album string `json:"album,omitempty"`
+	// AlbumMBID is the MusicBrainz release ID.
+	AlbumMBID string `json:"albumMbid,omitempty"`
+	// Duration is the song duration in seconds.
+	Duration float32 `json:"duration,omitempty"`
 }
 
 // TopSongsRequest is the request for GetArtistTopSongs.
@@ -193,16 +249,34 @@ type AlbumInfoProvider interface {
 // AlbumImagesProvider provides the GetAlbumImages function.
 type AlbumImagesProvider interface {
 	GetAlbumImages(AlbumRequest) (*AlbumImagesResponse, error)
+}
+
+// SimilarSongsByTrackProvider provides the GetSimilarSongsByTrack function.
+type SimilarSongsByTrackProvider interface {
+	GetSimilarSongsByTrack(SimilarSongsByTrackRequest) (*SimilarSongsResponse, error)
+}
+
+// SimilarSongsByAlbumProvider provides the GetSimilarSongsByAlbum function.
+type SimilarSongsByAlbumProvider interface {
+	GetSimilarSongsByAlbum(SimilarSongsByAlbumRequest) (*SimilarSongsResponse, error)
+}
+
+// SimilarSongsByArtistProvider provides the GetSimilarSongsByArtist function.
+type SimilarSongsByArtistProvider interface {
+	GetSimilarSongsByArtist(SimilarSongsByArtistRequest) (*SimilarSongsResponse, error)
 } // Internal implementation holders
 var (
-	artistMBIDImpl      func(ArtistMBIDRequest) (*ArtistMBIDResponse, error)
-	artistURLImpl       func(ArtistRequest) (*ArtistURLResponse, error)
-	artistBiographyImpl func(ArtistRequest) (*ArtistBiographyResponse, error)
-	similarArtistsImpl  func(SimilarArtistsRequest) (*SimilarArtistsResponse, error)
-	artistImagesImpl    func(ArtistRequest) (*ArtistImagesResponse, error)
-	artistTopSongsImpl  func(TopSongsRequest) (*TopSongsResponse, error)
-	albumInfoImpl       func(AlbumRequest) (*AlbumInfoResponse, error)
-	albumImagesImpl     func(AlbumRequest) (*AlbumImagesResponse, error)
+	artistMBIDImpl           func(ArtistMBIDRequest) (*ArtistMBIDResponse, error)
+	artistURLImpl            func(ArtistRequest) (*ArtistURLResponse, error)
+	artistBiographyImpl      func(ArtistRequest) (*ArtistBiographyResponse, error)
+	similarArtistsImpl       func(SimilarArtistsRequest) (*SimilarArtistsResponse, error)
+	artistImagesImpl         func(ArtistRequest) (*ArtistImagesResponse, error)
+	artistTopSongsImpl       func(TopSongsRequest) (*TopSongsResponse, error)
+	albumInfoImpl            func(AlbumRequest) (*AlbumInfoResponse, error)
+	albumImagesImpl          func(AlbumRequest) (*AlbumImagesResponse, error)
+	similarSongsByTrackImpl  func(SimilarSongsByTrackRequest) (*SimilarSongsResponse, error)
+	similarSongsByAlbumImpl  func(SimilarSongsByAlbumRequest) (*SimilarSongsResponse, error)
+	similarSongsByArtistImpl func(SimilarSongsByArtistRequest) (*SimilarSongsResponse, error)
 )
 
 // Register registers a metadata implementation.
@@ -231,6 +305,15 @@ func Register(impl Metadata) {
 	}
 	if p, ok := impl.(AlbumImagesProvider); ok {
 		albumImagesImpl = p.GetAlbumImages
+	}
+	if p, ok := impl.(SimilarSongsByTrackProvider); ok {
+		similarSongsByTrackImpl = p.GetSimilarSongsByTrack
+	}
+	if p, ok := impl.(SimilarSongsByAlbumProvider); ok {
+		similarSongsByAlbumImpl = p.GetSimilarSongsByAlbum
+	}
+	if p, ok := impl.(SimilarSongsByArtistProvider); ok {
+		similarSongsByArtistImpl = p.GetSimilarSongsByArtist
 	}
 }
 
@@ -441,6 +524,87 @@ func _NdGetAlbumImages() int32 {
 	}
 
 	output, err := albumImagesImpl(input)
+	if err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	if err := pdk.OutputJSON(output); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	return 0
+}
+
+//go:wasmexport nd_get_similar_songs_by_track
+func _NdGetSimilarSongsByTrack() int32 {
+	if similarSongsByTrackImpl == nil {
+		// Return standard code - host will skip this plugin gracefully
+		return NotImplementedCode
+	}
+
+	var input SimilarSongsByTrackRequest
+	if err := pdk.InputJSON(&input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	output, err := similarSongsByTrackImpl(input)
+	if err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	if err := pdk.OutputJSON(output); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	return 0
+}
+
+//go:wasmexport nd_get_similar_songs_by_album
+func _NdGetSimilarSongsByAlbum() int32 {
+	if similarSongsByAlbumImpl == nil {
+		// Return standard code - host will skip this plugin gracefully
+		return NotImplementedCode
+	}
+
+	var input SimilarSongsByAlbumRequest
+	if err := pdk.InputJSON(&input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	output, err := similarSongsByAlbumImpl(input)
+	if err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	if err := pdk.OutputJSON(output); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	return 0
+}
+
+//go:wasmexport nd_get_similar_songs_by_artist
+func _NdGetSimilarSongsByArtist() int32 {
+	if similarSongsByArtistImpl == nil {
+		// Return standard code - host will skip this plugin gracefully
+		return NotImplementedCode
+	}
+
+	var input SimilarSongsByArtistRequest
+	if err := pdk.InputJSON(&input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	output, err := similarSongsByArtistImpl(input)
 	if err != nil {
 		pdk.SetError(err)
 		return -1

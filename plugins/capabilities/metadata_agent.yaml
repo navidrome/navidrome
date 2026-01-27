@@ -64,6 +64,30 @@ exports:
         output:
             $ref: '#/components/schemas/AlbumImagesResponse'
             contentType: application/json
+    nd_get_similar_songs_by_track:
+        description: GetSimilarSongsByTrack retrieves songs similar to a specific track.
+        input:
+            $ref: '#/components/schemas/SimilarSongsByTrackRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SimilarSongsResponse'
+            contentType: application/json
+    nd_get_similar_songs_by_album:
+        description: GetSimilarSongsByAlbum retrieves songs similar to tracks on an album.
+        input:
+            $ref: '#/components/schemas/SimilarSongsByAlbumRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SimilarSongsResponse'
+            contentType: application/json
+    nd_get_similar_songs_by_artist:
+        description: GetSimilarSongsByArtist retrieves songs similar to an artist's catalog.
+        input:
+            $ref: '#/components/schemas/SimilarSongsByArtistRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SimilarSongsResponse'
+            contentType: application/json
 components:
     schemas:
         AlbumImagesResponse:
@@ -229,8 +253,86 @@ components:
                         $ref: '#/components/schemas/ArtistRef'
             required:
                 - artists
+        SimilarSongsByAlbumRequest:
+            description: SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome album ID.
+                name:
+                    type: string
+                    description: Name is the album name.
+                artist:
+                    type: string
+                    description: Artist is the album artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz release ID (if known).
+                count:
+                    type: integer
+                    format: int32
+                    description: Count is the maximum number of similar songs to return.
+            required:
+                - id
+                - name
+                - artist
+                - count
+        SimilarSongsByArtistRequest:
+            description: SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID.
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz artist ID (if known).
+                count:
+                    type: integer
+                    format: int32
+                    description: Count is the maximum number of similar songs to return.
+            required:
+                - id
+                - name
+                - count
+        SimilarSongsByTrackRequest:
+            description: SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome mediafile ID.
+                name:
+                    type: string
+                    description: Name is the track title.
+                artist:
+                    type: string
+                    description: Artist is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz recording ID (if known).
+                count:
+                    type: integer
+                    format: int32
+                    description: Count is the maximum number of similar songs to return.
+            required:
+                - id
+                - name
+                - artist
+                - count
+        SimilarSongsResponse:
+            description: SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
+            properties:
+                songs:
+                    type: array
+                    description: Songs is the list of similar songs.
+                    items:
+                        $ref: '#/components/schemas/SongRef'
+            required:
+                - songs
         SongRef:
-            description: SongRef is a reference to a song with name and optional MBID.
+            description: SongRef is a reference to a song with metadata for matching.
             properties:
                 id:
                     type: string
@@ -241,6 +343,22 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the song.
+                artist:
+                    type: string
+                    description: Artist is the artist name.
+                artistMbid:
+                    type: string
+                    description: ArtistMBID is the MusicBrainz artist ID.
+                album:
+                    type: string
+                    description: Album is the album name.
+                albumMbid:
+                    type: string
+                    description: AlbumMBID is the MusicBrainz release ID.
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the song duration in seconds.
             required:
                 - name
         TopSongsRequest:
