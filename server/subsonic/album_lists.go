@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -203,6 +204,10 @@ func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
+	user := getUser(ctx)
+	if !conf.Server.EnableNowPlayingForAllUsers && !user.IsAdmin {
+		return nil, newError(responses.ErrorAuthorizationFail, "Now playing is admin only")
+	}
 	npInfo, err := api.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", err)

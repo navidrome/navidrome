@@ -5,7 +5,10 @@ import (
 	"errors"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -478,6 +481,67 @@ var _ = Describe("Album Lists", func() {
 		})
 	})
 
+	Describe("GetNowPlaying", func() {
+		var mockScrobbler *mockPlayTracker
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			mockScrobbler = &mockPlayTracker{}
+		})
+
+		It("rejects non-admin users when EnableNowPlayingForAllUsers is false", func() {
+			conf.Server.EnableNowPlayingForAllUsers = false
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "user-id",
+				IsAdmin: false,
+			})
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+			api := &Router{scrobbler: mockScrobbler}
+
+			response, err := api.GetNowPlaying(r)
+
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+			var subErr subError
+			ok := errors.As(err, &subErr)
+			Expect(ok).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorAuthorizationFail))
+		})
+
+		It("allows admin users when EnableNowPlayingForAllUsers is false", func() {
+			conf.Server.EnableNowPlayingForAllUsers = false
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "admin-id",
+				IsAdmin: true,
+			})
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+			api := &Router{scrobbler: mockScrobbler}
+
+			response, err := api.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.NowPlaying).ToNot(BeNil())
+		})
+
+		It("allows non-admin users when EnableNowPlayingForAllUsers is true", func() {
+			conf.Server.EnableNowPlayingForAllUsers = true
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "user-id",
+				IsAdmin: false,
+			})
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+			api := &Router{scrobbler: mockScrobbler}
+
+			response, err := api.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.NowPlaying).ToNot(BeNil())
+		})
+	})
+
 	Describe("GetStarred2", func() {
 		var mockArtistRepo *tests.MockArtistRepo
 		var mockAlbumRepo *tests.MockAlbumRepo
@@ -540,3 +604,17 @@ var _ = Describe("Album Lists", func() {
 		})
 	})
 })
+
+type mockPlayTracker struct{}
+
+func (m *mockPlayTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
+	return nil
+}
+
+func (m *mockPlayTracker) GetNowPlaying(ctx context.Context) ([]scrobbler.NowPlayingInfo, error) {
+	return []scrobbler.NowPlayingInfo{}, nil
+}
+
+func (m *mockPlayTracker) Submit(ctx context.Context, submissions []scrobbler.Submission) error {
+	return nil
+}
