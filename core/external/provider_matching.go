@@ -182,10 +182,10 @@ type songQuery struct {
 
 // matchScore combines title/album similarity with metadata specificity for ranking matches
 type matchScore struct {
-	titleSimilarity    float64 // 0.0-1.0 (Jaro-Winkler)
-	durationProximity  float64 // 0.0-1.0 (closer duration = higher, 1.0 if unknown)
-	albumSimilarity    float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
-	specificityLevel   int     // 0-5 (higher = more specific metadata match)
+	titleSimilarity   float64 // 0.0-1.0 (Jaro-Winkler)
+	durationProximity float64 // 0.0-1.0 (closer duration = higher, 1.0 if unknown)
+	albumSimilarity   float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
+	specificityLevel  int     // 0-5 (higher = more specific metadata match)
 }
 
 // betterThan returns true if this score beats another.
