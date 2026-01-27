@@ -458,7 +458,7 @@ var _ = Describe("Provider - Song Matching", func() {
 		})
 	})
 
-	Describe("Duration filtering", func() {
+	Describe("Duration matching", func() {
 		var track model.MediaFile
 
 		BeforeEach(func() {
@@ -496,48 +496,48 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs[0].ID).To(Equal("correct"))
 			})
 
-			It("matches within 3-second tolerance", func() {
+			It("matches tracks with close duration", func() {
 				// Agent returns song with duration 180000ms (180 seconds)
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
 				}
-				// Library has track with 182 seconds (within tolerance)
-				withinTolerance := model.MediaFile{
-					ID: "within-tolerance", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
+				// Library has track with 182.5 seconds (close to target)
+				closeDuration := model.MediaFile{
+					ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
 				}
 
-				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{withinTolerance})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{closeDuration})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(1))
-				Expect(songs[0].ID).To(Equal("within-tolerance"))
+				Expect(songs[0].ID).To(Equal("close-duration"))
 			})
 
-			It("excludes tracks outside 3-second tolerance when other matches exist", func() {
+			It("prefers closer duration over farther duration", func() {
 				// Agent returns song with duration 180000ms (180 seconds)
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
 				}
-				// Library has one within tolerance, one outside
-				withinTolerance := model.MediaFile{
-					ID: "within", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
+				// Library has one close, one far
+				closeDuration := model.MediaFile{
+					ID: "close", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
 				}
-				outsideTolerance := model.MediaFile{
-					ID: "outside", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
+				farDuration := model.MediaFile{
+					ID: "far", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
 				}
 
-				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{outsideTolerance, withinTolerance})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{farDuration, closeDuration})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(1))
-				Expect(songs[0].ID).To(Equal("within"))
+				Expect(songs[0].ID).To(Equal("close"))
 			})
 
-			It("falls back to normal matching when no duration matches", func() {
+			It("still matches when no tracks have matching duration", func() {
 				// Agent returns song with duration 180000ms
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
@@ -552,19 +552,19 @@ var _ = Describe("Provider - Song Matching", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				// Should fall back and return the track despite duration mismatch
+				// Duration mismatch doesn't exclude the track; it's just scored lower
 				Expect(songs).To(HaveLen(1))
 				Expect(songs[0].ID).To(Equal("different"))
 			})
 
-			It("falls back to title match when duration-filtered tracks fail title threshold", func() {
+			It("prefers title match over duration match when titles differ", func() {
 				// Agent returns "Similar Song" with duration 180000ms
 				returnedSongs := []agents.Song{
 					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
 				}
 				// Library has:
 				// - differentTitle: matches duration but has different title (won't pass title threshold)
-				// - correctTitle: doesn't match duration but has correct title (should be found via fallback)
+				// - correctTitle: doesn't match duration but has correct title (wins on title similarity)
 				differentTitle := model.MediaFile{
 					ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
 				}
@@ -577,7 +577,7 @@ var _ = Describe("Provider - Song Matching", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				// Should fall back to all tracks and find the title match
+				// Title similarity is the top priority, so the correct title wins despite duration mismatch
 				Expect(songs).To(HaveLen(1))
 				Expect(songs[0].ID).To(Equal("correct-title"))
 			})
@@ -605,8 +605,8 @@ var _ = Describe("Provider - Song Matching", func() {
 		})
 
 		Context("edge cases", func() {
-			It("handles very short songs with duration tolerance", func() {
-				// 30-second song with 1-second difference (within 3-second tolerance)
+			It("handles very short songs with close duration", func() {
+				// 30-second song with 1-second difference
 				returnedSongs := []agents.Song{
 					{Name: "Short Song", Artist: "Test Artist", Duration: 30000},
 				}

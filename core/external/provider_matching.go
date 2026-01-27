@@ -13,11 +13,6 @@ import (
 	"github.com/xrash/smetrics"
 )
 
-// durationToleranceSec is the maximum allowed difference in seconds when
-// matching tracks by duration. A tolerance of 3 seconds accounts for minor
-// encoding differences between sources.
-const durationToleranceSec = 3
-
 // matchSongsToLibrary matches agent song results to local library tracks using a multi-phase
 // matching algorithm that prioritizes accuracy over recall.
 //
@@ -43,14 +38,15 @@ const durationToleranceSec = 3
 // via SimilarSongsMatchThreshold, default 85%). Matches are ranked by:
 //
 //  1. Title similarity (Jaro-Winkler score, 0.0-1.0)
-//  2. Specificity level (0-5, based on metadata precision):
+//  2. Duration proximity (closer duration = higher score, 1.0 if unknown)
+//  3. Specificity level (0-5, based on metadata precision):
 //     - Level 5: Title + Artist MBID + Album MBID (most specific)
 //     - Level 4: Title + Artist MBID + Album name (fuzzy)
 //     - Level 3: Title + Artist name + Album name (fuzzy)
 //     - Level 2: Title + Artist MBID
 //     - Level 1: Title + Artist name
 //     - Level 0: Title only
-//  3. Album similarity (Jaro-Winkler, as final tiebreaker)
+//  4. Album similarity (Jaro-Winkler, as final tiebreaker)
 //
 // # Examples
 //
@@ -186,16 +182,20 @@ type songQuery struct {
 
 // matchScore combines title/album similarity with metadata specificity for ranking matches
 type matchScore struct {
-	titleSimilarity  float64 // 0.0-1.0 (Jaro-Winkler)
-	albumSimilarity  float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
-	specificityLevel int     // 0-5 (higher = more specific metadata match)
+	titleSimilarity   float64 // 0.0-1.0 (Jaro-Winkler)
+	durationProximity float64 // 0.0-1.0 (closer duration = higher, 1.0 if unknown)
+	albumSimilarity   float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
+	specificityLevel  int     // 0-5 (higher = more specific metadata match)
 }
 
 // betterThan returns true if this score beats another.
-// Comparison order: title similarity > specificity level > album similarity
+// Comparison order: title similarity > duration proximity > specificity level > album similarity
 func (s matchScore) betterThan(other matchScore) bool {
 	if s.titleSimilarity != other.titleSimilarity {
 		return s.titleSimilarity > other.titleSimilarity
+	}
+	if s.durationProximity != other.durationProximity {
+		return s.durationProximity > other.durationProximity
 	}
 	if s.specificityLevel != other.specificityLevel {
 		return s.specificityLevel > other.specificityLevel
@@ -289,50 +289,26 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 	return matches, nil
 }
 
-// durationMatches checks if a track's duration is within tolerance of the target duration.
-// Returns true if durationMs is 0 (unknown) or if the difference is within durationToleranceSec.
-func durationMatches(durationMs uint32, mediaFileDurationSec float32) bool {
+// durationProximity returns a score from 0.0 to 1.0 indicating how close
+// the track's duration is to the target. A perfect match returns 1.0, and the
+// score decreases as the difference grows (using 1 / (1 + diff)). Returns 1.0
+// if durationMs is 0 (unknown), so duration does not influence scoring.
+func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 {
 	if durationMs <= 0 {
-		return true // Unknown duration matches anything
+		return 1.0 // Unknown duration — don't penalise
 	}
 	durationSec := float64(durationMs) / 1000.0
 	diff := math.Abs(durationSec - float64(mediaFileDurationSec))
-	return diff <= durationToleranceSec
+	return 1.0 / (1.0 + diff)
 }
 
 // findBestMatch finds the best matching track using combined title/album similarity and specificity scoring.
-// When duration is known (durationMs > 0), it acts as a top-priority filter:
-// - First, only tracks with matching duration (±3 seconds) are considered
-// - If no title match is found among duration-filtered tracks, falls back to matching all tracks
 // A track must meet the threshold for title similarity, then the best match is chosen by:
 // 1. Highest title similarity
-// 2. Highest specificity level
-// 3. Highest album similarity (as final tiebreaker)
+// 2. Duration proximity (closer duration = higher score, 1.0 if unknown)
+// 3. Highest specificity level
+// 4. Highest album similarity (as final tiebreaker)
 func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
-	// If duration is known, try to find matches among duration-filtered tracks first
-	if q.durationMs > 0 {
-		var durationFiltered model.MediaFiles
-		for _, mf := range tracks {
-			if durationMatches(q.durationMs, mf.Duration) {
-				durationFiltered = append(durationFiltered, mf)
-			}
-		}
-		// If we have duration-filtered candidates, try matching those first
-		if len(durationFiltered) > 0 {
-			if mf, found := findBestMatchInTracks(q, durationFiltered, threshold); found {
-				return mf, true
-			}
-		}
-		// Fall through to try all tracks if no duration-filtered match found
-	}
-
-	return findBestMatchInTracks(q, tracks, threshold)
-}
-
-// findBestMatchInTracks performs the core matching logic on a set of tracks.
-// It finds the track with the best combined score based on title similarity,
-// specificity level, and album similarity.
-func findBestMatchInTracks(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
@@ -353,9 +329,10 @@ func findBestMatchInTracks(q songQuery, tracks model.MediaFiles, threshold float
 		}
 
 		score := matchScore{
-			titleSimilarity:  titleSim,
-			albumSimilarity:  albumSim,
-			specificityLevel: computeSpecificityLevel(q, mf, threshold),
+			titleSimilarity:   titleSim,
+			durationProximity: durationProximity(q.durationMs, mf.Duration),
+			albumSimilarity:   albumSim,
+			specificityLevel:  computeSpecificityLevel(q, mf, threshold),
 		}
 
 		if score.betterThan(bestScore) {
