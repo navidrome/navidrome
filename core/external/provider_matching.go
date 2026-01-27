@@ -312,13 +312,6 @@ func durationMatches(durationMs uint32, mediaFileDurationSec float32) bool {
 // 3. Highest specificity level
 // 4. Highest album similarity (as final tiebreaker)
 func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
-	return findBestMatchInTracks(q, tracks, threshold)
-}
-
-// findBestMatchInTracks performs the core matching logic on a set of tracks.
-// It finds the track with the best combined score based on title similarity,
-// specificity level, and album similarity.
-func findBestMatchInTracks(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
