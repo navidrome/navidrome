@@ -168,6 +168,8 @@ type SongRef struct {
 	Name string `json:"name"`
 	// MBID is the MusicBrainz ID for the song.
 	MBID string `json:"mbid,omitempty"`
+	// ISRC is the International Standard Recording Code for the song.
+	ISRC string `json:"isrc,omitempty"`
 	// Artist is the artist name.
 	Artist string `json:"artist,omitempty"`
 	// ArtistMBID is the MusicBrainz artist ID.

@@ -242,6 +242,9 @@ pub struct SongRef {
     /// MBID is the MusicBrainz ID for the song.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbid: String,
+    /// ISRC is the International Standard Recording Code for the song.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub isrc: String,
     /// Artist is the artist name.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist: String,

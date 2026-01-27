@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -19,17 +20,18 @@ import (
 // # Algorithm Overview
 //
 // The algorithm matches songs from external agents (Last.fm, Deezer, etc.) to tracks in the
-// local music library using three matching strategies in priority order:
+// local music library using four matching strategies in priority order:
 //
 //  1. Direct ID match: Songs with an ID field are matched directly to MediaFiles by ID
 //  2. MusicBrainz Recording ID (MBID) match: Songs with MBID are matched to tracks with
 //     matching mbz_recording_id
-//  3. Title+Artist fuzzy match: Remaining songs are matched using fuzzy string comparison
+//  3. ISRC match: Songs with ISRC are matched to tracks with matching ISRC tag
+//  4. Title+Artist fuzzy match: Remaining songs are matched using fuzzy string comparison
 //     with metadata specificity scoring
 //
 // # Matching Priority
 //
-// When selecting the final result, matches are prioritized in order: ID > MBID > Title+Artist.
+// When selecting the final result, matches are prioritized in order: ID > MBID > ISRC > Title+Artist.
 // This ensures that more reliable identifiers take precedence over fuzzy text matching.
 //
 // # Fuzzy Matching Details
@@ -59,7 +61,16 @@ import (
 //	]
 //	Result: t1 (MBID match takes priority over title+artist)
 //
-// Example 2 - Specificity Ranking:
+// Example 2 - ISRC Priority:
+//
+//	Agent returns: {Name: "Paranoid Android", ISRC: "GBAYE0000351", Artist: "Radiohead"}
+//	Library has: [
+//	  {ID: "t1", Title: "Paranoid Android", Tags: {isrc: ["GBAYE0000351"]}},
+//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
+//	]
+//	Result: t1 (ISRC match takes priority over title+artist)
+//
+// Example 3 - Specificity Ranking:
 //
 //	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
 //	Library has: [
@@ -68,7 +79,7 @@ import (
 //	]
 //	Result: t2 (Level 3 beats Level 1 due to album match)
 //
-// Example 3 - Fuzzy Title Matching:
+// Example 4 - Fuzzy Title Matching:
 //
 //	Agent returns: {Name: "Bohemian Rhapsody", Artist: "Queen"}
 //	Library has: {ID: "t1", Title: "Bohemian Rhapsody - Remastered", Artist: "Queen"}
@@ -94,12 +105,16 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
-	titleMatches, err := e.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches)
+	isrcMatches, err := e.loadTracksByISRC(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
+	}
+	titleMatches, err := e.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches, isrcMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
 	}
 
-	return e.selectBestMatchingSongs(songs, idMatches, mbidMatches, titleMatches, count), nil
+	return e.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
 }
 
 // loadTracksByID fetches MediaFiles from the library using direct ID matching.
@@ -162,6 +177,50 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (m
 		if id := mf.MbzRecordingID; id != "" {
 			if _, ok := matches[id]; !ok {
 				matches[id] = mf
+			}
+		}
+	}
+	return matches, nil
+}
+
+// loadTracksByISRC fetches MediaFiles from the library using ISRC (International Standard
+// Recording Code) matching. It extracts all non-empty ISRC fields from the input songs and
+// queries the tags JSON column for matching ISRC values. Returns a map keyed by ISRC for
+// O(1) lookup. Only non-missing files are returned.
+func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+	var isrcs []string
+	for _, s := range songs {
+		if s.ISRC != "" {
+			isrcs = append(isrcs, s.ISRC)
+		}
+	}
+	matches := map[string]model.MediaFile{}
+	if len(isrcs) == 0 {
+		return matches, nil
+	}
+	placeholders := make([]string, len(isrcs))
+	args := make([]any, len(isrcs))
+	for i, isrc := range isrcs {
+		placeholders[i] = "?"
+		args[i] = isrc
+	}
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Expr(
+				fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
+					model.TagISRC, strings.Join(placeholders, ",")),
+				args...,
+			),
+			squirrel.Eq{"missing": false},
+		},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, mf := range res {
+		for _, isrc := range mf.Tags.Values(model.TagISRC) {
+			if _, ok := matches[isrc]; !ok {
+				matches[isrc] = mf
 			}
 		}
 	}
@@ -246,8 +305,8 @@ func computeSpecificityLevel(q songQuery, mf model.MediaFile, albumThreshold flo
 // Uses a unified scoring approach that combines title similarity (Jaro-Winkler) with
 // metadata specificity (MBIDs, album names) for both exact and fuzzy matches.
 // Returns a map keyed by "title|artist" for compatibility with selectBestMatchingSongs.
-func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
-	queries := e.buildTitleQueries(songs, idMatches, mbidMatches)
+func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, idMatches, mbidMatches, isrcMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	queries := e.buildTitleQueries(songs, idMatches, mbidMatches, isrcMatches)
 	if len(queries) == 0 {
 		return map[string]model.MediaFile{}, nil
 	}
@@ -344,14 +403,17 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 	return bestMatch, found
 }
 
-func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches map[string]model.MediaFile) []songQuery {
+func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches, isrcMatches map[string]model.MediaFile) []songQuery {
 	var queries []songQuery
 	for _, s := range songs {
-		// Skip if already matched by ID or MBID
+		// Skip if already matched by ID, MBID, or ISRC
 		if s.ID != "" && idMatches[s.ID].ID != "" {
 			continue
 		}
 		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		if s.ISRC != "" && isrcMatches[s.ISRC].ID != "" {
 			continue
 		}
 		queries = append(queries, songQuery{
@@ -366,7 +428,7 @@ func (e *provider) buildTitleQueries(songs []agents.Song, idMatches, mbidMatches
 	return queries
 }
 
-func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
+func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
 	var mfs model.MediaFiles
 	for _, t := range songs {
 		if len(mfs) == count {
@@ -382,6 +444,13 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 		// Try MBID match second
 		if t.MBID != "" {
 			if mf, ok := byMBID[t.MBID]; ok {
+				mfs = append(mfs, mf)
+				continue
+			}
+		}
+		// Try ISRC match third
+		if t.ISRC != "" {
+			if mf, ok := byISRC[t.ISRC]; ok {
 				mfs = append(mfs, mf)
 				continue
 			}
