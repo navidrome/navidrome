@@ -359,6 +359,7 @@ type MediaFileRepository interface {
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error

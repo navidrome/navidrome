@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -198,21 +197,8 @@ func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song) (m
 	if len(isrcs) == 0 {
 		return matches, nil
 	}
-	placeholders := make([]string, len(isrcs))
-	args := make([]any, len(isrcs))
-	for i, isrc := range isrcs {
-		placeholders[i] = "?"
-		args[i] = isrc
-	}
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Expr(
-				fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
-					model.TagISRC, strings.Join(placeholders, ",")),
-				args...,
-			),
-			squirrel.Eq{"missing": false},
-		},
+	res, err := e.ds.MediaFile(ctx).GetAllByTags(model.TagISRC, isrcs, model.QueryOptions{
+		Filters: squirrel.Eq{"missing": false},
 	})
 	if err != nil {
 		return matches, err
