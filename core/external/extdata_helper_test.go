@@ -92,6 +92,11 @@ func (m *mockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	return args.Get(0).(*model.MediaFile), args.Error(1)
 }
 
+// GetAllByTags implements model.MediaFileRepository.
+func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(options...)
+}
+
 // GetAll implements model.MediaFileRepository.
 func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]interface{}, len(options))

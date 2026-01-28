@@ -36,10 +36,12 @@ type Song struct {
 	ID         string
 	Name       string
 	MBID       string
+	ISRC       string
 	Artist     string
 	ArtistMBID string
 	Album      string
 	AlbumMBID  string
+	Duration   uint32 // Duration in milliseconds, 0 means unknown
 }
 
 var (

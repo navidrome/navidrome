@@ -41,6 +41,26 @@ var _ = Describe("Provider - Song Matching", func() {
 		provider = NewProvider(ds, agentsCombined)
 	})
 
+	// Shared helper for tests that only need artist track queries (no ID/MBID matching)
+	setupSimilarSongsExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
+		agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(returnedSongs, nil).Once()
+
+		// loadTracksByTitleAndArtist - queries by artist name
+		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			and, ok := opt.Filters.(squirrel.And)
+			if !ok || len(and) < 2 {
+				return false
+			}
+			eq, hasEq := and[0].(squirrel.Eq)
+			if !hasEq {
+				return false
+			}
+			_, hasArtist := eq["order_artist_name"]
+			return hasArtist
+		})).Return(artistTracks, nil).Maybe()
+	}
+
 	Describe("matchSongsToLibrary priority matching", func() {
 		var track model.MediaFile
 
@@ -261,26 +281,6 @@ var _ = Describe("Provider - Song Matching", func() {
 			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
 		})
 
-		setupFuzzyExpectations := func(returnedSongs []agents.Song, artistTracks model.MediaFiles) {
-			agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-				Return(returnedSongs, nil).Once()
-
-			// loadTracksByTitleAndArtist now queries by artist in a single pass
-			// Note: loadTracksByID and loadTracksByMBID return early when no IDs/MBIDs
-			mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-				and, ok := opt.Filters.(squirrel.And)
-				if !ok || len(and) < 2 {
-					return false
-				}
-				eq, hasEq := and[0].(squirrel.Eq)
-				if !hasEq {
-					return false
-				}
-				_, hasArtist := eq["order_artist_name"]
-				return hasArtist
-			})).Return(artistTracks, nil).Maybe()
-		}
-
 		Context("with default threshold (85%)", func() {
 			It("matches songs with remastered suffix", func() {
 				conf.Server.SimilarSongsMatchThreshold = 85
@@ -294,7 +294,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -313,7 +313,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -334,7 +334,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "different2", Title: "Here Comes The Sun", Artist: "The Beatles"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -355,7 +355,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -375,7 +375,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist"},
 				}
 
-				setupFuzzyExpectations(returnedSongs, artistTracks)
+				setupSimilarSongsExpectations(returnedSongs, artistTracks)
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -401,7 +401,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -424,7 +424,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongMatch, correctMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -446,7 +446,7 @@ var _ = Describe("Provider - Song Matching", func() {
 					ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
 				}
 
-				setupFuzzyExpectations(returnedSongs, model.MediaFiles{fuzzyMatch, exactMatch})
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{fuzzyMatch, exactMatch})
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
 
@@ -454,6 +454,173 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs).To(HaveLen(1))
 				// Both have same title similarity (1.0), so should prefer exact album match (higher specificity via higher album similarity)
 				Expect(songs[0].ID).To(Equal("exact"))
+			})
+		})
+	})
+
+	Describe("Duration matching", func() {
+		var track model.MediaFile
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SimilarSongsMatchThreshold = 100 // Exact title match for predictable tests
+
+			track = model.MediaFile{ID: "track-1", Title: "Test Track", Artist: "Test Artist"}
+
+			// Setup for GetEntityByID to return the track
+			artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
+		})
+
+		Context("when agent provides duration", func() {
+			It("prefers tracks with matching duration", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has two versions: one matching duration, one not
+				correctMatch := model.MediaFile{
+					ID: "correct", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
+				}
+				wrongDuration := model.MediaFile{
+					ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{wrongDuration, correctMatch})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("correct"))
+			})
+
+			It("matches tracks with close duration", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has track with 182.5 seconds (close to target)
+				closeDuration := model.MediaFile{
+					ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{closeDuration})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("close-duration"))
+			})
+
+			It("prefers closer duration over farther duration", func() {
+				// Agent returns song with duration 180000ms (180 seconds)
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has one close, one far
+				closeDuration := model.MediaFile{
+					ID: "close", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
+				}
+				farDuration := model.MediaFile{
+					ID: "far", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{farDuration, closeDuration})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("close"))
+			})
+
+			It("still matches when no tracks have matching duration", func() {
+				// Agent returns song with duration 180000ms
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library only has tracks with very different duration
+				differentDuration := model.MediaFile{
+					ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{differentDuration})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				// Duration mismatch doesn't exclude the track; it's just scored lower
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("different"))
+			})
+
+			It("prefers title match over duration match when titles differ", func() {
+				// Agent returns "Similar Song" with duration 180000ms
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				}
+				// Library has:
+				// - differentTitle: matches duration but has different title (won't pass title threshold)
+				// - correctTitle: doesn't match duration but has correct title (wins on title similarity)
+				differentTitle := model.MediaFile{
+					ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
+				}
+				correctTitle := model.MediaFile{
+					ID: "correct-title", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{differentTitle, correctTitle})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				// Title similarity is the top priority, so the correct title wins despite duration mismatch
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("correct-title"))
+			})
+		})
+
+		Context("when agent does not provide duration", func() {
+			It("matches without duration filtering (duration=0)", func() {
+				// Agent returns song without duration
+				returnedSongs := []agents.Song{
+					{Name: "Similar Song", Artist: "Test Artist", Duration: 0},
+				}
+				// Library tracks with various durations should all be candidates
+				anyTrack := model.MediaFile{
+					ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{anyTrack})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("any"))
+			})
+		})
+
+		Context("edge cases", func() {
+			It("handles very short songs with close duration", func() {
+				// 30-second song with 1-second difference
+				returnedSongs := []agents.Song{
+					{Name: "Short Song", Artist: "Test Artist", Duration: 30000},
+				}
+				shortTrack := model.MediaFile{
+					ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{shortTrack})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("short"))
 			})
 		})
 	})

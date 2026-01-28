@@ -178,6 +178,74 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("scrobble", func() {
+		It("sends parameters in request body for POST", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)),
+				StatusCode: 200,
+			}
+
+			info := ScrobbleInfo{
+				artist:      "U2",
+				track:       "One",
+				album:       "Achtung Baby",
+				trackNumber: 1,
+				duration:    276,
+				albumArtist: "U2",
+			}
+			err := client.scrobble(context.Background(), "SESSION_KEY", info)
+			Expect(err).To(BeNil())
+
+			req := httpClient.SavedRequest
+			Expect(req.Method).To(Equal(http.MethodPost))
+			Expect(req.Header.Get("Content-Type")).To(Equal("application/x-www-form-urlencoded"))
+			Expect(req.URL.RawQuery).To(BeEmpty())
+
+			body, _ := io.ReadAll(req.Body)
+			bodyParams, _ := url.ParseQuery(string(body))
+			Expect(bodyParams.Get("method")).To(Equal("track.scrobble"))
+			Expect(bodyParams.Get("artist")).To(Equal("U2"))
+			Expect(bodyParams.Get("track")).To(Equal("One"))
+			Expect(bodyParams.Get("sk")).To(Equal("SESSION_KEY"))
+			Expect(bodyParams.Get("api_key")).To(Equal("API_KEY"))
+			Expect(bodyParams.Get("api_sig")).ToNot(BeEmpty())
+		})
+	})
+
+	Describe("updateNowPlaying", func() {
+		It("sends parameters in request body for POST", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"nowplaying":{"ignoredMessage":{"code":"0"}}}`)),
+				StatusCode: 200,
+			}
+
+			info := ScrobbleInfo{
+				artist:      "U2",
+				track:       "One",
+				album:       "Achtung Baby",
+				trackNumber: 1,
+				duration:    276,
+				albumArtist: "U2",
+			}
+			err := client.updateNowPlaying(context.Background(), "SESSION_KEY", info)
+			Expect(err).To(BeNil())
+
+			req := httpClient.SavedRequest
+			Expect(req.Method).To(Equal(http.MethodPost))
+			Expect(req.Header.Get("Content-Type")).To(Equal("application/x-www-form-urlencoded"))
+			Expect(req.URL.RawQuery).To(BeEmpty())
+
+			body, _ := io.ReadAll(req.Body)
+			bodyParams, _ := url.ParseQuery(string(body))
+			Expect(bodyParams.Get("method")).To(Equal("track.updateNowPlaying"))
+			Expect(bodyParams.Get("artist")).To(Equal("U2"))
+			Expect(bodyParams.Get("track")).To(Equal("One"))
+			Expect(bodyParams.Get("sk")).To(Equal("SESSION_KEY"))
+			Expect(bodyParams.Get("api_key")).To(Equal("API_KEY"))
+			Expect(bodyParams.Get("api_sig")).ToNot(BeEmpty())
+		})
+	})
+
 	Describe("sign", func() {
 		It("adds an api_sig param with the signature", func() {
 			params := url.Values{}

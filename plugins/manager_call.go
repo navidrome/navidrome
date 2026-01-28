@@ -72,7 +72,8 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 	}
 	if exit != 0 {
 		if exit == notImplementedCode {
-			plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+			log.Trace(ctx, "Plugin function not implemented", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start))
+			plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, true, elapsed.Milliseconds())
 			return result, fmt.Errorf("%w: %s", errNotImplemented, funcName)
 		}
 		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())

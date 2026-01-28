@@ -126,6 +126,6 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 		Expect(calls).To(HaveLen(1))
 		Expect(calls[0].plugin).To(Equal("partial-metadata-agent"))
 		Expect(calls[0].method).To(Equal(FuncGetArtistMBID))
-		Expect(calls[0].ok).To(BeFalse())
+		Expect(calls[0].ok).To(BeTrue())
 	})
 })

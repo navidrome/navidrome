@@ -198,8 +198,15 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 		c.sign(params)
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
-	req.URL.RawQuery = params.Encode()
+	var req *http.Request
+	if method == http.MethodPost {
+		body := strings.NewReader(params.Encode())
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, body)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
+		req.URL.RawQuery = params.Encode()
+	}
 
 	log.Trace(ctx, fmt.Sprintf("Sending Last.fm %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
