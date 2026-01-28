@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@jsonforms/core": "^2.5.2",
-    "@jsonforms/material-renderers": "^2.5.2",
+    "@jsonforms/material-renderers": "^3.7.0",
     "@jsonforms/react": "^2.5.2",
     "@material-ui/core": "^4.12.4",
     "@material-ui/icons": "^4.11.3",
