@@ -302,6 +302,33 @@ var _ = Describe("Artwork", func() {
 				Entry("landscape jpg image", "jpg", true, 200),
 			)
 		})
+		When("Requested size is larger than original", func() {
+			It("clamps size to original dimensions", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				// front.png is 16x16, requesting 99999 should return at original size
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 99999, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, _, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				// Should be clamped to original size (16), not 99999
+				Expect(img.Bounds().Size().X).To(Equal(16))
+				Expect(img.Bounds().Size().Y).To(Equal(16))
+			})
+
+			It("clamps square size to original dimensions", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				// front.png is 16x16, requesting 99999 with square should return 16x16 square
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 99999, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, _, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				// Should be clamped to original size (16), not 99999
+				Expect(img.Bounds().Size().X).To(Equal(16))
+				Expect(img.Bounds().Size().Y).To(Equal(16))
+			})
+		})
 	})
 })
 
