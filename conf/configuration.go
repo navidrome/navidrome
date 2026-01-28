@@ -188,8 +188,9 @@ type deezerOptions struct {
 }
 
 type listenBrainzOptions struct {
-	Enabled bool
-	BaseURL string
+	Enabled        bool
+	EnableMetadata bool
+	BaseURL        string
 }
 
 type httpHeaderOptions struct {
@@ -627,6 +628,7 @@ func setViperDefaults() {
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", "en")
 	viper.SetDefault("listenbrainz.enabled", true)
+	viper.SetDefault("listenbrainz.enablemetadata", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
