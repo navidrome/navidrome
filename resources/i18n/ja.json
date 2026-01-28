@@ -97,7 +97,8 @@
         "recentlyPlayed": "最近の再生",
         "mostPlayed": "最も再生",
         "starred": "お気に入り",
-        "topRated": "高評価"
+        "topRated": "高評価",
+        "compilations": "コンピレーション"
       }
     },
     "artist": {

@@ -97,7 +97,8 @@
         "recentlyPlayed": "Последно слушани",
         "mostPlayed": "Най-слушани",
         "starred": "Любими",
-        "topRated": "Най-висок рейтинг"
+        "topRated": "Най-висок рейтинг",
+        "compilations": "Компилации"
       }
     },
     "artist": {

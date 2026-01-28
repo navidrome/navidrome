@@ -98,7 +98,8 @@
         "recentlyPlayed": "Recém-tocados",
         "mostPlayed": "Mais tocados",
         "starred": "Favoritos",
-        "topRated": "Melhor classificados"
+        "topRated": "Melhor classificados",
+        "compilations": "Coletâneas"
       }
     },
     "artist": {
