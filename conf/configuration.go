@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"cmp"
 	"fmt"
 	"net/url"
 	"os"
@@ -368,6 +369,10 @@ func Load(noConfigDump bool) {
 	if !Server.EnableExternalServices {
 		disableExternalServices()
 	}
+
+	// Make sure we don't have empty PIDs
+	Server.PID.Album = cmp.Or(Server.PID.Album, consts.DefaultAlbumPID)
+	Server.PID.Track = cmp.Or(Server.PID.Track, consts.DefaultTrackPID)
 
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
