@@ -76,6 +76,7 @@ const LibraryCreate = (props) => {
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth />
         <BooleanInput source="defaultNewUsers" />
+        <BooleanInput source="ignored" />
       </SimpleForm>
     </Create>
   )

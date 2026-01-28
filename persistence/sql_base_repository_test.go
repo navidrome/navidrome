@@ -236,10 +236,10 @@ var _ = Describe("sqlRepository", func() {
 				r.ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
 			})
 
-			It("should not apply library filter for admin users", func() {
+			It("should filter out ignored libraries for admin users", func() {
 				result := r.applyLibraryFilter(sq)
 				sql, _, _ := result.ToSql()
-				Expect(sql).To(Equal("SELECT * FROM test_table"))
+				Expect(sql).To(ContainSubstring("IN (SELECT id FROM library WHERE ignored = false)"))
 			})
 		})
 
@@ -248,10 +248,10 @@ var _ = Describe("sqlRepository", func() {
 				r.ctx = request.WithUser(context.Background(), model.User{ID: "user123", IsAdmin: false})
 			})
 
-			It("should apply library filter for regular users", func() {
+			It("should apply library filter for regular users and filter out ignored libraries", func() {
 				result := r.applyLibraryFilter(sq)
 				sql, args, _ := result.ToSql()
-				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
+				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul JOIN library l ON ul.library_id = l.id WHERE ul.user_id = ? AND l.ignored = false)"))
 				Expect(args).To(ContainElement("user123"))
 			})
 
@@ -259,6 +259,7 @@ var _ = Describe("sqlRepository", func() {
 				result := r.applyLibraryFilter(sq, "custom_table")
 				sql, args, _ := result.ToSql()
 				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
+				Expect(sql).To(ContainSubstring("l.ignored = false"))
 				Expect(args).To(ContainElement("user123"))
 			})
 		})
@@ -268,16 +269,16 @@ var _ = Describe("sqlRepository", func() {
 				r.ctx = context.Background() // No user context
 			})
 
-			It("should not apply library filter for headless processes", func() {
+			It("should filter out ignored libraries for headless processes", func() {
 				result := r.applyLibraryFilter(sq)
 				sql, _, _ := result.ToSql()
-				Expect(sql).To(Equal("SELECT * FROM test_table"))
+				Expect(sql).To(ContainSubstring("IN (SELECT id FROM library WHERE ignored = false)"))
 			})
 
-			It("should not apply library filter even with custom table name", func() {
+			It("should filter out ignored libraries even with custom table name", func() {
 				result := r.applyLibraryFilter(sq, "custom_table")
 				sql, _, _ := result.ToSql()
-				Expect(sql).To(Equal("SELECT * FROM test_table"))
+				Expect(sql).To(ContainSubstring("custom_table.library_id IN (SELECT id FROM library WHERE ignored = false)"))
 			})
 		})
 	})

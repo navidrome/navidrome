@@ -201,24 +201,25 @@ func libraryIdFilter(_ string, value interface{}) Sqlizer {
 }
 
 // applyLibraryFilter adds library filtering to queries for tables that have a library_id column
-// This ensures users only see content from libraries they have access to
+// This ensures users only see content from libraries they have access to and filters out content from ignored libraries for all users
 func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
 	user := loggedUser(r.ctx)
-
-	// If the user is an admin, or the user ID is invalid (e.g., when no user is logged in), skip the library filter
-	if user.IsAdmin || user.ID == invalidUserId {
-		return sq
-	}
 
 	table := r.tableName
 	if len(tableName) > 0 {
 		table = tableName[0]
 	}
 
-	// Get user's accessible library IDs
+	// For admin users or invalid user ID, only filter out ignored libraries
+	if user.IsAdmin || user.ID == invalidUserId {
+		return sq.Where(Expr(table+".library_id IN ("+
+			"SELECT id FROM library WHERE ignored = false)"))
+	}
+
+	// For regular users, filter by user's library access AND filter out ignored libraries
 	// Use subquery to filter by user's library access
 	return sq.Where(Expr(table+".library_id IN ("+
-		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
+		"SELECT ul.library_id FROM user_library ul JOIN library l ON ul.library_id = l.id WHERE ul.user_id = ? AND l.ignored = false)", user.ID))
 }
 
 func (r sqlRepository) seedKey() string {

@@ -200,4 +200,178 @@ var _ = Describe("LibraryRepository", func() {
 			})
 		})
 	})
+
+	Describe("Ignored libraries", func() {
+		var normalLib, ignoredLib *model.Library
+
+		BeforeEach(func() {
+			// Create a normal library
+			normalLib = &model.Library{
+				ID:   0,
+				Name: "Normal Library",
+				Path: "/music/normal",
+			}
+			err := repo.Put(normalLib)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create an ignored library
+			ignoredLib = &model.Library{
+				ID:      0,
+				Name:    "Ignored Library",
+				Path:    "/music/ignored",
+				Ignored: true,
+			}
+			err = repo.Put(ignoredLib)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("filters out ignored libraries in GetAll for non-admin users", func() {
+			libs, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Check that ignored library is not in the list for non-admin users
+			var foundNormal, foundIgnored bool
+			for _, lib := range libs {
+				if lib.ID == normalLib.ID {
+					foundNormal = true
+				}
+				if lib.ID == ignoredLib.ID {
+					foundIgnored = true
+				}
+			}
+
+			Expect(foundNormal).To(BeTrue(), "Normal library should be in the list")
+			Expect(foundIgnored).To(BeFalse(), "Ignored library should not be in the list for non-admin users")
+		})
+
+		It("includes ignored libraries in GetAll for admin users", func() {
+			// Create admin context
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "adminid", IsAdmin: true})
+			adminRepo := NewLibraryRepository(adminCtx, conn)
+
+			libs, err := adminRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Check that both libraries are in the list for admin users
+			var foundNormal, foundIgnored bool
+			for _, lib := range libs {
+				if lib.ID == normalLib.ID {
+					foundNormal = true
+				}
+				if lib.ID == ignoredLib.ID {
+					foundIgnored = true
+				}
+			}
+
+			Expect(foundNormal).To(BeTrue(), "Normal library should be in the list for admin")
+			Expect(foundIgnored).To(BeTrue(), "Ignored library should be in the list for admin users")
+		})
+
+		It("filters out ignored libraries in CountAll for non-admin users", func() {
+			// Get count before
+			countBefore, err := repo.CountAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Count should not include ignored library for non-admin users
+			// (it should be the same as before adding the ignored library)
+			libs, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(countBefore).To(Equal(int64(len(libs))))
+		})
+
+		It("includes ignored libraries in CountAll for admin users", func() {
+			// Create admin context
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "adminid", IsAdmin: true})
+			adminRepo := NewLibraryRepository(adminCtx, conn)
+
+			countAll, err := adminRepo.CountAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			libs, err := adminRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Count should match the number of libraries returned (including ignored)
+			Expect(countAll).To(Equal(int64(len(libs))))
+
+			// Verify the list includes both normal and ignored libraries
+			var foundIgnored bool
+			for _, lib := range libs {
+				if lib.ID == ignoredLib.ID {
+					foundIgnored = true
+				}
+			}
+			Expect(foundIgnored).To(BeTrue(), "Ignored library should be counted for admin users")
+		})
+
+		It("can still retrieve ignored libraries by ID", func() {
+			lib, err := repo.Get(ignoredLib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib.Ignored).To(BeTrue())
+			Expect(lib.Name).To(Equal("Ignored Library"))
+		})
+
+		It("can update a library to set ignored status", func() {
+			// Get the normal library
+			lib, err := repo.Get(normalLib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib.Ignored).To(BeFalse())
+
+			// Set it to ignored
+			lib.Ignored = true
+			err = repo.Put(lib)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify it's now ignored and not in the list for non-admin users
+			libs, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, l := range libs {
+				Expect(l.ID).ToNot(Equal(normalLib.ID), "Ignored library should not be in the list for non-admin users")
+			}
+
+			// But admin users should still see it
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "adminid", IsAdmin: true})
+			adminRepo := NewLibraryRepository(adminCtx, conn)
+			adminLibs, err := adminRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundInAdminList bool
+			for _, l := range adminLibs {
+				if l.ID == normalLib.ID {
+					foundInAdminList = true
+					Expect(l.Ignored).To(BeTrue())
+				}
+			}
+			Expect(foundInAdminList).To(BeTrue(), "Ignored library should be in the list for admin users")
+
+			// And can still get it by ID
+			lib, err = repo.Get(normalLib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib.Ignored).To(BeTrue())
+		})
+
+		It("includes ignored libraries for headless processes (background operations)", func() {
+			// Create a headless context (no user context, like a background scanner)
+			headlessCtx := log.NewContext(context.TODO())
+			headlessRepo := NewLibraryRepository(headlessCtx, conn)
+
+			// Headless processes should see all libraries including ignored ones
+			// This is important for operations like library scanning
+			libs, err := headlessRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundNormal, foundIgnored bool
+			for _, lib := range libs {
+				if lib.ID == normalLib.ID {
+					foundNormal = true
+				}
+				if lib.ID == ignoredLib.ID {
+					foundIgnored = true
+				}
+			}
+
+			Expect(foundNormal).To(BeTrue(), "Normal library should be visible to headless processes")
+			Expect(foundIgnored).To(BeTrue(), "Ignored library should be visible to headless processes for background operations")
+		})
+	})
 })

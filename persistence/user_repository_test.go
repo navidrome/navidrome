@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -557,6 +558,77 @@ var _ = Describe("UserRepository", func() {
 			// Regular users should be assigned to default libraries (library ID 1 from migration)
 			Expect(user.Libraries).To(HaveLen(1))
 			Expect(user.Libraries[0].ID).To(Equal(1))
+		})
+	})
+
+	Describe("GetUserLibraries with ignored libraries", func() {
+		var testUserID string
+		var normalLib, ignoredLib *model.Library
+		var adminCtx context.Context
+
+		BeforeEach(func() {
+			// Create admin context for library operations
+			adminCtx = log.NewContext(context.TODO())
+			adminCtx = request.WithUser(adminCtx, adminUser)
+
+			testUserID = "user-for-ignored-test"
+			testUser := model.User{
+				ID:          testUserID,
+				UserName:    "ignoredtest",
+				Name:        "Ignored Test User",
+				Email:       "ignoredtest@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+			Expect(repo.Put(&testUser)).To(BeNil())
+
+			// Create a normal library
+			libRepo := NewLibraryRepository(adminCtx, GetDBXBuilder())
+			normalLib = &model.Library{
+				ID:   0,
+				Name: "Normal Library for Ignored User Test",
+				Path: "/music/normal-user-for-ignored-test-unique",
+			}
+			Expect(libRepo.Put(normalLib)).To(BeNil())
+
+			// Create an ignored library
+			ignoredLib = &model.Library{
+				ID:      0,
+				Name:    "Ignored Library for Ignored User Test",
+				Path:    "/music/ignored-user-for-ignored-test-unique",
+				Ignored: true,
+			}
+			Expect(libRepo.Put(ignoredLib)).To(BeNil())
+
+			// Assign both libraries to the user
+			Expect(repo.SetUserLibraries(testUserID, []int{normalLib.ID, ignoredLib.ID})).To(BeNil())
+		})
+
+		AfterEach(func() {
+			// Clean up test data using admin context
+			libRepo := NewLibraryRepository(adminCtx, GetDBXBuilder())
+			_ = libRepo.Delete(normalLib.ID)
+			_ = libRepo.Delete(ignoredLib.ID)
+			_ = repo.(*userRepository).delete(squirrel.Eq{"id": testUserID})
+		})
+
+		It("filters out ignored libraries from GetUserLibraries", func() {
+			userLibs, err := repo.GetUserLibraries(testUserID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should only return the normal library, not the ignored one
+			Expect(userLibs).To(HaveLen(1))
+			Expect(userLibs[0].ID).To(Equal(normalLib.ID))
+			Expect(userLibs[0].Name).To(Equal("Normal Library for Ignored User Test"))
+		})
+
+		It("filters out ignored libraries in User.Libraries field", func() {
+			user, err := repo.Get(testUserID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// User.Libraries should only contain non-ignored libraries
+			Expect(user.Libraries).To(HaveLen(1))
+			Expect(user.Libraries[0].ID).To(Equal(normalLib.ID))
 		})
 	})
 

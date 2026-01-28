@@ -35,13 +35,16 @@ const LibraryList = (props) => {
       {isXsmall ? (
         <SimpleList
           primaryText={(record) => record.name}
-          secondaryText={(record) => record.path}
+          secondaryText={(record) =>
+            `${record.path}${record.ignored ? ' (Ignored)' : ''}`
+          }
         />
       ) : (
         <Datagrid rowClick="edit">
           <TextField source="name" />
           <TextField source="path" />
           <BooleanField source="defaultNewUsers" />
+          <BooleanField source="ignored" />
           <NumberField source="totalSongs" />
           <NumberField source="totalAlbums" />
           <NumberField source="totalMissingFiles" />

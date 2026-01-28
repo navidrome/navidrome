@@ -81,7 +81,7 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 				'full_scan_in_progress', library.full_scan_in_progress,
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
-			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
+			)) FILTER (WHERE library.id IS NOT NULL AND library.ignored = false), '[]') AS libraries_json`).
 		LeftJoin("user_library ul ON user.id = ul.user_id").
 		LeftJoin("library ON ul.library_id = library.id").
 		GroupBy("user.id")
@@ -451,7 +451,7 @@ func (r *userRepository) GetUserLibraries(userID string) (model.Libraries, error
 	sel := Select("l.*").
 		From("library l").
 		Join("user_library ul ON l.id = ul.library_id").
-		Where(Eq{"ul.user_id": userID}).
+		Where(And{Eq{"ul.user_id": userID}, Eq{"l.ignored": false}}).
 		OrderBy("l.name")
 
 	var res model.Libraries

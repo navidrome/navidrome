@@ -295,6 +295,7 @@
         "totalSize": "Total Size",
         "totalDuration": "Duration",
         "defaultNewUsers": "Default for New Users",
+        "ignored": "Ignored",
         "createdAt": "Created",
         "updatedAt": "Updated"
       },

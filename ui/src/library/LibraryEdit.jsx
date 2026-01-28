@@ -117,6 +117,11 @@ const LibraryEdit = (props) => {
                     )}
                     variant="outlined"
                   />
+                  <BooleanInput
+                    source="ignored"
+                    label={translate('resources.library.fields.ignored')}
+                    variant="outlined"
+                  />
 
                   <Box mt="2em" />
 
