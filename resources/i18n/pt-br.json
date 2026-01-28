@@ -12,7 +12,6 @@
         "artist": "Artista",
         "album": "Álbum",
         "path": "Arquivo",
-        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -36,7 +35,9 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
-        "missing": "Ausente"
+        "missing": "Ausente",
+        "libraryName": "Biblioteca",
+        "composer": "Compositor"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -59,7 +60,6 @@
         "songCount": "Músicas",
         "playCount": "Execuções",
         "name": "Nome",
-        "libraryName": "Biblioteca",
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
@@ -79,7 +79,8 @@
         "media": "Mídia",
         "mood": "Mood",
         "date": "Data de Lançamento",
-        "missing": "Ausente"
+        "missing": "Ausente",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Tocar",
@@ -131,9 +132,9 @@
         "maincredit": "Artista do Álbum ou Artista |||| Artistas do Álbum ou Artistas"
       },
       "actions": {
-        "topSongs": "Mais tocadas",
         "shuffle": "Aleatório",
-        "radio": "Rádio"
+        "radio": "Rádio",
+        "topSongs": "Mais tocadas"
       }
     },
     "user": {
@@ -162,14 +163,14 @@
         "updated": "Usuário atualizado com sucesso",
         "deleted": "Usuário deletado com sucesso"
       },
-      "validation": {
-        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
-      },
       "message": {
         "listenBrainzToken": "Entre seu token do ListenBrainz",
         "clickHereForToken": "Clique aqui para obter seu token",
         "selectAllLibraries": "Selecionar todas as bibliotecas",
         "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
+      },
+      "validation": {
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
       }
     },
     "player": {
@@ -254,17 +255,15 @@
         "updatedAt": "Últ. Atualização",
         "createdAt": "Data de Criação",
         "downloadable": "Permitir Baixar?"
-      },
-      "notifications": {},
-      "actions": {}
+      }
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
-        "libraryName": "Biblioteca",
-        "updatedAt": "Desaparecido em"
+        "updatedAt": "Desaparecido em",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "remove": "Remover",
@@ -303,20 +302,20 @@
       },
       "actions": {
         "scan": "Scanear Biblioteca",
-        "quickScan": "Scan Rápido",
-        "fullScan": "Scan Completo",
         "manageUsers": "Gerenciar Acesso do Usuário",
-        "viewDetails": "Ver Detalhes"
+        "viewDetails": "Ver Detalhes",
+        "quickScan": "Scan Rápido",
+        "fullScan": "Scan Completo"
       },
       "notifications": {
         "created": "Biblioteca criada com sucesso",
         "updated": "Biblioteca atualizada com sucesso",
         "deleted": "Biblioteca excluída com sucesso",
         "scanStarted": "Scan da biblioteca iniciada",
+        "scanCompleted": "Scan da biblioteca concluída",
         "quickScanStarted": "Scan rápido iniciado",
         "fullScanStarted": "Scan completo iniciado",
-        "scanError": "Erro ao iniciar o scan. Verifique os logs",
-        "scanCompleted": "Scan da biblioteca concluída"
+        "scanError": "Erro ao iniciar o scan. Verifique os logs"
       },
       "validation": {
         "nameRequired": "Nome da biblioteca é obrigatório",
@@ -388,8 +387,6 @@
       },
       "messages": {
         "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
-        "configValidationError": "Falha na validação da configuração:",
-        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
         "clickPermissions": "Clique em uma permissão para ver detalhes",
         "noConfig": "Nenhuma configuração definida",
         "allUsersHelp": "Quando habilitado, o plugin terá acesso a todos os usuários, incluindo os criados no futuro.",
@@ -399,7 +396,9 @@
         "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
         "noLibraries": "Nenhuma biblioteca selecionada",
         "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
-        "requiredHosts": "Hosts necessários"
+        "requiredHosts": "Hosts necessários",
+        "configValidationError": "Falha na validação da configuração:",
+        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido."
       },
       "placeholders": {
         "configKey": "chave",
@@ -557,9 +556,6 @@
     "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
     "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
-    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
-    "startingInstantMix": "Carregando Mix Instantâneo...",
-    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
@@ -589,16 +585,13 @@
     "remove_missing_title": "Remover arquivos ausentes",
     "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "remove_all_missing_title": "Remover todos os arquivos ausentes",
-    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
+    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
+    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
+    "startingInstantMix": "Carregando Mix Instantâneo..."
   },
   "menu": {
     "library": "Biblioteca",
-    "librarySelector": {
-      "allLibraries": "Todas as Bibliotecas (%{count})",
-      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
-      "selectLibraries": "Selecionar Bibliotecas",
-      "none": "Nenhuma"
-    },
     "settings": "Configurações",
     "version": "Versão",
     "theme": "Tema",
@@ -624,7 +617,13 @@
     "albumList": "Álbuns",
     "about": "Info",
     "playlists": "Playlists",
-    "sharedPlaylists": "Compartilhadas"
+    "sharedPlaylists": "Compartilhadas",
+    "librarySelector": {
+      "allLibraries": "Todas as Bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
+      "selectLibraries": "Selecionar Bibliotecas",
+      "none": "Nenhuma"
+    }
   },
   "player": {
     "playListsText": "Fila de Execução",
@@ -683,17 +682,12 @@
     "totalScanned": "Total de pastas scaneadas",
     "quickScan": "Rápido",
     "fullScan": "Completo",
-    "selectiveScan": "Seletivo",
     "serverUptime": "Uptime do servidor",
     "serverDown": "DESCONECTADO",
     "scanType": "Último Scan",
     "status": "Erro",
-    "elapsedTime": "Duração"
-  },
-  "nowPlaying": {
-    "title": "Tocando agora",
-    "empty": "Nada tocando",
-    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
+    "elapsedTime": "Duração",
+    "selectiveScan": "Seletivo"
   },
   "help": {
     "title": "Teclas de atalho",
@@ -708,5 +702,10 @@
       "toggle_love": "Marcar/desmarcar favorita",
       "current_song": "Vai para música atual"
     }
+  },
+  "nowPlaying": {
+    "title": "Tocando agora",
+    "empty": "Nada tocando",
+    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
   }
 }

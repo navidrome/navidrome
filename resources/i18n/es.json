@@ -12,16 +12,12 @@
         "artist": "Artista",
         "album": "Álbum",
         "path": "Ruta del archivo",
-        "libraryName": "Biblioteca",
         "genre": "Género",
         "compilation": "Compilación",
         "year": "Año",
         "size": "Tamaño del archivo",
         "updatedAt": "Actualizado el",
         "bitRate": "Tasa de bits",
-        "bitDepth": "Profundidad de bits",
-        "sampleRate": "Frecuencia de muestreo",
-        "channels": "Canales",
         "discSubtitle": "Subtítulo del disco",
         "starred": "Favorito",
         "comment": "Comentario",
@@ -29,6 +25,7 @@
         "quality": "Calidad",
         "bpm": "BPM",
         "playDate": "Últimas reproducciones",
+        "channels": "Canales",
         "createdAt": "Creado el",
         "grouping": "Agrupación",
         "mood": "Estado de ánimo",
@@ -36,17 +33,22 @@
         "tags": "Etiquetas",
         "mappedTags": "Etiquetas asignadas",
         "rawTags": "Etiquetas sin procesar",
-        "missing": "Faltante"
+        "bitDepth": "Profundidad de bits",
+        "sampleRate": "Frecuencia de muestreo",
+        "missing": "Faltante",
+        "libraryName": "Biblioteca",
+        "composer": "Compositor"
       },
       "actions": {
         "addToQueue": "Reproducir después",
         "playNow": "Reproducir ahora",
         "addToPlaylist": "Agregar a la playlist",
-        "showInPlaylist": "Mostrar en la lista de reproducción",
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
-        "info": "Obtener información"
+        "info": "Obtener información",
+        "showInPlaylist": "Mostrar en la lista de reproducción",
+        "instantMix": ""
       }
     },
     "album": {
@@ -57,38 +59,38 @@
         "duration": "Duración",
         "songCount": "Canciones",
         "playCount": "Reproducciones",
-        "size": "Tamaño del archivo",
         "name": "Nombre",
-        "libraryName": "Biblioteca",
         "genre": "Género",
         "compilation": "Compilación",
         "year": "Año",
-        "date": "Fecha de grabación",
-        "originalDate": "Original",
-        "releaseDate": "Publicado",
-        "releases": "Lanzamiento |||| Lanzamientos",
-        "released": "Publicado",
         "updatedAt": "Actualizado el",
         "comment": "Comentario",
         "rating": "Calificación",
         "createdAt": "Creado el",
+        "size": "Tamaño del archivo",
+        "originalDate": "Original",
+        "releaseDate": "Publicado",
+        "releases": "Lanzamiento |||| Lanzamientos",
+        "released": "Publicado",
         "recordLabel": "Discográfica",
         "catalogNum": "Número de catálogo",
         "releaseType": "Tipo de lanzamiento",
         "grouping": "Agrupación",
         "media": "Medios",
         "mood": "Estado de ánimo",
-        "missing": "Faltante"
+        "date": "Fecha de grabación",
+        "missing": "Faltante",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Reproducir",
         "playNext": "Reproducir siguiente",
         "addToQueue": "Reproducir después",
-        "share": "Compartir",
         "shuffle": "Aleatorio",
         "addToPlaylist": "Agregar a la lista",
         "download": "Descargar",
-        "info": "Obtener información"
+        "info": "Obtener información",
+        "share": "Compartir"
       },
       "lists": {
         "all": "Todos",
@@ -106,10 +108,10 @@
         "name": "Nombre",
         "albumCount": "Número de álbumes",
         "songCount": "Número de canciones",
-        "size": "Tamaño",
         "playCount": "Reproducciones",
         "rating": "Calificación",
         "genre": "Género",
+        "size": "Tamaño",
         "role": "Rol",
         "missing": "Faltante"
       },
@@ -130,9 +132,9 @@
         "maincredit": "Artista del álbum o Artista |||| Artistas del álbum o Artistas"
       },
       "actions": {
-        "topSongs": "Más destacadas",
         "shuffle": "Aleatorio",
-        "radio": "Radio"
+        "radio": "Radio",
+        "topSongs": "Más destacadas"
       }
     },
     "user": {
@@ -141,7 +143,6 @@
         "userName": "Nombre de usuario",
         "isAdmin": "Es administrador",
         "lastLoginAt": "Último inicio de sesión",
-        "lastAccessAt": "Último acceso",
         "updatedAt": "Actualizado el",
         "name": "Nombre",
         "password": "Contraseña",
@@ -150,6 +151,7 @@
         "currentPassword": "Contraseña actual",
         "newPassword": "Nueva contraseña",
         "token": "Token",
+        "lastAccessAt": "Último acceso",
         "libraries": "Bibliotecas"
       },
       "helperTexts": {
@@ -211,9 +213,9 @@
         "selectPlaylist": "Seleccione una lista:",
         "addNewPlaylist": "Creada \"%{name}\"",
         "export": "Exportar",
-        "saveQueue": "Guardar la fila de reproducción en una playlist",
         "makePublic": "Hazla pública",
         "makePrivate": "Hazla privada",
+        "saveQueue": "Guardar la fila de reproducción en una playlist",
         "searchOrCreate": "Buscar listas de reproducción o escribe para crear una nueva…",
         "pressEnterToCreate": "Pulsa Enter para crear una nueva lista de reproducción",
         "removeFromSelection": "Quitar de la selección"
@@ -244,7 +246,6 @@
         "username": "Compartido por",
         "url": "URL",
         "description": "Descripción",
-        "downloadable": "¿Permitir descargas?",
         "contents": "Contenido",
         "expiresAt": "Caduca el",
         "lastVisitedAt": "Visitado por última vez el",
@@ -252,14 +253,12 @@
         "format": "Formato",
         "maxBitRate": "Tasa de bits Máx.",
         "updatedAt": "Actualizado el",
-        "createdAt": "Creado el"
-      },
-      "notifications": {},
-      "actions": {}
+        "createdAt": "Creado el",
+        "downloadable": "¿Permitir descargas?"
+      }
     },
     "missing": {
       "name": "Fichero faltante |||| Ficheros faltantes",
-      "empty": "No faltan archivos",
       "fields": {
         "path": "Ruta",
         "size": "Tamaño",
@@ -272,7 +271,8 @@
       },
       "notifications": {
         "removed": "Eliminado"
-      }
+      },
+      "empty": "No faltan archivos"
     },
     "library": {
       "name": "Biblioteca |||| Bibliotecas",
@@ -302,20 +302,20 @@
       },
       "actions": {
         "scan": "Escanear biblioteca",
-        "quickScan": "Escaneo rápido",
-        "fullScan": "Escaneo completo",
         "manageUsers": "Gestionar el acceso de usarios",
-        "viewDetails": "Ver detalles"
+        "viewDetails": "Ver detalles",
+        "quickScan": "Escaneo rápido",
+        "fullScan": "Escaneo completo"
       },
       "notifications": {
         "created": "La biblioteca se creó correctamente",
         "updated": "La biblioteca se actualizó correctamente",
         "deleted": "La biblioteca se eliminó correctamente",
         "scanStarted": "El escaneo de la biblioteca ha comenzado",
+        "scanCompleted": "El escaneo de la biblioteca se completó",
         "quickScanStarted": "Escaneo rápido ha comenzado",
         "fullScanStarted": "Escaneo completo ha comenzado",
-        "scanError": "Error al iniciar el escaneo. Revisa los registros",
-        "scanCompleted": "El escaneo de la biblioteca se completó"
+        "scanError": "Error al iniciar el escaneo. Revisa los registros"
       },
       "validation": {
         "nameRequired": "El nombre de la biblioteca es obligatorio",
@@ -396,7 +396,9 @@
         "allLibrariesHelp": "Cuando se active, el plugin tendrá acceso a todas las bibliotecas, incluidas las que se creen en el futuro.",
         "noLibraries": "Ninguna biblioteca seleccionada",
         "librariesRequired": "Este plugin requiere acceso a la información de las bibliotecas. Selecciona a qué bibliotecas puede acceder el plugin, o activa 'Permitir todas las bibliotecas'.",
-        "requiredHosts": "Hosts requeridos"
+        "requiredHosts": "Hosts requeridos",
+        "configValidationError": "La validación de la configuración falló:",
+        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido."
       },
       "placeholders": {
         "configKey": "clave",
@@ -439,7 +441,6 @@
       "add": "Añadir",
       "back": "Ir atrás",
       "bulk_actions": "1 elemento seleccionado |||| %{smart_count} elementos seleccionados",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "Cancelar",
       "clear_input_value": "Limpiar valor",
       "clone": "Duplicar",
@@ -463,6 +464,7 @@
       "close_menu": "Cerrar menú",
       "unselect": "Deseleccionado",
       "skip": "Omitir",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Compartir",
       "download": "Descargar"
     },
@@ -554,47 +556,42 @@
     "transcodingDisabled": "Cambiar la configuración de la transcodificación a través de la interfaz web esta deshabilitado por motivos de seguridad. Si quieres cambiar (editar o agregar) opciones de transcodificación, reinicia el servidor con la %{config} opción de configuración.",
     "transcodingEnabled": "Navidrom se esta ejecutando con %{config}, lo que hace posible ejecutar comandos de sistema desde el apartado de transcodificación en la interfaz web. Recomendamos deshabilitarlo por motivos de seguridad y solo habilitarlo cuando se este configurando opciones de transcodificación.",
     "songsAddedToPlaylist": "1 canción agregada a la lista |||| %{smart_count} canciones agregadas a la lista",
-    "noSimilarSongsFound": "No se encontraron canciones similares",
-    "noTopSongsFound": "No se encontraron canciones destacadas",
     "noPlaylistsAvailable": "Ninguna lista disponible",
     "delete_user_title": "Eliminar usuario '%{name}'",
     "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
-    "remove_missing_title": "Eliminar archivos faltantes",
-    "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
-    "remove_all_missing_title": "Eliminar todos los archivos faltantes",
-    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
     "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https",
     "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
     "lastfmLinkFailure": "No se pudo conectar con Last.fm",
     "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
     "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
-    "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activó el scrobbling como el usuario: %{user}",
-    "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
-    "listenBrainzUnlinkSuccess": "Se desconectó ListenBrainz y se desactivó el scrobbling",
-    "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
     "openIn": {
       "lastfm": "Ver en Last.fm",
       "musicbrainz": "Ver en MusicBrainz"
     },
     "lastfmLink": "Leer más...",
+    "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activó el scrobbling como el usuario: %{user}",
+    "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
+    "listenBrainzUnlinkSuccess": "Se desconectó ListenBrainz y se desactivó el scrobbling",
+    "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
+    "downloadOriginalFormat": "Descargar formato original",
     "shareOriginalFormat": "Compartir formato original",
     "shareDialogTitle": "Compartir %{resource} '%{name}'",
     "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Compartir %{smart_count} %{resource}",
-    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
     "shareSuccess": "URL copiada al portapapeles: %{url}",
     "shareFailure": "Error al copiar la URL %{url} al portapapeles",
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Descargar formato original"
+    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
+    "remove_missing_title": "Eliminar archivos faltantes",
+    "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "remove_all_missing_title": "Eliminar todos los archivos faltantes",
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "noSimilarSongsFound": "No se encontraron canciones similares",
+    "noTopSongsFound": "No se encontraron canciones destacadas",
+    "startingInstantMix": ""
   },
   "menu": {
     "library": "Biblioteca",
-    "librarySelector": {
-      "allLibraries": "Todas las bibliotecas (%{count})",
-      "multipleLibraries": "%{selected} de %{total} bibliotecas",
-      "selectLibraries": "Seleccionar bibliotecas",
-      "none": "Ninguno"
-    },
     "settings": "Ajustes",
     "version": "Versión",
     "theme": "Tema",
@@ -605,7 +602,6 @@
         "language": "Idioma",
         "defaultView": "Vista por defecto",
         "desktop_notifications": "Notificaciones de escritorio",
-        "lastfmNotConfigured": "La clave API de Last.fm no está configurada",
         "lastfmScrobbling": "Scrobble a Last.fm",
         "listenBrainzScrobbling": "Scrobble a ListenBrainz",
         "replaygain": "Modo de ReplayGain",
@@ -614,13 +610,20 @@
           "none": "Desactivado",
           "album": "Ganancia del álbum",
           "track": "Ganancia de pista"
-        }
+        },
+        "lastfmNotConfigured": "La clave API de Last.fm no está configurada"
       }
     },
     "albumList": "Álbumes",
+    "about": "Acerca de",
     "playlists": "Playlists",
     "sharedPlaylists": "Playlists Compartidas",
-    "about": "Acerca de"
+    "librarySelector": {
+      "allLibraries": "Todas las bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} bibliotecas",
+      "selectLibraries": "Seleccionar bibliotecas",
+      "none": "Ninguno"
+    }
   },
   "player": {
     "playListsText": "Fila de reproducción",
@@ -679,17 +682,12 @@
     "totalScanned": "Total de carpetas escaneadas",
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
-    "selectiveScan": "Selectivo",
     "serverUptime": "Uptime del servidor",
     "serverDown": "OFFLINE",
     "scanType": "Tipo",
     "status": "Error de escaneo",
-    "elapsedTime": "Tiempo transcurrido"
-  },
-  "nowPlaying": {
-    "title": "En reproducción",
-    "empty": "Nada en reproducción",
-    "minutesAgo": "Hace %{smart_count} minuto |||| Hace %{smart_count} minutos"
+    "elapsedTime": "Tiempo transcurrido",
+    "selectiveScan": "Selectivo"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",
@@ -699,10 +697,15 @@
       "toggle_play": "Reproducir / Pausar",
       "prev_song": "Canción anterior",
       "next_song": "Siguiente canción",
-      "current_song": "Canción actual",
       "vol_up": "Subir volumen",
       "vol_down": "Bajar volumen",
-      "toggle_love": "Marca esta canción como favorita"
+      "toggle_love": "Marca esta canción como favorita",
+      "current_song": "Canción actual"
     }
+  },
+  "nowPlaying": {
+    "title": "En reproducción",
+    "empty": "Nada en reproducción",
+    "minutesAgo": "Hace %{smart_count} minuto |||| Hace %{smart_count} minutos"
   }
 }
