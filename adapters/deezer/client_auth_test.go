@@ -21,7 +21,7 @@ var _ = Describe("JWT Authentication", func() {
 
 	BeforeEach(func() {
 		httpClient = &fakeHttpClient{}
-		client = newClient(httpClient, "en")
+		client = newClient(httpClient)
 		ctx = context.Background()
 	})
 

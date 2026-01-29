@@ -56,6 +56,8 @@ const (
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
+	DefaultInfoLanguage = "en"
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute

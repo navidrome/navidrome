@@ -26,6 +26,32 @@ var _ = Describe("Configuration", func() {
 		conf.ResetConf()
 	})
 
+	Describe("ParseLanguages", func() {
+		It("parses single language", func() {
+			Expect(conf.ParseLanguages("en")).To(Equal([]string{"en"}))
+		})
+
+		It("parses multiple comma-separated languages", func() {
+			Expect(conf.ParseLanguages("pt,en")).To(Equal([]string{"pt", "en"}))
+		})
+
+		It("trims whitespace from languages", func() {
+			Expect(conf.ParseLanguages(" pt , en ")).To(Equal([]string{"pt", "en"}))
+		})
+
+		It("returns default 'en' when empty", func() {
+			Expect(conf.ParseLanguages("")).To(Equal([]string{"en"}))
+		})
+
+		It("returns default 'en' when only whitespace", func() {
+			Expect(conf.ParseLanguages("   ")).To(Equal([]string{"en"}))
+		})
+
+		It("handles multiple languages with various spacing", func() {
+			Expect(conf.ParseLanguages("ja, pt, en")).To(Equal([]string{"ja", "pt", "en"}))
+		})
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

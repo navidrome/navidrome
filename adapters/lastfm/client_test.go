@@ -22,7 +22,7 @@ var _ = Describe("client", func() {
 
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
-		client = newClient("API_KEY", "SECRET", "pt", httpClient)
+		client = newClient("API_KEY", "SECRET", httpClient)
 	})
 
 	Describe("albumGetInfo", func() {
@@ -30,7 +30,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			album, err := client.albumGetInfo(context.Background(), "Believe", "U2", "mbid-1234")
+			album, err := client.albumGetInfo(context.Background(), "Believe", "U2", "mbid-1234", "pt")
 			Expect(err).To(BeNil())
 			Expect(album.Name).To(Equal("Believe"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
@@ -42,7 +42,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.artistGetInfo(context.Background(), "U2")
+			artist, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
@@ -54,7 +54,7 @@ var _ = Describe("client", func() {
 				StatusCode: 500,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2")
+			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(MatchError("last.fm http status: (500)"))
 		})
 
@@ -64,7 +64,7 @@ var _ = Describe("client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2")
+			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(MatchError(&lastFMError{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
 		})
 
@@ -74,14 +74,14 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2")
+			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(MatchError(&lastFMError{Code: 6, Message: "The artist you supplied could not be found"}))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.Err = errors.New("generic error")
 
-			_, err := client.artistGetInfo(context.Background(), "U2")
+			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -91,7 +91,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2")
+			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 
