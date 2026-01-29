@@ -26,8 +26,8 @@ const (
 	sessionKeyProperty = "LastFMSessionKey"
 )
 
-var ignoredBiographies = []string{
-	// Unknown Artist
+var ignoredContent = []string{
+	// Empty Artist/Album
 	`<a href="https://www.last.fm/music/`,
 }
 
@@ -74,7 +74,7 @@ func isValidContent(content string) bool {
 	if content == "" {
 		return false
 	}
-	for _, ign := range ignoredBiographies {
+	for _, ign := range ignoredContent {
 		if strings.HasPrefix(content, ign) {
 			return false
 		}
@@ -100,6 +100,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		}
 		log.Debug(ctx, "LastFM/album.getInfo returned empty/ignored description, trying next language", "album", name, "artist", artist, "lang", lang)
 	}
+	// This condition should not be hit (languages default to ["en"]), but just in case
 	if a == nil {
 		return nil, agents.ErrNotFound
 	}
