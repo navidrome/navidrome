@@ -60,9 +60,6 @@
     }
   },
   "permissions": {
-    "config": {
-      "reason": "To read ticker symbols configuration"
-    },
     "scheduler": {
       "reason": "To schedule reconnection attempts on connection loss"
     },
