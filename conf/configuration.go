@@ -174,8 +174,10 @@ type lastfmOptions struct {
 	ApiKey                  string
 	Secret                  string
 	Language                string
-	Languages               []string // Computed from Language, split by comma
 	ScrobbleFirstArtistOnly bool
+
+	// Computed values
+	Languages []string // Computed from Language, split by comma
 }
 
 type spotifyOptions struct {

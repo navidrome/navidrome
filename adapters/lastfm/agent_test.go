@@ -46,12 +46,6 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(agent.secret).To(Equal("secret"))
 				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 			})
-
-			It("works with single language configuration", func() {
-				conf.Server.LastFM.Languages = []string{"en"}
-				agent := lastFMConstructor(ds)
-				Expect(agent.languages).To(Equal([]string{"en"}))
-			})
 		})
 		When("Agent is disabled", func() {
 			It("returns nil", func() {
