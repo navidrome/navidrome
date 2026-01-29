@@ -188,6 +188,9 @@ type spotifyOptions struct {
 type deezerOptions struct {
 	Enabled  bool
 	Language string
+
+	// Computed values
+	Languages []string // Computed from Language, split by comma
 }
 
 type listenBrainzOptions struct {
@@ -379,6 +382,9 @@ func Load(noConfigDump bool) {
 
 	// Parse LastFM.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
 	Server.LastFM.Languages = parseLanguages(Server.LastFM.Language)
+
+	// Parse Deezer.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
+	Server.Deezer.Languages = parseLanguages(Server.Deezer.Language)
 
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
