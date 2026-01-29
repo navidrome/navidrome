@@ -68,52 +68,42 @@ func (l *lastfmAgent) AgentName() string {
 
 var imageRegex = regexp.MustCompile(`u\/(\d+)`)
 
+// isValidContent checks if content is non-empty and not in the ignored list
+func isValidContent(content string) bool {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return false
+	}
+	for _, ign := range ignoredBiographies {
+		if strings.HasPrefix(content, ign) {
+			return false
+		}
+	}
+	return true
+}
+
 func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
-	var lastAlbum *Album
+	var a *Album
+	var resp agents.AlbumInfo
 	for _, lang := range l.languages {
-		a, err := l.callAlbumGetInfo(ctx, name, artist, mbid, lang)
+		var err error
+		a, err = l.callAlbumGetInfo(ctx, name, artist, mbid, lang)
 		if err != nil {
-			// API errors should return immediately without trying other languages
-			var lfErr *lastFMError
-			if errors.As(err, &lfErr) && lfErr.Code == 6 {
-				return nil, err
-			}
 			return nil, err
 		}
-		lastAlbum = a
-		description := strings.TrimSpace(a.Description.Summary)
-		if description == "" {
-			log.Debug(ctx, "LastFM/album.getInfo returned empty description, trying next language", "album", name, "artist", artist, "lang", lang)
-			continue
+		resp.Name = a.Name
+		resp.MBID = a.MBID
+		resp.URL = a.URL
+		if isValidContent(a.Description.Summary) {
+			resp.Description = strings.TrimSpace(a.Description.Summary)
+			return &resp, nil
 		}
-		// Check if description is just the "Read more" link (ignored pattern)
-		ignored := false
-		for _, ign := range ignoredBiographies {
-			if strings.HasPrefix(description, ign) {
-				log.Debug(ctx, "LastFM/album.getInfo returned ignored description, trying next language", "album", name, "artist", artist, "lang", lang)
-				ignored = true
-				break
-			}
-		}
-		if !ignored {
-			return &agents.AlbumInfo{
-				Name:        a.Name,
-				MBID:        a.MBID,
-				Description: description,
-				URL:         a.URL,
-			}, nil
-		}
+		log.Debug(ctx, "LastFM/album.getInfo returned empty/ignored description, trying next language", "album", name, "artist", artist, "lang", lang)
 	}
-	// If all languages exhausted but album was found, return album info without description
-	if lastAlbum != nil {
-		return &agents.AlbumInfo{
-			Name:        lastAlbum.Name,
-			MBID:        lastAlbum.MBID,
-			Description: "",
-			URL:         lastAlbum.URL,
-		}, nil
+	if a == nil {
+		return nil, agents.ErrNotFound
 	}
-	return nil, agents.ErrNotFound
+	return &resp, nil
 }
 
 func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
@@ -179,23 +169,10 @@ func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid str
 		if err != nil {
 			return "", err
 		}
-		bio := strings.TrimSpace(a.Bio.Summary)
-		if bio == "" {
-			log.Debug(ctx, "LastFM/artist.getInfo returned empty biography, trying next language", "artist", name, "lang", lang)
-			continue
+		if isValidContent(a.Bio.Summary) {
+			return strings.TrimSpace(a.Bio.Summary), nil
 		}
-		ignored := false
-		for _, ign := range ignoredBiographies {
-			if strings.HasPrefix(bio, ign) {
-				log.Debug(ctx, "LastFM/artist.getInfo returned ignored biography, trying next language", "artist", name, "lang", lang)
-				ignored = true
-				break
-			}
-		}
-		if ignored {
-			continue
-		}
-		return bio, nil
+		log.Debug(ctx, "LastFM/artist.getInfo returned empty/ignored biography, trying next language", "artist", name, "lang", lang)
 	}
 	return "", agents.ErrNotFound
 }
