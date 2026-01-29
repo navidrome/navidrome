@@ -19,6 +19,7 @@ builds:
       - linux_arm_v6
       - linux_arm_v7
       - linux_arm64
+      - linux_riscv64
       - windows_386
       - windows_amd64
 

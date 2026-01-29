@@ -28,7 +28,7 @@ COPY --from=xx-build /out/ /usr/bin/
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS taglib-build
 ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.1.1-1
+ARG CROSS_TAGLIB_VERSION=2.1.1-2
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
 # wget in busybox can't follow redirects
@@ -63,7 +63,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-bookworm AS base
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
