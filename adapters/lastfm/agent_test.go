@@ -39,12 +39,18 @@ var _ = Describe("lastfmAgent", func() {
 	})
 	Describe("lastFMConstructor", func() {
 		When("Agent is properly configured", func() {
-			It("uses configured api key and language", func() {
-				conf.Server.LastFM.Language = "pt"
+			It("uses configured api key and languages", func() {
+				conf.Server.LastFM.Languages = []string{"pt", "en"}
 				agent := lastFMConstructor(ds)
 				Expect(agent.apiKey).To(Equal("123"))
 				Expect(agent.secret).To(Equal("secret"))
-				Expect(agent.lang).To(Equal("pt"))
+				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
+			})
+
+			It("works with single language configuration", func() {
+				conf.Server.LastFM.Languages = []string{"en"}
+				agent := lastFMConstructor(ds)
+				Expect(agent.languages).To(Equal([]string{"en"}))
 			})
 		})
 		When("Agent is disabled", func() {
@@ -72,7 +78,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -102,12 +108,129 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 
+	Describe("Language Fallback", func() {
+		Describe("GetArtistBiography", func() {
+			var agent *lastfmAgent
+			var httpClient *langAwareHttpClient
+
+			BeforeEach(func() {
+				httpClient = newLangAwareHttpClient()
+			})
+
+			It("returns content in first language when available (1 API call)", func() {
+				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Portuguese biography available
+				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+				httpClient.responses["pt"] = http.Response{Body: f, StatusCode: 200}
+
+				bio, err := agent.GetArtistBiography(ctx, "123", "U2", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(ContainSubstring("U2 é uma das mais importantes bandas de rock"))
+				Expect(httpClient.requestCount).To(Equal(1))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("pt"))
+			})
+
+			It("falls back to second language when first returns empty (2 API calls)", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Japanese returns empty/ignored biography (actual Last.fm response with just "Read more" link)
+				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// English returns full biography
+				fEn, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.en.json")
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+
+				bio, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(ContainSubstring("Legião Urbana was a Brazilian post-punk band"))
+				Expect(httpClient.requestCount).To(Equal(2))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("ja"))
+				Expect(httpClient.requests[1].URL.Query().Get("lang")).To(Equal("en"))
+			})
+
+			It("returns ErrNotFound when all languages return empty", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Both languages return empty/ignored biography (using actual Last.fm response format)
+				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// Second language also returns empty
+				fXx, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+
+				_, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
+
+				Expect(err).To(MatchError(agents.ErrNotFound))
+				Expect(httpClient.requestCount).To(Equal(2))
+			})
+		})
+
+		Describe("GetAlbumInfo", func() {
+			var agent *lastfmAgent
+			var httpClient *langAwareHttpClient
+
+			BeforeEach(func() {
+				httpClient = newLangAwareHttpClient()
+			})
+
+			It("falls back to second language when first returns empty description (2 API calls)", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Japanese returns album without wiki/description (actual Last.fm response)
+				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// English returns album with description
+				fEn, _ := os.Open("tests/fixtures/lastfm.album.getinfo.en.json")
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+
+				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albumInfo.Name).To(Equal("Dois"))
+				Expect(albumInfo.Description).To(ContainSubstring("segundo álbum de estúdio"))
+				Expect(httpClient.requestCount).To(Equal(2))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("ja"))
+				Expect(httpClient.requests[1].URL.Query().Get("lang")).To(Equal("en"))
+			})
+
+			It("returns album without description when all languages return empty", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Both languages return album without description
+				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				fXx, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+
+				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albumInfo.Name).To(Equal("Dois"))
+				Expect(albumInfo.Description).To(BeEmpty())
+				Expect(httpClient.requestCount).To(Equal(2))
+			})
+		})
+	})
+
 	Describe("GetSimilarArtists", func() {
 		var agent *lastfmAgent
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -145,7 +268,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -183,7 +306,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -233,7 +356,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "en", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			track = &model.MediaFile{
@@ -407,7 +530,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -477,7 +600,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			apiClient = &tests.FakeHttpClient{}
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", apiClient)
+			client := newClient("API_KEY", "SECRET", apiClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			agent.httpClient = httpClient
@@ -538,3 +661,31 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 })
+
+// langAwareHttpClient is a mock HTTP client that returns different responses based on the lang parameter
+type langAwareHttpClient struct {
+	responses    map[string]http.Response
+	requests     []*http.Request
+	requestCount int
+}
+
+func newLangAwareHttpClient() *langAwareHttpClient {
+	return &langAwareHttpClient{
+		responses: make(map[string]http.Response),
+		requests:  make([]*http.Request, 0),
+	}
+}
+
+func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
+	c.requestCount++
+	c.requests = append(c.requests, req)
+	lang := req.URL.Query().Get("lang")
+	if resp, ok := c.responses[lang]; ok {
+		return &resp, nil
+	}
+	// Return default empty response if no specific response is configured
+	return &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+	}, nil
+}
