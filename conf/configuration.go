@@ -640,7 +640,7 @@ func setViperDefaults() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("plugins.folder", "")
-	viper.SetDefault("plugins.enabled", false)
+	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")
 	viper.SetDefault("plugins.autoreload", false)
 
