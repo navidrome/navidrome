@@ -119,17 +119,24 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 // songMatchedIn checks if a song has already been matched in any of the provided match maps.
 // It checks the song's ID, MBID, and ISRC fields against the corresponding map keys.
 func songMatchedIn(s agents.Song, priorMatches ...map[string]model.MediaFile) bool {
+	_, found := lookupByIdentifiers(s, priorMatches...)
+	return found
+}
+
+// lookupByIdentifiers searches for a song's identifiers (ID, MBID, ISRC) in the provided maps.
+// Returns the first matching MediaFile found and true, or an empty MediaFile and false if no match.
+func lookupByIdentifiers(s agents.Song, maps ...map[string]model.MediaFile) (model.MediaFile, bool) {
 	keys := []string{s.ID, s.MBID, s.ISRC}
-	for _, m := range priorMatches {
+	for _, m := range maps {
 		for _, key := range keys {
 			if key != "" {
 				if mf, ok := m[key]; ok && mf.ID != "" {
-					return true
+					return mf, true
 				}
 			}
 		}
 	}
-	return false
+	return model.MediaFile{}, false
 }
 
 // loadTracksByID fetches MediaFiles from the library using direct ID matching.
@@ -405,6 +412,9 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 	return bestMatch, found
 }
 
+// buildTitleQueries converts agent songs into normalized songQuery structs for title+artist matching.
+// It skips songs that have already been matched in prior phases (by ID, MBID, or ISRC) and sanitizes
+// all string fields for consistent comparison (lowercase, diacritics removed, articles stripped from artist names).
 func (e *provider) buildTitleQueries(songs []agents.Song, priorMatches ...map[string]model.MediaFile) []songQuery {
 	var queries []songQuery
 	for _, s := range songs {
@@ -423,40 +433,59 @@ func (e *provider) buildTitleQueries(songs []agents.Song, priorMatches ...map[st
 	return queries
 }
 
+// selectBestMatchingSongs assembles the final result by mapping input songs to their best matching
+// library tracks. It iterates through the input songs in order and selects the first available match
+// using priority order: ID > MBID > ISRC > title+artist.
+//
+// The function also handles deduplication: when multiple different input songs would match the same
+// library track (e.g., "Song (Live)" and "Song (Remastered)" both matching "Song (Live)" in the library),
+// only the first match is kept. However, if the same input song appears multiple times (intentional
+// repetition), duplicates are preserved in the output.
+//
+// Returns up to 'count' MediaFiles, preserving the input order. Songs that cannot be matched are skipped.
 func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
-	var mfs model.MediaFiles
+	mfs := make(model.MediaFiles, 0, len(songs))
+	// Track MediaFile.ID -> input song that added it, for deduplication
+	addedBy := make(map[string]agents.Song, len(songs))
+
 	for _, t := range songs {
 		if len(mfs) == count {
 			break
 		}
-		// Try ID match first
-		if t.ID != "" {
-			if mf, ok := byID[t.ID]; ok {
-				mfs = append(mfs, mf)
-				continue
+
+		mf, found := findMatchingTrack(t, byID, byMBID, byISRC, byTitleArtist)
+		if !found {
+			continue
+		}
+
+		// Check for duplicate library track
+		if prevSong, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
+			// Only add duplicate if input songs are identical
+			if t != prevSong {
+				continue // Different input songs → skip mismatch-induced duplicate
 			}
+		} else {
+			addedBy[mf.ID] = t
 		}
-		// Try MBID match second
-		if t.MBID != "" {
-			if mf, ok := byMBID[t.MBID]; ok {
-				mfs = append(mfs, mf)
-				continue
-			}
-		}
-		// Try ISRC match third
-		if t.ISRC != "" {
-			if mf, ok := byISRC[t.ISRC]; ok {
-				mfs = append(mfs, mf)
-				continue
-			}
-		}
-		// Fall back to title+artist match (composite key preserves duplicate titles)
-		key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
-		if mf, ok := byTitleArtist[key]; ok {
-			mfs = append(mfs, mf)
-		}
+
+		mfs = append(mfs, mf)
 	}
 	return mfs
+}
+
+// findMatchingTrack looks up a song in the match maps using priority order: ID > MBID > ISRC > title+artist.
+// Returns the matched MediaFile and true if found, or an empty MediaFile and false if no match exists.
+func findMatchingTrack(t agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile) (model.MediaFile, bool) {
+	// Try identifier-based matches first (ID, MBID, ISRC)
+	if mf, found := lookupByIdentifiers(t, byID, byMBID, byISRC); found {
+		return mf, true
+	}
+	// Fall back to title+artist fuzzy match
+	key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
+	if mf, ok := byTitleArtist[key]; ok {
+		return mf, true
+	}
+	return model.MediaFile{}, false
 }
 
 // similarityRatio calculates the similarity between two strings using Jaro-Winkler algorithm.
