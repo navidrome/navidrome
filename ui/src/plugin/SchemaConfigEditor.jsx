@@ -42,7 +42,7 @@ SchemaErrorBoundary.propTypes = {
 // params.missingProperty. We transform them to point to the field directly
 // (e.g., "/users/1/username") so JSONForms displays them under the correct input.
 const ajv = new Ajv({
-  useDefaults: false,
+  useDefaults: true,
   allErrors: true,
   verbose: true,
   jsonPointers: true,
