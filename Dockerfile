@@ -94,7 +94,6 @@ RUN --mount=type=bind,source=. \
     # Setup CGO cross-compilation environment
     xx-go --wrap
     export CGO_ENABLED=1
-    export CGO_CFLAGS_ALLOW="--define-prefix"
     export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
     cat $(go env GOENV)
 
