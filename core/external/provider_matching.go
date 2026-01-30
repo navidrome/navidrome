@@ -119,17 +119,24 @@ func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song,
 // songMatchedIn checks if a song has already been matched in any of the provided match maps.
 // It checks the song's ID, MBID, and ISRC fields against the corresponding map keys.
 func songMatchedIn(s agents.Song, priorMatches ...map[string]model.MediaFile) bool {
+	_, found := lookupByIdentifiers(s, priorMatches...)
+	return found
+}
+
+// lookupByIdentifiers searches for a song's identifiers (ID, MBID, ISRC) in the provided maps.
+// Returns the first matching MediaFile found and true, or an empty MediaFile and false if no match.
+func lookupByIdentifiers(s agents.Song, maps ...map[string]model.MediaFile) (model.MediaFile, bool) {
 	keys := []string{s.ID, s.MBID, s.ISRC}
-	for _, m := range priorMatches {
+	for _, m := range maps {
 		for _, key := range keys {
 			if key != "" {
 				if mf, ok := m[key]; ok && mf.ID != "" {
-					return true
+					return mf, true
 				}
 			}
 		}
 	}
-	return false
+	return model.MediaFile{}, false
 }
 
 // loadTracksByID fetches MediaFiles from the library using direct ID matching.
@@ -446,23 +453,7 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 			break
 		}
 
-		var mf model.MediaFile
-		var found bool
-
-		// Try matches in priority order (ID > MBID > ISRC > title+artist)
-		if t.ID != "" {
-			mf, found = byID[t.ID]
-		}
-		if !found && t.MBID != "" {
-			mf, found = byMBID[t.MBID]
-		}
-		if !found && t.ISRC != "" {
-			mf, found = byISRC[t.ISRC]
-		}
-		if !found {
-			key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
-			mf, found = byTitleArtist[key]
-		}
+		mf, found := findMatchingTrack(t, byID, byMBID, byISRC, byTitleArtist)
 		if !found {
 			continue
 		}
@@ -480,6 +471,21 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 		mfs = append(mfs, mf)
 	}
 	return mfs
+}
+
+// findMatchingTrack looks up a song in the match maps using priority order: ID > MBID > ISRC > title+artist.
+// Returns the matched MediaFile and true if found, or an empty MediaFile and false if no match exists.
+func findMatchingTrack(t agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile) (model.MediaFile, bool) {
+	// Try identifier-based matches first (ID, MBID, ISRC)
+	if mf, found := lookupByIdentifiers(t, byID, byMBID, byISRC); found {
+		return mf, true
+	}
+	// Fall back to title+artist fuzzy match
+	key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
+	if mf, ok := byTitleArtist[key]; ok {
+		return mf, true
+	}
+	return model.MediaFile{}, false
 }
 
 // similarityRatio calculates the similarity between two strings using Jaro-Winkler algorithm.
