@@ -36,7 +36,8 @@
         "bitDepth": "Битова дълбочина",
         "sampleRate": "",
         "missing": "Липсва",
-        "libraryName": ""
+        "libraryName": "",
+        "composer": ""
       },
       "actions": {
         "addToQueue": "Пусни по-късно",
@@ -46,7 +47,8 @@
         "download": "Свали",
         "playNext": "Следваща",
         "info": "Информация",
-        "showInPlaylist": ""
+        "showInPlaylist": "",
+        "instantMix": ""
       }
     },
     "album": {
@@ -302,7 +304,7 @@
         "scan": "",
         "manageUsers": "",
         "viewDetails": "",
-        "quickScan": "",
+        "quickScan": "Quick Scan",
         "fullScan": ""
       },
       "notifications": {
@@ -327,6 +329,80 @@
         "deleteConfirm": "",
         "scanInProgress": "",
         "noLibrariesAssigned": ""
+      }
+    },
+    "plugin": {
+      "name": "",
+      "fields": {
+        "id": "",
+        "name": "",
+        "description": "",
+        "version": "",
+        "author": "",
+        "website": "",
+        "permissions": "",
+        "enabled": "",
+        "status": "",
+        "path": "",
+        "lastError": "",
+        "hasError": "",
+        "updatedAt": "",
+        "createdAt": "",
+        "configKey": "",
+        "configValue": "",
+        "allUsers": "",
+        "selectedUsers": "",
+        "allLibraries": "",
+        "selectedLibraries": ""
+      },
+      "sections": {
+        "status": "",
+        "info": "",
+        "configuration": "",
+        "manifest": "",
+        "usersPermission": "",
+        "libraryPermission": ""
+      },
+      "status": {
+        "enabled": "",
+        "disabled": ""
+      },
+      "actions": {
+        "enable": "",
+        "disable": "",
+        "disabledDueToError": "",
+        "disabledUsersRequired": "",
+        "disabledLibrariesRequired": "",
+        "addConfig": "",
+        "rescan": ""
+      },
+      "notifications": {
+        "enabled": "",
+        "disabled": "",
+        "updated": "",
+        "error": ""
+      },
+      "validation": {
+        "invalidJson": ""
+      },
+      "messages": {
+        "configHelp": "",
+        "clickPermissions": "",
+        "noConfig": "",
+        "allUsersHelp": "",
+        "noUsers": "",
+        "permissionReason": "",
+        "usersRequired": "",
+        "allLibrariesHelp": "",
+        "noLibraries": "",
+        "librariesRequired": "",
+        "requiredHosts": "",
+        "configValidationError": "",
+        "schemaRenderError": ""
+      },
+      "placeholders": {
+        "configKey": "",
+        "configValue": ""
       }
     }
   },
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Премахни всички липсващи файлове",
     "remove_all_missing_content": "Сигурни ли сте, че желаете да премахнете всички липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
     "noSimilarSongsFound": "",
-    "noTopSongsFound": ""
+    "noTopSongsFound": "",
+    "startingInstantMix": ""
   },
   "menu": {
     "library": "Библиотека",

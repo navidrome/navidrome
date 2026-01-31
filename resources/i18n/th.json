@@ -36,7 +36,8 @@
         "bitDepth": "Bit depth",
         "sampleRate": "แซมเปิ้ลเรต",
         "missing": "หายไป",
-        "libraryName": "ห้องสมุด"
+        "libraryName": "ห้องสมุด",
+        "composer": "ผู้แต่ง"
       },
       "actions": {
         "addToQueue": "เพิ่มในคิว",
@@ -46,7 +47,8 @@
         "download": "ดาวน์โหลด",
         "playNext": "เล่นถัดไป",
         "info": "ดูรายละเอียด",
-        "showInPlaylist": "แสดงในเพลย์ลิสต์"
+        "showInPlaylist": "แสดงในเพลย์ลิสต์",
+        "instantMix": ""
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "กำลังสแกน...",
         "noLibrariesAssigned": "ไม่มีห้องสมุดสำหรับผู้ใช้นี้"
       }
+    },
+    "plugin": {
+      "name": "ปลั๊กอิน |||| ปลั๊กอิน",
+      "fields": {
+        "id": "ID",
+        "name": "ชื่อ",
+        "description": "รายละเอียด",
+        "version": "เวอร์ชั่น",
+        "author": "ผู้สร้าง",
+        "website": "เว็บไซต์",
+        "permissions": "การอนุญาติ",
+        "enabled": "เปิดใช้",
+        "status": "สถานะ",
+        "path": "เส้นทาง",
+        "lastError": "ผิดพลาด",
+        "hasError": "ผิดพลาด",
+        "updatedAt": "อัพเดทแล้ว",
+        "createdAt": "ติดตั้งแล้ว",
+        "configKey": "คีย์",
+        "configValue": "ค่า",
+        "allUsers": "อนุญาติผู้ใช้ทั้งหมด",
+        "selectedUsers": "ผู้ใช้ถูกเลือก",
+        "allLibraries": "อนุญาติห้องสมุดเพลงทั้งหมด",
+        "selectedLibraries": "ห้องสมุดเพลงถูกเลือก"
+      },
+      "sections": {
+        "status": "สถานะ",
+        "info": "ข้อมูลปลั๊กอิน",
+        "configuration": "การตั้งค่า",
+        "manifest": "แสดง",
+        "usersPermission": "สิทธิของผู้ใช้",
+        "libraryPermission": "สิทธิของห้องสมุดเพลง"
+      },
+      "status": {
+        "enabled": "เปิดใช้งานแล้ว",
+        "disabled": "ปิดใช้งานแล้ว"
+      },
+      "actions": {
+        "enable": "เปิดใช้งาน",
+        "disable": "ปิดใช้งาน",
+        "disabledDueToError": "แก้ไขข้อผิดพลาดก่อนเปิดใช้งาน",
+        "disabledUsersRequired": "เลือกผู้ใช้ที่จะเปิดใช้งาน",
+        "disabledLibrariesRequired": "เลือกห้องสมุดเพลงที่จะเปิดใช้งาน",
+        "addConfig": "เพิ่มการตั้งค่า",
+        "rescan": "สแกนซ้ำ"
+      },
+      "notifications": {
+        "enabled": "เปิดใช้ปลั๊กอินแล้ว",
+        "disabled": "ปิดใช้ปลั๊กอินแล้ว",
+        "updated": "ปลั๊กอินอัพเดท",
+        "error": "อัพเดทผิดพลาด"
+      },
+      "validation": {
+        "invalidJson": "ต้องตั้งค่าตามไวยากรณ์ JSON"
+      },
+      "messages": {
+        "configHelp": "ใส่ค่าให้เข้าคู่กับคีย์ของปลั๊กอิน ปล่อยว่างถ้าปลั๊กอินไม่ต้องการใช้",
+        "clickPermissions": "กดดูรายละเอียดของการอนุญาติ",
+        "noConfig": "ไม่ได้ตั้งค่า",
+        "allUsersHelp": "เมื่อเปิดใช้ ปลั๊กอินจะใช้กับผู้ใช้ทุกคน รวมถึงผู้ใช้ใหม่ในอนาคต",
+        "noUsers": "ไม่ได้เลือกผู้ใช้",
+        "permissionReason": "เหตุผล",
+        "usersRequired": "ปลั๊กอินนี้ต้องการเข้าถึงข้อมูลผู้ใช้ เลือกผู้ใช้ที่ต้องการให้ปลั๊กอินเข้าถึงหรือเปิดใช้งานกับผู้ใช้ทั้งหมด",
+        "allLibrariesHelp": "เมื่อเปิดใช้งาน ปลั๊กอินจะเข้าถึงทุกห้องสมุดเพลง รวมถึงของผู้ใช้ใหม่ในอนาคต",
+        "noLibraries": "ไม่มีห้องสมุดเพลงถูกเลือก",
+        "librariesRequired": "ปลั๊กอินนี้ต้องการเข้าถึงข้อมูลห้องสมุดเพลง เลือกห้องสมุดเพลงที่ต้องการให้ปลั๊กอินเข้าถึงหรือเปิดใช้งานกับห้องสมุดเพลงทั้งหมด",
+        "requiredHosts": "ต้องการ Host",
+        "configValidationError": "การตั้งค่าเกิดความผิดพลาด",
+        "schemaRenderError": "ไม่สามารถแสดงหน้าจอการตั้งค่า อาจเกิดจากความผิดพลาดจากปลั๊กอิน"
+      },
+      "placeholders": {
+        "configKey": "คีย์",
+        "configValue": "ค่า"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "เอารายการไฟล์ที่หายไปออกทั้งหมด",
     "remove_all_missing_content": "คุณแน่ใจว่าจะเอารายการไฟล์ที่หายไปออกจากดาต้าเบส นี่จะเป็นการลบข้อมูลอ้างอิงทั้งหมดของไฟล์ออกอย่างถาวร",
     "noSimilarSongsFound": "ไม่มีเพลงคล้ายกัน",
-    "noTopSongsFound": "ไม่พบเพลงยอดนิยม"
+    "noTopSongsFound": "ไม่พบเพลงยอดนิยม",
+    "startingInstantMix": ""
   },
   "menu": {
     "library": "ห้องสมุดเพลง",
