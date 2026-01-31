@@ -36,7 +36,8 @@
         "bitDepth": "Calidade de Bit",
         "sampleRate": "Taxa de mostra",
         "missing": "Falta",
-        "libraryName": "Biblioteca"
+        "libraryName": "Biblioteca",
+        "composer": "Composición"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -46,7 +47,8 @@
         "download": "Descargar",
         "playNext": "A continuación",
         "info": "Obter info",
-        "showInPlaylist": "Mostrar en Lista de reprodución"
+        "showInPlaylist": "Mostrar en Lista de reprodución",
+        "instantMix": "Mestura Súbita"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Escaneo en progreso…",
         "noLibrariesAssigned": "Sen bibliotecas asignadas a esta usuaria"
       }
+    },
+    "plugin": {
+      "name": "Complemento |||| Complementos",
+      "fields": {
+        "id": "ID",
+        "name": "Nome",
+        "description": "Descrición",
+        "version": "Versión",
+        "author": "Autoría",
+        "website": "Sitio web",
+        "permissions": "Permisos",
+        "enabled": "Activado",
+        "status": "Estado",
+        "path": "Ruta",
+        "lastError": "Erro",
+        "hasError": "Erro",
+        "updatedAt": "Actualizado",
+        "createdAt": "Instalado",
+        "configKey": "Clave",
+        "configValue": "Valor",
+        "allUsers": "Para todas as usuarias",
+        "selectedUsers": "Usuarias seleccionadas",
+        "allLibraries": "Permitir todas as bibliotecas",
+        "selectedLibraries": "Selecciona bibliotecas"
+      },
+      "sections": {
+        "status": "Estado",
+        "info": "Info do complemento",
+        "configuration": "Configuración",
+        "manifest": "Manifesto",
+        "usersPermission": "Permiso sobre usuarias",
+        "libraryPermission": "Permiso sobre bibliotecas"
+      },
+      "status": {
+        "enabled": "Activado",
+        "disabled": "Desactivado"
+      },
+      "actions": {
+        "enable": "Activar",
+        "disable": "Desactivar",
+        "disabledDueToError": "Arranxar erro antes de activar",
+        "disabledUsersRequired": "Selección de usuarias antes de activar",
+        "disabledLibrariesRequired": "Selección de bibliotecas antes de activar",
+        "addConfig": "Engadir configuración",
+        "rescan": "Volver a escanear"
+      },
+      "notifications": {
+        "enabled": "Complemento activado",
+        "disabled": "Complemento desactivado",
+        "updated": "Complemento actualizado",
+        "error": "Erro ao actualizar o complemento"
+      },
+      "validation": {
+        "invalidJson": "A  configuración debe ser un JSON válido"
+      },
+      "messages": {
+        "configHelp": "Configura o complemento usando pares clave-valor. Deixa baleiro se o complemento non require configuración.",
+        "clickPermissions": "Preme nun permiso para ver detalles",
+        "noConfig": "Sen configuración establecida",
+        "allUsersHelp": "Ao activalo, o complemento terá acceso a todas as usuarias, incluíndo aquelas que se creen no futuro.",
+        "noUsers": "Sen usuarias seleccionadas",
+        "permissionReason": "Motivo",
+        "usersRequired": "O complemento precisa acceso á información sobre a usuaria. Selecciona as usuarias ás que pode acceder, ou activa 'Todas as usuarias'.",
+        "allLibrariesHelp": "Ao activalo, o complemento terá acceso a todas as bibliotecas, incluíndo aquelas que se creen no futuro.",
+        "noLibraries": "Sen bibliotecas seleccionadas",
+        "librariesRequired": "O complemento precisa acceso á información sobre a biblioteca. Selecciona as bibliotecas ás que pode acceder, ou activa 'Todas as bibliotecas'.",
+        "requiredHosts": "Servidores requeridos",
+        "configValidationError": "Fallou a comprobación da configuración:",
+        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido."
+      },
+      "placeholders": {
+        "configKey": "clave",
+        "configValue": "valor"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Retirar todos os ficheiros que faltan",
     "remove_all_missing_content": "Tes certeza de querer retirar da base de datos todos os ficheiros que faltan? Isto eliminará todas as referencias a eles, incluíndo o número de reproducións e valoracións.",
     "noSimilarSongsFound": "Sen cancións parecidas",
-    "noTopSongsFound": "Sen cancións destacadas"
+    "noTopSongsFound": "Sen cancións destacadas",
+    "startingInstantMix": "Cargando Mestura Súbita…"
   },
   "menu": {
     "library": "Biblioteca",
