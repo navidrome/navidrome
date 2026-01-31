@@ -118,12 +118,75 @@ func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) boo
 	return err == nil && sk != ""
 }
 
+func (l *listenBrainzAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	if mbid == "" {
+		return "", agents.ErrNotFound
+	}
+
+	url, err := l.client.getArtistUrl(ctx, mbid)
+	if err != nil {
+		return "", err
+	}
+	return url, nil
+}
+
+func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+	resp, err := l.client.getArtistTopSongs(ctx, mbid, count)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	res := make([]agents.Song, len(resp))
+	for i, t := range resp {
+		mbid := ""
+		if len(t.ArtistMBIDs) > 0 {
+			mbid = t.ArtistMBIDs[0]
+		}
+
+		res[i] = agents.Song{
+			Album:      t.ReleaseName,
+			AlbumMBID:  t.ReleaseMBID,
+			Artist:     t.ArtistName,
+			ArtistMBID: mbid,
+			Duration:   t.DurationMs,
+			Name:       t.RecordingName,
+			MBID:       t.RecordingMbid,
+		}
+	}
+	return res, nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				return listenBrainzConstructor(ds)
+				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
+				// See https://go.dev/doc/faq#nil_error
+				a := listenBrainzConstructor(ds)
+				if a != nil {
+					return a
+				}
+				return nil
 			})
+
+			if conf.Server.ListenBrainz.EnableMetadata {
+				if conf.Server.ListenBrainz.BaseURL != "https://api.listenbrainz.org/1/" {
+					log.Warn("ListenBrainz is enabled with a nonstandard API endpoint. Requests will likely not work")
+				}
+
+				agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
+					// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
+					// See https://go.dev/doc/faq#nil_error
+					a := listenBrainzConstructor(ds)
+					if a != nil {
+						return a
+					}
+					return nil
+				})
+			}
 		}
 	})
 }
