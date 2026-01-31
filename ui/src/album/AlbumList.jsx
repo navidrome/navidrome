@@ -18,6 +18,7 @@ import {
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
+  InfiniteScrollWrapper,
   List,
   QuickFilter,
   Title,
@@ -179,6 +180,9 @@ const randomStartingSeed = Math.random().toString()
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
+  const infiniteScrollEnabled = useSelector(
+    (state) => state.infiniteScroll?.enabled ?? false,
+  )
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
   const version = useVersion()
@@ -234,14 +238,22 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
-        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
+        pagination={
+          infiniteScrollEnabled ? (
+            false
+          ) : (
+            <Pagination rowsPerPageOptions={perPageOptions} />
+          )
+        }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
-        {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} {...props} />
-        ) : (
-          <AlbumTableView {...props} />
-        )}
+        <InfiniteScrollWrapper>
+          {albumView.grid ? (
+            <AlbumGridView albumListType={albumListType} {...props} />
+          ) : (
+            <AlbumTableView {...props} />
+          )}
+        </InfiniteScrollWrapper>
       </List>
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>
