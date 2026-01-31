@@ -99,7 +99,8 @@
         "recentlyPlayed": "Recently Played",
         "mostPlayed": "Most Played",
         "starred": "Favourites",
-        "topRated": "Top Rated"
+        "topRated": "Top Rated",
+        "compilations": "Compilations"
       }
     },
     "artist": {

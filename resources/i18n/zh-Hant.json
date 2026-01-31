@@ -97,7 +97,8 @@
         "recentlyPlayed": "最近播放",
         "mostPlayed": "最常播放",
         "starred": "收藏",
-        "topRated": "最高評分"
+        "topRated": "最高評分",
+        "compilations": "合輯"
       }
     },
     "artist": {

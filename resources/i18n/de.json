@@ -97,7 +97,8 @@
         "recentlyPlayed": "Kürzlich gespielt",
         "mostPlayed": "Meist gespielt",
         "starred": "Favorit",
-        "topRated": "Beste Bewertung"
+        "topRated": "Beste Bewertung",
+        "compilations": "Kompilationen"
       }
     },
     "artist": {

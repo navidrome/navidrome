@@ -97,7 +97,8 @@
         "recentlyPlayed": "Παίχτηκαν Πρόσφατα",
         "mostPlayed": "Παίζονται Συχνά",
         "starred": "Αγαπημένα",
-        "topRated": "Κορυφαία"
+        "topRated": "Κορυφαία",
+        "compilations": "Συλλογές"
       }
     },
     "artist": {

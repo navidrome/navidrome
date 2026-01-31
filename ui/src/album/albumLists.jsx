@@ -11,6 +11,8 @@ import StarBorderIcon from '@material-ui/icons/StarBorder'
 import AlbumOutlinedIcon from '@material-ui/icons/AlbumOutlined'
 import LibraryAddOutlinedIcon from '@material-ui/icons/LibraryAddOutlined'
 import VideoLibraryOutlinedIcon from '@material-ui/icons/VideoLibraryOutlined'
+import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
+import LibraryMusicOutlinedIcon from '@material-ui/icons/LibraryMusicOutlined'
 import config from '../config'
 import DynamicMenuIcon from '../layout/DynamicMenuIcon'
 
@@ -76,6 +78,16 @@ const albumLists = {
   mostPlayed: {
     icon: <RepeatIcon />,
     params: 'sort=play_count&order=DESC&filter={"recently_played":true}',
+  },
+  compilations: {
+    icon: (
+      <DynamicMenuIcon
+        path={'album/compilations'}
+        icon={LibraryMusicOutlinedIcon}
+        activeIcon={LibraryMusicIcon}
+      />
+    ),
+    params: 'sort=name&order=ASC&filter={"compilation":true}',
   },
 }
 

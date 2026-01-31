@@ -98,7 +98,8 @@
         "recentlyPlayed": "Senast spelade",
         "mostPlayed": "Mest spelade",
         "starred": "Favoriter",
-        "topRated": "Bästa betyg"
+        "topRated": "Bästa betyg",
+        "compilations": "Samlingar"
       }
     },
     "artist": {
