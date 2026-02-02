@@ -55,6 +55,34 @@ type TrackAttributes struct {
 	Popularity int    `json:"popularity"`
 }
 
+// TrackWithArtist represents a track with artist info from the search response
+type TrackWithArtist struct {
+	ID         string                    `json:"id"`
+	Type       string                    `json:"type"`
+	Attributes TrackAttributesWithArtist `json:"attributes"`
+}
+
+// TrackAttributesWithArtist contains track metadata with artist info
+type TrackAttributesWithArtist struct {
+	Title    string              `json:"title"`
+	ISRC     string              `json:"isrc"`
+	Duration int                 `json:"duration"` // Duration in seconds
+	Artists  []ArtistReference   `json:"artists"`
+	Album    *AlbumReference     `json:"album,omitempty"`
+}
+
+// ArtistReference represents a reference to an artist in a track
+type ArtistReference struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// AlbumReference represents a reference to an album in a track
+type AlbumReference struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
 // SimilarArtistsResponse represents the response from similar artists endpoint
 type SimilarArtistsResponse struct {
 	Data []ArtistResource `json:"data"`

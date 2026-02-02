@@ -1,0 +1,44 @@
+{
+  "albums": [
+    {
+      "id": "28048252",
+      "type": "albums",
+      "attributes": {
+        "title": "Random Access Memories",
+        "releaseDate": "2013-05-17",
+        "cover": [
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/750x750.jpg",
+            "width": 750,
+            "height": 750
+          },
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/320x320.jpg",
+            "width": 320,
+            "height": 320
+          },
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/160x160.jpg",
+            "width": 160,
+            "height": 160
+          }
+        ]
+      }
+    },
+    {
+      "id": "1234567",
+      "type": "albums",
+      "attributes": {
+        "title": "Random Access Memories (Drumless Edition)",
+        "releaseDate": "2023-11-17",
+        "cover": [
+          {
+            "url": "https://resources.tidal.com/images/deadbeef/1234/5678/9abc/def012345678/750x750.jpg",
+            "width": 750,
+            "height": 750
+          }
+        ]
+      }
+    }
+  ]
+}

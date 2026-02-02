@@ -170,6 +170,46 @@ func (c *client) getSimilarArtists(ctx context.Context, artistID string, limit i
 	return result.Data, nil
 }
 
+func (c *client) searchAlbums(ctx context.Context, albumName, artistName string, limit int) ([]AlbumResource, error) {
+	token, err := c.getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	query := albumName
+	if artistName != "" {
+		query = artistName + " " + albumName
+	}
+
+	params := url.Values{}
+	params.Add("query", query)
+	params.Add("limit", strconv.Itoa(limit))
+	params.Add("countryCode", "US")
+	params.Add("type", "ALBUMS")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/search", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = params.Encode()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.tidal.v1+json")
+	req.Header.Set("Content-Type", "application/vnd.tidal.v1+json")
+
+	var result struct {
+		Albums []AlbumResource `json:"albums"`
+	}
+	err = c.makeRequest(req, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Albums) == 0 {
+		return nil, ErrNotFound
+	}
+	return result.Albums, nil
+}
+
 func (c *client) getToken(ctx context.Context) (string, error) {
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()

@@ -17,6 +17,8 @@ import (
 
 const tidalAgentName = "tidal"
 const tidalArtistSearchLimit = 20
+const tidalAlbumSearchLimit = 10
+const tidalArtistURLBase = "https://tidal.com/browse/artist/"
 
 type tidalAgent struct {
 	ds     model.DataStore
@@ -117,6 +119,91 @@ func (t *tidalAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	return res, nil
 }
 
+func (t *tidalAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	artist, err := t.searchArtist(ctx, name)
+	if err != nil {
+		return "", err
+	}
+
+	return tidalArtistURLBase + artist.ID, nil
+}
+
+func (t *tidalAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
+	album, err := t.searchAlbum(ctx, name, artist)
+	if err != nil {
+		if errors.Is(err, agents.ErrNotFound) {
+			log.Warn(ctx, "Album not found in Tidal", "album", name, "artist", artist)
+		} else {
+			log.Error(ctx, "Error calling Tidal for album", "album", name, "artist", artist, err)
+		}
+		return nil, err
+	}
+
+	var res []agents.ExternalImage
+	for _, img := range album.Attributes.Cover {
+		res = append(res, agents.ExternalImage{
+			URL:  img.URL,
+			Size: img.Width,
+		})
+	}
+
+	if len(res) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	return res, nil
+}
+
+func (t *tidalAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]agents.Song, error) {
+	artist, err := t.searchArtist(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get similar artists
+	similarArtists, err := t.client.getSimilarArtists(ctx, artist.ID, 5)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, agents.ErrNotFound
+		}
+		return nil, err
+	}
+
+	if len(similarArtists) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	// Get top tracks from similar artists
+	var songs []agents.Song
+	tracksPerArtist := (count / len(similarArtists)) + 1
+
+	for _, simArtist := range similarArtists {
+		tracks, err := t.client.getArtistTopTracks(ctx, simArtist.ID, tracksPerArtist)
+		if err != nil {
+			log.Warn(ctx, "Failed to get top tracks for similar artist", "artist", simArtist.Attributes.Name, err)
+			continue
+		}
+
+		for _, track := range tracks {
+			songs = append(songs, agents.Song{
+				Name:     track.Attributes.Title,
+				Artist:   simArtist.Attributes.Name,
+				ISRC:     track.Attributes.ISRC,
+				Duration: uint32(track.Attributes.Duration * 1000),
+			})
+			if len(songs) >= count {
+				return songs, nil
+			}
+		}
+	}
+
+	if len(songs) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	return songs, nil
+}
+
 func (t *tidalAgent) searchArtist(ctx context.Context, name string) (*ArtistResource, error) {
 	artists, err := t.client.searchArtists(ctx, name, tidalArtistSearchLimit)
 	if err != nil {
@@ -140,6 +227,32 @@ func (t *tidalAgent) searchArtist(ctx context.Context, name string) (*ArtistReso
 
 	// If no exact match, check if first result is close enough
 	log.Trace(ctx, "No exact artist match in Tidal", "searched", name, "found", artists[0].Attributes.Name)
+	return nil, agents.ErrNotFound
+}
+
+func (t *tidalAgent) searchAlbum(ctx context.Context, albumName, artistName string) (*AlbumResource, error) {
+	albums, err := t.client.searchAlbums(ctx, albumName, artistName, tidalAlbumSearchLimit)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, agents.ErrNotFound
+		}
+		return nil, err
+	}
+
+	if len(albums) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	// Find exact match (case-insensitive)
+	for i := range albums {
+		if strings.EqualFold(albums[i].Attributes.Title, albumName) {
+			log.Trace(ctx, "Found album in Tidal", "title", albums[i].Attributes.Title, "id", albums[i].ID)
+			return &albums[i], nil
+		}
+	}
+
+	// If no exact match, check if first result is close enough
+	log.Trace(ctx, "No exact album match in Tidal", "searched", albumName, "found", albums[0].Attributes.Title)
 	return nil, agents.ErrNotFound
 }
 
