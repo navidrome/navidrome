@@ -250,6 +250,70 @@ func (c *client) searchTracks(ctx context.Context, trackName, artistName string,
 	return result.Tracks, nil
 }
 
+func (c *client) getArtistBio(ctx context.Context, artistID string) (string, error) {
+	token, err := c.getToken(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get token: %w", err)
+	}
+
+	params := url.Values{}
+	params.Add("countryCode", "US")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/artists/"+artistID+"/bio", nil)
+	if err != nil {
+		return "", err
+	}
+	req.URL.RawQuery = params.Encode()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.tidal.v1+json")
+	req.Header.Set("Content-Type", "application/vnd.tidal.v1+json")
+
+	var result struct {
+		Text string `json:"text"`
+	}
+	err = c.makeRequest(req, &result)
+	if err != nil {
+		return "", err
+	}
+
+	if result.Text == "" {
+		return "", ErrNotFound
+	}
+	return result.Text, nil
+}
+
+func (c *client) getAlbumReview(ctx context.Context, albumID string) (string, error) {
+	token, err := c.getToken(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get token: %w", err)
+	}
+
+	params := url.Values{}
+	params.Add("countryCode", "US")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/albums/"+albumID+"/review", nil)
+	if err != nil {
+		return "", err
+	}
+	req.URL.RawQuery = params.Encode()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.tidal.v1+json")
+	req.Header.Set("Content-Type", "application/vnd.tidal.v1+json")
+
+	var result struct {
+		Text string `json:"text"`
+	}
+	err = c.makeRequest(req, &result)
+	if err != nil {
+		return "", err
+	}
+
+	if result.Text == "" {
+		return "", ErrNotFound
+	}
+	return result.Text, nil
+}
+
 func (c *client) getTrackRadio(ctx context.Context, trackID string, limit int) ([]TrackResource, error) {
 	token, err := c.getToken(ctx)
 	if err != nil {

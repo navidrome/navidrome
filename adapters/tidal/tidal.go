@@ -129,6 +129,43 @@ func (t *tidalAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (s
 	return tidalArtistURLBase + artist.ID, nil
 }
 
+func (t *tidalAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
+	artist, err := t.searchArtist(ctx, name)
+	if err != nil {
+		return "", err
+	}
+
+	bio, err := t.client.getArtistBio(ctx, artist.ID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return "", agents.ErrNotFound
+		}
+		log.Error(ctx, "Error getting artist bio from Tidal", "artist", name, err)
+		return "", err
+	}
+
+	return bio, nil
+}
+
+func (t *tidalAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	album, err := t.searchAlbum(ctx, name, artist)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to get album review/description
+	description, err := t.client.getAlbumReview(ctx, album.ID)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		log.Warn(ctx, "Error getting album review from Tidal", "album", name, err)
+	}
+
+	return &agents.AlbumInfo{
+		Name:        album.Attributes.Title,
+		Description: description,
+		URL:         "https://tidal.com/browse/album/" + album.ID,
+	}, nil
+}
+
 func (t *tidalAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
 	album, err := t.searchAlbum(ctx, name, artist)
 	if err != nil {

@@ -213,6 +213,123 @@ var _ = Describe("tidalAgent", func() {
 		})
 	})
 
+	Describe("GetArtistBiography", func() {
+		var agent *tidalAgent
+		var httpClient *mockHttpClient
+
+		BeforeEach(func() {
+			httpClient = newMockHttpClient()
+			agent = &tidalAgent{
+				ds:     &tests.MockDataStore{},
+				client: newClient("test-id", "test-secret", httpClient),
+			}
+		})
+
+		It("returns artist biography", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock search response
+			fSearch, _ := os.Open("tests/fixtures/tidal.search.artist.json")
+			httpClient.searchResponse = &http.Response{Body: fSearch, StatusCode: 200}
+
+			// Mock bio response
+			fBio, _ := os.Open("tests/fixtures/tidal.artist.bio.json")
+			httpClient.artistBioResponse = &http.Response{Body: fBio, StatusCode: 200}
+
+			bio, err := agent.GetArtistBiography(ctx, "", "Daft Punk", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bio).To(ContainSubstring("French electronic music duo"))
+		})
+
+		It("returns ErrNotFound when bio is empty", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock search response
+			fSearch, _ := os.Open("tests/fixtures/tidal.search.artist.json")
+			httpClient.searchResponse = &http.Response{Body: fSearch, StatusCode: 200}
+
+			// Mock empty bio response
+			httpClient.artistBioResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"text":""}`)),
+			}
+
+			_, err := agent.GetArtistBiography(ctx, "", "Daft Punk", "")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		})
+	})
+
+	Describe("GetAlbumInfo", func() {
+		var agent *tidalAgent
+		var httpClient *mockHttpClient
+
+		BeforeEach(func() {
+			httpClient = newMockHttpClient()
+			agent = &tidalAgent{
+				ds:     &tests.MockDataStore{},
+				client: newClient("test-id", "test-secret", httpClient),
+			}
+		})
+
+		It("returns album info with description", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock album search response
+			fAlbum, _ := os.Open("tests/fixtures/tidal.search.album.json")
+			httpClient.albumSearchResponse = &http.Response{Body: fAlbum, StatusCode: 200}
+
+			// Mock album review response
+			fReview, _ := os.Open("tests/fixtures/tidal.album.review.json")
+			httpClient.albumReviewResponse = &http.Response{Body: fReview, StatusCode: 200}
+
+			info, err := agent.GetAlbumInfo(ctx, "Random Access Memories", "Daft Punk", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Name).To(Equal("Random Access Memories"))
+			Expect(info.Description).To(ContainSubstring("fourth studio album"))
+			Expect(info.URL).To(Equal("https://tidal.com/browse/album/28048252"))
+		})
+
+		It("returns album info without description when review not available", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock album search response
+			fAlbum, _ := os.Open("tests/fixtures/tidal.search.album.json")
+			httpClient.albumSearchResponse = &http.Response{Body: fAlbum, StatusCode: 200}
+
+			// Mock empty album review response
+			httpClient.albumReviewResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"text":""}`)),
+			}
+
+			info, err := agent.GetAlbumInfo(ctx, "Random Access Memories", "Daft Punk", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Name).To(Equal("Random Access Memories"))
+			Expect(info.Description).To(BeEmpty())
+			Expect(info.URL).To(Equal("https://tidal.com/browse/album/28048252"))
+		})
+	})
+
 	Describe("GetAlbumImages", func() {
 		var agent *tidalAgent
 		var httpClient *mockHttpClient
@@ -409,6 +526,8 @@ type mockHttpClient struct {
 	albumSearchResponse *http.Response
 	trackSearchResponse *http.Response
 	artistResponse      *http.Response
+	artistBioResponse   *http.Response
+	albumReviewResponse *http.Response
 	similarResponse     *http.Response
 	tracksResponse      *http.Response
 	trackRadioResponse  *http.Response
@@ -478,6 +597,16 @@ func (c *mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 
 	// Handle artist request
 	if req.URL.Host == "openapi.tidal.com" && len(req.URL.Path) > 9 && req.URL.Path[:9] == "/artists/" {
+		// Check if it's a bio request
+		if len(req.URL.Path) > 13 && req.URL.Path[len(req.URL.Path)-4:] == "/bio" {
+			if c.artistBioResponse != nil {
+				return c.artistBioResponse, nil
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"text":""}`)),
+			}, nil
+		}
 		// Check if it's a similar artists or tracks request
 		if len(req.URL.Path) > 17 && req.URL.Path[len(req.URL.Path)-8:] == "/similar" {
 			if c.similarResponse != nil {
@@ -506,6 +635,20 @@ func (c *mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 			StatusCode: 404,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"errors":[{"status":404,"code":"NOT_FOUND"}]}`)),
 		}, nil
+	}
+
+	// Handle album request
+	if req.URL.Host == "openapi.tidal.com" && len(req.URL.Path) > 8 && req.URL.Path[:8] == "/albums/" {
+		// Check if it's a review request
+		if len(req.URL.Path) > 15 && req.URL.Path[len(req.URL.Path)-7:] == "/review" {
+			if c.albumReviewResponse != nil {
+				return c.albumReviewResponse, nil
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"text":""}`)),
+			}, nil
+		}
 	}
 
 	panic("URL not mocked: " + req.URL.String())
