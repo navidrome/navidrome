@@ -1,0 +1,49 @@
+{
+  "data": [
+    {
+      "id": "1234567",
+      "type": "artists",
+      "attributes": {
+        "name": "Justice",
+        "popularity": 72,
+        "picture": [
+          {
+            "url": "https://resources.tidal.com/images/abc12345/1234/5678/9abc/def012345678/750x750.jpg",
+            "width": 750,
+            "height": 750
+          }
+        ]
+      }
+    },
+    {
+      "id": "2345678",
+      "type": "artists",
+      "attributes": {
+        "name": "Kavinsky",
+        "popularity": 65,
+        "picture": [
+          {
+            "url": "https://resources.tidal.com/images/bcd23456/2345/6789/abcd/ef0123456789/750x750.jpg",
+            "width": 750,
+            "height": 750
+          }
+        ]
+      }
+    },
+    {
+      "id": "3456789",
+      "type": "artists",
+      "attributes": {
+        "name": "Breakbot",
+        "popularity": 58,
+        "picture": [
+          {
+            "url": "https://resources.tidal.com/images/cde34567/3456/789a/bcde/f01234567890/750x750.jpg",
+            "width": 750,
+            "height": 750
+          }
+        ]
+      }
+    }
+  ]
+}

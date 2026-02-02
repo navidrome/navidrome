@@ -1,0 +1,38 @@
+{
+  "artists": [
+    {
+      "id": "4837227",
+      "type": "artists",
+      "attributes": {
+        "name": "Daft Punk",
+        "popularity": 85,
+        "picture": [
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/750x750.jpg",
+            "width": 750,
+            "height": 750
+          },
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/480x480.jpg",
+            "width": 480,
+            "height": 480
+          },
+          {
+            "url": "https://resources.tidal.com/images/04d63cd8/a1a5/42e0/b1ec/8e336b7d9200/320x320.jpg",
+            "width": 320,
+            "height": 320
+          }
+        ]
+      }
+    },
+    {
+      "id": "12345678",
+      "type": "artists",
+      "attributes": {
+        "name": "Daft Punk Tribute",
+        "popularity": 20,
+        "picture": []
+      }
+    }
+  ]
+}

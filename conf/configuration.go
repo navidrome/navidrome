@@ -103,6 +103,7 @@ type configOptions struct {
 	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
+	Tidal                           tidalOptions        `json:",omitzero"`
 	EnableScrobbleHistory           bool
 	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
@@ -196,6 +197,12 @@ type deezerOptions struct {
 type listenBrainzOptions struct {
 	Enabled bool
 	BaseURL string
+}
+
+type tidalOptions struct {
+	Enabled      bool
+	ClientID     string
+	ClientSecret string
 }
 
 type httpHeaderOptions struct {
@@ -457,6 +464,7 @@ func disableExternalServices() {
 	Server.Spotify.ID = ""
 	Server.Deezer.Enabled = false
 	Server.ListenBrainz.Enabled = false
+	Server.Tidal.Enabled = false
 	Server.Agents = ""
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
@@ -656,6 +664,9 @@ func setViperDefaults() {
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+	viper.SetDefault("tidal.enabled", false)
+	viper.SetDefault("tidal.clientid", "")
+	viper.SetDefault("tidal.clientsecret", "")
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")

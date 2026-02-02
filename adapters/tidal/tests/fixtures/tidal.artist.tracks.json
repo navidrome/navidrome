@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": "28048253",
+      "type": "tracks",
+      "attributes": {
+        "title": "Get Lucky",
+        "isrc": "USQX91300104",
+        "duration": 369,
+        "popularity": 95
+      }
+    },
+    {
+      "id": "28048256",
+      "type": "tracks",
+      "attributes": {
+        "title": "Instant Crush",
+        "isrc": "USQX91300107",
+        "duration": 337,
+        "popularity": 88
+      }
+    },
+    {
+      "id": "1269012",
+      "type": "tracks",
+      "attributes": {
+        "title": "Around the World",
+        "isrc": "FRZ119700490",
+        "duration": 429,
+        "popularity": 85
+      }
+    }
+  ]
+}
