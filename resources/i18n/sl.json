@@ -36,7 +36,8 @@
         "bitDepth": "Bitna globina",
         "sampleRate": "Frekvenca vzorčenja",
         "missing": "Manjka",
-        "libraryName": "Knjižnica"
+        "libraryName": "Knjižnica",
+        "composer": "Skladatelj"
       },
       "actions": {
         "addToQueue": "Predvajaj kasneje",
@@ -46,7 +47,8 @@
         "download": "Naloži",
         "playNext": "Naslednji",
         "info": "Več informacij",
-        "showInPlaylist": "Prikaži na seznamu predvajanja"
+        "showInPlaylist": "Prikaži na seznamu predvajanja",
+        "instantMix": ""
       }
     },
     "album": {
@@ -301,14 +303,19 @@
       "actions": {
         "scan": "Skeniraj knjižnico",
         "manageUsers": "Upravljanje dostopa uporabnikov",
-        "viewDetails": "Ogled podrobnosti"
+        "viewDetails": "Ogled podrobnosti",
+        "quickScan": "Hitro skeniranje",
+        "fullScan": "Popolno skeniranje"
       },
       "notifications": {
         "created": "Knjižnica je uspešno ustvarjena",
         "updated": "Knjižnica je bila uspešno posodobljena",
         "deleted": "Knjižnica je uspešno izbrisana",
         "scanStarted": "Skeniranje knjižnice se je začelo",
-        "scanCompleted": "Skeniranje knjižnice končano"
+        "scanCompleted": "Skeniranje knjižnice končano",
+        "quickScanStarted": "Hitro skeniranje se je začelo",
+        "fullScanStarted": "Popolno skeniranje se je začelo",
+        "scanError": "Napaka pri začetku skeniranja. Preverite dnevnike"
       },
       "validation": {
         "nameRequired": "Ime knjižnice je obvezno",
@@ -322,6 +329,80 @@
         "deleteConfirm": "Ali ste prepričani, da želite izbrisati to knjižnico? S tem boste odstranili vse povezane podatke in dostop uporabnikov.",
         "scanInProgress": "Skeniranje v teku...",
         "noLibrariesAssigned": "Uporabnik nima dodeljenih knjižnic"
+      }
+    },
+    "plugin": {
+      "name": "Vtičnik |||| Vtičniki",
+      "fields": {
+        "id": "ID",
+        "name": "Ime",
+        "description": "Opis",
+        "version": "Verzija",
+        "author": "Avtor",
+        "website": "Spletna stran",
+        "permissions": "Dovoljenja",
+        "enabled": "Vključeno",
+        "status": "Status",
+        "path": "Pot",
+        "lastError": "Napaka",
+        "hasError": "Napaka",
+        "updatedAt": "Posodobljeno",
+        "createdAt": "Inštalirano",
+        "configKey": "Ključ",
+        "configValue": "Vrednost",
+        "allUsers": "Dovoli vsem uporabnikom",
+        "selectedUsers": "Izbrani uporabniki",
+        "allLibraries": "Dovoli vse knjižnice",
+        "selectedLibraries": "Izbrane knjižnice"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informacije o vtičniku",
+        "configuration": "Konfiguracija",
+        "manifest": "Manifest",
+        "usersPermission": "Uporabniška dovoljenja",
+        "libraryPermission": "Knjižnična dovoljenja"
+      },
+      "status": {
+        "enabled": "Vključeno",
+        "disabled": "Izključeno"
+      },
+      "actions": {
+        "enable": "Vključi",
+        "disable": "Izključi",
+        "disabledDueToError": "Popravi napako pred vključitvijo",
+        "disabledUsersRequired": "Izberi uporabnike pred vključitvijo",
+        "disabledLibrariesRequired": "Izberi knjižnice pred vključitvijo",
+        "addConfig": "Dodaj konfiguracijo",
+        "rescan": "Ponovi skeniranje"
+      },
+      "notifications": {
+        "enabled": "Vtičnik vključen",
+        "disabled": "Vtičnik izključen",
+        "updated": "Vtičnik posodobljen",
+        "error": "Napaka pri posodobitvi vtičnika"
+      },
+      "validation": {
+        "invalidJson": "Konfiguracija mora biti pravilen JSON"
+      },
+      "messages": {
+        "configHelp": "Konfiguriraj vtičnik z uporabo key-value parov. Pusti prazno, če vtičnik ne potrebuje konfiguracije.",
+        "clickPermissions": "Klikni za dovoljenje o podrobnostih",
+        "noConfig": "Konfiguracija ni nastavljena",
+        "allUsersHelp": "Ko vključeno, bo vtičnik imel dostop do vseh uporabnikov, tudi prihodnjih.",
+        "noUsers": "Uporabniki niso izbrani",
+        "permissionReason": "Razlog",
+        "usersRequired": "Vtičnik potrebuje dostop do uporabnikovih informacij. Izberi uporabnike ali vključi dostop vsem uporabnikom.",
+        "allLibrariesHelp": "Ko vključeno, bo vtičnik imel dostop do vseh knjižnic, tudi prihodnjih.",
+        "noLibraries": "Ni izbranih knjižnic",
+        "librariesRequired": "Vtičnik zahteva dostop do knjižnih informacij. Izberi do katerih knjižnic lahko dostopa, ali vključi dostop do vseh knjižnic.",
+        "requiredHosts": "Zahtevani gostitelji",
+        "configValidationError": "",
+        "schemaRenderError": ""
+      },
+      "placeholders": {
+        "configKey": "ključ",
+        "configValue": "vrednost"
       }
     }
   },
@@ -506,7 +587,8 @@
     "remove_all_missing_title": "Odstrani vse manjkajoče datoteke",
     "remove_all_missing_content": "Ste prepričani, da želite odstraniti vse manjkajoče datoteke iz baze? Trajno boste odstranili vse reference nanje, vključno s številom predvajanj in ocenami.",
     "noSimilarSongsFound": "Ni najdenih podobnih pesmi",
-    "noTopSongsFound": "Ni najdenih najboljših pesmi"
+    "noTopSongsFound": "Ni najdenih najboljših pesmi",
+    "startingInstantMix": ""
   },
   "menu": {
     "library": "Knjižnica",
@@ -604,7 +686,8 @@
     "serverDown": "NEPOVEZAN",
     "scanType": "Tip",
     "status": "Napaka pri skeniranju",
-    "elapsedTime": "Pretečeni čas"
+    "elapsedTime": "Pretečeni čas",
+    "selectiveScan": "Selektivno"
   },
   "help": {
     "title": "Hitre tipke",
