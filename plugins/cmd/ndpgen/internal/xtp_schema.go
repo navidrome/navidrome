@@ -106,7 +106,7 @@ func buildExport(export Export) xtpExport {
 // isPrimitiveGoType returns true if the Go type is a primitive type.
 func isPrimitiveGoType(goType string) bool {
 	switch goType {
-	case "bool", "string", "int", "int32", "int64", "float32", "float64", "[]byte":
+	case "bool", "string", "int", "int32", "int64", "uint", "uint32", "uint64", "float32", "float64", "[]byte":
 		return true
 	}
 	return false
@@ -301,6 +301,12 @@ func goTypeToXTPTypeAndFormat(goType string) (typ, format string) {
 	case "int", "int32":
 		return "integer", "int32"
 	case "int64":
+		return "integer", "int64"
+	case "uint", "uint32":
+		// XTP schema doesn't support unsigned formats; use int64 to hold full uint32 range
+		return "integer", "int64"
+	case "uint64":
+		// XTP schema doesn't support unsigned formats; use int64 (may lose precision for large values)
 		return "integer", "int64"
 	case "float32":
 		return "number", "float"

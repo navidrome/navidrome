@@ -95,7 +95,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
 		"id":         idFilter("media_file"),
 		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
-		"starred":    booleanFilter,
+		"starred":    annotationBoolFilter("starred"),
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
@@ -193,6 +193,31 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 		return nil, err
 	}
 	return res.toModels(), nil
+}
+
+func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	placeholders := make([]string, len(values))
+	args := make([]any, len(values))
+	for i, v := range values {
+		placeholders[i] = "?"
+		args[i] = v
+	}
+	tagFilter := Expr(
+		fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
+			tag, strings.Join(placeholders, ",")),
+		args...,
+	)
+
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	if opts.Filters != nil {
+		opts.Filters = And{tagFilter, opts.Filters}
+	} else {
+		opts.Filters = tagFilter
+	}
+	return r.GetAll(opts)
 }
 
 func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.MediaFileCursor, error) {

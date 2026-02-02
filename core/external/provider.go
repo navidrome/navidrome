@@ -32,7 +32,7 @@ const (
 type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
-	ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error)
+	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
@@ -80,6 +80,9 @@ type Agents interface {
 	agents.ArtistSimilarRetriever
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
+	agents.SimilarSongsByTrackRetriever
+	agents.SimilarSongsByAlbumRetriever
+	agents.SimilarSongsByArtistRetriever
 }
 
 func NewProvider(ds model.DataStore, agents Agents) Provider {
@@ -256,7 +259,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
-	g.Go(func() error { e.callGetSimilar(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
+	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
 	_ = g.Wait()
 
 	if utils.IsCtxDone(ctx) {
@@ -275,22 +278,54 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-func (e *provider) ArtistRadio(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	entity, err := model.GetEntityByID(ctx, e.ds, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var songs []agents.Song
+
+	// Try entity-specific similarity first
+	switch v := entity.(type) {
+	case *model.MediaFile:
+		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+	case *model.Album:
+		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+	case *model.Artist:
+		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+	default:
+		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
+		return nil, model.ErrNotFound
+	}
+
+	if err == nil && len(songs) > 0 {
+		return e.matchSongsToLibrary(ctx, songs, count)
+	}
+
+	// Fallback to existing similar artists + top songs algorithm
+	return e.similarSongsFallback(ctx, id, count)
+}
+
+// similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
+// get the artist of the given entity, retrieve similar artists, get their top songs, and pick
+// a weighted random selection of songs to return as similar songs.
+func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
+	e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
+		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 		return nil, ctx.Err()
 	}
 
 	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
 	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistRadio call canceled", ctx.Err())
+			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 			return ctx.Err()
 		}
 
@@ -422,21 +457,20 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artistName, err)
 	}
 
-	idMatches, err := e.loadTracksByID(ctx, songs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
-	}
-	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
-	}
-	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, idMatches, mbidMatches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	// Enrich songs with artist info if not already present (for top songs, we know the artist)
+	for i := range songs {
+		if songs[i].Artist == "" {
+			songs[i].Artist = artistName
+		}
+		if songs[i].ArtistMBID == "" {
+			songs[i].ArtistMBID = artist.MbzArtistID
+		}
 	}
 
-	log.Trace(ctx, "Top Songs loaded", "name", artistName, "numSongs", len(songs), "numIDMatches", len(idMatches), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
-	mfs := e.selectTopSongs(songs, idMatches, mbidMatches, titleMatches, count)
+	mfs, err := e.matchSongsToLibrary(ctx, songs, count)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artistName)
@@ -445,137 +479,6 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	}
 
 	return mfs, nil
-}
-
-func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
-	var mbids []string
-	for _, s := range songs {
-		if s.MBID != "" {
-			mbids = append(mbids, s.MBID)
-		}
-	}
-	matches := map[string]model.MediaFile{}
-	if len(mbids) == 0 {
-		return matches, nil
-	}
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"mbz_recording_id": mbids},
-			squirrel.Eq{"missing": false},
-		},
-	})
-	if err != nil {
-		return matches, err
-	}
-	for _, mf := range res {
-		if id := mf.MbzRecordingID; id != "" {
-			if _, ok := matches[id]; !ok {
-				matches[id] = mf
-			}
-		}
-	}
-	return matches, nil
-}
-
-func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
-	var ids []string
-	for _, s := range songs {
-		if s.ID != "" {
-			ids = append(ids, s.ID)
-		}
-	}
-	matches := map[string]model.MediaFile{}
-	if len(ids) == 0 {
-		return matches, nil
-	}
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"media_file.id": ids},
-			squirrel.Eq{"missing": false},
-		},
-	})
-	if err != nil {
-		return matches, err
-	}
-	for _, mf := range res {
-		if _, ok := matches[mf.ID]; !ok {
-			matches[mf.ID] = mf
-		}
-	}
-	return matches, nil
-}
-
-func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, artist *auxArtist, idMatches, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
-	titleMap := map[string]string{}
-	for _, s := range songs {
-		// Skip if already matched by ID or MBID
-		if s.ID != "" && idMatches[s.ID].ID != "" {
-			continue
-		}
-		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
-			continue
-		}
-		sanitized := str.SanitizeFieldForSorting(s.Name)
-		titleMap[sanitized] = s.Name
-	}
-	matches := map[string]model.MediaFile{}
-	if len(titleMap) == 0 {
-		return matches, nil
-	}
-	titleFilters := squirrel.Or{}
-	for sanitized := range titleMap {
-		titleFilters = append(titleFilters, squirrel.Like{"order_title": sanitized})
-	}
-
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Or{
-				squirrel.Eq{"artist_id": artist.ID},
-				squirrel.Eq{"album_artist_id": artist.ID},
-			},
-			titleFilters,
-			squirrel.Eq{"missing": false},
-		},
-		Sort: "starred desc, rating desc, year asc, compilation asc ",
-	})
-	if err != nil {
-		return matches, err
-	}
-	for _, mf := range res {
-		sanitized := str.SanitizeFieldForSorting(mf.Title)
-		if _, ok := matches[sanitized]; !ok {
-			matches[sanitized] = mf
-		}
-	}
-	return matches, nil
-}
-
-func (e *provider) selectTopSongs(songs []agents.Song, byID, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
-	var mfs model.MediaFiles
-	for _, t := range songs {
-		if len(mfs) == count {
-			break
-		}
-		// Try ID match first
-		if t.ID != "" {
-			if mf, ok := byID[t.ID]; ok {
-				mfs = append(mfs, mf)
-				continue
-			}
-		}
-		// Try MBID match second
-		if t.MBID != "" {
-			if mf, ok := byMBID[t.MBID]; ok {
-				mfs = append(mfs, mf)
-				continue
-			}
-		}
-		// Fall back to title match
-		if mf, ok := byTitle[str.SanitizeFieldForSorting(t.Name)]; ok {
-			mfs = append(mfs, mf)
-		}
-	}
-	return mfs
 }
 
 func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
@@ -614,7 +517,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	}
 }
 
-func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
+func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
 	artistName := artist.Name()
 	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artistName, artist.MbzArtistID, limit)

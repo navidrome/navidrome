@@ -179,7 +179,9 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
-	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
+	// Chunk size of 100 lines, as each line can generate up to 4 lookup candidates
+	// (NFC/NFD × raw/lowercase), and SQLite has a max expression tree depth of 1000.
+	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 100) {
 		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
@@ -206,33 +208,66 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			continue
 		}
 
-		// Normalize to NFD for filesystem compatibility (macOS). Database stores paths in NFD.
-		// See https://github.com/navidrome/navidrome/issues/4663
-		resolvedPaths = slice.Map(resolvedPaths, func(path string) string {
-			return strings.ToLower(norm.NFD.String(path))
-		})
+		// SQLite comparisons do not perform Unicode normalization, and filesystem normalization
+		// differs across platforms (macOS often yields NFD, while Linux/Windows typically use NFC).
+		// Generate lookup candidates for both forms so playlist entries match DB paths regardless
+		// of the original normalization. See https://github.com/navidrome/navidrome/issues/4884
+		//
+		// We also include the original (non-lowercased) paths because SQLite's COLLATE NOCASE
+		// only handles ASCII case-insensitivity. Non-ASCII characters like fullwidth letters
+		// (e.g., ＡＢＣＤ vs ａｂｃｄ) are not matched case-insensitively by NOCASE.
+		lookupCandidates := make([]string, 0, len(resolvedPaths)*4)
+		seen := make(map[string]struct{}, len(resolvedPaths)*4)
+		for _, path := range resolvedPaths {
+			// Add original paths first (for exact matching of non-ASCII characters)
+			nfcRaw := norm.NFC.String(path)
+			if _, ok := seen[nfcRaw]; !ok {
+				seen[nfcRaw] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfcRaw)
+			}
+			nfdRaw := norm.NFD.String(path)
+			if _, ok := seen[nfdRaw]; !ok {
+				seen[nfdRaw] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfdRaw)
+			}
 
-		found, err := mediaFileRepository.FindByPaths(resolvedPaths)
+			// Add lowercased paths (for ASCII case-insensitive matching via NOCASE)
+			nfc := strings.ToLower(nfcRaw)
+			if _, ok := seen[nfc]; !ok {
+				seen[nfc] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfc)
+			}
+			nfd := strings.ToLower(nfdRaw)
+			if _, ok := seen[nfd]; !ok {
+				seen[nfd] = struct{}{}
+				lookupCandidates = append(lookupCandidates, nfd)
+			}
+		}
+
+		found, err := mediaFileRepository.FindByPaths(lookupCandidates)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		// Build lookup map with library-qualified keys, normalized for comparison
+
+		// Build lookup map with library-qualified keys, normalized for comparison.
+		// Canonicalize to NFC so NFD/NFC become comparable.
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			// Normalize to lowercase for case-insensitive comparison
-			// Key format: "libraryID:path"
-			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(found[idx].Path))
+			key := fmt.Sprintf("%d:%s", found[idx].LibraryID, strings.ToLower(norm.NFC.String(found[idx].Path)))
 			existing[key] = idx
 		}
 
 		// Find media files in the order of the resolved paths, to keep playlist order
 		for _, path := range resolvedPaths {
-			idx, ok := existing[path]
+			key := strings.ToLower(norm.NFC.String(path))
+			idx, ok := existing[key]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
-				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
+				// Prefer logging a composed representation when possible to avoid confusing output
+				// with decomposed combining marks.
+				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", norm.NFC.String(path))
 			}
 		}
 	}
@@ -394,7 +429,20 @@ func (s *playlists) resolvePaths(ctx context.Context, folder *model.Folder, line
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
 	owner, _ := request.UserFrom(ctx)
 
+	// Try to find existing playlist by path. Since filesystem normalization differs across
+	// platforms (macOS uses NFD, Linux/Windows use NFC), we try both forms to match
+	// playlists that may have been imported on a different platform.
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
+	if errors.Is(err, model.ErrNotFound) {
+		// Try alternate normalization form
+		altPath := norm.NFD.String(newPls.Path)
+		if altPath == newPls.Path {
+			altPath = norm.NFC.String(newPls.Path)
+		}
+		if altPath != newPls.Path {
+			pls, err = s.ds.Playlist(ctx).FindByPath(altPath)
+		}
+	}
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}

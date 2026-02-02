@@ -92,6 +92,11 @@ func (m *mockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	return args.Get(0).(*model.MediaFile), args.Error(1)
 }
 
+// GetAllByTags implements model.MediaFileRepository.
+func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(options...)
+}
+
 // GetAll implements model.MediaFileRepository.
 func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]interface{}, len(options))
@@ -279,6 +284,30 @@ func (m *mockAgents) GetAlbumImages(ctx context.Context, name, artist, mbid stri
 	args := m.Called(ctx, name, artist, mbid)
 	if args.Get(0) != nil {
 		return args.Get(0).([]agents.ExternalImage), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, artist, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, artist, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]agents.Song, error) {
+	args := m.Called(ctx, id, name, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
 	}
 	return nil, args.Error(1)
 }

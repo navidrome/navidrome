@@ -87,6 +87,11 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 	bounds := original.Bounds()
 	originalSize := max(bounds.Max.X, bounds.Max.Y)
 
+	// Clamp size to original dimensions - upscaling wastes resources and adds no information
+	if size > originalSize {
+		size = originalSize
+	}
+
 	if originalSize <= size && !square {
 		return nil, originalSize, nil
 	}

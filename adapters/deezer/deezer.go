@@ -26,15 +26,19 @@ const deezerArtistSearchLimit = 50
 type deezerAgent struct {
 	dataStore model.DataStore
 	client    *client
+	languages []string
 }
 
 func deezerConstructor(dataStore model.DataStore) agents.Interface {
-	agent := &deezerAgent{dataStore: dataStore}
+	agent := &deezerAgent{
+		dataStore: dataStore,
+		languages: conf.Server.Deezer.Languages,
+	}
 	httpClient := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
-	agent.client = newClient(cachedHttpClient, conf.Server.Deezer.Language)
+	agent.client = newClient(cachedHttpClient)
 	return agent
 }
 
@@ -135,7 +139,9 @@ func (s *deezerAgent) GetArtistTopSongs(ctx context.Context, _, artistName, _ st
 
 	res := slice.Map(tracks, func(r Track) agents.Song {
 		return agents.Song{
-			Name: r.Title,
+			Name:     r.Title,
+			Album:    r.Album.Title,
+			Duration: uint32(r.Duration * 1000), // Convert seconds to milliseconds
 		}
 	})
 	return res, nil
@@ -147,7 +153,14 @@ func (s *deezerAgent) GetArtistBiography(ctx context.Context, _, name, _ string)
 		return "", err
 	}
 
-	return s.client.getArtistBio(ctx, artist.ID)
+	for _, lang := range s.languages {
+		bio, err := s.client.getArtistBio(ctx, artist.ID, lang)
+		if err == nil && bio != "" {
+			return bio, nil
+		}
+		log.Debug(ctx, "Deezer/artist.bio returned empty/error, trying next language", "artist", name, "lang", lang, err)
+	}
+	return "", agents.ErrNotFound
 }
 
 func init() {

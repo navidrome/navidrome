@@ -18,7 +18,7 @@ var _ = Describe("client", func() {
 
 	BeforeEach(func() {
 		httpClient = &fakeHttpClient{}
-		client = newClient(httpClient, "en")
+		client = newClient(httpClient)
 	})
 
 	Describe("ArtistImages", func() {
@@ -45,6 +45,28 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("TopTracks", func() {
+		It("returns top tracks with artist and album info from a successful request", func() {
+			f, err := os.Open("tests/fixtures/deezer.artist.top.json")
+			Expect(err).To(BeNil())
+			httpClient.mock("https://api.deezer.com/artist/27/top", http.Response{Body: f, StatusCode: 200})
+
+			tracks, err := client.getTopTracks(GinkgoT().Context(), 27, 5)
+			Expect(err).To(BeNil())
+			Expect(tracks).To(HaveLen(5))
+
+			// Verify first track has all expected fields
+			Expect(tracks[0].Title).To(Equal("Instant Crush (feat. Julian Casablancas)"))
+			Expect(tracks[0].Artist.Name).To(Equal("Daft Punk"))
+			Expect(tracks[0].Album.Title).To(Equal("Random Access Memories"))
+
+			// Verify second track
+			Expect(tracks[1].Title).To(Equal("One More Time"))
+			Expect(tracks[1].Artist.Name).To(Equal("Daft Punk"))
+			Expect(tracks[1].Album.Title).To(Equal("Discovery"))
+		})
+	})
+
 	Describe("ArtistBio", func() {
 		BeforeEach(func() {
 			// Mock the JWT token endpoint with a valid JWT that expires in 5 minutes
@@ -56,40 +78,33 @@ var _ = Describe("client", func() {
 		})
 
 		It("returns artist bio from a successful request", func() {
-			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.en.json")
 			Expect(err).To(BeNil())
 			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
 
-			bio, err := client.getArtistBio(GinkgoT().Context(), 27)
+			bio, err := client.getArtistBio(GinkgoT().Context(), 27, "en")
 			Expect(err).To(BeNil())
 			Expect(bio).To(ContainSubstring("Schoolmates Thomas and Guy-Manuel"))
 			Expect(bio).ToNot(ContainSubstring("<p>"))
 			Expect(bio).ToNot(ContainSubstring("</p>"))
 		})
 
-		It("uses the configured language", func() {
-			client = newClient(httpClient, "fr")
-			// Mock JWT token for the new client instance with a valid JWT
-			testJWT := createTestJWT(5 * time.Minute)
-			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
-				StatusCode: 200,
-				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, testJWT))),
-			})
-			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
+		It("uses the provided language", func() {
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.fr.json")
 			Expect(err).To(BeNil())
 			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
 
-			_, err = client.getArtistBio(GinkgoT().Context(), 27)
+			_, err = client.getArtistBio(GinkgoT().Context(), 27, "fr")
 			Expect(err).To(BeNil())
 			Expect(httpClient.lastRequest.Header.Get("Accept-Language")).To(Equal("fr"))
 		})
 
 		It("includes the JWT token in the request", func() {
-			f, err := os.Open("tests/fixtures/deezer.artist.bio.json")
+			f, err := os.Open("tests/fixtures/deezer.artist.bio.en.json")
 			Expect(err).To(BeNil())
 			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
 
-			_, err = client.getArtistBio(GinkgoT().Context(), 27)
+			_, err = client.getArtistBio(GinkgoT().Context(), 27, "en")
 			Expect(err).To(BeNil())
 			// Verify that the Authorization header has the Bearer token format
 			authHeader := httpClient.lastRequest.Header.Get("Authorization")
@@ -120,7 +135,7 @@ var _ = Describe("client", func() {
 				Body:       io.NopCloser(bytes.NewBufferString(errorResponse)),
 			})
 
-			_, err := client.getArtistBio(GinkgoT().Context(), 999)
+			_, err := client.getArtistBio(GinkgoT().Context(), 999, "en")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("GraphQL error"))
 			Expect(err.Error()).To(ContainSubstring("Artist not found"))
@@ -142,7 +157,7 @@ var _ = Describe("client", func() {
 				Body:       io.NopCloser(bytes.NewBufferString(emptyBioResponse)),
 			})
 
-			_, err := client.getArtistBio(GinkgoT().Context(), 27)
+			_, err := client.getArtistBio(GinkgoT().Context(), 27, "en")
 			Expect(err).To(MatchError("deezer: biography not found"))
 		})
 
@@ -152,7 +167,7 @@ var _ = Describe("client", func() {
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":"Internal server error"}`)),
 			})
 
-			_, err := client.getArtistBio(GinkgoT().Context(), 27)
+			_, err := client.getArtistBio(GinkgoT().Context(), 27, "en")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to get JWT"))
 		})
@@ -165,7 +180,7 @@ var _ = Describe("client", func() {
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, expiredJWT))),
 			})
 
-			_, err := client.getArtistBio(GinkgoT().Context(), 27)
+			_, err := client.getArtistBio(GinkgoT().Context(), 27, "en")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("JWT token already expired or expires too soon"))
 		})

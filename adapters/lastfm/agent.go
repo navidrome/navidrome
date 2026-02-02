@@ -26,8 +26,8 @@ const (
 	sessionKeyProperty = "LastFMSessionKey"
 )
 
-var ignoredBiographies = []string{
-	// Unknown Artist
+var ignoredContent = []string{
+	// Empty Artist/Album
 	`<a href="https://www.last.fm/music/`,
 }
 
@@ -36,7 +36,7 @@ type lastfmAgent struct {
 	sessionKeys  *agents.SessionKeys
 	apiKey       string
 	secret       string
-	lang         string
+	languages    []string
 	client       *client
 	httpClient   httpDoer
 	getInfoMutex sync.Mutex
@@ -48,7 +48,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	}
 	l := &lastfmAgent{
 		ds:          ds,
-		lang:        conf.Server.LastFM.Language,
+		languages:   conf.Server.LastFM.Languages,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
@@ -58,7 +58,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	}
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.httpClient = chc
-	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
+	l.client = newClient(l.apiKey, l.secret, chc)
 	return l
 }
 
@@ -68,22 +68,47 @@ func (l *lastfmAgent) AgentName() string {
 
 var imageRegex = regexp.MustCompile(`u\/(\d+)`)
 
-func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
-	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
-	if err != nil {
-		return nil, err
+// isValidContent checks if content is non-empty and not in the ignored list
+func isValidContent(content string) bool {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return false
 	}
+	for _, ign := range ignoredContent {
+		if strings.HasPrefix(content, ign) {
+			return false
+		}
+	}
+	return true
+}
 
-	return &agents.AlbumInfo{
-		Name:        a.Name,
-		MBID:        a.MBID,
-		Description: a.Description.Summary,
-		URL:         a.URL,
-	}, nil
+func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	var a *Album
+	var resp agents.AlbumInfo
+	for _, lang := range l.languages {
+		var err error
+		a, err = l.callAlbumGetInfo(ctx, name, artist, mbid, lang)
+		if err != nil {
+			return nil, err
+		}
+		resp.Name = a.Name
+		resp.MBID = a.MBID
+		resp.URL = a.URL
+		if isValidContent(a.Description.Summary) {
+			resp.Description = strings.TrimSpace(a.Description.Summary)
+			return &resp, nil
+		}
+		log.Debug(ctx, "LastFM/album.getInfo returned empty/ignored description, trying next language", "album", name, "artist", artist, "lang", lang)
+	}
+	// This condition should not be hit (languages default to ["en"]), but just in case
+	if a == nil {
+		return nil, agents.ErrNotFound
+	}
+	return &resp, nil
 }
 
 func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
-	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
+	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid, l.languages[0])
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +143,7 @@ func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid str
 }
 
 func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name)
+	a, err := l.callArtistGetInfo(ctx, name, l.languages[0])
 	if err != nil {
 		return "", err
 	}
@@ -129,7 +154,7 @@ func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string)
 }
 
 func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name)
+	a, err := l.callArtistGetInfo(ctx, name, l.languages[0])
 	if err != nil {
 		return "", err
 	}
@@ -140,20 +165,17 @@ func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (
 }
 
 func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name)
-	if err != nil {
-		return "", err
-	}
-	a.Bio.Summary = strings.TrimSpace(a.Bio.Summary)
-	if a.Bio.Summary == "" {
-		return "", agents.ErrNotFound
-	}
-	for _, ign := range ignoredBiographies {
-		if strings.HasPrefix(a.Bio.Summary, ign) {
-			return "", nil
+	for _, lang := range l.languages {
+		a, err := l.callArtistGetInfo(ctx, name, lang)
+		if err != nil {
+			return "", err
 		}
+		if isValidContent(a.Bio.Summary) {
+			return strings.TrimSpace(a.Bio.Summary), nil
+		}
+		log.Debug(ctx, "LastFM/artist.getInfo returned empty/ignored biography, trying next language", "artist", name, "lang", lang)
 	}
-	return a.Bio.Summary, nil
+	return "", agents.ErrNotFound
 }
 
 func (l *lastfmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
@@ -192,6 +214,26 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 	return res, nil
 }
 
+func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	resp, err := l.callTrackGetSimilar(ctx, name, artist, count)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+	res := make([]agents.Song, 0, len(resp))
+	for _, t := range resp {
+		res = append(res, agents.Song{
+			Name:       t.Name,
+			MBID:       t.MBID,
+			Artist:     t.Artist.Name,
+			ArtistMBID: t.Artist.MBID,
+		})
+	}
+	return res, nil
+}
+
 var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
@@ -199,7 +241,7 @@ var (
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
 	log.Debug(ctx, "Getting artist images from Last.fm", "name", name)
-	a, err := l.callArtistGetInfo(ctx, name)
+	a, err := l.callArtistGetInfo(ctx, name, l.languages[0])
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
 	}
@@ -239,14 +281,14 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	return res, nil
 }
 
-func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string) (*Album, error) {
-	a, err := l.client.albumGetInfo(ctx, name, artist, mbid)
+func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string, lang string) (*Album, error) {
+	a, err := l.client.albumGetInfo(ctx, name, artist, mbid, lang)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 
 	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
 		log.Debug(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
-		return l.callAlbumGetInfo(ctx, name, artist, "")
+		return l.callAlbumGetInfo(ctx, name, artist, "", lang)
 	}
 
 	if err != nil {
@@ -260,11 +302,11 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 	return a, nil
 }
 
-func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
+func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, lang string) (*Artist, error) {
 	l.getInfoMutex.Lock()
 	defer l.getInfoMutex.Unlock()
 
-	a, err := l.client.artistGetInfo(ctx, name)
+	a, err := l.client.artistGetInfo(ctx, name, lang)
 	if err != nil {
 		log.Error(ctx, "Error calling LastFM/artist.getInfo", "artist", name, err)
 		return nil, err
@@ -288,6 +330,15 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName str
 		return nil, err
 	}
 	return t.Track, nil
+}
+
+func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist string, count int) ([]SimilarTrack, error) {
+	s, err := l.client.trackGetSimilar(ctx, name, artist, count)
+	if err != nil {
+		log.Error(ctx, "Error calling LastFM/track.getSimilar", "track", name, "artist", artist, err)
+		return nil, err
+	}
+	return s.Track, nil
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {

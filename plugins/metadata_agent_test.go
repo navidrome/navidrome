@@ -108,6 +108,37 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 			Expect(images[0].Size).To(Equal(500))
 		})
 	})
+
+	Describe("GetSimilarSongsByTrack", func() {
+		It("returns similar songs from the plugin", func() {
+			retriever := agent.(agents.SimilarSongsByTrackRetriever)
+			songs, err := retriever.GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Yesterday", "The Beatles", "some-mbid", 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+			Expect(songs[0].Name).To(Equal("Similar to Yesterday #1"))
+			Expect(songs[0].Artist).To(Equal("The Beatles"))
+		})
+	})
+
+	Describe("GetSimilarSongsByAlbum", func() {
+		It("returns similar songs from the plugin", func() {
+			retriever := agent.(agents.SimilarSongsByAlbumRetriever)
+			songs, err := retriever.GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Abbey Road", "The Beatles", "album-mbid", 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+			Expect(songs[0].Album).To(Equal("Abbey Road"))
+		})
+	})
+
+	Describe("GetSimilarSongsByArtist", func() {
+		It("returns similar songs from the plugin", func() {
+			retriever := agent.(agents.SimilarSongsByArtistRetriever)
+			songs, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "The Beatles", "some-mbid", 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+			Expect(songs[0].Name).To(ContainSubstring("The Beatles Style Song"))
+		})
+	})
 })
 
 var _ = Describe("MetadataAgent error handling", Ordered, func() {
@@ -186,6 +217,27 @@ var _ = Describe("MetadataAgent error handling", Ordered, func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
 	})
+
+	It("returns error from GetSimilarSongsByTrack", func() {
+		retriever := errorAgent.(agents.SimilarSongsByTrackRetriever)
+		_, err := retriever.GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetSimilarSongsByAlbum", func() {
+		retriever := errorAgent.(agents.SimilarSongsByAlbumRetriever)
+		_, err := retriever.GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+
+	It("returns error from GetSimilarSongsByArtist", func() {
+		retriever := errorAgent.(agents.SimilarSongsByArtistRetriever)
+		_, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
 })
 
 var _ = Describe("MetadataAgent partial implementation", Ordered, func() {
@@ -255,6 +307,23 @@ var _ = Describe("MetadataAgent partial implementation", Ordered, func() {
 		retriever := partialAgent.(agents.AlbumImageRetriever)
 		_, err := retriever.GetAlbumImages(GinkgoT().Context(), "Album", "Artist", "mbid")
 		Expect(err).To(MatchError(errNotImplemented))
+	})
 
+	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByTrack)", func() {
+		retriever := partialAgent.(agents.SimilarSongsByTrackRetriever)
+		_, err := retriever.GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
+		Expect(err).To(MatchError(errNotImplemented))
+	})
+
+	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByAlbum)", func() {
+		retriever := partialAgent.(agents.SimilarSongsByAlbumRetriever)
+		_, err := retriever.GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
+		Expect(err).To(MatchError(errNotImplemented))
+	})
+
+	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByArtist)", func() {
+		retriever := partialAgent.(agents.SimilarSongsByArtistRetriever)
+		_, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
+		Expect(err).To(MatchError(errNotImplemented))
 	})
 })

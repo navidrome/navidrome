@@ -40,18 +40,14 @@ const useStyles = makeStyles(
 
 /**
  * Hook for common control state (focus, validation, description visibility)
- * Tracks "touched" state to only show errors after the user has interacted with the field
  */
 const useControlState = (props) => {
   const { config, uischema, description, visible, errors } = props
   const [isFocused, setIsFocused] = useState(false)
-  const [isTouched, setIsTouched] = useState(false)
 
   const appliedUiSchemaOptions = merge({}, config, uischema?.options)
   // errors is a string when there are validation errors, empty/undefined when valid
-  const hasErrors = errors && errors.length > 0
-  // Only show as invalid after the field has been touched (blurred)
-  const showError = isTouched && hasErrors
+  const showError = errors && errors.length > 0
 
   const showDescription = !isDescriptionHidden(
     visible,
@@ -63,10 +59,7 @@ const useControlState = (props) => {
   const helperText = showError ? errors : showDescription ? description : ''
 
   const handleFocus = () => setIsFocused(true)
-  const handleBlur = () => {
-    setIsFocused(false)
-    setIsTouched(true)
-  }
+  const handleBlur = () => setIsFocused(false)
 
   return {
     isFocused,
@@ -185,8 +178,17 @@ const OutlinedNumberControl = (props) => {
 // Enum/Select control wrapper
 const OutlinedEnumControl = (props) => {
   const classes = useStyles()
-  const { data, id, enabled, path, handleChange, options, label, visible } =
-    props
+  const {
+    data,
+    id,
+    enabled,
+    path,
+    handleChange,
+    options,
+    label,
+    visible,
+    required,
+  } = props
   const {
     appliedUiSchemaOptions,
     showError,
@@ -212,7 +214,12 @@ const OutlinedEnumControl = (props) => {
         labelId={`${id}-label`}
         id={id}
         value={data ?? ''}
-        onChange={(ev) => handleChange(path, ev.target.value)}
+        onChange={(ev) => {
+          handleChange(
+            path,
+            ev.target.value === '' ? undefined : ev.target.value,
+          )
+        }}
         onFocus={handleFocus}
         onBlur={handleBlur}
         disabled={!enabled}
@@ -220,9 +227,11 @@ const OutlinedEnumControl = (props) => {
         label={label}
         fullWidth
       >
-        <MenuItem value="">
-          <em>None</em>
-        </MenuItem>
+        {!required && (
+          <MenuItem value="">
+            <em>None</em>
+          </MenuItem>
+        )}
         {options?.map((option) => (
           <MenuItem key={option.value} value={option.value}>
             {option.label}

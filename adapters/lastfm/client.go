@@ -34,24 +34,23 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func newClient(apiKey string, secret string, lang string, hc httpDoer) *client {
-	return &client{apiKey, secret, lang, hc}
+func newClient(apiKey string, secret string, hc httpDoer) *client {
+	return &client{apiKey, secret, hc}
 }
 
 type client struct {
 	apiKey string
 	secret string
-	lang   string
 	hc     httpDoer
 }
 
-func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string) (*Album, error) {
+func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string, lang string) (*Album, error) {
 	params := url.Values{}
 	params.Add("method", "album.getInfo")
 	params.Add("album", name)
 	params.Add("artist", artist)
 	params.Add("mbid", mbid)
-	params.Add("lang", c.lang)
+	params.Add("lang", lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
@@ -59,11 +58,11 @@ func (c *client) albumGetInfo(ctx context.Context, name string, artist string, m
 	return &response.Album, nil
 }
 
-func (c *client) artistGetInfo(ctx context.Context, name string) (*Artist, error) {
+func (c *client) artistGetInfo(ctx context.Context, name string, lang string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
 	params.Add("artist", name)
-	params.Add("lang", c.lang)
+	params.Add("lang", lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
@@ -93,6 +92,19 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int)
 		return nil, err
 	}
 	return &response.TopTracks, nil
+}
+
+func (c *client) trackGetSimilar(ctx context.Context, name, artist string, limit int) (*SimilarTracks, error) {
+	params := url.Values{}
+	params.Add("method", "track.getSimilar")
+	params.Add("track", name)
+	params.Add("artist", artist)
+	params.Add("limit", strconv.Itoa(limit))
+	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
+	if err != nil {
+		return nil, err
+	}
+	return &response.SimilarTracks, nil
 }
 
 func (c *client) GetToken(ctx context.Context) (string, error) {
@@ -185,8 +197,15 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 		c.sign(params)
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
-	req.URL.RawQuery = params.Encode()
+	var req *http.Request
+	if method == http.MethodPost {
+		body := strings.NewReader(params.Encode())
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, body)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
+		req.URL.RawQuery = params.Encode()
+	}
 
 	log.Trace(ctx, fmt.Sprintf("Sending Last.fm %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)

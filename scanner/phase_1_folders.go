@@ -40,7 +40,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
-			state.sendWarning(err.Error())
+			state.sendError(err)
 			continue
 		}
 		jobs = append(jobs, job)
