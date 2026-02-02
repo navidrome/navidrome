@@ -1,0 +1,24 @@
+{
+  "tracks": [
+    {
+      "id": "28048253",
+      "type": "tracks",
+      "attributes": {
+        "title": "Get Lucky",
+        "isrc": "USQX91300104",
+        "duration": 369,
+        "popularity": 95
+      }
+    },
+    {
+      "id": "1234567",
+      "type": "tracks",
+      "attributes": {
+        "title": "Get Lucky (Radio Edit)",
+        "isrc": "USQX91300105",
+        "duration": 248,
+        "popularity": 75
+      }
+    }
+  ]
+}

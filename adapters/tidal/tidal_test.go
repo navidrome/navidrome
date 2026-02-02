@@ -324,6 +324,82 @@ var _ = Describe("tidalAgent", func() {
 			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
 	})
+
+	Describe("GetSimilarSongsByTrack", func() {
+		var agent *tidalAgent
+		var httpClient *mockHttpClient
+
+		BeforeEach(func() {
+			httpClient = newMockHttpClient()
+			agent = &tidalAgent{
+				ds:     &tests.MockDataStore{},
+				client: newClient("test-id", "test-secret", httpClient),
+			}
+		})
+
+		It("returns similar songs from track radio", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock track search response
+			fTrackSearch, _ := os.Open("tests/fixtures/tidal.search.track.json")
+			httpClient.trackSearchResponse = &http.Response{Body: fTrackSearch, StatusCode: 200}
+
+			// Mock track radio response
+			fTrackRadio, _ := os.Open("tests/fixtures/tidal.track.radio.json")
+			httpClient.trackRadioResponse = &http.Response{Body: fTrackRadio, StatusCode: 200}
+
+			songs, err := agent.GetSimilarSongsByTrack(ctx, "", "Get Lucky", "Daft Punk", "", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+			Expect(songs[0].Name).To(Equal("Starboy"))
+			Expect(songs[0].Duration).To(Equal(uint32(230000))) // 230 seconds * 1000
+		})
+
+		It("returns ErrNotFound when track is not found", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock empty track search response
+			httpClient.trackSearchResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"tracks":[]}`)),
+			}
+
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "Nonexistent Track", "Unknown Artist", "", 5)
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		})
+
+		It("returns ErrNotFound when track radio returns no results", func() {
+			// Mock token response
+			httpClient.tokenResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"access_token":"test-token","token_type":"Bearer","expires_in":86400}`)),
+			}
+
+			// Mock track search response
+			fTrackSearch, _ := os.Open("tests/fixtures/tidal.search.track.json")
+			httpClient.trackSearchResponse = &http.Response{Body: fTrackSearch, StatusCode: 200}
+
+			// Mock empty track radio response
+			httpClient.trackRadioResponse = &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"data":[]}`)),
+			}
+
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "Get Lucky", "Daft Punk", "", 5)
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		})
+	})
 })
 
 // mockHttpClient is a mock HTTP client for testing
@@ -331,9 +407,11 @@ type mockHttpClient struct {
 	tokenResponse       *http.Response
 	searchResponse      *http.Response
 	albumSearchResponse *http.Response
+	trackSearchResponse *http.Response
 	artistResponse      *http.Response
 	similarResponse     *http.Response
 	tracksResponse      *http.Response
+	trackRadioResponse  *http.Response
 }
 
 func newMockHttpClient() *mockHttpClient {
@@ -354,14 +432,25 @@ func (c *mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 
 	// Handle search request
 	if req.URL.Host == "openapi.tidal.com" && req.URL.Path == "/search" {
-		// Check if it's an album search (has type=ALBUMS parameter)
-		if req.URL.Query().Get("type") == "ALBUMS" {
+		searchType := req.URL.Query().Get("type")
+		// Check if it's an album search
+		if searchType == "ALBUMS" {
 			if c.albumSearchResponse != nil {
 				return c.albumSearchResponse, nil
 			}
 			return &http.Response{
 				StatusCode: 200,
 				Body:       io.NopCloser(bytes.NewBufferString(`{"albums":[]}`)),
+			}, nil
+		}
+		// Check if it's a track search
+		if searchType == "TRACKS" {
+			if c.trackSearchResponse != nil {
+				return c.trackSearchResponse, nil
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"tracks":[]}`)),
 			}, nil
 		}
 		// Otherwise, it's an artist search
@@ -372,6 +461,19 @@ func (c *mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 			StatusCode: 200,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"artists":[]}`)),
 		}, nil
+	}
+
+	// Handle track radio request
+	if req.URL.Host == "openapi.tidal.com" && len(req.URL.Path) > 8 && req.URL.Path[:8] == "/tracks/" {
+		if len(req.URL.Path) > 14 && req.URL.Path[len(req.URL.Path)-6:] == "/radio" {
+			if c.trackRadioResponse != nil {
+				return c.trackRadioResponse, nil
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"data":[]}`)),
+			}, nil
+		}
 	}
 
 	// Handle artist request

@@ -210,6 +210,76 @@ func (c *client) searchAlbums(ctx context.Context, albumName, artistName string,
 	return result.Albums, nil
 }
 
+func (c *client) searchTracks(ctx context.Context, trackName, artistName string, limit int) ([]TrackResource, error) {
+	token, err := c.getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	query := trackName
+	if artistName != "" {
+		query = artistName + " " + trackName
+	}
+
+	params := url.Values{}
+	params.Add("query", query)
+	params.Add("limit", strconv.Itoa(limit))
+	params.Add("countryCode", "US")
+	params.Add("type", "TRACKS")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/search", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = params.Encode()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.tidal.v1+json")
+	req.Header.Set("Content-Type", "application/vnd.tidal.v1+json")
+
+	var result struct {
+		Tracks []TrackResource `json:"tracks"`
+	}
+	err = c.makeRequest(req, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Tracks) == 0 {
+		return nil, ErrNotFound
+	}
+	return result.Tracks, nil
+}
+
+func (c *client) getTrackRadio(ctx context.Context, trackID string, limit int) ([]TrackResource, error) {
+	token, err := c.getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	params := url.Values{}
+	params.Add("countryCode", "US")
+	params.Add("limit", strconv.Itoa(limit))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/tracks/"+trackID+"/radio", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = params.Encode()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.tidal.v1+json")
+	req.Header.Set("Content-Type", "application/vnd.tidal.v1+json")
+
+	var result struct {
+		Data []TrackResource `json:"data"`
+	}
+	err = c.makeRequest(req, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Data, nil
+}
+
 func (c *client) getToken(ctx context.Context) (string, error) {
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()

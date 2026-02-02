@@ -18,6 +18,7 @@ import (
 const tidalAgentName = "tidal"
 const tidalArtistSearchLimit = 20
 const tidalAlbumSearchLimit = 10
+const tidalTrackSearchLimit = 10
 const tidalArtistURLBase = "https://tidal.com/browse/artist/"
 
 type tidalAgent struct {
@@ -202,6 +203,68 @@ func (t *tidalAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid
 	}
 
 	return songs, nil
+}
+
+func (t *tidalAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	track, err := t.searchTrack(ctx, name, artist)
+	if err != nil {
+		if errors.Is(err, agents.ErrNotFound) {
+			log.Warn(ctx, "Track not found in Tidal", "track", name, "artist", artist)
+		} else {
+			log.Error(ctx, "Error searching track in Tidal", "track", name, "artist", artist, err)
+		}
+		return nil, err
+	}
+
+	// Get track radio (similar tracks)
+	similarTracks, err := t.client.getTrackRadio(ctx, track.ID, count)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, agents.ErrNotFound
+		}
+		log.Error(ctx, "Error getting track radio from Tidal", "trackId", track.ID, err)
+		return nil, err
+	}
+
+	if len(similarTracks) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	res := slice.Map(similarTracks, func(track TrackResource) agents.Song {
+		return agents.Song{
+			Name:     track.Attributes.Title,
+			ISRC:     track.Attributes.ISRC,
+			Duration: uint32(track.Attributes.Duration * 1000),
+		}
+	})
+
+	return res, nil
+}
+
+func (t *tidalAgent) searchTrack(ctx context.Context, trackName, artistName string) (*TrackResource, error) {
+	tracks, err := t.client.searchTracks(ctx, trackName, artistName, tidalTrackSearchLimit)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, agents.ErrNotFound
+		}
+		return nil, err
+	}
+
+	if len(tracks) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	// Find exact match (case-insensitive)
+	for i := range tracks {
+		if strings.EqualFold(tracks[i].Attributes.Title, trackName) {
+			log.Trace(ctx, "Found track in Tidal", "title", tracks[i].Attributes.Title, "id", tracks[i].ID)
+			return &tracks[i], nil
+		}
+	}
+
+	// If no exact match, check if first result is close enough
+	log.Trace(ctx, "No exact track match in Tidal", "searched", trackName, "found", tracks[0].Attributes.Title)
+	return nil, agents.ErrNotFound
 }
 
 func (t *tidalAgent) searchArtist(ctx context.Context, name string) (*ArtistResource, error) {

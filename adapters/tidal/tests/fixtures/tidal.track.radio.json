@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": "12345678",
+      "type": "tracks",
+      "attributes": {
+        "title": "Starboy",
+        "isrc": "USUG11601092",
+        "duration": 230,
+        "popularity": 92
+      }
+    },
+    {
+      "id": "23456789",
+      "type": "tracks",
+      "attributes": {
+        "title": "Blinding Lights",
+        "isrc": "USUG11904154",
+        "duration": 200,
+        "popularity": 98
+      }
+    },
+    {
+      "id": "34567890",
+      "type": "tracks",
+      "attributes": {
+        "title": "Uptown Funk",
+        "isrc": "GBAHS1400099",
+        "duration": 270,
+        "popularity": 90
+      }
+    }
+  ]
+}
