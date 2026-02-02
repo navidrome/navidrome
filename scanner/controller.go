@@ -224,6 +224,10 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	for _, w := range scanWarnings {
 		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
 	}
+	// Store scan error in database so it can be displayed in the UI
+	if scanError != nil {
+		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
 		log.Debug(ctx, "Library changes imported. Sending refresh event")
