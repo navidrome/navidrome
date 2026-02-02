@@ -97,7 +97,8 @@
         "recentlyPlayed": "Nylig Avspilt",
         "mostPlayed": "Mest Avspilt",
         "starred": "Favoritter",
-        "topRated": "Top Rangert"
+        "topRated": "Top Rangert",
+        "compilations": "Samlinger"
       }
     },
     "artist": {

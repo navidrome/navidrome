@@ -77,7 +77,8 @@
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
                 "starred": "Oblíbené",
-                "topRated": "Nejlépe hodnocené"
+                "topRated": "Nejlépe hodnocené",
+                "compilations": "Kompilace"
             }
         },
         "artist": {

@@ -97,7 +97,8 @@
         "recentlyPlayed": "Son Dinlenenler",
         "mostPlayed": "En Çok Dinlenenler",
         "starred": "Favorilenenler",
-        "topRated": "Yüksek Dereceliler"
+        "topRated": "Yüksek Dereceliler",
+        "compilations": "Derlemeler"
       }
     },
     "artist": {

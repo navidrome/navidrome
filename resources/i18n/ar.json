@@ -77,7 +77,8 @@
                 "recentlyPlayed": "المشغلة حديثا",
                 "mostPlayed": "الأكثر تشغيلاً",
                 "starred": "المفضلات",
-                "topRated": "الأكثر تقييما"
+                "topRated": "الأكثر تقييما",
+                "compilations": "تجميعات"
             }
         },
         "artist": {

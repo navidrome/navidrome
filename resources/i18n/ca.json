@@ -92,7 +92,8 @@
                 "recentlyPlayed": "Reproduït fa poc",
                 "mostPlayed": "Més reproduït",
                 "starred": "Preferits",
-                "topRated": "Més ben valorades"
+                "topRated": "Més ben valorades",
+                "compilations": "Recopilacions"
             }
         },
         "artist": {

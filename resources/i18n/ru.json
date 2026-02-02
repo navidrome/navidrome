@@ -97,7 +97,8 @@
         "recentlyPlayed": "Проигранные",
         "mostPlayed": "Популярные",
         "starred": "Избранные",
-        "topRated": "Лучшие"
+        "topRated": "Лучшие",
+        "compilations": "Сборники"
       }
     },
     "artist": {
