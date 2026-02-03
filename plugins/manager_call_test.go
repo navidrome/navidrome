@@ -106,7 +106,7 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 		Expect(calls[0].ok).To(BeFalse())
 	})
 
-	It("records metrics for not-implemented functions", func() {
+	It("does not record metrics for not-implemented functions", func() {
 		// Use partial metadata agent that doesn't implement GetArtistMBID
 		partialRecorder := &mockMetricsRecorder{}
 		partialManager, _ := createTestManagerWithPluginsAndMetrics(
@@ -123,9 +123,6 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 		Expect(err).To(MatchError(errNotImplemented))
 
 		calls := partialRecorder.getCalls()
-		Expect(calls).To(HaveLen(1))
-		Expect(calls[0].plugin).To(Equal("partial-metadata-agent"))
-		Expect(calls[0].method).To(Equal(FuncGetArtistMBID))
-		Expect(calls[0].ok).To(BeTrue())
+		Expect(calls).To(HaveLen(0))
 	})
 })
