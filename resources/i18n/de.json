@@ -48,7 +48,7 @@
         "playNext": "Als nächstes abspielen",
         "info": "Mehr Informationen",
         "showInPlaylist": "In Wiedergabeliste anzeigen",
-        "instantMix": ""
+        "instantMix": "Sofort-Mix"
       }
     },
     "album": {
@@ -588,7 +588,7 @@
     "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
     "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
     "noTopSongsFound": "Keine beliebten Titel gefunden",
-    "startingInstantMix": ""
+    "startingInstantMix": "Lade Sofort-Mix..."
   },
   "menu": {
     "library": "Bibliothek",

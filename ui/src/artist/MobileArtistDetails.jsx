@@ -169,7 +169,9 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
       <div className={classes.biography}>
         <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
           <Typography variant={'body1'} onClick={() => setExpanded(!expanded)}>
-            <span><SafeHTML>{biography}</SafeHTML></span>
+            <span>
+              <SafeHTML>{biography}</SafeHTML>
+            </span>
           </Typography>
         </Collapse>
       </div>

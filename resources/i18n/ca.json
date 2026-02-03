@@ -95,11 +95,11 @@
       "lists": {
         "all": "Tot",
         "random": "Aleatori",
-        "recentlyAdded": "Afegit fa poc",
-        "recentlyPlayed": "Reproduït fa poc",
-        "mostPlayed": "Més reproduït",
+        "recentlyAdded": "Afegits recentment",
+        "recentlyPlayed": "Reproduïts recentment",
+        "mostPlayed": "Més reproduïts",
         "starred": "Preferits",
-        "topRated": "Més ben valorades"
+        "topRated": "Més ben valorats"
       }
     },
     "artist": {
@@ -119,7 +119,7 @@
         "albumartist": "Artista de l'Àlbum |||| Artistes de l'Àlbum",
         "artist": "Artista |||| Artistes",
         "composer": "Compositor |||| Compositors",
-        "conductor": "Conductor |||| Conductors",
+        "conductor": "Director |||| Directors",
         "lyricist": "Lletrista |||| Lletristes",
         "arranger": "Arranjador |||| Arranjadors",
         "producer": "Productor |||| Productors",
@@ -127,7 +127,7 @@
         "engineer": "Enginyer |||| Enginyers",
         "mixer": "Mesclador |||| Mescladors",
         "remixer": "Remesclador |||| Remescladors",
-        "djmixer": "DJ Mesclador |||| DJ Mescladors",
+        "djmixer": "Mesclador DJ |||| Mescladors DJ",
         "performer": "Intèrpret |||| Intèrprets",
         "maincredit": "Artista de l'àlbum or Artista |||| Artistes de l'àlbum or Artistes"
       },
@@ -654,7 +654,7 @@
     "links": {
       "homepage": "Inici",
       "source": "Codi font",
-      "featureRequests": "Sol·licitud de funcionalitats",
+      "featureRequests": "Sol·licita funcionalitats",
       "lastInsightsCollection": "Última recolecció d'informació",
       "insights": {
         "disabled": "Desactivada",

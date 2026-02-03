@@ -71,7 +71,9 @@ const ArtistDetails = (props) => {
   }, [record.id])
 
   const Component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
-  return <Component artistInfo={artistInfo} record={record} biography={biography} />
+  return (
+    <Component artistInfo={artistInfo} record={record} biography={biography} />
+  )
 }
 
 const ArtistShowLayout = (props) => {
