@@ -36,7 +36,8 @@
         "bitDepth": "Bittisyvyys",
         "sampleRate": "Näytteenottotaajuus",
         "missing": "Puuttuva",
-        "libraryName": "Kirjasto"
+        "libraryName": "Kirjasto",
+        "composer": "Säveltäjä"
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
@@ -46,7 +47,8 @@
         "download": "Lataa",
         "playNext": "Soita seuraavaksi",
         "info": "Info",
-        "showInPlaylist": "Näytä soittolistassa"
+        "showInPlaylist": "Näytä soittolistassa",
+        "instantMix": "Pikasekoitus"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Skannaus käynnissä...",
         "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja"
       }
+    },
+    "plugin": {
+      "name": "Liitännäinen |||| Liitännäiset",
+      "fields": {
+        "id": "ID",
+        "name": "Nimi",
+        "description": "Kuvaus",
+        "version": "Versio",
+        "author": "Tekijä",
+        "website": "Verkkosivusto",
+        "permissions": "Oikeudet",
+        "enabled": "Käytössä",
+        "status": "Tila",
+        "path": "Polku",
+        "lastError": "Virhe",
+        "hasError": "Virhe",
+        "updatedAt": "Päivitetty",
+        "createdAt": "Asennettu",
+        "configKey": "Avain",
+        "configValue": "Arvo",
+        "allUsers": "Salli kaikki käyttäjät",
+        "selectedUsers": "Valitut käyttäjät",
+        "allLibraries": "Salli kaikki kirjastot",
+        "selectedLibraries": "Valitut kirjastot"
+      },
+      "sections": {
+        "status": "Tila",
+        "info": "Lisäosan tiedot",
+        "configuration": "Määritykset",
+        "manifest": "Luettelo",
+        "usersPermission": "Käyttäjäoikeudet",
+        "libraryPermission": "Kirjaston oikeudet"
+      },
+      "status": {
+        "enabled": "Käytössä",
+        "disabled": "Ei käytössä"
+      },
+      "actions": {
+        "enable": "Ota käyttöön",
+        "disable": "Poista käytöstä",
+        "disabledDueToError": "Korjaa virhe ennen käyttöönottoa",
+        "disabledUsersRequired": "Valitse käyttäjät ennen käyttöönottoa",
+        "disabledLibrariesRequired": "Valitse kirjastot ennen käyttöönottoa",
+        "addConfig": "Lisää määritykset",
+        "rescan": "Skannaa uudelleen"
+      },
+      "notifications": {
+        "enabled": "Lisäosa käytössä",
+        "disabled": "Lisäosa ei käytössä",
+        "updated": "Lisäosa päivitetty",
+        "error": "Virhe lisäosaa päivitettäessä"
+      },
+      "validation": {
+        "invalidJson": "Määrityksen on oltava kelvollinen JSON"
+      },
+      "messages": {
+        "configHelp": "Määritä lisäosa avain-arvo-parien avulla. Jätä tyhjäksi, jos lisäosa ei vaadi määrityksiä.",
+        "clickPermissions": "Napsauta käyttöoikeutta saadaksesi lisätietoja",
+        "noConfig": "Ei määritettyjä asetuksia",
+        "allUsersHelp": "Kun tämä on käytössä, laajennuksella on pääsy kaikkiin käyttäjiin, myös tulevaisuudessa luotaviin.",
+        "noUsers": "Ei valittuja käyttäjiä",
+        "permissionReason": "Syy",
+        "usersRequired": "Tämä laajennus vaatii pääsyn käyttäjätietoihin. Valitse käyttäjät, joihin laajennus voi päästä, tai ota käyttöön 'Salli kaikki käyttäjät'.",
+        "allLibrariesHelp": "Kun tämä on käytössä, laajennuksella on pääsy kaikkiin kirjastoihin, myös tulevaisuudessa luotaviin.",
+        "noLibraries": "Ei valittuja kirjastoja",
+        "librariesRequired": "Tämä laajennus vaatii pääsyn kirjastotietoihin. Valitse, mihin kirjastoihin laajennus voi käyttää, tai ota käyttöön 'Salli kaikki kirjastot'.",
+        "requiredHosts": "Vaaditut palvelimet",
+        "configValidationError": "Määrityksen validointi epäonnistui:",
+        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen."
+      },
+      "placeholders": {
+        "configKey": "avain",
+        "configValue": "arvo"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Poista kaikki puuttuvat tiedostot",
     "remove_all_missing_content": "Haluatko varmasti poistaa kaikki puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien toistomäärät ja arvostelut.",
     "noSimilarSongsFound": "Samankaltaisia kappaleita ei löytynyt",
-    "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt"
+    "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt",
+    "startingInstantMix": "Ladataan Pikasekoitus..."
   },
   "menu": {
     "library": "Kirjasto",
@@ -586,16 +663,16 @@
     },
     "tabs": {
       "about": "Tietoja",
-      "config": "Kokoonpano"
+      "config": "Määritykset"
     },
     "config": {
       "configName": "Konfiguraation nimi",
       "environmentVariable": "Ympäristömuuttuja",
       "currentValue": "Nykyinen arvo",
-      "configurationFile": "Konfiguraatiotiedosto",
-      "exportToml": "Vie konfiguraatio (TOML)",
-      "exportSuccess": "Konfiguraatio viety leikepöydälle TOML-muodossa",
-      "exportFailed": "Konfiguraation kopiointi epäonnistui",
+      "configurationFile": "Määritystiedosto",
+      "exportToml": "Vie määritys (TOML)",
+      "exportSuccess": "Määritykset viety leikepöydälle TOML-muodossa",
+      "exportFailed": "Määritysten kopiointi epäonnistui",
       "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
       "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
     }

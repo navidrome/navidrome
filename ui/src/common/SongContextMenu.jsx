@@ -96,7 +96,7 @@ export const SongContextMenu = ({
           const id = record.mediaFileId || record.id
           await playSimilar(dispatch, notify, id, {
             seedRecord: record,
-            shuffle: true,
+            shuffle: false,
           })
         } catch (e) {
           // eslint-disable-next-line no-console

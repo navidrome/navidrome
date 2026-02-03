@@ -624,4 +624,139 @@ var _ = Describe("Provider - Song Matching", func() {
 			})
 		})
 	})
+
+	Describe("Deduplication of mismatched songs", func() {
+		var track model.MediaFile
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SimilarSongsMatchThreshold = 85 // Allow fuzzy matching
+
+			track = model.MediaFile{ID: "track-1", Title: "Test Track", Artist: "Test Artist"}
+
+			// Setup for GetEntityByID to return the track
+			artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
+			mediaFileRepo.On("Get", "track-1").Return(&track, nil).Once()
+		})
+
+		It("removes duplicates when different input songs match the same library track", func() {
+			// Agent returns two different versions that will both fuzzy-match to the same library track
+			returnedSongs := []agents.Song{
+				{Name: "Bohemian Rhapsody (Live)", Artist: "Queen"},
+				{Name: "Bohemian Rhapsody (Original Mix)", Artist: "Queen"},
+			}
+			// Library only has one version
+			libraryTrack := model.MediaFile{
+				ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
+			}
+
+			setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{libraryTrack})
+
+			songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			// Should only return one track, not two duplicates
+			Expect(songs).To(HaveLen(1))
+			Expect(songs[0].ID).To(Equal("br-live"))
+		})
+
+		It("preserves duplicates when identical input songs match the same library track", func() {
+			// Agent returns the exact same song twice (intentional repetition)
+			returnedSongs := []agents.Song{
+				{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
+				{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
+			}
+			// Library has matching track
+			libraryTrack := model.MediaFile{
+				ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
+			}
+
+			setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{libraryTrack})
+
+			songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			// Should return two tracks since input songs were identical
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("br"))
+			Expect(songs[1].ID).To(Equal("br"))
+		})
+
+		It("handles mixed scenario with both identical and different input songs", func() {
+			// Agent returns: Song A, Song B (different from A), Song A again (same as first)
+			// All three match to the same library track
+			returnedSongs := []agents.Song{
+				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
+				{Name: "Yesterday (Remastered)", Artist: "The Beatles", Album: "1"},        // Different version
+				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},                 // Same as first
+				{Name: "Yesterday (Anthology)", Artist: "The Beatles", Album: "Anthology"}, // Another different version
+			}
+			// Library only has one version
+			libraryTrack := model.MediaFile{
+				ID: "yesterday", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
+			}
+
+			setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{libraryTrack})
+
+			songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			// Should return 2 tracks:
+			// 1. First "Yesterday" (original)
+			// 2. Third "Yesterday" (same as first, so kept)
+			// Skip: Second "Yesterday (Remastered)" (different input, same library track)
+			// Skip: Fourth "Yesterday (Anthology)" (different input, same library track)
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("yesterday"))
+			Expect(songs[1].ID).To(Equal("yesterday"))
+		})
+
+		It("does not deduplicate songs that match different library tracks", func() {
+			// Agent returns different songs that match different library tracks
+			returnedSongs := []agents.Song{
+				{Name: "Song A", Artist: "Artist"},
+				{Name: "Song B", Artist: "Artist"},
+				{Name: "Song C", Artist: "Artist"},
+			}
+			// Library has all three songs
+			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist"}
+			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
+			trackC := model.MediaFile{ID: "track-c", Title: "Song C", Artist: "Artist"}
+
+			setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{trackA, trackB, trackC})
+
+			songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			// All three should be returned since they match different library tracks
+			Expect(songs).To(HaveLen(3))
+			Expect(songs[0].ID).To(Equal("track-a"))
+			Expect(songs[1].ID).To(Equal("track-b"))
+			Expect(songs[2].ID).To(Equal("track-c"))
+		})
+
+		It("respects count limit after deduplication", func() {
+			// Agent returns 4 songs: 2 unique + 2 that would create duplicates
+			returnedSongs := []agents.Song{
+				{Name: "Song A", Artist: "Artist"},
+				{Name: "Song A (Live)", Artist: "Artist"}, // Different, matches same track
+				{Name: "Song B", Artist: "Artist"},
+				{Name: "Song B (Remix)", Artist: "Artist"}, // Different, matches same track
+			}
+			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist"}
+			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
+
+			setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{trackA, trackB})
+
+			// Request only 2 songs
+			songs, err := provider.SimilarSongs(ctx, "track-1", 2)
+
+			Expect(err).ToNot(HaveOccurred())
+			// Should return exactly 2: Song A and Song B (skipping duplicates)
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("track-a"))
+			Expect(songs[1].ID).To(Equal("track-b"))
+		})
+	})
 })

@@ -6,7 +6,7 @@
 // efficient access to format-specific tags (ID3v2 frames, MP4 atoms, ASF attributes)
 // through a single file open operation.
 //
-// This extractor is registered under the name "gotaglib". It only works with a filesystem
+// This extractor is registered under the name "taglib". It only works with a filesystem
 // (fs.FS) and does not support direct local file paths. Files returned by the filesystem
 // must implement io.ReadSeeker for go-taglib to read them.
 package gotaglib

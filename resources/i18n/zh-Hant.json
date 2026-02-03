@@ -10,6 +10,7 @@
         "playCount": "播放次數",
         "title": "標題",
         "artist": "藝人",
+        "composer": "作曲者",
         "album": "專輯",
         "path": "檔案路徑",
         "libraryName": "媒體庫",
@@ -46,7 +47,8 @@
         "shuffleAll": "全部隨機播放",
         "download": "下載",
         "playNext": "下一首播放",
-        "info": "取得資訊"
+        "info": "取得資訊",
+        "instantMix": "即時混音"
       }
     },
     "album": {
@@ -302,6 +304,8 @@
       },
       "actions": {
         "scan": "掃描媒體庫",
+        "quickScan": "快速掃描",
+        "fullScan": "完整掃描",
         "manageUsers": "管理使用者權限",
         "viewDetails": "查看詳細資料"
       },
@@ -310,6 +314,9 @@
         "updated": "成功更新媒體庫",
         "deleted": "成功刪除媒體庫",
         "scanStarted": "開始掃描媒體庫",
+        "quickScanStarted": "快速掃描已開始",
+        "fullScanStarted": "完整掃描已開始",
+        "scanError": "掃描啟動失敗，請檢查日誌",
         "scanCompleted": "媒體庫掃描完成"
       },
       "validation": {
@@ -324,6 +331,80 @@
         "deleteConfirm": "您確定要刪除此媒體庫嗎？這將刪除所有相關資料和使用者存取權限。",
         "scanInProgress": "正在掃描...",
         "noLibrariesAssigned": "沒有為該使用者指派任何媒體庫"
+      }
+    },
+    "plugin": {
+      "name": "插件 |||| 插件",
+      "fields": {
+        "id": "ID",
+        "name": "名稱",
+        "description": "描述",
+        "version": "版本",
+        "author": "作者",
+        "website": "網站",
+        "permissions": "權限",
+        "enabled": "已啟用",
+        "status": "狀態",
+        "path": "路徑",
+        "lastError": "錯誤",
+        "hasError": "錯誤",
+        "updatedAt": "更新於",
+        "createdAt": "安裝於",
+        "configKey": "鍵",
+        "configValue": "值",
+        "allUsers": "允許所有使用者",
+        "selectedUsers": "選定的使用者",
+        "allLibraries": "允許所有媒體庫",
+        "selectedLibraries": "選定的媒體庫"
+      },
+      "sections": {
+        "status": "狀態",
+        "info": "插件資訊",
+        "configuration": "設定",
+        "manifest": "資訊清單",
+        "usersPermission": "使用者權限",
+        "libraryPermission": "媒體庫權限"
+      },
+      "status": {
+        "enabled": "已啟用",
+        "disabled": "已停用"
+      },
+      "actions": {
+        "enable": "啟用",
+        "disable": "停用",
+        "disabledDueToError": "修復錯誤後才能啟用",
+        "disabledUsersRequired": "啟用前請先選擇使用者",
+        "disabledLibrariesRequired": "啟用前請先選擇媒體庫",
+        "addConfig": "新增設定",
+        "rescan": "重新掃描"
+      },
+      "notifications": {
+        "enabled": "插件已啟用",
+        "disabled": "插件已停用",
+        "updated": "插件已更新",
+        "error": "更新插件時發生錯誤"
+      },
+      "validation": {
+        "invalidJson": "設定必須是有效的 JSON"
+      },
+      "messages": {
+        "configHelp": "使用鍵值對設定插件。若插件無需設定則留空。",
+        "configValidationError": "設定驗證失敗：",
+        "schemaRenderError": "無法顯示設定表單。插件的 schema 可能無效。",
+        "clickPermissions": "點擊權限以查看詳細資訊",
+        "noConfig": "無設定",
+        "allUsersHelp": "啟用後，插件將可存取所有使用者，包含未來建立的使用者。",
+        "noUsers": "未選擇使用者",
+        "permissionReason": "原因",
+        "usersRequired": "此插件需要存取使用者資訊。請選擇插件可存取的使用者，或啟用「允許所有使用者」。",
+        "allLibrariesHelp": "啟用後，插件將可存取所有媒體庫，包含未來建立的媒體庫。",
+        "noLibraries": "未選擇媒體庫",
+        "librariesRequired": "此插件需要存取媒體庫資訊。請選擇插件可存取的媒體庫，或啟用「允許所有媒體庫」。",
+        "requiredHosts": "必要的 Hosts"
+      },
+      "placeholders": {
+        "configKey": "鍵",
+        "configValue": "值"
       }
     }
   },
@@ -474,10 +555,11 @@
   },
   "message": {
     "note": "注意",
-    "transcodingDisabled": "出於安全原因，已停用了從 Web 介面更改參數。要更改（編輯或新增）轉碼選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
+    "transcodingDisabled": "出於安全原因，已禁用了從 Web 介面更改參數。要更改（編輯或新增）轉碼選項，請在啟用 %{config} 設定選項的情況下重新啟動伺服器。",
     "transcodingEnabled": "Navidrome 目前與 %{config} 一起使用，因此可以透過 Web 介面從轉碼設定中執行系統命令。出於安全考慮，我們建議停用此功能，並僅在設定轉碼選項時啟用。",
     "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已新增 %{smart_count} 首歌到播放清單",
     "noSimilarSongsFound": "找不到相似歌曲",
+    "startingInstantMix": "正在載入即時混音...",
     "noTopSongsFound": "找不到熱門歌曲",
     "noPlaylistsAvailable": "沒有可用的播放清單",
     "delete_user_title": "刪除使用者「%{name}」",
@@ -490,12 +572,12 @@
     "notifications_not_available": "此瀏覽器不支援桌面通知，或您並非透過 HTTPS 存取 Navidrome",
     "lastfmLinkSuccess": "已成功連接 Last.fm 並開啟音樂記錄",
     "lastfmLinkFailure": "無法連接 Last.fm",
-    "lastfmUnlinkSuccess": "已取消 Last.fm 的連接並停用音樂記錄",
-    "lastfmUnlinkFailure": "無法取消 Last.fm 的連接",
-    "listenBrainzLinkSuccess": "已成功以 %{user} 身份連接 ListenBrainz 並開啟音樂記錄",
+    "lastfmUnlinkSuccess": "已取消與 Last.fm 的連接並停用音樂記錄",
+    "lastfmUnlinkFailure": "無法取消與 Last.fm 的連接",
+    "listenBrainzLinkSuccess": "已成功以 %{user} 的身份連接 ListenBrainz 並開啟音樂記錄",
     "listenBrainzLinkFailure": "無法連接 ListenBrainz：%{error}",
-    "listenBrainzUnlinkSuccess": "已取消 ListenBrainz 的連接並停用音樂記錄",
-    "listenBrainzUnlinkFailure": "無法取消 ListenBrainz 的連接",
+    "listenBrainzUnlinkSuccess": "已取消與 ListenBrainz 的連接並停用音樂記錄",
+    "listenBrainzUnlinkFailure": "無法取消與 ListenBrainz 的連接",
     "openIn": {
       "lastfm": "在 Last.fm 中開啟",
       "musicbrainz": "在 MusicBrainz 中開啟"
@@ -556,7 +638,7 @@
     "previousTrackText": "上一首",
     "reloadText": "重新載入",
     "volumeText": "音量",
-    "toggleLyricText": "切換歌詞",
+    "toggleLyricText": "歌詞顯示",
     "toggleMiniModeText": "最小化",
     "destroyText": "關閉",
     "downloadText": "下載",
@@ -602,6 +684,7 @@
     "totalScanned": "已掃描的資料夾總數",
     "quickScan": "快速掃描",
     "fullScan": "完全掃描",
+    "selectiveScan": "選擇性掃描",
     "serverUptime": "伺服器運作時間",
     "serverDown": "伺服器已離線",
     "scanType": "掃描類型",

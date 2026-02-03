@@ -34,24 +34,23 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func newClient(apiKey string, secret string, lang string, hc httpDoer) *client {
-	return &client{apiKey, secret, lang, hc}
+func newClient(apiKey string, secret string, hc httpDoer) *client {
+	return &client{apiKey, secret, hc}
 }
 
 type client struct {
 	apiKey string
 	secret string
-	lang   string
 	hc     httpDoer
 }
 
-func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string) (*Album, error) {
+func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string, lang string) (*Album, error) {
 	params := url.Values{}
 	params.Add("method", "album.getInfo")
 	params.Add("album", name)
 	params.Add("artist", artist)
 	params.Add("mbid", mbid)
-	params.Add("lang", c.lang)
+	params.Add("lang", lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
@@ -59,11 +58,11 @@ func (c *client) albumGetInfo(ctx context.Context, name string, artist string, m
 	return &response.Album, nil
 }
 
-func (c *client) artistGetInfo(ctx context.Context, name string) (*Artist, error) {
+func (c *client) artistGetInfo(ctx context.Context, name string, lang string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
 	params.Add("artist", name)
-	params.Add("lang", c.lang)
+	params.Add("lang", lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
 		return nil, err
