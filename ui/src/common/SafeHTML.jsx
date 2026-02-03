@@ -1,9 +1,7 @@
 import DOMPurify from 'dompurify'
 import { Fragment, useMemo } from 'react'
 
-export const SafeHTML = ({
-  children,
-}) => {
+export const SafeHTML = ({ children }) => {
   const purified = useMemo(() => {
     const purify = DOMPurify()
 

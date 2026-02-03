@@ -28,9 +28,7 @@ export const MultiLineTextField = memo(
         component="span"
         {...sanitizeFieldRestProps(rest)}
       >
-        {lines.length === 0 && emptyText
-          ? emptyText
-          : lines}
+        {lines.length === 0 && emptyText ? emptyText : lines}
       </Typography>
     )
   },

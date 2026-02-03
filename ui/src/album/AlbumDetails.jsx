@@ -351,7 +351,9 @@ const AlbumDetails = (props) => {
                   variant={'body1'}
                   onClick={() => setExpanded(!expanded)}
                 >
-                  <span><SafeHTML>{notes}</SafeHTML></span>
+                  <span>
+                    <SafeHTML>{notes}</SafeHTML>
+                  </span>
                 </Typography>
               </Collapse>
             )}
@@ -371,7 +373,9 @@ const AlbumDetails = (props) => {
               variant={'body1'}
               onClick={() => setExpanded(!expanded)}
             >
-              <span><SafeHTML>{notes}</SafeHTML></span>
+              <span>
+                <SafeHTML>{notes}</SafeHTML>
+              </span>
             </Typography>
           </Collapse>
         </div>
