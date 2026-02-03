@@ -173,7 +173,9 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
                 variant={'body1'}
                 onClick={() => setExpanded(!expanded)}
               >
-                <span><SafeHTML>{biography}</SafeHTML></span>
+                <span>
+                  <SafeHTML>{biography}</SafeHTML>
+                </span>
               </Typography>
             </Collapse>
           </CardContent>
