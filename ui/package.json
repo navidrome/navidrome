@@ -16,7 +16,7 @@
     "postinstall": "bin/update-workbox.sh"
   },
   "dependencies": {
-    "@jsonforms/core": "^2.5.2",
+    "@jsonforms/core": "^3.7.0",
     "@jsonforms/material-renderers": "^2.5.2",
     "@jsonforms/react": "^2.5.2",
     "@material-ui/core": "^4.12.4",
