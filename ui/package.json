@@ -59,7 +59,7 @@
     "@testing-library/react": "^12.1.5",
     "@testing-library/react-hooks": "^7.0.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^24.9.1",
+    "@types/node": "^25.2.0",
     "@types/react": "^17.0.89",
     "@types/react-dom": "^17.0.26",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
