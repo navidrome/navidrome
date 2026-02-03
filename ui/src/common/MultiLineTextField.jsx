@@ -30,17 +30,7 @@ export const MultiLineTextField = memo(
       >
         {lines.length === 0 && emptyText
           ? emptyText
-          : lines.map((line, idx) =>
-              line === '' ? (
-                <br key={md5(line + idx)} />
-              ) : (
-                <div
-                  data-testid={`${source}.${idx}`}
-                  key={md5(line + idx)}
-                  dangerouslySetInnerHTML={{ __html: line }}
-                />
-              ),
-            )}
+          : lines}
       </Typography>
     )
   },

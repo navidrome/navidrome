@@ -33,6 +33,7 @@ import {
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import { SafeHTML } from '../common/SafeHTML'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -225,8 +226,7 @@ const AlbumDetails = (props) => {
   const [imageLoading, setImageLoading] = useState(false)
   const [imageError, setImageError] = useState(false)
 
-  let notes =
-    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+  let notes = albumInfo?.notes || record.notes
 
   if (notes) {
     notes += '..'
@@ -351,7 +351,7 @@ const AlbumDetails = (props) => {
                   variant={'body1'}
                   onClick={() => setExpanded(!expanded)}
                 >
-                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                  <span><SafeHTML>{notes}</SafeHTML></span>
                 </Typography>
               </Collapse>
             )}
@@ -371,7 +371,7 @@ const AlbumDetails = (props) => {
               variant={'body1'}
               onClick={() => setExpanded(!expanded)}
             >
-              <span dangerouslySetInnerHTML={{ __html: notes }} />
+              <span><SafeHTML>{notes}</SafeHTML></span>
             </Typography>
           </Collapse>
         </div>
