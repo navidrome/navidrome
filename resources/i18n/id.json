@@ -36,7 +36,8 @@
         "bitDepth": "Bit depth",
         "sampleRate": "Sample rate",
         "missing": "Hilang",
-        "libraryName": "Pustaka"
+        "libraryName": "Pustaka",
+        "composer": "Komposer"
       },
       "actions": {
         "addToQueue": "Tambah ke antrean",
@@ -46,7 +47,8 @@
         "download": "Unduh",
         "playNext": "Putar Berikutnya",
         "info": "Lihat Info",
-        "showInPlaylist": "Tampilkan di Playlist"
+        "showInPlaylist": "Tampilkan di Playlist",
+        "instantMix": "Mix Instan"
       }
     },
     "album": {
@@ -301,14 +303,19 @@
       "actions": {
         "scan": "Pindai Pustaka",
         "manageUsers": "Kelola Akses Pengguna",
-        "viewDetails": "Lihat Detail"
+        "viewDetails": "Lihat Detail",
+        "quickScan": "Pindai Cepat",
+        "fullScan": "Pindai Keseluruhan"
       },
       "notifications": {
         "created": "Pustaka berhasil dibuat",
         "updated": "Pustaka berhasil dibuat",
         "deleted": "Berhasil menghapus pustaka",
         "scanStarted": "Memindai pustaka dimulai",
-        "scanCompleted": "Memindai pustaka selesai"
+        "scanCompleted": "Memindai pustaka selesai",
+        "quickScanStarted": "Pemindaian cepat dimulai",
+        "fullScanStarted": "Pemindaian keseluruhan dimulai",
+        "scanError": "Kesalahan saat memulai pemindaian. Periksa log"
       },
       "validation": {
         "nameRequired": "Nama pustaka diperlukan",
@@ -322,6 +329,80 @@
         "deleteConfirm": "Kamu yakin ingin menghapus pustaka ini? Ini akan menghapus semua data yang terkait dan akses pengguna.",
         "scanInProgress": "Pemindaian sedang berlangsung...",
         "noLibrariesAssigned": "Tidak ada pustaka yang ditugaskan ke pengguna ini"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugin",
+      "fields": {
+        "id": "ID",
+        "name": "Nama",
+        "description": "Deskripsi",
+        "version": "Versi",
+        "author": "Pembuat",
+        "website": "Situs Web",
+        "permissions": "Perizinan",
+        "enabled": "Diaktifkan",
+        "status": "Status",
+        "path": "Jalur",
+        "lastError": "Kesalahan",
+        "hasError": "Kesalahan",
+        "updatedAt": "Diperbarui",
+        "createdAt": "Terinstal",
+        "configKey": "Key",
+        "configValue": "Value",
+        "allUsers": "Izinkan semua pengguna",
+        "selectedUsers": "Pengguna yang dipilih",
+        "allLibraries": "Izinkan semua pustaka",
+        "selectedLibraries": "Pustaka dipilih"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informasi plugin",
+        "configuration": "Konfigurasi",
+        "manifest": "Manifes",
+        "usersPermission": "Pengguna yang Diizinkan",
+        "libraryPermission": "Pustaka yang Diizinkan"
+      },
+      "status": {
+        "enabled": "Diaktifkan",
+        "disabled": "Dinonaktifkan"
+      },
+      "actions": {
+        "enable": "Aktifkan",
+        "disable": "Nonaktifkan",
+        "disabledDueToError": "Perbaiki kesalahan sebelum diaktifkan",
+        "disabledUsersRequired": "Pilih pengguna sebelum diaktifkan",
+        "disabledLibrariesRequired": "Pilih pustaka sebelum diaktifkan",
+        "addConfig": "Tambahkan Konfigurasi",
+        "rescan": "Pindai ulang"
+      },
+      "notifications": {
+        "enabled": "Plugin diaktifkan",
+        "disabled": "Plugin dinonaktifkan",
+        "updated": "Plugin diperbarui",
+        "error": "Kesalahan saat memperbarui plugin"
+      },
+      "validation": {
+        "invalidJson": "Konfigurasi harus berupa JSON yang valid"
+      },
+      "messages": {
+        "configHelp": "Konfigurasikan plugin menggunakan key-value pairs. Biarkan kosong jika plugin tidak membutuhkan konfigurasi.",
+        "clickPermissions": "Klik perizinan untuk detail",
+        "noConfig": "Konfigurasi tidak diatur",
+        "allUsersHelp": "Ketika diaktifkan, plugin akan mengakses untuk semua pengguna, termasuk  yang akan dibuat di masa depan.",
+        "noUsers": "Tidak ada pengguna yang dipilih",
+        "permissionReason": "Alasan",
+        "usersRequired": "Plugin ini membutuhkan akses ke informasi pengguna. Pilih pengguna yang bisa mengakses plugin, atau aktifkan 'Izinkan semua pengguna'.",
+        "allLibrariesHelp": "Ketika diaktifkan, plugin akan memiliki akses ke semua pustaka, termasuk yang dibuat di masa depan.",
+        "noLibraries": "Tidak ada pustaka yang dipilih",
+        "librariesRequired": "Plugin ini membutuhkan akses ke informasi pustaka. Pilih beberapa pustaka yang bisa diakses, atau aktifkan 'Izinkan semua pustaka'.",
+        "requiredHosts": "Hosts diperlukan",
+        "configValidationError": "Validasi konfigurasi gagal:",
+        "schemaRenderError": "Tidak dapat menampilkan form konfigurasi. Skema plugin mungkin tidak valid."
+      },
+      "placeholders": {
+        "configKey": "key",
+        "configValue": "value"
       }
     }
   },
@@ -506,7 +587,8 @@
     "remove_all_missing_title": "Hapus semua file yang hilang",
     "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka.",
     "noSimilarSongsFound": "Tidak ada lagu yang serupa ditemukan",
-    "noTopSongsFound": "Tidak ada lagu teratas ditemukan"
+    "noTopSongsFound": "Tidak ada lagu teratas ditemukan",
+    "startingInstantMix": "Memuat Mix Instan..."
   },
   "menu": {
     "library": "Pustaka",
@@ -604,7 +686,8 @@
     "serverDown": "LURING",
     "scanType": "Tipe",
     "status": "Kesalahan Memindai",
-    "elapsedTime": "Waktu Berakhir"
+    "elapsedTime": "Waktu Berakhir",
+    "selectiveScan": "Selektif"
   },
   "help": {
     "title": "Tombol Pintasan Navidrome",

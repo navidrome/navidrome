@@ -48,7 +48,7 @@
         "playNext": "Odtwarzaj Następny",
         "info": "Zdobądź Informacje",
         "showInPlaylist": "Pokaż w Liście Odtwarzania",
-        "instantMix": ""
+        "instantMix": "Natychmiastowy Miks"
       }
     },
     "album": {
@@ -588,7 +588,7 @@
     "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
     "noSimilarSongsFound": "Brak podobnych utworów",
     "noTopSongsFound": "Brak najlepszych utworów",
-    "startingInstantMix": ""
+    "startingInstantMix": "Ładowanie Natychmiastowego Miksu..."
   },
   "menu": {
     "library": "Biblioteka",
