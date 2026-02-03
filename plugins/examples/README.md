@@ -9,7 +9,6 @@ This folder contains example plugins demonstrating various capabilities and lang
 | [minimal](minimal/)                                   | Go       | MetadataAgent                                   | Basic plugin structure         |
 | [wikimedia](wikimedia/)                               | Go       | MetadataAgent                                   | Wikidata/Wikipedia metadata    |
 | [crypto-ticker](crypto-ticker/)                       | Go       | Scheduler, WebSocket, Cache                     | Real-time crypto prices (demo) |
-| [discord-rich-presence](discord-rich-presence/)       | Go       | Scrobbler, Scheduler, WebSocket, Cache, Artwork | Discord integration            |
 | [coverartarchive-py](coverartarchive-py/)             | Python   | MetadataAgent                                   | Cover Art Archive              |
 | [nowplaying-py](nowplaying-py/)                       | Python   | Scheduler, SubsonicAPI                          | Now playing logger             |
 | [webhook-rs](webhook-rs/)                             | Rust     | Scrobbler                                       | HTTP webhook on scrobble       |
@@ -37,7 +36,7 @@ This creates `.ndp` package files for each plugin.
 ```bash
 make minimal.ndp
 make wikimedia.ndp
-make discord-rich-presence.ndp
+make discord-rich-presence-rs.ndp
 ```
 
 ### Clean
