@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify'
-import { Fragment, useMemo } from 'react'
+import { useMemo } from 'react'
 
 export const SafeHTML = ({ children }) => {
   const purified = useMemo(() => {
@@ -23,5 +23,5 @@ export const SafeHTML = ({ children }) => {
     return purify.sanitize(children, { ADD_ATTR: ['referrer-policy'] })
   }, [children])
 
-  return <Fragment dangerouslySetInnerHTML={{ __html: purified }} />
+  return <div dangerouslySetInnerHTML={{ __html: purified }} />
 }

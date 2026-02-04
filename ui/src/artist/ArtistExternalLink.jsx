@@ -14,6 +14,10 @@ const useStyles = makeStyles({
   },
 })
 
+const isLastFmURL = (url) => {
+  return url?.includes('last.fm/music/')
+}
+
 const ArtistExternalLinks = ({ artistInfo, record }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -38,13 +42,13 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
   }
 
   if (config.lastFMEnabled) {
-    if (lastFMlink) {
+    if (lastFMlink && isLastFmURL(lastFMlink[2])) {
       addLink(
         lastFMlink[2],
         'message.openIn.lastfm',
         <ImLastfm2 className="lastfm-icon" />,
       )
-    } else if (artistInfo?.lastFmUrl) {
+    } else if (isLastFmURL(artistInfo?.lastFmUrl)) {
       addLink(
         artistInfo?.lastFmUrl,
         'message.openIn.lastfm',
