@@ -8,6 +8,7 @@
 // ============================================
 
 const ACCENT_COLOR = '#009688' // Material teal
+const UNBOUNDED_FONT_PATH = 'fonts/Unbounded-Variable.woff2'
 
 // ============================================
 // DESIGN TOKENS
@@ -69,7 +70,7 @@ const tokens = {
         font-style: normal;
         font-weight: 300 800;
         font-display: swap;
-        src: url('/fonts/Unbounded-Variable.woff2') format('woff2');
+        src: url('${UNBOUNDED_FONT_PATH}') format('woff2');
       }
     `,
   },
@@ -275,7 +276,7 @@ const NautilineTheme = {
           fontStyle: 'normal',
           fontWeight: '300 800',
           fontDisplay: 'swap',
-          src: "url('/fonts/Unbounded-Variable.woff2') format('woff2')",
+          src: `url('${UNBOUNDED_FONT_PATH}') format('woff2')`,
         },
         body: {
           backgroundColor: colors.background.primary,
@@ -794,7 +795,7 @@ const NautilineTheme = {
         font-style: normal;
         font-weight: 300 800;
         font-display: swap;
-        src: url('/fonts/Unbounded-Variable.woff2') format('woff2');
+        src: url('${UNBOUNDED_FONT_PATH}') format('woff2');
       }
 
       .react-jinke-music-player-main {
