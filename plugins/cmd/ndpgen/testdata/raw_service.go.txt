@@ -1,0 +1,10 @@
+package testpkg
+
+import "context"
+
+//nd:hostservice name=Stream permission=stream
+type StreamService interface {
+	// GetStream returns raw binary stream data with content type.
+	//nd:hostfunc raw=true
+	GetStream(ctx context.Context, uri string) (contentType string, data []byte, err error)
+}

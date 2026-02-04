@@ -8,6 +8,7 @@
 package host
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 
@@ -19,6 +20,11 @@ import (
 //go:wasmimport extism:host/user subsonicapi_call
 func subsonicapi_call(uint64) uint64
 
+// subsonicapi_callraw is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user subsonicapi_callraw
+func subsonicapi_callraw(uint64) uint64
+
 type subsonicAPICallRequest struct {
 	Uri string `json:"uri"`
 }
@@ -26,6 +32,10 @@ type subsonicAPICallRequest struct {
 type subsonicAPICallResponse struct {
 	ResponseJSON string `json:"responseJson,omitempty"`
 	Error        string `json:"error,omitempty"`
+}
+
+type subsonicAPICallRawRequest struct {
+	Uri string `json:"uri"`
 }
 
 // SubsonicAPICall calls the subsonicapi_call host function.
@@ -64,4 +74,47 @@ func SubsonicAPICall(uri string) (string, error) {
 	}
 
 	return response.ResponseJSON, nil
+}
+
+// SubsonicAPICallRaw calls the subsonicapi_callraw host function.
+// CallRaw executes a Subsonic API request and returns the raw binary response.
+// Optimized for binary endpoints like getCoverArt and stream that return
+// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+func SubsonicAPICallRaw(uri string) (string, []byte, error) {
+	// Marshal request to JSON
+	req := subsonicAPICallRawRequest{
+		Uri: uri,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return "", nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := subsonicapi_callraw(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse binary-framed response
+	if len(responseBytes) == 0 {
+		return "", nil, errors.New("empty response from host")
+	}
+	if responseBytes[0] == 0x01 { // error
+		return "", nil, errors.New(string(responseBytes[1:]))
+	}
+	if responseBytes[0] != 0x00 {
+		return "", nil, errors.New("unknown response status")
+	}
+	if len(responseBytes) < 5 {
+		return "", nil, errors.New("malformed raw response: incomplete header")
+	}
+	ctLen := binary.BigEndian.Uint32(responseBytes[1:5])
+	if uint32(len(responseBytes)) < 5+ctLen {
+		return "", nil, errors.New("malformed raw response: content-type overflow")
+	}
+	return string(responseBytes[5 : 5+ctLen]), responseBytes[5+ctLen:], nil
 }

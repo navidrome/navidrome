@@ -761,6 +761,7 @@ func parseMethod(name string, funcType *ast.FuncType, annotation map[string]stri
 	m := Method{
 		Name:       name,
 		ExportName: annotation["name"],
+		Raw:        annotation["raw"] == "true",
 		Doc:        doc,
 	}
 
@@ -796,6 +797,13 @@ func parseMethod(name string, funcType *ast.FuncType, annotation map[string]stri
 					m.Returns = append(m.Returns, NewParam(name.Name, typeName))
 				}
 			}
+		}
+	}
+
+	// Validate raw=true methods: must return exactly (string, []byte, error)
+	if m.Raw {
+		if !m.HasError || len(m.Returns) != 2 || m.Returns[0].Type != "string" || m.Returns[1].Type != "[]byte" {
+			return m, fmt.Errorf("raw=true method %s must return (string, []byte, error) — content-type, data, error", name)
 		}
 	}
 

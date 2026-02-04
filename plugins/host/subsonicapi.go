@@ -15,4 +15,10 @@ type SubsonicAPIService interface {
 	// e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
 	//nd:hostfunc
 	Call(ctx context.Context, uri string) (responseJSON string, err error)
+
+	// CallRaw executes a Subsonic API request and returns the raw binary response.
+	// Optimized for binary endpoints like getCoverArt and stream that return
+	// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+	//nd:hostfunc raw=true
+	CallRaw(ctx context.Context, uri string) (contentType string, data []byte, err error)
 }
