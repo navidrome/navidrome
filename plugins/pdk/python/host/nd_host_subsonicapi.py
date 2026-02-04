@@ -92,7 +92,7 @@ non-JSON data. The response is returned as raw bytes without JSON encoding overh
     if response_bytes[0] != 0x00:
         raise HostFunctionError("unknown response status")
     if len(response_bytes) < 5:
-        raise HostFunctionError("malformed raw response")
+        raise HostFunctionError("malformed raw response: incomplete header")
     ct_len = struct.unpack(">I", response_bytes[1:5])[0]
     if len(response_bytes) < 5 + ct_len:
         raise HostFunctionError("malformed raw response: content-type overflow")

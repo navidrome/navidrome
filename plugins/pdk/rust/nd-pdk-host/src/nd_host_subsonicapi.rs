@@ -99,7 +99,7 @@ pub fn call_raw(uri: &str) -> Result<(String, Vec<u8>), Error> {
         return Err(Error::msg("unknown response status"));
     }
     if response_bytes.len() < 5 {
-        return Err(Error::msg("malformed raw response"));
+        return Err(Error::msg("malformed raw response: incomplete header"));
     }
     let ct_len = u32::from_be_bytes([
         response_bytes[1],

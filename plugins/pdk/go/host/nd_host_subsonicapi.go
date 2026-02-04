@@ -110,7 +110,7 @@ func SubsonicAPICallRaw(uri string) (string, []byte, error) {
 		return "", nil, errors.New("unknown response status")
 	}
 	if len(responseBytes) < 5 {
-		return "", nil, errors.New("malformed raw response")
+		return "", nil, errors.New("malformed raw response: incomplete header")
 	}
 	ctLen := binary.BigEndian.Uint32(responseBytes[1:5])
 	if uint32(len(responseBytes)) < 5+ctLen {
