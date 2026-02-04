@@ -143,19 +143,29 @@ func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[
 	return counts, nil
 }
 
-// Exists checks if all given media file IDs exist in the database. If no IDs are provided, it returns true.
-// If any of the IDs do not exist, it returns false. It returns an error if the database query fails.
+// Exists checks if all given media file IDs exist in the database and are accessible to the current user.
+// If no IDs are provided, it returns true. Duplicate IDs are handled correctly.
+// If any of the IDs do not exist or are not accessible, it returns false.
 func (r *mediaFileRepository) Exists(ids ...string) (bool, error) {
 	if len(ids) == 0 {
 		return true, nil
 	}
-	existsQuery := Select("count(*) as exist").From("media_file").Where(Eq{"media_file.id": ids})
-	var res struct{ Exist int64 }
-	err := r.queryOne(existsQuery, &res)
-	if err != nil {
-		return false, err
+	uniqueIds := slice.Unique(ids)
+
+	// Process in batches to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit (default 999)
+	const batchSize = 300
+	var totalCount int64
+	for batch := range slices.Chunk(uniqueIds, batchSize) {
+		existsQuery := Select("count(*) as exist").From("media_file").Where(Eq{"media_file.id": batch})
+		existsQuery = r.applyLibraryFilter(existsQuery)
+		var res struct{ Exist int64 }
+		err := r.queryOne(existsQuery, &res)
+		if err != nil {
+			return false, err
+		}
+		totalCount += res.Exist
 	}
-	return res.Exist == int64(len(ids)), nil
+	return totalCount == int64(len(uniqueIds)), nil
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
