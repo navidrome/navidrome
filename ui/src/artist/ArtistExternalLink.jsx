@@ -4,7 +4,7 @@ import { IconButton, Tooltip, Link } from '@material-ui/core'
 
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
-import { intersperse } from '../utils'
+import { intersperse, isLastFmURL } from '../utils'
 import config from '../config'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -13,10 +13,6 @@ const useStyles = makeStyles({
     minHeight: '1.875em',
   },
 })
-
-const isLastFmURL = (url) => {
-  return url?.includes('last.fm/music/')
-}
 
 const ArtistExternalLinks = ({ artistInfo, record }) => {
   const classes = useStyles()
