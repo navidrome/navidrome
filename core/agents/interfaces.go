@@ -36,6 +36,7 @@ type Song struct {
 	ID         string
 	Name       string
 	MBID       string
+	ISRC       string
 	Artist     string
 	ArtistMBID string
 	Album      string

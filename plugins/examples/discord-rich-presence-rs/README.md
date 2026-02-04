@@ -29,7 +29,7 @@ This plugin implements multiple capabilities to demonstrate the nd-pdk library:
 
 ## Configuration
 
-Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence):
+Configure in the Navidrome UI (Settings → Plugins → discord-rich-presence-rs):
 
 | Key           | Description                          | Example                   |
 |---------------|--------------------------------------|---------------------------|

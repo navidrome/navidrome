@@ -1,0 +1,10 @@
+{
+  "data": {
+    "artist": {
+      "bio": null
+    }
+  },
+  "extensions": {
+    "queryCost": 3
+  }
+}

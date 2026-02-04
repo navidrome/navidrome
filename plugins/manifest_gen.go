@@ -45,12 +45,6 @@ func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// Configuration access permissions for a plugin
-type ConfigPermission struct {
-	// Explanation for why config access is needed
-	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
-}
-
 // Experimental features that may change or be removed in future versions
 type Experimental struct {
 	// Threads corresponds to the JSON schema field "threads".

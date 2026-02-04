@@ -36,7 +36,8 @@
         "bitDepth": "Głębokość próbkowania",
         "sampleRate": "Częstotliwość próbkowania",
         "missing": "Brak",
-        "libraryName": "Biblioteka"
+        "libraryName": "Biblioteka",
+        "composer": "Kompozytor"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -46,7 +47,8 @@
         "download": "Pobierz",
         "playNext": "Odtwarzaj Następny",
         "info": "Zdobądź Informacje",
-        "showInPlaylist": "Pokaż w Liście Odtwarzania"
+        "showInPlaylist": "Pokaż w Liście Odtwarzania",
+        "instantMix": "Natychmiastowy Miks"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Skanowanie w trakcie...",
         "noLibrariesAssigned": "Brak bibliotek przypisanych do tego użytkownika"
       }
+    },
+    "plugin": {
+      "name": "\nWtyczka |||| Wtyczki",
+      "fields": {
+        "id": "ID",
+        "name": "Nazwa",
+        "description": "Opis",
+        "version": "Wersja",
+        "author": "Autor",
+        "website": "Witryna",
+        "permissions": "Uprawnienia",
+        "enabled": "Aktywny",
+        "status": "Status",
+        "path": "Ścieżka",
+        "lastError": "Błąd",
+        "hasError": "Błąd",
+        "updatedAt": "Zaktualizowana",
+        "createdAt": "Zainstalowana",
+        "configKey": "Klucz",
+        "configValue": "Wartość",
+        "allUsers": "Zezwalaj wszystkim użytkownikom",
+        "selectedUsers": "Wybrani użytkownicy",
+        "allLibraries": "Zezwalaj dla wszystkich bibliotek",
+        "selectedLibraries": "Wybrane biblioteki"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informacje O Wtyczce",
+        "configuration": "Konfiguracja",
+        "manifest": "Manifest",
+        "usersPermission": "Uprawnienia Użytkowników",
+        "libraryPermission": "Uprawnienia Biblioteki"
+      },
+      "status": {
+        "enabled": "Włączona",
+        "disabled": "Wyłączona"
+      },
+      "actions": {
+        "enable": "Włącz",
+        "disable": "Wyłącz",
+        "disabledDueToError": "Napraw błąd przed włączeniem",
+        "disabledUsersRequired": "Wybierz użytkowników przed włączeniem",
+        "disabledLibrariesRequired": "Wybierz biblioteki przed włączaniem",
+        "addConfig": "Dodaj Konfigurację",
+        "rescan": "Przeskanuj Ponownie"
+      },
+      "notifications": {
+        "enabled": "Wtyczka włączona",
+        "disabled": "Wtyczka wyłączona",
+        "updated": "Wtyczka zaktualizowana",
+        "error": "Błąd aktualizacji wtyczki"
+      },
+      "validation": {
+        "invalidJson": "Konfiguracja musić być w poprawnym formacie JSON"
+      },
+      "messages": {
+        "configHelp": "Użyj par klucz-wartość, aby skonfigurować wtyczkę. Pozostaw puste, jeśli wtyczka nie wymaga konfiguracji.",
+        "clickPermissions": "Kliknij uprawnienie, aby uzyskać szczegółowe informacje",
+        "noConfig": "Nie wybrano konfiguracji",
+        "allUsersHelp": "Po włączeniu wtyczka będzie miała dostęp do wszystkich użytkowników, także tych utworzonych w przyszłości.",
+        "noUsers": "Nie wybrano użytkowników",
+        "permissionReason": "Powód",
+        "usersRequired": "Ta wtyczka wymaga dostępu do informacji o użytkowniku. Wybierz użytkowników, do których wtyczka ma mieć dostęp, lub włącz opcję „Zezwól wszystkim użytkownikom”.",
+        "allLibrariesHelp": "Po włączeniu wtyczka będzie miała dostęp do wszystkich bibliotek, także tych utworzonych w przyszłości.",
+        "noLibraries": "Nie wybrano biblioteki",
+        "librariesRequired": "Wtyczka wymaga dostępu do informacji o bibliotece. Wybierz, dla której biblioteki zezwolić dostęp, lub włącz 'Zezwalaj dla wszystkich bibliotek'.",
+        "requiredHosts": "Wymagane hosty",
+        "configValidationError": "Weryfikacja konfiguracji nie powiodła się:",
+        "schemaRenderError": "Nie można wyrenderować formularza konfiguracji. Schemat wtyczki może być nieprawidłowy."
+      },
+      "placeholders": {
+        "configKey": "klucz",
+        "configValue": "wartość"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Usuń wszystkie brakujące pliki",
     "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
     "noSimilarSongsFound": "Brak podobnych utworów",
-    "noTopSongsFound": "Brak najlepszych utworów"
+    "noTopSongsFound": "Brak najlepszych utworów",
+    "startingInstantMix": "Ładowanie Natychmiastowego Miksu..."
   },
   "menu": {
     "library": "Biblioteka",

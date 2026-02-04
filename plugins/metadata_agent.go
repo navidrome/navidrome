@@ -230,6 +230,7 @@ func songRefsToAgentSongs(refs []capabilities.SongRef) []agents.Song {
 			ID:         s.ID,
 			Name:       s.Name,
 			MBID:       s.MBID,
+			ISRC:       s.ISRC,
 			Artist:     s.Artist,
 			ArtistMBID: s.ArtistMBID,
 			Album:      s.Album,

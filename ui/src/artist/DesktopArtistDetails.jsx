@@ -11,6 +11,7 @@ import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
+import { SafeHTML } from '../common/SafeHTML'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -172,7 +173,9 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
                 variant={'body1'}
                 onClick={() => setExpanded(!expanded)}
               >
-                <span dangerouslySetInnerHTML={{ __html: biography }} />
+                <span>
+                  <SafeHTML>{biography}</SafeHTML>
+                </span>
               </Typography>
             </Collapse>
           </CardContent>
