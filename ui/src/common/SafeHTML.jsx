@@ -23,5 +23,5 @@ export const SafeHTML = ({ children }) => {
     return purify.sanitize(children, { ADD_ATTR: ['referrer-policy'] })
   }, [children])
 
-  return <div dangerouslySetInnerHTML={{ __html: purified }} />
+  return <span dangerouslySetInnerHTML={{ __html: purified }} />
 }
