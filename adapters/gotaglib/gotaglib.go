@@ -13,12 +13,15 @@ package gotaglib
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage/local"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
 	"go.senan.xyz/taglib"
 )
@@ -94,7 +97,17 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 
 // openFile opens the file at filePath using the extractor's filesystem.
 // It returns a TagLib File handle and a cleanup function to close resources.
-func (e extractor) openFile(filePath string) (*taglib.File, func(), error) {
+func (e extractor) openFile(filePath string) (f *taglib.File, closeFunc func(), err error) {
+	// Recover from panics in the WASM runtime (e.g., wazero failing to mmap executable memory
+	// on hardened systems like NixOS with MemoryDenyWriteExecute=true)
+	debug.SetPanicOnFault(true)
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("WASM runtime panic: This may be caused by a hardened system that blocks executable memory mapping.", "file", filePath, "panic", r)
+			err = fmt.Errorf("WASM runtime panic (hardened system?): %v", r)
+		}
+	}()
+
 	// Open the file from the filesystem
 	file, err := e.fs.Open(filePath)
 	if err != nil {
@@ -105,12 +118,12 @@ func (e extractor) openFile(filePath string) (*taglib.File, func(), error) {
 		file.Close()
 		return nil, nil, errors.New("file is not seekable")
 	}
-	f, err := taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
+	f, err = taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
 	if err != nil {
 		file.Close()
 		return nil, nil, err
 	}
-	closeFunc := func() {
+	closeFunc = func() {
 		f.Close()
 		file.Close()
 	}
