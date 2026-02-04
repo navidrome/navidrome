@@ -16,6 +16,7 @@ struct StreamGetStreamRequest {
 extern "ExtismHost" {
 }
 
+#[link(wasm_import_module = "extism:host/user")]
 extern "C" {
     fn stream_getstream(offset: u64) -> u64;
 }
@@ -62,10 +63,11 @@ pub fn get_stream(uri: &str) -> Result<(String, Vec<u8>), Error> {
         response_bytes[3],
         response_bytes[4],
     ]) as usize;
-    if response_bytes.len() < 5 + ct_len {
+    if ct_len > response_bytes.len() - 5 {
         return Err(Error::msg("malformed raw response: content-type overflow"));
     }
-    let content_type = String::from_utf8_lossy(&response_bytes[5..5 + ct_len]).to_string();
-    let data = response_bytes[5 + ct_len..].to_vec();
+    let ct_end = 5 + ct_len;
+    let content_type = String::from_utf8_lossy(&response_bytes[5..ct_end]).to_string();
+    let data = response_bytes[ct_end..].to_vec();
     Ok((content_type, data))
 }

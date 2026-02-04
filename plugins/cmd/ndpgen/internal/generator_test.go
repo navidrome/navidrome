@@ -1773,7 +1773,8 @@ var _ = Describe("Rust Generation", func() {
 
 			codeStr := string(code)
 
-			// Should use extern "C" for raw methods, not #[host_fn] extern "ExtismHost"
+			// Should use extern "C" with wasm_import_module for raw methods, not #[host_fn] extern "ExtismHost"
+			Expect(codeStr).To(ContainSubstring(`#[link(wasm_import_module = "extism:host/user")]`))
 			Expect(codeStr).To(ContainSubstring(`extern "C"`))
 			Expect(codeStr).To(ContainSubstring("fn stream_getstream(offset: u64) -> u64"))
 
