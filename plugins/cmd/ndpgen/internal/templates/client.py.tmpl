@@ -8,10 +8,13 @@
 # main __init__.py file. Copy the needed functions from this file into your plugin.
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any{{- if .Service.HasRawMethods}}, Tuple{{end}}
 
 import extism
 import json
+{{- if .Service.HasRawMethods}}
+import struct
+{{- end}}
 
 
 class HostFunctionError(Exception):
@@ -29,7 +32,7 @@ def _{{exportName .}}(offset: int) -> int:
 {{- end}}
 {{- /* Generate dataclasses for multi-value returns */ -}}
 {{range .Service.Methods}}
-{{- if .NeedsResultClass}}
+{{- if and .NeedsResultClass (not .Raw)}}
 
 
 @dataclass
@@ -44,7 +47,7 @@ class {{pythonResultType .}}:
 {{range .Service.Methods}}
 
 
-def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonName}}: {{$p.PythonType}}{{end}}){{if .NeedsResultClass}} -> {{pythonResultType .}}{{else if .HasReturns}} -> {{(index .Returns 0).PythonType}}{{else}} -> None{{end}}:
+def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonName}}: {{$p.PythonType}}{{end}}){{if .Raw}} -> Tuple[str, bytes]{{else if .NeedsResultClass}} -> {{pythonResultType .}}{{else if .HasReturns}} -> {{(index .Returns 0).PythonType}}{{else}} -> None{{end}}:
     """{{if .Doc}}{{.Doc}}{{else}}Call the {{exportName .}} host function.{{end}}
 {{- if .HasParams}}
 
@@ -53,7 +56,11 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
         {{.PythonName}}: {{.PythonType}} parameter.
 {{- end}}
 {{- end}}
-{{- if .HasReturns}}
+{{- if .Raw}}
+
+    Returns:
+        Tuple of (content_type, data) with the raw binary response.
+{{- else if .HasReturns}}
 
     Returns:
 {{- if .NeedsResultClass}}
@@ -79,6 +86,24 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
     request_mem = extism.memory.alloc(request_bytes)
     response_offset = _{{exportName .}}(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
+{{- if .Raw}}
+    response_bytes = response_mem.bytes()
+
+    if len(response_bytes) == 0:
+        raise HostFunctionError("empty response from host")
+    if response_bytes[0] == 0x01:
+        raise HostFunctionError(response_bytes[1:].decode("utf-8"))
+    if response_bytes[0] != 0x00:
+        raise HostFunctionError("unknown response status")
+    if len(response_bytes) < 5:
+        raise HostFunctionError("malformed raw response")
+    ct_len = struct.unpack(">I", response_bytes[1:5])[0]
+    if len(response_bytes) < 5 + ct_len:
+        raise HostFunctionError("malformed raw response: content-type overflow")
+    content_type = response_bytes[5:5 + ct_len].decode("utf-8")
+    data = response_bytes[5 + ct_len:]
+    return content_type, data
+{{- else}}
     response = json.loads(extism.memory.string(response_mem))
 {{if .HasError}}
     if response.get("error"):
@@ -92,5 +117,6 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
     )
 {{- else if .HasReturns}}
     return response.get("{{(index .Returns 0).JSONName}}"{{pythonDefault (index .Returns 0)}})
+{{- end}}
 {{- end}}
 {{- end}}

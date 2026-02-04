@@ -173,6 +173,16 @@ func (s Service) HasErrors() bool {
 	return false
 }
 
+// HasRawMethods returns true if any method in the service uses raw binary framing.
+func (s Service) HasRawMethods() bool {
+	for _, m := range s.Methods {
+		if m.Raw {
+			return true
+		}
+	}
+	return false
+}
+
 // Method represents a host function method within a service.
 type Method struct {
 	Name       string  // Go method name (e.g., "Call")
@@ -181,6 +191,7 @@ type Method struct {
 	Returns    []Param // Return values (excluding error)
 	HasError   bool    // Whether the method returns an error
 	Doc        string  // Documentation comment for the method
+	Raw        bool    // If true, response uses binary framing instead of JSON
 }
 
 // FunctionName returns the Extism host function export name.
