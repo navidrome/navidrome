@@ -264,6 +264,96 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring(`extism "github.com/extism/go-sdk"`))
 		})
 
+		It("should generate binary framing for raw=true methods", func() {
+			svc := Service{
+				Name:       "Stream",
+				Permission: "stream",
+				Interface:  "StreamService",
+				Methods: []Method{
+					{
+						Name:     "GetStream",
+						HasError: true,
+						Raw:      true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns: []Param{
+							NewParam("contentType", "string"),
+							NewParam("data", "[]byte"),
+						},
+					},
+				},
+			}
+
+			code, err := GenerateHost(svc, "host")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should include encoding/binary import for raw methods
+			Expect(codeStr).To(ContainSubstring(`"encoding/binary"`))
+
+			// Should NOT generate a response type for raw methods
+			Expect(codeStr).NotTo(ContainSubstring("type StreamGetStreamResponse struct"))
+
+			// Should generate request type (request is still JSON)
+			Expect(codeStr).To(ContainSubstring("type StreamGetStreamRequest struct"))
+
+			// Should build binary frame [0x00][4-byte CT len][CT][data]
+			Expect(codeStr).To(ContainSubstring("frame[0] = 0x00"))
+			Expect(codeStr).To(ContainSubstring("binary.BigEndian.PutUint32"))
+
+			// Should have writeRawError helper
+			Expect(codeStr).To(ContainSubstring("streamWriteRawError"))
+
+			// Should use writeRawError instead of writeError for raw methods
+			Expect(codeStr).To(ContainSubstring("streamWriteRawError(p, stack"))
+		})
+
+		It("should generate both writeError and writeRawError for mixed services", func() {
+			svc := Service{
+				Name:       "API",
+				Permission: "api",
+				Interface:  "APIService",
+				Methods: []Method{
+					{
+						Name:     "Call",
+						HasError: true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns:  []Param{NewParam("response", "string")},
+					},
+					{
+						Name:     "CallRaw",
+						HasError: true,
+						Raw:      true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns: []Param{
+							NewParam("contentType", "string"),
+							NewParam("data", "[]byte"),
+						},
+					},
+				},
+			}
+
+			code, err := GenerateHost(svc, "host")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should have both helpers
+			Expect(codeStr).To(ContainSubstring("apiWriteResponse"))
+			Expect(codeStr).To(ContainSubstring("apiWriteError"))
+			Expect(codeStr).To(ContainSubstring("apiWriteRawError"))
+
+			// Should generate response type for non-raw method only
+			Expect(codeStr).To(ContainSubstring("type APICallResponse struct"))
+			Expect(codeStr).NotTo(ContainSubstring("type APICallRawResponse struct"))
+		})
+
 		It("should always include json import for JSON protocol", func() {
 			// All services use JSON protocol, so json import is always needed
 			svc := Service{
@@ -626,6 +716,72 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring(`response.get("floatVal", 0.0)`))
 			Expect(codeStr).To(ContainSubstring(`response.get("boolVal", False)`))
 		})
+
+		It("should generate binary frame parsing for raw methods", func() {
+			svc := Service{
+				Name:       "Stream",
+				Permission: "stream",
+				Interface:  "StreamService",
+				Methods: []Method{
+					{
+						Name:     "GetStream",
+						HasError: true,
+						Raw:      true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns: []Param{
+							NewParam("contentType", "string"),
+							NewParam("data", "[]byte"),
+						},
+						Doc: "GetStream returns raw binary stream data.",
+					},
+				},
+			}
+
+			code, err := GenerateClientPython(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should import Tuple and struct for raw methods
+			Expect(codeStr).To(ContainSubstring("from typing import Any, Tuple"))
+			Expect(codeStr).To(ContainSubstring("import struct"))
+
+			// Should return Tuple[str, bytes]
+			Expect(codeStr).To(ContainSubstring("-> Tuple[str, bytes]:"))
+
+			// Should parse binary frame instead of JSON
+			Expect(codeStr).To(ContainSubstring("response_bytes = response_mem.bytes()"))
+			Expect(codeStr).To(ContainSubstring("response_bytes[0] == 0x01"))
+			Expect(codeStr).To(ContainSubstring("struct.unpack"))
+			Expect(codeStr).To(ContainSubstring("return content_type, data"))
+
+			// Should NOT use json.loads for response
+			Expect(codeStr).NotTo(ContainSubstring("json.loads(extism.memory.string(response_mem))"))
+		})
+
+		It("should not import Tuple or struct for non-raw services", func() {
+			svc := Service{
+				Name:       "Test",
+				Permission: "test",
+				Interface:  "TestService",
+				Methods: []Method{
+					{
+						Name:     "Call",
+						HasError: true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns:  []Param{NewParam("response", "string")},
+					},
+				},
+			}
+
+			code, err := GenerateClientPython(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			Expect(codeStr).NotTo(ContainSubstring("Tuple"))
+			Expect(codeStr).NotTo(ContainSubstring("import struct"))
+		})
 	})
 
 	Describe("GenerateGoDoc", func() {
@@ -781,6 +937,47 @@ var _ = Describe("Generator", func() {
 
 			// Check for PDK import
 			Expect(codeStr).To(ContainSubstring("github.com/navidrome/navidrome/plugins/pdk/go/pdk"))
+		})
+
+		It("should include encoding/binary import for raw methods", func() {
+			svc := Service{
+				Name:       "Stream",
+				Permission: "stream",
+				Interface:  "StreamService",
+				Methods: []Method{
+					{
+						Name:     "GetStream",
+						HasError: true,
+						Raw:      true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns: []Param{
+							NewParam("contentType", "string"),
+							NewParam("data", "[]byte"),
+						},
+					},
+				},
+			}
+
+			code, err := GenerateClientGo(svc, "host")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should include encoding/binary for raw binary frame parsing
+			Expect(codeStr).To(ContainSubstring(`"encoding/binary"`))
+
+			// Should NOT generate response type struct for raw methods
+			Expect(codeStr).NotTo(ContainSubstring("streamGetStreamResponse struct"))
+
+			// Should still generate request type
+			Expect(codeStr).To(ContainSubstring("streamGetStreamRequest struct"))
+
+			// Should parse binary frame
+			Expect(codeStr).To(ContainSubstring("responseBytes[0] == 0x01"))
+			Expect(codeStr).To(ContainSubstring("binary.BigEndian.Uint32"))
+
+			// Should return (string, []byte, error)
+			Expect(codeStr).To(ContainSubstring("func StreamGetStream(uri string) (string, []byte, error)"))
 		})
 	})
 
@@ -1549,6 +1746,50 @@ var _ = Describe("Rust Generation", func() {
 			// Should generate simple bool return, not Option
 			Expect(codeStr).To(ContainSubstring("Result<bool, Error>"))
 			Expect(codeStr).NotTo(ContainSubstring("Option<bool>"))
+		})
+
+		It("should generate raw extern C import and binary frame parsing for raw methods", func() {
+			svc := Service{
+				Name:       "Stream",
+				Permission: "stream",
+				Interface:  "StreamService",
+				Methods: []Method{
+					{
+						Name:     "GetStream",
+						HasError: true,
+						Raw:      true,
+						Params:   []Param{NewParam("uri", "string")},
+						Returns: []Param{
+							NewParam("contentType", "string"),
+							NewParam("data", "[]byte"),
+						},
+						Doc: "GetStream returns raw binary stream data.",
+					},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+
+			// Should use extern "C" for raw methods, not #[host_fn] extern "ExtismHost"
+			Expect(codeStr).To(ContainSubstring(`extern "C"`))
+			Expect(codeStr).To(ContainSubstring("fn stream_getstream(offset: u64) -> u64"))
+
+			// Should NOT generate response type for raw methods
+			Expect(codeStr).NotTo(ContainSubstring("StreamGetStreamResponse"))
+
+			// Should generate request type (request is still JSON)
+			Expect(codeStr).To(ContainSubstring("struct StreamGetStreamRequest"))
+
+			// Should return Result<(String, Vec<u8>), Error>
+			Expect(codeStr).To(ContainSubstring("Result<(String, Vec<u8>), Error>"))
+
+			// Should parse binary frame
+			Expect(codeStr).To(ContainSubstring("response_bytes[0] == 0x01"))
+			Expect(codeStr).To(ContainSubstring("u32::from_be_bytes"))
+			Expect(codeStr).To(ContainSubstring("String::from_utf8_lossy"))
 		})
 	})
 })

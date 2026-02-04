@@ -122,6 +122,119 @@ type TestService interface {
 			Expect(services[0].Methods[0].Name).To(Equal("Exported"))
 		})
 
+		It("should parse raw=true annotation", func() {
+			src := `package host
+
+import "context"
+
+//nd:hostservice name=Stream permission=stream
+type StreamService interface {
+	//nd:hostfunc raw=true
+	GetStream(ctx context.Context, uri string) (contentType string, data []byte, err error)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "stream.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			services, err := ParseDirectory(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+
+			m := services[0].Methods[0]
+			Expect(m.Name).To(Equal("GetStream"))
+			Expect(m.Raw).To(BeTrue())
+			Expect(m.HasError).To(BeTrue())
+			Expect(m.Returns).To(HaveLen(2))
+			Expect(m.Returns[0].Name).To(Equal("contentType"))
+			Expect(m.Returns[0].Type).To(Equal("string"))
+			Expect(m.Returns[1].Name).To(Equal("data"))
+			Expect(m.Returns[1].Type).To(Equal("[]byte"))
+		})
+
+		It("should set Raw=false when raw annotation is absent", func() {
+			src := `package host
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc
+	Call(ctx context.Context, uri string) (response string, err error)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			services, err := ParseDirectory(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services[0].Methods[0].Raw).To(BeFalse())
+		})
+
+		It("should reject raw=true with invalid return signature", func() {
+			src := `package host
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc raw=true
+	BadRaw(ctx context.Context, uri string) (result string, err error)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = ParseDirectory(tmpDir)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("raw=true"))
+			Expect(err.Error()).To(ContainSubstring("must return (string, []byte, error)"))
+		})
+
+		It("should reject raw=true without error return", func() {
+			src := `package host
+
+import "context"
+
+//nd:hostservice name=Test permission=test
+type TestService interface {
+	//nd:hostfunc raw=true
+	BadRaw(ctx context.Context, uri string) (contentType string, data []byte)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = ParseDirectory(tmpDir)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("raw=true"))
+		})
+
+		It("should parse mixed raw and non-raw methods", func() {
+			src := `package host
+
+import "context"
+
+//nd:hostservice name=API permission=api
+type APIService interface {
+	//nd:hostfunc
+	Call(ctx context.Context, uri string) (responseJSON string, err error)
+
+	//nd:hostfunc raw=true
+	CallRaw(ctx context.Context, uri string) (contentType string, data []byte, err error)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "api.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			services, err := ParseDirectory(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+			Expect(services[0].Methods).To(HaveLen(2))
+			Expect(services[0].Methods[0].Raw).To(BeFalse())
+			Expect(services[0].Methods[1].Raw).To(BeTrue())
+			Expect(services[0].HasRawMethods()).To(BeTrue())
+		})
+
 		It("should handle custom export name", func() {
 			src := `package host
 
