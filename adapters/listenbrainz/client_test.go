@@ -119,7 +119,7 @@ var _ = Describe("client", func() {
 	})
 
 	Context("getArtistUrl", func() {
-		baseUrl := "BASE_URL/metadata/artist?"
+		baseUrl := "https://api.listenbrainz.org/1/metadata/artist?"
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
@@ -167,7 +167,7 @@ var _ = Describe("client", func() {
 	})
 
 	Context("getArtistTopSongs", func() {
-		baseUrl := "BASE_URL/popularity/top-recordings-for-artist/"
+		baseUrl := "https://api.listenbrainz.org/1/popularity/top-recordings-for-artist/"
 
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
@@ -242,6 +242,36 @@ var _ = Describe("client", func() {
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+	})
+
+	Context("getSimilarArtists", func() {
+		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json"
+
+		It("handles a malformed request with status code", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := client.getSimilarArtists(context.Background(), "1")
+			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("handles real data properly", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarArtists(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
+				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha"},
+			}))
 		})
 	})
 })

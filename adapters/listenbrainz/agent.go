@@ -159,6 +159,31 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 	return res, nil
 }
 
+func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, name string, mbid string, limit int) ([]agents.Artist, error) {
+	if mbid == "" {
+		return nil, agents.ErrNotFound
+	}
+
+	resp, err := l.client.getSimilarArtists(ctx, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	artistCount := min(len(resp), limit)
+	artists := make([]agents.Artist, artistCount)
+
+	for i := 0; i < artistCount; i++ {
+		artists[i].MBID = resp[i].MBID
+		artists[i].Name = resp[i].Name
+	}
+
+	return artists, nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
@@ -172,21 +197,21 @@ func init() {
 				return nil
 			})
 
-			if conf.Server.ListenBrainz.EnableMetadata {
-				if conf.Server.ListenBrainz.BaseURL != "https://api.listenbrainz.org/1/" {
-					log.Warn("ListenBrainz is enabled with a nonstandard API endpoint. Requests will likely not work")
+			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
+				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
+				// See https://go.dev/doc/faq#nil_error
+				a := listenBrainzConstructor(ds)
+				if a != nil {
+					return a
 				}
-
-				agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
-					// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzConstructor)(nil)
-					// See https://go.dev/doc/faq#nil_error
-					a := listenBrainzConstructor(ds)
-					if a != nil {
-						return a
-					}
-					return nil
-				})
-			}
+				return nil
+			})
 		}
 	})
 }
+
+var (
+	_ agents.ArtistTopSongsRetriever = (*listenBrainzAgent)(nil)
+	_ agents.ArtistURLRetriever      = (*listenBrainzAgent)(nil)
+	_ agents.ArtistSimilarRetriever  = (*listenBrainzAgent)(nil)
+)

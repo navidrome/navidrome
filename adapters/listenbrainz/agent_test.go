@@ -228,7 +228,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			_, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Path).To(Equal("BASE_URL/popularity/top-recordings-for-artist/d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+			Expect(httpClient.SavedRequest.URL.Path).To(Equal("/1/popularity/top-recordings-for-artist/d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
 		})
 
 		It("returns an error on listenbrainz error", func() {
@@ -239,7 +239,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			_, err := agent.GetArtistTopSongs(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Path).To(Equal("BASE_URL/popularity/top-recordings-for-artist/1"))
+			Expect(httpClient.SavedRequest.URL.Path).To(Equal("/1/popularity/top-recordings-for-artist/1"))
 		})
 
 		It("returns all tracks when asked", func() {
@@ -287,6 +287,65 @@ var _ = Describe("listenBrainzAgent", func() {
 					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
 					Duration:   211912,
 				},
+			}))
+		})
+	})
+
+	Describe("GetSimilarArtists", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json"
+
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+		})
+
+		It("returns an error on listenbrainz error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetSimilarArtists(ctx, "", "", "1", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=1"))
+		})
+
+		It("returns all data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(resp).To(Equal([]agents.Artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
+				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha"},
+			}))
+		})
+
+		It("returns subset of data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(resp).To(Equal([]agents.Artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
 			}))
 		})
 	})

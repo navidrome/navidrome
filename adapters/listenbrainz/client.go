@@ -13,6 +13,13 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+const (
+	lbzApiUrl = "https://api.listenbrainz.org/1/"
+	labsBase  = "https://labs.api.listenbrainz.org/"
+	// There are a couple of algorithms from https://labs.api.listenbrainz.org/similar-artists
+	algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+)
+
 var (
 	ErrorNotFound = errors.New("listenbrainz: not found")
 )
@@ -189,11 +196,7 @@ type lbzHttpError struct {
 }
 
 func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint string, params url.Values) (*http.Response, error) {
-	uri, err := c.path(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	req, _ := http.NewRequestWithContext(ctx, method, uri, nil)
+	req, _ := http.NewRequestWithContext(ctx, method, lbzApiUrl+endpoint, nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = params.Encode()
 
@@ -282,4 +285,35 @@ func (c *client) getArtistTopSongs(ctx context.Context, mbid string, count int) 
 	}
 
 	return response, nil
+}
+
+type artist struct {
+	MBID string `json:"artist_mbid"`
+	Name string `json:"name"`
+}
+
+func (c *client) getSimilarArtists(ctx context.Context, mbid string) ([]artist, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = url.Values{
+		"artist_mbids": []string{mbid}, "algorithm": []string{algorithm},
+	}.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var artists []artist
+	jsonErr := decoder.Decode(&artists)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	return artists, nil
 }
