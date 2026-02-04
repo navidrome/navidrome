@@ -143,8 +143,19 @@ func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[
 	return counts, nil
 }
 
-func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"media_file.id": id})
+// Exists checks if all given media file IDs exist in the database. If no IDs are provided, it returns true.
+// If any of the IDs do not exist, it returns false. It returns an error if the database query fails.
+func (r *mediaFileRepository) Exists(ids ...string) (bool, error) {
+	if len(ids) == 0 {
+		return true, nil
+	}
+	existsQuery := Select("count(*) as exist").From("media_file").Where(Eq{"media_file.id": ids})
+	var res struct{ Exist int64 }
+	err := r.queryOne(existsQuery, &res)
+	if err != nil {
+		return false, err
+	}
+	return res.Exist == int64(len(ids)), nil
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
