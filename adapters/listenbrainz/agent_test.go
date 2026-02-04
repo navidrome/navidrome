@@ -294,7 +294,8 @@ var _ = Describe("listenBrainzAgent", func() {
 	Describe("GetSimilarArtists", func() {
 		var agent *listenBrainzAgent
 		var httpClient *tests.FakeHttpClient
-		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json"
+		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids="
+		mbid := "db92a151-1ac2-438b-bc43-b82e149ddd50"
 
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
@@ -305,10 +306,10 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns error when fetch calls", func() {
 			httpClient.Err = errors.New("error")
-			_, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			_, err := agent.GetSimilarArtists(ctx, "", "", mbid, 1)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 		})
 
 		It("returns an error on listenbrainz error", func() {
@@ -319,7 +320,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			_, err := agent.GetSimilarArtists(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=1"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
 		})
 
 		It("returns all data on call", func() {
@@ -329,7 +330,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 			Expect(resp).To(Equal([]agents.Artist{
 				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
 				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha"},
@@ -343,9 +344,99 @@ var _ = Describe("listenBrainzAgent", func() {
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 			Expect(resp).To(Equal([]agents.Artist{
 				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
+			}))
+		})
+	})
+
+	Describe("GetSimilarTracks", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		mbid := "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae"
+		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
+
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+		})
+
+		It("returns an error on listenbrainz error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", "1", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+		})
+
+		It("returns all data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "Take On Me",
+					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:       "",
+					Artist:     "a‐ha",
+					ArtistMBID: "",
+					Album:      "Hunting High and Low",
+					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:   0,
+				},
+				{
+					ID:         "",
+					Name:       "Wake Me Up Before You Go‐Go",
+					MBID:       "80033c72-aa19-4ba8-9227-afb075fec46e",
+					ISRC:       "",
+					Artist:     "Wham!",
+					ArtistMBID: "",
+					Album:      "Make It Big",
+					AlbumMBID:  "c143d542-48dc-446b-b523-1762da721638",
+					Duration:   0,
+				},
+			}))
+		})
+
+		It("returns subset of data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "Take On Me",
+					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:       "",
+					Artist:     "a‐ha",
+					ArtistMBID: "",
+					Album:      "Hunting High and Low",
+					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:   0,
+				},
 			}))
 		})
 	})

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
+	"sort"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -17,7 +19,9 @@ const (
 	lbzApiUrl = "https://api.listenbrainz.org/1/"
 	labsBase  = "https://labs.api.listenbrainz.org/"
 	// There are a couple of algorithms from https://labs.api.listenbrainz.org/similar-artists
-	algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	artistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	// From https://labs.api.listenbrainz.org/similar-recordings
+	trackALgorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
 )
 
 var (
@@ -288,15 +292,16 @@ func (c *client) getArtistTopSongs(ctx context.Context, mbid string, count int) 
 }
 
 type artist struct {
-	MBID string `json:"artist_mbid"`
-	Name string `json:"name"`
+	MBID  string `json:"artist_mbid"`
+	Name  string `json:"name"`
+	Score int    `json:"score"`
 }
 
-func (c *client) getSimilarArtists(ctx context.Context, mbid string) ([]artist, error) {
+func (c *client) getSimilarArtists(ctx context.Context, mbid string, limit int) ([]artist, error) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"artist_mbids": []string{mbid}, "algorithm": []string{algorithm},
+		"artist_mbids": []string{mbid}, "algorithm": []string{artistAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
@@ -315,5 +320,59 @@ func (c *client) getSimilarArtists(ctx context.Context, mbid string) ([]artist, 
 		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 	}
 
+	if len(artists) > limit {
+		return artists[:limit], nil
+	}
+
 	return artists, nil
+}
+
+type recording struct {
+	MBID        string `json:"recording_mbid"`
+	Name        string `json:"recording_name"`
+	Artist      string `json:"artist_credit_name"`
+	ReleaseName string `json:"release_name"`
+	ReleaseMBID string `json:"release_mbid"`
+	Score       int    `json:"score"`
+}
+
+func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit int) ([]recording, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = url.Values{
+		"recording_mbids": []string{mbid}, "algorithm": []string{trackALgorithm},
+	}.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var recordings []recording
+	jsonErr := decoder.Decode(&recordings)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	// For whatever reason, labs API isn't guaranteed to give results in the proper order
+	// and may also provide duplicates. See listenbrainz.labs.similar-recordings-real-out-of-order.json
+	// generated from https://labs.api.listenbrainz.org/similar-recordings/json?recording_mbids=8f3471b5-7e6a-48da-86a9-c1c07a0f47ae&algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30
+	sort.Slice(recordings, func(i, j int) bool {
+		return recordings[i].Score > recordings[j].Score
+	})
+
+	recordings = slices.CompactFunc(recordings, func(a, b recording) bool {
+		return a.MBID == b.MBID
+	})
+
+	if len(recordings) > limit {
+		return recordings[:limit], nil
+	}
+
+	return recordings, nil
 }

@@ -164,7 +164,7 @@ func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, na
 		return nil, agents.ErrNotFound
 	}
 
-	resp, err := l.client.getSimilarArtists(ctx, mbid)
+	resp, err := l.client.getSimilarArtists(ctx, mbid, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -173,15 +173,40 @@ func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, na
 		return nil, agents.ErrNotFound
 	}
 
-	artistCount := min(len(resp), limit)
-	artists := make([]agents.Artist, artistCount)
+	artists := make([]agents.Artist, len(resp))
 
-	for i := 0; i < artistCount; i++ {
-		artists[i].MBID = resp[i].MBID
-		artists[i].Name = resp[i].Name
+	for i, artist := range resp {
+		artists[i].MBID = artist.MBID
+		artists[i].Name = artist.Name
 	}
 
 	return artists, nil
+}
+
+func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id string, name string, artist string, mbid string, limit int) ([]agents.Song, error) {
+	if mbid == "" {
+		return nil, agents.ErrNotFound
+	}
+
+	resp, err := l.client.getSimilarRecordings(ctx, mbid, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	songs := make([]agents.Song, len(resp))
+	for i, song := range resp {
+		songs[i].Album = song.ReleaseName
+		songs[i].AlbumMBID = song.ReleaseMBID
+		songs[i].Artist = song.Artist
+		songs[i].MBID = song.MBID
+		songs[i].Name = song.Name
+	}
+
+	return songs, nil
 }
 
 func init() {
@@ -211,7 +236,8 @@ func init() {
 }
 
 var (
-	_ agents.ArtistTopSongsRetriever = (*listenBrainzAgent)(nil)
-	_ agents.ArtistURLRetriever      = (*listenBrainzAgent)(nil)
-	_ agents.ArtistSimilarRetriever  = (*listenBrainzAgent)(nil)
+	_ agents.ArtistTopSongsRetriever      = (*listenBrainzAgent)(nil)
+	_ agents.ArtistURLRetriever           = (*listenBrainzAgent)(nil)
+	_ agents.ArtistSimilarRetriever       = (*listenBrainzAgent)(nil)
+	_ agents.SimilarSongsByTrackRetriever = (*listenBrainzAgent)(nil)
 )

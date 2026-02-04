@@ -246,31 +246,155 @@ var _ = Describe("client", func() {
 	})
 
 	Context("getSimilarArtists", func() {
-		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json"
+		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids="
+		mbid := "db92a151-1ac2-438b-bc43-b82e149ddd50"
 
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
 				StatusCode: 400,
 			}
-			_, err := client.getSimilarArtists(context.Background(), "1")
+			_, err := client.getSimilarArtists(context.Background(), "1", 2)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=1"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
 		It("handles real data properly", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarArtists(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50")
+			resp, err := client.getSimilarArtists(context.Background(), mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids=db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]artist{
-				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
-				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha"},
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson", Score: 800},
+				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha", Score: 792},
+			}))
+		})
+
+		It("truncates data when requested", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarArtists(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson", Score: 800},
+			}))
+		})
+	})
+
+	Context("getSimilarRecordings", func() {
+		mbid := "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae"
+		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
+
+		It("handles a malformed request with status code", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := client.getSimilarRecordings(context.Background(), "1", 2)
+			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+		})
+
+		It("handles real data properly", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarRecordings(context.Background(), mbid, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]recording{
+				{
+					MBID:        "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					Name:        "Take On Me",
+					Artist:      "a‐ha",
+					ReleaseName: "Hunting High and Low",
+					ReleaseMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Score:       124,
+				},
+				{
+					MBID:        "80033c72-aa19-4ba8-9227-afb075fec46e",
+					Name:        "Wake Me Up Before You Go‐Go",
+					Artist:      "Wham!",
+					ReleaseName: "Make It Big",
+					ReleaseMBID: "c143d542-48dc-446b-b523-1762da721638",
+					Score:       65,
+				},
+			}))
+		})
+
+		It("truncates data when requested", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarRecordings(context.Background(), mbid, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]recording{
+				{
+					MBID:        "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					Name:        "Take On Me",
+					Artist:      "a‐ha",
+					ReleaseName: "Hunting High and Low",
+					ReleaseMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Score:       124,
+				},
+			}))
+		})
+
+		It("properly sorts by score and truncates duplicates", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings-real-out-of-order.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			// There are actually 5 items. The dedup should happen FIRST
+			resp, err := client.getSimilarRecordings(context.Background(), mbid, 4)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]recording{
+				{
+					MBID:        "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					Name:        "Take On Me",
+					Artist:      "a‐ha",
+					ReleaseName: "Hunting High and Low",
+					ReleaseMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Score:       124,
+				},
+				{
+					MBID:        "e4b347be-ecb2-44ff-aaa8-3d4c517d7ea5",
+					Name:        "Everybody Wants to Rule the World",
+					Artist:      "Tears for Fears",
+					ReleaseName: "Songs From the Big Chair",
+					ReleaseMBID: "21f19b06-81f1-347a-add5-5d0c77696597",
+					Score:       68,
+				},
+				{
+					MBID:        "80033c72-aa19-4ba8-9227-afb075fec46e",
+					Name:        "Wake Me Up Before You Go‐Go",
+					Artist:      "Wham!",
+					ReleaseName: "Make It Big",
+					ReleaseMBID: "c143d542-48dc-446b-b523-1762da721638",
+					Score:       65,
+				},
+				{
+					MBID:        "ef4c6855-949e-4e22-b41e-8e0a2d372d5f",
+					Name:        "Tainted Love",
+					Artist:      "Soft Cell",
+					ReleaseName: "Non-Stop Erotic Cabaret",
+					ReleaseMBID: "1acaa870-6e0c-4b6e-9e91-fdec4e5ea4b1",
+					Score:       61,
+				},
 			}))
 		})
 	})
