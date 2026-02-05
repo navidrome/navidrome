@@ -61,6 +61,7 @@ type Subsonic struct {
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
+	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 }
 
 const (
@@ -616,4 +617,29 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 		return json.Marshal([]T{})
 	}
 	return json.Marshal(v)
+}
+
+// TranscodeDecision represents the response for getTranscodeDecision (OpenSubsonic transcoding extension)
+type TranscodeDecision struct {
+	CanDirectPlay    bool           `xml:"canDirectPlay,attr"               json:"canDirectPlay"`
+	CanTranscode     bool           `xml:"canTranscode,attr"                json:"canTranscode"`
+	TranscodeReasons []string       `xml:"transcodeReason,omitempty"        json:"transcodeReasons,omitempty"`
+	ErrorReason      string         `xml:"errorReason,attr,omitempty"       json:"errorReason,omitempty"`
+	TranscodeParams  string         `xml:"transcodeParams,attr,omitempty"   json:"transcodeParams,omitempty"`
+	SourceStream     *StreamDetails `xml:"sourceStream,omitempty"           json:"sourceStream,omitempty"`
+	TranscodeStream  *StreamDetails `xml:"transcodeStream,omitempty"        json:"transcodeStream,omitempty"`
+}
+
+// StreamDetails describes audio stream properties for transcoding decisions
+type StreamDetails struct {
+	Container    string `xml:"container,attr,omitempty"    json:"container,omitempty"`
+	Codec        string `xml:"codec,attr,omitempty"        json:"codec,omitempty"`
+	Bitrate      int32  `xml:"bitrate,attr,omitempty"      json:"bitrate,omitempty"`
+	SampleRate   int32  `xml:"sampleRate,attr,omitempty"   json:"sampleRate,omitempty"`
+	BitDepth     int32  `xml:"bitDepth,attr,omitempty"     json:"bitDepth,omitempty"`
+	Channels     int32  `xml:"channels,attr,omitempty"     json:"channels,omitempty"`
+	Duration     int32  `xml:"duration,attr,omitempty"     json:"duration,omitempty"`
+	Size         int64  `xml:"size,attr,omitempty"         json:"size,omitempty"`
+	IsLossless   bool   `xml:"isLossless,attr,omitempty"   json:"isLossless,omitempty"`
+	IsDirectPlay bool   `xml:"isDirectPlay,attr,omitempty" json:"isDirectPlay,omitempty"`
 }
