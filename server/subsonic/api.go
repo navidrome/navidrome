@@ -34,40 +34,42 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 
 type Router struct {
 	http.Handler
-	ds        model.DataStore
-	artwork   artwork.Artwork
-	streamer  core.MediaStreamer
-	archiver  core.Archiver
-	players   core.Players
-	provider  external.Provider
-	playlists core.Playlists
-	scanner   model.Scanner
-	broker    events.Broker
-	scrobbler scrobbler.PlayTracker
-	share     core.Share
-	playback  playback.PlaybackServer
-	metrics   metrics.Metrics
+	ds                model.DataStore
+	artwork           artwork.Artwork
+	streamer          core.MediaStreamer
+	archiver          core.Archiver
+	players           core.Players
+	provider          external.Provider
+	playlists         core.Playlists
+	scanner           model.Scanner
+	broker            events.Broker
+	scrobbler         scrobbler.PlayTracker
+	share             core.Share
+	playback          playback.PlaybackServer
+	metrics           metrics.Metrics
+	transcodeDecision core.TranscodeDecision
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics,
+	metrics metrics.Metrics, transcodeDecision core.TranscodeDecision,
 ) *Router {
 	r := &Router{
-		ds:        ds,
-		artwork:   artwork,
-		streamer:  streamer,
-		archiver:  archiver,
-		players:   players,
-		provider:  provider,
-		playlists: playlists,
-		scanner:   scanner,
-		broker:    broker,
-		scrobbler: scrobbler,
-		share:     share,
-		playback:  playback,
-		metrics:   metrics,
+		ds:                ds,
+		artwork:           artwork,
+		streamer:          streamer,
+		archiver:          archiver,
+		players:           players,
+		provider:          provider,
+		playlists:         playlists,
+		scanner:           scanner,
+		broker:            broker,
+		scrobbler:         scrobbler,
+		share:             share,
+		playback:          playback,
+		metrics:           metrics,
+		transcodeDecision: transcodeDecision,
 	}
 	r.Handler = r.routes()
 	return r
@@ -172,6 +174,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
+			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
+			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
 			// configure request throttling

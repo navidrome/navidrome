@@ -35,6 +35,7 @@ type AudioProperties struct {
 	BitDepth   int
 	SampleRate int
 	Channels   int
+	Codec      string
 }
 
 type Date string
