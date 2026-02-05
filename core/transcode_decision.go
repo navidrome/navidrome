@@ -133,7 +133,7 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 		IsLossless: mf.IsLossless(),
 	}
 
-	// Check global bitrate constraint first (like LMS: prevents direct play entirely)
+	// Check global bitrate constraint first.
 	if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
 		decision.TranscodeReasons = append(decision.TranscodeReasons, "audio bitrate not supported")
 		// Skip direct play profiles entirely — global constraint fails
@@ -485,45 +485,41 @@ func containsIgnoreCase(slice []string, s string) bool {
 	return false
 }
 
+// containerAliasGroups maps each container alias to a canonical group name.
+var containerAliasGroups = func() map[string]string {
+	groups := [][]string{
+		{"aac", "adts", "m4a", "mp4", "m4b", "m4p"},
+		{"mpeg", "mp3", "mp2"},
+		{"ogg", "oga"},
+		{"aif", "aiff"},
+		{"asf", "wma"},
+		{"mpc", "mpp"},
+		{"wv"},
+	}
+	m := make(map[string]string)
+	for _, g := range groups {
+		canonical := g[0]
+		for _, name := range g {
+			m[name] = canonical
+		}
+	}
+	return m
+}()
+
 // matchesContainer checks if a file suffix matches any of the container names,
-// including common aliases (matching LMS reference implementation).
+// including common aliases.
 func matchesContainer(suffix string, containers []string) bool {
 	suffix = strings.ToLower(suffix)
+	canonicalSuffix := containerAliasGroups[suffix] // empty if no alias group
+
 	for _, c := range containers {
 		c = strings.ToLower(c)
 		if c == suffix {
 			return true
 		}
-		// Container alias mappings (based on LMS reference)
-		switch c {
-		case "aac", "adts", "m4a", "mp4", "m4b", "m4p":
-			if suffix == "aac" || suffix == "adts" || suffix == "m4a" || suffix == "mp4" || suffix == "m4b" || suffix == "m4p" {
-				return true
-			}
-		case "mpeg", "mp3", "mp2":
-			if suffix == "mp3" || suffix == "mp2" || suffix == "mpeg" {
-				return true
-			}
-		case "ogg", "oga":
-			if suffix == "ogg" || suffix == "oga" {
-				return true
-			}
-		case "aif", "aiff":
-			if suffix == "aif" || suffix == "aiff" {
-				return true
-			}
-		case "asf", "wma":
-			if suffix == "asf" || suffix == "wma" {
-				return true
-			}
-		case "mpc", "mpp":
-			if suffix == "mpc" || suffix == "mpp" {
-				return true
-			}
-		case "wv":
-			if suffix == "wv" {
-				return true
-			}
+		// Check if both belong to the same alias group
+		if canonicalSuffix != "" && containerAliasGroups[c] == canonicalSuffix {
+			return true
 		}
 	}
 	return false
@@ -555,7 +551,7 @@ var codecAliasGroups = func() map[string]string {
 }()
 
 // matchesCodec checks if a codec matches any of the codec names,
-// including common aliases (matching LMS reference implementation).
+// including common aliases.
 func matchesCodec(codec string, codecs []string) bool {
 	codec = strings.ToLower(codec)
 	canonicalCodec := codecAliasGroups[codec] // empty if no alias group
