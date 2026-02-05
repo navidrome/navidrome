@@ -31,20 +31,29 @@ var _ = Describe("Transcode endpoints", func() {
 	})
 
 	Describe("GetTranscodeDecision", func() {
+		It("returns 405 for non-POST requests", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song")
+			resp, err := router.GetTranscodeDecision(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
+			Expect(w.Header().Get("Allow")).To(Equal("POST"))
+		})
+
 		It("returns error when mediaId is missing", func() {
-			r := newGetRequest("mediaType=song")
+			r := newJSONPostRequest("mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns error when mediaType is missing", func() {
-			r := newGetRequest("mediaId=123")
+			r := newJSONPostRequest("mediaId=123", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns error for unsupported mediaType", func() {
-			r := newGetRequest("mediaId=123", "mediaType=podcast")
+			r := newJSONPostRequest("mediaId=123&mediaType=podcast", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not yet supported"))
@@ -52,9 +61,31 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("returns error when media file not found", func() {
 			mockMFRepo.SetError(true)
-			r := newGetRequest("mediaId=notfound", "mediaType=song")
+			r := newJSONPostRequest("mediaId=notfound&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("handles empty body gracefully", func() {
+			mockMFRepo.SetData(model.MediaFiles{
+				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
+			})
+			mockTD.decision = &core.Decision{
+				MediaID:       "song-1",
+				CanDirectPlay: false,
+				SourceStream: core.StreamDetails{
+					Container: "mp3", Codec: "mp3", Bitrate: 320,
+					SampleRate: 44100, Channels: 2,
+				},
+			}
+			mockTD.token = "empty-body-token"
+
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "")
+			resp, err := router.GetTranscodeDecision(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.TranscodeDecision).ToNot(BeNil())
+			Expect(resp.TranscodeDecision.TranscodeParams).To(Equal("empty-body-token"))
 		})
 
 		It("returns a valid decision response", func() {
@@ -107,7 +138,7 @@ var _ = Describe("Transcode endpoints", func() {
 			}
 			mockTD.token = "transcode-token"
 
-			r := newGetRequest("mediaId=song-2", "mediaType=song")
+			r := newJSONPostRequest("mediaId=song-2&mediaType=song", "{}")
 			resp, err := router.GetTranscodeDecision(w, r)
 
 			Expect(err).ToNot(HaveOccurred())
