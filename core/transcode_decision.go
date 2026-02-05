@@ -64,6 +64,34 @@ type Limitation struct {
 	Required   bool
 }
 
+// Protocol values (OpenSubsonic spec enum)
+const (
+	ProtocolHTTP = "http"
+	ProtocolHLS  = "hls"
+)
+
+// Comparison operators (OpenSubsonic spec enum)
+const (
+	ComparisonEquals           = "Equals"
+	ComparisonNotEquals        = "NotEquals"
+	ComparisonLessThanEqual    = "LessThanEqual"
+	ComparisonGreaterThanEqual = "GreaterThanEqual"
+)
+
+// Limitation names (OpenSubsonic spec enum)
+const (
+	LimitationAudioChannels   = "audioChannels"
+	LimitationAudioBitrate    = "audioBitrate"
+	LimitationAudioProfile    = "audioProfile"
+	LimitationAudioSamplerate = "audioSamplerate"
+	LimitationAudioBitdepth   = "audioBitdepth"
+)
+
+// Codec profile types (OpenSubsonic spec enum)
+const (
+	CodecProfileTypeAudio = "AudioCodec"
+)
+
 // Decision represents the internal decision result.
 // All bitrate values are in kilobits per second (kbps).
 type Decision struct {
@@ -84,6 +112,7 @@ type Decision struct {
 type StreamDetails struct {
 	Container  string
 	Codec      string
+	Profile    string // Audio profile (e.g., "LC", "HE-AAC"). Empty until scanner support is added.
 	Bitrate    int
 	SampleRate int
 	BitDepth   int
@@ -179,7 +208,7 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 // or a typed reason string if it doesn't match.
 func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitrate int, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
 	// Check protocol (only http for now)
-	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, "http") {
+	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, ProtocolHTTP) {
 		return "protocol not supported"
 	}
 
@@ -200,7 +229,7 @@ func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, s
 
 	// Check codec-specific limitations
 	for _, codecProfile := range clientInfo.CodecProfiles {
-		if strings.EqualFold(codecProfile.Type, "AudioCodec") && matchesCodec(mf.AudioCodec(), []string{codecProfile.Name}) {
+		if strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) && matchesCodec(mf.AudioCodec(), []string{codecProfile.Name}) {
 			if reason := checkLimitations(mf, sourceBitrate, codecProfile.Limitations); reason != "" {
 				return reason
 			}
@@ -214,29 +243,35 @@ func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, s
 // Returns "" if all limitations pass, or a typed reason string for the first failure.
 func checkLimitations(mf *model.MediaFile, sourceBitrate int, limitations []Limitation) string {
 	for _, lim := range limitations {
-		switch strings.ToLower(lim.Name) {
-		case "audiochannels":
+		if strings.EqualFold(lim.Name, LimitationAudioChannels) {
 			if !checkIntLimitation(mf.Channels, lim.Comparison, lim.Values) {
 				if lim.Required {
 					return "audio channels not supported"
 				}
 			}
-		case "audiosamplerate":
+		} else if strings.EqualFold(lim.Name, LimitationAudioSamplerate) {
 			if !checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values) {
 				if lim.Required {
 					return "audio samplerate not supported"
 				}
 			}
-		case "audiobitrate":
+		} else if strings.EqualFold(lim.Name, LimitationAudioBitrate) {
 			if !checkIntLimitation(sourceBitrate, lim.Comparison, lim.Values) {
 				if lim.Required {
 					return "audio bitrate not supported"
 				}
 			}
-		case "audiobitdepth":
+		} else if strings.EqualFold(lim.Name, LimitationAudioBitdepth) {
 			if !checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values) {
 				if lim.Required {
 					return "audio bitdepth not supported"
+				}
+			}
+		} else if strings.EqualFold(lim.Name, LimitationAudioProfile) {
+			// TODO: populate source profile when MediaFile has audio profile info
+			if !checkStringLimitation("", lim.Comparison, lim.Values) {
+				if lim.Required {
+					return "audio profile not supported"
 				}
 			}
 		}
@@ -257,7 +292,7 @@ const (
 // Returns nil if the profile cannot produce a valid output.
 func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *TranscodingProfile, clientInfo *ClientInfo) *StreamDetails {
 	// Check protocol (only http for now)
-	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, "http") {
+	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
 		return nil
 	}
 
@@ -324,7 +359,7 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 	// Apply codec profile limitations to the TARGET codec (#4)
 	targetCodec := ts.Codec
 	for _, codecProfile := range clientInfo.CodecProfiles {
-		if !strings.EqualFold(codecProfile.Type, "AudioCodec") {
+		if !strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) {
 			continue
 		}
 		if !matchesCodec(targetCodec, []string{codecProfile.Name}) {
@@ -333,7 +368,7 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 		for _, lim := range codecProfile.Limitations {
 			result := applyLimitation(sourceBitrate, &lim, ts)
 			// For lossless codecs, adjusting bitrate is not valid
-			if strings.EqualFold(lim.Name, "audiobitrate") && targetIsLossless && result == adjustAdjusted {
+			if strings.EqualFold(lim.Name, LimitationAudioBitrate) && targetIsLossless && result == adjustAdjusted {
 				return nil
 			}
 			if result == adjustCannotFit {
@@ -348,22 +383,22 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
 // Returns the adjustment result.
 func applyLimitation(sourceBitrate int, lim *Limitation, ts *StreamDetails) adjustResult {
-	switch strings.ToLower(lim.Name) {
-	case "audiochannels":
-		current := ts.Channels
-		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Channels = v })
-	case "audiobitrate":
+	if strings.EqualFold(lim.Name, LimitationAudioChannels) {
+		return applyIntLimitation(lim.Comparison, lim.Values, ts.Channels, func(v int) { ts.Channels = v })
+	} else if strings.EqualFold(lim.Name, LimitationAudioBitrate) {
 		current := ts.Bitrate
 		if current == 0 {
 			current = sourceBitrate
 		}
 		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Bitrate = v })
-	case "audiosamplerate":
+	} else if strings.EqualFold(lim.Name, LimitationAudioSamplerate) {
 		return applyIntLimitation(lim.Comparison, lim.Values, ts.SampleRate, func(v int) { ts.SampleRate = v })
-	case "audiobitdepth":
+	} else if strings.EqualFold(lim.Name, LimitationAudioBitdepth) {
 		if ts.BitDepth > 0 {
 			return applyIntLimitation(lim.Comparison, lim.Values, ts.BitDepth, func(v int) { ts.BitDepth = v })
 		}
+	} else if strings.EqualFold(lim.Name, LimitationAudioProfile) {
+		// TODO: implement when audio profile data is available
 	}
 	return adjustNone
 }
@@ -375,8 +410,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		return adjustNone
 	}
 
-	switch strings.ToLower(comparison) {
-	case "lessthanequal":
+	if strings.EqualFold(comparison, ComparisonLessThanEqual) {
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return adjustNone
@@ -386,8 +420,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		}
 		setter(limit)
 		return adjustAdjusted
-
-	case "greaterthanequal":
+	} else if strings.EqualFold(comparison, ComparisonGreaterThanEqual) {
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return adjustNone
@@ -397,8 +430,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		}
 		// Cannot upscale
 		return adjustCannotFit
-
-	case "equals":
+	} else if strings.EqualFold(comparison, ComparisonEquals) {
 		// Check if current value matches any allowed value
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && current == limit {
@@ -421,8 +453,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 			return adjustAdjusted
 		}
 		return adjustCannotFit
-
-	case "notequals":
+	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && current == limit {
 				return adjustCannotFit
@@ -573,36 +604,56 @@ func checkIntLimitation(value int, comparison string, values []string) bool {
 		return true
 	}
 
-	switch strings.ToLower(comparison) {
-	case "lessthanequal":
+	if strings.EqualFold(comparison, ComparisonLessThanEqual) {
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return true
 		}
 		return value <= limit
-	case "greaterthanequal":
+	} else if strings.EqualFold(comparison, ComparisonGreaterThanEqual) {
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return true
 		}
 		return value >= limit
-	case "equals":
+	} else if strings.EqualFold(comparison, ComparisonEquals) {
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && value == limit {
 				return true
 			}
 		}
 		return false
-	case "notequals":
+	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && value == limit {
 				return false
 			}
 		}
 		return true
-	default:
+	}
+	return true
+}
+
+// checkStringLimitation checks a string value against a limitation.
+// Only Equals and NotEquals comparisons are meaningful for strings.
+// LessThanEqual/GreaterThanEqual are not applicable and always pass.
+func checkStringLimitation(value string, comparison string, values []string) bool {
+	if strings.EqualFold(comparison, ComparisonEquals) {
+		for _, v := range values {
+			if strings.EqualFold(value, v) {
+				return true
+			}
+		}
+		return false
+	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
+		for _, v := range values {
+			if strings.EqualFold(value, v) {
+				return false
+			}
+		}
 		return true
 	}
+	return true
 }
 
 func parseInt(s string) (int, bool) {

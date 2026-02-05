@@ -66,26 +66,48 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("handles empty body gracefully", func() {
-			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
-			})
-			mockTD.decision = &core.Decision{
-				MediaID:       "song-1",
-				CanDirectPlay: false,
-				SourceStream: core.StreamDetails{
-					Container: "mp3", Codec: "mp3", Bitrate: 320,
-					SampleRate: 44100, Channels: 2,
-				},
-			}
-			mockTD.token = "empty-body-token"
-
+		It("returns error when body is empty", func() {
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "")
-			resp, err := router.GetTranscodeDecision(w, r)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+		})
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(resp.TranscodeDecision).ToNot(BeNil())
-			Expect(resp.TranscodeDecision.TranscodeParams).To(Equal("empty-body-token"))
+		It("returns error when body contains invalid JSON", func() {
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "not-json{{{")
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for invalid protocol in direct play profile", func() {
+			body := `{"directPlayProfiles":[{"containers":["mp3"],"audioCodecs":["mp3"],"protocols":["ftp"]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid protocol"))
+		})
+
+		It("returns error for invalid comparison operator", func() {
+			body := `{"codecProfiles":[{"type":"AudioCodec","name":"mp3","limitations":[{"name":"audioBitrate","comparison":"InvalidOp","values":["320"]}]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid comparison"))
+		})
+
+		It("returns error for invalid limitation name", func() {
+			body := `{"codecProfiles":[{"type":"AudioCodec","name":"mp3","limitations":[{"name":"unknownField","comparison":"Equals","values":["320"]}]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid limitation name"))
+		})
+
+		It("returns error for invalid codec profile type", func() {
+			body := `{"codecProfiles":[{"type":"VideoCodec","name":"mp3"}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid codec profile type"))
 		})
 
 		It("returns a valid decision response", func() {

@@ -331,10 +331,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioBitrate", Comparison: "LessThanEqual", Values: []string{"320"}, Required: true},
+								{Name: LimitationAudioBitrate, Comparison: ComparisonLessThanEqual, Values: []string{"320"}, Required: true},
 							},
 						},
 					},
@@ -353,10 +353,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioBitrate", Comparison: "LessThanEqual", Values: []string{"320"}, Required: false},
+								{Name: LimitationAudioBitrate, Comparison: ComparisonLessThanEqual, Values: []string{"320"}, Required: false},
 							},
 						},
 					},
@@ -374,10 +374,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "flac",
 							Limitations: []Limitation{
-								{Name: "audioChannels", Comparison: "Equals", Values: []string{"1", "2"}, Required: true},
+								{Name: LimitationAudioChannels, Comparison: ComparisonEquals, Values: []string{"1", "2"}, Required: true},
 							},
 						},
 					},
@@ -395,10 +395,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "flac",
 							Limitations: []Limitation{
-								{Name: "audioChannels", Comparison: "Equals", Values: []string{"1", "2"}, Required: true},
+								{Name: LimitationAudioChannels, Comparison: ComparisonEquals, Values: []string{"1", "2"}, Required: true},
 							},
 						},
 					},
@@ -406,6 +406,50 @@ var _ = Describe("TranscodeDecision", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
+			})
+
+			It("rejects direct play when audioProfile limitation fails (required)", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100}
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "aac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioProfile, Comparison: ComparisonEquals, Values: []string{"LC"}, Required: true},
+							},
+						},
+					},
+				}
+				// Source profile is empty (not yet populated from scanner), so Equals("LC") fails
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.TranscodeReasons).To(ContainElement("audio profile not supported"))
+			})
+
+			It("allows direct play when audioProfile limitation is optional", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100}
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "aac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioProfile, Comparison: ComparisonEquals, Values: []string{"LC"}, Required: false},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 
 			It("rejects direct play due to samplerate limitation", func() {
@@ -416,10 +460,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "flac",
 							Limitations: []Limitation{
-								{Name: "audioSamplerate", Comparison: "LessThanEqual", Values: []string{"48000"}, Required: true},
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"48000"}, Required: true},
 							},
 						},
 					},
@@ -441,10 +485,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioBitrate", Comparison: "LessThanEqual", Values: []string{"96"}, Required: true},
+								{Name: LimitationAudioBitrate, Comparison: ComparisonLessThanEqual, Values: []string{"96"}, Required: true},
 							},
 						},
 					},
@@ -464,10 +508,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioChannels", Comparison: "LessThanEqual", Values: []string{"2"}, Required: true},
+								{Name: LimitationAudioChannels, Comparison: ComparisonLessThanEqual, Values: []string{"2"}, Required: true},
 							},
 						},
 					},
@@ -487,10 +531,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioSamplerate", Comparison: "LessThanEqual", Values: []string{"48000"}, Required: true},
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"48000"}, Required: true},
 							},
 						},
 					},
@@ -510,10 +554,10 @@ var _ = Describe("TranscodeDecision", func() {
 					},
 					CodecProfiles: []CodecProfile{
 						{
-							Type: "AudioCodec",
+							Type: CodecProfileTypeAudio,
 							Name: "mp3",
 							Limitations: []Limitation{
-								{Name: "audioSamplerate", Comparison: "GreaterThanEqual", Values: []string{"96000"}, Required: true},
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonGreaterThanEqual, Values: []string{"96000"}, Required: true},
 							},
 						},
 					},
