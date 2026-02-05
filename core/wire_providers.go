@@ -20,6 +20,7 @@ var Set = wire.NewSet(
 	NewLibrary,
 	NewUser,
 	NewMaintenance,
+	NewTranscodeDecision,
 	agents.GetAgents,
 	external.NewProvider,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),

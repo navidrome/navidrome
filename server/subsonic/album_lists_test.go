@@ -27,7 +27,7 @@ var _ = Describe("Album Lists", func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 

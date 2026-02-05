@@ -102,7 +102,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlists, playTracker, share, playbackServer, metricsMetrics)
+	transcodeDecision := core.NewTranscodeDecision(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlists, playTracker, share, playbackServer, metricsMetrics, transcodeDecision)
 	return router
 }
 
