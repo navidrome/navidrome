@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -97,7 +98,7 @@ func (r *clientInfoRequest) toCore() *core.ClientInfo {
 				Required:   lim.Required,
 			}
 			// Convert audioBitrate limitation values from bps to kbps
-			if strings.EqualFold(lim.Name, "audioBitrate") {
+			if strings.EqualFold(lim.Name, core.LimitationAudioBitrate) {
 				coreLim.Values = convertBitrateValues(lim.Values)
 			}
 			coreCP.Limitations = append(coreCP.Limitations, coreLim)
@@ -132,6 +133,59 @@ func convertBitrateValues(bpsValues []string) []string {
 	return result
 }
 
+// validate checks that all enum fields in the request contain valid values per the OpenSubsonic spec.
+func (r *clientInfoRequest) validate() error {
+	for _, dp := range r.DirectPlayProfiles {
+		for _, p := range dp.Protocols {
+			if !isValidProtocol(p) {
+				return fmt.Errorf("invalid protocol: %s", p)
+			}
+		}
+	}
+	for _, tp := range r.TranscodingProfiles {
+		if tp.Protocol != "" && !isValidProtocol(tp.Protocol) {
+			return fmt.Errorf("invalid protocol: %s", tp.Protocol)
+		}
+	}
+	for _, cp := range r.CodecProfiles {
+		if !isValidCodecProfileType(cp.Type) {
+			return fmt.Errorf("invalid codec profile type: %s", cp.Type)
+		}
+		for _, lim := range cp.Limitations {
+			if !isValidLimitationName(lim.Name) {
+				return fmt.Errorf("invalid limitation name: %s", lim.Name)
+			}
+			if !isValidComparison(lim.Comparison) {
+				return fmt.Errorf("invalid comparison: %s", lim.Comparison)
+			}
+		}
+	}
+	return nil
+}
+
+func isValidProtocol(p string) bool {
+	return strings.EqualFold(p, core.ProtocolHTTP) || strings.EqualFold(p, core.ProtocolHLS)
+}
+
+func isValidCodecProfileType(t string) bool {
+	return strings.EqualFold(t, core.CodecProfileTypeAudio)
+}
+
+func isValidLimitationName(n string) bool {
+	return strings.EqualFold(n, core.LimitationAudioChannels) ||
+		strings.EqualFold(n, core.LimitationAudioBitrate) ||
+		strings.EqualFold(n, core.LimitationAudioProfile) ||
+		strings.EqualFold(n, core.LimitationAudioSamplerate) ||
+		strings.EqualFold(n, core.LimitationAudioBitdepth)
+}
+
+func isValidComparison(c string) bool {
+	return strings.EqualFold(c, core.ComparisonEquals) ||
+		strings.EqualFold(c, core.ComparisonNotEquals) ||
+		strings.EqualFold(c, core.ComparisonLessThanEqual) ||
+		strings.EqualFold(c, core.ComparisonGreaterThanEqual)
+}
+
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
 // It receives client capabilities and returns a decision on whether to direct play or transcode.
 func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -159,13 +213,16 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return nil, newError(responses.ErrorGeneric, "mediaType '%s' is not yet supported", mediaType)
 	}
 
-	// Parse ClientInfo from request body
+	// Parse and validate ClientInfo from request body (required per OpenSubsonic spec)
 	var clientInfoReq clientInfoRequest
-	if r.Body != nil {
-		if err := json.NewDecoder(r.Body).Decode(&clientInfoReq); err != nil {
-			log.Debug(ctx, "Failed to parse client info from body", err)
-			// Continue with empty client info - will likely result in no compatible profile
-		}
+	if r.Body == nil {
+		return nil, newError(responses.ErrorMissingParameter, "missing required JSON request body")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&clientInfoReq); err != nil {
+		return nil, newError(responses.ErrorGeneric, "invalid JSON request body")
+	}
+	if err := clientInfoReq.validate(); err != nil {
+		return nil, newError(responses.ErrorGeneric, "%v", err)
 	}
 	clientInfo := clientInfoReq.toCore()
 
@@ -200,6 +257,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 			Container:       decision.SourceStream.Container,
 			Codec:           decision.SourceStream.Codec,
 			AudioBitrate:    int32(kbpsToBps(decision.SourceStream.Bitrate)),
+			AudioProfile:    decision.SourceStream.Profile,
 			AudioSamplerate: int32(decision.SourceStream.SampleRate),
 			AudioBitdepth:   int32(decision.SourceStream.BitDepth),
 			AudioChannels:   int32(decision.SourceStream.Channels),
@@ -212,6 +270,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 			Container:       decision.TranscodeStream.Container,
 			Codec:           decision.TranscodeStream.Codec,
 			AudioBitrate:    int32(kbpsToBps(decision.TranscodeStream.Bitrate)),
+			AudioProfile:    decision.TranscodeStream.Profile,
 			AudioSamplerate: int32(decision.TranscodeStream.SampleRate),
 			AudioBitdepth:   int32(decision.TranscodeStream.BitDepth),
 			AudioChannels:   int32(decision.TranscodeStream.Channels),
