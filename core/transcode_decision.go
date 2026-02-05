@@ -21,7 +21,8 @@ type TranscodeDecision interface {
 	ParseToken(token string) (*TranscodeParams, error)
 }
 
-// ClientInfo represents client playback capabilities
+// ClientInfo represents client playback capabilities.
+// All bitrate values are in kilobits per second (kbps), matching Navidrome conventions.
 type ClientInfo struct {
 	Name                       string
 	Platform                   string
@@ -63,7 +64,8 @@ type Limitation struct {
 	Required   bool
 }
 
-// Decision represents the internal decision result
+// Decision represents the internal decision result.
+// All bitrate values are in kilobits per second (kbps).
 type Decision struct {
 	MediaID          string
 	CanDirectPlay    bool
@@ -77,7 +79,8 @@ type Decision struct {
 	TranscodeStream  *StreamDetails
 }
 
-// StreamDetails describes audio stream properties
+// StreamDetails describes audio stream properties.
+// Bitrate is in kilobits per second (kbps).
 type StreamDetails struct {
 	Container  string
 	Codec      string
@@ -90,7 +93,8 @@ type StreamDetails struct {
 	IsLossless bool
 }
 
-// TranscodeParams contains the parameters extracted from a transcode token
+// TranscodeParams contains the parameters extracted from a transcode token.
+// TargetBitrate is in kilobits per second (kbps).
 type TranscodeParams struct {
 	MediaID        string
 	DirectPlay     bool
@@ -114,11 +118,13 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 		MediaID: mf.ID,
 	}
 
+	sourceBitrate := mf.BitRate // kbps
+
 	// Build source stream details
 	decision.SourceStream = StreamDetails{
 		Container:  mf.Suffix,
 		Codec:      mf.AudioCodec(),
-		Bitrate:    mf.BitRate,
+		Bitrate:    sourceBitrate,
 		SampleRate: mf.SampleRate,
 		BitDepth:   mf.BitDepth,
 		Channels:   mf.Channels,
@@ -127,49 +133,36 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 		IsLossless: mf.IsLossless(),
 	}
 
-	// Check global bitrate constraint
-	if clientInfo.MaxAudioBitrate > 0 && mf.BitRate > clientInfo.MaxAudioBitrate {
-		decision.TranscodeReasons = append(decision.TranscodeReasons, "bitrate exceeds maxAudioBitrate")
-	}
-
-	// Try direct play profiles
-	for _, profile := range clientInfo.DirectPlayProfiles {
-		if s.matchesDirectPlayProfile(mf, &profile, clientInfo) {
-			decision.CanDirectPlay = true
-			break
+	// Check global bitrate constraint first (like LMS: prevents direct play entirely)
+	if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
+		decision.TranscodeReasons = append(decision.TranscodeReasons, "audio bitrate not supported")
+		// Skip direct play profiles entirely — global constraint fails
+	} else {
+		// Try direct play profiles, collecting reasons for each failure
+		for _, profile := range clientInfo.DirectPlayProfiles {
+			if reason := s.checkDirectPlayProfile(mf, sourceBitrate, &profile, clientInfo); reason == "" {
+				decision.CanDirectPlay = true
+				decision.TranscodeReasons = nil // Clear any previously collected reasons
+				break
+			} else {
+				decision.TranscodeReasons = append(decision.TranscodeReasons, reason)
+			}
 		}
 	}
 
-	// If direct play is possible and no transcode reasons, we're done
-	if decision.CanDirectPlay && len(decision.TranscodeReasons) == 0 {
+	// If direct play is possible, we're done
+	if decision.CanDirectPlay {
 		return decision, nil
-	}
-
-	// If direct play matched but there are global constraints violated, revoke direct play
-	if decision.CanDirectPlay && len(decision.TranscodeReasons) > 0 {
-		decision.CanDirectPlay = false
 	}
 
 	// Try transcoding profiles (in order of preference)
 	for _, profile := range clientInfo.TranscodingProfiles {
-		if targetFormat, targetBitrate, ok := s.matchesTranscodingProfile(ctx, mf, &profile, clientInfo); ok {
+		if ts := s.computeTranscodedStream(ctx, mf, sourceBitrate, &profile, clientInfo); ts != nil {
 			decision.CanTranscode = true
-			decision.TargetFormat = targetFormat
-			decision.TargetBitrate = targetBitrate
-			decision.TargetChannels = profile.MaxAudioChannels
-
-			// Build transcode stream details
-			decision.TranscodeStream = &StreamDetails{
-				Container:  targetFormat,
-				Codec:      targetFormat,
-				Bitrate:    targetBitrate,
-				SampleRate: mf.SampleRate,
-				Channels:   mf.Channels,
-				IsLossless: false,
-			}
-			if decision.TargetChannels > 0 && decision.TargetChannels < mf.Channels {
-				decision.TranscodeStream.Channels = decision.TargetChannels
-			}
+			decision.TargetFormat = ts.Container
+			decision.TargetBitrate = ts.Bitrate
+			decision.TargetChannels = ts.Channels
+			decision.TranscodeStream = ts
 			break
 		}
 	}
@@ -182,43 +175,90 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 	return decision, nil
 }
 
-func (s *transcodeDecisionService) matchesDirectPlayProfile(mf *model.MediaFile, profile *DirectPlayProfile, clientInfo *ClientInfo) bool {
+// checkDirectPlayProfile returns "" if the profile matches (direct play OK),
+// or a typed reason string if it doesn't match.
+func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitrate int, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
 	// Check protocol (only http for now)
 	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, "http") {
-		return false
+		return "protocol not supported"
 	}
 
 	// Check container
-	if len(profile.Containers) > 0 && !s.matchesContainer(mf.Suffix, profile.Containers) {
-		return false
+	if len(profile.Containers) > 0 && !matchesContainer(mf.Suffix, profile.Containers) {
+		return "container not supported"
 	}
 
 	// Check codec
-	if len(profile.AudioCodecs) > 0 && !s.matchesCodec(mf.AudioCodec(), profile.AudioCodecs) {
-		return false
+	if len(profile.AudioCodecs) > 0 && !matchesCodec(mf.AudioCodec(), profile.AudioCodecs) {
+		return "audio codec not supported"
 	}
 
 	// Check channels
 	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
-		return false
+		return "audio channels not supported"
 	}
 
 	// Check codec-specific limitations
 	for _, codecProfile := range clientInfo.CodecProfiles {
-		if strings.EqualFold(codecProfile.Type, "AudioCodec") && strings.EqualFold(codecProfile.Name, mf.AudioCodec()) {
-			if !s.meetsLimitations(mf, codecProfile.Limitations) {
-				return false
+		if strings.EqualFold(codecProfile.Type, "AudioCodec") && matchesCodec(mf.AudioCodec(), []string{codecProfile.Name}) {
+			if reason := checkLimitations(mf, sourceBitrate, codecProfile.Limitations); reason != "" {
+				return reason
 			}
 		}
 	}
 
-	return true
+	return ""
 }
 
-func (s *transcodeDecisionService) matchesTranscodingProfile(ctx context.Context, mf *model.MediaFile, profile *TranscodingProfile, clientInfo *ClientInfo) (string, int, bool) {
+// checkLimitations checks codec profile limitations against source media.
+// Returns "" if all limitations pass, or a typed reason string for the first failure.
+func checkLimitations(mf *model.MediaFile, sourceBitrate int, limitations []Limitation) string {
+	for _, lim := range limitations {
+		switch strings.ToLower(lim.Name) {
+		case "audiochannels":
+			if !checkIntLimitation(mf.Channels, lim.Comparison, lim.Values) {
+				if lim.Required {
+					return "audio channels not supported"
+				}
+			}
+		case "audiosamplerate":
+			if !checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values) {
+				if lim.Required {
+					return "audio samplerate not supported"
+				}
+			}
+		case "audiobitrate":
+			if !checkIntLimitation(sourceBitrate, lim.Comparison, lim.Values) {
+				if lim.Required {
+					return "audio bitrate not supported"
+				}
+			}
+		case "audiobitdepth":
+			if !checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values) {
+				if lim.Required {
+					return "audio bitdepth not supported"
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// adjustResult represents the outcome of applying a limitation to a transcoded stream value
+type adjustResult int
+
+const (
+	adjustNone      adjustResult = iota // Value already satisfies the limitation
+	adjustAdjusted                      // Value was changed to fit the limitation
+	adjustCannotFit                     // Cannot satisfy the limitation (reject this profile)
+)
+
+// computeTranscodedStream attempts to build a valid transcoded stream for the given profile.
+// Returns nil if the profile cannot produce a valid output.
+func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *TranscodingProfile, clientInfo *ClientInfo) *StreamDetails {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, "http") {
-		return "", 0, false
+		return nil
 	}
 
 	targetFormat := strings.ToLower(profile.Container)
@@ -229,85 +269,169 @@ func (s *transcodeDecisionService) matchesTranscodingProfile(ctx context.Context
 	// Verify we have a transcoding config for this format
 	tc, err := s.ds.Transcoding(ctx).FindByFormat(targetFormat)
 	if err != nil || tc == nil {
-		return "", 0, false
+		return nil
 	}
+
+	targetIsLossless := isLosslessFormat(targetFormat)
 
 	// Reject lossy to lossless conversion
-	if !mf.IsLossless() && isLosslessFormat(targetFormat) {
-		return "", 0, false
+	if !mf.IsLossless() && targetIsLossless {
+		return nil
 	}
 
-	// Determine target bitrate
-	targetBitrate := defaultTranscodeBitrate
+	ts := &StreamDetails{
+		Container:  targetFormat,
+		Codec:      strings.ToLower(profile.AudioCodec),
+		SampleRate: mf.SampleRate,
+		Channels:   mf.Channels,
+		IsLossless: targetIsLossless,
+	}
+	if ts.Codec == "" {
+		ts.Codec = targetFormat
+	}
+
+	// Determine target bitrate (all in kbps)
 	if mf.IsLossless() {
-		// Lossless to lossy: use client's max transcoding bitrate or default
-		if clientInfo.MaxTranscodingAudioBitrate > 0 {
-			targetBitrate = clientInfo.MaxTranscodingAudioBitrate / 1000 // Convert to kbps
+		if !targetIsLossless {
+			// Lossless to lossy: use client's max transcoding bitrate or default
+			if clientInfo.MaxTranscodingAudioBitrate > 0 {
+				ts.Bitrate = clientInfo.MaxTranscodingAudioBitrate
+			} else {
+				ts.Bitrate = defaultTranscodeBitrate
+			}
+		} else {
+			// Lossless to lossless: check if bitrate is under the global max
+			if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
+				return nil // Cannot guarantee bitrate within limit for lossless
+			}
+			// No explicit bitrate for lossless target (leave 0)
 		}
 	} else {
-		// Lossy to lossy: try to preserve source bitrate if under max
-		targetBitrate = mf.BitRate / 1000
-		if clientInfo.MaxTranscodingAudioBitrate > 0 && targetBitrate > clientInfo.MaxTranscodingAudioBitrate/1000 {
-			targetBitrate = clientInfo.MaxTranscodingAudioBitrate / 1000
+		// Lossy to lossy: preserve source bitrate
+		ts.Bitrate = sourceBitrate
+	}
+
+	// Apply maxAudioBitrate as final cap on transcoded stream (#5)
+	if clientInfo.MaxAudioBitrate > 0 && ts.Bitrate > 0 && ts.Bitrate > clientInfo.MaxAudioBitrate {
+		ts.Bitrate = clientInfo.MaxAudioBitrate
+	}
+
+	// Apply MaxAudioChannels from the transcoding profile
+	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
+		ts.Channels = profile.MaxAudioChannels
+	}
+
+	// Apply codec profile limitations to the TARGET codec (#4)
+	targetCodec := ts.Codec
+	for _, codecProfile := range clientInfo.CodecProfiles {
+		if !strings.EqualFold(codecProfile.Type, "AudioCodec") {
+			continue
+		}
+		if !matchesCodec(targetCodec, []string{codecProfile.Name}) {
+			continue
+		}
+		for _, lim := range codecProfile.Limitations {
+			result := applyLimitation(sourceBitrate, &lim, ts)
+			// For lossless codecs, adjusting bitrate is not valid
+			if strings.EqualFold(lim.Name, "audiobitrate") && targetIsLossless && result == adjustAdjusted {
+				return nil
+			}
+			if result == adjustCannotFit {
+				return nil
+			}
 		}
 	}
 
-	return targetFormat, targetBitrate, true
+	return ts
 }
 
-func (s *transcodeDecisionService) matchesContainer(suffix string, containers []string) bool {
-	suffix = strings.ToLower(suffix)
-	for _, c := range containers {
-		c = strings.ToLower(c)
-		if c == suffix {
-			return true
+// applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
+// Returns the adjustment result.
+func applyLimitation(sourceBitrate int, lim *Limitation, ts *StreamDetails) adjustResult {
+	switch strings.ToLower(lim.Name) {
+	case "audiochannels":
+		current := ts.Channels
+		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Channels = v })
+	case "audiobitrate":
+		current := ts.Bitrate
+		if current == 0 {
+			current = sourceBitrate
 		}
-		// Handle common aliases
-		if c == "aac" && (suffix == "m4a" || suffix == "m4b" || suffix == "m4p") {
-			return true
-		}
-		if c == "mpeg" && (suffix == "mp3" || suffix == "mp2") {
-			return true
-		}
-		if c == "ogg" && (suffix == "oga" || suffix == "opus") {
-			return true
+		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Bitrate = v })
+	case "audiosamplerate":
+		return applyIntLimitation(lim.Comparison, lim.Values, ts.SampleRate, func(v int) { ts.SampleRate = v })
+	case "audiobitdepth":
+		if ts.BitDepth > 0 {
+			return applyIntLimitation(lim.Comparison, lim.Values, ts.BitDepth, func(v int) { ts.BitDepth = v })
 		}
 	}
-	return false
+	return adjustNone
 }
 
-func (s *transcodeDecisionService) matchesCodec(codec string, codecs []string) bool {
-	codec = strings.ToLower(codec)
-	for _, c := range codecs {
-		if strings.EqualFold(c, codec) {
-			return true
-		}
+// applyIntLimitation applies a limitation comparison to a value.
+// If the value needs adjusting, calls the setter and returns the result.
+func applyIntLimitation(comparison string, values []string, current int, setter func(int)) adjustResult {
+	if len(values) == 0 {
+		return adjustNone
 	}
-	return false
-}
 
-func (s *transcodeDecisionService) meetsLimitations(mf *model.MediaFile, limitations []Limitation) bool {
-	for _, lim := range limitations {
-		switch strings.ToLower(lim.Name) {
-		case "audiochannels":
-			if !checkIntLimitation(mf.Channels, lim.Comparison, lim.Values) {
-				return !lim.Required
-			}
-		case "audiosamplerate":
-			if !checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values) {
-				return !lim.Required
-			}
-		case "audiobitrate":
-			if !checkIntLimitation(mf.BitRate, lim.Comparison, lim.Values) {
-				return !lim.Required
-			}
-		case "audiobitdepth":
-			if !checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values) {
-				return !lim.Required
+	switch strings.ToLower(comparison) {
+	case "lessthanequal":
+		limit, ok := parseInt(values[0])
+		if !ok {
+			return adjustNone
+		}
+		if current <= limit {
+			return adjustNone
+		}
+		setter(limit)
+		return adjustAdjusted
+
+	case "greaterthanequal":
+		limit, ok := parseInt(values[0])
+		if !ok {
+			return adjustNone
+		}
+		if current >= limit {
+			return adjustNone
+		}
+		// Cannot upscale
+		return adjustCannotFit
+
+	case "equals":
+		// Check if current value matches any allowed value
+		for _, v := range values {
+			if limit, ok := parseInt(v); ok && current == limit {
+				return adjustNone
 			}
 		}
+		// Find the closest allowed value below current (don't upscale)
+		var closest int
+		found := false
+		for _, v := range values {
+			if limit, ok := parseInt(v); ok && limit < current {
+				if !found || limit > closest {
+					closest = limit
+					found = true
+				}
+			}
+		}
+		if found {
+			setter(closest)
+			return adjustAdjusted
+		}
+		return adjustCannotFit
+
+	case "notequals":
+		for _, v := range values {
+			if limit, ok := parseInt(v); ok && current == limit {
+				return adjustCannotFit
+			}
+		}
+		return adjustNone
 	}
-	return true
+
+	return adjustNone
 }
 
 func (s *transcodeDecisionService) CreateToken(decision *Decision) (string, error) {
@@ -355,6 +479,93 @@ func (s *transcodeDecisionService) ParseToken(token string) (*TranscodeParams, e
 func containsIgnoreCase(slice []string, s string) bool {
 	for _, item := range slice {
 		if strings.EqualFold(item, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesContainer checks if a file suffix matches any of the container names,
+// including common aliases (matching LMS reference implementation).
+func matchesContainer(suffix string, containers []string) bool {
+	suffix = strings.ToLower(suffix)
+	for _, c := range containers {
+		c = strings.ToLower(c)
+		if c == suffix {
+			return true
+		}
+		// Container alias mappings (based on LMS reference)
+		switch c {
+		case "aac", "adts", "m4a", "mp4", "m4b", "m4p":
+			if suffix == "aac" || suffix == "adts" || suffix == "m4a" || suffix == "mp4" || suffix == "m4b" || suffix == "m4p" {
+				return true
+			}
+		case "mpeg", "mp3", "mp2":
+			if suffix == "mp3" || suffix == "mp2" || suffix == "mpeg" {
+				return true
+			}
+		case "ogg", "oga":
+			if suffix == "ogg" || suffix == "oga" {
+				return true
+			}
+		case "aif", "aiff":
+			if suffix == "aif" || suffix == "aiff" {
+				return true
+			}
+		case "asf", "wma":
+			if suffix == "asf" || suffix == "wma" {
+				return true
+			}
+		case "mpc", "mpp":
+			if suffix == "mpc" || suffix == "mpp" {
+				return true
+			}
+		case "wv":
+			if suffix == "wv" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// codecAliasGroups maps each codec alias to a canonical group name.
+// Codecs within the same group are considered equivalent.
+var codecAliasGroups = func() map[string]string {
+	groups := [][]string{
+		{"aac", "adts"},
+		{"ac3", "ac-3"},
+		{"eac3", "e-ac3", "e-ac-3", "eac-3"},
+		{"mpc7", "musepack7"},
+		{"mpc8", "musepack8"},
+		{"wma1", "wmav1"},
+		{"wma2", "wmav2"},
+		{"wmalossless", "wma9lossless"},
+		{"wmapro", "wma9pro"},
+		{"shn", "shorten"},
+		{"mp4als", "als"},
+	}
+	m := make(map[string]string)
+	for _, g := range groups {
+		for _, name := range g {
+			m[name] = g[0] // canonical = first entry
+		}
+	}
+	return m
+}()
+
+// matchesCodec checks if a codec matches any of the codec names,
+// including common aliases (matching LMS reference implementation).
+func matchesCodec(codec string, codecs []string) bool {
+	codec = strings.ToLower(codec)
+	canonicalCodec := codecAliasGroups[codec] // empty if no alias group
+	for _, c := range codecs {
+		c = strings.ToLower(c)
+		if c == codec {
+			return true
+		}
+		// Check if both belong to the same alias group
+		if canonicalCodec != "" && codecAliasGroups[c] == canonicalCodec {
 			return true
 		}
 	}

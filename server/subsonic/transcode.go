@@ -3,6 +3,8 @@ package subsonic
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -54,13 +56,14 @@ type limitationReq struct {
 	Required   bool     `json:"required,omitempty"`
 }
 
-// toCore converts the API request struct to the core ClientInfo struct
+// toCore converts the API request struct to the core ClientInfo struct.
+// The OpenSubsonic spec uses bps for bitrate values; core uses kbps.
 func (r *clientInfoRequest) toCore() *core.ClientInfo {
 	ci := &core.ClientInfo{
 		Name:                       r.Name,
 		Platform:                   r.Platform,
-		MaxAudioBitrate:            r.MaxAudioBitrate,
-		MaxTranscodingAudioBitrate: r.MaxTranscodingAudioBitrate,
+		MaxAudioBitrate:            bpsToKbps(r.MaxAudioBitrate),
+		MaxTranscodingAudioBitrate: bpsToKbps(r.MaxTranscodingAudioBitrate),
 	}
 
 	for _, dp := range r.DirectPlayProfiles {
@@ -87,17 +90,46 @@ func (r *clientInfoRequest) toCore() *core.ClientInfo {
 			Name: cp.Name,
 		}
 		for _, lim := range cp.Limitations {
-			coreCP.Limitations = append(coreCP.Limitations, core.Limitation{
+			coreLim := core.Limitation{
 				Name:       lim.Name,
 				Comparison: lim.Comparison,
 				Values:     lim.Values,
 				Required:   lim.Required,
-			})
+			}
+			// Convert audioBitrate limitation values from bps to kbps
+			if strings.EqualFold(lim.Name, "audioBitrate") {
+				coreLim.Values = convertBitrateValues(lim.Values)
+			}
+			coreCP.Limitations = append(coreCP.Limitations, coreLim)
 		}
 		ci.CodecProfiles = append(ci.CodecProfiles, coreCP)
 	}
 
 	return ci
+}
+
+// bpsToKbps converts bits per second to kilobits per second.
+func bpsToKbps(bps int) int {
+	return bps / 1000
+}
+
+// kbpsToBps converts kilobits per second to bits per second.
+func kbpsToBps(kbps int) int {
+	return kbps * 1000
+}
+
+// convertBitrateValues converts a slice of bps string values to kbps string values.
+func convertBitrateValues(bpsValues []string) []string {
+	result := make([]string, len(bpsValues))
+	for i, v := range bpsValues {
+		n, err := strconv.Atoi(v)
+		if err == nil {
+			result[i] = strconv.Itoa(n / 1000)
+		} else {
+			result[i] = v // preserve unparseable values as-is
+		}
+	}
+	return result
 }
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
@@ -149,7 +181,7 @@ func (api *Router) GetTranscodeDecision(_ http.ResponseWriter, r *http.Request) 
 		return nil, newError(responses.ErrorGeneric, "failed to create transcode token: %v", err)
 	}
 
-	// Build response
+	// Build response (convert kbps from core to bps for the API)
 	response := newResponse()
 	response.TranscodeDecision = &responses.TranscodeDecision{
 		CanDirectPlay:    decision.CanDirectPlay,
@@ -161,7 +193,7 @@ func (api *Router) GetTranscodeDecision(_ http.ResponseWriter, r *http.Request) 
 			Protocol:        "http",
 			Container:       decision.SourceStream.Container,
 			Codec:           decision.SourceStream.Codec,
-			AudioBitrate:    int32(decision.SourceStream.Bitrate),
+			AudioBitrate:    int32(kbpsToBps(decision.SourceStream.Bitrate)),
 			AudioSamplerate: int32(decision.SourceStream.SampleRate),
 			AudioBitdepth:   int32(decision.SourceStream.BitDepth),
 			AudioChannels:   int32(decision.SourceStream.Channels),
@@ -173,7 +205,7 @@ func (api *Router) GetTranscodeDecision(_ http.ResponseWriter, r *http.Request) 
 			Protocol:        "http",
 			Container:       decision.TranscodeStream.Container,
 			Codec:           decision.TranscodeStream.Codec,
-			AudioBitrate:    int32(decision.TranscodeStream.Bitrate),
+			AudioBitrate:    int32(kbpsToBps(decision.TranscodeStream.Bitrate)),
 			AudioSamplerate: int32(decision.TranscodeStream.SampleRate),
 			AudioBitdepth:   int32(decision.TranscodeStream.BitDepth),
 			AudioChannels:   int32(decision.TranscodeStream.Channels),
@@ -226,7 +258,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	maxBitRate := 0
 	if !params.DirectPlay && params.TargetFormat != "" {
 		format = params.TargetFormat
-		maxBitRate = params.TargetBitrate
+		maxBitRate = params.TargetBitrate // Already in kbps, matching the streamer
 	}
 
 	// Get offset parameter

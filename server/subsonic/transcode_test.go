@@ -59,13 +59,13 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("returns a valid decision response", func() {
 			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320000, Channels: 2, SampleRate: 44100},
+				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
 			})
 			mockTD.decision = &core.Decision{
 				MediaID:       "song-1",
 				CanDirectPlay: true,
 				SourceStream: core.StreamDetails{
-					Container: "mp3", Codec: "mp3", Bitrate: 320000,
+					Container: "mp3", Codec: "mp3", Bitrate: 320,
 					SampleRate: 44100, Channels: 2,
 				},
 			}
@@ -82,12 +82,12 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(resp.TranscodeDecision.SourceStream).ToNot(BeNil())
 			Expect(resp.TranscodeDecision.SourceStream.Protocol).To(Equal("http"))
 			Expect(resp.TranscodeDecision.SourceStream.Container).To(Equal("mp3"))
-			Expect(resp.TranscodeDecision.SourceStream.AudioBitrate).To(Equal(int32(320000)))
+			Expect(resp.TranscodeDecision.SourceStream.AudioBitrate).To(Equal(int32(320_000)))
 		})
 
 		It("includes transcode stream when transcoding", func() {
 			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000000, Channels: 2, SampleRate: 96000, BitDepth: 24},
+				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24},
 			})
 			mockTD.decision = &core.Decision{
 				MediaID:          "song-2",
@@ -95,9 +95,9 @@ var _ = Describe("Transcode endpoints", func() {
 				CanTranscode:     true,
 				TargetFormat:     "mp3",
 				TargetBitrate:    256,
-				TranscodeReasons: []string{"AudioCodecNotSupported"},
+				TranscodeReasons: []string{"container not supported"},
 				SourceStream: core.StreamDetails{
-					Container: "flac", Codec: "flac", Bitrate: 1000000,
+					Container: "flac", Codec: "flac", Bitrate: 1000,
 					SampleRate: 96000, BitDepth: 24, Channels: 2,
 				},
 				TranscodeStream: &core.StreamDetails{
@@ -112,7 +112,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
-			Expect(resp.TranscodeDecision.TranscodeReasons).To(ConsistOf("AudioCodecNotSupported"))
+			Expect(resp.TranscodeDecision.TranscodeReasons).To(ConsistOf("container not supported"))
 			Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 			Expect(resp.TranscodeDecision.TranscodeStream.Container).To(Equal("mp3"))
 		})
