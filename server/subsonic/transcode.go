@@ -48,9 +48,10 @@ type codecProfileReq struct {
 
 // limitationReq describes a specific codec limitation
 type limitationReq struct {
-	Property  string `json:"property,omitempty"`
-	Condition string `json:"condition,omitempty"`
-	Value     string `json:"value,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	Comparison string   `json:"comparison,omitempty"`
+	Values     []string `json:"values,omitempty"`
+	Required   bool     `json:"required,omitempty"`
 }
 
 // toCore converts the API request struct to the core ClientInfo struct
@@ -87,9 +88,10 @@ func (r *clientInfoRequest) toCore() *core.ClientInfo {
 		}
 		for _, lim := range cp.Limitations {
 			coreCP.Limitations = append(coreCP.Limitations, core.Limitation{
-				Property:  lim.Property,
-				Condition: lim.Condition,
-				Value:     lim.Value,
+				Name:       lim.Name,
+				Comparison: lim.Comparison,
+				Values:     lim.Values,
+				Required:   lim.Required,
 			})
 		}
 		ci.CodecProfiles = append(ci.CodecProfiles, coreCP)
@@ -156,27 +158,25 @@ func (api *Router) GetTranscodeDecision(_ http.ResponseWriter, r *http.Request) 
 		ErrorReason:      decision.ErrorReason,
 		TranscodeParams:  transcodeParams,
 		SourceStream: &responses.StreamDetails{
-			Container:  decision.SourceStream.Container,
-			Codec:      decision.SourceStream.Codec,
-			Bitrate:    int32(decision.SourceStream.Bitrate),
-			SampleRate: int32(decision.SourceStream.SampleRate),
-			BitDepth:   int32(decision.SourceStream.BitDepth),
-			Channels:   int32(decision.SourceStream.Channels),
-			Duration:   int32(decision.SourceStream.Duration),
-			Size:       decision.SourceStream.Size,
-			IsLossless: decision.SourceStream.IsLossless,
+			Protocol:        "http",
+			Container:       decision.SourceStream.Container,
+			Codec:           decision.SourceStream.Codec,
+			AudioBitrate:    int32(decision.SourceStream.Bitrate),
+			AudioSamplerate: int32(decision.SourceStream.SampleRate),
+			AudioBitdepth:   int32(decision.SourceStream.BitDepth),
+			AudioChannels:   int32(decision.SourceStream.Channels),
 		},
 	}
 
 	if decision.TranscodeStream != nil {
 		response.TranscodeDecision.TranscodeStream = &responses.StreamDetails{
-			Container:  decision.TranscodeStream.Container,
-			Codec:      decision.TranscodeStream.Codec,
-			Bitrate:    int32(decision.TranscodeStream.Bitrate),
-			SampleRate: int32(decision.TranscodeStream.SampleRate),
-			BitDepth:   int32(decision.TranscodeStream.BitDepth),
-			Channels:   int32(decision.TranscodeStream.Channels),
-			IsLossless: decision.TranscodeStream.IsLossless,
+			Protocol:        "http",
+			Container:       decision.TranscodeStream.Container,
+			Codec:           decision.TranscodeStream.Codec,
+			AudioBitrate:    int32(decision.TranscodeStream.Bitrate),
+			AudioSamplerate: int32(decision.TranscodeStream.SampleRate),
+			AudioBitdepth:   int32(decision.TranscodeStream.BitDepth),
+			AudioChannels:   int32(decision.TranscodeStream.Channels),
 		}
 	}
 

@@ -57,9 +57,10 @@ type CodecProfile struct {
 
 // Limitation describes a specific codec limitation
 type Limitation struct {
-	Property  string
-	Condition string
-	Value     string
+	Name       string
+	Comparison string
+	Values     []string
+	Required   bool
 }
 
 // Decision represents the internal decision result
@@ -142,6 +143,11 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 	// If direct play is possible and no transcode reasons, we're done
 	if decision.CanDirectPlay && len(decision.TranscodeReasons) == 0 {
 		return decision, nil
+	}
+
+	// If direct play matched but there are global constraints violated, revoke direct play
+	if decision.CanDirectPlay && len(decision.TranscodeReasons) > 0 {
+		decision.CanDirectPlay = false
 	}
 
 	// Try transcoding profiles (in order of preference)
@@ -273,13 +279,8 @@ func (s *transcodeDecisionService) matchesContainer(suffix string, containers []
 func (s *transcodeDecisionService) matchesCodec(codec string, codecs []string) bool {
 	codec = strings.ToLower(codec)
 	for _, c := range codecs {
-		c = strings.ToLower(c)
-		if c == codec {
+		if strings.EqualFold(c, codec) {
 			return true
-		}
-		// Handle common aliases
-		if c == "aac" && codec == "alac" {
-			continue // ALAC is not AAC
 		}
 	}
 	return false
@@ -287,22 +288,22 @@ func (s *transcodeDecisionService) matchesCodec(codec string, codecs []string) b
 
 func (s *transcodeDecisionService) meetsLimitations(mf *model.MediaFile, limitations []Limitation) bool {
 	for _, lim := range limitations {
-		switch strings.ToLower(lim.Property) {
+		switch strings.ToLower(lim.Name) {
 		case "audiochannels":
-			if !checkIntLimitation(mf.Channels, lim.Condition, lim.Value) {
-				return false
+			if !checkIntLimitation(mf.Channels, lim.Comparison, lim.Values) {
+				return !lim.Required
 			}
 		case "audiosamplerate":
-			if !checkIntLimitation(mf.SampleRate, lim.Condition, lim.Value) {
-				return false
+			if !checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values) {
+				return !lim.Required
 			}
 		case "audiobitrate":
-			if !checkIntLimitation(mf.BitRate, lim.Condition, lim.Value) {
-				return false
+			if !checkIntLimitation(mf.BitRate, lim.Comparison, lim.Values) {
+				return !lim.Required
 			}
 		case "audiobitdepth":
-			if !checkIntLimitation(mf.BitDepth, lim.Condition, lim.Value) {
-				return false
+			if !checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values) {
+				return !lim.Required
 			}
 		}
 	}
@@ -360,36 +361,55 @@ func containsIgnoreCase(slice []string, s string) bool {
 	return false
 }
 
-func checkIntLimitation(value int, condition, limitValue string) bool {
-	var limit int
-	if _, err := parseIntFromString(limitValue, &limit); err != nil {
-		return true // If we can't parse the limit, assume it passes
+func checkIntLimitation(value int, comparison string, values []string) bool {
+	if len(values) == 0 {
+		return true
 	}
 
-	switch strings.ToLower(condition) {
-	case "lessthanequal", "lte":
+	switch strings.ToLower(comparison) {
+	case "lessthanequal":
+		limit, ok := parseInt(values[0])
+		if !ok {
+			return true
+		}
 		return value <= limit
-	case "greaterthanequal", "gte":
+	case "greaterthanequal":
+		limit, ok := parseInt(values[0])
+		if !ok {
+			return true
+		}
 		return value >= limit
-	case "equals", "eq":
-		return value == limit
-	case "notequals", "ne":
-		return value != limit
+	case "equals":
+		for _, v := range values {
+			if limit, ok := parseInt(v); ok && value == limit {
+				return true
+			}
+		}
+		return false
+	case "notequals":
+		for _, v := range values {
+			if limit, ok := parseInt(v); ok && value == limit {
+				return false
+			}
+		}
+		return true
 	default:
 		return true
 	}
 }
 
-func parseIntFromString(s string, out *int) (bool, error) {
+func parseInt(s string) (int, bool) {
+	if s == "" {
+		return 0, false
+	}
 	var v int
 	for _, c := range s {
 		if c < '0' || c > '9' {
-			return false, nil
+			return 0, false
 		}
 		v = v*10 + int(c-'0')
 	}
-	*out = v
-	return true, nil
+	return v, true
 }
 
 func isLosslessFormat(format string) bool {
