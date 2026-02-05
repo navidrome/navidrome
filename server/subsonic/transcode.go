@@ -134,7 +134,13 @@ func convertBitrateValues(bpsValues []string) []string {
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
 // It receives client capabilities and returns a decision on whether to direct play or transcode.
-func (api *Router) GetTranscodeDecision(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return nil, nil
+	}
+
 	ctx := r.Context()
 	p := req.Params(r)
 
