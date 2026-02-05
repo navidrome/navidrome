@@ -623,7 +623,7 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 type TranscodeDecision struct {
 	CanDirectPlay    bool           `xml:"canDirectPlay,attr"               json:"canDirectPlay"`
 	CanTranscode     bool           `xml:"canTranscode,attr"                json:"canTranscode"`
-	TranscodeReasons []string       `xml:"transcodeReason,omitempty"        json:"transcodeReasons,omitempty"`
+	TranscodeReasons []string       `xml:"transcodeReason,omitempty"        json:"transcodeReason,omitempty"`
 	ErrorReason      string         `xml:"errorReason,attr,omitempty"       json:"errorReason,omitempty"`
 	TranscodeParams  string         `xml:"transcodeParams,attr,omitempty"   json:"transcodeParams,omitempty"`
 	SourceStream     *StreamDetails `xml:"sourceStream,omitempty"           json:"sourceStream,omitempty"`
@@ -632,14 +632,12 @@ type TranscodeDecision struct {
 
 // StreamDetails describes audio stream properties for transcoding decisions
 type StreamDetails struct {
-	Container    string `xml:"container,attr,omitempty"    json:"container,omitempty"`
-	Codec        string `xml:"codec,attr,omitempty"        json:"codec,omitempty"`
-	Bitrate      int32  `xml:"bitrate,attr,omitempty"      json:"bitrate,omitempty"`
-	SampleRate   int32  `xml:"sampleRate,attr,omitempty"   json:"sampleRate,omitempty"`
-	BitDepth     int32  `xml:"bitDepth,attr,omitempty"     json:"bitDepth,omitempty"`
-	Channels     int32  `xml:"channels,attr,omitempty"     json:"channels,omitempty"`
-	Duration     int32  `xml:"duration,attr,omitempty"     json:"duration,omitempty"`
-	Size         int64  `xml:"size,attr,omitempty"         json:"size,omitempty"`
-	IsLossless   bool   `xml:"isLossless,attr,omitempty"   json:"isLossless,omitempty"`
-	IsDirectPlay bool   `xml:"isDirectPlay,attr,omitempty" json:"isDirectPlay,omitempty"`
+	Protocol        string `xml:"protocol,attr,omitempty"        json:"protocol,omitempty"`
+	Container       string `xml:"container,attr,omitempty"       json:"container,omitempty"`
+	Codec           string `xml:"codec,attr,omitempty"           json:"codec,omitempty"`
+	AudioChannels   int32  `xml:"audioChannels,attr,omitempty"   json:"audioChannels,omitempty"`
+	AudioBitrate    int32  `xml:"audioBitrate,attr,omitempty"     json:"audioBitrate,omitempty"`
+	AudioProfile    string `xml:"audioProfile,attr,omitempty"    json:"audioProfile,omitempty"`
+	AudioSamplerate int32  `xml:"audioSamplerate,attr,omitempty" json:"audioSamplerate,omitempty"`
+	AudioBitdepth   int32  `xml:"audioBitdepth,attr,omitempty"   json:"audioBitdepth,omitempty"`
 }
