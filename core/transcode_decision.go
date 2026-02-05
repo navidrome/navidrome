@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -243,37 +245,32 @@ func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, s
 // Returns "" if all limitations pass, or a typed reason string for the first failure.
 func checkLimitations(mf *model.MediaFile, sourceBitrate int, limitations []Limitation) string {
 	for _, lim := range limitations {
-		if strings.EqualFold(lim.Name, LimitationAudioChannels) {
-			if !checkIntLimitation(mf.Channels, lim.Comparison, lim.Values) {
-				if lim.Required {
-					return "audio channels not supported"
-				}
-			}
-		} else if strings.EqualFold(lim.Name, LimitationAudioSamplerate) {
-			if !checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values) {
-				if lim.Required {
-					return "audio samplerate not supported"
-				}
-			}
-		} else if strings.EqualFold(lim.Name, LimitationAudioBitrate) {
-			if !checkIntLimitation(sourceBitrate, lim.Comparison, lim.Values) {
-				if lim.Required {
-					return "audio bitrate not supported"
-				}
-			}
-		} else if strings.EqualFold(lim.Name, LimitationAudioBitdepth) {
-			if !checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values) {
-				if lim.Required {
-					return "audio bitdepth not supported"
-				}
-			}
-		} else if strings.EqualFold(lim.Name, LimitationAudioProfile) {
+		var ok bool
+		var reason string
+
+		switch lim.Name {
+		case LimitationAudioChannels:
+			ok = checkIntLimitation(mf.Channels, lim.Comparison, lim.Values)
+			reason = "audio channels not supported"
+		case LimitationAudioSamplerate:
+			ok = checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values)
+			reason = "audio samplerate not supported"
+		case LimitationAudioBitrate:
+			ok = checkIntLimitation(sourceBitrate, lim.Comparison, lim.Values)
+			reason = "audio bitrate not supported"
+		case LimitationAudioBitdepth:
+			ok = checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values)
+			reason = "audio bitdepth not supported"
+		case LimitationAudioProfile:
 			// TODO: populate source profile when MediaFile has audio profile info
-			if !checkStringLimitation("", lim.Comparison, lim.Values) {
-				if lim.Required {
-					return "audio profile not supported"
-				}
-			}
+			ok = checkStringLimitation("", lim.Comparison, lim.Values)
+			reason = "audio profile not supported"
+		default:
+			continue
+		}
+
+		if !ok && lim.Required {
+			return reason
 		}
 	}
 	return ""
@@ -383,21 +380,22 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
 // Returns the adjustment result.
 func applyLimitation(sourceBitrate int, lim *Limitation, ts *StreamDetails) adjustResult {
-	if strings.EqualFold(lim.Name, LimitationAudioChannels) {
+	switch lim.Name {
+	case LimitationAudioChannels:
 		return applyIntLimitation(lim.Comparison, lim.Values, ts.Channels, func(v int) { ts.Channels = v })
-	} else if strings.EqualFold(lim.Name, LimitationAudioBitrate) {
+	case LimitationAudioBitrate:
 		current := ts.Bitrate
 		if current == 0 {
 			current = sourceBitrate
 		}
 		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Bitrate = v })
-	} else if strings.EqualFold(lim.Name, LimitationAudioSamplerate) {
+	case LimitationAudioSamplerate:
 		return applyIntLimitation(lim.Comparison, lim.Values, ts.SampleRate, func(v int) { ts.SampleRate = v })
-	} else if strings.EqualFold(lim.Name, LimitationAudioBitdepth) {
+	case LimitationAudioBitdepth:
 		if ts.BitDepth > 0 {
 			return applyIntLimitation(lim.Comparison, lim.Values, ts.BitDepth, func(v int) { ts.BitDepth = v })
 		}
-	} else if strings.EqualFold(lim.Name, LimitationAudioProfile) {
+	case LimitationAudioProfile:
 		// TODO: implement when audio profile data is available
 	}
 	return adjustNone
@@ -410,7 +408,8 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		return adjustNone
 	}
 
-	if strings.EqualFold(comparison, ComparisonLessThanEqual) {
+	switch comparison {
+	case ComparisonLessThanEqual:
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return adjustNone
@@ -420,7 +419,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		}
 		setter(limit)
 		return adjustAdjusted
-	} else if strings.EqualFold(comparison, ComparisonGreaterThanEqual) {
+	case ComparisonGreaterThanEqual:
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return adjustNone
@@ -430,7 +429,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		}
 		// Cannot upscale
 		return adjustCannotFit
-	} else if strings.EqualFold(comparison, ComparisonEquals) {
+	case ComparisonEquals:
 		// Check if current value matches any allowed value
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && current == limit {
@@ -453,7 +452,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 			return adjustAdjusted
 		}
 		return adjustCannotFit
-	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
+	case ComparisonNotEquals:
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && current == limit {
 				return adjustCannotFit
@@ -508,12 +507,9 @@ func (s *transcodeDecisionService) ParseToken(token string) (*TranscodeParams, e
 }
 
 func containsIgnoreCase(slice []string, s string) bool {
-	for _, item := range slice {
-		if strings.EqualFold(item, s) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(slice, func(item string) bool {
+		return strings.EqualFold(item, s)
+	})
 }
 
 // containerAliasGroups maps each container alias to a canonical group name.
@@ -537,23 +533,27 @@ var containerAliasGroups = func() map[string]string {
 	return m
 }()
 
-// matchesContainer checks if a file suffix matches any of the container names,
-// including common aliases.
-func matchesContainer(suffix string, containers []string) bool {
-	suffix = strings.ToLower(suffix)
-	canonicalSuffix := containerAliasGroups[suffix] // empty if no alias group
-
-	for _, c := range containers {
+// matchesWithAliases checks if a value matches any entry in candidates,
+// consulting the alias map for equivalent names.
+func matchesWithAliases(value string, candidates []string, aliases map[string]string) bool {
+	value = strings.ToLower(value)
+	canonical := aliases[value]
+	for _, c := range candidates {
 		c = strings.ToLower(c)
-		if c == suffix {
+		if c == value {
 			return true
 		}
-		// Check if both belong to the same alias group
-		if canonicalSuffix != "" && containerAliasGroups[c] == canonicalSuffix {
+		if canonical != "" && aliases[c] == canonical {
 			return true
 		}
 	}
 	return false
+}
+
+// matchesContainer checks if a file suffix matches any of the container names,
+// including common aliases.
+func matchesContainer(suffix string, containers []string) bool {
+	return matchesWithAliases(suffix, containers, containerAliasGroups)
 }
 
 // codecAliasGroups maps each codec alias to a canonical group name.
@@ -584,19 +584,7 @@ var codecAliasGroups = func() map[string]string {
 // matchesCodec checks if a codec matches any of the codec names,
 // including common aliases.
 func matchesCodec(codec string, codecs []string) bool {
-	codec = strings.ToLower(codec)
-	canonicalCodec := codecAliasGroups[codec] // empty if no alias group
-	for _, c := range codecs {
-		c = strings.ToLower(c)
-		if c == codec {
-			return true
-		}
-		// Check if both belong to the same alias group
-		if canonicalCodec != "" && codecAliasGroups[c] == canonicalCodec {
-			return true
-		}
-	}
-	return false
+	return matchesWithAliases(codec, codecs, codecAliasGroups)
 }
 
 func checkIntLimitation(value int, comparison string, values []string) bool {
@@ -604,26 +592,27 @@ func checkIntLimitation(value int, comparison string, values []string) bool {
 		return true
 	}
 
-	if strings.EqualFold(comparison, ComparisonLessThanEqual) {
+	switch comparison {
+	case ComparisonLessThanEqual:
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return true
 		}
 		return value <= limit
-	} else if strings.EqualFold(comparison, ComparisonGreaterThanEqual) {
+	case ComparisonGreaterThanEqual:
 		limit, ok := parseInt(values[0])
 		if !ok {
 			return true
 		}
 		return value >= limit
-	} else if strings.EqualFold(comparison, ComparisonEquals) {
+	case ComparisonEquals:
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && value == limit {
 				return true
 			}
 		}
 		return false
-	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
+	case ComparisonNotEquals:
 		for _, v := range values {
 			if limit, ok := parseInt(v); ok && value == limit {
 				return false
@@ -638,14 +627,15 @@ func checkIntLimitation(value int, comparison string, values []string) bool {
 // Only Equals and NotEquals comparisons are meaningful for strings.
 // LessThanEqual/GreaterThanEqual are not applicable and always pass.
 func checkStringLimitation(value string, comparison string, values []string) bool {
-	if strings.EqualFold(comparison, ComparisonEquals) {
+	switch comparison {
+	case ComparisonEquals:
 		for _, v := range values {
 			if strings.EqualFold(value, v) {
 				return true
 			}
 		}
 		return false
-	} else if strings.EqualFold(comparison, ComparisonNotEquals) {
+	case ComparisonNotEquals:
 		for _, v := range values {
 			if strings.EqualFold(value, v) {
 				return false
@@ -657,15 +647,9 @@ func checkStringLimitation(value string, comparison string, values []string) boo
 }
 
 func parseInt(s string) (int, bool) {
-	if s == "" {
+	v, err := strconv.Atoi(s)
+	if err != nil || v < 0 {
 		return 0, false
-	}
-	var v int
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, false
-		}
-		v = v*10 + int(c-'0')
 	}
 	return v, true
 }
