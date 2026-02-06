@@ -12,7 +12,6 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
@@ -216,17 +215,6 @@ func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
 	return nil
 }
 
-// noopShare implements core.Share
-type noopShare struct{}
-
-func (n noopShare) Load(context.Context, string) (*model.Share, error) {
-	return nil, model.ErrNotFound
-}
-
-func (n noopShare) NewRepository(context.Context) rest.Repository {
-	return nil
-}
-
 // Compile-time interface checks
 var (
 	_ artwork.Artwork       = noopArtwork{}
@@ -234,7 +222,6 @@ var (
 	_ core.Archiver         = noopArchiver{}
 	_ external.Provider     = noopProvider{}
 	_ scrobbler.PlayTracker = noopPlayTracker{}
-	_ core.Share            = noopShare{}
 )
 
 var _ = BeforeSuite(func() {
@@ -279,7 +266,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	data, err := os.ReadFile(dbFilePath)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(snapshotPath, data, 0644)).To(Succeed())
+	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
 })
 
 // setupTestDB restores the database from the golden snapshot and creates the
@@ -319,7 +306,7 @@ func setupTestDB() {
 		events.NoopBroker(),
 		core.NewPlaylists(ds),
 		noopPlayTracker{},
-		noopShare{},
+		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
 	)
@@ -348,9 +335,10 @@ func restoreDB() {
 	rows.Close()
 
 	for _, table := range tables {
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`)
+		// Table names come from sqlite_master, not user input, so concatenation is safe here
+		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`)
+		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 

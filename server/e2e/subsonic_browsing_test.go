@@ -407,6 +407,24 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 	})
 
+	Describe("getAlbumInfo2", func() {
+		It("returns album info for a valid album", func() {
+			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"album.name": "Abbey Road"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).ToNot(BeEmpty())
+			abbeyRoadID := albums[0].ID
+
+			r := newReq("getAlbumInfo2", "id", abbeyRoadID)
+			resp, err := router.GetAlbumInfo(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.AlbumInfo).ToNot(BeNil())
+		})
+	})
+
 	Describe("getArtistInfo", func() {
 		It("returns artist info for a valid artist", func() {
 			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{

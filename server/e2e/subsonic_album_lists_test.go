@@ -3,6 +3,8 @@ package e2e
 import (
 	"net/http/httptest"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
@@ -131,6 +133,78 @@ var _ = Describe("Album List Endpoints", func() {
 			_, err := router.GetAlbumList(w, r)
 
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("type=frequent returns empty when no albums have been played", func() {
+			w, r := newRawReq("getAlbumList", "type", "frequent")
+			resp, err := router.GetAlbumList(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumList).ToNot(BeNil())
+			Expect(resp.AlbumList.Album).To(BeEmpty())
+		})
+
+		It("type=recent returns empty when no albums have been played", func() {
+			w, r := newRawReq("getAlbumList", "type", "recent")
+			resp, err := router.GetAlbumList(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumList).ToNot(BeNil())
+			Expect(resp.AlbumList.Album).To(BeEmpty())
+		})
+	})
+
+	Describe("GetAlbumList - starred type", Ordered, func() {
+		BeforeAll(func() {
+			setupTestDB()
+
+			// Star an album so the starred filter returns results
+			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"album.name": "Abbey Road"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).ToNot(BeEmpty())
+
+			r := newReq("star", "albumId", albums[0].ID)
+			_, err = router.Star(r)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("type=starred returns only starred albums", func() {
+			w, r := newRawReq("getAlbumList", "type", "starred")
+			resp, err := router.GetAlbumList(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumList).ToNot(BeNil())
+			Expect(resp.AlbumList.Album).To(HaveLen(1))
+			Expect(resp.AlbumList.Album[0].Title).To(Equal("Abbey Road"))
+		})
+	})
+
+	Describe("GetAlbumList - highest type", Ordered, func() {
+		BeforeAll(func() {
+			setupTestDB()
+
+			// Rate an album so the highest filter returns results
+			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"album.name": "Kind of Blue"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).ToNot(BeEmpty())
+
+			r := newReq("setRating", "id", albums[0].ID, "rating", "5")
+			_, err = router.SetRating(r)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("type=highest returns only rated albums", func() {
+			w, r := newRawReq("getAlbumList", "type", "highest")
+			resp, err := router.GetAlbumList(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumList).ToNot(BeNil())
+			Expect(resp.AlbumList.Album).To(HaveLen(1))
+			Expect(resp.AlbumList.Album[0].Title).To(Equal("Kind of Blue"))
 		})
 	})
 
