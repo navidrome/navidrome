@@ -36,7 +36,7 @@ import (
 )
 
 func TestSubsonicE2E(t *testing.T) {
-	tests.Init(t, true)
+	tests.Init(t, false)
 	defer db.Close(t.Context())
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
