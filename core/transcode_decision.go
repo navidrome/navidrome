@@ -19,8 +19,8 @@ const (
 // TranscodeDecision is the core service interface for making transcoding decisions
 type TranscodeDecision interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error)
-	CreateToken(decision *Decision) (string, error)
-	ParseToken(token string) (*TranscodeParams, error)
+	CreateTranscodeParams(decision *Decision) (string, error)
+	ParseTranscodeParams(token string) (*TranscodeParams, error)
 }
 
 // ClientInfo represents client playback capabilities.
@@ -464,7 +464,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 	return adjustNone
 }
 
-func (s *transcodeDecisionService) CreateToken(decision *Decision) (string, error) {
+func (s *transcodeDecisionService) CreateTranscodeParams(decision *Decision) (string, error) {
 	exp := time.Now().Add(transcodeTokenTTL)
 	claims := map[string]any{
 		"mid": decision.MediaID,
@@ -480,7 +480,7 @@ func (s *transcodeDecisionService) CreateToken(decision *Decision) (string, erro
 	return auth.CreateExpiringPublicToken(exp, claims)
 }
 
-func (s *transcodeDecisionService) ParseToken(token string) (*TranscodeParams, error) {
+func (s *transcodeDecisionService) ParseTranscodeParams(token string) (*TranscodeParams, error) {
 	claims, err := auth.Validate(token)
 	if err != nil {
 		return nil, err

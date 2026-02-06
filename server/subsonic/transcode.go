@@ -237,8 +237,8 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision: %v", err)
 	}
 
-	// Create token
-	transcodeParams, err := api.transcodeDecision.CreateToken(decision)
+	// Create transcode params token
+	transcodeParams, err := api.transcodeDecision.CreateTranscodeParams(decision)
 	if err != nil {
 		return nil, newError(responses.ErrorGeneric, "failed to create transcode token: %v", err)
 	}
@@ -306,7 +306,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	}
 
 	// Parse and validate the token
-	params, err := api.transcodeDecision.ParseToken(transcodeParams)
+	params, err := api.transcodeDecision.ParseTranscodeParams(transcodeParams)
 	if err != nil {
 		log.Debug(ctx, "Failed to parse transcode token", err)
 		return nil, newError(responses.ErrorDataNotFound, "invalid or expired transcodeParams token")

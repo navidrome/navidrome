@@ -256,11 +256,11 @@ func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFi
 	return &core.Decision{}, nil
 }
 
-func (m *mockTranscodeDecision) CreateToken(_ *core.Decision) (string, error) {
+func (m *mockTranscodeDecision) CreateTranscodeParams(_ *core.Decision) (string, error) {
 	return m.token, m.tokenErr
 }
 
-func (m *mockTranscodeDecision) ParseToken(_ string) (*core.TranscodeParams, error) {
+func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*core.TranscodeParams, error) {
 	if m.parseErr != nil {
 		return nil, m.parseErr
 	}
