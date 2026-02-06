@@ -617,11 +617,11 @@ var _ = Describe("TranscodeDecision", func() {
 				MediaID:       "media-123",
 				CanDirectPlay: true,
 			}
-			token, err := svc.CreateToken(decision)
+			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(token).ToNot(BeEmpty())
 
-			params, err := svc.ParseToken(token)
+			params, err := svc.ParseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-123"))
 			Expect(params.DirectPlay).To(BeTrue())
@@ -637,10 +637,10 @@ var _ = Describe("TranscodeDecision", func() {
 				TargetBitrate:  256, // kbps
 				TargetChannels: 2,
 			}
-			token, err := svc.CreateToken(decision)
+			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseToken(token)
+			params, err := svc.ParseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-456"))
 			Expect(params.DirectPlay).To(BeFalse())
@@ -650,7 +650,7 @@ var _ = Describe("TranscodeDecision", func() {
 		})
 
 		It("rejects an invalid token", func() {
-			_, err := svc.ParseToken("invalid-token")
+			_, err := svc.ParseTranscodeParams("invalid-token")
 			Expect(err).To(HaveOccurred())
 		})
 	})
