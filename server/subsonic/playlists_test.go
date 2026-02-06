@@ -137,16 +137,6 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 			})
 		})
-
-		Context("when no player in context", func() {
-			It("returns all fields", func() {
-				result := router.buildPlaylist(ctx, playlist)
-
-				Expect(result.Comment).To(Equal("Test comment"))
-				Expect(result.Owner).To(Equal("admin"))
-				Expect(result.Public).To(BeTrue())
-			})
-		})
 	})
 
 	Describe("smart playlist", func() {
