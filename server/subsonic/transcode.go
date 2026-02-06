@@ -56,9 +56,9 @@ type limitationReq struct {
 	Required   bool     `json:"required,omitempty"`
 }
 
-// toCore converts the API request struct to the core ClientInfo struct.
+// toCoreClientInfo converts the API request struct to the core.ClientInfo struct.
 // The OpenSubsonic spec uses bps for bitrate values; core uses kbps.
-func (r *clientInfoRequest) toCore() *core.ClientInfo {
+func (r *clientInfoRequest) toCoreClientInfo() *core.ClientInfo {
 	ci := &core.ClientInfo{
 		Name:                       r.Name,
 		Platform:                   r.Platform,
@@ -223,7 +223,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	if err := clientInfoReq.validate(); err != nil {
 		return nil, newError(responses.ErrorGeneric, "%v", err)
 	}
-	clientInfo := clientInfoReq.toCore()
+	clientInfo := clientInfoReq.toCoreClientInfo()
 
 	// Get media file
 	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
@@ -308,7 +308,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	// Parse and validate the token
 	params, err := api.transcodeDecision.ParseTranscodeParams(transcodeParams)
 	if err != nil {
-		log.Debug(ctx, "Failed to parse transcode token", err)
+		log.Warn(ctx, "Failed to parse transcode token", err)
 		return nil, newError(responses.ErrorDataNotFound, "invalid or expired transcodeParams token")
 	}
 

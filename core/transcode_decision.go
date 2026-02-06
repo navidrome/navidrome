@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -24,7 +25,7 @@ type TranscodeDecision interface {
 }
 
 // ClientInfo represents client playback capabilities.
-// All bitrate values are in kilobits per second (kbps), matching Navidrome conventions.
+// All bitrate values are in kilobits per second (kbps)
 type ClientInfo struct {
 	Name                       string
 	Platform                   string
@@ -151,6 +152,10 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 
 	sourceBitrate := mf.BitRate // kbps
 
+	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", mf.Suffix,
+		"codec", mf.AudioCodec(), "bitrate", sourceBitrate, "channels", mf.Channels,
+		"sampleRate", mf.SampleRate, "lossless", mf.IsLossless(), "client", clientInfo.Name)
+
 	// Build source stream details
 	decision.SourceStream = StreamDetails{
 		Container:  mf.Suffix,
@@ -166,6 +171,8 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 
 	// Check global bitrate constraint first.
 	if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
+		log.Trace(ctx, "Global bitrate constraint exceeded, skipping direct play",
+			"sourceBitrate", sourceBitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		decision.TranscodeReasons = append(decision.TranscodeReasons, "audio bitrate not supported")
 		// Skip direct play profiles entirely — global constraint fails
 	} else {
@@ -183,6 +190,7 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 
 	// If direct play is possible, we're done
 	if decision.CanDirectPlay {
+		log.Debug(ctx, "Transcode decision: direct play", "mediaID", mf.ID, "container", mf.Suffix, "codec", mf.AudioCodec())
 		return decision, nil
 	}
 
@@ -198,9 +206,17 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 		}
 	}
 
+	if decision.CanTranscode {
+		log.Debug(ctx, "Transcode decision: transcode", "mediaID", mf.ID,
+			"targetFormat", decision.TargetFormat, "targetBitrate", decision.TargetBitrate,
+			"targetChannels", decision.TargetChannels, "reasons", decision.TranscodeReasons)
+	}
+
 	// If neither direct play nor transcode is possible
 	if !decision.CanDirectPlay && !decision.CanTranscode {
 		decision.ErrorReason = "no compatible playback profile found"
+		log.Warn(ctx, "Transcode decision: no compatible profile", "mediaID", mf.ID,
+			"container", mf.Suffix, "codec", mf.AudioCodec(), "reasons", decision.TranscodeReasons)
 	}
 
 	return decision, nil
@@ -290,6 +306,7 @@ const (
 func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *TranscodingProfile, clientInfo *ClientInfo) *StreamDetails {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
+		log.Trace(ctx, "Skipping transcoding profile: unsupported protocol", "protocol", profile.Protocol)
 		return nil
 	}
 
@@ -301,6 +318,7 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 	// Verify we have a transcoding config for this format
 	tc, err := s.ds.Transcoding(ctx).FindByFormat(targetFormat)
 	if err != nil || tc == nil {
+		log.Trace(ctx, "Skipping transcoding profile: no transcoding config", "targetFormat", targetFormat)
 		return nil
 	}
 
@@ -308,6 +326,7 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 
 	// Reject lossy to lossless conversion
 	if !mf.IsLossless() && targetIsLossless {
+		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
 		return nil
 	}
 
@@ -334,7 +353,9 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 		} else {
 			// Lossless to lossless: check if bitrate is under the global max
 			if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
-				return nil // Cannot guarantee bitrate within limit for lossless
+				log.Trace(ctx, "Skipping transcoding profile: lossless target exceeds bitrate limit",
+					"targetFormat", targetFormat, "sourceBitrate", sourceBitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
+				return nil
 			}
 			// No explicit bitrate for lossless target (leave 0)
 		}
@@ -366,9 +387,14 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 			result := applyLimitation(sourceBitrate, &lim, ts)
 			// For lossless codecs, adjusting bitrate is not valid
 			if strings.EqualFold(lim.Name, LimitationAudioBitrate) && targetIsLossless && result == adjustAdjusted {
+				log.Trace(ctx, "Skipping transcoding profile: cannot adjust bitrate for lossless target",
+					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name)
 				return nil
 			}
 			if result == adjustCannotFit {
+				log.Trace(ctx, "Skipping transcoding profile: codec limitation cannot be satisfied",
+					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
+					"comparison", lim.Comparison, "values", lim.Values)
 				return nil
 			}
 		}
