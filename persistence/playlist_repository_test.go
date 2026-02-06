@@ -179,8 +179,10 @@ var _ = Describe("PlaylistRepository", func() {
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = repo.GetWithTracks(parentPls.ID, true, false)
+					pls, err := repo.GetWithTracks(parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
+
+					Expect(pls.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 
 					// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
 					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
@@ -193,11 +195,12 @@ var _ = Describe("PlaylistRepository", func() {
 			When("refresh day has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+					evaluatedAt := time.Now().Add(-30 * time.Minute)
 
-					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
 
-					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", EvaluatedAt: &evaluatedAt, Rules: &criteria.Criteria{
 						Expression: criteria.All{
 							criteria.InPlaylist{"id": nestedPls.ID},
 						},
@@ -207,14 +210,16 @@ var _ = Describe("PlaylistRepository", func() {
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = repo.GetWithTracks(parentPls.ID, true, false)
+					parent, err := repo.GetWithTracks(parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(*parent.EvaluatedAt).To(Equal(evaluatedAt))
 
 					// Check that the nested playlist was not refreshed by parent get by verifying evaluatedAt is not updated since first nestedPls get
 					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(evaluatedAt))
 				})
 			})
 		})

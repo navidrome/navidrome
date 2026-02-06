@@ -298,21 +298,27 @@ type AlbumList2 struct {
 }
 
 type Playlist struct {
-	Id        string    `xml:"id,attr"                       json:"id"`
-	Name      string    `xml:"name,attr"                     json:"name"`
-	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
-	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
-	Duration  int32     `xml:"duration,attr"                 json:"duration"`
-	Public    bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
-	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
-	Created   time.Time `xml:"created,attr"                  json:"created"`
-	Changed   time.Time `xml:"changed,attr"                  json:"changed"`
-	CoverArt  string    `xml:"coverArt,attr,omitempty"       json:"coverArt,omitempty"`
+	Id                    string    `xml:"id,attr"                       json:"id"`
+	Name                  string    `xml:"name,attr"                     json:"name"`
+	Comment               string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
+	SongCount             int32     `xml:"songCount,attr"                json:"songCount"`
+	Duration              int32     `xml:"duration,attr"                 json:"duration"`
+	Public                bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
+	Owner                 string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
+	Created               time.Time `xml:"created,attr"                  json:"created"`
+	Changed               time.Time `xml:"changed,attr"                  json:"changed"`
+	CoverArt              string    `xml:"coverArt,attr,omitempty"       json:"coverArt,omitempty"`
+	*OpenSubsonicPlaylist `xml:",omitempty" json:",omitempty"`
 	/*
 		<xs:sequence>
 		    <xs:element name="allowedUser" type="xs:string" minOccurs="0" maxOccurs="unbounded"/> <!--Added in 1.8.0-->
 		</xs:sequence>
 	*/
+}
+
+type OpenSubsonicPlaylist struct {
+	Readonly   bool       `xml:"readonly,attr,omitempty"  json:"readonly,omitempty"`
+	ValidUntil *time.Time `xml:"validUntil,attr,omitempty" json:"validUntil,omitempty"`
 }
 
 type Playlists struct {

@@ -162,7 +162,11 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.Duration = int32(p.Duration)
 	pls.Created = p.CreatedAt
 	if p.IsSmartPlaylist() {
-		pls.Changed = time.Now()
+		if p.EvaluatedAt != nil {
+			pls.Changed = *p.EvaluatedAt
+		} else {
+			pls.Changed = time.Now()
+		}
 	} else {
 		pls.Changed = p.UpdatedAt
 	}
@@ -176,6 +180,25 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.Owner = p.OwnerName
 	pls.Public = p.Public
 	pls.CoverArt = p.CoverArtID().String()
+	pls.OpenSubsonicPlaylist = buildOSPlaylist(ctx, p)
 
 	return pls
+}
+
+func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubsonicPlaylist {
+	pls := responses.OpenSubsonicPlaylist{}
+
+	if p.IsSmartPlaylist() {
+		pls.Readonly = true
+
+		if p.EvaluatedAt != nil {
+			elapsed := p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay)
+			pls.ValidUntil = &elapsed
+		}
+	} else {
+		user, ok := request.UserFrom(ctx)
+		pls.Readonly = !ok || p.OwnerID != user.ID
+	}
+
+	return &pls
 }
