@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -102,8 +103,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
-	transcodeDecision := core.NewTranscodeDecision(dataStore)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlists, playTracker, share, playbackServer, metricsMetrics, transcodeDecision)
+	decider := transcode.NewDecider(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlists, playTracker, share, playbackServer, metricsMetrics, decider)
 	return router
 }
 
