@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -56,10 +56,10 @@ type limitationReq struct {
 	Required   bool     `json:"required,omitempty"`
 }
 
-// toCoreClientInfo converts the API request struct to the core.ClientInfo struct.
+// toCoreClientInfo converts the API request struct to the transcode.ClientInfo struct.
 // The OpenSubsonic spec uses bps for bitrate values; core uses kbps.
-func (r *clientInfoRequest) toCoreClientInfo() *core.ClientInfo {
-	ci := &core.ClientInfo{
+func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
+	ci := &transcode.ClientInfo{
 		Name:                       r.Name,
 		Platform:                   r.Platform,
 		MaxAudioBitrate:            bpsToKbps(r.MaxAudioBitrate),
@@ -67,7 +67,7 @@ func (r *clientInfoRequest) toCoreClientInfo() *core.ClientInfo {
 	}
 
 	for _, dp := range r.DirectPlayProfiles {
-		ci.DirectPlayProfiles = append(ci.DirectPlayProfiles, core.DirectPlayProfile{
+		ci.DirectPlayProfiles = append(ci.DirectPlayProfiles, transcode.DirectPlayProfile{
 			Containers:       dp.Containers,
 			AudioCodecs:      dp.AudioCodecs,
 			Protocols:        dp.Protocols,
@@ -76,7 +76,7 @@ func (r *clientInfoRequest) toCoreClientInfo() *core.ClientInfo {
 	}
 
 	for _, tp := range r.TranscodingProfiles {
-		ci.TranscodingProfiles = append(ci.TranscodingProfiles, core.TranscodingProfile{
+		ci.TranscodingProfiles = append(ci.TranscodingProfiles, transcode.Profile{
 			Container:        tp.Container,
 			AudioCodec:       tp.AudioCodec,
 			Protocol:         tp.Protocol,
@@ -85,19 +85,19 @@ func (r *clientInfoRequest) toCoreClientInfo() *core.ClientInfo {
 	}
 
 	for _, cp := range r.CodecProfiles {
-		coreCP := core.CodecProfile{
+		coreCP := transcode.CodecProfile{
 			Type: cp.Type,
 			Name: cp.Name,
 		}
 		for _, lim := range cp.Limitations {
-			coreLim := core.Limitation{
+			coreLim := transcode.Limitation{
 				Name:       lim.Name,
 				Comparison: lim.Comparison,
 				Values:     lim.Values,
 				Required:   lim.Required,
 			}
 			// Convert audioBitrate limitation values from bps to kbps
-			if lim.Name == core.LimitationAudioBitrate {
+			if lim.Name == transcode.LimitationAudioBitrate {
 				coreLim.Values = convertBitrateValues(lim.Values)
 			}
 			coreCP.Limitations = append(coreCP.Limitations, coreLim)
@@ -163,26 +163,26 @@ func (r *clientInfoRequest) validate() error {
 }
 
 func isValidProtocol(p string) bool {
-	return p == core.ProtocolHTTP || p == core.ProtocolHLS
+	return p == transcode.ProtocolHTTP || p == transcode.ProtocolHLS
 }
 
 func isValidCodecProfileType(t string) bool {
-	return t == core.CodecProfileTypeAudio
+	return t == transcode.CodecProfileTypeAudio
 }
 
 func isValidLimitationName(n string) bool {
-	return n == core.LimitationAudioChannels ||
-		n == core.LimitationAudioBitrate ||
-		n == core.LimitationAudioProfile ||
-		n == core.LimitationAudioSamplerate ||
-		n == core.LimitationAudioBitdepth
+	return n == transcode.LimitationAudioChannels ||
+		n == transcode.LimitationAudioBitrate ||
+		n == transcode.LimitationAudioProfile ||
+		n == transcode.LimitationAudioSamplerate ||
+		n == transcode.LimitationAudioBitdepth
 }
 
 func isValidComparison(c string) bool {
-	return c == core.ComparisonEquals ||
-		c == core.ComparisonNotEquals ||
-		c == core.ComparisonLessThanEqual ||
-		c == core.ComparisonGreaterThanEqual
+	return c == transcode.ComparisonEquals ||
+		c == transcode.ComparisonNotEquals ||
+		c == transcode.ComparisonLessThanEqual ||
+		c == transcode.ComparisonGreaterThanEqual
 }
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.

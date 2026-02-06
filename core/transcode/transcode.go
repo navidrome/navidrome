@@ -1,4 +1,4 @@
-package core
+package transcode
 
 import (
 	"context"
@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	transcodeTokenTTL       = 12 * time.Hour
-	defaultTranscodeBitrate = 256 // kbps
+	tokenTTL       = 12 * time.Hour
+	defaultBitrate = 256 // kbps
 )
 
-// TranscodeDecision is the core service interface for making transcoding decisions
-type TranscodeDecision interface {
+// Decider is the core service interface for making transcoding decisions
+type Decider interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error)
 	CreateTranscodeParams(decision *Decision) (string, error)
-	ParseTranscodeParams(token string) (*TranscodeParams, error)
+	ParseTranscodeParams(token string) (*Params, error)
 }
 
 // ClientInfo represents client playback capabilities.
@@ -32,7 +32,7 @@ type ClientInfo struct {
 	MaxAudioBitrate            int
 	MaxTranscodingAudioBitrate int
 	DirectPlayProfiles         []DirectPlayProfile
-	TranscodingProfiles        []TranscodingProfile
+	TranscodingProfiles        []Profile
 	CodecProfiles              []CodecProfile
 }
 
@@ -44,8 +44,8 @@ type DirectPlayProfile struct {
 	MaxAudioChannels int
 }
 
-// TranscodingProfile describes a transcoding target the client supports
-type TranscodingProfile struct {
+// Profile describes a transcoding target the client supports
+type Profile struct {
 	Container        string
 	AudioCodec       string
 	Protocol         string
@@ -125,9 +125,9 @@ type StreamDetails struct {
 	IsLossless bool
 }
 
-// TranscodeParams contains the parameters extracted from a transcode token.
+// Params contains the parameters extracted from a transcode token.
 // TargetBitrate is in kilobits per second (kbps).
-type TranscodeParams struct {
+type Params struct {
 	MediaID        string
 	DirectPlay     bool
 	TargetFormat   string
@@ -135,17 +135,17 @@ type TranscodeParams struct {
 	TargetChannels int
 }
 
-func NewTranscodeDecision(ds model.DataStore) TranscodeDecision {
-	return &transcodeDecisionService{
+func NewDecider(ds model.DataStore) Decider {
+	return &deciderService{
 		ds: ds,
 	}
 }
 
-type transcodeDecisionService struct {
+type deciderService struct {
 	ds model.DataStore
 }
 
-func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error) {
+func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error) {
 	decision := &Decision{
 		MediaID: mf.ID,
 	}
@@ -224,7 +224,7 @@ func (s *transcodeDecisionService) MakeDecision(ctx context.Context, mf *model.M
 
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
-func (s *transcodeDecisionService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitrate int, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
+func (s *deciderService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitrate int, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
 	// Check protocol (only http for now)
 	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, ProtocolHTTP) {
 		return "protocol not supported"
@@ -303,7 +303,7 @@ const (
 
 // computeTranscodedStream attempts to build a valid transcoded stream for the given profile.
 // Returns nil if the profile cannot produce a valid output.
-func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *TranscodingProfile, clientInfo *ClientInfo) *StreamDetails {
+func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *Profile, clientInfo *ClientInfo) *StreamDetails {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
 		log.Trace(ctx, "Skipping transcoding profile: unsupported protocol", "protocol", profile.Protocol)
@@ -348,7 +348,7 @@ func (s *transcodeDecisionService) computeTranscodedStream(ctx context.Context, 
 			if clientInfo.MaxTranscodingAudioBitrate > 0 {
 				ts.Bitrate = clientInfo.MaxTranscodingAudioBitrate
 			} else {
-				ts.Bitrate = defaultTranscodeBitrate
+				ts.Bitrate = defaultBitrate
 			}
 		} else {
 			// Lossless to lossless: check if bitrate is under the global max
@@ -490,8 +490,8 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 	return adjustNone
 }
 
-func (s *transcodeDecisionService) CreateTranscodeParams(decision *Decision) (string, error) {
-	exp := time.Now().Add(transcodeTokenTTL)
+func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
+	exp := time.Now().Add(tokenTTL)
 	claims := map[string]any{
 		"mid": decision.MediaID,
 		"dp":  decision.CanDirectPlay,
@@ -506,13 +506,13 @@ func (s *transcodeDecisionService) CreateTranscodeParams(decision *Decision) (st
 	return auth.CreateExpiringPublicToken(exp, claims)
 }
 
-func (s *transcodeDecisionService) ParseTranscodeParams(token string) (*TranscodeParams, error) {
+func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
 	claims, err := auth.Validate(token)
 	if err != nil {
 		return nil, err
 	}
 
-	params := &TranscodeParams{}
+	params := &Params{}
 	if mid, ok := claims["mid"].(string); ok {
 		params.MediaID = mid
 	}

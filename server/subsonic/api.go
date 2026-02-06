@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -47,13 +48,13 @@ type Router struct {
 	share             core.Share
 	playback          playback.PlaybackServer
 	metrics           metrics.Metrics
-	transcodeDecision core.TranscodeDecision
+	transcodeDecision transcode.Decider
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics, transcodeDecision core.TranscodeDecision,
+	metrics metrics.Metrics, transcodeDecision transcode.Decider,
 ) *Router {
 	r := &Router{
 		ds:                ds,

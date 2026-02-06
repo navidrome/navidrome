@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -146,10 +146,10 @@ var _ = Describe("Transcode endpoints", func() {
 			mockMFRepo.SetData(model.MediaFiles{
 				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
 			})
-			mockTD.decision = &core.Decision{
+			mockTD.decision = &transcode.Decision{
 				MediaID:       "song-1",
 				CanDirectPlay: true,
-				SourceStream: core.StreamDetails{
+				SourceStream: transcode.StreamDetails{
 					Container: "mp3", Codec: "mp3", Bitrate: 320,
 					SampleRate: 44100, Channels: 2,
 				},
@@ -174,18 +174,18 @@ var _ = Describe("Transcode endpoints", func() {
 			mockMFRepo.SetData(model.MediaFiles{
 				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24},
 			})
-			mockTD.decision = &core.Decision{
+			mockTD.decision = &transcode.Decision{
 				MediaID:          "song-2",
 				CanDirectPlay:    false,
 				CanTranscode:     true,
 				TargetFormat:     "mp3",
 				TargetBitrate:    256,
 				TranscodeReasons: []string{"container not supported"},
-				SourceStream: core.StreamDetails{
+				SourceStream: transcode.StreamDetails{
 					Container: "flac", Codec: "flac", Bitrate: 1000,
 					SampleRate: 96000, BitDepth: 24, Channels: 2,
 				},
-				TranscodeStream: &core.StreamDetails{
+				TranscodeStream: &transcode.StreamDetails{
 					Container: "mp3", Codec: "mp3", Bitrate: 256,
 					SampleRate: 96000, Channels: 2,
 				},
@@ -224,7 +224,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns error when mediaId doesn't match token", func() {
-			mockTD.params = &core.TranscodeParams{MediaID: "other-id", DirectPlay: true}
+			mockTD.params = &transcode.Params{MediaID: "other-id", DirectPlay: true}
 			r := newGetRequest("mediaId=wrong-id", "mediaType=song", "transcodeParams=valid-token")
 			_, err := router.GetTranscodeStream(w, r)
 			Expect(err).To(HaveOccurred())
@@ -242,25 +242,25 @@ func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
 
 // mockTranscodeDecision is a test double for core.TranscodeDecision
 type mockTranscodeDecision struct {
-	decision *core.Decision
+	decision *transcode.Decision
 	token    string
 	tokenErr error
-	params   *core.TranscodeParams
+	params   *transcode.Params
 	parseErr error
 }
 
-func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *core.ClientInfo) (*core.Decision, error) {
+func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *transcode.ClientInfo) (*transcode.Decision, error) {
 	if m.decision != nil {
 		return m.decision, nil
 	}
-	return &core.Decision{}, nil
+	return &transcode.Decision{}, nil
 }
 
-func (m *mockTranscodeDecision) CreateTranscodeParams(_ *core.Decision) (string, error) {
+func (m *mockTranscodeDecision) CreateTranscodeParams(_ *transcode.Decision) (string, error) {
 	return m.token, m.tokenErr
 }
 
-func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*core.TranscodeParams, error) {
+func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*transcode.Params, error) {
 	if m.parseErr != nil {
 		return nil, m.parseErr
 	}
