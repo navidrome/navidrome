@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -98,7 +97,7 @@ func (r *clientInfoRequest) toCore() *core.ClientInfo {
 				Required:   lim.Required,
 			}
 			// Convert audioBitrate limitation values from bps to kbps
-			if strings.EqualFold(lim.Name, core.LimitationAudioBitrate) {
+			if lim.Name == core.LimitationAudioBitrate {
 				coreLim.Values = convertBitrateValues(lim.Values)
 			}
 			coreCP.Limitations = append(coreCP.Limitations, coreLim)
@@ -164,26 +163,26 @@ func (r *clientInfoRequest) validate() error {
 }
 
 func isValidProtocol(p string) bool {
-	return strings.EqualFold(p, core.ProtocolHTTP) || strings.EqualFold(p, core.ProtocolHLS)
+	return p == core.ProtocolHTTP || p == core.ProtocolHLS
 }
 
 func isValidCodecProfileType(t string) bool {
-	return strings.EqualFold(t, core.CodecProfileTypeAudio)
+	return t == core.CodecProfileTypeAudio
 }
 
 func isValidLimitationName(n string) bool {
-	return strings.EqualFold(n, core.LimitationAudioChannels) ||
-		strings.EqualFold(n, core.LimitationAudioBitrate) ||
-		strings.EqualFold(n, core.LimitationAudioProfile) ||
-		strings.EqualFold(n, core.LimitationAudioSamplerate) ||
-		strings.EqualFold(n, core.LimitationAudioBitdepth)
+	return n == core.LimitationAudioChannels ||
+		n == core.LimitationAudioBitrate ||
+		n == core.LimitationAudioProfile ||
+		n == core.LimitationAudioSamplerate ||
+		n == core.LimitationAudioBitdepth
 }
 
 func isValidComparison(c string) bool {
-	return strings.EqualFold(c, core.ComparisonEquals) ||
-		strings.EqualFold(c, core.ComparisonNotEquals) ||
-		strings.EqualFold(c, core.ComparisonLessThanEqual) ||
-		strings.EqualFold(c, core.ComparisonGreaterThanEqual)
+	return c == core.ComparisonEquals ||
+		c == core.ComparisonNotEquals ||
+		c == core.ComparisonLessThanEqual ||
+		c == core.ComparisonGreaterThanEqual
 }
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.

@@ -110,6 +110,38 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(err.Error()).To(ContainSubstring("invalid codec profile type"))
 		})
 
+		It("rejects wrong-case protocol", func() {
+			body := `{"directPlayProfiles":[{"containers":["mp3"],"audioCodecs":["mp3"],"protocols":["HTTP"]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid protocol"))
+		})
+
+		It("rejects wrong-case codec profile type", func() {
+			body := `{"codecProfiles":[{"type":"audiocodec","name":"mp3"}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid codec profile type"))
+		})
+
+		It("rejects wrong-case comparison operator", func() {
+			body := `{"codecProfiles":[{"type":"AudioCodec","name":"mp3","limitations":[{"name":"audioBitrate","comparison":"lessthanequal","values":["320"]}]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid comparison"))
+		})
+
+		It("rejects wrong-case limitation name", func() {
+			body := `{"codecProfiles":[{"type":"AudioCodec","name":"mp3","limitations":[{"name":"AudioBitrate","comparison":"Equals","values":["320"]}]}]}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid limitation name"))
+		})
+
 		It("returns a valid decision response", func() {
 			mockMFRepo.SetData(model.MediaFiles{
 				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
