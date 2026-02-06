@@ -1,4 +1,4 @@
-package core
+package transcode
 
 import (
 	"context"
@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("TranscodeDecision", func() {
+var _ = Describe("Decider", func() {
 	var (
 		ds  *tests.MockDataStore
-		svc TranscodeDecision
+		svc Decider
 		ctx context.Context
 	)
 
@@ -24,7 +24,7 @@ var _ = Describe("TranscodeDecision", func() {
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 		}
 		auth.Init(ds)
-		svc = NewTranscodeDecision(ds)
+		svc = NewDecider(ds)
 	})
 
 	Describe("MakeDecision", func() {
@@ -151,7 +151,7 @@ var _ = Describe("TranscodeDecision", func() {
 					DirectPlayProfiles: []DirectPlayProfile{
 						{Containers: []string{"flac"}, Protocols: []string{"http"}},
 					},
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 				}
@@ -171,7 +171,7 @@ var _ = Describe("TranscodeDecision", func() {
 					DirectPlayProfiles: []DirectPlayProfile{
 						{Containers: []string{"mp3"}, Protocols: []string{"http"}},
 					},
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http", MaxAudioChannels: 2},
 					},
 				}
@@ -187,7 +187,7 @@ var _ = Describe("TranscodeDecision", func() {
 			It("rejects lossy to lossless transcoding", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2}
 				ci := &ClientInfo{
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "flac", Protocol: "http"},
 					},
 				}
@@ -199,21 +199,21 @@ var _ = Describe("TranscodeDecision", func() {
 			It("uses default bitrate when client doesn't specify", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, BitDepth: 16}
 				ci := &ClientInfo{
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", Protocol: "http"},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				Expect(decision.TargetBitrate).To(Equal(defaultTranscodeBitrate)) // 256 kbps
+				Expect(decision.TargetBitrate).To(Equal(defaultBitrate)) // 256 kbps
 			})
 
 			It("preserves lossy bitrate when under max", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "ogg", BitRate: 192, Channels: 2}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 256, // kbps
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", Protocol: "http"},
 					},
 				}
@@ -226,7 +226,7 @@ var _ = Describe("TranscodeDecision", func() {
 			It("rejects unsupported transcoding format", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2}
 				ci := &ClientInfo{
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "aac", Protocol: "http"},
 					},
 				}
@@ -239,7 +239,7 @@ var _ = Describe("TranscodeDecision", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2}
 				ci := &ClientInfo{
 					MaxAudioBitrate: 96, // kbps
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 				}
@@ -256,7 +256,7 @@ var _ = Describe("TranscodeDecision", func() {
 					DirectPlayProfiles: []DirectPlayProfile{
 						{Containers: []string{"mp3"}, Protocols: []string{"http"}},
 					},
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http", MaxAudioChannels: 2},
 					},
@@ -278,7 +278,7 @@ var _ = Describe("TranscodeDecision", func() {
 					DirectPlayProfiles: []DirectPlayProfile{
 						{Containers: []string{"flac"}, Protocols: []string{"http"}},
 					},
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 				}
@@ -292,14 +292,14 @@ var _ = Describe("TranscodeDecision", func() {
 				// Simulate DSD→FLAC transcoding by using a mock that supports "flac"
 				mockTranscoding := &tests.MockTranscodingRepo{}
 				ds.MockedTranscoding = mockTranscoding
-				svc = NewTranscodeDecision(ds)
+				svc = NewDecider(ds)
 
 				// MockTranscodingRepo doesn't support flac, so this will skip lossless profile.
 				// Use mp3 which is supported as the fallback.
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 				}
@@ -480,7 +480,7 @@ var _ = Describe("TranscodeDecision", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 192, Channels: 2, SampleRate: 44100}
 				ci := &ClientInfo{
 					MaxAudioBitrate: 96, // force transcode
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 					CodecProfiles: []CodecProfile{
@@ -503,7 +503,7 @@ var _ = Describe("TranscodeDecision", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 48000, BitDepth: 16}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 					CodecProfiles: []CodecProfile{
@@ -526,7 +526,7 @@ var _ = Describe("TranscodeDecision", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 					CodecProfiles: []CodecProfile{
@@ -549,7 +549,7 @@ var _ = Describe("TranscodeDecision", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 					CodecProfiles: []CodecProfile{
@@ -577,7 +577,7 @@ var _ = Describe("TranscodeDecision", func() {
 						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{"http"}},
 						{Containers: []string{"m4a", "mp4"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
 					},
-					TranscodingProfiles: []TranscodingProfile{
+					TranscodingProfiles: []Profile{
 						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
 					},
 				}
