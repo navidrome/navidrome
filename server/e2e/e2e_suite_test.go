@@ -130,6 +130,11 @@ func newRawReq(endpoint string, params ...string) (*httptest.ResponseRecorder, *
 	return httptest.NewRecorder(), newReq(endpoint, params...)
 }
 
+// newRawReqWithUser creates a ResponseRecorder + authenticated request for the given user.
+func newRawReqWithUser(user model.User, endpoint string, params ...string) (*httptest.ResponseRecorder, *http.Request) {
+	return httptest.NewRecorder(), newReqWithUser(user, endpoint, params...)
+}
+
 // --- Noop stub implementations for Router dependencies ---
 
 // noopArtwork implements artwork.Artwork
