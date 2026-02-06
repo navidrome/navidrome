@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -192,8 +193,7 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 		pls.Readonly = true
 
 		if p.EvaluatedAt != nil {
-			elapsed := p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay)
-			pls.ValidUntil = &elapsed
+			pls.ValidUntil = P(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)

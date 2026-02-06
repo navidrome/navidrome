@@ -317,7 +317,7 @@ type Playlist struct {
 }
 
 type OpenSubsonicPlaylist struct {
-	Readonly   bool       `xml:"readonly,attr,omitempty"  json:"readonly,omitempty"`
+	Readonly   bool       `xml:"readonly,attr,omitempty"   json:"readonly"`
 	ValidUntil *time.Time `xml:"validUntil,attr,omitempty" json:"validUntil,omitempty"`
 }
 
