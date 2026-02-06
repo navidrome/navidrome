@@ -31,6 +31,12 @@ var ignoredContent = []string{
 	`<a href="https://www.last.fm/music/`,
 }
 
+var lastFMReadMoreRegex = regexp.MustCompile(`\s*<a href="https://www\.last\.fm/music/[^"]*">Read more on Last\.fm</a>\.?`)
+
+func cleanContent(content string) string {
+	return strings.TrimSpace(lastFMReadMoreRegex.ReplaceAllString(content, ""))
+}
+
 type lastfmAgent struct {
 	ds           model.DataStore
 	sessionKeys  *agents.SessionKeys
@@ -95,7 +101,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		resp.MBID = a.MBID
 		resp.URL = a.URL
 		if isValidContent(a.Description.Summary) {
-			resp.Description = strings.TrimSpace(a.Description.Summary)
+			resp.Description = cleanContent(a.Description.Summary)
 			return &resp, nil
 		}
 		log.Debug(ctx, "LastFM/album.getInfo returned empty/ignored description, trying next language", "album", name, "artist", artist, "lang", lang)
@@ -171,7 +177,7 @@ func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid str
 			return "", err
 		}
 		if isValidContent(a.Bio.Summary) {
-			return strings.TrimSpace(a.Bio.Summary), nil
+			return cleanContent(a.Bio.Summary), nil
 		}
 		log.Debug(ctx, "LastFM/artist.getInfo returned empty/ignored biography, trying next language", "artist", name, "lang", lang)
 	}
