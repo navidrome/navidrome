@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
@@ -37,7 +38,7 @@ import (
 
 func TestSubsonicE2E(t *testing.T) {
 	tests.Init(t, true)
-	defer db.Close(context.Background())
+	defer db.Close(t.Context())
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Subsonic API E2E Suite")
@@ -49,12 +50,16 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
-// Shared test state — populated in BeforeEach
+// Shared test state
 var (
 	ctx    context.Context
 	ds     *tests.MockDataStore
 	router *subsonic.Router
 	lib    model.Library
+
+	// Snapshot paths for fast DB restore
+	dbFilePath   string
+	snapshotPath string
 
 	// Admin user used for most tests
 	adminUser = model.User{
@@ -233,72 +238,124 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	ctx = request.WithUser(context.Background(), adminUser)
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 	tmpDir := GinkgoT().TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "test-e2e.db?_journal_mode=WAL")
+	dbFilePath = filepath.Join(tmpDir, "test-e2e.db")
+	snapshotPath = filepath.Join(tmpDir, "test-e2e.db.snapshot")
+	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
 	db.Db().SetMaxOpenConns(1)
+
+	// Initial setup: schema, user, library, and full scan (runs once for the entire suite)
+	conf.Server.MusicFolder = "fake:///music"
+	conf.Server.DevExternalScanner = false
+
+	db.Init(ctx)
+
+	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	auth.Init(initDS)
+
+	adminUserWithPass := adminUser
+	adminUserWithPass.NewPassword = "password"
+	Expect(initDS.User(ctx).Put(&adminUserWithPass)).To(Succeed())
+
+	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
+	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
+
+	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+
+	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
+	Expect(err).ToNot(HaveOccurred())
+	adminUser.Libraries = loadedUser.Libraries
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
+
+	buildTestFS()
+	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
+		core.NewPlaylists(initDS), metrics.NewNoopInstance())
+	_, err = s.ScanAll(ctx, true)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Checkpoint WAL and snapshot the golden DB state
+	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+	Expect(err).ToNot(HaveOccurred())
+	data, err := os.ReadFile(dbFilePath)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(os.WriteFile(snapshotPath, data, 0644)).To(Succeed())
 })
 
-// setupTestDB initializes the database, creates the admin user, library, scans the
-// test filesystem, and creates the Subsonic Router. Call this from BeforeEach in each
-// test container that needs the full E2E environment.
+// setupTestDB restores the database from the golden snapshot and creates the
+// Subsonic Router. Call this from BeforeEach/BeforeAll in each test container.
 func setupTestDB() {
-	// Refresh context with the current spec's context to avoid using a canceled context
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	DeferCleanup(configtest.SetupConfig())
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.DevExternalScanner = false
 
-	db.Init(ctx)
-	DeferCleanup(func() {
-		Expect(tests.ClearDB()).To(Succeed())
-	})
+	// Restore DB to golden state (no scan needed)
+	restoreDB()
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-
-	// Initialize JWT auth (needed for public URL generation in search responses)
 	auth.Init(ds)
 
-	// Create admin user in DB
-	adminUserWithPass := adminUser
-	adminUserWithPass.NewPassword = "password"
-	Expect(ds.User(ctx).Put(&adminUserWithPass)).To(Succeed())
-
-	// Create library
-	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
-
-	// Set user libraries for access control
-	Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
-
-	// Reload user with libraries for context
-	loadedUser, err := ds.User(ctx).FindByUsername(adminUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	adminUser.Libraries = loadedUser.Libraries
-	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-
-	// Build the fake filesystem and run the scanner
-	buildTestFS()
-	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(ds), metrics.NewNoopInstance())
-	_, err = s.ScanAll(ctx, true)
-	Expect(err).ToNot(HaveOccurred())
+	// Pre-populate repository cache with a valid context. The MockDataStore caches
+	// repositories on first access; without this, the first access may happen inside
+	// an errgroup (e.g., searchAll) whose context is canceled after Wait(), causing
+	// subsequent calls to silently fail.
+	ds.MediaFile(ctx)
+	ds.Album(ctx)
+	ds.Artist(ctx)
 
 	// Create the Subsonic Router with real DS + noop stubs
+	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
+		core.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
-		ds,                           // DataStore (real)
-		noopArtwork{},                // Artwork
-		noopStreamer{},               // MediaStreamer
-		noopArchiver{},               // Archiver
-		core.NewPlayers(ds),          // Players (real)
-		noopProvider{},               // Provider
-		s,                            // Scanner (real)
-		events.NoopBroker(),          // Broker
-		core.NewPlaylists(ds),        // Playlists (real)
-		noopPlayTracker{},            // PlayTracker
-		noopShare{},                  // Share
-		playback.PlaybackServer(nil), // PlaybackServer (nil, jukebox disabled)
-		metrics.NewNoopInstance(),    // Metrics
+		ds,
+		noopArtwork{},
+		noopStreamer{},
+		noopArchiver{},
+		core.NewPlayers(ds),
+		noopProvider{},
+		s,
+		events.NoopBroker(),
+		core.NewPlaylists(ds),
+		noopPlayTracker{},
+		noopShare{},
+		playback.PlaybackServer(nil),
+		metrics.NewNoopInstance(),
 	)
+}
+
+// restoreDB restores all table data from the snapshot using ATTACH DATABASE.
+// This is much faster than re-running the scanner for each test.
+func restoreDB() {
+	sqlDB := db.Db()
+
+	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
+	Expect(err).ToNot(HaveOccurred())
+
+	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+	Expect(err).ToNot(HaveOccurred())
+	var tables []string
+	for rows.Next() {
+		var name string
+		Expect(rows.Scan(&name)).To(Succeed())
+		tables = append(tables, name)
+	}
+	Expect(rows.Err()).ToNot(HaveOccurred())
+	rows.Close()
+
+	for _, table := range tables {
+		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`)
+		Expect(err).ToNot(HaveOccurred())
+	}
+
+	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	Expect(err).ToNot(HaveOccurred())
 }
