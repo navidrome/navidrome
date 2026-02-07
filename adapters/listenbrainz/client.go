@@ -12,16 +12,13 @@ import (
 	"path"
 	"slices"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 )
 
 const (
 	lbzApiUrl = "https://api.listenbrainz.org/1/"
 	labsBase  = "https://labs.api.listenbrainz.org/"
-	// There are a couple of algorithms from https://labs.api.listenbrainz.org/similar-artists
-	artistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
-	// From https://labs.api.listenbrainz.org/similar-recordings
-	trackAlgorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
 )
 
 var (
@@ -301,7 +298,7 @@ func (c *client) getSimilarArtists(ctx context.Context, mbid string, limit int) 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"artist_mbids": []string{mbid}, "algorithm": []string{artistAlgorithm},
+		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.ArtistAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
@@ -340,7 +337,7 @@ func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit in
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"recording_mbids": []string{mbid}, "algorithm": []string{trackAlgorithm},
+		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.TrackAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)

@@ -291,7 +291,7 @@ var _ = Describe("client", func() {
 
 	Context("getSimilarRecordings", func() {
 		mbid := "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae"
-		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
+		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
 
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{

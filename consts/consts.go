@@ -74,6 +74,10 @@ const (
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 
+	DefaultListenBrainzBaseURL         = "https://api.listenbrainz.org/1/"
+	DefaultListenBrainzArtistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	DefaultListenBrainzTrackAlgorithm  = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
