@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,96 +26,194 @@ var _ = Describe("buildPlaylist", func() {
 		ds = &tests.MockDataStore{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		ctx = context.Background()
-
-		createdAt := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-		updatedAt := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
-
-		playlist = model.Playlist{
-			ID:        "pls-1",
-			Name:      "My Playlist",
-			Comment:   "Test comment",
-			OwnerName: "admin",
-			Public:    true,
-			SongCount: 10,
-			Duration:  600,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-		}
 	})
 
-	Context("with minimal client", func() {
+	Describe("normal playlist", func() {
 		BeforeEach(func() {
-			conf.Server.Subsonic.MinimalClients = "minimal-client"
-			player := model.Player{Client: "minimal-client"}
-			ctx = request.WithPlayer(ctx, player)
+			createdAt := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
+			updatedAt := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
+
+			playlist = model.Playlist{
+				ID:        "pls-1",
+				Name:      "My Playlist",
+				Comment:   "Test comment",
+				OwnerName: "admin",
+				OwnerID:   "1234",
+				Public:    true,
+				SongCount: 10,
+				Duration:  600,
+				CreatedAt: createdAt,
+				UpdatedAt: updatedAt,
+			}
 		})
 
-		It("returns only basic fields", func() {
-			result := router.buildPlaylist(ctx, playlist)
+		Context("with minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "minimal-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
 
-			Expect(result.Id).To(Equal("pls-1"))
-			Expect(result.Name).To(Equal("My Playlist"))
-			Expect(result.SongCount).To(Equal(int32(10)))
-			Expect(result.Duration).To(Equal(int32(600)))
-			Expect(result.Created).To(Equal(playlist.CreatedAt))
-			Expect(result.Changed).To(Equal(playlist.UpdatedAt))
+			It("returns only basic fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
 
-			// These should not be set
-			Expect(result.Comment).To(BeEmpty())
-			Expect(result.Owner).To(BeEmpty())
-			Expect(result.Public).To(BeFalse())
-			Expect(result.CoverArt).To(BeEmpty())
+				Expect(result.Id).To(Equal("pls-1"))
+				Expect(result.Name).To(Equal("My Playlist"))
+				Expect(result.SongCount).To(Equal(int32(10)))
+				Expect(result.Duration).To(Equal(int32(600)))
+				Expect(result.Created).To(Equal(playlist.CreatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
+
+				// These should not be set
+				Expect(result.Comment).To(BeEmpty())
+				Expect(result.Owner).To(BeEmpty())
+				Expect(result.Public).To(BeFalse())
+				Expect(result.CoverArt).To(BeEmpty())
+			})
+		})
+
+		Context("with non-minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Id).To(Equal("pls-1"))
+				Expect(result.Name).To(Equal("My Playlist"))
+				Expect(result.SongCount).To(Equal(int32(10)))
+				Expect(result.Duration).To(Equal(int32(600)))
+				Expect(result.Created).To(Equal(playlist.CreatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+				Expect(result.Readonly).To(BeTrue())
+			})
+
+			It("returns all fields when as owner", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
+
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Id).To(Equal("pls-1"))
+				Expect(result.Name).To(Equal("My Playlist"))
+				Expect(result.SongCount).To(Equal(int32(10)))
+				Expect(result.Duration).To(Equal(int32(600)))
+				Expect(result.Created).To(Equal(playlist.CreatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+				Expect(result.Readonly).To(BeFalse())
+			})
+		})
+
+		Context("when minimal clients list is empty", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = ""
+				player := model.Player{Client: "any-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+			})
+		})
+
+		Context("when no player in context", func() {
+			It("returns all fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+			})
 		})
 	})
 
-	Context("with non-minimal client", func() {
+	Describe("smart playlist", func() {
+		evaluatedAt := time.Date(2023, 2, 20, 15, 45, 0, 0, time.UTC)
+		validUntil := evaluatedAt.Add(5 * time.Second)
+
 		BeforeEach(func() {
-			conf.Server.Subsonic.MinimalClients = "minimal-client"
-			player := model.Player{Client: "regular-client"}
-			ctx = request.WithPlayer(ctx, player)
+			createdAt := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
+			updatedAt := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
+
+			playlist = model.Playlist{
+				ID:          "pls-1",
+				Name:        "My Playlist",
+				Comment:     "Test comment",
+				OwnerName:   "admin",
+				OwnerID:     "1234",
+				Public:      true,
+				SongCount:   10,
+				Duration:    600,
+				CreatedAt:   createdAt,
+				UpdatedAt:   updatedAt,
+				EvaluatedAt: &evaluatedAt,
+				Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.Contains{"title": "title"}},
+				},
+			}
 		})
 
-		It("returns all fields", func() {
-			result := router.buildPlaylist(ctx, playlist)
+		Context("with minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "minimal-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
 
-			Expect(result.Id).To(Equal("pls-1"))
-			Expect(result.Name).To(Equal("My Playlist"))
-			Expect(result.SongCount).To(Equal(int32(10)))
-			Expect(result.Duration).To(Equal(int32(600)))
-			Expect(result.Created).To(Equal(playlist.CreatedAt))
-			Expect(result.Changed).To(Equal(playlist.UpdatedAt))
-			Expect(result.Comment).To(Equal("Test comment"))
-			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).To(BeTrue())
+			It("returns only basic fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Id).To(Equal("pls-1"))
+				Expect(result.Name).To(Equal("My Playlist"))
+				Expect(result.SongCount).To(Equal(int32(10)))
+				Expect(result.Duration).To(Equal(int32(600)))
+				Expect(result.Created).To(Equal(playlist.CreatedAt))
+				Expect(result.Changed).To(Equal(evaluatedAt))
+
+				// These should not be set
+				Expect(result.Comment).To(BeEmpty())
+				Expect(result.Owner).To(BeEmpty())
+				Expect(result.Public).To(BeFalse())
+				Expect(result.CoverArt).To(BeEmpty())
+				Expect(result.OpenSubsonicPlaylist).To(BeNil())
+			})
+		})
+
+		Context("with non-minimal client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all fields", func() {
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.Id).To(Equal("pls-1"))
+				Expect(result.Name).To(Equal("My Playlist"))
+				Expect(result.SongCount).To(Equal(int32(10)))
+				Expect(result.Duration).To(Equal(int32(600)))
+				Expect(result.Created).To(Equal(playlist.CreatedAt))
+				Expect(result.Changed).To(Equal(*playlist.EvaluatedAt))
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+				Expect(result.Readonly).To(BeTrue())
+				Expect(result.ValidUntil).To(Equal(&validUntil))
+			})
 		})
 	})
-
-	Context("when minimal clients list is empty", func() {
-		BeforeEach(func() {
-			conf.Server.Subsonic.MinimalClients = ""
-			player := model.Player{Client: "any-client"}
-			ctx = request.WithPlayer(ctx, player)
-		})
-
-		It("returns all fields", func() {
-			result := router.buildPlaylist(ctx, playlist)
-
-			Expect(result.Comment).To(Equal("Test comment"))
-			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).To(BeTrue())
-		})
-	})
-
-	Context("when no player in context", func() {
-		It("returns all fields", func() {
-			result := router.buildPlaylist(ctx, playlist)
-
-			Expect(result.Comment).To(Equal("Test comment"))
-			Expect(result.Owner).To(Equal("admin"))
-			Expect(result.Public).To(BeTrue())
-		})
-	})
-
 })
 
 var _ = Describe("UpdatePlaylist", func() {

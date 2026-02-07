@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
@@ -531,9 +532,9 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("with data", func() {
-			timestamp, _ := time.Parse(time.RFC3339, "2020-04-11T16:43:00Z04:00")
+			timestamp := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
 			BeforeEach(func() {
-				pls := make([]Playlist, 2)
+				pls := make([]Playlist, 3)
 				pls[0] = Playlist{
 					Id:        "111",
 					Name:      "aaa",
@@ -545,8 +546,13 @@ var _ = Describe("Responses", func() {
 					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
+					OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{
+						Readonly:   true,
+						ValidUntil: &timestamp,
+					},
 				}
-				pls[1] = Playlist{Id: "222", Name: "bbb"}
+				pls[1] = Playlist{Id: "333", Name: "ccc", OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{}}
+				pls[2] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
 			})
 
