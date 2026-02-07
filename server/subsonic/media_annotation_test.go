@@ -127,6 +127,9 @@ func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Subm
 	return nil
 }
 
+func (f *fakePlayTracker) StopPlayback(_ context.Context, _ string, _ int) {
+}
+
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)
 
 type fakeEventBroker struct {
