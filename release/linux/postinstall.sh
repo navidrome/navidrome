@@ -24,7 +24,7 @@ if [ ! -f "$postinstall_flag" ]; then
     chown navidrome:navidrome /var/lib/navidrome/cache
     touch "$postinstall_flag"
 else
-    navidrome service stop && navidrome service start
+    navidrome service stop --configfile /etc/navidrome/navidrome.toml && navidrome service start --configfile /etc/navidrome/navidrome.toml
 fi
 
 
