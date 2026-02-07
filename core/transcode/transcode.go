@@ -315,8 +315,17 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 		targetFormat = strings.ToLower(profile.AudioCodec)
 	}
 
-	// Verify we have a transcoding config for this format
+	// Verify we have a transcoding config for this format.
+	// Try the container first, then fall back to the audioCodec (e.g. "ogg" → "opus", "mp4" → "aac").
 	tc, err := s.ds.Transcoding(ctx).FindByFormat(targetFormat)
+	if (err != nil || tc == nil) && profile.AudioCodec != "" && !strings.EqualFold(targetFormat, profile.AudioCodec) {
+		codec := strings.ToLower(profile.AudioCodec)
+		log.Trace(ctx, "No transcoding config for container, trying audioCodec", "container", targetFormat, "audioCodec", codec)
+		tc, err = s.ds.Transcoding(ctx).FindByFormat(codec)
+		if err == nil && tc != nil {
+			targetFormat = codec
+		}
+	}
 	if err != nil || tc == nil {
 		log.Trace(ctx, "Skipping transcoding profile: no transcoding config", "targetFormat", targetFormat)
 		return nil
