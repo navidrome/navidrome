@@ -174,10 +174,11 @@ func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, na
 	}
 
 	artists := make([]agents.Artist, len(resp))
-
 	for i, artist := range resp {
-		artists[i].MBID = artist.MBID
-		artists[i].Name = artist.Name
+		artists[i] = agents.Artist{
+			MBID: artist.MBID,
+			Name: artist.Name,
+		}
 	}
 
 	return artists, nil
@@ -199,11 +200,13 @@ func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id strin
 
 	songs := make([]agents.Song, len(resp))
 	for i, song := range resp {
-		songs[i].Album = song.ReleaseName
-		songs[i].AlbumMBID = song.ReleaseMBID
-		songs[i].Artist = song.Artist
-		songs[i].MBID = song.MBID
-		songs[i].Name = song.Name
+		songs[i] = agents.Song{
+			Album:     song.ReleaseName,
+			AlbumMBID: song.ReleaseMBID,
+			Artist:    song.Artist,
+			MBID:      song.MBID,
+			Name:      song.Name,
+		}
 	}
 
 	return songs, nil
