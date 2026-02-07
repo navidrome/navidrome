@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
@@ -177,6 +178,61 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
 		})
 	})
+
+	Describe("SubsonicAPI CallRaw", func() {
+		var plugin *plugin
+
+		BeforeEach(func() {
+			manager.mu.RLock()
+			plugin = manager.plugins["test-subsonicapi-plugin"]
+			manager.mu.RUnlock()
+			Expect(plugin).ToNot(BeNil())
+		})
+
+		It("successfully calls getCoverArt and returns binary data", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, output, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			// Parse the metadata response from the test plugin
+			var result map[string]any
+			err = json.Unmarshal(output, &result)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result["contentType"]).To(Equal("image/png"))
+			Expect(result["size"]).To(BeNumerically("==", len(fakePNGHeader)))
+			Expect(result["firstByte"]).To(BeNumerically("==", 0x89)) // PNG magic byte
+		})
+
+		It("does NOT set f=json parameter for raw calls", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			_, _, err = instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(router.lastRequest).ToNot(BeNil())
+			query := router.lastRequest.URL.Query()
+			Expect(query.Get("f")).To(BeEmpty())
+			Expect(query.Get("c")).To(Equal("test-subsonicapi-plugin"))
+			Expect(query.Get("v")).To(Equal("1.16.1"))
+		})
+
+		It("returns error when username is missing", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, _, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt"))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
+		})
+	})
 })
 
 var _ = Describe("SubsonicAPIService", func() {
@@ -323,6 +379,66 @@ var _ = Describe("SubsonicAPIService", func() {
 		})
 	})
 
+	Describe("CallRaw", func() {
+		It("returns binary data and content-type", func() {
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
+
+			ctx := GinkgoT().Context()
+			contentType, data, err := service.CallRaw(ctx, "/getCoverArt?u=testuser&id=al-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(contentType).To(Equal("image/png"))
+			Expect(data).To(Equal(fakePNGHeader))
+		})
+
+		It("does not set f=json parameter", func() {
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
+
+			ctx := GinkgoT().Context()
+			_, _, err := service.CallRaw(ctx, "/getCoverArt?u=testuser&id=al-1")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(router.lastRequest).ToNot(BeNil())
+			query := router.lastRequest.URL.Query()
+			Expect(query.Get("f")).To(BeEmpty())
+		})
+
+		It("enforces permission checks", func() {
+			service := newSubsonicAPIService("test-plugin", router, dataStore, []string{"user2"}, false)
+
+			ctx := GinkgoT().Context()
+			_, _, err := service.CallRaw(ctx, "/getCoverArt?u=testuser&id=al-1")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not authorized"))
+		})
+
+		It("returns error when username is missing", func() {
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
+
+			ctx := GinkgoT().Context()
+			_, _, err := service.CallRaw(ctx, "/getCoverArt")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
+		})
+
+		It("returns error when router is nil", func() {
+			service := newSubsonicAPIService("test-plugin", nil, dataStore, nil, true)
+
+			ctx := GinkgoT().Context()
+			_, _, err := service.CallRaw(ctx, "/getCoverArt?u=testuser")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("router not available"))
+		})
+
+		It("returns error for invalid URL", func() {
+			service := newSubsonicAPIService("test-plugin", router, dataStore, nil, true)
+
+			ctx := GinkgoT().Context()
+			_, _, err := service.CallRaw(ctx, "://invalid")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid URL"))
+		})
+	})
+
 	Describe("Router Availability", func() {
 		It("returns error when router is nil", func() {
 			service := newSubsonicAPIService("test-plugin", nil, dataStore, nil, true)
@@ -335,6 +451,9 @@ var _ = Describe("SubsonicAPIService", func() {
 	})
 })
 
+// fakePNGHeader is a minimal PNG file header used in tests.
+var fakePNGHeader = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+
 // fakeSubsonicRouter is a mock Subsonic router that returns predictable responses.
 type fakeSubsonicRouter struct {
 	lastRequest *http.Request
@@ -343,13 +462,20 @@ type fakeSubsonicRouter struct {
 func (r *fakeSubsonicRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.lastRequest = req
 
-	// Return a successful ping response
-	response := map[string]any{
-		"subsonic-response": map[string]any{
-			"status":  "ok",
-			"version": "1.16.1",
-		},
+	endpoint := path.Base(req.URL.Path)
+	switch endpoint {
+	case "getCoverArt":
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(fakePNGHeader)
+	default:
+		// Return a successful ping response
+		response := map[string]any{
+			"subsonic-response": map[string]any{
+				"status":  "ok",
+				"version": "1.16.1",
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(response)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(response)
 }

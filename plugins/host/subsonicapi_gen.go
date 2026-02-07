@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
@@ -20,11 +21,17 @@ type SubsonicAPICallResponse struct {
 	Error        string `json:"error,omitempty"`
 }
 
+// SubsonicAPICallRawRequest is the request type for SubsonicAPI.CallRaw.
+type SubsonicAPICallRawRequest struct {
+	Uri string `json:"uri"`
+}
+
 // RegisterSubsonicAPIHostFunctions registers SubsonicAPI service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterSubsonicAPIHostFunctions(service SubsonicAPIService) []extism.HostFunction {
 	return []extism.HostFunction{
 		newSubsonicAPICallHostFunction(service),
+		newSubsonicAPICallRawHostFunction(service),
 	}
 }
 
@@ -62,6 +69,50 @@ func newSubsonicAPICallHostFunction(service SubsonicAPIService) extism.HostFunct
 	)
 }
 
+func newSubsonicAPICallRawHostFunction(service SubsonicAPIService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"subsonicapi_callraw",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				subsonicapiWriteRawError(p, stack, err)
+				return
+			}
+			var req SubsonicAPICallRawRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				subsonicapiWriteRawError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			contenttype, data, svcErr := service.CallRaw(ctx, req.Uri)
+			if svcErr != nil {
+				subsonicapiWriteRawError(p, stack, svcErr)
+				return
+			}
+
+			// Write binary-framed response to plugin memory:
+			// [0x00][4-byte content-type length (big-endian)][content-type string][raw data]
+			ctBytes := []byte(contenttype)
+			frame := make([]byte, 1+4+len(ctBytes)+len(data))
+			frame[0] = 0x00 // success
+			binary.BigEndian.PutUint32(frame[1:5], uint32(len(ctBytes)))
+			copy(frame[5:5+len(ctBytes)], ctBytes)
+			copy(frame[5+len(ctBytes):], data)
+
+			respPtr, err := p.WriteBytes(frame)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			stack[0] = respPtr
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
 // subsonicapiWriteResponse writes a JSON response to plugin memory.
 func subsonicapiWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 	respBytes, err := json.Marshal(resp)
@@ -84,5 +135,16 @@ func subsonicapiWriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
 	}{Error: err.Error()}
 	respBytes, _ := json.Marshal(errResp)
 	respPtr, _ := p.WriteBytes(respBytes)
+	stack[0] = respPtr
+}
+
+// subsonicapiWriteRawError writes a binary-framed error response to plugin memory.
+// Format: [0x01][UTF-8 error message]
+func subsonicapiWriteRawError(p *extism.CurrentPlugin, stack []uint64, err error) {
+	errMsg := []byte(err.Error())
+	frame := make([]byte, 1+len(errMsg))
+	frame[0] = 0x01 // error
+	copy(frame[1:], errMsg)
+	respPtr, _ := p.WriteBytes(frame)
 	stack[0] = respPtr
 }

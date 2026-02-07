@@ -285,12 +285,15 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Update when the playlist was last refreshed (for cache purposes)
-	updSql := Update(r.tableName).Set("evaluated_at", time.Now()).Where(Eq{"id": pls.ID})
+	now := time.Now()
+	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(updSql)
 	if err != nil {
 		log.Error(r.ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
+
+	pls.EvaluatedAt = &now
 
 	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 

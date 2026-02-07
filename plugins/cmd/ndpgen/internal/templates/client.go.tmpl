@@ -8,6 +8,9 @@
 package {{.Package}}
 
 import (
+{{- if .Service.HasRawMethods}}
+	"encoding/binary"
+{{- end}}
 	"encoding/json"
 {{- if .Service.HasErrors}}
 	"errors"
@@ -49,7 +52,7 @@ type {{requestType .}} struct {
 {{- end}}
 }
 {{- end}}
-{{- if not .IsErrorOnly}}
+{{- if and (not .IsErrorOnly) (not .Raw)}}
 
 type {{responseType .}} struct {
 {{- range .Returns}}
@@ -95,7 +98,27 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
-{{- if .IsErrorOnly}}
+{{- if .Raw}}
+
+	// Parse binary-framed response
+	if len(responseBytes) == 0 {
+		return "", nil, errors.New("empty response from host")
+	}
+	if responseBytes[0] == 0x01 { // error
+		return "", nil, errors.New(string(responseBytes[1:]))
+	}
+	if responseBytes[0] != 0x00 {
+		return "", nil, errors.New("unknown response status")
+	}
+	if len(responseBytes) < 5 {
+		return "", nil, errors.New("malformed raw response: incomplete header")
+	}
+	ctLen := binary.BigEndian.Uint32(responseBytes[1:5])
+	if uint32(len(responseBytes)) < 5+ctLen {
+		return "", nil, errors.New("malformed raw response: content-type overflow")
+	}
+	return string(responseBytes[5 : 5+ctLen]), responseBytes[5+ctLen:], nil
+{{- else if .IsErrorOnly}}
 
 	// Parse error-only response
 	var response struct {

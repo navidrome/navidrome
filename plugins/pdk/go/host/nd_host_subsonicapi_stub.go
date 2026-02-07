@@ -33,3 +33,17 @@ func (m *mockSubsonicAPIService) Call(uri string) (string, error) {
 func SubsonicAPICall(uri string) (string, error) {
 	return SubsonicAPIMock.Call(uri)
 }
+
+// CallRaw is the mock method for SubsonicAPICallRaw.
+func (m *mockSubsonicAPIService) CallRaw(uri string) (string, []byte, error) {
+	args := m.Called(uri)
+	return args.String(0), args.Get(1).([]byte), args.Error(2)
+}
+
+// SubsonicAPICallRaw delegates to the mock instance.
+// CallRaw executes a Subsonic API request and returns the raw binary response.
+// Optimized for binary endpoints like getCoverArt and stream that return
+// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+func SubsonicAPICallRaw(uri string) (string, []byte, error) {
+	return SubsonicAPIMock.CallRaw(uri)
+}
