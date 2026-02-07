@@ -2,6 +2,7 @@ package listenbrainz
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,7 +11,6 @@ import (
 	"net/url"
 	"path"
 	"slices"
-	"sort"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -362,8 +362,11 @@ func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit in
 	// For whatever reason, labs API isn't guaranteed to give results in the proper order
 	// and may also provide duplicates. See listenbrainz.labs.similar-recordings-real-out-of-order.json
 	// generated from https://labs.api.listenbrainz.org/similar-recordings/json?recording_mbids=8f3471b5-7e6a-48da-86a9-c1c07a0f47ae&algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30
-	sort.Slice(recordings, func(i, j int) bool {
-		return recordings[i].Score > recordings[j].Score
+	slices.SortFunc(recordings, func(a, b recording) int {
+		return cmp.Or(
+			cmp.Compare(b.Score, a.Score), // Sort by score descending
+			cmp.Compare(a.MBID, b.MBID),   // Then by MBID ascending to ensure deterministic order for duplicates
+		)
 	})
 
 	recordings = slices.CompactFunc(recordings, func(a, b recording) bool {
