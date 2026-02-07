@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
+	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -539,4 +541,131 @@ var _ = Describe("Album Lists", func() {
 			})
 		})
 	})
+
+	Describe("GetNowPlaying", func() {
+		var mockPlayTracker *mockPlayTrackerForAlbumLists
+		var user model.User
+
+		BeforeEach(func() {
+			mockPlayTracker = &mockPlayTrackerForAlbumLists{}
+			user = model.User{
+				ID: "test-user",
+				Libraries: []model.Library{
+					{ID: 1, Name: "Library 1"},
+					{ID: 2, Name: "Library 2"},
+				},
+			}
+		})
+
+		It("should filter entries by user's accessible libraries", func() {
+			mockPlayTracker.NowPlayingData = []scrobbler.NowPlayingInfo{
+				{
+					MediaFile:  model.MediaFile{ID: "1", Title: "Track 1", LibraryID: 1},
+					Start:      time.Now(),
+					Username:   "user1",
+					PlayerId:   "player1",
+					PlayerName: "Player 1",
+				},
+				{
+					MediaFile:  model.MediaFile{ID: "2", Title: "Track 2", LibraryID: 3}, // Library 3 not accessible to user
+					Start:      time.Now(),
+					Username:   "user2",
+					PlayerId:   "player2",
+					PlayerName: "Player 2",
+				},
+				{
+					MediaFile:  model.MediaFile{ID: "3", Title: "Track 3", LibraryID: 2},
+					Start:      time.Now(),
+					Username:   "user3",
+					PlayerId:   "player3",
+					PlayerName: "Player 3",
+				},
+			}
+			router := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockPlayTracker, nil, nil, nil)
+			ctx := request.WithUser(context.Background(), user)
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+
+			resp, err := router.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.NowPlaying.Entry).To(HaveLen(2))
+			// Should only include tracks from libraries 1 and 2, not library 3
+			Expect(resp.NowPlaying.Entry[0].Title).To(Equal("Track 1"))
+			Expect(resp.NowPlaying.Entry[1].Title).To(Equal("Track 3"))
+		})
+
+		It("should return empty list when user has no accessible libraries", func() {
+			mockPlayTracker.NowPlayingData = []scrobbler.NowPlayingInfo{
+				{
+					MediaFile:  model.MediaFile{ID: "1", Title: "Track 1", LibraryID: 5}, // Library not accessible
+					Start:      time.Now(),
+					Username:   "user1",
+					PlayerId:   "player1",
+					PlayerName: "Player 1",
+				},
+			}
+			router := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockPlayTracker, nil, nil, nil)
+			userWithNoLibraries := model.User{ID: "no-lib-user", Libraries: []model.Library{}}
+			ctx := request.WithUser(context.Background(), userWithNoLibraries)
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+
+			resp, err := router.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.NowPlaying.Entry).To(HaveLen(0))
+		})
+
+		It("should return all entries when user has access to all libraries", func() {
+			mockPlayTracker.NowPlayingData = []scrobbler.NowPlayingInfo{
+				{
+					MediaFile:  model.MediaFile{ID: "1", Title: "Track 1", LibraryID: 1},
+					Start:      time.Now(),
+					Username:   "user1",
+					PlayerId:   "player1",
+					PlayerName: "Player 1",
+				},
+				{
+					MediaFile:  model.MediaFile{ID: "2", Title: "Track 2", LibraryID: 2},
+					Start:      time.Now(),
+					Username:   "user2",
+					PlayerId:   "player2",
+					PlayerName: "Player 2",
+				},
+			}
+			router := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockPlayTracker, nil, nil, nil)
+			ctx := request.WithUser(context.Background(), user)
+			r := newGetRequest()
+			r = r.WithContext(ctx)
+
+			resp, err := router.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.NowPlaying.Entry).To(HaveLen(2))
+		})
+	})
 })
+
+// mockPlayTrackerForAlbumLists is a minimal mock implementing scrobbler.PlayTracker for GetNowPlaying tests
+type mockPlayTrackerForAlbumLists struct {
+	NowPlayingData []scrobbler.NowPlayingInfo
+	Error          error
+}
+
+func (m *mockPlayTrackerForAlbumLists) NowPlaying(_ context.Context, _ string, _ string, _ string, _ int) error {
+	return m.Error
+}
+
+func (m *mockPlayTrackerForAlbumLists) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {
+	if m.Error != nil {
+		return nil, m.Error
+	}
+	return m.NowPlayingData, nil
+}
+
+func (m *mockPlayTrackerForAlbumLists) Submit(_ context.Context, _ []scrobbler.Submission) error {
+	return m.Error
+}
+
+var _ scrobbler.PlayTracker = (*mockPlayTrackerForAlbumLists)(nil)

@@ -83,7 +83,7 @@ type configOptions struct {
 	DefaultUIVolume                 int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
-	EnableNowPlaying                bool
+	NowPlaying                      nowPlayingOptions `json:",omitzero"`
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -217,6 +217,11 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type nowPlayingOptions struct {
+	Enabled   bool
+	AdminOnly bool
+}
+
 type backupOptions struct {
 	Count    int
 	Path     string
@@ -270,6 +275,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	mapDeprecatedOption("EnableNowPlaying", "NowPlaying.Enabled")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -392,6 +398,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	logDeprecatedOptions("EnableNowPlaying", "NowPlaying.Enabled")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -609,7 +616,8 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
-	viper.SetDefault("enablenowplaying", true)
+	viper.SetDefault("nowplaying.enabled", true)
+	viper.SetDefault("nowplaying.adminonly", false)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
