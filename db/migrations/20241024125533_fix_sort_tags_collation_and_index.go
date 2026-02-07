@@ -1,5 +1,27 @@
--- +goose Up
---region Artist Table
+package migrations
+
+import (
+	"context"
+	"database/sql"
+
+	"github.com/navidrome/navidrome/db/dialect"
+	"github.com/pressly/goose/v3"
+)
+
+func init() {
+	goose.AddMigrationContext(upFixSortTagsCollationAndIndex, downFixSortTagsCollationAndIndex)
+}
+
+func upFixSortTagsCollationAndIndex(ctx context.Context, tx *sql.Tx) error {
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		return upFixSortTagsCollationAndIndexPostgres(ctx, tx)
+	}
+	return upFixSortTagsCollationAndIndexSQLite(ctx, tx)
+}
+
+func upFixSortTagsCollationAndIndexSQLite(ctx context.Context, tx *sql.Tx) error {
+	// Artist Table
+	_, err := tx.ExecContext(ctx, `
 create table artist_dg_tmp
 (
     id                       varchar(255)                      not null
@@ -61,10 +83,13 @@ create index artist_size
 
 create index artist_sort_name
     on artist (coalesce(nullif(sort_artist_name,''),order_artist_name) collate NOCASE);
+`)
+	if err != nil {
+		return err
+	}
 
---endregion
-
---region Album Table
+	// Album Table
+	_, err = tx.ExecContext(ctx, `
 create table album_dg_tmp
 (
     id                       varchar(255)                         not null
@@ -230,9 +255,13 @@ create index album_sort_album_artist_name
 
 create index album_updated_at
     on album (updated_at);
---endregion
+`)
+	if err != nil {
+		return err
+	}
 
---region Media File Table
+	// Media File Table
+	_, err = tx.ExecContext(ctx, `
 create table media_file_dg_tmp
 (
     id                      varchar(255)                         not null
@@ -438,10 +467,13 @@ create index media_file_updated_at
 
 create index media_file_year
     on media_file (year);
+`)
+	if err != nil {
+		return err
+	}
 
---endregion
-
---region Radio Table
+	// Radio Table
+	_, err = tx.ExecContext(ctx, `
 create table radio_dg_tmp
 (
     id            varchar(255)           not null
@@ -465,9 +497,13 @@ alter table radio_dg_tmp
 
 create index radio_name
     on radio(name);
---endregion
+`)
+	if err != nil {
+		return err
+	}
 
---region users Table
+	// User Table
+	_, err = tx.ExecContext(ctx, `
 create table user_dg_tmp
 (
     id             varchar(255)                              not null
@@ -505,8 +541,67 @@ alter table user_dg_tmp
 
 create index user_username_password
     on user(user_name collate NOCASE, password);
---endregion
+`)
+	return err
+}
 
--- +goose Down
+func upFixSortTagsCollationAndIndexPostgres(ctx context.Context, tx *sql.Tx) error {
+	// PostgreSQL uses LOWER() indexes instead of COLLATE NOCASE
+	_, err := tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS artist_sort_name;
+CREATE INDEX artist_sort_name ON artist (LOWER(COALESCE(NULLIF(sort_artist_name,''),order_artist_name)));
+`)
+	if err != nil {
+		return err
+	}
+
+	// Album indexes
+	_, err = tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS album_sort_name;
+DROP INDEX IF EXISTS album_sort_album_artist_name;
+CREATE INDEX album_sort_name ON album (LOWER(COALESCE(NULLIF(sort_album_name,''),order_album_name)));
+CREATE INDEX album_sort_album_artist_name ON album (LOWER(COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name)));
+`)
+	if err != nil {
+		return err
+	}
+
+	// Media file indexes
+	_, err = tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS media_file_path_nocase;
+DROP INDEX IF EXISTS media_file_sort_title;
+DROP INDEX IF EXISTS media_file_sort_artist_name;
+DROP INDEX IF EXISTS media_file_sort_album_name;
+CREATE INDEX media_file_path_nocase ON media_file (LOWER(path));
+CREATE INDEX media_file_sort_title ON media_file (LOWER(COALESCE(NULLIF(sort_title,''),order_title)));
+CREATE INDEX media_file_sort_artist_name ON media_file (LOWER(COALESCE(NULLIF(sort_artist_name,''),order_artist_name)));
+CREATE INDEX media_file_sort_album_name ON media_file (LOWER(COALESCE(NULLIF(sort_album_name,''),order_album_name)));
+`)
+	if err != nil {
+		return err
+	}
+
+	// Radio index
+	_, err = tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS radio_name;
+CREATE INDEX radio_name ON radio (LOWER(name));
+`)
+	if err != nil {
+		return err
+	}
+
+	// User index
+	_, err = tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS user_username_password;
+CREATE INDEX user_username_password ON "user" (LOWER(user_name), password);
+`)
+	return err
+}
+
+func downFixSortTagsCollationAndIndex(_ context.Context, tx *sql.Tx) error {
+	_, err := tx.Exec(`
 alter table album
     add column sort_artist_name varchar default '' not null;
+`)
+	return err
+}

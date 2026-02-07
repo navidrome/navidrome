@@ -13,7 +13,7 @@ func init() {
 
 func Up20200220143731(_ context.Context, tx *sql.Tx) error {
 	notice(tx, "This migration will force the next scan to be a full rescan!")
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table media_file_dg_tmp
 (
 	id varchar(255) not null
@@ -121,7 +121,7 @@ create index playlist_name
 -- Force a full rescan
 delete from property where id like 'LastScan%';
 update media_file set updated_at = '0001-01-01';
-`)
+`))
 	return err
 }
 

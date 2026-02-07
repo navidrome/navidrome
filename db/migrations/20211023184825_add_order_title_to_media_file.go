@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/deluan/sanitize"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
 )
@@ -15,12 +16,12 @@ func init() {
 }
 
 func upAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
-alter table main.media_file
+	_, err := tx.Exec(adaptSQL(`
+alter table media_file
 	add order_title varchar null collate NOCASE;
 create index if not exists media_file_order_title
     on media_file (order_title);
-`)
+`))
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,11 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set order_title = ? where id = ?")
+	updateQuery := "update media_file set order_title = ? where id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		updateQuery = "update media_file set order_title = $1 where id = $2"
+	}
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

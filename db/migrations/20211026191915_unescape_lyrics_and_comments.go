@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
@@ -20,7 +21,11 @@ func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set comment = ?, lyrics = ? where id = ?")
+	updateQuery := "update media_file set comment = ?, lyrics = ? where id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		updateQuery = "update media_file set comment = $1, lyrics = $2 where id = $3"
+	}
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

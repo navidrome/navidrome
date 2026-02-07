@@ -12,14 +12,14 @@ func init() {
 }
 
 func Up20200411164603(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table playlist
 	add created_at datetime;
 alter table playlist
 	add updated_at datetime;
-update playlist 
+update playlist
 	set created_at = datetime('now'), updated_at = datetime('now');
-`)
+`))
 	return err
 }
 

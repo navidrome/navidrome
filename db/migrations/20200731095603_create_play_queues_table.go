@@ -12,12 +12,12 @@ func init() {
 }
 
 func upCreatePlayQueuesTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table playqueue
 (
     id         varchar(255) not null primary key,
     user_id    varchar(255) not null
-            references user (id)
+            references "user" (id)
             on update cascade on delete cascade,
 	comment    varchar(255),
     current    varchar(255) not null,
@@ -27,7 +27,7 @@ create table playqueue
     created_at datetime,
     updated_at datetime
 );
-`)
+`))
 
 	return err
 }

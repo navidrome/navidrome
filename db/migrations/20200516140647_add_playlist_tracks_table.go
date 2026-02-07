@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
 )
@@ -49,7 +50,7 @@ create unique index if not exists playlist_tracks_pos
 		return err
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(adaptSQL(`
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -77,13 +78,17 @@ create index playlist_name
 update playlist set song_count = (select count(*) from playlist_tracks where playlist_id = playlist.id)
 where id <> ''
 
-`)
+`))
 	return err
 }
 
 func Up20200516140647UpdatePlaylistTracks(tx *sql.Tx, id string, tracks string) error {
 	trackList := strings.Split(tracks, ",")
-	stmt, err := tx.Prepare("insert into playlist_tracks (playlist_id, media_file_id, id) values (?, ?, ?)")
+	insertQuery := "insert into playlist_tracks (playlist_id, media_file_id, id) values (?, ?, ?)"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		insertQuery = "insert into playlist_tracks (playlist_id, media_file_id, id) values ($1, $2, $3)"
+	}
+	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
 		return err
 	}

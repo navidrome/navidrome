@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/pressly/goose/v3"
 )
 
@@ -13,11 +14,11 @@ func init() {
 }
 
 func upPlayQueueCurrentToIndex(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, adaptSQL(`
 create table playqueue_dg_tmp(
     id varchar(255) not null,
     user_id varchar(255) not null
-        references user(id)
+        references "user"(id)
         on update cascade on delete cascade,
     current integer not null default 0,
     position real,
@@ -25,7 +26,7 @@ create table playqueue_dg_tmp(
     items varchar(255),
     created_at datetime,
     updated_at datetime
-);`)
+);`))
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,11 @@ create table playqueue_dg_tmp(
 	}
 	defer rows.Close()
 
-	stmt, err := tx.PrepareContext(ctx, `insert into playqueue_dg_tmp(id, user_id, current, position, changed_by, items, created_at, updated_at) values(?,?,?,?,?,?,?,?)`)
+	insertQuery := `insert into playqueue_dg_tmp(id, user_id, current, position, changed_by, items, created_at, updated_at) values(?,?,?,?,?,?,?,?)`
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		insertQuery = `insert into playqueue_dg_tmp(id, user_id, current, position, changed_by, items, created_at, updated_at) values($1,$2,$3,$4,$5,$6,$7,$8)`
+	}
+	stmt, err := tx.PrepareContext(ctx, insertQuery)
 	if err != nil {
 		return err
 	}

@@ -164,9 +164,11 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return nil
 		}
 
-		stmt, err := tx.PrepareContext(ctx,
-			"insert into folder (id, library_id, path, name, parent_id, updated_at) values (?, ?, ?, ?, ?, '0000-00-00 00:00:00')",
-		)
+		insertSQL := "insert into folder (id, library_id, path, name, parent_id, updated_at) values (?, ?, ?, ?, ?, '0000-00-00 00:00:00')"
+		if IsPostgres() {
+			insertSQL = "insert into folder (id, library_id, path, name, parent_id, updated_at) values ($1, $2, $3, $4, $5, '1970-01-01 00:00:00')"
+		}
+		stmt, err := tx.PrepareContext(ctx, insertSQL)
 		if err != nil {
 			return err
 		}

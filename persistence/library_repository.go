@@ -10,6 +10,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/run"
@@ -117,7 +118,7 @@ func (r *libraryRepository) Put(l *model.Library) error {
 	sql := Expr(`
 INSERT INTO user_library (user_id, library_id)
 SELECT u.id, l.id
-FROM user u
+FROM "user" u
 CROSS JOIN library l
 WHERE u.is_admin = true
 ON CONFLICT (user_id, library_id) DO NOTHING;`,
@@ -179,7 +180,7 @@ func (r *libraryRepository) ScanEnd(id int) error {
 	// https://www.sqlite.org/pragma.html#pragma_optimize
 	// Use mask 0x10000 to check table sizes without running ANALYZE
 	// Running ANALYZE can cause query planner issues with expression-based collation indexes
-	if conf.Server.DevOptimizeDB {
+	if conf.Server.DevOptimizeDB && !db.IsPostgres() {
 		_, err = r.executeSQL(Expr("PRAGMA optimize=0x10000;"))
 	}
 	return err
@@ -196,7 +197,12 @@ func (r *libraryRepository) RefreshStats(id int) error {
 	var sizeRes struct{ Sum int64 }
 	var durationRes struct{ Sum float64 }
 
-	err := run.Parallel(
+	filesCountExpr := "COALESCE(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count"
+	if db.IsPostgres() {
+		filesCountExpr = "COALESCE(sum(num_audio_files + num_playlists + jsonb_array_length(image_files::jsonb)),0) as count"
+	}
+
+	queries := []func() error{
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
 		},
@@ -216,21 +222,33 @@ func (r *libraryRepository) RefreshStats(id int) error {
 				}), &foldersRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
+			return r.queryOne(Select(filesCountExpr).
 				From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
 		},
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
+			return r.queryOne(Select("COALESCE(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
+			return r.queryOne(Select("COALESCE(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
 		},
-	)()
-	if err != nil {
-		return err
+	}
+
+	var err error
+	if db.IsPostgres() {
+		// Run sequentially -- pgx doesn't support parallel queries on one conn
+		for _, q := range queries {
+			if err = q(); err != nil {
+				return err
+			}
+		}
+	} else {
+		err = run.Parallel(queries...)()
+		if err != nil {
+			return err
+		}
 	}
 
 	sq := Update(r.tableName).

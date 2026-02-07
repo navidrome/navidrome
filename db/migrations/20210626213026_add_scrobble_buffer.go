@@ -12,12 +12,12 @@ func init() {
 }
 
 func upAddScrobbleBuffer(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table if not exists scrobble_buffer
 (
 	user_id varchar not null
 	constraint scrobble_buffer_user_id_fk
-		references user
+		references "user"
 			on update cascade on delete cascade,
 	service varchar not null,
 	media_file_id varchar not null
@@ -27,9 +27,9 @@ create table if not exists scrobble_buffer
 	play_time datetime not null,
 	enqueue_time datetime not null default current_timestamp,
 	constraint scrobble_buffer_pk
-		unique (user_id, service, media_file_id, play_time, user_id)
+		unique (user_id, service, media_file_id, play_time)
 );
-`)
+`))
 
 	return err
 }

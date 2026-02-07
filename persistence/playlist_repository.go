@@ -217,8 +217,8 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user on user.id = owner_id").
-		Columns(r.tableName+".*", "user.user_name as owner_name")
+	return r.newSelect(options...).Join(UserTable()+" on "+UserColumn("id")+" = owner_id").
+		Columns(r.tableName+".*", UserColumn("user_name")+" as owner_name")
 }
 
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
@@ -388,7 +388,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 	userID := loggedUser(r.ctx).ID
 	tracksQuery := sel.
 		Columns(
-			"coalesce(starred, 0) as starred",
+			CoalesceBool("starred", false)+" as starred",
 			"starred_at",
 			"coalesce(play_count, 0) as play_count",
 			"play_date",
@@ -476,7 +476,7 @@ func (r *playlistRepository) removeOrphans() error {
 		Join("playlist p on playlist_tracks.playlist_id = p.id").
 		LeftJoin("media_file mf on playlist_tracks.media_file_id = mf.id").
 		Where(Eq{"mf.id": nil}).
-		GroupBy("playlist_tracks.playlist_id")
+		GroupBy("playlist_tracks.playlist_id", "p.name")
 
 	var pls []struct{ Id, Name string }
 	err := r.queryAll(sel, &pls)

@@ -12,13 +12,18 @@ func init() {
 }
 
 func upAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
+	missingFalse := "0"
+	if IsPostgres() {
+		missingFalse = "false"
+	}
+
 	_, err := tx.ExecContext(ctx, `
 	-- Create user_library association table
 		CREATE TABLE user_library (
 			user_id VARCHAR(255) NOT NULL,
 			library_id INTEGER NOT NULL,
 			PRIMARY KEY (user_id, library_id),
-			FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE,
 			FOREIGN KEY (library_id) REFERENCES library(id) ON DELETE CASCADE
 		);
 	-- Create indexes for performance
@@ -29,12 +34,12 @@ func upAddMultiLibrarySupport(ctx context.Context, tx *sql.Tx) error {
 	-- Admin users get access to all libraries, regular users get access to library 1
 		INSERT INTO user_library (user_id, library_id)
 		SELECT u.id, 1
-		FROM user u;
+		FROM "user" u;
 
 	-- Add total_duration column to library table
 		ALTER TABLE library ADD COLUMN total_duration real DEFAULT 0;
 		UPDATE library SET total_duration = (
-			SELECT IFNULL(SUM(duration),0) from album where album.library_id = library.id and missing = 0
+			SELECT COALESCE(SUM(duration),0) from album where album.library_id = library.id and missing = `+missingFalse+`
 		);
 
 	-- Add default_new_users column to library table

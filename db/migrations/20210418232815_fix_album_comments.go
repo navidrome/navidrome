@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
 )
@@ -16,15 +17,19 @@ func init() {
 
 func upFixAlbumComments(_ context.Context, tx *sql.Tx) error {
 	//nolint:gosec
-	rows, err := tx.Query(`
-	SELECT album.id, group_concat(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;
-	   `)
+	selectQuery := `SELECT album.id, group_concat(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;`
+	updateQuery := "UPDATE album SET comment = ? WHERE id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		selectQuery = `SELECT album.id, string_agg(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;`
+		updateQuery = "UPDATE album SET comment = $1 WHERE id = $2"
+	}
+	rows, err := tx.Query(selectQuery)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("UPDATE album SET comment = ? WHERE id = ?")
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ func init() {
 }
 
 func upAddLibraryTable(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, adaptSQL(`
 		create table library (
 			id integer primary key autoincrement,
 			name text not null unique,
@@ -23,7 +23,7 @@ func upAddLibraryTable(ctx context.Context, tx *sql.Tx) error {
 			last_scan_at datetime not null default '0000-00-00 00:00:00',
 			updated_at datetime not null default current_timestamp,
 			created_at datetime not null default current_timestamp
-		);`)
+		);`))
 	if err != nil {
 		return err
 	}

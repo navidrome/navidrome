@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/pressly/goose/v3"
 )
 
@@ -12,7 +13,13 @@ func init() {
 }
 
 func upDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		_, err := tx.Exec(`ALTER TABLE "user" DROP CONSTRAINT IF EXISTS user_email_key;`)
+		return err
+	}
+
+	// SQLite: recreate table to drop constraint
+	_, err := tx.Exec(adaptSQL(`
 create table user_dg_tmp
 (
 	id varchar(255) not null
@@ -29,12 +36,12 @@ create table user_dg_tmp
 	updated_at datetime not null
 );
 
-insert into user_dg_tmp(id, user_name, name, email, password, is_admin, last_login_at, last_access_at, created_at, updated_at) select id, user_name, name, email, password, is_admin, last_login_at, last_access_at, created_at, updated_at from user;
+insert into user_dg_tmp(id, user_name, name, email, password, is_admin, last_login_at, last_access_at, created_at, updated_at) select id, user_name, name, email, password, is_admin, last_login_at, last_access_at, created_at, updated_at from "user";
 
-drop table user;
+drop table "user";
 
-alter table user_dg_tmp rename to user;
-`)
+alter table user_dg_tmp rename to "user";
+`))
 	return err
 }
 

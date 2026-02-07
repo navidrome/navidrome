@@ -12,11 +12,11 @@ func init() {
 }
 
 func upCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table bookmark
 (
     user_id    varchar(255) not null
-        references user
+        references "user"
             on update cascade on delete cascade,
     item_id    varchar(255) not null,
     item_type  varchar(255) not null,
@@ -33,7 +33,7 @@ create table playqueue_dg_tmp
 (
 	id varchar(255) not null,
 	user_id varchar(255) not null
-		references user
+		references "user"
 			on update cascade on delete cascade,
 	current varchar(255),
 	position real,
@@ -44,7 +44,7 @@ create table playqueue_dg_tmp
 );
 drop table playqueue;
 alter table playqueue_dg_tmp rename to playqueue;
-`)
+`))
 
 	return err
 }
