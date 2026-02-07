@@ -1,5 +1,7 @@
 package plugins
 
+import "slices"
+
 // Capability represents a plugin capability type.
 // Capabilities are detected by checking which functions a plugin exports.
 type Capability string
@@ -25,11 +27,8 @@ func detectCapabilities(plugin functionExistsChecker) []Capability {
 	var capabilities []Capability
 
 	for cap, functions := range capabilityFunctions {
-		for _, fn := range functions {
-			if plugin.FunctionExists(fn) {
-				capabilities = append(capabilities, cap)
-				break // Found at least one function, plugin has this capability
-			}
+		if slices.ContainsFunc(functions, plugin.FunctionExists) {
+			capabilities = append(capabilities, cap) // Found at least one function, plugin has this capability
 		}
 	}
 
@@ -38,10 +37,5 @@ func detectCapabilities(plugin functionExistsChecker) []Capability {
 
 // hasCapability checks if the given capabilities slice contains a specific capability.
 func hasCapability(capabilities []Capability, cap Capability) bool {
-	for _, c := range capabilities {
-		if c == cap {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(capabilities, cap)
 }

@@ -234,7 +234,7 @@ var _ = Describe("TagRepository", func() {
 
 		It("should filter tags by partial value correctly", func() {
 			options := rest.QueryOptions{
-				Filters: map[string]interface{}{"name": "%rock%"}, // Tags containing 'rock'
+				Filters: map[string]any{"name": "%rock%"}, // Tags containing 'rock'
 			}
 			result, err := restRepo.ReadAll(options)
 			Expect(err).ToNot(HaveOccurred())
@@ -249,7 +249,7 @@ var _ = Describe("TagRepository", func() {
 
 		It("should filter tags by partial value using LIKE", func() {
 			options := rest.QueryOptions{
-				Filters: map[string]interface{}{"name": "%e%"}, // Tags containing 'e'
+				Filters: map[string]any{"name": "%e%"}, // Tags containing 'e'
 			}
 			result, err := restRepo.ReadAll(options)
 			Expect(err).ToNot(HaveOccurred())
@@ -264,7 +264,7 @@ var _ = Describe("TagRepository", func() {
 
 		It("should sort tags by value ascending", func() {
 			options := rest.QueryOptions{
-				Filters: map[string]interface{}{"name": "%r%"}, // Tags containing 'r'
+				Filters: map[string]any{"name": "%r%"}, // Tags containing 'r'
 				Sort:    "name",
 				Order:   "asc",
 			}
@@ -280,7 +280,7 @@ var _ = Describe("TagRepository", func() {
 
 		It("should sort tags by value descending", func() {
 			options := rest.QueryOptions{
-				Filters: map[string]interface{}{"name": "%r%"}, // Tags containing 'r'
+				Filters: map[string]any{"name": "%r%"}, // Tags containing 'r'
 				Sort:    "name",
 				Order:   "desc",
 			}

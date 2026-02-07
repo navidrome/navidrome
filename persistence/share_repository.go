@@ -138,7 +138,7 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
-func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
 	// TODO Validate record
 	s.ID = id
@@ -151,7 +151,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 	return err
 }
 
-func (r *shareRepository) Save(entity interface{}) (string, error) {
+func (r *shareRepository) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	// TODO Validate record
 	u := loggedUser(r.ctx)
@@ -179,18 +179,18 @@ func (r *shareRepository) EntityName() string {
 	return "share"
 }
 
-func (r *shareRepository) NewInstance() interface{} {
+func (r *shareRepository) NewInstance() any {
 	return &model.Share{}
 }
 
-func (r *shareRepository) Read(id string) (interface{}, error) {
+func (r *shareRepository) Read(id string) (any, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sq := r.selectShare(r.parseRestOptions(r.ctx, options...))
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)

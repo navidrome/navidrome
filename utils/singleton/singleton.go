@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	instances = map[string]interface{}{}
+	instances = map[string]any{}
 	pending   = map[string]chan struct{}{}
 	lock      sync.RWMutex
 )

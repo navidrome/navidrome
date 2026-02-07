@@ -75,14 +75,14 @@ const (
 
 type listenInfo struct {
 	ListenedAt    int           `json:"listened_at,omitempty"`
-	TrackMetadata trackMetadata `json:"track_metadata,omitempty"`
+	TrackMetadata trackMetadata `json:"track_metadata"`
 }
 
 type trackMetadata struct {
 	ArtistName     string         `json:"artist_name,omitempty"`
 	TrackName      string         `json:"track_name,omitempty"`
 	ReleaseName    string         `json:"release_name,omitempty"`
-	AdditionalInfo additionalInfo `json:"additional_info,omitempty"`
+	AdditionalInfo additionalInfo `json:"additional_info"`
 }
 
 type additionalInfo struct {

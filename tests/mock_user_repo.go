@@ -149,7 +149,7 @@ func (u *MockedUserRepo) Delete(id string) error {
 	return model.ErrNotFound
 }
 
-func (u *MockedUserRepo) Save(entity interface{}) (string, error) {
+func (u *MockedUserRepo) Save(entity any) (string, error) {
 	usr := entity.(*model.User)
 	if err := u.Put(usr); err != nil {
 		return "", err
@@ -157,7 +157,7 @@ func (u *MockedUserRepo) Save(entity interface{}) (string, error) {
 	return usr.ID, nil
 }
 
-func (u *MockedUserRepo) Update(id string, entity interface{}, cols ...string) error {
+func (u *MockedUserRepo) Update(id string, entity any, cols ...string) error {
 	if u.Error != nil {
 		return u.Error
 	}

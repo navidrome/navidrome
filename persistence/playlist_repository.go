@@ -61,14 +61,14 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	return r
 }
 
-func playlistFilter(_ string, value interface{}) Sqlizer {
+func playlistFilter(_ string, value any) Sqlizer {
 	return Or{
 		substringFilter("playlist.name", value),
 		substringFilter("playlist.comment", value),
 	}
 }
 
-func smartPlaylistFilter(string, interface{}) Sqlizer {
+func smartPlaylistFilter(string, any) Sqlizer {
 	return Or{
 		Eq{"rules": ""},
 		Eq{"rules": nil},
@@ -421,11 +421,11 @@ func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) 
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *playlistRepository) Read(id string) (interface{}, error) {
+func (r *playlistRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -433,11 +433,11 @@ func (r *playlistRepository) EntityName() string {
 	return "playlist"
 }
 
-func (r *playlistRepository) NewInstance() interface{} {
+func (r *playlistRepository) NewInstance() any {
 	return &model.Playlist{}
 }
 
-func (r *playlistRepository) Save(entity interface{}) (string, error) {
+func (r *playlistRepository) Save(entity any) (string, error) {
 	pls := entity.(*model.Playlist)
 	pls.OwnerID = loggedUser(r.ctx).ID
 	pls.ID = "" // Make sure we don't override an existing playlist
@@ -448,7 +448,7 @@ func (r *playlistRepository) Save(entity interface{}) (string, error) {
 	return pls.ID, err
 }
 
-func (r *playlistRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *playlistRepository) Update(id string, entity any, cols ...string) error {
 	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
 	current, err := r.Get(id)
 	if err != nil {

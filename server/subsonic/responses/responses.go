@@ -459,7 +459,7 @@ type PlayQueueByIndex struct {
 }
 
 type Bookmark struct {
-	Entry    Child     `xml:"entry,omitempty"         json:"entry,omitempty"`
+	Entry    Child     `xml:"entry,omitempty"         json:"entry"`
 	Position int64     `xml:"position,attr,omitempty" json:"position,omitempty"`
 	Username string    `xml:"username,attr"           json:"username"`
 	Comment  string    `xml:"comment,attr"            json:"comment"`

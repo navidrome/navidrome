@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/url"
 	"path"
 	"testing/fstest"
@@ -135,9 +136,7 @@ func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...t
 	if err != nil {
 		panic(err)
 	}
-	for k, v := range newTags {
-		tags[k] = v
-	}
+	maps.Copy(tags, newTags)
 	data, _ := json.Marshal(tags)
 	f.Data = data
 	ffs.Touch(filePath, when...)
@@ -180,9 +179,7 @@ func Track(num int, title string, tags ...map[string]any) map[string]any {
 	ts["title"] = title
 	ts["track"] = num
 	for _, t := range tags {
-		for k, v := range t {
-			ts[k] = v
-		}
+		maps.Copy(ts, t)
 	}
 	return ts
 }
@@ -200,9 +197,7 @@ func MP3(tags ...map[string]any) *fstest.MapFile {
 func File(tags ...map[string]any) *fstest.MapFile {
 	ts := map[string]any{}
 	for _, t := range tags {
-		for k, v := range t {
-			ts[k] = v
-		}
+		maps.Copy(ts, t)
 	}
 	modTime := time.Now()
 	if mt, ok := ts[fakeFileInfoModTime]; !ok {

@@ -140,7 +140,7 @@ func (mf MediaFile) Hash() string {
 	}
 	hash, _ := hashstructure.Hash(mf, opts)
 	sum := md5.New()
-	sum.Write([]byte(fmt.Sprintf("%d", hash)))
+	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
 	return fmt.Sprintf("%x", sum.Sum(nil))

@@ -80,8 +80,8 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	// Create a listener based on the address type (either Unix socket or TCP)
 	var listener net.Listener
 	var err error
-	if strings.HasPrefix(addr, "unix:") {
-		socketPath := strings.TrimPrefix(addr, "unix:")
+	if after, ok := strings.CutPrefix(addr, "unix:"); ok {
+		socketPath := after
 		listener, err = createUnixSocketFile(socketPath, conf.Server.UnixSocketPerm)
 		if err != nil {
 			return err

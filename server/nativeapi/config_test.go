@@ -93,12 +93,12 @@ var _ = Describe("Config API", func() {
 				Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 
 				// Check LastFM.ApiKey (partially masked)
-				lastfm, ok := resp.Config["LastFM"].(map[string]interface{})
+				lastfm, ok := resp.Config["LastFM"].(map[string]any)
 				Expect(ok).To(BeTrue())
 				Expect(lastfm["ApiKey"]).To(Equal("s*************3"))
 
 				// Check Spotify.Secret (partially masked)
-				spotify, ok := resp.Config["Spotify"].(map[string]interface{})
+				spotify, ok := resp.Config["Spotify"].(map[string]any)
 				Expect(ok).To(BeTrue())
 				Expect(spotify["Secret"]).To(Equal("s**************6"))
 
@@ -109,7 +109,7 @@ var _ = Describe("Config API", func() {
 				Expect(resp.Config["DevAutoCreateAdminPassword"]).To(Equal("****"))
 
 				// Check Prometheus.Password (fully masked)
-				prometheus, ok := resp.Config["Prometheus"].(map[string]interface{})
+				prometheus, ok := resp.Config["Prometheus"].(map[string]any)
 				Expect(ok).To(BeTrue())
 				Expect(prometheus["Password"]).To(Equal("****"))
 			})
@@ -128,7 +128,7 @@ var _ = Describe("Config API", func() {
 				Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 
 				// Check LastFM.ApiKey - should be preserved because it's sensitive
-				lastfm, ok := resp.Config["LastFM"].(map[string]interface{})
+				lastfm, ok := resp.Config["LastFM"].(map[string]any)
 				Expect(ok).To(BeTrue())
 				Expect(lastfm["ApiKey"]).To(Equal(""))
 

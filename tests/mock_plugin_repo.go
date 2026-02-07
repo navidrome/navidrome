@@ -54,7 +54,7 @@ func (m *MockPluginRepo) Get(id string) (*model.Plugin, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPluginRepo) Read(id string) (interface{}, error) {
+func (m *MockPluginRepo) Read(id string) (any, error) {
 	p, err := m.Get(id)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, rest.ErrNotFound
@@ -151,21 +151,21 @@ func (m *MockPluginRepo) EntityName() string {
 	return "plugin"
 }
 
-func (m *MockPluginRepo) NewInstance() interface{} {
+func (m *MockPluginRepo) NewInstance() any {
 	return &model.Plugin{}
 }
 
-func (m *MockPluginRepo) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (m *MockPluginRepo) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return m.GetAll()
 }
 
-func (m *MockPluginRepo) Save(entity interface{}) (string, error) {
+func (m *MockPluginRepo) Save(entity any) (string, error) {
 	p := entity.(*model.Plugin)
 	err := m.Put(p)
 	return p.ID, err
 }
 
-func (m *MockPluginRepo) Update(id string, entity interface{}, cols ...string) error {
+func (m *MockPluginRepo) Update(id string, entity any, cols ...string) error {
 	p := entity.(*model.Plugin)
 	p.ID = id
 	return m.Put(p)
