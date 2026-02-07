@@ -24,6 +24,8 @@ func IsPostgres() bool {
 }
 
 // adaptSQL rewrites SQLite-flavored SQL for PostgreSQL when needed.
+// NOTE: For complex or dialect-specific SQL, prefer writing separate Go migration
+// code per dialect (using IsPostgres()) rather than relying on adaptSQL transforms.
 func adaptSQL(sql string) string {
 	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
 		// Replace SQLite datetime functions with PostgreSQL equivalents

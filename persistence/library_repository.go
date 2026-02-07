@@ -236,19 +236,9 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		},
 	}
 
-	var err error
-	if db.IsPostgres() {
-		// Run sequentially -- pgx doesn't support parallel queries on one conn
-		for _, q := range queries {
-			if err = q(); err != nil {
-				return err
-			}
-		}
-	} else {
-		err = run.Parallel(queries...)()
-		if err != nil {
-			return err
-		}
+	err := run.Parallel(queries...)()
+	if err != nil {
+		return err
 	}
 
 	sq := Update(r.tableName).

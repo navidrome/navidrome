@@ -3,10 +3,8 @@ package dialect
 import (
 	"context"
 	"database/sql"
-	"encoding/csv"
 	"fmt"
-	"os"
-	"strings"
+	"os/exec"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -147,125 +145,38 @@ func (d *PostgresDialect) Restore(ctx context.Context, db *sql.DB, sourcePath st
 	return postgresRestore(ctx, db, sourcePath)
 }
 
-// postgresBackup exports all tables as CSV into a single backup file.
-func postgresBackup(ctx context.Context, db *sql.DB, destPath string) error {
-	rows, err := db.QueryContext(ctx, `
-		SELECT table_name FROM information_schema.tables
-		WHERE table_schema = 'public'
-		AND table_type = 'BASE TABLE'
-		ORDER BY table_name
-	`)
+// postgresBackup uses pg_dump to create a custom-format backup of the database.
+func postgresBackup(ctx context.Context, _ *sql.DB, destPath string) error {
+	pgDump, err := exec.LookPath("pg_dump")
 	if err != nil {
-		return fmt.Errorf("failed to get table list: %w", err)
-	}
-	defer rows.Close()
-
-	var tables []string
-	for rows.Next() {
-		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
-			return fmt.Errorf("failed to scan table name: %w", err)
-		}
-		tables = append(tables, tableName)
+		return fmt.Errorf("pg_dump not found in PATH — install postgresql-client")
 	}
 
-	file, err := os.Create(destPath)
+	dsn := conf.Server.DbConnectionString
+	cmd := exec.CommandContext(ctx, pgDump, "--format=custom", "--file="+destPath, "--dbname="+dsn)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to create backup file: %w", err)
-	}
-	defer file.Close()
-
-	// Write header with table list
-	_, err = file.WriteString(fmt.Sprintf("-- Navidrome PostgreSQL Backup\n-- Tables: %s\n\n", strings.Join(tables, ",")))
-	if err != nil {
-		return fmt.Errorf("failed to write backup header: %w", err)
-	}
-
-	// Export each table
-	for _, table := range tables {
-		log.Debug(ctx, "Backing up table", "table", table)
-
-		colRows, err := db.QueryContext(ctx, `
-			SELECT column_name FROM information_schema.columns
-			WHERE table_schema = 'public' AND table_name = $1
-			ORDER BY ordinal_position
-		`, table)
-		if err != nil {
-			return fmt.Errorf("failed to get columns for table %s: %w", table, err)
-		}
-
-		var columns []string
-		for colRows.Next() {
-			var col string
-			if err := colRows.Scan(&col); err != nil {
-				colRows.Close()
-				return fmt.Errorf("failed to scan column name: %w", err)
-			}
-			columns = append(columns, col)
-		}
-		colRows.Close()
-
-		// Write table marker
-		_, err = file.WriteString(fmt.Sprintf("\n-- TABLE: %s\n-- COLUMNS: %s\n", table, strings.Join(columns, ",")))
-		if err != nil {
-			return fmt.Errorf("failed to write table header: %w", err)
-		}
-
-		// Export data
-		dataRows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s", table))
-		if err != nil {
-			return fmt.Errorf("failed to query table %s: %w", table, err)
-		}
-
-		writer := csv.NewWriter(file)
-		colTypes, _ := dataRows.ColumnTypes()
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		for dataRows.Next() {
-			if err := dataRows.Scan(valuePtrs...); err != nil {
-				dataRows.Close()
-				return fmt.Errorf("failed to scan row: %w", err)
-			}
-
-			record := make([]string, len(columns))
-			for i, v := range values {
-				if v == nil {
-					record[i] = "\\N"
-				} else {
-					record[i] = fmt.Sprintf("%v", v)
-				}
-			}
-			if err := writer.Write(record); err != nil {
-				dataRows.Close()
-				return fmt.Errorf("failed to write record: %w", err)
-			}
-		}
-		dataRows.Close()
-		writer.Flush()
-
-		_, err = file.WriteString("-- END TABLE\n")
-		if err != nil {
-			return fmt.Errorf("failed to write table footer: %w", err)
-		}
-
-		_ = colTypes // Silence unused variable warning
+		return fmt.Errorf("pg_dump failed: %w: %s", err, output)
 	}
 
 	log.Debug(ctx, "PostgreSQL backup completed", "path", destPath)
 	return nil
 }
 
-func postgresRestore(ctx context.Context, db *sql.DB, sourcePath string) error {
-	file, err := os.Open(sourcePath)
+// postgresRestore uses pg_restore to restore a custom-format backup into the database.
+func postgresRestore(ctx context.Context, _ *sql.DB, sourcePath string) error {
+	pgRestore, err := exec.LookPath("pg_restore")
 	if err != nil {
-		return fmt.Errorf("failed to open backup file: %w", err)
+		return fmt.Errorf("pg_restore not found in PATH — install postgresql-client")
 	}
-	defer file.Close()
 
-	log.Warn(ctx, "PostgreSQL restore from backup file is not fully implemented", "path", sourcePath)
-	return fmt.Errorf("PostgreSQL restore not yet implemented")
+	dsn := conf.Server.DbConnectionString
+	cmd := exec.CommandContext(ctx, pgRestore, "--clean", "--if-exists", "--dbname="+dsn, sourcePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("pg_restore failed: %w: %s", err, output)
+	}
+
+	log.Debug(ctx, "PostgreSQL restore completed", "path", sourcePath)
+	return nil
 }
