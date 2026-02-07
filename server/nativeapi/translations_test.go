@@ -24,7 +24,7 @@ var _ = Describe("Translations", func() {
 				filePath := filepath.Join(consts.I18nFolder, name)
 				file, _ := fsys.Open(filePath)
 				data, _ := io.ReadAll(file)
-				var out map[string]interface{}
+				var out map[string]any
 
 				Expect(filepath.Ext(filePath)).To(Equal(".json"), filePath)
 				Expect(json.Unmarshal(data, &out)).To(BeNil(), filePath)
@@ -40,7 +40,7 @@ var _ = Describe("Translations", func() {
 			Expect(err).To(BeNil())
 			Expect(tr.ID).To(Equal("en"))
 			Expect(tr.Name).To(Equal("English"))
-			var out map[string]interface{}
+			var out map[string]any
 			Expect(json.Unmarshal([]byte(tr.Data), &out)).To(BeNil())
 		})
 	})

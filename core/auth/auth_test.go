@@ -45,7 +45,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns the claims from a valid JWT token", func() {
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["iat"] = time.Now().Unix()
 			claims["exp"] = time.Now().Add(1 * time.Minute).Unix()
@@ -58,7 +58,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns ErrExpired if the `exp` field is in the past", func() {
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["exp"] = time.Now().Add(-1 * time.Minute).Unix()
 			_, tokenStr, err := auth.TokenAuth.Encode(claims)
@@ -93,7 +93,7 @@ var _ = Describe("Auth", func() {
 	Describe("TouchToken", func() {
 		It("updates the expiration time", func() {
 			yesterday := time.Now().Add(-oneDay)
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["exp"] = yesterday.Unix()
 			token, _, err := auth.TokenAuth.Encode(claims)

@@ -50,10 +50,7 @@ func TruncateRunes(s string, maxRunes int, suffix string) string {
 	}
 
 	suffixRunes := utf8.RuneCountInString(suffix)
-	truncateAt := maxRunes - suffixRunes
-	if truncateAt < 0 {
-		truncateAt = 0
-	}
+	truncateAt := max(maxRunes-suffixRunes, 0)
 
 	runes := []rune(s)
 	if truncateAt >= len(runes) {

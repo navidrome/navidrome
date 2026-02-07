@@ -162,7 +162,7 @@ var _ = Describe("AlbumRepository", func() {
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
-				for i := 0; i < playCount; i++ {
+				for range playCount {
 					Expect(albumRepo.IncPlayCount(newID, time.Now())).To(Succeed())
 				}
 
@@ -185,7 +185,7 @@ var _ = Describe("AlbumRepository", func() {
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
-				for i := 0; i < playCount; i++ {
+				for range playCount {
 					Expect(albumRepo.IncPlayCount(newID, time.Now())).To(Succeed())
 				}
 
@@ -406,7 +406,7 @@ var _ = Describe("AlbumRepository", func() {
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal(expectedSQL))
-				Expect(args).To(Equal([]interface{}{artistID}))
+				Expect(args).To(Equal([]any{artistID}))
 			},
 			Entry("artist role", "role_artist_id", "123",
 				"exists (select 1 from json_tree(participants, '$.artist') where value = ?)"),
@@ -428,7 +428,7 @@ var _ = Describe("AlbumRepository", func() {
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal(fmt.Sprintf("exists (select 1 from json_tree(participants, '$.%s') where value = ?)", roleName)))
-				Expect(args).To(Equal([]interface{}{"test-id"}))
+				Expect(args).To(Equal([]any{"test-id"}))
 			}
 		})
 

@@ -68,8 +68,8 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
-func buildAuthPayload(user *model.User) map[string]interface{} {
-	payload := map[string]interface{}{
+func buildAuthPayload(user *model.User) map[string]any {
+	payload := map[string]any{
 		"id":       user.ID,
 		"name":     user.Name,
 		"username": user.UserName,
@@ -288,7 +288,7 @@ func JWTRefresher(next http.Handler) http.Handler {
 	})
 }
 
-func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]interface{} {
+func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any {
 	username := UsernameFromConfig(r)
 	if username == "" {
 		username = UsernameFromExtAuthHeader(r)

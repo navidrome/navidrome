@@ -65,8 +65,8 @@ func (ic *IgnoreChecker) PushAllParents(ctx context.Context, targetPath string) 
 
 	// Load patterns for each parent directory
 	currentPath := "."
-	parts := strings.Split(path.Clean(targetPath), "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(path.Clean(targetPath), "/")
+	for part := range parts {
 		if part == "." || part == "" {
 			continue
 		}

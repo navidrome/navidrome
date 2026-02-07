@@ -23,7 +23,7 @@ func NewScrobbleRepository(ctx context.Context, db dbx.Builder) model.ScrobbleRe
 
 func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime time.Time) error {
 	userID := loggedUser(r.ctx).ID
-	values := map[string]interface{}{
+	values := map[string]any{
 		"media_file_id":   mediaFileID,
 		"user_id":         userID,
 		"submission_time": submissionTime.Unix(),

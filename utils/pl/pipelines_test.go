@@ -22,7 +22,7 @@ var _ = Describe("Pipeline", func() {
 		Context("happy path", func() {
 			It("calls the 'transform' function and returns values and errors", func() {
 				inC := make(chan int, 4)
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					inC <- i
 				}
 				close(inC)
@@ -48,7 +48,7 @@ var _ = Describe("Pipeline", func() {
 			const numJobs = 100
 			It("starts multiple workers, respecting the limit", func() {
 				inC := make(chan int, numJobs)
-				for i := 0; i < numJobs; i++ {
+				for i := range numJobs {
 					inC <- i
 				}
 				close(inC)
@@ -94,7 +94,7 @@ var _ = Describe("Pipeline", func() {
 		BeforeEach(func() {
 			in1 = make(chan int, 4)
 			in2 = make(chan int, 4)
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				in1 <- i
 				in2 <- i + 4
 			}
@@ -126,7 +126,7 @@ var _ = Describe("Pipeline", func() {
 			It("copies them to its output channel", func() {
 				in := make(chan int)
 				out := pl.ReadOrDone(context.Background(), in)
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					in <- i
 					j := <-out
 					Expect(i).To(Equal(j))

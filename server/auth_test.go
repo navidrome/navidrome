@@ -53,7 +53,7 @@ var _ = Describe("Auth", func() {
 
 			It("returns the expected payload", func() {
 				Expect(resp.Code).To(Equal(http.StatusOK))
-				var parsed map[string]interface{}
+				var parsed map[string]any
 				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
 				Expect(parsed["isAdmin"]).To(Equal(true))
 				Expect(parsed["username"]).To(Equal("johndoe"))
@@ -88,7 +88,7 @@ var _ = Describe("Auth", func() {
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				parsed := config["auth"].(map[string]interface{})
+				parsed := config["auth"].(map[string]any)
 
 				Expect(parsed["id"]).To(Equal("111"))
 			})
@@ -106,7 +106,7 @@ var _ = Describe("Auth", func() {
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				parsed := config["auth"].(map[string]interface{})
+				parsed := config["auth"].(map[string]any)
 
 				Expect(parsed["id"]).To(Equal("111"))
 			})
@@ -127,7 +127,7 @@ var _ = Describe("Auth", func() {
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				parsed := config["auth"].(map[string]interface{})
+				parsed := config["auth"].(map[string]any)
 
 				Expect(parsed["username"]).To(Equal(newUser))
 			})
@@ -137,7 +137,7 @@ var _ = Describe("Auth", func() {
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				parsed := config["auth"].(map[string]interface{})
+				parsed := config["auth"].(map[string]any)
 
 				Expect(parsed["id"]).To(Equal("111"))
 				Expect(parsed["isAdmin"]).To(BeFalse())
@@ -182,7 +182,7 @@ var _ = Describe("Auth", func() {
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				parsed := config["auth"].(map[string]interface{})
+				parsed := config["auth"].(map[string]any)
 
 				Expect(parsed["id"]).To(Equal("111"))
 			})
@@ -206,7 +206,7 @@ var _ = Describe("Auth", func() {
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
 
-				var parsed map[string]interface{}
+				var parsed map[string]any
 				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
 				Expect(parsed["isAdmin"]).To(Equal(false))
 				Expect(parsed["username"]).To(Equal("janedoe"))

@@ -19,7 +19,7 @@ import (
 
 type Level uint32
 
-type LevelFunc = func(ctx interface{}, msg interface{}, keyValuePairs ...interface{})
+type LevelFunc = func(ctx any, msg any, keyValuePairs ...any)
 
 var redacted = &Hook{
 	AcceptedLevels: logrus.AllLevels,
@@ -152,7 +152,7 @@ func Redact(msg string) string {
 	return r
 }
 
-func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {
+func NewContext(ctx context.Context, keyValuePairs ...any) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -184,32 +184,32 @@ func IsGreaterOrEqualTo(level Level) bool {
 	return shouldLog(level, 2)
 }
 
-func Fatal(args ...interface{}) {
+func Fatal(args ...any) {
 	Log(LevelFatal, args...)
 	os.Exit(1)
 }
 
-func Error(args ...interface{}) {
+func Error(args ...any) {
 	Log(LevelError, args...)
 }
 
-func Warn(args ...interface{}) {
+func Warn(args ...any) {
 	Log(LevelWarn, args...)
 }
 
-func Info(args ...interface{}) {
+func Info(args ...any) {
 	Log(LevelInfo, args...)
 }
 
-func Debug(args ...interface{}) {
+func Debug(args ...any) {
 	Log(LevelDebug, args...)
 }
 
-func Trace(args ...interface{}) {
+func Trace(args ...any) {
 	Log(LevelTrace, args...)
 }
 
-func Log(level Level, args ...interface{}) {
+func Log(level Level, args ...any) {
 	if !shouldLog(level, 3) {
 		return
 	}
@@ -250,7 +250,7 @@ func shouldLog(requiredLevel Level, skip int) bool {
 	return false
 }
 
-func parseArgs(args []interface{}) (*logrus.Entry, string) {
+func parseArgs(args []any) (*logrus.Entry, string) {
 	var l *logrus.Entry
 	var err error
 	if args[0] == nil {
@@ -289,7 +289,7 @@ func parseArgs(args []interface{}) (*logrus.Entry, string) {
 	return l, ""
 }
 
-func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry {
+func addFields(logger *logrus.Entry, keyValuePairs []any) *logrus.Entry {
 	for i := 0; i < len(keyValuePairs); i += 2 {
 		switch name := keyValuePairs[i].(type) {
 		case error:
@@ -316,7 +316,7 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 	return logger
 }
 
-func extractLogger(ctx interface{}) (*logrus.Entry, error) {
+func extractLogger(ctx any) (*logrus.Entry, error) {
 	switch ctx := ctx.(type) {
 	case *logrus.Entry:
 		return ctx, nil

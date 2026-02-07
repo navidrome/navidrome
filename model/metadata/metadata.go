@@ -268,8 +268,8 @@ func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
 	prefix := string(name) + ":"
 	for tagKey, tagValues := range lowered {
 		keyStr := string(tagKey)
-		if strings.HasPrefix(keyStr, prefix) {
-			keyPart := strings.TrimPrefix(keyStr, prefix)
+		if after, ok := strings.CutPrefix(keyStr, prefix); ok {
+			keyPart := after
 			if keyPart == string(name) {
 				keyPart = ""
 			}

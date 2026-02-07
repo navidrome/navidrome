@@ -93,7 +93,7 @@ func NewProvider(ds model.DataStore, agents Agents) Provider {
 }
 
 func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
-	var entity interface{}
+	var entity any
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return auxAlbum{}, err
@@ -187,7 +187,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 }
 
 func (e *provider) getArtist(ctx context.Context, id string) (auxArtist, error) {
-	var entity interface{}
+	var entity any
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		return auxArtist{}, err

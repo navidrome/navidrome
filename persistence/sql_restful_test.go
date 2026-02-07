@@ -30,7 +30,7 @@ var _ = Describe("sqlRestful", func() {
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
-			options.Filters = map[string]interface{}{"name": "'"}
+			options.Filters = map[string]any{"name": "'"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
 		})
 
@@ -40,32 +40,32 @@ var _ = Describe("sqlRestful", func() {
 					return nil
 				},
 			}
-			options.Filters = map[string]interface{}{"name": "joe"}
+			options.Filters = map[string]any{"name": "joe"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
 		})
 
 		It("returns a '=' condition for 'id' filter", func() {
-			options.Filters = map[string]interface{}{"id": "123"}
+			options.Filters = map[string]any{"id": "123"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": "123"}}))
 		})
 
 		It("returns a 'in' condition for multiples 'id' filters", func() {
-			options.Filters = map[string]interface{}{"id": []string{"123", "456"}}
+			options.Filters = map[string]any{"id": []string{"123", "456"}}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": []string{"123", "456"}}}))
 		})
 
 		It("returns a 'like' condition for other filters", func() {
-			options.Filters = map[string]interface{}{"name": "joe"}
+			options.Filters = map[string]any{"name": "joe"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Like{"name": "joe%"}}))
 		})
 
 		It("uses the custom filter", func() {
 			r.filterMappings = map[string]filterFunc{
-				"test": func(field string, value interface{}) squirrel.Sqlizer {
+				"test": func(field string, value any) squirrel.Sqlizer {
 					return squirrel.Gt{field: value}
 				},
 			}
-			options.Filters = map[string]interface{}{"test": 100}
+			options.Filters = map[string]any{"test": 100}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Gt{"test": 100}}))
 		})
 	})

@@ -159,7 +159,7 @@ type libraryRepositoryWrapper struct {
 	pluginManager PluginUnloader
 }
 
-func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
+func (r *libraryRepositoryWrapper) Save(entity any) (string, error) {
 	lib := entity.(*model.Library)
 	if err := r.validateLibrary(lib); err != nil {
 		return "", err
@@ -191,7 +191,7 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
+func (r *libraryRepositoryWrapper) Update(id string, entity any, _ ...string) error {
 	lib := entity.(*model.Library)
 	libID, err := strconv.Atoi(id)
 	if err != nil {

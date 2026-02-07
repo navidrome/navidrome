@@ -143,7 +143,7 @@ var _ = Describe("CacheWarmer", func() {
 
 		It("processes items in batches", func() {
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				cw.PreCache(model.MustParseArtworkID(fmt.Sprintf("al-%d", i)))
 			}
 

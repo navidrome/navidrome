@@ -37,7 +37,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			req = httptest.NewRequest("GET", "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
 			Expect(parsed["status"]).To(Equal(false))
 		})
@@ -47,7 +47,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			req = httptest.NewRequest("GET", "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
 			Expect(parsed["status"]).To(Equal(true))
 		})
@@ -80,7 +80,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			req = httptest.NewRequest("PUT", "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
 			Expect(parsed["status"]).To(Equal(true))
 			Expect(parsed["user"]).To(Equal("ListenBrainzUser"))

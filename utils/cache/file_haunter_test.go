@@ -70,7 +70,7 @@ var _ = Describe("FileHaunter", func() {
 
 func createTestFiles(c *fscache.FSCache) error {
 	// Create 5 normal files and 1 empty
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		name := fmt.Sprintf("stream-%v", i)
 		var r fscache.ReadAtCloser
 		if i < 5 {

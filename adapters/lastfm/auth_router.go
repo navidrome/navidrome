@@ -65,7 +65,7 @@ func (s *Router) routes() http.Handler {
 }
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]interface{}{
+	resp := map[string]any{
 		"apiKey": s.apiKey,
 	}
 	u, _ := request.UserFrom(r.Context())

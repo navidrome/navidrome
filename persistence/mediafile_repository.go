@@ -443,11 +443,11 @@ func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error)
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *mediaFileRepository) Read(id string) (interface{}, error) {
+func (r *mediaFileRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -455,7 +455,7 @@ func (r *mediaFileRepository) EntityName() string {
 	return "mediafile"
 }
 
-func (r *mediaFileRepository) NewInstance() interface{} {
+func (r *mediaFileRepository) NewInstance() any {
 	return &model.MediaFile{}
 }
 

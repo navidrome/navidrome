@@ -165,7 +165,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should respect explicit library_id filters within accessible libraries", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID2},
+					Filters: map[string]any{"library_id": libraryID2},
 				})
 				// Should see only tags from library 2: pop and rock(lib2)
 				Expect(tags).To(HaveLen(2))
@@ -174,7 +174,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should not return tags when filtering by inaccessible library", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should return no tags since user can't access library 3
 				Expect(tags).To(HaveLen(0))
@@ -182,7 +182,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should filter by library 1 correctly", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID1},
+					Filters: map[string]any{"library_id": libraryID1},
 				})
 				// Should see only rock from library 1
 				Expect(tags).To(HaveLen(1))
@@ -227,7 +227,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				tags := readAllTags(nil, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should see only jazz from library 3
 				Expect(tags).To(HaveLen(1))
@@ -243,7 +243,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should respect explicit library_id filters", func() {
 				tags := readAllTags(&adminUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should see only jazz from library 3
 				Expect(tags).To(HaveLen(1))
@@ -252,7 +252,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should filter by library 2 correctly", func() {
 				tags := readAllTags(&adminUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID2},
+					Filters: map[string]any{"library_id": libraryID2},
 				})
 				// Should see pop and rock from library 2
 				Expect(tags).To(HaveLen(2))

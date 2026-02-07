@@ -26,17 +26,17 @@ type snapshotMatcher struct {
 	c *cupaloy.Config
 }
 
-func (matcher snapshotMatcher) Match(actual interface{}) (success bool, err error) {
+func (matcher snapshotMatcher) Match(actual any) (success bool, err error) {
 	actualJson := strings.TrimSpace(string(actual.([]byte)))
 	err = matcher.c.SnapshotWithName(ginkgo.CurrentSpecReport().FullText(), actualJson)
 	success = err == nil
 	return
 }
 
-func (matcher snapshotMatcher) FailureMessage(_ interface{}) (message string) {
+func (matcher snapshotMatcher) FailureMessage(_ any) (message string) {
 	return "Expected to match saved snapshot\n"
 }
 
-func (matcher snapshotMatcher) NegatedFailureMessage(_ interface{}) (message string) {
+func (matcher snapshotMatcher) NegatedFailureMessage(_ any) (message string) {
 	return "Expected to not match saved snapshot\n"
 }

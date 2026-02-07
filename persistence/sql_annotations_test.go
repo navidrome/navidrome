@@ -32,17 +32,17 @@ var _ = Describe("Annotation Filters", func() {
 
 	Describe("annotationBoolFilter", func() {
 		DescribeTable("creates correct SQL expressions",
-			func(field, value string, expectedSQL string, expectedArgs []interface{}) {
+			func(field, value string, expectedSQL string, expectedArgs []any) {
 				sqlizer := annotationBoolFilter(field)(field, value)
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal(expectedSQL))
 				Expect(args).To(Equal(expectedArgs))
 			},
-			Entry("starred=true", "starred", "true", "COALESCE(starred, 0) > 0", []interface{}(nil)),
-			Entry("starred=false", "starred", "false", "COALESCE(starred, 0) = 0", []interface{}(nil)),
-			Entry("starred=True (case insensitive)", "starred", "True", "COALESCE(starred, 0) > 0", []interface{}(nil)),
-			Entry("rating=true", "rating", "true", "COALESCE(rating, 0) > 0", []interface{}(nil)),
+			Entry("starred=true", "starred", "true", "COALESCE(starred, 0) > 0", []any(nil)),
+			Entry("starred=false", "starred", "false", "COALESCE(starred, 0) = 0", []any(nil)),
+			Entry("starred=True (case insensitive)", "starred", "True", "COALESCE(starred, 0) > 0", []any(nil)),
+			Entry("rating=true", "rating", "true", "COALESCE(rating, 0) > 0", []any(nil)),
 		)
 
 		It("returns nil if value is not a string", func() {

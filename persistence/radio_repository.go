@@ -63,7 +63,7 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 		return rest.ErrPermissionDenied
 	}
 
-	var values map[string]interface{}
+	var values map[string]any
 
 	radio.UpdatedAt = time.Now()
 
@@ -97,19 +97,19 @@ func (r *radioRepository) EntityName() string {
 	return "radio"
 }
 
-func (r *radioRepository) NewInstance() interface{} {
+func (r *radioRepository) NewInstance() any {
 	return &model.Radio{}
 }
 
-func (r *radioRepository) Read(id string) (interface{}, error) {
+func (r *radioRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *radioRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *radioRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *radioRepository) Save(entity interface{}) (string, error) {
+func (r *radioRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Radio)
 	if !r.isPermitted() {
 		return "", rest.ErrPermissionDenied
@@ -121,7 +121,7 @@ func (r *radioRepository) Save(entity interface{}) (string, error) {
 	return t.ID, err
 }
 
-func (r *radioRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Radio)
 	t.ID = id
 	if !r.isPermitted() {

@@ -212,10 +212,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 
 	// Calculate TTL based on remaining track duration. If position exceeds track duration,
 	// remaining is set to 0 to avoid negative TTL.
-	remaining := int(mf.Duration) - position
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := max(int(mf.Duration)-position, 0)
 	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)

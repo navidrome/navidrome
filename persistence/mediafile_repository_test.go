@@ -310,7 +310,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "Old Song": created long ago, updated recently
 				_, err := db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": oldTime,
 						"updated_at": newTime,
 					},
@@ -319,7 +319,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "Middle Song": created and updated at the same middle time
 				_, err = db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": middleTime,
 						"updated_at": middleTime,
 					},
@@ -328,7 +328,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "New Song": created recently, updated long ago
 				_, err = db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": newTime,
 						"updated_at": oldTime,
 					},

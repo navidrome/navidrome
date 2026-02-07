@@ -40,7 +40,7 @@ func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
 
 // GetAll implements model.ArtistRepository.
 func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	argsSlice := make([]interface{}, len(options))
+	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
 	}
@@ -99,7 +99,7 @@ func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ..
 
 // GetAll implements model.MediaFileRepository.
 func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	argsSlice := make([]interface{}, len(options))
+	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
 	}
@@ -152,7 +152,7 @@ func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
 
 // GetAll implements model.AlbumRepository.
 func (m *mockAlbumRepo) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	argsSlice := make([]interface{}, len(options))
+	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
 	}

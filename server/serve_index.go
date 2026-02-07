@@ -39,7 +39,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			http.NotFound(w, r)
 			return
 		}
-		appConfig := map[string]interface{}{
+		appConfig := map[string]any{
 			"version":                   consts.Version,
 			"firstTime":                 firstTime,
 			"variousArtistsId":          consts.VariousArtistsID,
@@ -95,7 +95,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 		if version != "dev" {
 			version = "v" + version
 		}
-		data := map[string]interface{}{
+		data := map[string]any{
 			"AppConfig": string(appConfigJson),
 			"Version":   version,
 		}
@@ -145,7 +145,7 @@ type shareTrack struct {
 	Duration  float32   `json:"duration,omitempty"`
 }
 
-func addShareData(r *http.Request, data map[string]interface{}, shareInfo *model.Share) {
+func addShareData(r *http.Request, data map[string]any, shareInfo *model.Share) {
 	ctx := r.Context()
 	if shareInfo == nil || shareInfo.ID == "" {
 		return

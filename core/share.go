@@ -87,7 +87,7 @@ func (r *shareRepositoryWrapper) newId() (string, error) {
 	}
 }
 
-func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
+func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	id, err := r.newId()
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
+func (r *shareRepositoryWrapper) Update(id string, entity any, _ ...string) error {
 	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration

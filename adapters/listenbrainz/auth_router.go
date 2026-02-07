@@ -60,7 +60,7 @@ func (s *Router) routes() http.Handler {
 }
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]interface{}{}
+	resp := map[string]any{}
 	u, _ := request.UserFrom(r.Context())
 	key, err := s.sessionKeys.Get(r.Context(), u.ID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
@@ -107,7 +107,7 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]interface{}{"status": resp.Valid, "user": resp.UserName})
+	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]any{"status": resp.Valid, "user": resp.UserName})
 }
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {

@@ -47,7 +47,7 @@ var _ = Describe("ShareRepository", func() {
 				_, err := GetDBXBuilder().NewQuery(`
 					INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at) 
 					VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
-				`).Bind(map[string]interface{}{
+				`).Bind(map[string]any{
 					"id":      shareID,
 					"user":    adminUser.ID,
 					"desc":    "Headless Test Share",
@@ -79,7 +79,7 @@ var _ = Describe("ShareRepository", func() {
 				_, err := GetDBXBuilder().NewQuery(`
 					INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at) 
 					VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
-				`).Bind(map[string]interface{}{
+				`).Bind(map[string]any{
 					"id":      shareID,
 					"user":    adminUser.ID,
 					"desc":    "Headless Get Share",
@@ -110,7 +110,7 @@ var _ = Describe("ShareRepository", func() {
 			_, err := GetDBXBuilder().NewQuery(`
 				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at) 
 				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
-			`).Bind(map[string]interface{}{
+			`).Bind(map[string]any{
 				"id":      shareID,
 				"user":    adminUser.ID,
 				"desc":    "SQL Test Share",

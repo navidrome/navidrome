@@ -30,7 +30,7 @@ var _ = Describe("Search", func() {
 	})
 
 	Context("musicFolderId parameter", func() {
-		assertQueryOptions := func(filter squirrel.Sqlizer, expectedQuery string, expectedArgs ...interface{}) {
+		assertQueryOptions := func(filter squirrel.Sqlizer, expectedQuery string, expectedArgs ...any) {
 			GinkgoHelper()
 			query, args, err := filter.ToSql()
 			Expect(err).ToNot(HaveOccurred())

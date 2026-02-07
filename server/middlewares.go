@@ -37,7 +37,7 @@ func requestLogger(next http.Handler) http.Handler {
 		status := ww.Status()
 
 		message := fmt.Sprintf("HTTP: %s %s://%s%s", r.Method, scheme, r.Host, r.RequestURI)
-		logArgs := []interface{}{
+		logArgs := []any{
 			r.Context(),
 			message,
 			"remoteAddr", r.RemoteAddr,

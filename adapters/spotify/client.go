@@ -73,7 +73,7 @@ func (c *client) authorize(ctx context.Context) (string, error) {
 	auth := c.id + ":" + c.secret
 	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
 
-	response := map[string]interface{}{}
+	response := map[string]any{}
 	err := c.makeRequest(req, &response)
 	if err != nil {
 		return "", err
@@ -86,7 +86,7 @@ func (c *client) authorize(ctx context.Context) (string, error) {
 	return "", errors.New("invalid response")
 }
 
-func (c *client) makeRequest(req *http.Request, response interface{}) error {
+func (c *client) makeRequest(req *http.Request, response any) error {
 	log.Trace(req.Context(), fmt.Sprintf("Sending Spotify %s request", req.Method), "url", req.URL)
 	resp, err := c.hc.Do(req)
 	if err != nil {

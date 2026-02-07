@@ -49,8 +49,8 @@ func createGetPID(hash hashFunc) getPIDFunc {
 	}
 	getPID = func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
 		pid := ""
-		fields := strings.Split(spec, "|")
-		for _, field := range fields {
+		fields := strings.SplitSeq(spec, "|")
+		for field := range fields {
 			attributes := strings.Split(field, ",")
 			hasValue := false
 			values := slice.Map(attributes, func(attr string) string {

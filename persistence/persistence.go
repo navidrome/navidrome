@@ -97,7 +97,7 @@ func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
 	return NewPluginRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
+func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
 		return s.User(ctx).(model.ResourceRepository)

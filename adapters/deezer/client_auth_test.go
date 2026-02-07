@@ -252,7 +252,7 @@ var _ = Describe("JWT Authentication", func() {
 
 			// Writer goroutine
 			wg.Go(func() {
-				for i := 0; i < 100; i++ {
+				for i := range 100 {
 					cache.set(fmt.Sprintf("token-%d", i), 1*time.Hour)
 					time.Sleep(1 * time.Millisecond)
 				}
@@ -260,7 +260,7 @@ var _ = Describe("JWT Authentication", func() {
 
 			// Reader goroutine
 			wg.Go(func() {
-				for i := 0; i < 100; i++ {
+				for range 100 {
 					cache.get()
 					time.Sleep(1 * time.Millisecond)
 				}

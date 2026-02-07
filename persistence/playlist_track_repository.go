@@ -84,7 +84,7 @@ func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, er
 	return r.count(query, r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
+func (r *playlistTrackRepository) Read(id string) (any, error) {
 	userID := loggedUser(r.ctx).ID
 	sel := r.newSelect().
 		LeftJoin("annotation on ("+
@@ -128,7 +128,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 	return ids, nil
 }
 
-func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -136,7 +136,7 @@ func (r *playlistTrackRepository) EntityName() string {
 	return "playlist_tracks"
 }
 
-func (r *playlistTrackRepository) NewInstance() interface{} {
+func (r *playlistTrackRepository) NewInstance() any {
 	return &model.PlaylistTrack{}
 }
 
