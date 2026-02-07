@@ -1,9 +1,22 @@
--- +goose Up
--- +goose StatementBegin
+package migrations
+
+import (
+	"context"
+	"database/sql"
+
+	"github.com/pressly/goose/v3"
+)
+
+func init() {
+	goose.AddMigrationContext(upAddAnnotationUserForeignKey, downAddAnnotationUserForeignKey)
+}
+
+func upAddAnnotationUserForeignKey(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, adaptSQL(`
 CREATE TABLE IF NOT EXISTS annotation_tmp
 (
 	user_id     varchar(255)    not null
-        REFERENCES user(id)
+        REFERENCES "user"(id)
             ON DELETE CASCADE
             ON UPDATE CASCADE,
 	item_id     varchar(255)    default '' not null,
@@ -16,17 +29,16 @@ CREATE TABLE IF NOT EXISTS annotation_tmp
 	unique (user_id, item_id, item_type)
 );
 
-
 INSERT INTO annotation_tmp(
     user_id, item_id, item_type, play_count, play_date, rating, starred, starred_at
 )
 SELECT user_id, item_id, item_type, play_count, play_date, rating, starred, starred_at
 FROM annotation
 WHERE user_id IN (
-    SELECT id FROM user
+    SELECT id FROM "user"
 );
 
-DROP TABLE annotation;
+DROP TABLE annotation`)+dropCascadeIfPostgres()+`;
 ALTER TABLE annotation_tmp RENAME TO annotation;
 
 CREATE INDEX annotation_play_count
@@ -39,8 +51,10 @@ CREATE INDEX annotation_starred
     on annotation (starred);
 CREATE INDEX annotation_starred_at
     on annotation (starred_at);
+`)
+	return err
+}
 
--- +goose StatementEnd
-
--- +goose Down
-
+func downAddAnnotationUserForeignKey(_ context.Context, _ *sql.Tx) error {
+	return nil
+}

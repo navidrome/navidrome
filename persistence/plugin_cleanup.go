@@ -1,17 +1,14 @@
 package persistence
 
 import (
+	"github.com/navidrome/navidrome/db"
 	"github.com/pocketbase/dbx"
 )
 
 // cleanupPluginUserReferences removes a user ID from all plugins' users JSON arrays
-// and auto-disables plugins that lose their only permitted user (when users permission is required).
-// This is called from userRepository.Delete() to maintain referential integrity.
-func cleanupPluginUserReferences(db dbx.Builder, userID string) error {
-	// SQLite JSON function: json_remove removes the element at the path where user matches.
-	// We use a subquery with json_each to find and remove the user ID from the array.
-	// This updates all plugins where the users array contains the given user ID.
-	_, err := db.NewQuery(`
+// and auto-disables plugins that lose their only permitted user.
+func cleanupPluginUserReferences(dbConn dbx.Builder, userID string) error {
+	updateSQL := `
 		UPDATE plugin
 		SET users = (
 			SELECT json_group_array(value)
@@ -22,19 +19,28 @@ func cleanupPluginUserReferences(db dbx.Builder, userID string) error {
 		WHERE users IS NOT NULL
 		  AND users != ''
 		  AND EXISTS (SELECT 1 FROM json_each(plugin.users) WHERE value = {:userID})
-	`).Bind(dbx.Params{"userID": userID}).Execute()
+	`
+	if db.IsPostgres() {
+		updateSQL = `
+		UPDATE plugin
+		SET users = (
+			SELECT json_agg(elem)::text
+			FROM jsonb_array_elements_text(plugin.users::jsonb) as elem
+			WHERE elem != {:userID}
+		),
+		updated_at = CURRENT_TIMESTAMP
+		WHERE users IS NOT NULL
+		  AND users != ''
+		  AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(plugin.users::jsonb) as elem WHERE elem = {:userID})
+	`
+	}
+	_, err := dbConn.NewQuery(updateSQL).Bind(dbx.Params{"userID": userID}).Execute()
 	if err != nil {
 		return err
 	}
 
-	// Auto-disable plugins that:
-	// 1. Are currently enabled
-	// 2. Require users permission (manifest has permissions.users)
-	// 3. Don't have allUsers enabled
-	// 4. Now have an empty users array after cleanup
-	//
-	// The manifest check uses JSON path to see if permissions.users exists.
-	_, err = db.NewQuery(`
+	// Auto-disable plugins that now have no permitted users left
+	disableSQL := `
 		UPDATE plugin
 		SET enabled = false,
 		    updated_at = CURRENT_TIMESTAMP
@@ -42,17 +48,26 @@ func cleanupPluginUserReferences(db dbx.Builder, userID string) error {
 		  AND all_users = false
 		  AND json_extract(manifest, '$.permissions.users') IS NOT NULL
 		  AND (users IS NULL OR users = '' OR users = '[]' OR json_array_length(users) = 0)
-	`).Execute()
+	`
+	if db.IsPostgres() {
+		disableSQL = `
+		UPDATE plugin
+		SET enabled = false,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE enabled = true
+		  AND all_users = false
+		  AND manifest::jsonb->'permissions'->'users' IS NOT NULL
+		  AND (users IS NULL OR users = '' OR users = '[]' OR jsonb_array_length(users::jsonb) = 0)
+	`
+	}
+	_, err = dbConn.NewQuery(disableSQL).Execute()
 	return err
 }
 
 // cleanupPluginLibraryReferences removes a library ID from all plugins' libraries JSON arrays
-// and auto-disables plugins that lose their only permitted library (when library permission is required).
-// This is called from libraryRepository.Delete() to maintain referential integrity.
-func cleanupPluginLibraryReferences(db dbx.Builder, libraryID int) error {
-	// SQLite JSON function: we filter out the library ID from the array.
-	// Libraries are stored as integers in the JSON array.
-	_, err := db.NewQuery(`
+// and auto-disables plugins that lose their only permitted library.
+func cleanupPluginLibraryReferences(dbConn dbx.Builder, libraryID int) error {
+	updateSQL := `
 		UPDATE plugin
 		SET libraries = (
 			SELECT json_group_array(value)
@@ -63,17 +78,28 @@ func cleanupPluginLibraryReferences(db dbx.Builder, libraryID int) error {
 		WHERE libraries IS NOT NULL
 		  AND libraries != ''
 		  AND EXISTS (SELECT 1 FROM json_each(plugin.libraries) WHERE CAST(value AS INTEGER) = {:libraryID})
-	`).Bind(dbx.Params{"libraryID": libraryID}).Execute()
+	`
+	if db.IsPostgres() {
+		updateSQL = `
+		UPDATE plugin
+		SET libraries = (
+			SELECT json_agg(elem)::text
+			FROM jsonb_array_elements_text(plugin.libraries::jsonb) as elem
+			WHERE elem::int != {:libraryID}
+		),
+		updated_at = CURRENT_TIMESTAMP
+		WHERE libraries IS NOT NULL
+		  AND libraries != ''
+		  AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(plugin.libraries::jsonb) as elem WHERE elem::int = {:libraryID})
+	`
+	}
+	_, err := dbConn.NewQuery(updateSQL).Bind(dbx.Params{"libraryID": libraryID}).Execute()
 	if err != nil {
 		return err
 	}
 
-	// Auto-disable plugins that:
-	// 1. Are currently enabled
-	// 2. Require library permission (manifest has permissions.library)
-	// 3. Don't have allLibraries enabled
-	// 4. Now have an empty libraries array after cleanup
-	_, err = db.NewQuery(`
+	// Auto-disable plugins that now have no permitted libraries left
+	disableSQL := `
 		UPDATE plugin
 		SET enabled = false,
 		    updated_at = CURRENT_TIMESTAMP
@@ -81,6 +107,18 @@ func cleanupPluginLibraryReferences(db dbx.Builder, libraryID int) error {
 		  AND all_libraries = false
 		  AND json_extract(manifest, '$.permissions.library') IS NOT NULL
 		  AND (libraries IS NULL OR libraries = '' OR libraries = '[]' OR json_array_length(libraries) = 0)
-	`).Execute()
+	`
+	if db.IsPostgres() {
+		disableSQL = `
+		UPDATE plugin
+		SET enabled = false,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE enabled = true
+		  AND all_libraries = false
+		  AND manifest::jsonb->'permissions'->'library' IS NOT NULL
+		  AND (libraries IS NULL OR libraries = '' OR libraries = '[]' OR jsonb_array_length(libraries::jsonb) = 0)
+	`
+	}
+	_, err = dbConn.NewQuery(disableSQL).Execute()
 	return err
 }

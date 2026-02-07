@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -58,9 +59,21 @@ FROM %[1]s
 JOIN json_tree(%[1]s.tags, '$.genre') as jt ON jt.atom IS NOT NULL AND jt.key = 'id'
 JOIN tag ON tag.id = jt.value
 GROUP BY jt.value, %[1]s.library_id
-ON CONFLICT (tag_id, library_id) 
+ON CONFLICT (tag_id, library_id)
 DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 `
+	if db.IsPostgres() {
+		template = `
+INSERT INTO library_tag (tag_id, library_id, %[1]s_count)
+SELECT elem::text as tag_id, %[1]s.library_id, count(distinct %[1]s.id) as %[1]s_count
+FROM %[1]s
+CROSS JOIN LATERAL jsonb_array_elements(%[1]s.tags::jsonb->'genre') as elem
+JOIN tag ON tag.id = elem::text
+GROUP BY elem::text, %[1]s.library_id
+ON CONFLICT (tag_id, library_id)
+DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
+`
+	}
 
 	for _, table := range []string{"album", "media_file"} {
 		start := time.Now()
@@ -75,17 +88,33 @@ DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 }
 
 func (r *tagRepository) purgeUnused() error {
-	del := Delete(r.tableName).Where(`	
+	whereClause := `
 	id not in (select jt.value
 	from album left join json_tree(album.tags, '$') as jt
 	where atom is not null
 	  and key = 'id'
-	UNION 
+	UNION
 	select jt.value
 	from media_file left join json_tree(media_file.tags, '$') as jt
 	where atom is not null
 	  and key = 'id')
-`)
+`
+	if db.IsPostgres() {
+		whereClause = `
+	id not in (
+		SELECT elem->>'id'
+		FROM album, LATERAL jsonb_each(album.tags::jsonb) as tag_type,
+		     LATERAL jsonb_array_elements(tag_type.value) as elem
+		WHERE elem->>'id' IS NOT NULL
+		UNION
+		SELECT elem->>'id'
+		FROM media_file, LATERAL jsonb_each(media_file.tags::jsonb) as tag_type,
+		     LATERAL jsonb_array_elements(tag_type.value) as elem
+		WHERE elem->>'id' IS NOT NULL
+	)
+`
+	}
+	del := Delete(r.tableName).Where(whereClause)
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("error purging %s unused tags: %w", r.tableName, err)

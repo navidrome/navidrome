@@ -20,7 +20,7 @@ CREATE TABLE player_dg_tmp
 	name varchar not null,
 	user_agent varchar,
 	user_id varchar not null
-		references user (id)
+		references "user" (id)
 			on update cascade on delete cascade,
 	client varchar not null,
 	ip varchar,
@@ -37,8 +37,8 @@ INSERT INTO player_dg_tmp(
 )
 SELECT
 	id, name, user_agent,
-	IFNULL(
-		(select id from user where user_name = player.user_name), 'UNKNOWN_USERNAME'
+	COALESCE(
+		(select id from "user" where user_name = player.user_name), 'UNKNOWN_USERNAME'
 	),
 	client, ip_address, last_seen, max_bit_rate, transcoding_id, report_real_path, scrobble_enabled
 FROM player;

@@ -1,5 +1,29 @@
--- +goose Up
--- Fix case-insensitive sorting for playlist names
+package migrations
+
+import (
+	"context"
+	"database/sql"
+
+	"github.com/navidrome/navidrome/db/dialect"
+	"github.com/pressly/goose/v3"
+)
+
+func init() {
+	goose.AddMigrationContext(upPlaylistCaseInsensitiveName, downPlaylistCaseInsensitiveName)
+}
+
+func upPlaylistCaseInsensitiveName(ctx context.Context, tx *sql.Tx) error {
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		// PostgreSQL: LOWER() index instead of COLLATE NOCASE
+		_, err := tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS playlist_name;
+CREATE INDEX playlist_name ON playlist (LOWER(name));
+`)
+		return err
+	}
+
+	// SQLite: need to recreate table for COLLATE NOCASE
+	_, err := tx.ExecContext(ctx, `
 create table playlist_dg_tmp
 (
     id           varchar(255)                              not null
@@ -47,9 +71,21 @@ create index playlist_evaluated_at
 
 create index playlist_size
     on playlist (size);
+`)
+	return err
+}
 
--- +goose Down
--- Note: Downgrade loses the collation but preserves data
+func downPlaylistCaseInsensitiveName(ctx context.Context, tx *sql.Tx) error {
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		_, err := tx.ExecContext(ctx, `
+DROP INDEX IF EXISTS playlist_name;
+CREATE INDEX playlist_name ON playlist (name);
+`)
+		return err
+	}
+
+	// SQLite: need to recreate table to remove COLLATE NOCASE
+	_, err := tx.ExecContext(ctx, `
 create table playlist_dg_tmp
 (
     id           varchar(255)              not null
@@ -97,3 +133,6 @@ create index playlist_evaluated_at
 
 create index playlist_size
     on playlist (size);
+`)
+	return err
+}

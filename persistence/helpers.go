@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
+	"github.com/navidrome/navidrome/db"
 )
 
 type PostMapper interface {
@@ -83,10 +84,13 @@ func (e existsCond) ToSql() (string, []interface{}, error) {
 var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 
 // Convert the order_* columns to an expression using sort_* columns. Example:
-// sort_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
+// sort_album_name -> (coalesce(nullif(sort_album_name,"),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring
 func mapSortOrder(tableName, order string) string {
 	order = strings.ToLower(order)
 	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
+	if db.IsPostgres() {
+		repl = fmt.Sprintf("LOWER(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1))", tableName)
+	}
 	return sortOrderRegex.ReplaceAllString(order, repl)
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pressly/goose/v3"
 )
@@ -24,7 +25,11 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`update media_file SET lyrics = ? where id = ?`)
+	updateQuery := `update media_file SET lyrics = ? where id = ?`
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		updateQuery = `update media_file SET lyrics = $1 where id = $2`
+	}
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

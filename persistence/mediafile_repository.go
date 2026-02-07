@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -202,11 +203,16 @@ func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, o
 		placeholders[i] = "?"
 		args[i] = v
 	}
-	tagFilter := Expr(
-		fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
-			tag, strings.Join(placeholders, ",")),
-		args...,
-	)
+	filterSQL := fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
+		tag, strings.Join(placeholders, ","))
+	if db.IsPostgres() {
+		for i := range placeholders {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		}
+		filterSQL = fmt.Sprintf("exists (select 1 from jsonb_array_elements(media_file.tags::jsonb->'%s') as elem where elem->>'value' in (%s))",
+			tag, strings.Join(placeholders, ","))
+	}
+	tagFilter := Expr(filterSQL, args...)
 
 	var opts model.QueryOptions
 	if len(options) > 0 {
@@ -240,9 +246,7 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 }
 
 // FindByPaths finds media files by their paths.
-// The paths can be library-qualified (format: "libraryID:path") or unqualified ("path").
-// Library-qualified paths search within the specified library, while unqualified paths
-// search across all libraries for backward compatibility.
+// Paths can be library-qualified ("libraryID:path") or unqualified.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
 	query := Or{}
 
@@ -256,13 +260,24 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 				continue
 			}
 			relativePath := parts[1]
-			query = append(query, And{
-				Eq{"path collate nocase": relativePath},
-				Eq{"library_id": libraryID},
-			})
+			if db.IsPostgres() {
+				query = append(query, And{
+					Expr("LOWER(path) = LOWER(?)", relativePath),
+					Eq{"library_id": libraryID},
+				})
+			} else {
+				query = append(query, And{
+					Eq{"path collate nocase": relativePath},
+					Eq{"library_id": libraryID},
+				})
+			}
 		} else {
 			// Unqualified path: search across all libraries
-			query = append(query, Eq{"path collate nocase": path})
+			if db.IsPostgres() {
+				query = append(query, Expr("LOWER(path) = LOWER(?)", path))
+			} else {
+				query = append(query, Eq{"path collate nocase": path})
+			}
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -161,9 +162,11 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 }
 
 func artistFilter(_ string, value interface{}) Sqlizer {
+	from1, cond1 := JsonParticipantExists("albumartist", "id")
+	from2, cond2 := JsonParticipantExists("artist", "id")
 	return Or{
-		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
+		Exists(from1, Eq{cond1: value}),
+		Exists(from2, Eq{cond2: value}),
 	}
 }
 
@@ -174,7 +177,8 @@ func artistRoleFilter(name string, value interface{}) Sqlizer {
 	if _, ok := model.AllRoles[roleName]; !ok {
 		return Gt{"": nil}
 	}
-	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+	from, cond := JsonParticipantExists(roleName, "id")
+	return Exists(from, Eq{cond: value})
 }
 
 func allRolesFilter(_ string, value interface{}) Sqlizer {
@@ -275,10 +279,14 @@ func (r *albumRepository) Touch(ids ...string) error {
 
 // TouchByMissingFolder touches all albums that have missing folders
 func (r *albumRepository) TouchByMissingFolder() (int64, error) {
+	existsSQL := "EXISTS (SELECT 1 FROM json_each(folder_ids) AS je JOIN main.folder AS f ON je.value = f.id WHERE f.missing = true)"
+	if db.IsPostgres() {
+		existsSQL = "EXISTS (SELECT 1 FROM jsonb_array_elements_text(folder_ids::jsonb) AS je JOIN folder AS f ON je.value = f.id WHERE f.missing = true)"
+	}
 	upd := Update(r.tableName).Set("imported_at", time.Now()).
 		Where(And{
 			NotEq{"folder_ids": nil},
-			ConcatExpr("EXISTS (SELECT 1 FROM json_each(folder_ids) AS je JOIN main.folder AS f ON je.value = f.id WHERE f.missing = true)"),
+			ConcatExpr(existsSQL),
 		})
 	c, err := r.executeSQL(upd)
 	if err != nil {

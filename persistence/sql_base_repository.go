@@ -14,6 +14,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	id2 "github.com/navidrome/navidrome/model/id"
@@ -386,8 +387,11 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
+	// PostgreSQL doesn't allow ORDER BY with aggregates without GROUP BY
+	if !db.IsPostgres() {
+		countQuery = countQuery.OrderBy(r.tableName + ".id")
+	}
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)

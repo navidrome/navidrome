@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -347,7 +348,7 @@ set missing = (artist.id not in (select artist_id from artists_with_non_missing_
 // RefreshPlayCounts updates the play count and last play date annotations for all artists, based
 // on the media files associated with them.
 func (r *artistRepository) RefreshPlayCounts() (int64, error) {
-	query := Expr(`
+	sql := `
 with play_counts as (
     select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
@@ -363,8 +364,26 @@ where total_play_count > 0
 on conflict (user_id, item_id, item_type) do update
     set play_count = excluded.play_count,
         play_date  = excluded.play_date;
-`)
-	return r.executeSQL(query)
+`
+	if db.IsPostgres() {
+		sql = `
+with play_counts as (
+    select user_id, (elem->>'id')::text as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    from media_file
+    join annotation on item_id = media_file.id
+    cross join lateral jsonb_array_elements(participants::jsonb->'artist') as elem
+    group by user_id, elem->>'id'
+)
+insert into annotation (user_id, item_id, item_type, play_count, play_date)
+select user_id, artist_id, 'artist', total_play_count, last_play_date
+from play_counts
+where total_play_count > 0
+on conflict (user_id, item_id, item_type) do update
+    set play_count = excluded.play_count,
+        play_date  = excluded.play_date;
+`
+	}
+	return r.executeSQL(Expr(sql))
 }
 
 // RefreshStats updates the stats field for artists whose associated media files were updated after the oldest recorded library scan time.
@@ -460,6 +479,11 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
                          AND lac.library_id = library_artist.library_id), '{}')
     WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
 
+	if db.IsPostgres() {
+		batchUpdateStatsSQL = strings.ReplaceAll(batchUpdateStatsSQL, "json_group_object(", "jsonb_object_agg(")
+		batchUpdateStatsSQL = strings.ReplaceAll(batchUpdateStatsSQL, "json_object(", "jsonb_build_object(")
+	}
+
 	var totalRowsAffected int64 = 0
 	const batchSize = 1000
 
@@ -521,8 +545,12 @@ func (r *artistRepository) Search(q string, offset int, size int, options ...mod
 		}
 	} else {
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
+		statsOrder := "sum(json_extract(stats, '$.total.m')) desc"
+		if db.IsPostgres() {
+			statsOrder = "sum((stats::jsonb->'total'->>'m')::int) desc"
+		}
 		err := r.doSearch(r.selectArtist(options...), q, offset, size, &res, "artist.id",
-			"sum(json_extract(stats, '$.total.m')) desc", "name")
+			statsOrder, "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching artist by query %q: %w", q, err)
 		}

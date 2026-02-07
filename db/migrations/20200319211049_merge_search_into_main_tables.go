@@ -12,7 +12,8 @@ func init() {
 }
 
 func Up20200319211049(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	// adaptSQL() converts varchar(255) to text for PostgreSQL
+	_, err := tx.Exec(adaptSQL(`
 alter table media_file
 	add full_text varchar(255) default '';
 create index if not exists media_file_full_text
@@ -29,7 +30,7 @@ create index if not exists artist_full_text
 	on artist (full_text);
 
 drop table if exists search;
-`)
+`))
 	if err != nil {
 		return err
 	}
