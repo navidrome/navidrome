@@ -51,12 +51,16 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r := &playlistRepository{}
 	r.ctx = ctx
 	r.db = db
+	r.tableName = "playlist"
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
-		"q":     playlistFilter,
-		"smart": smartPlaylistFilter,
+		"id":      idFilter(r.tableName),
+		"q":       playlistFilter,
+		"smart":   smartPlaylistFilter,
+		"starred": booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"owner_name": "owner_name",
+		"starred_at": "starred, starred_at",
 	})
 	return r
 }
@@ -87,12 +91,14 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
+	sq := r.newSelect()
+	sq = r.withAnnotation(sq, r.tableName+".id")
+	sq = sq.Where(r.userFilter())
 	return r.count(sq, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+	return r.exists(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Delete(id string) error {
@@ -106,7 +112,7 @@ func (r *playlistRepository) Delete(id string) error {
 			return rest.ErrPermissionDenied
 		}
 	}
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+	return r.delete(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
@@ -217,8 +223,9 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user on user.id = owner_id").
+	query := r.newSelect(options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
+	return r.withAnnotation(query, r.tableName+".id")
 }
 
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {

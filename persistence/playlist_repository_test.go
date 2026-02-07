@@ -3,6 +3,7 @@ package persistence
 import (
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -110,6 +111,45 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(BeNil())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
+		})
+
+		It("filters starred playlists", func() {
+			Expect(repo.SetStar(true, plsBest.ID)).To(Succeed())
+
+			all, err := repo.GetAll(model.QueryOptions{Filters: sq.Eq{"starred": true}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(all).To(HaveLen(1))
+			Expect(all[0].ID).To(Equal(plsBest.ID))
+
+			Expect(repo.SetStar(false, plsBest.ID)).To(Succeed())
+		})
+
+		It("counts starred playlists", func() {
+			Expect(repo.SetStar(true, plsCool.ID)).To(Succeed())
+			count, err := repo.CountAll(model.QueryOptions{Filters: sq.Eq{"starred": true}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(1)))
+
+			Expect(repo.SetStar(false, plsCool.ID)).To(Succeed())
+		})
+	})
+
+	Describe("SetStar", func() {
+		It("should star a playlist", func() {
+			Expect(repo.SetStar(true, plsBest.ID)).To(Succeed())
+
+			updated, err := repo.Get(plsBest.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(updated.Starred).To(BeTrue())
+			Expect(updated.StarredAt).ToNot(BeNil())
+		})
+
+		It("should unstar a playlist", func() {
+			Expect(repo.SetStar(false, plsBest.ID)).To(Succeed())
+
+			updated, err := repo.Get(plsBest.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(updated.Starred).To(BeFalse())
 		})
 	})
 
