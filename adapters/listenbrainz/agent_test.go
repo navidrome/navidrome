@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -160,6 +163,281 @@ var _ = Describe("listenBrainzAgent", func() {
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+		})
+	})
+
+	Describe("GetArtistUrl", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns artist url when MBID present", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetArtistURL(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")).To(Equal("http://projectmili.com/"))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+		})
+
+		It("returns error when url not present", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
+		})
+
+		It("returns error when fetch calls fails", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
+		})
+
+		It("returns error when ListenBrainz returns an error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
+		})
+	})
+
+	Describe("GetTopSongs", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Path).To(Equal("/1/popularity/top-recordings-for-artist/d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
+		})
+
+		It("returns an error on listenbrainz error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code":400,"error":"artist_mbid: '1' is not a valid uuid"}`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetArtistTopSongs(ctx, "", "", "1", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Path).To(Equal("/1/popularity/top-recordings-for-artist/1"))
+		})
+
+		It("returns all tracks when asked", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "world.execute(me);",
+					MBID:       "9980309d-3480-4e7e-89ce-fce971a452be",
+					Artist:     "Mili",
+					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+					Album:      "Miracle Milk",
+					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:   211912,
+				},
+				{
+					ID:         "",
+					Name:       "String Theocracy",
+					MBID:       "afa2c83d-b17f-4029-b9da-790ea9250cf9",
+					Artist:     "Mili",
+					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+					Album:      "String Theocracy",
+					AlbumMBID:  "d79a38e3-7016-4f39-a31a-f495ce914b8e",
+					Duration:   174000,
+				},
+			}))
+		})
+
+		It("returns only one track when prompted", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "world.execute(me);",
+					MBID:       "9980309d-3480-4e7e-89ce-fce971a452be",
+					Artist:     "Mili",
+					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+					Album:      "Miracle Milk",
+					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:   211912,
+				},
+			}))
+		})
+	})
+
+	Describe("GetSimilarArtists", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids="
+		mbid := "db92a151-1ac2-438b-bc43-b82e149ddd50"
+
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarArtists(ctx, "", "", mbid, 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+		})
+
+		It("returns an error on listenbrainz error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetSimilarArtists(ctx, "", "", "1", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+		})
+
+		It("returns all data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
+				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha"},
+			}))
+		})
+
+		It("returns subset of data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson"},
+			}))
+		})
+	})
+
+	Describe("GetSimilarTracks", func() {
+		var agent *listenBrainzAgent
+		var httpClient *tests.FakeHttpClient
+		mbid := "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae"
+		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
+
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("BASE_URL", httpClient)
+			agent = listenBrainzConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns error when fetch calls", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+		})
+
+		It("returns an error on listenbrainz error", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
+				StatusCode: 400,
+			}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", "1", 1)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+		})
+
+		It("returns all data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "Take On Me",
+					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:       "",
+					Artist:     "a‐ha",
+					ArtistMBID: "",
+					Album:      "Hunting High and Low",
+					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:   0,
+				},
+				{
+					ID:         "",
+					Name:       "Wake Me Up Before You Go‐Go",
+					MBID:       "80033c72-aa19-4ba8-9227-afb075fec46e",
+					ISRC:       "",
+					Artist:     "Wham!",
+					ArtistMBID: "",
+					Album:      "Make It Big",
+					AlbumMBID:  "c143d542-48dc-446b-b523-1762da721638",
+					Duration:   0,
+				},
+			}))
+		})
+
+		It("returns subset of data on call", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(resp).To(Equal([]agents.Song{
+				{
+					ID:         "",
+					Name:       "Take On Me",
+					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:       "",
+					Artist:     "a‐ha",
+					ArtistMBID: "",
+					Album:      "Hunting High and Low",
+					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:   0,
+				},
+			}))
 		})
 	})
 })
