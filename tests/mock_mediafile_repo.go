@@ -44,12 +44,16 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	}
 }
 
-func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
+func (m *MockMediaFileRepo) Exists(ids ...string) (bool, error) {
 	if m.Err {
 		return false, errors.New("error")
 	}
-	_, found := m.Data[id]
-	return found, nil
+	for _, id := range ids {
+		if _, found := m.Data[id]; !found {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
