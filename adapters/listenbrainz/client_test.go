@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -246,7 +249,17 @@ var _ = Describe("client", func() {
 	})
 
 	Context("getSimilarArtists", func() {
-		baseUrl := "https://labs.api.listenbrainz.org/similar-artists/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&artist_mbids="
+		var algorithm string
+
+		BeforeEach(func() {
+			algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		getUrl := func(mbid string) string {
+			return fmt.Sprintf("https://labs.api.listenbrainz.org/similar-artists/json?algorithm=%s&artist_mbids=%s", algorithm, mbid)
+		}
+
 		mbid := "db92a151-1ac2-438b-bc43-b82e149ddd50"
 
 		It("handles a malformed request with status code", func() {
@@ -257,7 +270,7 @@ var _ = Describe("client", func() {
 			_, err := client.getSimilarArtists(context.Background(), "1", 2)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl("1")))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
@@ -267,7 +280,7 @@ var _ = Describe("client", func() {
 			resp, err := client.getSimilarArtists(context.Background(), mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]artist{
 				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson", Score: 800},
@@ -281,17 +294,44 @@ var _ = Describe("client", func() {
 			resp, err := client.getSimilarArtists(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]artist{
 				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson", Score: 800},
 			}))
 		})
+
+		It("fetches a different endpoint when algorithm changes", func() {
+			algorithm = "session_based_days_1825_session_300_contribution_3_threshold_10_limit_100_filter_True_skip_30"
+			conf.Server.ListenBrainz.ArtistAlgorithm = algorithm
+
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarArtists(context.Background(), mbid, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]artist{
+				{MBID: "f27ec8db-af05-4f36-916e-3d57f91ecf5e", Name: "Michael Jackson", Score: 800},
+				{MBID: "7364dea6-ca9a-48e3-be01-b44ad0d19897", Name: "a-ha", Score: 792},
+			}))
+		})
 	})
 
 	Context("getSimilarRecordings", func() {
+		var algorithm string
+
+		BeforeEach(func() {
+			algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		getUrl := func(mbid string) string {
+			return fmt.Sprintf("https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=%s&recording_mbids=%s", algorithm, mbid)
+		}
+
 		mbid := "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae"
-		baseUrl := "https://labs.api.listenbrainz.org/similar-recordings/json?algorithm=session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30&recording_mbids="
 
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
@@ -301,7 +341,7 @@ var _ = Describe("client", func() {
 			_, err := client.getSimilarRecordings(context.Background(), "1", 2)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl("1")))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
@@ -311,7 +351,7 @@ var _ = Describe("client", func() {
 			resp, err := client.getSimilarRecordings(context.Background(), mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]recording{
 				{
@@ -339,7 +379,7 @@ var _ = Describe("client", func() {
 			resp, err := client.getSimilarRecordings(context.Background(), mbid, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]recording{
 				{
@@ -360,7 +400,7 @@ var _ = Describe("client", func() {
 			resp, err := client.getSimilarRecordings(context.Background(), mbid, 4)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
 			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 			Expect(resp).To(Equal([]recording{
 				{
@@ -394,6 +434,29 @@ var _ = Describe("client", func() {
 					ReleaseName: "Non-Stop Erotic Cabaret",
 					ReleaseMBID: "1acaa870-6e0c-4b6e-9e91-fdec4e5ea4b1",
 					Score:       61,
+				},
+			}))
+		})
+
+		It("uses a different algorithm when configured", func() {
+			algorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
+			conf.Server.ListenBrainz.TrackAlgorithm = algorithm
+
+			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			resp, err := client.getSimilarRecordings(context.Background(), mbid, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+			Expect(resp).To(Equal([]recording{
+				{
+					MBID:        "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					Name:        "Take On Me",
+					Artist:      "a‐ha",
+					ReleaseName: "Hunting High and Low",
+					ReleaseMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Score:       124,
 				},
 			}))
 		})
