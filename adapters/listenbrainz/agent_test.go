@@ -193,7 +193,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("7c2cc610-f998-43ef-a08f-dae3344b8973"))
 		})
 
-		It("returns error when fetch calls", func() {
+		It("returns error when fetch calls fails", func() {
 			httpClient.Err = errors.New("error")
 			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err).To(HaveOccurred())

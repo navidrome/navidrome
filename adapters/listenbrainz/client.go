@@ -21,7 +21,7 @@ const (
 	// There are a couple of algorithms from https://labs.api.listenbrainz.org/similar-artists
 	artistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
 	// From https://labs.api.listenbrainz.org/similar-recordings
-	trackALgorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	trackAlgorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
 )
 
 var (
@@ -340,7 +340,7 @@ func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit in
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"recording_mbids": []string{mbid}, "algorithm": []string{trackALgorithm},
+		"recording_mbids": []string{mbid}, "algorithm": []string{trackAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
