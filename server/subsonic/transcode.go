@@ -320,16 +320,18 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	// Determine streaming parameters
 	format := ""
 	maxBitRate := 0
+	sampleRate := 0
 	if !params.DirectPlay && params.TargetFormat != "" {
 		format = params.TargetFormat
 		maxBitRate = params.TargetBitrate // Already in kbps, matching the streamer
+		sampleRate = params.TargetSampleRate
 	}
 
 	// Get offset parameter
 	offset := p.IntOr("offset", 0)
 
 	// Create stream
-	stream, err := api.streamer.NewStream(ctx, mediaID, format, maxBitRate, offset)
+	stream, err := api.streamer.NewStream(ctx, mediaID, format, maxBitRate, sampleRate, offset)
 	if err != nil {
 		return nil, err
 	}

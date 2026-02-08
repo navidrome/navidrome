@@ -24,7 +24,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0)
+	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0, 0)
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/navidrome/navidrome/core/ffmpeg"
 )
 
 func NewMockFFmpeg(data string) *MockFFmpeg {
@@ -23,7 +25,7 @@ func (ff *MockFFmpeg) IsAvailable() bool {
 	return true
 }
 
-func (ff *MockFFmpeg) Transcode(context.Context, string, string, int, int) (io.ReadCloser, error) {
+func (ff *MockFFmpeg) Transcode(_ context.Context, _ ffmpeg.TranscodeOptions) (io.ReadCloser, error) {
 	if ff.Error != nil {
 		return nil, ff.Error
 	}

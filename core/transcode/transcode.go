@@ -106,6 +106,7 @@ type Decision struct {
 	TargetFormat     string
 	TargetBitrate    int
 	TargetChannels   int
+	TargetSampleRate int
 	SourceStream     StreamDetails
 	TranscodeStream  *StreamDetails
 }
@@ -128,11 +129,12 @@ type StreamDetails struct {
 // Params contains the parameters extracted from a transcode token.
 // TargetBitrate is in kilobits per second (kbps).
 type Params struct {
-	MediaID        string
-	DirectPlay     bool
-	TargetFormat   string
-	TargetBitrate  int
-	TargetChannels int
+	MediaID          string
+	DirectPlay       bool
+	TargetFormat     string
+	TargetBitrate    int
+	TargetChannels   int
+	TargetSampleRate int
 }
 
 func NewDecider(ds model.DataStore) Decider {
@@ -196,11 +198,12 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	// Try transcoding profiles (in order of preference)
 	for _, profile := range clientInfo.TranscodingProfiles {
-		if ts := s.computeTranscodedStream(ctx, mf, sourceBitrate, &profile, clientInfo); ts != nil {
+		if ts, transcodeFormat := s.computeTranscodedStream(ctx, mf, sourceBitrate, &profile, clientInfo); ts != nil {
 			decision.CanTranscode = true
-			decision.TargetFormat = ts.Container
+			decision.TargetFormat = transcodeFormat
 			decision.TargetBitrate = ts.Bitrate
 			decision.TargetChannels = ts.Channels
+			decision.TargetSampleRate = ts.SampleRate
 			decision.TranscodeStream = ts
 			break
 		}
@@ -302,20 +305,76 @@ const (
 )
 
 // computeTranscodedStream attempts to build a valid transcoded stream for the given profile.
-// Returns nil if the profile cannot produce a valid output.
-func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *Profile, clientInfo *ClientInfo) *StreamDetails {
+// Returns the stream details and the internal transcoding format (which may differ from the
+// response container when a codec fallback occurs, e.g., "mp4"→"aac").
+// Returns nil, "" if the profile cannot produce a valid output.
+func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *Profile, clientInfo *ClientInfo) (*StreamDetails, string) {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
 		log.Trace(ctx, "Skipping transcoding profile: unsupported protocol", "protocol", profile.Protocol)
-		return nil
+		return nil, ""
 	}
 
-	targetFormat := strings.ToLower(profile.Container)
+	responseContainer, targetFormat := s.resolveTargetFormat(ctx, profile)
+	if targetFormat == "" {
+		return nil, ""
+	}
+
+	targetIsLossless := isLosslessFormat(targetFormat)
+
+	// Reject lossy to lossless conversion
+	if !mf.IsLossless() && targetIsLossless {
+		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
+		return nil, ""
+	}
+
+	ts := &StreamDetails{
+		Container:  responseContainer,
+		Codec:      strings.ToLower(profile.AudioCodec),
+		SampleRate: dsdToPCMSampleRate(mf.SampleRate, mf.AudioCodec()),
+		Channels:   mf.Channels,
+		IsLossless: targetIsLossless,
+	}
+	if ts.Codec == "" {
+		ts.Codec = targetFormat
+	}
+
+	// Apply codec-intrinsic sample rate adjustments before codec profile limitations
+	if fixedRate := codecFixedOutputSampleRate(ts.Codec); fixedRate > 0 {
+		ts.SampleRate = fixedRate
+	}
+	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
+		ts.SampleRate = maxRate
+	}
+
+	// Determine target bitrate (all in kbps)
+	if ok := s.computeBitrate(ctx, mf, sourceBitrate, targetFormat, targetIsLossless, clientInfo, ts); !ok {
+		return nil, ""
+	}
+
+	// Apply MaxAudioChannels from the transcoding profile
+	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
+		ts.Channels = profile.MaxAudioChannels
+	}
+
+	// Apply codec profile limitations to the TARGET codec
+	if ok := s.applyCodecLimitations(ctx, sourceBitrate, targetFormat, targetIsLossless, clientInfo, ts); !ok {
+		return nil, ""
+	}
+
+	return ts, targetFormat
+}
+
+// resolveTargetFormat determines the response container and internal target format
+// by looking up transcoding configs. Returns ("", "") if no config found.
+func (s *deciderService) resolveTargetFormat(ctx context.Context, profile *Profile) (responseContainer, targetFormat string) {
+	responseContainer = strings.ToLower(profile.Container)
+	targetFormat = responseContainer
 	if targetFormat == "" {
 		targetFormat = strings.ToLower(profile.AudioCodec)
+		responseContainer = targetFormat
 	}
 
-	// Verify we have a transcoding config for this format.
 	// Try the container first, then fall back to the audioCodec (e.g. "ogg" → "opus", "mp4" → "aac").
 	tc, err := s.ds.Transcoding(ctx).FindByFormat(targetFormat)
 	if (err != nil || tc == nil) && profile.AudioCodec != "" && !strings.EqualFold(targetFormat, profile.AudioCodec) {
@@ -328,62 +387,42 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 	}
 	if err != nil || tc == nil {
 		log.Trace(ctx, "Skipping transcoding profile: no transcoding config", "targetFormat", targetFormat)
-		return nil
+		return "", ""
 	}
+	return responseContainer, targetFormat
+}
 
-	targetIsLossless := isLosslessFormat(targetFormat)
-
-	// Reject lossy to lossless conversion
-	if !mf.IsLossless() && targetIsLossless {
-		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
-		return nil
-	}
-
-	ts := &StreamDetails{
-		Container:  targetFormat,
-		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: mf.SampleRate,
-		Channels:   mf.Channels,
-		IsLossless: targetIsLossless,
-	}
-	if ts.Codec == "" {
-		ts.Codec = targetFormat
-	}
-
-	// Determine target bitrate (all in kbps)
+// computeBitrate determines the target bitrate for the transcoded stream.
+// Returns false if the profile should be rejected.
+func (s *deciderService) computeBitrate(ctx context.Context, mf *model.MediaFile, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
 	if mf.IsLossless() {
 		if !targetIsLossless {
-			// Lossless to lossy: use client's max transcoding bitrate or default
 			if clientInfo.MaxTranscodingAudioBitrate > 0 {
 				ts.Bitrate = clientInfo.MaxTranscodingAudioBitrate
 			} else {
 				ts.Bitrate = defaultBitrate
 			}
 		} else {
-			// Lossless to lossless: check if bitrate is under the global max
 			if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
 				log.Trace(ctx, "Skipping transcoding profile: lossless target exceeds bitrate limit",
 					"targetFormat", targetFormat, "sourceBitrate", sourceBitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
-				return nil
+				return false
 			}
-			// No explicit bitrate for lossless target (leave 0)
 		}
 	} else {
-		// Lossy to lossy: preserve source bitrate
 		ts.Bitrate = sourceBitrate
 	}
 
-	// Apply maxAudioBitrate as final cap on transcoded stream (#5)
+	// Apply maxAudioBitrate as final cap
 	if clientInfo.MaxAudioBitrate > 0 && ts.Bitrate > 0 && ts.Bitrate > clientInfo.MaxAudioBitrate {
 		ts.Bitrate = clientInfo.MaxAudioBitrate
 	}
+	return true
+}
 
-	// Apply MaxAudioChannels from the transcoding profile
-	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
-		ts.Channels = profile.MaxAudioChannels
-	}
-
-	// Apply codec profile limitations to the TARGET codec (#4)
+// applyCodecLimitations applies codec profile limitations to the transcoded stream.
+// Returns false if the profile should be rejected.
+func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
 	targetCodec := ts.Codec
 	for _, codecProfile := range clientInfo.CodecProfiles {
 		if !strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) {
@@ -394,22 +433,20 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 		}
 		for _, lim := range codecProfile.Limitations {
 			result := applyLimitation(sourceBitrate, &lim, ts)
-			// For lossless codecs, adjusting bitrate is not valid
 			if strings.EqualFold(lim.Name, LimitationAudioBitrate) && targetIsLossless && result == adjustAdjusted {
 				log.Trace(ctx, "Skipping transcoding profile: cannot adjust bitrate for lossless target",
 					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name)
-				return nil
+				return false
 			}
 			if result == adjustCannotFit {
 				log.Trace(ctx, "Skipping transcoding profile: codec limitation cannot be satisfied",
 					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
 					"comparison", lim.Comparison, "values", lim.Values)
-				return nil
+				return false
 			}
 		}
 	}
-
-	return ts
+	return true
 }
 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
@@ -511,6 +548,9 @@ func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, erro
 		if decision.TargetChannels > 0 {
 			claims["ch"] = decision.TargetChannels
 		}
+		if decision.TargetSampleRate > 0 {
+			claims["sr"] = decision.TargetSampleRate
+		}
 	}
 	return auth.CreateExpiringPublicToken(exp, claims)
 }
@@ -536,6 +576,9 @@ func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
 	}
 	if ch, ok := claims["ch"].(float64); ok {
 		params.TargetChannels = int(ch)
+	}
+	if sr, ok := claims["sr"].(float64); ok {
+		params.TargetSampleRate = int(sr)
 	}
 
 	return params, nil
@@ -695,4 +738,37 @@ func isLosslessFormat(format string) bool {
 		return true
 	}
 	return false
+}
+
+// dsdToPCMSampleRate converts a DSD sample rate to its PCM-equivalent rate (÷8).
+// DSD64=2822400→352800, DSD128=5644800→705600, etc.
+// For non-DSD codecs, returns the rate unchanged.
+func dsdToPCMSampleRate(sampleRate int, codec string) int {
+	if strings.EqualFold(codec, "dsd") && sampleRate > 0 {
+		return sampleRate / 8
+	}
+	return sampleRate
+}
+
+// codecFixedOutputSampleRate returns the mandatory output sample rate for codecs
+// that always resample regardless of input (e.g., Opus always outputs 48000Hz).
+// Returns 0 if the codec has no fixed output rate.
+func codecFixedOutputSampleRate(codec string) int {
+	switch strings.ToLower(codec) {
+	case "opus":
+		return 48000
+	}
+	return 0
+}
+
+// codecMaxSampleRate returns the hard maximum output sample rate for a codec.
+// Returns 0 if the codec has no hard limit.
+func codecMaxSampleRate(codec string) int {
+	switch strings.ToLower(codec) {
+	case "mp3":
+		return 48000
+	case "aac":
+		return 96000
+	}
+	return 0
 }

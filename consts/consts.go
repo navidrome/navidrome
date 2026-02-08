@@ -153,6 +153,12 @@ var (
 			DefaultBitRate: 256,
 			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
+		{
+			Name:           "flac audio",
+			TargetFormat:   "flac",
+			DefaultBitRate: 0,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+		},
 	}
 )
 
