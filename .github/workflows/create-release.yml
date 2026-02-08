@@ -1,0 +1,52 @@
+name: Create Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.53.0)"
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "::error::Invalid version format '${{ inputs.version }}'. Expected X.X.X"
+            exit 1
+          fi
+
+      - name: Check if tag already exists
+        run: |
+          if git rev-parse "v${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Tag v${{ inputs.version }} already exists"
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run go mod tidy
+        run: go mod tidy
+
+      - name: Check for pending changes
+        run: |
+          if [ -n "$(git status -s)" ]; then
+            echo "::error::There are pending changes after 'go mod tidy'. Please commit them first."
+            git status -s
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git tag v${{ inputs.version }}
+          git push origin v${{ inputs.version }}
