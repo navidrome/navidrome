@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -25,6 +26,8 @@ import (
 )
 
 const Version = "1.16.1"
+
+var validJSIdentifier = regexp.MustCompile(`^[a-zA-Z_$][a-zA-Z0-9_$.]*$`)
 
 type handler = func(*http.Request) (*responses.Subsonic, error)
 type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
@@ -315,8 +318,17 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
 	case "jsonp":
-		w.Header().Set("Content-Type", "application/javascript")
 		callback, _ := p.String("callback")
+		if !validJSIdentifier.MatchString(callback) {
+			log.Warn(r.Context(), "Invalid JSONP callback parameter", "callback", callback)
+			w.Header().Set("Content-Type", "application/json")
+			errResp := newResponse()
+			errResp.Status = responses.StatusFailed
+			errResp.Error = &responses.Error{Code: responses.ErrorGeneric, Message: "invalid callback parameter"}
+			response, _ = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
+			break
+		}
+		w.Header().Set("Content-Type", "application/javascript")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
 		response = fmt.Appendf(nil, "%s(%s)", callback, response)
