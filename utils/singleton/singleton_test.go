@@ -69,7 +69,7 @@ var _ = Describe("GetInstance", func() {
 		done.Add(numCallsToDo)
 
 		numInstancesCreated = 0
-		for i := 0; i < numCallsToDo; i++ {
+		for range numCallsToDo {
 			go func() {
 				// This is needed to make sure the test does not hang if it fails
 				defer GinkgoRecover()

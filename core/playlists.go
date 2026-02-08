@@ -45,7 +45,7 @@ func InPlaylistsPath(folder model.Folder) bool {
 		return true
 	}
 	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
-	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
 		if match, _ := doublestar.Match(path, rel); match {
 			return true
 		}
@@ -193,8 +193,8 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			if strings.HasPrefix(line, "file://") {
-				line = strings.TrimPrefix(line, "file://")
+			if after, ok := strings.CutPrefix(line, "file://"); ok {
+				line = after
 				line, _ = url.QueryUnescape(line)
 			}
 			if !model.IsAudioFile(line) {
@@ -533,7 +533,7 @@ type nspFile struct {
 }
 
 func (i *nspFile) UnmarshalJSON(data []byte) error {
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	err := json.Unmarshal(data, &m)
 	if err != nil {
 		return err

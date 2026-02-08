@@ -99,7 +99,7 @@ func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error
 
 func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
 	var ff []sourceFunc
-	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
+	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "external":
@@ -116,7 +116,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		current := artistFolder
-		for i := 0; i < maxArtistFolderTraversalDepth; i++ {
+		for range maxArtistFolderTraversalDepth {
 			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
 				return reader, path, nil
 			}

@@ -22,8 +22,8 @@ type Share struct {
 	Format        string     `structs:"format" json:"format,omitempty"`
 	MaxBitRate    int        `structs:"max_bit_rate" json:"maxBitRate,omitempty"`
 	VisitCount    int        `structs:"visit_count" json:"visitCount,omitempty"`
-	CreatedAt     time.Time  `structs:"created_at" json:"createdAt,omitempty"`
-	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt,omitempty"`
+	CreatedAt     time.Time  `structs:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt"`
 	Tracks        MediaFiles `structs:"-" json:"tracks,omitempty"`
 	Albums        Albums     `structs:"-" json:"albums,omitempty"`
 	URL           string     `structs:"-" json:"-"`

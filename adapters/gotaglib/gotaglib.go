@@ -255,7 +255,7 @@ func parseTIPL(tags map[string][]string) {
 	}
 	var currentRole string
 	var currentValue []string
-	for _, part := range strings.Split(tipl[0], " ") {
+	for part := range strings.SplitSeq(tipl[0], " ") {
 		if _, ok := tiplMapping[part]; ok {
 			addRole(currentRole, currentValue)
 			currentRole = part

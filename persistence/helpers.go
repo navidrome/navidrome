@@ -15,7 +15,7 @@ type PostMapper interface {
 	PostMapArgs(map[string]any) error
 }
 
-func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
+func toSQLArgs(rec any) (map[string]any, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
 		switch t := v.(type) {
@@ -71,7 +71,7 @@ type existsCond struct {
 	not      bool
 }
 
-func (e existsCond) ToSql() (string, []interface{}, error) {
+func (e existsCond) ToSql() (string, []any, error) {
 	sql, args, err := e.cond.ToSql()
 	sql = fmt.Sprintf("exists (select 1 from %s where %s)", e.subTable, sql)
 	if e.not {

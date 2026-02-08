@@ -95,7 +95,7 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
-func (api *Router) R(r chi.Router, pathPrefix string, model interface{}, persistable bool) {
+func (api *Router) R(r chi.Router, pathPrefix string, model any, persistable bool) {
 	constructor := func(ctx context.Context) rest.Repository {
 		return api.ds.Resource(ctx, model)
 	}

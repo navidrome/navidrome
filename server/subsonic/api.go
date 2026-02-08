@@ -319,7 +319,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		callback, _ := p.String("callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
-		response = []byte(fmt.Sprintf("%s(%s)", callback, response))
+		response = fmt.Appendf(nil, "%s(%s)", callback, response)
 	default:
 		w.Header().Set("Content-Type", "application/xml")
 		response, err = xml.Marshal(payload)

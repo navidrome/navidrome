@@ -144,10 +144,8 @@ func (t Tags) Merge(tags Tags) {
 }
 
 func (t Tags) Add(name TagName, v string) {
-	for _, existing := range t[name] {
-		if existing == v {
-			return
-		}
+	if slices.Contains(t[name], v) {
+		return
 	}
 	t[name] = append(t[name], v)
 }

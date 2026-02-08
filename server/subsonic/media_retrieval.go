@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -120,12 +121,12 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse.Artist = artist
 	lyricsResponse.Title = title
 
-	lyricsText := ""
+	var lyricsText strings.Builder
 	for _, line := range structuredLyrics[0].Line {
-		lyricsText += line.Value + "\n"
+		lyricsText.WriteString(line.Value + "\n")
 	}
 
-	lyricsResponse.Value = lyricsText
+	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
 }

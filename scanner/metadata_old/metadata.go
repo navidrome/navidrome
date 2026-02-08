@@ -215,8 +215,8 @@ func (t Tags) Lyrics() string {
 	}
 
 	for tag, value := range t.Tags {
-		if strings.HasPrefix(tag, "lyrics-") {
-			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
+		if after, ok := strings.CutPrefix(tag, "lyrics-"); ok {
+			language := strings.TrimSpace(after)
 
 			if language == "" {
 				language = "xxx"

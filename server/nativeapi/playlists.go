@@ -218,7 +218,7 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
-		_, err = w.Write([]byte(fmt.Sprintf(`{"id":"%d"}`, id)))
+		_, err = w.Write(fmt.Appendf(nil, `{"id":"%d"}`, id))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

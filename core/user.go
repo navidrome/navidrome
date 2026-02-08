@@ -50,12 +50,12 @@ type userRepositoryWrapper struct {
 }
 
 // Save implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Save(entity interface{}) (string, error) {
+func (r *userRepositoryWrapper) Save(entity any) (string, error) {
 	return r.UserRepository.(rest.Persistable).Save(entity)
 }
 
 // Update implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Update(id string, entity interface{}, cols ...string) error {
+func (r *userRepositoryWrapper) Update(id string, entity any, cols ...string) error {
 	return r.UserRepository.(rest.Persistable).Update(id, entity, cols...)
 }
 

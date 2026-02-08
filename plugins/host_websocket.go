@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -200,9 +201,7 @@ func (s *webSocketServiceImpl) CloseConnection(ctx context.Context, connectionID
 func (s *webSocketServiceImpl) Close() error {
 	s.mu.Lock()
 	connections := make(map[string]*wsConnection, len(s.connections))
-	for k, v := range s.connections {
-		connections[k] = v
-	}
+	maps.Copy(connections, s.connections)
 	s.connections = make(map[string]*wsConnection)
 	s.mu.Unlock()
 

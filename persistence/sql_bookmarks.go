@@ -37,7 +37,7 @@ func (r sqlRepository) bmkID(itemID ...string) And {
 func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 	client, _ := request.ClientFrom(r.ctx)
 	user, _ := request.UserFrom(r.ctx)
-	values := map[string]interface{}{
+	values := map[string]any{
 		"comment":    comment,
 		"position":   position,
 		"updated_at": time.Now(),

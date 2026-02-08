@@ -51,13 +51,13 @@ func ParseTargets(libFolders []string) ([]ScanTarget, error) {
 		}
 
 		// Split by the first colon
-		colonIdx := strings.Index(part, ":")
-		if colonIdx == -1 {
+		before, after, ok := strings.Cut(part, ":")
+		if !ok {
 			return nil, fmt.Errorf("invalid target format: %q (expected libraryID:folderPath)", part)
 		}
 
-		libIDStr := part[:colonIdx]
-		folderPath := part[colonIdx+1:]
+		libIDStr := before
+		folderPath := after
 
 		libID, err := strconv.Atoi(libIDStr)
 		if err != nil {

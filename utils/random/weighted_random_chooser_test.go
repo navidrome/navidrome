@@ -9,7 +9,7 @@ var _ = Describe("WeightedChooser", func() {
 	var w *WeightedChooser[int]
 	BeforeEach(func() {
 		w = NewWeightedChooser[int]()
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			w.Add(i, i+1)
 		}
 	})
@@ -23,7 +23,7 @@ var _ = Describe("WeightedChooser", func() {
 
 	It("removes items", func() {
 		Expect(w.Size()).To(Equal(10))
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			Expect(w.Remove(0)).To(Succeed())
 		}
 		Expect(w.Size()).To(Equal(0))
@@ -43,7 +43,7 @@ var _ = Describe("WeightedChooser", func() {
 	})
 
 	It("returns all items from the list", func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			Expect(w.Pick()).To(BeElementOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 		}
 		Expect(w.Size()).To(Equal(0))
@@ -61,11 +61,11 @@ var _ = Describe("WeightedChooser", func() {
 
 	It("chooses based on weights", func() {
 		counts := [10]int{}
-		for i := 0; i < 200000; i++ {
+		for range 200000 {
 			c, _ := w.weightedChoice()
 			counts[c] = counts[c] + 1
 		}
-		for i := 0; i < 9; i++ {
+		for i := range 9 {
 			Expect(counts[i]).To(BeNumerically("<", counts[i+1]))
 		}
 	})
