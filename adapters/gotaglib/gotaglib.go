@@ -49,6 +49,7 @@ func (e extractor) Version() string {
 func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	f, close, err := e.openFile(filePath)
 	if err != nil {
+		log.Warn("gotaglib: Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, err
 	}
 	defer close()
