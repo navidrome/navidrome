@@ -19,8 +19,8 @@ import (
 )
 
 type MediaStreamer interface {
-	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, offset int) (*Stream, error)
-	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error)
+	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, offset int) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -36,28 +36,29 @@ type mediaStreamer struct {
 }
 
 type streamJob struct {
-	ms       *mediaStreamer
-	mf       *model.MediaFile
-	filePath string
-	format   string
-	bitRate  int
-	offset   int
+	ms         *mediaStreamer
+	mf         *model.MediaFile
+	filePath   string
+	format     string
+	bitRate    int
+	sampleRate int
+	offset     int
 }
 
 func (j *streamJob) Key() string {
-	return fmt.Sprintf("%s.%s.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.format, j.offset)
+	return fmt.Sprintf("%s.%s.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.format, j.offset)
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
+func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error) {
 	mf, err := ms.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqOffset)
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqSampleRate, reqOffset)
 }
 
-func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
@@ -87,12 +88,13 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 	}
 
 	job := &streamJob{
-		ms:       ms,
-		mf:       mf,
-		filePath: filePath,
-		format:   format,
-		bitRate:  bitRate,
-		offset:   reqOffset,
+		ms:         ms,
+		mf:         mf,
+		filePath:   filePath,
+		format:     format,
+		bitRate:    bitRate,
+		sampleRate: reqSampleRate,
+		offset:     reqOffset,
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
@@ -217,7 +219,14 @@ func NewTranscodingCache() TranscodingCache {
 				transcodingCtx = request.AddValues(context.Background(), ctx)
 			}
 
-			out, err := job.ms.transcoder.Transcode(transcodingCtx, t.Command, job.filePath, job.bitRate, job.offset)
+			out, err := job.ms.transcoder.Transcode(transcodingCtx, ffmpeg.TranscodeOptions{
+				Command:    t.Command,
+				Format:     job.format,
+				FilePath:   job.filePath,
+				BitRate:    job.bitRate,
+				SampleRate: job.sampleRate,
+				Offset:     job.offset,
+			})
 			if err != nil {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid

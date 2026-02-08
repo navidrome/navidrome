@@ -15,8 +15,19 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+// TranscodeOptions contains all parameters for a transcoding operation.
+type TranscodeOptions struct {
+	Command    string // DB command template (used to detect custom vs default)
+	Format     string // Target format (mp3, opus, aac, flac)
+	FilePath   string
+	BitRate    int // kbps, 0 = codec default
+	SampleRate int // 0 = no constraint
+	Channels   int // 0 = no constraint
+	Offset     int // seconds
+}
+
 type FFmpeg interface {
-	Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error)
+	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
@@ -35,15 +46,19 @@ const (
 
 type ffmpeg struct{}
 
-func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error) {
+func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error) {
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
-	// First make sure the file exists
-	if err := fileExists(path); err != nil {
+	if err := fileExists(opts.FilePath); err != nil {
 		return nil, err
 	}
-	args := createFFmpegCommand(command, path, maxBitRate, offset)
+	var args []string
+	if isDefaultCommand(opts.Format, opts.Command) {
+		args = buildDynamicArgs(opts)
+	} else {
+		args = buildTemplateArgs(opts)
+	}
 	return e.start(ctx, args)
 }
 
@@ -51,7 +66,6 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
-	// First make sure the file exists
 	if err := fileExists(path); err != nil {
 		return nil, err
 	}
@@ -154,6 +168,99 @@ func (j *ffCmd) wait() {
 		return
 	}
 	_ = j.out.Close()
+}
+
+// defaultCommands maps format to the known default command template.
+// Used to detect whether a user has customized their transcoding command.
+var defaultCommands = map[string]string{
+	"mp3":  "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+	"opus": "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+	"aac":  "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+	"flac": "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+}
+
+// formatCodecMap maps target format to ffmpeg codec flag.
+var formatCodecMap = map[string]string{
+	"mp3":  "libmp3lame",
+	"opus": "libopus",
+	"aac":  "aac",
+	"flac": "flac",
+}
+
+// formatOutputMap maps target format to ffmpeg output format flag (-f).
+var formatOutputMap = map[string]string{
+	"mp3":  "mp3",
+	"opus": "opus",
+	"aac":  "adts",
+	"flac": "flac",
+}
+
+// isDefaultCommand returns true if the command matches the known default for this format.
+func isDefaultCommand(format, command string) bool {
+	defaultCmd, ok := defaultCommands[format]
+	return ok && command == defaultCmd
+}
+
+// buildDynamicArgs programmatically constructs ffmpeg arguments for known formats,
+// including all transcoding parameters (bitrate, sample rate, channels).
+func buildDynamicArgs(opts TranscodeOptions) []string {
+	cmdPath, _ := ffmpegCmd()
+	args := []string{cmdPath, "-i", opts.FilePath}
+
+	if opts.Offset > 0 {
+		args = append(args, "-ss", strconv.Itoa(opts.Offset))
+	}
+
+	args = append(args, "-map", "0:a:0")
+
+	if codec, ok := formatCodecMap[opts.Format]; ok {
+		args = append(args, "-c:a", codec)
+	}
+
+	if opts.BitRate > 0 {
+		args = append(args, "-b:a", strconv.Itoa(opts.BitRate)+"k")
+	}
+	if opts.SampleRate > 0 {
+		args = append(args, "-ar", strconv.Itoa(opts.SampleRate))
+	}
+	if opts.Channels > 0 {
+		args = append(args, "-ac", strconv.Itoa(opts.Channels))
+	}
+
+	args = append(args, "-v", "0")
+
+	if outputFmt, ok := formatOutputMap[opts.Format]; ok {
+		args = append(args, "-f", outputFmt)
+	}
+
+	args = append(args, "-")
+	return args
+}
+
+// buildTemplateArgs handles user-customized command templates, with dynamic injection
+// of sample rate and channels when the template doesn't already include them.
+func buildTemplateArgs(opts TranscodeOptions) []string {
+	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
+
+	// Dynamically inject -ar and -ac for custom templates that don't include them
+	if opts.SampleRate > 0 {
+		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
+	}
+	if opts.Channels > 0 {
+		args = injectBeforeOutput(args, "-ac", strconv.Itoa(opts.Channels))
+	}
+	return args
+}
+
+// injectBeforeOutput inserts a flag and value before the trailing "-" (stdout output).
+func injectBeforeOutput(args []string, flag, value string) []string {
+	if len(args) > 0 && args[len(args)-1] == "-" {
+		result := make([]string, 0, len(args)+2)
+		result = append(result, args[:len(args)-1]...)
+		result = append(result, flag, value, "-")
+		return result
+	}
+	return append(args, flag, value)
 }
 
 // Path will always be an absolute path

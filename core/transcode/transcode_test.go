@@ -227,7 +227,7 @@ var _ = Describe("Decider", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2}
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "aac", Protocol: "http"},
+						{Container: "wav", Protocol: "http"},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci)
@@ -568,6 +568,180 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
+		Context("DSD sample rate conversion", func() {
+			It("converts DSD sample rate to PCM-equivalent in decision", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				// DSD64 2822400 / 8 = 352800, capped by MP3 max of 48000
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
+				Expect(decision.TargetSampleRate).To(Equal(48000))
+			})
+
+			It("converts DSD sample rate for FLAC target without codec limit", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1}
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("flac"))
+				// DSD64 2822400 / 8 = 352800, FLAC has no hard max
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(352800))
+				Expect(decision.TargetSampleRate).To(Equal(352800))
+			})
+
+			It("applies codec profile limit to DSD-converted FLAC sample rate", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1}
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"48000"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// DSD64 2822400 / 8 = 352800, capped by codec profile limit of 48000
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
+				Expect(decision.TargetSampleRate).To(Equal(48000))
+			})
+		})
+
+		Context("Opus fixed sample rate", func() {
+			It("sets Opus output to 48000Hz regardless of input", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 128,
+					TranscodingProfiles: []Profile{
+						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("opus"))
+				// Opus always outputs 48000Hz
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
+				Expect(decision.TargetSampleRate).To(Equal(48000))
+			})
+
+			It("sets Opus output to 48000Hz even for 96kHz input", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1500, Channels: 2, SampleRate: 96000, BitDepth: 24}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 128,
+					TranscodingProfiles: []Profile{
+						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
+			})
+		})
+
+		Context("Container vs format separation", func() {
+			It("preserves mp4 container when falling back to aac format", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 256,
+					TranscodingProfiles: []Profile{
+						{Container: "mp4", AudioCodec: "aac", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// TargetFormat is the internal format used for DB lookup ("aac")
+				Expect(decision.TargetFormat).To(Equal("aac"))
+				// Container in the response preserves what the client asked ("mp4")
+				Expect(decision.TranscodeStream.Container).To(Equal("mp4"))
+				Expect(decision.TranscodeStream.Codec).To(Equal("aac"))
+			})
+
+			It("uses container as format when container matches transcoding config", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 256,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TranscodeStream.Container).To(Equal("mp3"))
+			})
+		})
+
+		Context("MP3 max sample rate", func() {
+			It("caps sample rate at 48000 for MP3", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1500, Channels: 2, SampleRate: 96000, BitDepth: 24}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
+			})
+
+			It("preserves sample rate at 44100 for MP3", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(44100))
+			})
+		})
+
+		Context("AAC max sample rate", func() {
+			It("caps sample rate at 96000 for AAC", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1}
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "aac", AudioCodec: "aac", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// DSD64 2822400 / 8 = 352800, capped by AAC max of 96000
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(96000))
+			})
+		})
+
 		Context("Typed transcode reasons from multiple profiles", func() {
 			It("collects reasons from each failed direct play profile", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 128, Channels: 2, SampleRate: 48000}
@@ -647,6 +821,45 @@ var _ = Describe("Decider", func() {
 			Expect(params.TargetFormat).To(Equal("mp3"))
 			Expect(params.TargetBitrate).To(Equal(256)) // kbps
 			Expect(params.TargetChannels).To(Equal(2))
+		})
+
+		It("creates and parses a transcode token with sample rate", func() {
+			decision := &Decision{
+				MediaID:          "media-789",
+				CanDirectPlay:    false,
+				CanTranscode:     true,
+				TargetFormat:     "flac",
+				TargetBitrate:    0,
+				TargetChannels:   2,
+				TargetSampleRate: 48000,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+
+			params, err := svc.ParseTranscodeParams(token)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.MediaID).To(Equal("media-789"))
+			Expect(params.DirectPlay).To(BeFalse())
+			Expect(params.TargetFormat).To(Equal("flac"))
+			Expect(params.TargetSampleRate).To(Equal(48000))
+			Expect(params.TargetChannels).To(Equal(2))
+		})
+
+		It("omits sample rate from token when 0", func() {
+			decision := &Decision{
+				MediaID:          "media-100",
+				CanDirectPlay:    false,
+				CanTranscode:     true,
+				TargetFormat:     "mp3",
+				TargetBitrate:    256,
+				TargetSampleRate: 0,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+
+			params, err := svc.ParseTranscodeParams(token)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.TargetSampleRate).To(Equal(0))
 		})
 
 		It("rejects an invalid token", func() {
