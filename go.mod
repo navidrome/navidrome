@@ -68,12 +68,12 @@ require (
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	go.senan.xyz/taglib v0.11.1
 	go.uber.org/goleak v1.3.0
-	golang.org/x/image v0.35.0
+	golang.org/x/image v0.36.0
 	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
 	golang.org/x/term v0.39.0
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.34.0
 	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
