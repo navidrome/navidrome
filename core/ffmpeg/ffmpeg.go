@@ -171,13 +171,17 @@ func (j *ffCmd) wait() {
 	_ = j.out.Close()
 }
 
-// defaultCommands maps format to the known default command template.
+// defaultCommands maps format to the known default command templates.
 // Used to detect whether a user has customized their transcoding command.
-var defaultCommands = map[string]string{
-	"mp3":  "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
-	"opus": "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
-	"aac":  "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
-	"flac": "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+// Multiple entries per format support smooth upgrades (e.g. aac changed from adts to ipod).
+var defaultCommands = map[string][]string{
+	"mp3":  {"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -"},
+	"opus": {"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -"},
+	"aac": {
+		"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -",
+		"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -", // legacy default
+	},
+	"flac": {"ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -"},
 }
 
 // formatCodecMap maps target format to ffmpeg codec flag.
@@ -192,14 +196,22 @@ var formatCodecMap = map[string]string{
 var formatOutputMap = map[string]string{
 	"mp3":  "mp3",
 	"opus": "opus",
-	"aac":  "adts",
+	"aac":  "ipod",
 	"flac": "flac",
 }
 
-// isDefaultCommand returns true if the command matches the known default for this format.
+// isDefaultCommand returns true if the command matches any known default for this format.
 func isDefaultCommand(format, command string) bool {
-	defaultCmd, ok := defaultCommands[format]
-	return ok && command == defaultCmd
+	defaults, ok := defaultCommands[format]
+	if !ok {
+		return false
+	}
+	for _, d := range defaults {
+		if command == d {
+			return true
+		}
+	}
+	return false
 }
 
 // buildDynamicArgs programmatically constructs ffmpeg arguments for known formats,
@@ -238,6 +250,11 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 	if outputFmt, ok := formatOutputMap[opts.Format]; ok {
 		args = append(args, "-f", outputFmt)
+	}
+
+	// For AAC in MP4 container, enable fragmented MP4 for pipe-safe streaming
+	if opts.Format == "aac" {
+		args = append(args, "-movflags", "frag_keyframe+empty_moov")
 	}
 
 	args = append(args, "-")

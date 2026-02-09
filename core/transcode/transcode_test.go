@@ -621,6 +621,9 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, capped by MP3 max of 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
+				// DSD 1-bit → 24-bit PCM
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
+				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
 
 			It("converts DSD sample rate for FLAC target without codec limit", func() {
@@ -637,6 +640,9 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, FLAC has no hard max
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(352800))
 				Expect(decision.TargetSampleRate).To(Equal(352800))
+				// DSD 1-bit → 24-bit PCM
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
+				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
 
 			It("applies codec profile limit to DSD-converted FLAC sample rate", func() {
@@ -661,6 +667,33 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, capped by codec profile limit of 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
+				// DSD 1-bit → 24-bit PCM
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
+				Expect(decision.TargetBitDepth).To(Equal(24))
+			})
+
+			It("applies audioBitdepth limitation to DSD-converted bit depth", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1}
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioBitdepth, Comparison: ComparisonLessThanEqual, Values: []string{"16"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// DSD 1-bit → 24-bit PCM, then capped by codec profile limit to 16-bit
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(16))
+				Expect(decision.TargetBitDepth).To(Equal(16))
 			})
 		})
 

@@ -334,9 +334,9 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 	ts := &StreamDetails{
 		Container:  responseContainer,
 		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: dsdToPCMSampleRate(mf.SampleRate, mf.AudioCodec()),
+		SampleRate: normalizeSourceSampleRate(mf.SampleRate, mf.AudioCodec()),
 		Channels:   mf.Channels,
-		BitDepth:   mf.BitDepth,
+		BitDepth:   normalizeSourceBitDepth(mf.BitDepth, mf.AudioCodec()),
 		IsLossless: targetIsLossless,
 	}
 	if ts.Codec == "" {
@@ -750,14 +750,25 @@ func isLosslessFormat(format string) bool {
 	return false
 }
 
-// dsdToPCMSampleRate converts a DSD sample rate to its PCM-equivalent rate (÷8).
+// normalizeSourceSampleRate adjusts the source sample rate for codecs that store
+// it differently than PCM. Currently handles DSD (÷8):
 // DSD64=2822400→352800, DSD128=5644800→705600, etc.
-// For non-DSD codecs, returns the rate unchanged.
-func dsdToPCMSampleRate(sampleRate int, codec string) int {
+// For other codecs, returns the rate unchanged.
+func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	if strings.EqualFold(codec, "dsd") && sampleRate > 0 {
 		return sampleRate / 8
 	}
 	return sampleRate
+}
+
+// normalizeSourceBitDepth adjusts the source bit depth for codecs that use
+// non-standard bit depths. Currently handles DSD (1-bit → 24-bit PCM, which is
+// what ffmpeg produces). For other codecs, returns the depth unchanged.
+func normalizeSourceBitDepth(bitDepth int, codec string) int {
+	if strings.EqualFold(codec, "dsd") && bitDepth == 1 {
+		return 24
+	}
+	return bitDepth
 }
 
 // codecFixedOutputSampleRate returns the mandatory output sample rate for codecs
