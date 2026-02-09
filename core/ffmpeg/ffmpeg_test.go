@@ -190,6 +190,83 @@ var _ = Describe("ffmpeg", func() {
 				"-",
 			}))
 		})
+
+		It("builds flac args with bit depth", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "flac",
+				FilePath: "/music/file.dsf",
+				BitDepth: 24,
+			})
+			Expect(args).To(Equal([]string{
+				"ffmpeg", "-i", "/music/file.dsf",
+				"-map", "0:a:0",
+				"-c:a", "flac",
+				"-sample_fmt", "s32",
+				"-v", "0",
+				"-f", "flac",
+				"-",
+			}))
+		})
+
+		It("omits -sample_fmt when bit depth is 0", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "flac",
+				FilePath: "/music/file.flac",
+				BitDepth: 0,
+			})
+			Expect(args).ToNot(ContainElement("-sample_fmt"))
+		})
+
+		It("omits -sample_fmt when bit depth is too low (DSD)", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "flac",
+				FilePath: "/music/file.dsf",
+				BitDepth: 1,
+			})
+			Expect(args).ToNot(ContainElement("-sample_fmt"))
+		})
+
+		It("omits -sample_fmt for mp3 even when bit depth >= 16", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "mp3",
+				FilePath: "/music/file.flac",
+				BitRate:  256,
+				BitDepth: 16,
+			})
+			Expect(args).ToNot(ContainElement("-sample_fmt"))
+		})
+
+		It("omits -sample_fmt for aac even when bit depth >= 16", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "aac",
+				FilePath: "/music/file.flac",
+				BitRate:  256,
+				BitDepth: 16,
+			})
+			Expect(args).ToNot(ContainElement("-sample_fmt"))
+		})
+
+		It("omits -sample_fmt for opus even when bit depth >= 16", func() {
+			args := buildDynamicArgs(TranscodeOptions{
+				Format:   "opus",
+				FilePath: "/music/file.flac",
+				BitRate:  128,
+				BitDepth: 16,
+			})
+			Expect(args).ToNot(ContainElement("-sample_fmt"))
+		})
+	})
+
+	Describe("bitDepthToSampleFmt", func() {
+		It("converts 16-bit", func() {
+			Expect(bitDepthToSampleFmt(16)).To(Equal("s16"))
+		})
+		It("converts 24-bit to s32 (FLAC only supports s16/s32)", func() {
+			Expect(bitDepthToSampleFmt(24)).To(Equal("s32"))
+		})
+		It("converts 32-bit", func() {
+			Expect(bitDepthToSampleFmt(32)).To(Equal("s32"))
+		})
 	})
 
 	Describe("buildTemplateArgs", func() {
@@ -229,6 +306,36 @@ var _ = Describe("ffmpeg", func() {
 				Command:  "ffmpeg -i %s -b:a %bk -v 0 -f mp3 -",
 				FilePath: "/music/file.flac",
 				BitRate:  192,
+			})
+			Expect(args).To(Equal([]string{
+				"ffmpeg", "-i", "/music/file.flac",
+				"-b:a", "192k", "-v", "0", "-f", "mp3",
+				"-",
+			}))
+		})
+
+		It("injects -sample_fmt for lossless output format with bit depth", func() {
+			args := buildTemplateArgs(TranscodeOptions{
+				Command:  "ffmpeg -i %s -v 0 -c:a flac -f flac -",
+				Format:   "flac",
+				FilePath: "/music/file.dsf",
+				BitDepth: 24,
+			})
+			Expect(args).To(Equal([]string{
+				"ffmpeg", "-i", "/music/file.dsf",
+				"-v", "0", "-c:a", "flac", "-f", "flac",
+				"-sample_fmt", "s32",
+				"-",
+			}))
+		})
+
+		It("does not inject -sample_fmt for lossy output format even with bit depth", func() {
+			args := buildTemplateArgs(TranscodeOptions{
+				Command:  "ffmpeg -i %s -b:a %bk -v 0 -f mp3 -",
+				Format:   "mp3",
+				FilePath: "/music/file.flac",
+				BitRate:  192,
+				BitDepth: 16,
 			})
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",

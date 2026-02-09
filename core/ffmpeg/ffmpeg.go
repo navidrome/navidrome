@@ -23,6 +23,7 @@ type TranscodeOptions struct {
 	BitRate    int // kbps, 0 = codec default
 	SampleRate int // 0 = no constraint
 	Channels   int // 0 = no constraint
+	BitDepth   int // 0 = no constraint; valid values: 16, 24, 32
 	Offset     int // seconds
 }
 
@@ -226,6 +227,12 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	if opts.Channels > 0 {
 		args = append(args, "-ac", strconv.Itoa(opts.Channels))
 	}
+	// Only pass -sample_fmt for lossless output formats where bit depth matters.
+	// Lossy codecs (mp3, aac, opus) handle sample format conversion internally,
+	// and passing interleaved formats like "s16" causes silent failures.
+	if opts.BitDepth >= 16 && isLosslessOutputFormat(opts.Format) {
+		args = append(args, "-sample_fmt", bitDepthToSampleFmt(opts.BitDepth))
+	}
 
 	args = append(args, "-v", "0")
 
@@ -242,12 +249,15 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
 
-	// Dynamically inject -ar and -ac for custom templates that don't include them
+	// Dynamically inject -ar, -ac, and -sample_fmt for custom templates that don't include them
 	if opts.SampleRate > 0 {
 		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
 	}
 	if opts.Channels > 0 {
 		args = injectBeforeOutput(args, "-ac", strconv.Itoa(opts.Channels))
+	}
+	if opts.BitDepth >= 16 && isLosslessOutputFormat(opts.Format) {
+		args = injectBeforeOutput(args, "-sample_fmt", bitDepthToSampleFmt(opts.BitDepth))
 	}
 	return args
 }
@@ -261,6 +271,31 @@ func injectBeforeOutput(args []string, flag, value string) []string {
 		return result
 	}
 	return append(args, flag, value)
+}
+
+// isLosslessOutputFormat returns true if the format is a lossless audio format
+// where preserving bit depth via -sample_fmt is meaningful.
+func isLosslessOutputFormat(format string) bool {
+	switch strings.ToLower(format) {
+	case "flac", "alac", "wav", "aiff":
+		return true
+	}
+	return false
+}
+
+// bitDepthToSampleFmt converts a bit depth value to the ffmpeg sample_fmt string.
+// FLAC only supports s16 and s32; for 24-bit sources, s32 is the correct format
+// (ffmpeg packs 24-bit samples into 32-bit containers).
+func bitDepthToSampleFmt(bitDepth int) string {
+	switch bitDepth {
+	case 16:
+		return "s16"
+	case 32:
+		return "s32"
+	default:
+		// 24-bit and other depths: use s32 (the next valid container size)
+		return "s32"
+	}
 }
 
 // Path will always be an absolute path

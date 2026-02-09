@@ -237,10 +237,13 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision: %v", err)
 	}
 
-	// Create transcode params token
-	transcodeParams, err := api.transcodeDecision.CreateTranscodeParams(decision)
-	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "failed to create transcode token: %v", err)
+	// Only create a token when there is a valid playback path
+	var transcodeParams string
+	if decision.CanDirectPlay || decision.CanTranscode {
+		transcodeParams, err = api.transcodeDecision.CreateTranscodeParams(decision)
+		if err != nil {
+			return nil, newError(responses.ErrorGeneric, "failed to create transcode token: %v", err)
+		}
 	}
 
 	// Build response (convert kbps from core to bps for the API)
@@ -321,17 +324,19 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	format := ""
 	maxBitRate := 0
 	sampleRate := 0
+	bitDepth := 0
 	if !params.DirectPlay && params.TargetFormat != "" {
 		format = params.TargetFormat
 		maxBitRate = params.TargetBitrate // Already in kbps, matching the streamer
 		sampleRate = params.TargetSampleRate
+		bitDepth = params.TargetBitDepth
 	}
 
 	// Get offset parameter
 	offset := p.IntOr("offset", 0)
 
 	// Create stream
-	stream, err := api.streamer.NewStream(ctx, mediaID, format, maxBitRate, sampleRate, offset)
+	stream, err := api.streamer.NewStream(ctx, mediaID, format, maxBitRate, sampleRate, bitDepth, offset)
 	if err != nil {
 		return nil, err
 	}

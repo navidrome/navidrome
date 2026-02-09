@@ -19,8 +19,8 @@ import (
 )
 
 type MediaStreamer interface {
-	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, offset int) (*Stream, error)
-	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error)
+	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, offset int) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqOffset int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -42,23 +42,24 @@ type streamJob struct {
 	format     string
 	bitRate    int
 	sampleRate int
+	bitDepth   int
 	offset     int
 }
 
 func (j *streamJob) Key() string {
-	return fmt.Sprintf("%s.%s.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.format, j.offset)
+	return fmt.Sprintf("%s.%s.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.format, j.offset)
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error) {
+func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqOffset int) (*Stream, error) {
 	mf, err := ms.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqSampleRate, reqOffset)
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqSampleRate, reqBitDepth, reqOffset)
 }
 
-func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqOffset int) (*Stream, error) {
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqOffset int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
@@ -68,7 +69,7 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
-	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
+	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate, reqSampleRate)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 	filePath := mf.AbsolutePath()
 
@@ -94,6 +95,7 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 		format:     format,
 		bitRate:    bitRate,
 		sampleRate: reqSampleRate,
+		bitDepth:   reqBitDepth,
 		offset:     reqOffset,
 	}
 	r, err := ms.cache.Get(ctx, job)
@@ -133,12 +135,13 @@ func (s *Stream) EstimatedContentLength() int {
 }
 
 // TODO This function deserves some love (refactoring)
-func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int) (format string, bitRate int) {
+func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int) (format string, bitRate int) {
 	format = "raw"
 	if reqFormat == "raw" {
 		return format, 0
 	}
-	if reqFormat == mf.Suffix && reqBitRate == 0 {
+	needsResample := reqSampleRate > 0 && reqSampleRate < mf.SampleRate
+	if reqFormat == mf.Suffix && reqBitRate == 0 && !needsResample {
 		bitRate = mf.BitRate
 		return format, bitRate
 	}
@@ -177,7 +180,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 			bitRate = t.DefaultBitRate
 		}
 	}
-	if format == mf.Suffix && bitRate >= mf.BitRate {
+	if format == mf.Suffix && bitRate >= mf.BitRate && !needsResample {
 		format = "raw"
 		bitRate = 0
 	}
@@ -225,6 +228,7 @@ func NewTranscodingCache() TranscodingCache {
 				FilePath:   job.filePath,
 				BitRate:    job.bitRate,
 				SampleRate: job.sampleRate,
+				BitDepth:   job.bitDepth,
 				Offset:     job.offset,
 			})
 			if err != nil {

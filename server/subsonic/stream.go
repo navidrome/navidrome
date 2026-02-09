@@ -60,7 +60,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	format, _ := p.String("format")
 	timeOffset := p.IntOr("timeOffset", 0)
 
-	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0, timeOffset)
+	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0, 0, timeOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0, 0)
+		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0, 0, 0)
 		if err != nil {
 			return nil, err
 		}
