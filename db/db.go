@@ -145,8 +145,8 @@ func Optimize(ctx context.Context) {
 
 type statusLogger struct{ numPending int }
 
-func (*statusLogger) Fatalf(format string, v ...interface{}) { log.Fatal(fmt.Sprintf(format, v...)) }
-func (l *statusLogger) Printf(format string, v ...interface{}) {
+func (*statusLogger) Fatalf(format string, v ...any) { log.Fatal(fmt.Sprintf(format, v...)) }
+func (l *statusLogger) Printf(format string, v ...any) {
 	if len(v) < 1 {
 		return
 	}
@@ -173,27 +173,27 @@ type logAdapter struct {
 	silent bool
 }
 
-func (l *logAdapter) Fatal(v ...interface{}) {
+func (l *logAdapter) Fatal(v ...any) {
 	log.Fatal(l.ctx, fmt.Sprint(v...))
 }
 
-func (l *logAdapter) Fatalf(format string, v ...interface{}) {
+func (l *logAdapter) Fatalf(format string, v ...any) {
 	log.Fatal(l.ctx, fmt.Sprintf(format, v...))
 }
 
-func (l *logAdapter) Print(v ...interface{}) {
+func (l *logAdapter) Print(v ...any) {
 	if !l.silent {
 		log.Info(l.ctx, fmt.Sprint(v...))
 	}
 }
 
-func (l *logAdapter) Println(v ...interface{}) {
+func (l *logAdapter) Println(v ...any) {
 	if !l.silent {
 		log.Info(l.ctx, fmt.Sprintln(v...))
 	}
 }
 
-func (l *logAdapter) Printf(format string, v ...interface{}) {
+func (l *logAdapter) Printf(format string, v ...any) {
 	if !l.silent {
 		log.Info(l.ctx, fmt.Sprintf(format, v...))
 	}

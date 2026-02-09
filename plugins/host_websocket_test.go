@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -594,9 +595,7 @@ func (t *testableWebSocketService) getConnectionCount() int {
 func (t *testableWebSocketService) closeAllConnections() {
 	t.mu.Lock()
 	conns := make(map[string]*wsConnection, len(t.connections))
-	for k, v := range t.connections {
-		conns[k] = v
-	}
+	maps.Copy(conns, t.connections)
 	t.connections = make(map[string]*wsConnection)
 	t.mu.Unlock()
 

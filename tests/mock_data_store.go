@@ -37,215 +37,213 @@ type MockDataStore struct {
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
-	if db.MockedLibrary == nil {
-		if db.RealDS != nil {
-			db.MockedLibrary = db.RealDS.Library(ctx)
-		} else {
-			db.MockedLibrary = &MockLibraryRepo{}
-		}
+	if db.MockedLibrary != nil {
+		return db.MockedLibrary
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Library(ctx)
+	}
+	db.MockedLibrary = &MockLibraryRepo{}
 	return db.MockedLibrary
 }
 
 func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
-	if db.MockedFolder == nil {
-		if db.RealDS != nil {
-			db.MockedFolder = db.RealDS.Folder(ctx)
-		} else {
-			db.MockedFolder = struct{ model.FolderRepository }{}
-		}
+	if db.MockedFolder != nil {
+		return db.MockedFolder
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Folder(ctx)
+	}
+	db.MockedFolder = struct{ model.FolderRepository }{}
 	return db.MockedFolder
 }
 
 func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
-	if db.MockedTag == nil {
-		if db.RealDS != nil {
-			db.MockedTag = db.RealDS.Tag(ctx)
-		} else {
-			db.MockedTag = struct{ model.TagRepository }{}
-		}
+	if db.MockedTag != nil {
+		return db.MockedTag
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Tag(ctx)
+	}
+	db.MockedTag = struct{ model.TagRepository }{}
 	return db.MockedTag
 }
 
 func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
-	if db.MockedAlbum == nil {
-		if db.RealDS != nil {
-			db.MockedAlbum = db.RealDS.Album(ctx)
-		} else {
-			db.MockedAlbum = CreateMockAlbumRepo()
-		}
+	if db.MockedAlbum != nil {
+		return db.MockedAlbum
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Album(ctx)
+	}
+	db.MockedAlbum = CreateMockAlbumRepo()
 	return db.MockedAlbum
 }
 
 func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
-	if db.MockedArtist == nil {
-		if db.RealDS != nil {
-			db.MockedArtist = db.RealDS.Artist(ctx)
-		} else {
-			db.MockedArtist = CreateMockArtistRepo()
-		}
+	if db.MockedArtist != nil {
+		return db.MockedArtist
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Artist(ctx)
+	}
+	db.MockedArtist = CreateMockArtistRepo()
 	return db.MockedArtist
 }
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	if db.RealDS != nil && db.MockedMediaFile == nil {
+		return db.RealDS.MediaFile(ctx)
+	}
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedMediaFile == nil {
-		if db.RealDS != nil {
-			db.MockedMediaFile = db.RealDS.MediaFile(ctx)
-		} else {
-			db.MockedMediaFile = CreateMockMediaFileRepo()
-		}
+		db.MockedMediaFile = CreateMockMediaFileRepo()
 	}
 	return db.MockedMediaFile
 }
 
 func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
-	if db.MockedGenre == nil {
-		if db.RealDS != nil {
-			db.MockedGenre = db.RealDS.Genre(ctx)
-		} else {
-			db.MockedGenre = &MockedGenreRepo{}
-		}
+	if db.MockedGenre != nil {
+		return db.MockedGenre
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Genre(ctx)
+	}
+	db.MockedGenre = &MockedGenreRepo{}
 	return db.MockedGenre
 }
 
 func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	if db.MockedPlaylist == nil {
-		if db.RealDS != nil {
-			db.MockedPlaylist = db.RealDS.Playlist(ctx)
-		} else {
-			db.MockedPlaylist = &MockPlaylistRepo{}
-		}
+	if db.MockedPlaylist != nil {
+		return db.MockedPlaylist
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Playlist(ctx)
+	}
+	db.MockedPlaylist = &MockPlaylistRepo{}
 	return db.MockedPlaylist
 }
 
 func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	if db.MockedPlayQueue == nil {
-		if db.RealDS != nil {
-			db.MockedPlayQueue = db.RealDS.PlayQueue(ctx)
-		} else {
-			db.MockedPlayQueue = &MockPlayQueueRepo{}
-		}
+	if db.MockedPlayQueue != nil {
+		return db.MockedPlayQueue
 	}
+	if db.RealDS != nil {
+		return db.RealDS.PlayQueue(ctx)
+	}
+	db.MockedPlayQueue = &MockPlayQueueRepo{}
 	return db.MockedPlayQueue
 }
 
 func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
-	if db.MockedUserProps == nil {
-		if db.RealDS != nil {
-			db.MockedUserProps = db.RealDS.UserProps(ctx)
-		} else {
-			db.MockedUserProps = &MockedUserPropsRepo{}
-		}
+	if db.MockedUserProps != nil {
+		return db.MockedUserProps
 	}
+	if db.RealDS != nil {
+		return db.RealDS.UserProps(ctx)
+	}
+	db.MockedUserProps = &MockedUserPropsRepo{}
 	return db.MockedUserProps
 }
 
 func (db *MockDataStore) Property(ctx context.Context) model.PropertyRepository {
-	if db.MockedProperty == nil {
-		if db.RealDS != nil {
-			db.MockedProperty = db.RealDS.Property(ctx)
-		} else {
-			db.MockedProperty = &MockedPropertyRepo{}
-		}
+	if db.MockedProperty != nil {
+		return db.MockedProperty
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Property(ctx)
+	}
+	db.MockedProperty = &MockedPropertyRepo{}
 	return db.MockedProperty
 }
 
 func (db *MockDataStore) Share(ctx context.Context) model.ShareRepository {
-	if db.MockedShare == nil {
-		if db.RealDS != nil {
-			db.MockedShare = db.RealDS.Share(ctx)
-		} else {
-			db.MockedShare = &MockShareRepo{}
-		}
+	if db.MockedShare != nil {
+		return db.MockedShare
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Share(ctx)
+	}
+	db.MockedShare = &MockShareRepo{}
 	return db.MockedShare
 }
 
 func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
-	if db.MockedUser == nil {
-		if db.RealDS != nil {
-			db.MockedUser = db.RealDS.User(ctx)
-		} else {
-			db.MockedUser = CreateMockUserRepo()
-		}
+	if db.MockedUser != nil {
+		return db.MockedUser
 	}
+	if db.RealDS != nil {
+		return db.RealDS.User(ctx)
+	}
+	db.MockedUser = CreateMockUserRepo()
 	return db.MockedUser
 }
 
 func (db *MockDataStore) Transcoding(ctx context.Context) model.TranscodingRepository {
-	if db.MockedTranscoding == nil {
-		if db.RealDS != nil {
-			db.MockedTranscoding = db.RealDS.Transcoding(ctx)
-		} else {
-			db.MockedTranscoding = struct{ model.TranscodingRepository }{}
-		}
+	if db.MockedTranscoding != nil {
+		return db.MockedTranscoding
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Transcoding(ctx)
+	}
+	db.MockedTranscoding = struct{ model.TranscodingRepository }{}
 	return db.MockedTranscoding
 }
 
 func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
-	if db.MockedPlayer == nil {
-		if db.RealDS != nil {
-			db.MockedPlayer = db.RealDS.Player(ctx)
-		} else {
-			db.MockedPlayer = struct{ model.PlayerRepository }{}
-		}
+	if db.MockedPlayer != nil {
+		return db.MockedPlayer
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Player(ctx)
+	}
+	db.MockedPlayer = struct{ model.PlayerRepository }{}
 	return db.MockedPlayer
 }
 
 func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	if db.RealDS != nil && db.MockedScrobbleBuffer == nil {
+		return db.RealDS.ScrobbleBuffer(ctx)
+	}
 	db.scrobbleBufferMu.Lock()
 	defer db.scrobbleBufferMu.Unlock()
 	if db.MockedScrobbleBuffer == nil {
-		if db.RealDS != nil {
-			db.MockedScrobbleBuffer = db.RealDS.ScrobbleBuffer(ctx)
-		} else {
-			db.MockedScrobbleBuffer = &MockedScrobbleBufferRepo{}
-		}
+		db.MockedScrobbleBuffer = &MockedScrobbleBufferRepo{}
 	}
 	return db.MockedScrobbleBuffer
 }
 
 func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
-	if db.MockedScrobble == nil {
-		if db.RealDS != nil {
-			db.MockedScrobble = db.RealDS.Scrobble(ctx)
-		} else {
-			db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
-		}
+	if db.MockedScrobble != nil {
+		return db.MockedScrobble
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Scrobble(ctx)
+	}
+	db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
 	return db.MockedScrobble
 }
 
 func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
-	if db.MockedRadio == nil {
-		if db.RealDS != nil {
-			db.MockedRadio = db.RealDS.Radio(ctx)
-		} else {
-			db.MockedRadio = CreateMockedRadioRepo()
-		}
+	if db.MockedRadio != nil {
+		return db.MockedRadio
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Radio(ctx)
+	}
+	db.MockedRadio = CreateMockedRadioRepo()
 	return db.MockedRadio
 }
 
 func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
-	if db.MockedPlugin == nil {
-		if db.RealDS != nil {
-			db.MockedPlugin = db.RealDS.Plugin(ctx)
-		} else {
-			db.MockedPlugin = CreateMockPluginRepo()
-		}
+	if db.MockedPlugin != nil {
+		return db.MockedPlugin
 	}
+	if db.RealDS != nil {
+		return db.RealDS.Plugin(ctx)
+	}
+	db.MockedPlugin = CreateMockPluginRepo()
 	return db.MockedPlugin
 }
 

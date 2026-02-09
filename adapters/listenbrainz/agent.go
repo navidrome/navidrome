@@ -118,12 +118,129 @@ func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) boo
 	return err == nil && sk != ""
 }
 
+func (l *listenBrainzAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	if mbid == "" {
+		return "", agents.ErrNotFound
+	}
+
+	url, err := l.client.getArtistUrl(ctx, mbid)
+	if err != nil {
+		return "", err
+	}
+	return url, nil
+}
+
+func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+	resp, err := l.client.getArtistTopSongs(ctx, mbid, count)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	res := make([]agents.Song, len(resp))
+	for i, t := range resp {
+		mbid := ""
+		if len(t.ArtistMBIDs) > 0 {
+			mbid = t.ArtistMBIDs[0]
+		}
+
+		res[i] = agents.Song{
+			Album:      t.ReleaseName,
+			AlbumMBID:  t.ReleaseMBID,
+			Artist:     t.ArtistName,
+			ArtistMBID: mbid,
+			Duration:   t.DurationMs,
+			Name:       t.RecordingName,
+			MBID:       t.RecordingMbid,
+		}
+	}
+	return res, nil
+}
+
+func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, name string, mbid string, limit int) ([]agents.Artist, error) {
+	if mbid == "" {
+		return nil, agents.ErrNotFound
+	}
+
+	resp, err := l.client.getSimilarArtists(ctx, mbid, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	artists := make([]agents.Artist, len(resp))
+	for i, artist := range resp {
+		artists[i] = agents.Artist{
+			MBID: artist.MBID,
+			Name: artist.Name,
+		}
+	}
+
+	return artists, nil
+}
+
+func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id string, name string, artist string, mbid string, limit int) ([]agents.Song, error) {
+	if mbid == "" {
+		return nil, agents.ErrNotFound
+	}
+
+	resp, err := l.client.getSimilarRecordings(ctx, mbid, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		return nil, agents.ErrNotFound
+	}
+
+	songs := make([]agents.Song, len(resp))
+	for i, song := range resp {
+		songs[i] = agents.Song{
+			Album:     song.ReleaseName,
+			AlbumMBID: song.ReleaseMBID,
+			Artist:    song.Artist,
+			MBID:      song.MBID,
+			Name:      song.Name,
+		}
+	}
+
+	return songs, nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				return listenBrainzConstructor(ds)
+				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
+				// See https://go.dev/doc/faq#nil_error
+				a := listenBrainzConstructor(ds)
+				if a != nil {
+					return a
+				}
+				return nil
+			})
+
+			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
+				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
+				// See https://go.dev/doc/faq#nil_error
+				a := listenBrainzConstructor(ds)
+				if a != nil {
+					return a
+				}
+				return nil
 			})
 		}
 	})
 }
+
+var (
+	_ agents.ArtistTopSongsRetriever      = (*listenBrainzAgent)(nil)
+	_ agents.ArtistURLRetriever           = (*listenBrainzAgent)(nil)
+	_ agents.ArtistSimilarRetriever       = (*listenBrainzAgent)(nil)
+	_ agents.SimilarSongsByTrackRetriever = (*listenBrainzAgent)(nil)
+)

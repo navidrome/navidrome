@@ -28,7 +28,7 @@ func newTranslationRepository(context.Context) rest.Repository {
 
 type translationRepository struct{}
 
-func (r *translationRepository) Read(id string) (interface{}, error) {
+func (r *translationRepository) Read(id string) (any, error) {
 	translations, _ := loadTranslations()
 	if t, ok := translations[id]; ok {
 		return t, nil
@@ -43,7 +43,7 @@ func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
 }
 
 // ReadAll simple implementation, only returns IDs. Does not support any `options`
-func (r *translationRepository) ReadAll(...rest.QueryOptions) (interface{}, error) {
+func (r *translationRepository) ReadAll(...rest.QueryOptions) (any, error) {
 	translations, _ := loadTranslations()
 	var result []translation
 	for _, t := range translations {
@@ -57,7 +57,7 @@ func (r *translationRepository) EntityName() string {
 	return "translation"
 }
 
-func (r *translationRepository) NewInstance() interface{} {
+func (r *translationRepository) NewInstance() any {
 	return &translation{}
 }
 
@@ -103,7 +103,7 @@ func loadTranslation(fsys fs.FS, fileName string) (translation translation, err 
 	if err != nil {
 		return
 	}
-	var out map[string]interface{}
+	var out map[string]any
 	if err = json.Unmarshal(data, &out); err != nil {
 		return
 	}

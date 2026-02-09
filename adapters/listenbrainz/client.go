@@ -2,14 +2,27 @@ package listenbrainz
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+)
+
+const (
+	lbzApiUrl = "https://api.listenbrainz.org/1/"
+	labsBase  = "https://labs.api.listenbrainz.org/"
+)
+
+var (
+	ErrorNotFound = errors.New("listenbrainz: not found")
 )
 
 type listenBrainzError struct {
@@ -62,14 +75,14 @@ const (
 
 type listenInfo struct {
 	ListenedAt    int           `json:"listened_at,omitempty"`
-	TrackMetadata trackMetadata `json:"track_metadata,omitempty"`
+	TrackMetadata trackMetadata `json:"track_metadata"`
 }
 
 type trackMetadata struct {
 	ArtistName     string         `json:"artist_name,omitempty"`
 	TrackName      string         `json:"track_name,omitempty"`
 	ReleaseName    string         `json:"release_name,omitempty"`
-	AdditionalInfo additionalInfo `json:"additional_info,omitempty"`
+	AdditionalInfo additionalInfo `json:"additional_info"`
 }
 
 type additionalInfo struct {
@@ -88,7 +101,7 @@ func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrain
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
-	response, err := c.makeRequest(ctx, http.MethodGet, "validate-token", r)
+	response, err := c.makeAuthenticatedRequest(ctx, http.MethodGet, "validate-token", r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +117,7 @@ func (c *client) updateNowPlaying(ctx context.Context, apiKey string, li listenI
 		},
 	}
 
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeAuthenticatedRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -122,7 +135,7 @@ func (c *client) scrobble(ctx context.Context, apiKey string, li listenInfo) err
 			Payload:    []listenInfo{li},
 		},
 	}
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeAuthenticatedRequest(ctx, http.MethodPost, "submit-listens", r)
 	if err != nil {
 		return err
 	}
@@ -141,7 +154,7 @@ func (c *client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
+func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
 	b, _ := json.Marshal(r.Body)
 	uri, err := c.path(endpoint)
 	if err != nil {
@@ -176,4 +189,190 @@ func (c *client) makeRequest(ctx context.Context, method string, endpoint string
 	}
 
 	return &response, nil
+}
+
+type lbzHttpError struct {
+	Code  int    `json:"code"`
+	Error string `json:"error"`
+}
+
+func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint string, params url.Values) (*http.Response, error) {
+	req, _ := http.NewRequestWithContext(ctx, method, lbzApiUrl+endpoint, nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = params.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// On a 200 code, there is no code. Decode using using error message if it exists
+	if resp.StatusCode != 200 {
+		defer resp.Body.Close()
+		decoder := json.NewDecoder(resp.Body)
+
+		var lbzError lbzHttpError
+		jsonErr := decoder.Decode(&lbzError)
+
+		if jsonErr != nil {
+			return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+		}
+
+		return nil, &listenBrainzError{Code: lbzError.Code, Message: lbzError.Error}
+	}
+
+	return resp, err
+}
+
+type artistMetadataResult struct {
+	Rels struct {
+		OfficialHomepage string `json:"official homepage,omitempty"`
+	} `json:"rels,omitzero"`
+}
+
+func (c *client) getArtistUrl(ctx context.Context, mbid string) (string, error) {
+	params := url.Values{}
+	params.Add("artist_mbids", mbid)
+	resp, err := c.makeGenericRequest(ctx, http.MethodGet, "metadata/artist", params)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response []artistMetadataResult
+	jsonErr := decoder.Decode(&response)
+	if jsonErr != nil {
+		return "", fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	if len(response) == 0 || response[0].Rels.OfficialHomepage == "" {
+		return "", ErrorNotFound
+	}
+
+	return response[0].Rels.OfficialHomepage, nil
+}
+
+type trackInfo struct {
+	ArtistName    string   `json:"artist_name"`
+	ArtistMBIDs   []string `json:"artist_mbids"`
+	DurationMs    uint32   `json:"length"`
+	RecordingName string   `json:"recording_name"`
+	RecordingMbid string   `json:"recording_mbid"`
+	ReleaseName   string   `json:"release_name"`
+	ReleaseMBID   string   `json:"release_mbid"`
+}
+
+func (c *client) getArtistTopSongs(ctx context.Context, mbid string, count int) ([]trackInfo, error) {
+	resp, err := c.makeGenericRequest(ctx, http.MethodGet, "popularity/top-recordings-for-artist/"+mbid, url.Values{})
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response []trackInfo
+	jsonErr := decoder.Decode(&response)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	if len(response) > count {
+		return response[0:count], nil
+	}
+
+	return response, nil
+}
+
+type artist struct {
+	MBID  string `json:"artist_mbid"`
+	Name  string `json:"name"`
+	Score int    `json:"score"`
+}
+
+func (c *client) getSimilarArtists(ctx context.Context, mbid string, limit int) ([]artist, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = url.Values{
+		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.ArtistAlgorithm},
+	}.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var artists []artist
+	jsonErr := decoder.Decode(&artists)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	if len(artists) > limit {
+		return artists[:limit], nil
+	}
+
+	return artists, nil
+}
+
+type recording struct {
+	MBID        string `json:"recording_mbid"`
+	Name        string `json:"recording_name"`
+	Artist      string `json:"artist_credit_name"`
+	ReleaseName string `json:"release_name"`
+	ReleaseMBID string `json:"release_mbid"`
+	Score       int    `json:"score"`
+}
+
+func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit int) ([]recording, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.URL.RawQuery = url.Values{
+		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.TrackAlgorithm},
+	}.Encode()
+
+	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
+	resp, err := c.hc.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var recordings []recording
+	jsonErr := decoder.Decode(&recordings)
+	if jsonErr != nil {
+		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
+	}
+
+	// For whatever reason, labs API isn't guaranteed to give results in the proper order
+	// and may also provide duplicates. See listenbrainz.labs.similar-recordings-real-out-of-order.json
+	// generated from https://labs.api.listenbrainz.org/similar-recordings/json?recording_mbids=8f3471b5-7e6a-48da-86a9-c1c07a0f47ae&algorithm=session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30
+	slices.SortFunc(recordings, func(a, b recording) int {
+		return cmp.Or(
+			cmp.Compare(b.Score, a.Score), // Sort by score descending
+			cmp.Compare(a.MBID, b.MBID),   // Then by MBID ascending to ensure deterministic order for duplicates
+		)
+	})
+
+	recordings = slices.CompactFunc(recordings, func(a, b recording) bool {
+		return a.MBID == b.MBID
+	})
+
+	if len(recordings) > limit {
+		return recordings[:limit], nil
+	}
+
+	return recordings, nil
 }

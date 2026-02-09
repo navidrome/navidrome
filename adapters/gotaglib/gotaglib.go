@@ -49,6 +49,7 @@ func (e extractor) Version() string {
 func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	f, close, err := e.openFile(filePath)
 	if err != nil {
+		log.Warn("gotaglib: Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, err
 	}
 	defer close()
@@ -118,7 +119,12 @@ func (e extractor) openFile(filePath string) (f *taglib.File, closeFunc func(), 
 		file.Close()
 		return nil, nil, errors.New("file is not seekable")
 	}
-	f, err = taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
+	// WithFilename provides a format detection hint via the file extension,
+	// since OpenStream alone relies on content-sniffing which fails for some files.
+	f, err = taglib.OpenStream(rs,
+		taglib.WithReadStyle(taglib.ReadStyleFast),
+		taglib.WithFilename(filePath),
+	)
 	if err != nil {
 		file.Close()
 		return nil, nil, err
@@ -254,7 +260,7 @@ func parseTIPL(tags map[string][]string) {
 	}
 	var currentRole string
 	var currentValue []string
-	for _, part := range strings.Split(tipl[0], " ") {
+	for part := range strings.SplitSeq(tipl[0], " ") {
 		if _, ok := tiplMapping[part]; ok {
 			addRole(currentRole, currentValue)
 			currentRole = part

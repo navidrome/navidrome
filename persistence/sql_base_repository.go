@@ -197,7 +197,7 @@ func (r *sqlRepository) withTableName(filter filterFunc) filterFunc {
 }
 
 // libraryIdFilter is a filter function to be added to resources that have a library_id column.
-func libraryIdFilter(_ string, value interface{}) Sqlizer {
+func libraryIdFilter(_ string, value any) Sqlizer {
 	return Eq{"library_id": value}
 }
 
@@ -282,7 +282,7 @@ func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 	return result, params, nil
 }
 
-func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
+func (r sqlRepository) queryOne(sq Sqlizer, response any) error {
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
@@ -329,7 +329,7 @@ func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ..
 	}, nil
 }
 
-func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {
+func (r sqlRepository) queryAll(sq SelectBuilder, response any, options ...model.QueryOptions) error {
 	if len(options) > 0 && options[0].Offset > 0 {
 		sq = r.optimizePagination(sq, options[0])
 	}
@@ -348,7 +348,7 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 }
 
 // queryAllSlice is a helper function to query a single column and return the result in a slice
-func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) error {
+func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
@@ -402,7 +402,7 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
-func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, colsToUpdate ...string) (string, error) {
+func (r sqlRepository) putByMatch(filter Sqlizer, id string, m any, colsToUpdate ...string) (string, error) {
 	if id != "" {
 		return r.put(id, m, colsToUpdate...)
 	}
@@ -416,14 +416,14 @@ func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, cols
 	return r.put(res.ID, m, colsToUpdate...)
 }
 
-func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
+func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
 		return "", fmt.Errorf("error preparing values to write to DB: %w", err)
 	}
 	// If there's an ID, try to update first
 	if id != "" {
-		updateValues := map[string]interface{}{}
+		updateValues := map[string]any{}
 
 		// This is a map of the columns that need to be updated, if specified
 		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {

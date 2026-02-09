@@ -152,7 +152,7 @@ func Tee[T any](ctx context.Context, in <-chan T) (<-chan T, <-chan T) {
 		defer close(out2)
 		for val := range ReadOrDone(ctx, in) {
 			var out1, out2 = out1, out2
-			for i := 0; i < 2; i++ {
+			for range 2 {
 				select {
 				case <-ctx.Done():
 				case out1 <- val:

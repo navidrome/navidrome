@@ -122,8 +122,8 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 		UpdatedAt: pq.UpdatedAt,
 	}
 	if strings.TrimSpace(pq.Items) != "" {
-		tracks := strings.Split(pq.Items, ",")
-		for _, t := range tracks {
+		tracks := strings.SplitSeq(pq.Items, ",")
+		for t := range tracks {
 			q.Items = append(q.Items, model.MediaFile{ID: t})
 		}
 	}

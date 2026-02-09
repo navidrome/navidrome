@@ -246,6 +246,18 @@ var _ = Describe("Metadata", func() {
 					metadata.NewPair("eng", "Lyrics"),
 				))
 			})
+
+			It("should preserve lyrics starting with parentheses from alias tags", func() {
+				props.Tags = model.RawTags{
+					"LYRICS": {"(line one)\nline two\nline three"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.All()).To(HaveKey(model.TagLyrics))
+				Expect(md.Strings(model.TagLyrics)).To(ContainElements(
+					metadata.NewPair("xxx", "(line one)\nline two\nline three"),
+				))
+			})
 		})
 
 		Describe("ReplayGain", func() {

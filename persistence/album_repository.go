@@ -146,11 +146,11 @@ func recentlyAddedSort() string {
 	return "created_at"
 }
 
-func recentlyPlayedFilter(string, interface{}) Sqlizer {
+func recentlyPlayedFilter(string, any) Sqlizer {
 	return Gt{"play_count": 0}
 }
 
-func yearFilter(_ string, value interface{}) Sqlizer {
+func yearFilter(_ string, value any) Sqlizer {
 	return Or{
 		And{
 			Gt{"min_year": 0},
@@ -161,7 +161,7 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
-func artistFilter(_ string, value interface{}) Sqlizer {
+func artistFilter(_ string, value any) Sqlizer {
 	from1, cond1 := JsonParticipantExists("albumartist", "id")
 	from2, cond2 := JsonParticipantExists("artist", "id")
 	return Or{
@@ -170,7 +170,7 @@ func artistFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
-func artistRoleFilter(name string, value interface{}) Sqlizer {
+func artistRoleFilter(name string, value any) Sqlizer {
 	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
 
 	// Check if the role name is valid. If not, return an invalid filter
@@ -181,7 +181,7 @@ func artistRoleFilter(name string, value interface{}) Sqlizer {
 	return Exists(from, Eq{cond: value})
 }
 
-func allRolesFilter(_ string, value interface{}) Sqlizer {
+func allRolesFilter(_ string, value any) Sqlizer {
 	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
@@ -252,7 +252,7 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}
-	to := make(map[string]interface{})
+	to := make(map[string]any)
 	for _, col := range columns {
 		to[col] = from[col]
 	}
@@ -378,11 +378,11 @@ func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *albumRepository) Read(id string) (interface{}, error) {
+func (r *albumRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -390,7 +390,7 @@ func (r *albumRepository) EntityName() string {
 	return "album"
 }
 
-func (r *albumRepository) NewInstance() interface{} {
+func (r *albumRepository) NewInstance() any {
 	return &model.Album{}
 }
 
