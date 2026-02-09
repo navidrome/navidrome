@@ -18,9 +18,20 @@ import (
 	"github.com/navidrome/navidrome/utils/cache"
 )
 
+// StreamRequest contains all parameters for creating a media stream.
+type StreamRequest struct {
+	ID         string
+	Format     string
+	BitRate    int // kbps
+	SampleRate int
+	BitDepth   int
+	Channels   int
+	Offset     int // seconds
+}
+
 type MediaStreamer interface {
-	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int, offset int) (*Stream, error)
-	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int, reqOffset int) (*Stream, error)
+	NewStream(ctx context.Context, req StreamRequest) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, req StreamRequest) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -51,16 +62,16 @@ func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.channels, j.format, j.offset)
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int, reqOffset int) (*Stream, error) {
-	mf, err := ms.ds.MediaFile(ctx).Get(id)
+func (ms *mediaStreamer) NewStream(ctx context.Context, req StreamRequest) (*Stream, error) {
+	mf, err := ms.ds.MediaFile(ctx).Get(req.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqSampleRate, reqBitDepth, reqChannels, reqOffset)
+	return ms.DoStream(ctx, mf, req)
 }
 
-func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int, reqOffset int) (*Stream, error) {
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req StreamRequest) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
@@ -70,13 +81,13 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
-	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate, reqSampleRate)
+	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, req.Format, req.BitRate, req.SampleRate)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 	filePath := mf.AbsolutePath()
 
 	if format == "raw" {
 		log.Debug(ctx, "Streaming RAW file", "id", mf.ID, "path", filePath,
-			"requestBitrate", reqBitRate, "requestFormat", reqFormat, "requestOffset", reqOffset,
+			"requestBitrate", req.BitRate, "requestFormat", req.Format, "requestOffset", req.Offset,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 			"selectedBitrate", bitRate, "selectedFormat", format)
 		f, err := os.Open(filePath)
@@ -95,10 +106,10 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 		filePath:   filePath,
 		format:     format,
 		bitRate:    bitRate,
-		sampleRate: reqSampleRate,
-		bitDepth:   reqBitDepth,
-		channels:   reqChannels,
-		offset:     reqOffset,
+		sampleRate: req.SampleRate,
+		bitDepth:   req.BitDepth,
+		channels:   req.Channels,
+		offset:     req.Offset,
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
@@ -111,7 +122,7 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 	s.Seeker = r.Seeker
 
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", filePath,
-		"requestBitrate", reqBitRate, "requestFormat", reqFormat, "requestOffset", reqOffset,
+		"requestBitrate", req.BitRate, "requestFormat", req.Format, "requestOffset", req.Offset,
 		"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 		"selectedBitrate", bitRate, "selectedFormat", format, "cached", cached, "seekable", s.Seekable())
 
