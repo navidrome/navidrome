@@ -73,6 +73,49 @@ var _ = Describe("sendResponse", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(wrapper.Subsonic.Status).To(Equal(payload.Status))
 		})
+
+		It("should accept valid callback names with dots", func() {
+			q := r.URL.Query()
+			q.Add("f", "jsonp")
+			q.Add("callback", "jQuery.callback_123")
+			r.URL.RawQuery = q.Encode()
+
+			sendResponse(w, r, payload)
+
+			body := w.Body.String()
+			Expect(body).To(HavePrefix("jQuery.callback_123("))
+		})
+
+		It("should reject callback with invalid characters", func() {
+			q := r.URL.Query()
+			q.Add("f", "jsonp")
+			q.Add("callback", "alert(1)//")
+			r.URL.RawQuery = q.Encode()
+
+			sendResponse(w, r, payload)
+
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+			var wrapper responses.JsonWrapper
+			err := json.Unmarshal(w.Body.Bytes(), &wrapper)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+			Expect(wrapper.Subsonic.Error.Message).To(ContainSubstring("invalid callback parameter"))
+		})
+
+		It("should reject empty callback parameter", func() {
+			q := r.URL.Query()
+			q.Add("f", "jsonp")
+			q.Add("callback", "")
+			r.URL.RawQuery = q.Encode()
+
+			sendResponse(w, r, payload)
+
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+			var wrapper responses.JsonWrapper
+			err := json.Unmarshal(w.Body.Bytes(), &wrapper)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+		})
 	})
 
 	When("format is XML or unspecified", func() {
