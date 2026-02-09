@@ -311,14 +311,6 @@ func setupTestDB() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	// Pre-populate repository cache with a valid context. The MockDataStore caches
-	// repositories on first access; without this, the first access may happen inside
-	// an errgroup (e.g., searchAll) whose context is canceled after Wait(), causing
-	// subsequent calls to silently fail.
-	ds.MediaFile(ctx)
-	ds.Album(ctx)
-	ds.Artist(ctx)
-
 	// Create the Subsonic Router with real DS + noop stubs
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		core.NewPlaylists(ds), metrics.NewNoopInstance())
