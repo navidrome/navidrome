@@ -88,9 +88,6 @@ var _ = Describe("ffmpeg", func() {
 		It("returns true for known default aac command", func() {
 			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -")).To(BeTrue())
 		})
-		It("returns true for legacy default aac command", func() {
-			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
-		})
 		It("returns true for known default flac command", func() {
 			Expect(isDefaultCommand("flac", "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
 		})

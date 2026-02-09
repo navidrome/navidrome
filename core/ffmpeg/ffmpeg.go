@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -172,19 +172,6 @@ func (j *ffCmd) wait() {
 	_ = j.out.Close()
 }
 
-// defaultCommands maps format to the known default command templates.
-// Used to detect whether a user has customized their transcoding command.
-// Multiple entries per format support smooth upgrades (e.g. aac changed from adts to ipod).
-var defaultCommands = map[string][]string{
-	"mp3":  {"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -"},
-	"opus": {"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -"},
-	"aac": {
-		"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -",
-		"ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -", // legacy default
-	},
-	"flac": {"ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -"},
-}
-
 // formatCodecMap maps target format to ffmpeg codec flag.
 var formatCodecMap = map[string]string{
 	"mp3":  "libmp3lame",
@@ -201,9 +188,18 @@ var formatOutputMap = map[string]string{
 	"flac": "flac",
 }
 
-// isDefaultCommand returns true if the command matches any known default for this format.
+// defaultCommands is used to detect whether a user has customized their transcoding command.
+var defaultCommands = func() map[string]string {
+	m := make(map[string]string, len(consts.DefaultTranscodings))
+	for _, t := range consts.DefaultTranscodings {
+		m[t.TargetFormat] = t.Command
+	}
+	return m
+}()
+
+// isDefaultCommand returns true if the command matches the known default for this format.
 func isDefaultCommand(format, command string) bool {
-	return slices.Contains(defaultCommands[format], command)
+	return defaultCommands[format] == command
 }
 
 // buildDynamicArgs programmatically constructs ffmpeg arguments for known formats,
