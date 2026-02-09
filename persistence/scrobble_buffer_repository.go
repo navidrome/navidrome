@@ -72,7 +72,7 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 			Eq{"service": service},
 			Eq{"user_id": userId},
 		}).
-		OrderBy("play_time", "s.rowid").Limit(1)
+		OrderBy("play_time", RowID("s")).Limit(1)
 
 	var res dbScrobbleBuffer
 	err := r.queryOne(sql, &res)

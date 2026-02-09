@@ -76,7 +76,7 @@ ARG TARGETPLATFORM
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
 RUN xx-verify --setup
 
-RUN --mount=type=bind,source=. \
+RUN --mount=type=bind,source=.,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
     go mod download
@@ -84,7 +84,7 @@ RUN --mount=type=bind,source=. \
 ARG GIT_SHA
 ARG GIT_TAG
 
-RUN --mount=type=bind,source=. \
+RUN --mount=type=bind,source=.,target=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \

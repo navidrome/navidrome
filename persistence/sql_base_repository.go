@@ -366,12 +366,16 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) err
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
+	// PostgreSQL handles OFFSET natively with proper index support
+	if db.IsPostgres() {
+		return sq
+	}
 	if options.Offset > conf.Server.DevOffsetOptimize {
 		sq = sq.RemoveOffset()
-		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
+		rowidSq := sq.RemoveColumns().Columns(RowID(r.tableName))
 		rowidSq = rowidSq.Limit(uint64(options.Offset))
 		rowidSql, args, _ := rowidSq.ToSql()
-		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
+		sq = sq.Where(RowID(r.tableName)+" not in ("+rowidSql+")", args...)
 	}
 	return sq
 }

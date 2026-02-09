@@ -92,6 +92,21 @@ func UserColumn(col string) string {
 	return UserTable() + "." + col
 }
 
+// RowID returns a stable row-order column; PostgreSQL has no implicit rowid.
+func RowID(tableName string) string {
+	if db.IsPostgres() {
+		return tableName + ".id"
+	}
+	return tableName + ".rowid"
+}
+
+func insertOrIgnore(table, selectClause string) string {
+	if db.IsPostgres() {
+		return "INSERT INTO " + table + " (user_id, library_id) " + selectClause + " ON CONFLICT DO NOTHING"
+	}
+	return "INSERT OR IGNORE INTO " + table + " (user_id, library_id) " + selectClause
+}
+
 func joinPairs(pairs []string) string {
 	result := ""
 	for i, p := range pairs {

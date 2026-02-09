@@ -366,7 +366,7 @@ func (r *albumRepository) Search(q string, offset int, size int, options ...mode
 			return nil, fmt.Errorf("searching album by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectAlbum(options...), q, offset, size, &res, "album.rowid", "name")
+		err := r.doSearch(r.selectAlbum(options...), q, offset, size, &res, RowID("album"), "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching album by query %q: %w", q, err)
 		}

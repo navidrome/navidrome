@@ -35,8 +35,8 @@ func (r *playerRepository) Put(p *model.Player) error {
 func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
 		Columns("player.*").
-		Join("user ON player.user_id = user.id").
-		Columns("user.user_name username")
+		Join(UserTable() + " ON player.user_id = " + UserColumn("id")).
+		Columns(UserColumn("user_name") + " username")
 }
 
 func (r *playerRepository) Get(id string) (*model.Player, error) {

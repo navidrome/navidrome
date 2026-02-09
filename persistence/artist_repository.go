@@ -188,8 +188,11 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
-	query := r.newSelect(options...).Columns("artist.*",
-		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
+	statsExpr := "JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json"
+	if db.IsPostgres() {
+		statsExpr = "jsonb_object_agg(library_artist.library_id, library_artist.stats::jsonb) as library_stats_json"
+	}
+	query := r.newSelect(options...).Columns("artist.*", statsExpr)
 
 	query = r.applyLibraryFilterToArtistQuery(query)
 	query = query.GroupBy("artist.id")
