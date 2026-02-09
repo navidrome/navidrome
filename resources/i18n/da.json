@@ -36,7 +36,8 @@
         "bitDepth": "Bitdybde",
         "sampleRate": "Samplingfrekvens",
         "missing": "Manglende",
-        "libraryName": "Bibliotek"
+        "libraryName": "Bibliotek",
+        "composer": "Komponist"
       },
       "actions": {
         "addToQueue": "Afspil senere",
@@ -46,7 +47,8 @@
         "download": "Download",
         "playNext": "Afspil næste",
         "info": "Hent info",
-        "showInPlaylist": "Vis i afspilningsliste"
+        "showInPlaylist": "Vis i afspilningsliste",
+        "instantMix": "Instant Mix"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Scanning i gang...",
         "noLibrariesAssigned": "Ingen biblioteker tildelt denne bruger"
       }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "actions": {
+        "addConfig": "Tilføj konfiguration",
+        "disable": "Deaktivér",
+        "disabledDueToError": "Ret fejlen før aktivering",
+        "disabledLibrariesRequired": "Vælg biblioteker før aktivering",
+        "disabledUsersRequired": "Vælg brugere før aktivering",
+        "enable": "Aktivér",
+        "rescan": "Genskan"
+      },
+      "fields": {
+        "allLibraries": "Tillad alle biblioteker",
+        "allUsers": "Tillad alle brugere",
+        "author": "Forfatter",
+        "configKey": "Nøgle",
+        "configValue": "Værdi",
+        "createdAt": "Installeret",
+        "description": "Beskrivelse",
+        "enabled": "Aktiveret",
+        "hasError": "Fejl",
+        "id": "ID",
+        "lastError": "Fejl",
+        "name": "Navn",
+        "path": "Sti",
+        "permissions": "Tilladelser",
+        "selectedLibraries": "Valgte biblioteker",
+        "selectedUsers": "Valgte brugere",
+        "status": "Status",
+        "updatedAt": "Opdateret",
+        "version": "Version",
+        "website": "Hjemmeside"
+      },
+      "messages": {
+        "allLibrariesHelp": "Når aktiveret, vil pluginet have adgang til alle biblioteker, inklusiv dem der oprettes i fremtiden.",
+        "allUsersHelp": "Når aktiveret, vil pluginet have adgang til alle brugere, inklusiv dem der oprettes i fremtiden.",
+        "clickPermissions": "Klik på en tilladelse for detaljer",
+        "configHelp": "Konfigurér pluginet med nøgle-værdi-par. Lad stå tomt, hvis pluginet ikke kræver konfiguration.",
+        "configValidationError": "Konfigurationsvalidering mislykkedes:",
+        "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
+        "noConfig": "Ingen konfiguration angivet",
+        "noLibraries": "Ingen biblioteker valgt",
+        "noUsers": "Ingen brugere valgt",
+        "permissionReason": "Årsag",
+        "requiredHosts": "Påkrævede værter",
+        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt.",
+        "usersRequired": "Dette plugin kræver adgang til brugeroplysninger. Vælg hvilke brugere pluginet kan tilgå, eller aktivér 'Tillad alle brugere'."
+      },
+      "notifications": {
+        "disabled": "Plugin deaktiveret",
+        "enabled": "Plugin aktiveret",
+        "error": "Fejl ved opdatering af plugin",
+        "updated": "Plugin opdateret"
+      },
+      "placeholders": {
+        "configKey": "nøgle",
+        "configValue": "værdi"
+      },
+      "sections": {
+        "configuration": "Konfiguration",
+        "info": "Pluginoplysninger",
+        "libraryPermission": "Bibliotekstilladelse",
+        "manifest": "Manifest",
+        "status": "Status",
+        "usersPermission": "Brugertilladelse"
+      },
+      "status": {
+        "disabled": "Deaktiveret",
+        "enabled": "Aktiveret"
+      },
+      "validation": {
+        "invalidJson": "Konfigurationen skal være gyldig JSON"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Fjern alle manglende filer",
     "remove_all_missing_content": "Er du sikker på, at du vil fjerne alle manglende filer fra databasen? Dét vil permanent fjerne alle referencer til dem, inklusive deres afspilningstællere og vurderinger.",
     "noSimilarSongsFound": "Ingen lignende sange fundet",
-    "noTopSongsFound": "Ingen topsange fundet"
+    "noTopSongsFound": "Ingen topsange fundet",
+    "startingInstantMix": "Indlæser Instant Mix..."
   },
   "menu": {
     "library": "Bibliotek",
