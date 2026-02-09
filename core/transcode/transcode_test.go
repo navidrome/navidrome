@@ -294,8 +294,8 @@ var _ = Describe("Decider", func() {
 				ds.MockedTranscoding = mockTranscoding
 				svc = NewDecider(ds)
 
-				// MockTranscodingRepo doesn't support flac, so this will skip lossless profile.
-				// Use mp3 which is supported as the fallback.
+				// Transcoding to mp3 (lossy) should result in IsLossless=false.
+				// Use mp3 profile to test that lossy output is correctly identified.
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24}
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,

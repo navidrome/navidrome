@@ -77,7 +77,8 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req 
 	var cached bool
 	defer func() {
 		log.Info(ctx, "Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
-			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
+			"bitRate", bitRate, "sampleRate", req.SampleRate, "bitDepth", req.BitDepth, "channels", req.Channels,
+			"user", userName(ctx), "transcoding", format != "raw",
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
