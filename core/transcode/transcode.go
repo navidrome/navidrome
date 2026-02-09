@@ -107,6 +107,7 @@ type Decision struct {
 	TargetBitrate    int
 	TargetChannels   int
 	TargetSampleRate int
+	TargetBitDepth   int
 	SourceStream     StreamDetails
 	TranscodeStream  *StreamDetails
 }
@@ -135,6 +136,7 @@ type Params struct {
 	TargetBitrate    int
 	TargetChannels   int
 	TargetSampleRate int
+	TargetBitDepth   int
 }
 
 func NewDecider(ds model.DataStore) Decider {
@@ -204,6 +206,7 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 			decision.TargetBitrate = ts.Bitrate
 			decision.TargetChannels = ts.Channels
 			decision.TargetSampleRate = ts.SampleRate
+			decision.TargetBitDepth = ts.BitDepth
 			decision.TranscodeStream = ts
 			break
 		}
@@ -333,6 +336,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 		Codec:      strings.ToLower(profile.AudioCodec),
 		SampleRate: dsdToPCMSampleRate(mf.SampleRate, mf.AudioCodec()),
 		Channels:   mf.Channels,
+		BitDepth:   mf.BitDepth,
 		IsLossless: targetIsLossless,
 	}
 	if ts.Codec == "" {
@@ -551,6 +555,9 @@ func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, erro
 		if decision.TargetSampleRate > 0 {
 			claims["sr"] = decision.TargetSampleRate
 		}
+		if decision.TargetBitDepth > 0 {
+			claims["bd"] = decision.TargetBitDepth
+		}
 	}
 	return auth.CreateExpiringPublicToken(exp, claims)
 }
@@ -579,6 +586,9 @@ func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
 	}
 	if sr, ok := claims["sr"].(float64); ok {
 		params.TargetSampleRate = int(sr)
+	}
+	if bd, ok := claims["bd"].(float64); ok {
+		params.TargetBitDepth = int(bd)
 	}
 
 	return params, nil

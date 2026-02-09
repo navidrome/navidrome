@@ -545,6 +545,43 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 			})
 
+			It("applies bitdepth limitation to transcoded stream", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24}
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioBitdepth, Comparison: ComparisonLessThanEqual, Values: []string{"16"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(16))
+				Expect(decision.TargetBitDepth).To(Equal(16))
+			})
+
+			It("preserves source bit depth when no limitation applies", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 24}
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
+				Expect(decision.TargetBitDepth).To(Equal(24))
+			})
+
 			It("rejects transcoding profile when GreaterThanEqual cannot be satisfied", func() {
 				mf := &model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
 				ci := &ClientInfo{
@@ -843,6 +880,42 @@ var _ = Describe("Decider", func() {
 			Expect(params.TargetFormat).To(Equal("flac"))
 			Expect(params.TargetSampleRate).To(Equal(48000))
 			Expect(params.TargetChannels).To(Equal(2))
+		})
+
+		It("creates and parses a transcode token with bit depth", func() {
+			decision := &Decision{
+				MediaID:        "media-bd",
+				CanDirectPlay:  false,
+				CanTranscode:   true,
+				TargetFormat:   "flac",
+				TargetBitrate:  0,
+				TargetChannels: 2,
+				TargetBitDepth: 24,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+
+			params, err := svc.ParseTranscodeParams(token)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.MediaID).To(Equal("media-bd"))
+			Expect(params.TargetBitDepth).To(Equal(24))
+		})
+
+		It("omits bit depth from token when 0", func() {
+			decision := &Decision{
+				MediaID:        "media-nobd",
+				CanDirectPlay:  false,
+				CanTranscode:   true,
+				TargetFormat:   "mp3",
+				TargetBitrate:  256,
+				TargetBitDepth: 0,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+
+			params, err := svc.ParseTranscodeParams(token)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.TargetBitDepth).To(Equal(0))
 		})
 
 		It("omits sample rate from token when 0", func() {
