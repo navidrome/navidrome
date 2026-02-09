@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -10,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -110,9 +112,9 @@ func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
 	return ci
 }
 
-// bpsToKbps converts bits per second to kilobits per second.
+// bpsToKbps converts bits per second to kilobits per second (rounded).
 func bpsToKbps(bps int) int {
-	return bps / 1000
+	return (bps + 500) / 1000
 }
 
 // kbpsToBps converts kilobits per second to bits per second.
@@ -233,9 +235,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 
 	// Parse and validate ClientInfo from request body (required per OpenSubsonic spec)
 	var clientInfoReq clientInfoRequest
-	if r.Body == nil {
-		return nil, newError(responses.ErrorMissingParameter, "missing required JSON request body")
-	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	if err := json.NewDecoder(r.Body).Decode(&clientInfoReq); err != nil {
 		return nil, newError(responses.ErrorGeneric, "invalid JSON request body")
 	}
@@ -247,7 +247,10 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	// Get media file
 	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
 	if err != nil {
-		return nil, newError(responses.ErrorDataNotFound, "media file not found: %s", mediaID)
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, newError(responses.ErrorDataNotFound, "media file not found: %s", mediaID)
+		}
+		return nil, newError(responses.ErrorGeneric, "error retrieving media file: %v", err)
 	}
 
 	// Make the decision

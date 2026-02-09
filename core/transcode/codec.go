@@ -8,7 +8,7 @@ import "strings"
 // for transcoding decision purposes.
 func isLosslessFormat(format string) bool {
 	switch strings.ToLower(format) {
-	case "flac", "alac", "wav", "aiff", "ape", "wv", "tta", "tak", "shn", "dsd":
+	case "flac", "alac", "wav", "aiff", "ape", "wv", "tta", "tak", "shn", "dsd", "pcm":
 		return true
 	}
 	return false

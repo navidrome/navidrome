@@ -31,6 +31,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
 	}
 
 	// Make sure the stream will be closed at the end, to avoid leakage

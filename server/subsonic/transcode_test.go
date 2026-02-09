@@ -3,9 +3,11 @@ package subsonic
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -230,6 +232,87 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not match"))
 		})
+
+		It("builds correct StreamRequest for direct play", func() {
+			fakeStreamer := &fakeMediaStreamer{}
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockTD.params = &transcode.Params{MediaID: "song-1", DirectPlay: true}
+
+			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
+			_, _ = router.GetTranscodeStream(w, r)
+
+			Expect(fakeStreamer.captured).ToNot(BeNil())
+			Expect(fakeStreamer.captured.ID).To(Equal("song-1"))
+			Expect(fakeStreamer.captured.Format).To(BeEmpty())
+			Expect(fakeStreamer.captured.BitRate).To(BeZero())
+			Expect(fakeStreamer.captured.SampleRate).To(BeZero())
+			Expect(fakeStreamer.captured.BitDepth).To(BeZero())
+			Expect(fakeStreamer.captured.Channels).To(BeZero())
+		})
+
+		It("builds correct StreamRequest for transcoding", func() {
+			fakeStreamer := &fakeMediaStreamer{}
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockTD.params = &transcode.Params{
+				MediaID:          "song-2",
+				DirectPlay:       false,
+				TargetFormat:     "mp3",
+				TargetBitrate:    256,
+				TargetSampleRate: 44100,
+				TargetBitDepth:   16,
+				TargetChannels:   2,
+			}
+
+			r := newGetRequest("mediaId=song-2", "mediaType=song", "transcodeParams=valid-token", "offset=10")
+			_, _ = router.GetTranscodeStream(w, r)
+
+			Expect(fakeStreamer.captured).ToNot(BeNil())
+			Expect(fakeStreamer.captured.ID).To(Equal("song-2"))
+			Expect(fakeStreamer.captured.Format).To(Equal("mp3"))
+			Expect(fakeStreamer.captured.BitRate).To(Equal(256))
+			Expect(fakeStreamer.captured.SampleRate).To(Equal(44100))
+			Expect(fakeStreamer.captured.BitDepth).To(Equal(16))
+			Expect(fakeStreamer.captured.Channels).To(Equal(2))
+			Expect(fakeStreamer.captured.Offset).To(Equal(10))
+		})
+	})
+
+	Describe("bpsToKbps", func() {
+		It("converts standard bitrates", func() {
+			Expect(bpsToKbps(128000)).To(Equal(128))
+			Expect(bpsToKbps(320000)).To(Equal(320))
+			Expect(bpsToKbps(256000)).To(Equal(256))
+		})
+		It("returns 0 for 0", func() {
+			Expect(bpsToKbps(0)).To(Equal(0))
+		})
+		It("rounds instead of truncating", func() {
+			Expect(bpsToKbps(999)).To(Equal(1))
+			Expect(bpsToKbps(500)).To(Equal(1))
+			Expect(bpsToKbps(499)).To(Equal(0))
+		})
+	})
+
+	Describe("kbpsToBps", func() {
+		It("converts standard bitrates", func() {
+			Expect(kbpsToBps(128)).To(Equal(128000))
+			Expect(kbpsToBps(320)).To(Equal(320000))
+		})
+		It("returns 0 for 0", func() {
+			Expect(kbpsToBps(0)).To(Equal(0))
+		})
+	})
+
+	Describe("convertBitrateValues", func() {
+		It("converts valid bps strings to kbps", func() {
+			Expect(convertBitrateValues([]string{"128000", "320000"})).To(Equal([]string{"128", "320"}))
+		})
+		It("preserves unparseable values", func() {
+			Expect(convertBitrateValues([]string{"128000", "bad", "320000"})).To(Equal([]string{"128", "bad", "320"}))
+		})
+		It("handles empty slice", func() {
+			Expect(convertBitrateValues([]string{})).To(Equal([]string{}))
+		})
 	})
 })
 
@@ -265,4 +348,22 @@ func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*transcode.Param
 		return nil, m.parseErr
 	}
 	return m.params, nil
+}
+
+// fakeMediaStreamer captures the StreamRequest and returns a sentinel error,
+// allowing tests to verify parameter passing without constructing a real Stream.
+var errStreamCaptured = errors.New("stream request captured")
+
+type fakeMediaStreamer struct {
+	captured *core.StreamRequest
+}
+
+func (f *fakeMediaStreamer) NewStream(_ context.Context, req core.StreamRequest) (*core.Stream, error) {
+	f.captured = &req
+	return nil, errStreamCaptured
+}
+
+func (f *fakeMediaStreamer) DoStream(_ context.Context, _ *model.MediaFile, req core.StreamRequest) (*core.Stream, error) {
+	f.captured = &req
+	return nil, errStreamCaptured
 }
