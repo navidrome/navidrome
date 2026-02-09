@@ -217,8 +217,8 @@ type mockMediaStreamer struct {
 	core.MediaStreamer
 }
 
-func (m *mockMediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int, reqOffset int) (*core.Stream, error) {
-	args := m.Called(ctx, mf, reqFormat, reqBitRate, reqSampleRate, reqBitDepth, reqChannels, reqOffset)
+func (m *mockMediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req core.StreamRequest) (*core.Stream, error) {
+	args := m.Called(ctx, mf, req.Format, req.BitRate, req.SampleRate, req.BitDepth, req.Channels, req.Offset)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}

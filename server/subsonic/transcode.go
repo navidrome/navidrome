@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -16,40 +18,40 @@ import (
 
 // clientInfoRequest represents client playback capabilities from the request body
 type clientInfoRequest struct {
-	Name                       string                  `json:"name,omitempty"`
-	Platform                   string                  `json:"platform,omitempty"`
-	MaxAudioBitrate            int                     `json:"maxAudioBitrate,omitempty"`
-	MaxTranscodingAudioBitrate int                     `json:"maxTranscodingAudioBitrate,omitempty"`
-	DirectPlayProfiles         []directPlayProfileReq  `json:"directPlayProfiles,omitempty"`
-	TranscodingProfiles        []transcodingProfileReq `json:"transcodingProfiles,omitempty"`
-	CodecProfiles              []codecProfileReq       `json:"codecProfiles,omitempty"`
+	Name                       string                      `json:"name,omitempty"`
+	Platform                   string                      `json:"platform,omitempty"`
+	MaxAudioBitrate            int                         `json:"maxAudioBitrate,omitempty"`
+	MaxTranscodingAudioBitrate int                         `json:"maxTranscodingAudioBitrate,omitempty"`
+	DirectPlayProfiles         []directPlayProfileRequest  `json:"directPlayProfiles,omitempty"`
+	TranscodingProfiles        []transcodingProfileRequest `json:"transcodingProfiles,omitempty"`
+	CodecProfiles              []codecProfileRequest       `json:"codecProfiles,omitempty"`
 }
 
-// directPlayProfileReq describes a format the client can play directly
-type directPlayProfileReq struct {
+// directPlayProfileRequest describes a format the client can play directly
+type directPlayProfileRequest struct {
 	Containers       []string `json:"containers,omitempty"`
 	AudioCodecs      []string `json:"audioCodecs,omitempty"`
 	Protocols        []string `json:"protocols,omitempty"`
 	MaxAudioChannels int      `json:"maxAudioChannels,omitempty"`
 }
 
-// transcodingProfileReq describes a transcoding target the client supports
-type transcodingProfileReq struct {
+// transcodingProfileRequest describes a transcoding target the client supports
+type transcodingProfileRequest struct {
 	Container        string `json:"container,omitempty"`
 	AudioCodec       string `json:"audioCodec,omitempty"`
 	Protocol         string `json:"protocol,omitempty"`
 	MaxAudioChannels int    `json:"maxAudioChannels,omitempty"`
 }
 
-// codecProfileReq describes codec-specific limitations
-type codecProfileReq struct {
-	Type        string          `json:"type,omitempty"`
-	Name        string          `json:"name,omitempty"`
-	Limitations []limitationReq `json:"limitations,omitempty"`
+// codecProfileRequest describes codec-specific limitations
+type codecProfileRequest struct {
+	Type        string              `json:"type,omitempty"`
+	Name        string              `json:"name,omitempty"`
+	Limitations []limitationRequest `json:"limitations,omitempty"`
 }
 
-// limitationReq describes a specific codec limitation
-type limitationReq struct {
+// limitationRequest describes a specific codec limitation
+type limitationRequest struct {
 	Name       string   `json:"name,omitempty"`
 	Comparison string   `json:"comparison,omitempty"`
 	Values     []string `json:"values,omitempty"`
@@ -124,7 +126,7 @@ func convertBitrateValues(bpsValues []string) []string {
 	for i, v := range bpsValues {
 		n, err := strconv.Atoi(v)
 		if err == nil {
-			result[i] = strconv.Itoa(n / 1000)
+			result[i] = strconv.Itoa(bpsToKbps(n))
 		} else {
 			result[i] = v // preserve unparseable values as-is
 		}
@@ -162,27 +164,44 @@ func (r *clientInfoRequest) validate() error {
 	return nil
 }
 
+var validProtocols = []string{
+	transcode.ProtocolHTTP,
+	transcode.ProtocolHLS,
+}
+
 func isValidProtocol(p string) bool {
-	return p == transcode.ProtocolHTTP || p == transcode.ProtocolHLS
+	return slices.Contains(validProtocols, p)
+}
+
+var validCodecProfileTypes = []string{
+	transcode.CodecProfileTypeAudio,
 }
 
 func isValidCodecProfileType(t string) bool {
-	return t == transcode.CodecProfileTypeAudio
+	return slices.Contains(validCodecProfileTypes, t)
+}
+
+var validLimitationNames = []string{
+	transcode.LimitationAudioChannels,
+	transcode.LimitationAudioBitrate,
+	transcode.LimitationAudioProfile,
+	transcode.LimitationAudioSamplerate,
+	transcode.LimitationAudioBitdepth,
 }
 
 func isValidLimitationName(n string) bool {
-	return n == transcode.LimitationAudioChannels ||
-		n == transcode.LimitationAudioBitrate ||
-		n == transcode.LimitationAudioProfile ||
-		n == transcode.LimitationAudioSamplerate ||
-		n == transcode.LimitationAudioBitdepth
+	return slices.Contains(validLimitationNames, n)
+}
+
+var validComparisons = []string{
+	transcode.ComparisonEquals,
+	transcode.ComparisonNotEquals,
+	transcode.ComparisonLessThanEqual,
+	transcode.ComparisonGreaterThanEqual,
 }
 
 func isValidComparison(c string) bool {
-	return c == transcode.ComparisonEquals ||
-		c == transcode.ComparisonNotEquals ||
-		c == transcode.ComparisonLessThanEqual ||
-		c == transcode.ComparisonGreaterThanEqual
+	return slices.Contains(validComparisons, c)
 }
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
@@ -320,25 +339,18 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, newError(responses.ErrorDataNotFound, "mediaId does not match token")
 	}
 
-	// Determine streaming parameters
-	format := ""
-	maxBitRate := 0
-	sampleRate := 0
-	bitDepth := 0
-	channels := 0
+	// Build streaming parameters from the token
+	streamReq := core.StreamRequest{ID: mediaID, Offset: p.IntOr("offset", 0)}
 	if !params.DirectPlay && params.TargetFormat != "" {
-		format = params.TargetFormat
-		maxBitRate = params.TargetBitrate // Already in kbps, matching the streamer
-		sampleRate = params.TargetSampleRate
-		bitDepth = params.TargetBitDepth
-		channels = params.TargetChannels
+		streamReq.Format = params.TargetFormat
+		streamReq.BitRate = params.TargetBitrate // Already in kbps, matching the streamer
+		streamReq.SampleRate = params.TargetSampleRate
+		streamReq.BitDepth = params.TargetBitDepth
+		streamReq.Channels = params.TargetChannels
 	}
 
-	// Get offset parameter
-	offset := p.IntOr("offset", 0)
-
 	// Create stream
-	stream, err := api.streamer.NewStream(ctx, mediaID, format, maxBitRate, sampleRate, bitDepth, channels, offset)
+	stream, err := api.streamer.NewStream(ctx, streamReq)
 	if err != nil {
 		return nil, err
 	}

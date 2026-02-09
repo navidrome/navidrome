@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -202,16 +203,7 @@ var formatOutputMap = map[string]string{
 
 // isDefaultCommand returns true if the command matches any known default for this format.
 func isDefaultCommand(format, command string) bool {
-	defaults, ok := defaultCommands[format]
-	if !ok {
-		return false
-	}
-	for _, d := range defaults {
-		if command == d {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(defaultCommands[format], command)
 }
 
 // buildDynamicArgs programmatically constructs ffmpeg arguments for known formats,
@@ -292,6 +284,8 @@ func injectBeforeOutput(args []string, flag, value string) []string {
 
 // isLosslessOutputFormat returns true if the format is a lossless audio format
 // where preserving bit depth via -sample_fmt is meaningful.
+// Note: this covers only formats ffmpeg can produce as output. For the full set of
+// lossless formats used in transcoding decisions, see core/transcode/codec.go:isLosslessFormat.
 func isLosslessOutputFormat(format string) bool {
 	switch strings.ToLower(format) {
 	case "flac", "alac", "wav", "aiff":
