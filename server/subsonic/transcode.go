@@ -306,40 +306,48 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 
 // GetTranscodeStream handles the OpenSubsonic getTranscodeStream endpoint.
 // It streams media using the decision encoded in the transcodeParams JWT token.
+// All errors are returned as proper HTTP status codes (not Subsonic error responses).
 func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	p := req.Params(r)
 
 	mediaID, err := p.String("mediaId")
 	if err != nil {
-		return nil, newError(responses.ErrorMissingParameter, "missing required parameter: mediaId")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return nil, nil
 	}
 
 	mediaType, err := p.String("mediaType")
 	if err != nil {
-		return nil, newError(responses.ErrorMissingParameter, "missing required parameter: mediaType")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return nil, nil
 	}
 
-	transcodeParams, err := p.String("transcodeParams")
+	transcodeParamsToken, err := p.String("transcodeParams")
 	if err != nil {
-		return nil, newError(responses.ErrorMissingParameter, "missing required parameter: transcodeParams")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return nil, nil
 	}
 
 	// Only support songs for now
 	if mediaType != "song" {
-		return nil, newError(responses.ErrorGeneric, "mediaType '%s' is not yet supported", mediaType)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return nil, nil
 	}
 
-	// Parse and validate the token
-	params, err := api.transcodeDecision.ParseTranscodeParams(transcodeParams)
+	// Validate the token, mediaID match, file existence, and freshness
+	params, mf, err := api.transcodeDecision.ValidateTranscodeParams(ctx, transcodeParamsToken, mediaID)
 	if err != nil {
-		log.Warn(ctx, "Failed to parse transcode token", err)
-		return nil, newError(responses.ErrorDataNotFound, "invalid or expired transcodeParams token")
-	}
-
-	// Verify mediaId matches token
-	if params.MediaID != mediaID {
-		return nil, newError(responses.ErrorDataNotFound, "mediaId does not match token")
+		switch {
+		case errors.Is(err, transcode.ErrMediaNotFound):
+			http.Error(w, "Not Found", http.StatusNotFound)
+		case errors.Is(err, transcode.ErrTokenInvalid), errors.Is(err, transcode.ErrTokenStale):
+			http.Error(w, "Gone", http.StatusGone)
+		default:
+			log.Error(ctx, "Error validating transcode params", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return nil, nil
 	}
 
 	// Build streaming parameters from the token
@@ -352,10 +360,12 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		streamReq.Channels = params.TargetChannels
 	}
 
-	// Create stream
-	stream, err := api.streamer.NewStream(ctx, streamReq)
+	// Create stream (use DoStream to avoid duplicate DB fetch)
+	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
 	if err != nil {
-		return nil, err
+		log.Error(ctx, "Error creating stream", "mediaID", mediaID, err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return nil, nil
 	}
 
 	// Make sure the stream will be closed at the end

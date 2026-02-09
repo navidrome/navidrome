@@ -2,6 +2,7 @@ package transcode
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
@@ -856,10 +857,17 @@ var _ = Describe("Decider", func() {
 	})
 
 	Describe("Token round-trip", func() {
+		var sourceTime time.Time
+
+		BeforeEach(func() {
+			sourceTime = time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC)
+		})
+
 		It("creates and parses a direct play token", func() {
 			decision := &Decision{
-				MediaID:       "media-123",
-				CanDirectPlay: true,
+				MediaID:         "media-123",
+				CanDirectPlay:   true,
+				SourceUpdatedAt: sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -870,16 +878,18 @@ var _ = Describe("Decider", func() {
 			Expect(params.MediaID).To(Equal("media-123"))
 			Expect(params.DirectPlay).To(BeTrue())
 			Expect(params.TargetFormat).To(BeEmpty())
+			Expect(params.SourceUpdatedAt.Unix()).To(Equal(sourceTime.Unix()))
 		})
 
 		It("creates and parses a transcode token with kbps bitrate", func() {
 			decision := &Decision{
-				MediaID:        "media-456",
-				CanDirectPlay:  false,
-				CanTranscode:   true,
-				TargetFormat:   "mp3",
-				TargetBitrate:  256, // kbps
-				TargetChannels: 2,
+				MediaID:         "media-456",
+				CanDirectPlay:   false,
+				CanTranscode:    true,
+				TargetFormat:    "mp3",
+				TargetBitrate:   256, // kbps
+				TargetChannels:  2,
+				SourceUpdatedAt: sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -891,6 +901,7 @@ var _ = Describe("Decider", func() {
 			Expect(params.TargetFormat).To(Equal("mp3"))
 			Expect(params.TargetBitrate).To(Equal(256)) // kbps
 			Expect(params.TargetChannels).To(Equal(2))
+			Expect(params.SourceUpdatedAt.Unix()).To(Equal(sourceTime.Unix()))
 		})
 
 		It("creates and parses a transcode token with sample rate", func() {
@@ -902,6 +913,7 @@ var _ = Describe("Decider", func() {
 				TargetBitrate:    0,
 				TargetChannels:   2,
 				TargetSampleRate: 48000,
+				SourceUpdatedAt:  sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -917,13 +929,14 @@ var _ = Describe("Decider", func() {
 
 		It("creates and parses a transcode token with bit depth", func() {
 			decision := &Decision{
-				MediaID:        "media-bd",
-				CanDirectPlay:  false,
-				CanTranscode:   true,
-				TargetFormat:   "flac",
-				TargetBitrate:  0,
-				TargetChannels: 2,
-				TargetBitDepth: 24,
+				MediaID:         "media-bd",
+				CanDirectPlay:   false,
+				CanTranscode:    true,
+				TargetFormat:    "flac",
+				TargetBitrate:   0,
+				TargetChannels:  2,
+				TargetBitDepth:  24,
+				SourceUpdatedAt: sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -936,12 +949,13 @@ var _ = Describe("Decider", func() {
 
 		It("omits bit depth from token when 0", func() {
 			decision := &Decision{
-				MediaID:        "media-nobd",
-				CanDirectPlay:  false,
-				CanTranscode:   true,
-				TargetFormat:   "mp3",
-				TargetBitrate:  256,
-				TargetBitDepth: 0,
+				MediaID:         "media-nobd",
+				CanDirectPlay:   false,
+				CanTranscode:    true,
+				TargetFormat:    "mp3",
+				TargetBitrate:   256,
+				TargetBitDepth:  0,
+				SourceUpdatedAt: sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -959,6 +973,7 @@ var _ = Describe("Decider", func() {
 				TargetFormat:     "mp3",
 				TargetBitrate:    256,
 				TargetSampleRate: 0,
+				SourceUpdatedAt:  sourceTime,
 			}
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
@@ -968,9 +983,91 @@ var _ = Describe("Decider", func() {
 			Expect(params.TargetSampleRate).To(Equal(0))
 		})
 
+		It("truncates SourceUpdatedAt to seconds", func() {
+			timeWithNanos := time.Date(2025, 6, 15, 10, 30, 0, 123456789, time.UTC)
+			decision := &Decision{
+				MediaID:         "media-trunc",
+				CanDirectPlay:   true,
+				SourceUpdatedAt: timeWithNanos,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+
+			params, err := svc.ParseTranscodeParams(token)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.SourceUpdatedAt.Unix()).To(Equal(timeWithNanos.Truncate(time.Second).Unix()))
+		})
+
 		It("rejects an invalid token", func() {
 			_, err := svc.ParseTranscodeParams("invalid-token")
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("ValidateTranscodeParams", func() {
+		var (
+			mockMFRepo *tests.MockMediaFileRepo
+			sourceTime time.Time
+		)
+
+		BeforeEach(func() {
+			sourceTime = time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC)
+			mockMFRepo = &tests.MockMediaFileRepo{}
+			ds.MockedMediaFile = mockMFRepo
+		})
+
+		createTokenForMedia := func(mediaID string, updatedAt time.Time) string {
+			decision := &Decision{
+				MediaID:         mediaID,
+				CanDirectPlay:   true,
+				SourceUpdatedAt: updatedAt,
+			}
+			token, err := svc.CreateTranscodeParams(decision)
+			Expect(err).ToNot(HaveOccurred())
+			return token
+		}
+
+		It("returns params and media file for valid token", func() {
+			mockMFRepo.SetData(model.MediaFiles{
+				{ID: "song-1", UpdatedAt: sourceTime},
+			})
+			token := createTokenForMedia("song-1", sourceTime)
+
+			params, mf, err := svc.ValidateTranscodeParams(ctx, token, "song-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(params.MediaID).To(Equal("song-1"))
+			Expect(params.DirectPlay).To(BeTrue())
+			Expect(mf.ID).To(Equal("song-1"))
+		})
+
+		It("returns ErrTokenInvalid for invalid token", func() {
+			_, _, err := svc.ValidateTranscodeParams(ctx, "bad-token", "song-1")
+			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
+		})
+
+		It("returns ErrTokenInvalid when mediaID does not match token", func() {
+			token := createTokenForMedia("song-1", sourceTime)
+
+			_, _, err := svc.ValidateTranscodeParams(ctx, token, "song-2")
+			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
+		})
+
+		It("returns ErrMediaNotFound when media file does not exist", func() {
+			token := createTokenForMedia("gone-id", sourceTime)
+
+			_, _, err := svc.ValidateTranscodeParams(ctx, token, "gone-id")
+			Expect(err).To(MatchError(ErrMediaNotFound))
+		})
+
+		It("returns ErrTokenStale when media file has changed", func() {
+			newTime := sourceTime.Add(1 * time.Hour)
+			mockMFRepo.SetData(model.MediaFiles{
+				{ID: "song-1", UpdatedAt: newTime},
+			})
+			token := createTokenForMedia("song-1", sourceTime)
+
+			_, _, err := svc.ValidateTranscodeParams(ctx, token, "song-1")
+			Expect(err).To(MatchError(ErrTokenStale))
 		})
 	})
 })

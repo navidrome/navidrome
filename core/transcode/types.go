@@ -2,8 +2,16 @@ package transcode
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
+)
+
+var (
+	ErrTokenInvalid  = errors.New("invalid or expired transcode token")
+	ErrMediaNotFound = errors.New("media file not found")
+	ErrTokenStale    = errors.New("transcode token is stale: media file has changed")
 )
 
 // Decider is the core service interface for making transcoding decisions
@@ -11,6 +19,7 @@ type Decider interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error)
 	CreateTranscodeParams(decision *Decision) (string, error)
 	ParseTranscodeParams(token string) (*Params, error)
+	ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error)
 }
 
 // ClientInfo represents client playback capabilities.
@@ -98,6 +107,7 @@ type Decision struct {
 	TargetSampleRate int
 	TargetBitDepth   int
 	SourceStream     StreamDetails
+	SourceUpdatedAt  time.Time
 	TranscodeStream  *StreamDetails
 }
 
@@ -126,4 +136,5 @@ type Params struct {
 	TargetChannels   int
 	TargetSampleRate int
 	TargetBitDepth   int
+	SourceUpdatedAt  time.Time
 }
