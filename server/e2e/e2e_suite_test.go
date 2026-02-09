@@ -101,6 +101,25 @@ func buildTestFS() storagetest.FakeFS {
 	})
 }
 
+// createUser creates a user in the database with the given properties, assigns them to the test
+// library, and returns the fully-loaded user (with Libraries populated).
+func createUser(id, username, name string, isAdmin bool) model.User {
+	user := model.User{
+		ID:          id,
+		UserName:    username,
+		Name:        name,
+		IsAdmin:     isAdmin,
+		NewPassword: "password",
+	}
+	Expect(ds.User(ctx).Put(&user)).To(Succeed())
+	Expect(ds.User(ctx).SetUserLibraries(user.ID, []int{lib.ID})).To(Succeed())
+
+	loadedUser, err := ds.User(ctx).FindByUsername(user.UserName)
+	Expect(err).ToNot(HaveOccurred())
+	user.Libraries = loadedUser.Libraries
+	return user
+}
+
 // newReq creates an authenticated GET request for the given endpoint with optional query parameters.
 // Parameters are provided as key-value pairs: newReq("getAlbum", "id", "123")
 func newReq(endpoint string, params ...string) *http.Request {
@@ -111,8 +130,11 @@ func newReq(endpoint string, params ...string) *http.Request {
 func newReqWithUser(user model.User, endpoint string, params ...string) *http.Request {
 	u := "/rest/" + endpoint
 	if len(params) > 0 {
+		if len(params)%2 != 0 {
+			panic("newReqWithUser: odd number of parameters")
+		}
 		q := url.Values{}
-		for i := 0; i < len(params)-1; i += 2 {
+		for i := 0; i < len(params); i += 2 {
 			q.Add(params[i], params[i+1])
 		}
 		u += "?" + q.Encode()

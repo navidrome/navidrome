@@ -13,20 +13,7 @@ var _ = Describe("Multi-User Isolation", Ordered, func() {
 	BeforeAll(func() {
 		setupTestDB()
 
-		// Create a regular (non-admin) user
-		regularUser = model.User{
-			ID:          "regular-1",
-			UserName:    "regular",
-			Name:        "Regular User",
-			IsAdmin:     false,
-			NewPassword: "password",
-		}
-		Expect(ds.User(ctx).Put(&regularUser)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
-
-		loadedUser, err := ds.User(ctx).FindByUsername(regularUser.UserName)
-		Expect(err).ToNot(HaveOccurred())
-		regularUser.Libraries = loadedUser.Libraries
+		regularUser = createUser("regular-1", "regular", "Regular User", false)
 	})
 
 	Describe("Admin-only endpoint restrictions", func() {

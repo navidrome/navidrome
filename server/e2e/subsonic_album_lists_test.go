@@ -54,8 +54,10 @@ var _ = Describe("Album List Endpoints", func() {
 			// Articles like "The" are stripped for sorting, so "The Beatles" sorts as "Beatles"
 			// Non-compilations first: Beatles (x2), Led Zeppelin, Miles Davis, then compilations: Various
 			Expect(albums[0].Artist).To(Equal("The Beatles"))
+			Expect(albums[1].Artist).To(Equal("The Beatles"))
 			Expect(albums[2].Artist).To(Equal("Led Zeppelin"))
 			Expect(albums[3].Artist).To(Equal("Miles Davis"))
+			Expect(albums[4].Artist).To(Equal("Various"))
 		})
 
 		It("type=random returns albums", func() {
