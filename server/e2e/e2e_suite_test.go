@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -189,12 +190,27 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 // noopStreamer implements core.MediaStreamer
 type noopStreamer struct{}
 
-func (n noopStreamer) NewStream(context.Context, string, string, int, int) (*core.Stream, error) {
+func (n noopStreamer) NewStream(context.Context, core.StreamRequest) (*core.Stream, error) {
 	return nil, model.ErrNotFound
 }
 
-func (n noopStreamer) DoStream(context.Context, *model.MediaFile, string, int, int) (*core.Stream, error) {
+func (n noopStreamer) DoStream(context.Context, *model.MediaFile, core.StreamRequest) (*core.Stream, error) {
 	return nil, model.ErrNotFound
+}
+
+// noopDecider implements transcode.Decider
+type noopDecider struct{}
+
+func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.ClientInfo) (*transcode.Decision, error) {
+	return nil, nil
+}
+
+func (n noopDecider) CreateTranscodeParams(*transcode.Decision) (string, error) {
+	return "", nil
+}
+
+func (n noopDecider) ParseTranscodeParams(string) (*transcode.Params, error) {
+	return nil, nil
 }
 
 // noopArchiver implements core.Archiver
@@ -265,6 +281,7 @@ var (
 	_ core.Archiver         = noopArchiver{}
 	_ external.Provider     = noopProvider{}
 	_ scrobbler.PlayTracker = noopPlayTracker{}
+	_ transcode.Decider     = noopDecider{}
 )
 
 var _ = BeforeSuite(func() {
@@ -344,6 +361,7 @@ func setupTestDB() {
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
+		noopDecider{},
 	)
 }
 
