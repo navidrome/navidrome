@@ -213,6 +213,10 @@ func (n noopDecider) ParseTranscodeParams(string) (*transcode.Params, error) {
 	return nil, nil
 }
 
+func (n noopDecider) ValidateTranscodeParams(context.Context, string, string) (*transcode.Params, *model.MediaFile, error) {
+	return nil, nil, nil
+}
+
 // noopArchiver implements core.Archiver
 type noopArchiver struct{}
 

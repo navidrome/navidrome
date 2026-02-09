@@ -29,7 +29,8 @@ type deciderService struct {
 
 func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error) {
 	decision := &Decision{
-		MediaID: mf.ID,
+		MediaID:         mf.ID,
+		SourceUpdatedAt: mf.UpdatedAt,
 	}
 
 	sourceBitrate := mf.BitRate // kbps
@@ -300,6 +301,7 @@ func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, erro
 	claims := map[string]any{
 		"mid": decision.MediaID,
 		"dp":  decision.CanDirectPlay,
+		"ua":  decision.SourceUpdatedAt.Truncate(time.Second).Unix(),
 	}
 	if decision.CanTranscode && decision.TargetFormat != "" {
 		claims["fmt"] = decision.TargetFormat
@@ -355,5 +357,34 @@ func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
 		params.TargetBitDepth = int(bd)
 	}
 
+	ua, ok := claims["ua"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid transcode token: missing source timestamp")
+	}
+	params.SourceUpdatedAt = time.Unix(int64(ua), 0)
+
 	return params, nil
+}
+
+func (s *deciderService) ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error) {
+	params, err := s.ParseTranscodeParams(token)
+	if err != nil {
+		return nil, nil, errors.Join(ErrTokenInvalid, err)
+	}
+	if params.MediaID != mediaID {
+		return nil, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, params.MediaID, mediaID)
+	}
+	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, nil, ErrMediaNotFound
+		}
+		return nil, nil, err
+	}
+	if !mf.UpdatedAt.Truncate(time.Second).Equal(params.SourceUpdatedAt) {
+		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
+			"tokenUpdatedAt", params.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
+		return nil, nil, ErrTokenStale
+	}
+	return params, mf, nil
 }

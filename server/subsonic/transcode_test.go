@@ -206,37 +206,63 @@ var _ = Describe("Transcode endpoints", func() {
 	})
 
 	Describe("GetTranscodeStream", func() {
-		It("returns error when mediaId is missing", func() {
+		It("returns 400 when mediaId is missing", func() {
 			r := newGetRequest("mediaType=song", "transcodeParams=abc")
-			_, err := router.GetTranscodeStream(w, r)
-			Expect(err).To(HaveOccurred())
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		It("returns error when transcodeParams is missing", func() {
+		It("returns 400 when transcodeParams is missing", func() {
 			r := newGetRequest("mediaId=123", "mediaType=song")
-			_, err := router.GetTranscodeStream(w, r)
-			Expect(err).To(HaveOccurred())
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		It("returns error for invalid token", func() {
-			mockTD.parseErr = model.ErrNotFound
+		It("returns 410 for invalid token", func() {
+			mockTD.validateErr = transcode.ErrTokenInvalid
 			r := newGetRequest("mediaId=123", "mediaType=song", "transcodeParams=bad-token")
-			_, err := router.GetTranscodeStream(w, r)
-			Expect(err).To(HaveOccurred())
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusGone))
 		})
 
-		It("returns error when mediaId doesn't match token", func() {
-			mockTD.params = &transcode.Params{MediaID: "other-id", DirectPlay: true}
+		It("returns 410 when mediaId doesn't match token", func() {
+			mockTD.validateErr = transcode.ErrTokenInvalid
 			r := newGetRequest("mediaId=wrong-id", "mediaType=song", "transcodeParams=valid-token")
-			_, err := router.GetTranscodeStream(w, r)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not match"))
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusGone))
+		})
+
+		It("returns 404 when media file not found", func() {
+			mockTD.validateErr = transcode.ErrMediaNotFound
+			r := newGetRequest("mediaId=gone-id", "mediaType=song", "transcodeParams=valid-token")
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 410 when media file has changed (stale token)", func() {
+			mockTD.validateErr = transcode.ErrTokenStale
+			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=stale-token")
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusGone))
 		})
 
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
-			mockTD.params = &transcode.Params{MediaID: "song-1", DirectPlay: true}
+			mockTD.validateParams = &transcode.Params{MediaID: "song-1", DirectPlay: true}
+			mockTD.validateMF = &model.MediaFile{ID: "song-1"}
 
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
 			_, _ = router.GetTranscodeStream(w, r)
@@ -253,7 +279,7 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
-			mockTD.params = &transcode.Params{
+			mockTD.validateParams = &transcode.Params{
 				MediaID:          "song-2",
 				DirectPlay:       false,
 				TargetFormat:     "mp3",
@@ -262,6 +288,7 @@ var _ = Describe("Transcode endpoints", func() {
 				TargetBitDepth:   16,
 				TargetChannels:   2,
 			}
+			mockTD.validateMF = &model.MediaFile{ID: "song-2"}
 
 			r := newGetRequest("mediaId=song-2", "mediaType=song", "transcodeParams=valid-token", "offset=10")
 			_, _ = router.GetTranscodeStream(w, r)
@@ -323,13 +350,16 @@ func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
 	return r
 }
 
-// mockTranscodeDecision is a test double for core.TranscodeDecision
+// mockTranscodeDecision is a test double for transcode.Decider
 type mockTranscodeDecision struct {
-	decision *transcode.Decision
-	token    string
-	tokenErr error
-	params   *transcode.Params
-	parseErr error
+	decision       *transcode.Decision
+	token          string
+	tokenErr       error
+	params         *transcode.Params
+	parseErr       error
+	validateParams *transcode.Params
+	validateMF     *model.MediaFile
+	validateErr    error
 }
 
 func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *transcode.ClientInfo) (*transcode.Decision, error) {
@@ -348,6 +378,13 @@ func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*transcode.Param
 		return nil, m.parseErr
 	}
 	return m.params, nil
+}
+
+func (m *mockTranscodeDecision) ValidateTranscodeParams(_ context.Context, _ string, _ string) (*transcode.Params, *model.MediaFile, error) {
+	if m.validateErr != nil {
+		return nil, nil, m.validateErr
+	}
+	return m.validateParams, m.validateMF, nil
 }
 
 // fakeMediaStreamer captures the StreamRequest and returns a sentinel error,
