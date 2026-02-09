@@ -15,8 +15,8 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	var songID string
 
 	BeforeAll(func() {
-		setupTestDB()
 		conf.Server.EnableSharing = true
+		setupTestDB()
 
 		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
@@ -34,20 +34,16 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	})
 
 	It("getShares returns empty initially", func() {
-		r := newReq("getShares")
-		resp, err := router.GetShares(r)
+		resp := doReq("getShares")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares).ToNot(BeNil())
 		Expect(resp.Shares.Share).To(BeEmpty())
 	})
 
 	It("createShare creates a share for an album", func() {
-		r := newReq("createShare", "id", albumID, "description", "Check out this album")
-		resp, err := router.CreateShare(r)
+		resp := doReq("createShare", "id", albumID, "description", "Check out this album")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares).ToNot(BeNil())
 		Expect(resp.Shares.Share).To(HaveLen(1))
@@ -60,10 +56,8 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	})
 
 	It("getShares returns the created share", func() {
-		r := newReq("getShares")
-		resp, err := router.GetShares(r)
+		resp := doReq("getShares")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares).ToNot(BeNil())
 		Expect(resp.Shares.Share).To(HaveLen(1))
@@ -76,43 +70,33 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	})
 
 	It("updateShare modifies the description", func() {
-		r := newReq("updateShare", "id", shareID, "description", "Updated description")
-		resp, err := router.UpdateShare(r)
+		resp := doReq("updateShare", "id", shareID, "description", "Updated description")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
 		// Verify update
-		r = newReq("getShares")
-		resp, err = router.GetShares(r)
-		Expect(err).ToNot(HaveOccurred())
+		resp = doReq("getShares")
 		Expect(resp.Shares.Share).To(HaveLen(1))
 		Expect(resp.Shares.Share[0].Description).To(Equal("Updated description"))
 	})
 
 	It("deleteShare removes it", func() {
-		r := newReq("deleteShare", "id", shareID)
-		resp, err := router.DeleteShare(r)
+		resp := doReq("deleteShare", "id", shareID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 	})
 
 	It("getShares returns empty after deletion", func() {
-		r := newReq("getShares")
-		resp, err := router.GetShares(r)
+		resp := doReq("getShares")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares).ToNot(BeNil())
 		Expect(resp.Shares.Share).To(BeEmpty())
 	})
 
 	It("createShare works with a song ID", func() {
-		r := newReq("createShare", "id", songID, "description", "Great song")
-		resp, err := router.CreateShare(r)
+		resp := doReq("createShare", "id", songID, "description", "Great song")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares).ToNot(BeNil())
 		Expect(resp.Shares.Share).To(HaveLen(1))
@@ -121,23 +105,23 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	})
 
 	It("createShare returns error when id parameter is missing", func() {
-		r := newReq("createShare")
-		_, err := router.CreateShare(r)
+		resp := doReq("createShare")
 
-		Expect(err).To(HaveOccurred())
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 
 	It("updateShare returns error when id parameter is missing", func() {
-		r := newReq("updateShare")
-		_, err := router.UpdateShare(r)
+		resp := doReq("updateShare")
 
-		Expect(err).To(HaveOccurred())
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 
 	It("deleteShare returns error when id parameter is missing", func() {
-		r := newReq("deleteShare")
-		_, err := router.DeleteShare(r)
+		resp := doReq("deleteShare")
 
-		Expect(err).To(HaveOccurred())
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 })

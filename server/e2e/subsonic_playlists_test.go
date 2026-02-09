@@ -24,20 +24,16 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 	})
 
 	It("getPlaylists returns empty list initially", func() {
-		r := newReq("getPlaylists")
-		resp, err := router.GetPlaylists(r)
+		resp := doReq("getPlaylists")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Playlists).ToNot(BeNil())
 		Expect(resp.Playlists.Playlist).To(BeEmpty())
 	})
 
 	It("createPlaylist creates a new playlist with songs", func() {
-		r := newReq("createPlaylist", "name", "Test Playlist", "songId", songIDs[0], "songId", songIDs[1])
-		resp, err := router.CreatePlaylist(r)
+		resp := doReq("createPlaylist", "name", "Test Playlist", "songId", songIDs[0], "songId", songIDs[1])
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Playlist).ToNot(BeNil())
 		Expect(resp.Playlist.Name).To(Equal("Test Playlist"))
@@ -46,10 +42,8 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 	})
 
 	It("getPlaylist returns playlist with tracks", func() {
-		r := newReq("getPlaylist", "id", playlistID)
-		resp, err := router.GetPlaylist(r)
+		resp := doReq("getPlaylist", "id", playlistID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Playlist).ToNot(BeNil())
 		Expect(resp.Playlist.Name).To(Equal("Test Playlist"))
@@ -59,72 +53,58 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 	})
 
 	It("createPlaylist without name or playlistId returns error", func() {
-		r := newReq("createPlaylist", "songId", songIDs[0])
-		_, err := router.CreatePlaylist(r)
+		resp := doReq("createPlaylist", "songId", songIDs[0])
 
-		Expect(err).To(HaveOccurred())
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 
 	It("updatePlaylist can rename the playlist", func() {
-		r := newReq("updatePlaylist", "playlistId", playlistID, "name", "Renamed Playlist")
-		resp, err := router.UpdatePlaylist(r)
+		resp := doReq("updatePlaylist", "playlistId", playlistID, "name", "Renamed Playlist")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
 		// Verify the rename
-		r = newReq("getPlaylist", "id", playlistID)
-		resp, err = router.GetPlaylist(r)
+		resp = doReq("getPlaylist", "id", playlistID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Playlist.Name).To(Equal("Renamed Playlist"))
 	})
 
 	It("updatePlaylist can add songs", func() {
-		r := newReq("updatePlaylist", "playlistId", playlistID, "songIdToAdd", songIDs[2])
-		resp, err := router.UpdatePlaylist(r)
+		resp := doReq("updatePlaylist", "playlistId", playlistID, "songIdToAdd", songIDs[2])
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
 		// Verify the song was added
-		r = newReq("getPlaylist", "id", playlistID)
-		resp, err = router.GetPlaylist(r)
+		resp = doReq("getPlaylist", "id", playlistID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Playlist.SongCount).To(Equal(int32(3)))
 		Expect(resp.Playlist.Entry).To(HaveLen(3))
 	})
 
 	It("updatePlaylist can remove songs by index", func() {
 		// Remove the first song (index 0)
-		r := newReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "0")
-		resp, err := router.UpdatePlaylist(r)
+		resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "0")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
 		// Verify the song was removed
-		r = newReq("getPlaylist", "id", playlistID)
-		resp, err = router.GetPlaylist(r)
+		resp = doReq("getPlaylist", "id", playlistID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Playlist.SongCount).To(Equal(int32(2)))
 		Expect(resp.Playlist.Entry).To(HaveLen(2))
 	})
 
 	It("deletePlaylist removes the playlist", func() {
-		r := newReq("deletePlaylist", "id", playlistID)
-		resp, err := router.DeletePlaylist(r)
+		resp := doReq("deletePlaylist", "id", playlistID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 	})
 
 	It("getPlaylist on deleted playlist returns error", func() {
-		r := newReq("getPlaylist", "id", playlistID)
-		_, err := router.GetPlaylist(r)
+		resp := doReq("getPlaylist", "id", playlistID)
 
-		Expect(err).To(HaveOccurred())
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 })

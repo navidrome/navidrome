@@ -14,32 +14,26 @@ var _ = Describe("Internet Radio Endpoints", Ordered, func() {
 	})
 
 	It("getInternetRadioStations returns empty initially", func() {
-		r := newReq("getInternetRadioStations")
-		resp, err := router.GetInternetRadios(r)
+		resp := doReq("getInternetRadioStations")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.InternetRadioStations).ToNot(BeNil())
 		Expect(resp.InternetRadioStations.Radios).To(BeEmpty())
 	})
 
 	It("createInternetRadioStation adds a station", func() {
-		r := newReq("createInternetRadioStation",
+		resp := doReq("createInternetRadioStation",
 			"streamUrl", "https://stream.example.com/radio",
 			"name", "Test Radio",
 			"homepageUrl", "https://example.com",
 		)
-		resp, err := router.CreateInternetRadio(r)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 	})
 
 	It("getInternetRadioStations returns the created station", func() {
-		r := newReq("getInternetRadioStations")
-		resp, err := router.GetInternetRadios(r)
+		resp := doReq("getInternetRadioStations")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.InternetRadioStations).ToNot(BeNil())
 		Expect(resp.InternetRadioStations.Radios).To(HaveLen(1))
@@ -53,21 +47,17 @@ var _ = Describe("Internet Radio Endpoints", Ordered, func() {
 	})
 
 	It("updateInternetRadioStation modifies the station", func() {
-		r := newReq("updateInternetRadioStation",
+		resp := doReq("updateInternetRadioStation",
 			"id", radioID,
 			"streamUrl", "https://stream.example.com/radio-v2",
 			"name", "Updated Radio",
 			"homepageUrl", "https://updated.example.com",
 		)
-		resp, err := router.UpdateInternetRadio(r)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
 		// Verify update
-		r = newReq("getInternetRadioStations")
-		resp, err = router.GetInternetRadios(r)
-		Expect(err).ToNot(HaveOccurred())
+		resp = doReq("getInternetRadioStations")
 		Expect(resp.InternetRadioStations.Radios).To(HaveLen(1))
 		Expect(resp.InternetRadioStations.Radios[0].Name).To(Equal("Updated Radio"))
 		Expect(resp.InternetRadioStations.Radios[0].StreamUrl).To(Equal("https://stream.example.com/radio-v2"))
@@ -75,18 +65,14 @@ var _ = Describe("Internet Radio Endpoints", Ordered, func() {
 	})
 
 	It("deleteInternetRadioStation removes it", func() {
-		r := newReq("deleteInternetRadioStation", "id", radioID)
-		resp, err := router.DeleteInternetRadio(r)
+		resp := doReq("deleteInternetRadioStation", "id", radioID)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 	})
 
 	It("getInternetRadioStations returns empty after deletion", func() {
-		r := newReq("getInternetRadioStations")
-		resp, err := router.GetInternetRadios(r)
+		resp := doReq("getInternetRadioStations")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.InternetRadioStations).ToNot(BeNil())
 		Expect(resp.InternetRadioStations.Radios).To(BeEmpty())

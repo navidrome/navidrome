@@ -12,10 +12,8 @@ var _ = Describe("Scan Endpoints", func() {
 	})
 
 	It("getScanStatus returns status", func() {
-		r := newReq("getScanStatus")
-		resp, err := router.GetScanStatus(r)
+		resp := doReq("getScanStatus")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.ScanStatus).ToNot(BeNil())
 		Expect(resp.ScanStatus.Scanning).To(BeFalse())
@@ -26,18 +24,15 @@ var _ = Describe("Scan Endpoints", func() {
 	It("startScan requires admin user", func() {
 		regularUser := createUser("user-2", "regular", "Regular User", false)
 
-		r := newReqWithUser(regularUser, "startScan")
-		_, err := router.StartScan(r)
+		resp := doReqWithUser(regularUser, "startScan")
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not authorized"))
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 
 	It("startScan returns scan status response", func() {
-		r := newReq("startScan")
-		resp, err := router.StartScan(r)
+		resp := doReq("startScan")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.ScanStatus).ToNot(BeNil())
 	})

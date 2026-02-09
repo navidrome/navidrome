@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,6 +31,7 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -120,41 +122,55 @@ func createUser(id, username, name string, isAdmin bool) model.User {
 	return user
 }
 
-// newReq creates an authenticated GET request for the given endpoint with optional query parameters.
-// Parameters are provided as key-value pairs: newReq("getAlbum", "id", "123")
-func newReq(endpoint string, params ...string) *http.Request {
-	return newReqWithUser(adminUser, endpoint, params...)
+// doReq makes a full HTTP round-trip through the router and returns the parsed Subsonic response.
+func doReq(endpoint string, params ...string) *responses.Subsonic {
+	return doReqWithUser(adminUser, endpoint, params...)
 }
 
-// newReqWithUser creates an authenticated GET request for the given user.
-func newReqWithUser(user model.User, endpoint string, params ...string) *http.Request {
-	u := "/rest/" + endpoint
-	if len(params) > 0 {
-		if len(params)%2 != 0 {
-			panic("newReqWithUser: odd number of parameters")
-		}
-		q := url.Values{}
-		for i := 0; i < len(params); i += 2 {
-			q.Add(params[i], params[i+1])
-		}
-		u += "?" + q.Encode()
+// doReqWithUser makes a full HTTP round-trip for the given user and returns the parsed Subsonic response.
+func doReqWithUser(user model.User, endpoint string, params ...string) *responses.Subsonic {
+	w := httptest.NewRecorder()
+	r := buildReq(user, endpoint, params...)
+	router.ServeHTTP(w, r)
+	return parseJSONResponse(w)
+}
+
+// doRawReq returns the raw ResponseRecorder for endpoints that write binary data (stream, download, getCoverArt).
+func doRawReq(endpoint string, params ...string) *httptest.ResponseRecorder {
+	return doRawReqWithUser(adminUser, endpoint, params...)
+}
+
+// doRawReqWithUser returns the raw ResponseRecorder for the given user.
+func doRawReqWithUser(user model.User, endpoint string, params ...string) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	r := buildReq(user, endpoint, params...)
+	router.ServeHTTP(w, r)
+	return w
+}
+
+// buildReq creates a GET request with Subsonic auth params (u, p, v, c, f=json).
+func buildReq(user model.User, endpoint string, params ...string) *http.Request {
+	if len(params)%2 != 0 {
+		panic("buildReq: odd number of parameters")
 	}
-	r := httptest.NewRequest("GET", u, nil)
-	userCtx := request.WithUser(r.Context(), user)
-	userCtx = request.WithUsername(userCtx, user.UserName)
-	userCtx = request.WithClient(userCtx, "test-client")
-	userCtx = request.WithPlayer(userCtx, model.Player{ID: "player-1", Name: "Test Player", Client: "test-client"})
-	return r.WithContext(userCtx)
+	q := url.Values{}
+	q.Add("u", user.UserName)
+	q.Add("p", "password")
+	q.Add("v", "1.16.1")
+	q.Add("c", "test-client")
+	q.Add("f", "json")
+	for i := 0; i < len(params); i += 2 {
+		q.Add(params[i], params[i+1])
+	}
+	return httptest.NewRequest("GET", "/"+endpoint+"?"+q.Encode(), nil)
 }
 
-// newRawReq creates a ResponseRecorder + authenticated request for raw handlers (stream, download, getCoverArt).
-func newRawReq(endpoint string, params ...string) (*httptest.ResponseRecorder, *http.Request) {
-	return httptest.NewRecorder(), newReq(endpoint, params...)
-}
-
-// newRawReqWithUser creates a ResponseRecorder + authenticated request for the given user.
-func newRawReqWithUser(user model.User, endpoint string, params ...string) (*httptest.ResponseRecorder, *http.Request) {
-	return httptest.NewRecorder(), newReqWithUser(user, endpoint, params...)
+// parseJSONResponse parses the JSON response body into a Subsonic response struct.
+func parseJSONResponse(w *httptest.ResponseRecorder) *responses.Subsonic {
+	Expect(w.Code).To(Equal(http.StatusOK))
+	var wrapper responses.JsonWrapper
+	Expect(json.Unmarshal(w.Body.Bytes(), &wrapper)).To(Succeed())
+	return &wrapper.Subsonic
 }
 
 // --- Noop stub implementations for Router dependencies ---

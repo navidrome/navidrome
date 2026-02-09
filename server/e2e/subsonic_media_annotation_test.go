@@ -36,18 +36,14 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 		})
 
 		It("stars a song by id", func() {
-			r := newReq("star", "id", songID)
-			resp, err := router.Star(r)
+			resp := doReq("star", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("starred song appears in getStarred response", func() {
-			r := newReq("getStarred")
-			resp, err := router.GetStarred(r)
+			resp := doReq("getStarred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Starred).ToNot(BeNil())
 			Expect(resp.Starred.Song).To(HaveLen(1))
@@ -55,57 +51,45 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 		})
 
 		It("unstars a previously starred song", func() {
-			r := newReq("unstar", "id", songID)
-			resp, err := router.Unstar(r)
+			resp := doReq("unstar", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			// Verify song no longer appears in starred
-			r = newReq("getStarred")
-			resp, err = router.GetStarred(r)
+			resp = doReq("getStarred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Starred.Song).To(BeEmpty())
 		})
 
 		It("stars an album by albumId", func() {
-			r := newReq("star", "albumId", albumID)
-			resp, err := router.Star(r)
+			resp := doReq("star", "albumId", albumID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			// Verify album appears in starred
-			r = newReq("getStarred")
-			resp, err = router.GetStarred(r)
+			resp = doReq("getStarred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Starred.Album).To(HaveLen(1))
 			Expect(resp.Starred.Album[0].Id).To(Equal(albumID))
 		})
 
 		It("stars an artist by artistId", func() {
-			r := newReq("star", "artistId", artistID)
-			resp, err := router.Star(r)
+			resp := doReq("star", "artistId", artistID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			// Verify artist appears in starred
-			r = newReq("getStarred")
-			resp, err = router.GetStarred(r)
+			resp = doReq("getStarred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Starred.Artist).To(HaveLen(1))
 			Expect(resp.Starred.Artist[0].Id).To(Equal(artistID))
 		})
 
 		It("returns error when no id provided", func() {
-			r := newReq("star")
-			_, err := router.Star(r)
+			resp := doReq("star")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
@@ -125,41 +109,33 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 		})
 
 		It("sets rating on a song", func() {
-			r := newReq("setRating", "id", songID, "rating", "4")
-			resp, err := router.SetRating(r)
+			resp := doReq("setRating", "id", songID, "rating", "4")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("rated song has correct userRating in getSong", func() {
-			r := newReq("getSong", "id", songID)
-			resp, err := router.GetSong(r)
+			resp := doReq("getSong", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Song).ToNot(BeNil())
 			Expect(resp.Song.UserRating).To(Equal(int32(4)))
 		})
 
 		It("sets rating on an album", func() {
-			r := newReq("setRating", "id", albumID, "rating", "3")
-			resp, err := router.SetRating(r)
+			resp := doReq("setRating", "id", albumID, "rating", "3")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("returns error for missing parameters", func() {
 			// Missing both id and rating
-			r := newReq("setRating")
-			_, err := router.SetRating(r)
-			Expect(err).To(HaveOccurred())
+			resp := doReq("setRating")
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
 
 			// Missing rating
-			r = newReq("setRating", "id", songID)
-			_, err = router.SetRating(r)
-			Expect(err).To(HaveOccurred())
+			resp = doReq("setRating", "id", songID)
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
 		})
 	})
 
@@ -169,18 +145,16 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 
-			r := newReq("scrobble", "id", songs[0].ID, "submission", "true")
-			resp, err := router.Scrobble(r)
+			resp := doReq("scrobble", "id", songs[0].ID, "submission", "true")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("returns error when id is missing", func() {
-			r := newReq("scrobble")
-			_, err := router.Scrobble(r)
+			resp := doReq("scrobble")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 })

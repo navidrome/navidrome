@@ -18,30 +18,25 @@ var _ = Describe("Multi-User Isolation", Ordered, func() {
 
 	Describe("Admin-only endpoint restrictions", func() {
 		It("startScan fails for regular user", func() {
-			r := newReqWithUser(regularUser, "startScan")
-			_, err := router.StartScan(r)
+			resp := doReqWithUser(regularUser, "startScan")
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not authorized"))
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
 	Describe("Browsing as regular user", func() {
 		It("regular user can browse the library", func() {
-			r := newReqWithUser(regularUser, "getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReqWithUser(regularUser, "getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
 			Expect(resp.Artist.Index).ToNot(BeEmpty())
 		})
 
 		It("regular user can search", func() {
-			r := newReqWithUser(regularUser, "search3", "query", "Beatles")
-			resp, err := router.Search3(r)
+			resp := doReqWithUser(regularUser, "search3", "query", "Beatles")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			Expect(resp.SearchResult3.Artist).ToNot(BeEmpty())
@@ -50,30 +45,25 @@ var _ = Describe("Multi-User Isolation", Ordered, func() {
 
 	Describe("getUser authorization", func() {
 		It("regular user can get their own info", func() {
-			r := newReqWithUser(regularUser, "getUser", "username", "regular")
-			resp, err := router.GetUser(r)
+			resp := doReqWithUser(regularUser, "getUser", "username", "regular")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.User.Username).To(Equal("regular"))
 			Expect(resp.User.AdminRole).To(BeFalse())
 		})
 
 		It("regular user cannot get another user's info", func() {
-			r := newReqWithUser(regularUser, "getUser", "username", "admin")
-			_, err := router.GetUser(r)
+			resp := doReqWithUser(regularUser, "getUser", "username", "admin")
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not authorized"))
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
 	Describe("getUsers for regular user", func() {
 		It("returns only the requesting user's info", func() {
-			r := newReqWithUser(regularUser, "getUsers")
-			resp, err := router.GetUsers(r)
+			resp := doReqWithUser(regularUser, "getUsers")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Users).ToNot(BeNil())
 			Expect(resp.Users.User).To(HaveLen(1))

@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"net/http"
+
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -13,48 +15,42 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 	Describe("Stream", func() {
 		It("returns error when id parameter is missing", func() {
-			w, r := newRawReq("stream")
-			_, err := router.Stream(w, r)
+			resp := doReq("stream")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
 	Describe("Download", func() {
 		It("returns error when id parameter is missing", func() {
-			w, r := newRawReq("download")
-			_, err := router.Download(w, r)
+			resp := doReq("download")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
 	Describe("GetCoverArt", func() {
 		It("handles request without error", func() {
-			w, r := newRawReq("getCoverArt")
-			_, err := router.GetCoverArt(w, r)
+			w := doRawReq("getCoverArt")
 
-			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 	})
 
 	Describe("GetAvatar", func() {
 		It("returns placeholder avatar when gravatar disabled", func() {
-			w, r := newRawReq("getAvatar", "username", "admin")
-			resp, err := router.GetAvatar(w, r)
+			w := doRawReq("getAvatar", "username", "admin")
 
-			// When gravatar is disabled, it returns nil response (writes directly to w)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 	})
 
 	Describe("GetLyrics", func() {
 		It("returns empty lyrics when no match found", func() {
-			r := newReq("getLyrics", "artist", "NonExistentArtist", "title", "NonExistentTitle")
-			resp, err := router.GetLyrics(r)
+			resp := doReq("getLyrics", "artist", "NonExistentArtist", "title", "NonExistentTitle")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Lyrics).ToNot(BeNil())
 			Expect(resp.Lyrics.Value).To(BeEmpty())
@@ -63,17 +59,17 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 	Describe("GetLyricsBySongId", func() {
 		It("returns error when id parameter is missing", func() {
-			r := newReq("getLyricsBySongId")
-			_, err := router.GetLyricsBySongId(r)
+			resp := doReq("getLyricsBySongId")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("returns error for non-existent song id", func() {
-			r := newReq("getLyricsBySongId", "id", "non-existent-id")
-			_, err := router.GetLyricsBySongId(r)
+			resp := doReq("getLyricsBySongId", "id", "non-existent-id")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 })

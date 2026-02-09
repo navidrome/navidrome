@@ -1,12 +1,9 @@
 package e2e
 
 import (
-	"net/http/httptest"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -18,20 +15,16 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetAlbumList", func() {
 		It("type=newest returns albums sorted by creation date", func() {
-			w, r := newRawReq("getAlbumList", "type", "newest")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "newest")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(5))
 		})
 
 		It("type=alphabeticalByName sorts albums by name", func() {
-			w, r := newRawReq("getAlbumList", "type", "alphabeticalByName")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "alphabeticalByName")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			albums := resp.AlbumList.Album
 			Expect(albums).To(HaveLen(5))
@@ -44,10 +37,8 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("type=alphabeticalByArtist sorts albums by artist name", func() {
-			w, r := newRawReq("getAlbumList", "type", "alphabeticalByArtist")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "alphabeticalByArtist")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			albums := resp.AlbumList.Album
 			Expect(albums).To(HaveLen(5))
@@ -61,29 +52,23 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("type=random returns albums", func() {
-			w, r := newRawReq("getAlbumList", "type", "random")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "random")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(5))
 		})
 
 		It("type=byGenre filters by genre parameter", func() {
-			w, r := newRawReq("getAlbumList", "type", "byGenre", "genre", "Jazz")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "byGenre", "genre", "Jazz")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(1))
 			Expect(resp.AlbumList.Album[0].Title).To(Equal("Kind of Blue"))
 		})
 
 		It("type=byYear filters by fromYear/toYear range", func() {
-			w, r := newRawReq("getAlbumList", "type", "byYear", "fromYear", "1965", "toYear", "1970")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "byYear", "fromYear", "1965", "toYear", "1970")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			// Should include Abbey Road (1969) and Help! (1965)
 			Expect(resp.AlbumList.Album).To(HaveLen(2))
@@ -95,26 +80,20 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("respects size parameter", func() {
-			w, r := newRawReq("getAlbumList", "type", "newest", "size", "2")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "newest", "size", "2")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(2))
 		})
 
 		It("supports offset for pagination", func() {
 			// First get all albums sorted by name to know the expected order
-			w1, r1 := newRawReq("getAlbumList", "type", "alphabeticalByName", "size", "5")
-			resp1, err := router.GetAlbumList(w1, r1)
-			Expect(err).ToNot(HaveOccurred())
+			resp1 := doReq("getAlbumList", "type", "alphabeticalByName", "size", "5")
 			allAlbums := resp1.AlbumList.Album
 
 			// Now get with offset=2, size=2
-			w2, r2 := newRawReq("getAlbumList", "type", "alphabeticalByName", "size", "2", "offset", "2")
-			resp2, err := router.GetAlbumList(w2, r2)
+			resp2 := doReq("getAlbumList", "type", "alphabeticalByName", "size", "2", "offset", "2")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp2.AlbumList).ToNot(BeNil())
 			Expect(resp2.AlbumList.Album).To(HaveLen(2))
 			Expect(resp2.AlbumList.Album[0].Title).To(Equal(allAlbums[2].Title))
@@ -122,35 +101,29 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("returns error when type parameter is missing", func() {
-			w := httptest.NewRecorder()
-			r := newReq("getAlbumList")
-			_, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList")
 
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(req.ErrMissingParam))
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("returns error for unknown type", func() {
-			w, r := newRawReq("getAlbumList", "type", "invalid_type")
-			_, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "invalid_type")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("type=frequent returns empty when no albums have been played", func() {
-			w, r := newRawReq("getAlbumList", "type", "frequent")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "frequent")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(BeEmpty())
 		})
 
 		It("type=recent returns empty when no albums have been played", func() {
-			w, r := newRawReq("getAlbumList", "type", "recent")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "recent")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(BeEmpty())
 		})
@@ -167,16 +140,13 @@ var _ = Describe("Album List Endpoints", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 
-			r := newReq("star", "albumId", albums[0].ID)
-			_, err = router.Star(r)
-			Expect(err).ToNot(HaveOccurred())
+			resp := doReq("star", "albumId", albums[0].ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("type=starred returns only starred albums", func() {
-			w, r := newRawReq("getAlbumList", "type", "starred")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "starred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(1))
 			Expect(resp.AlbumList.Album[0].Title).To(Equal("Abbey Road"))
@@ -194,16 +164,13 @@ var _ = Describe("Album List Endpoints", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 
-			r := newReq("setRating", "id", albums[0].ID, "rating", "5")
-			_, err = router.SetRating(r)
-			Expect(err).ToNot(HaveOccurred())
+			resp := doReq("setRating", "id", albums[0].ID, "rating", "5")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("type=highest returns only rated albums", func() {
-			w, r := newRawReq("getAlbumList", "type", "highest")
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReq("getAlbumList", "type", "highest")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(1))
 			Expect(resp.AlbumList.Album[0].Title).To(Equal("Kind of Blue"))
@@ -212,10 +179,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetAlbumList2", func() {
 		It("returns albums in AlbumID3 format", func() {
-			w, r := newRawReq("getAlbumList2", "type", "alphabeticalByName")
-			resp, err := router.GetAlbumList2(w, r)
+			resp := doReq("getAlbumList2", "type", "alphabeticalByName")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumList2).ToNot(BeNil())
 			albums := resp.AlbumList2.Album
@@ -227,10 +192,8 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("type=newest works correctly", func() {
-			w, r := newRawReq("getAlbumList2", "type", "newest")
-			resp, err := router.GetAlbumList2(w, r)
+			resp := doReq("getAlbumList2", "type", "newest")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList2).ToNot(BeNil())
 			Expect(resp.AlbumList2.Album).To(HaveLen(5))
 		})
@@ -238,10 +201,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetStarred", func() {
 		It("returns empty lists when nothing is starred", func() {
-			r := newReq("getStarred")
-			resp, err := router.GetStarred(r)
+			resp := doReq("getStarred")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Starred).ToNot(BeNil())
 			Expect(resp.Starred.Artist).To(BeEmpty())
@@ -252,10 +213,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetStarred2", func() {
 		It("returns empty lists when nothing is starred", func() {
-			r := newReq("getStarred2")
-			resp, err := router.GetStarred2(r)
+			resp := doReq("getStarred2")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Starred2).ToNot(BeNil())
 			Expect(resp.Starred2.Artist).To(BeEmpty())
@@ -266,10 +225,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetNowPlaying", func() {
 		It("returns empty list when nobody is playing", func() {
-			r := newReq("getNowPlaying")
-			resp, err := router.GetNowPlaying(r)
+			resp := doReq("getNowPlaying")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.NowPlaying).ToNot(BeNil())
 			Expect(resp.NowPlaying.Entry).To(BeEmpty())
@@ -278,10 +235,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetRandomSongs", func() {
 		It("returns random songs from library", func() {
-			r := newReq("getRandomSongs")
-			resp, err := router.GetRandomSongs(r)
+			resp := doReq("getRandomSongs")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.RandomSongs).ToNot(BeNil())
 			Expect(resp.RandomSongs.Songs).ToNot(BeEmpty())
@@ -289,19 +244,15 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("respects size parameter", func() {
-			r := newReq("getRandomSongs", "size", "2")
-			resp, err := router.GetRandomSongs(r)
+			resp := doReq("getRandomSongs", "size", "2")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.RandomSongs).ToNot(BeNil())
 			Expect(resp.RandomSongs.Songs).To(HaveLen(2))
 		})
 
 		It("filters by genre when specified", func() {
-			r := newReq("getRandomSongs", "size", "500", "genre", "Jazz")
-			resp, err := router.GetRandomSongs(r)
+			resp := doReq("getRandomSongs", "size", "500", "genre", "Jazz")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.RandomSongs).ToNot(BeNil())
 			Expect(resp.RandomSongs.Songs).To(HaveLen(1))
 			Expect(resp.RandomSongs.Songs[0].Genre).To(Equal("Jazz"))
@@ -310,10 +261,8 @@ var _ = Describe("Album List Endpoints", func() {
 
 	Describe("GetSongsByGenre", func() {
 		It("returns songs matching the genre", func() {
-			r := newReq("getSongsByGenre", "genre", "Rock")
-			resp, err := router.GetSongsByGenre(r)
+			resp := doReq("getSongsByGenre", "genre", "Rock")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SongsByGenre).ToNot(BeNil())
 			// 4 Rock songs: Come Together, Something, Help!, Stairway To Heaven
@@ -325,26 +274,20 @@ var _ = Describe("Album List Endpoints", func() {
 
 		It("supports count and offset parameters", func() {
 			// First get all Rock songs
-			r1 := newReq("getSongsByGenre", "genre", "Rock", "count", "500")
-			resp1, err := router.GetSongsByGenre(r1)
-			Expect(err).ToNot(HaveOccurred())
+			resp1 := doReq("getSongsByGenre", "genre", "Rock", "count", "500")
 			allSongs := resp1.SongsByGenre.Songs
 
 			// Now get with count=2, offset=1
-			r2 := newReq("getSongsByGenre", "genre", "Rock", "count", "2", "offset", "1")
-			resp2, err := router.GetSongsByGenre(r2)
+			resp2 := doReq("getSongsByGenre", "genre", "Rock", "count", "2", "offset", "1")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp2.SongsByGenre).ToNot(BeNil())
 			Expect(resp2.SongsByGenre.Songs).To(HaveLen(2))
 			Expect(resp2.SongsByGenre.Songs[0].Id).To(Equal(allSongs[1].Id))
 		})
 
 		It("returns empty for non-existent genre", func() {
-			r := newReq("getSongsByGenre", "genre", "NonExistentGenre")
-			resp, err := router.GetSongsByGenre(r)
+			resp := doReq("getSongsByGenre", "genre", "NonExistentGenre")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SongsByGenre).ToNot(BeNil())
 			Expect(resp.SongsByGenre.Songs).To(BeEmpty())
 		})

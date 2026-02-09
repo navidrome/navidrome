@@ -13,20 +13,16 @@ var _ = Describe("System Endpoints", func() {
 
 	Describe("ping", func() {
 		It("returns a successful response", func() {
-			r := newReq("ping")
-			resp, err := router.Ping(r)
+			resp := doReq("ping")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 	})
 
 	Describe("getLicense", func() {
 		It("returns a valid license", func() {
-			r := newReq("getLicense")
-			resp, err := router.GetLicense(r)
+			resp := doReq("getLicense")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.License).ToNot(BeNil())
 			Expect(resp.License.Valid).To(BeTrue())
@@ -35,20 +31,16 @@ var _ = Describe("System Endpoints", func() {
 
 	Describe("getOpenSubsonicExtensions", func() {
 		It("returns a list of supported extensions", func() {
-			r := newReq("getOpenSubsonicExtensions")
-			resp, err := router.GetOpenSubsonicExtensions(r)
+			resp := doReq("getOpenSubsonicExtensions")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.OpenSubsonicExtensions).ToNot(BeNil())
 			Expect(*resp.OpenSubsonicExtensions).ToNot(BeEmpty())
 		})
 
 		It("includes the transcodeOffset extension", func() {
-			r := newReq("getOpenSubsonicExtensions")
-			resp, err := router.GetOpenSubsonicExtensions(r)
+			resp := doReq("getOpenSubsonicExtensions")
 
-			Expect(err).ToNot(HaveOccurred())
 			extensions := *resp.OpenSubsonicExtensions
 			var names []string
 			for _, ext := range extensions {
@@ -58,10 +50,8 @@ var _ = Describe("System Endpoints", func() {
 		})
 
 		It("includes the formPost extension", func() {
-			r := newReq("getOpenSubsonicExtensions")
-			resp, err := router.GetOpenSubsonicExtensions(r)
+			resp := doReq("getOpenSubsonicExtensions")
 
-			Expect(err).ToNot(HaveOccurred())
 			extensions := *resp.OpenSubsonicExtensions
 			var names []string
 			for _, ext := range extensions {
@@ -71,10 +61,8 @@ var _ = Describe("System Endpoints", func() {
 		})
 
 		It("includes the songLyrics extension", func() {
-			r := newReq("getOpenSubsonicExtensions")
-			resp, err := router.GetOpenSubsonicExtensions(r)
+			resp := doReq("getOpenSubsonicExtensions")
 
-			Expect(err).ToNot(HaveOccurred())
 			extensions := *resp.OpenSubsonicExtensions
 			var names []string
 			for _, ext := range extensions {

@@ -13,10 +13,8 @@ var _ = Describe("Search Endpoints", func() {
 
 	Describe("Search2", func() {
 		It("finds artists by name", func() {
-			r := newReq("search2", "query", "Beatles")
-			resp, err := router.Search2(r)
+			resp := doReq("search2", "query", "Beatles")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SearchResult2).ToNot(BeNil())
 			Expect(resp.SearchResult2.Artist).ToNot(BeEmpty())
@@ -32,10 +30,8 @@ var _ = Describe("Search Endpoints", func() {
 		})
 
 		It("finds albums by name", func() {
-			r := newReq("search2", "query", "Abbey Road")
-			resp, err := router.Search2(r)
+			resp := doReq("search2", "query", "Abbey Road")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult2).ToNot(BeNil())
 			Expect(resp.SearchResult2.Album).ToNot(BeEmpty())
 
@@ -50,10 +46,8 @@ var _ = Describe("Search Endpoints", func() {
 		})
 
 		It("finds songs by title", func() {
-			r := newReq("search2", "query", "Come Together")
-			resp, err := router.Search2(r)
+			resp := doReq("search2", "query", "Come Together")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult2).ToNot(BeNil())
 			Expect(resp.SearchResult2.Song).ToNot(BeEmpty())
 
@@ -68,11 +62,9 @@ var _ = Describe("Search Endpoints", func() {
 		})
 
 		It("respects artistCount/albumCount/songCount limits", func() {
-			r := newReq("search2", "query", "Beatles",
+			resp := doReq("search2", "query", "Beatles",
 				"artistCount", "1", "albumCount", "1", "songCount", "1")
-			resp, err := router.Search2(r)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult2).ToNot(BeNil())
 			Expect(len(resp.SearchResult2.Artist)).To(BeNumerically("<=", 1))
 			Expect(len(resp.SearchResult2.Album)).To(BeNumerically("<=", 1))
@@ -81,27 +73,21 @@ var _ = Describe("Search Endpoints", func() {
 
 		It("supports offset parameters", func() {
 			// First get all results for Beatles
-			r1 := newReq("search2", "query", "Beatles", "songCount", "500")
-			resp1, err := router.Search2(r1)
-			Expect(err).ToNot(HaveOccurred())
+			resp1 := doReq("search2", "query", "Beatles", "songCount", "500")
 			allSongs := resp1.SearchResult2.Song
 
 			if len(allSongs) > 1 {
 				// Get with offset to skip the first song
-				r2 := newReq("search2", "query", "Beatles", "songOffset", "1", "songCount", "500")
-				resp2, err := router.Search2(r2)
+				resp2 := doReq("search2", "query", "Beatles", "songOffset", "1", "songCount", "500")
 
-				Expect(err).ToNot(HaveOccurred())
 				Expect(resp2.SearchResult2).ToNot(BeNil())
 				Expect(len(resp2.SearchResult2.Song)).To(Equal(len(allSongs) - 1))
 			}
 		})
 
 		It("returns empty results for non-matching query", func() {
-			r := newReq("search2", "query", "ZZZZNONEXISTENT99999")
-			resp, err := router.Search2(r)
+			resp := doReq("search2", "query", "ZZZZNONEXISTENT99999")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult2).ToNot(BeNil())
 			Expect(resp.SearchResult2.Artist).To(BeEmpty())
 			Expect(resp.SearchResult2.Album).To(BeEmpty())
@@ -111,10 +97,8 @@ var _ = Describe("Search Endpoints", func() {
 
 	Describe("Search3", func() {
 		It("returns results in ID3 format", func() {
-			r := newReq("search3", "query", "Beatles")
-			resp, err := router.Search3(r)
+			resp := doReq("search3", "query", "Beatles")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			// Verify ID3 format: Artist should be ArtistID3 with Name and AlbumCount
@@ -125,10 +109,8 @@ var _ = Describe("Search Endpoints", func() {
 
 		It("finds across all entity types simultaneously", func() {
 			// "Beatles" should match artist, albums, and songs by The Beatles
-			r := newReq("search3", "query", "Beatles")
-			resp, err := router.Search3(r)
+			resp := doReq("search3", "query", "Beatles")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult3).ToNot(BeNil())
 
 			// Should find at least the artist "The Beatles"

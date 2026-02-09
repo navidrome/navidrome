@@ -24,6 +24,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 	var userLib1Only model.User  // non-admin with lib1 access only
 
 	BeforeAll(func() {
+		conf.Server.EnableSharing = true
 		setupTestDB()
 
 		// Create a second FakeFS with Classical music content
@@ -74,10 +75,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("getMusicFolders", func() {
 		It("returns both libraries for admin user", func() {
-			r := newReqWithUser(adminWithLibs, "getMusicFolders")
-			resp, err := router.GetMusicFolders(r)
+			resp := doReqWithUser(adminWithLibs, "getMusicFolders")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.MusicFolders.Folders).To(HaveLen(2))
 
@@ -91,10 +90,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("getArtists - library filtering", func() {
 		It("returns only lib1 artists when musicFolderId=1", func() {
-			r := newReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib.ID))
-			resp, err := router.GetArtists(r)
+			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
 
@@ -109,10 +106,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("returns only lib2 artists when musicFolderId=2", func() {
-			r := newReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
-			resp, err := router.GetArtists(r)
+			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
 
@@ -127,10 +122,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("returns artists from all libraries when no musicFolderId is specified", func() {
-			r := newReqWithUser(adminWithLibs, "getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReqWithUser(adminWithLibs, "getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			var artistNames []string
@@ -145,10 +138,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("getAlbumList - library filtering", func() {
 		It("returns only lib1 albums when musicFolderId=1", func() {
-			w, r := newRawReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib.ID))
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(5))
 			for _, a := range resp.AlbumList.Album {
@@ -157,10 +148,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("returns only lib2 albums when musicFolderId=2", func() {
-			w, r := newRawReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
-			resp, err := router.GetAlbumList(w, r)
+			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(1))
 			Expect(resp.AlbumList.Album[0].Title).To(Equal("Symphony No. 9"))
@@ -169,10 +158,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("search3 - library filtering", func() {
 		It("does not find lib1 content when searching in lib2 only", func() {
-			r := newReqWithUser(adminWithLibs, "search3", "query", "Beatles", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
-			resp, err := router.Search3(r)
+			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beatles", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			Expect(resp.SearchResult3.Artist).To(BeEmpty())
 			Expect(resp.SearchResult3.Album).To(BeEmpty())
@@ -180,10 +167,8 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("finds lib2 content when searching in lib2", func() {
-			r := newReqWithUser(adminWithLibs, "search3", "query", "Beethoven", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
-			resp, err := router.Search3(r)
+			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beethoven", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			Expect(resp.SearchResult3.Artist).ToNot(BeEmpty())
 			Expect(resp.SearchResult3.Artist[0].Name).To(Equal("Ludwig van Beethoven"))
@@ -214,11 +199,9 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("admin creates a playlist with songs from both libraries", func() {
-			r := newReqWithUser(adminWithLibs, "createPlaylist",
+			resp := doReqWithUser(adminWithLibs, "createPlaylist",
 				"name", "Cross-Library Playlist", "songId", lib1SongID, "songId", lib2SongID)
-			resp, err := router.CreatePlaylist(r)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Playlist).ToNot(BeNil())
 			Expect(resp.Playlist.SongCount).To(Equal(int32(2)))
@@ -227,24 +210,15 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("admin makes the playlist public", func() {
-			r := newReqWithUser(adminWithLibs, "updatePlaylist",
+			resp := doReqWithUser(adminWithLibs, "updatePlaylist",
 				"playlistId", playlistID, "public", "true")
-			resp, err := router.UpdatePlaylist(r)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 		})
 
 		It("non-admin user with lib1 only sees only lib1 tracks in the playlist", func() {
-			// Reset the cached playlist repo so it's recreated with the non-admin user's context.
-			// The MockDataStore caches repos on first access; resetting forces a new repo
-			// whose applyLibraryFilter uses the non-admin user's library access.
-			ds.MockedPlaylist = nil
+			resp := doReqWithUser(userLib1Only, "getPlaylist", "id", playlistID)
 
-			r := newReqWithUser(userLib1Only, "getPlaylist", "id", playlistID)
-			resp, err := router.GetPlaylist(r)
-
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Playlist).ToNot(BeNil())
 			// The playlist has 2 songs total, but the non-admin user only has access to lib1
 			Expect(resp.Playlist.Entry).To(HaveLen(1))
@@ -256,8 +230,6 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		var lib2AlbumID string
 
 		BeforeAll(func() {
-			conf.Server.EnableSharing = true
-
 			lib2Albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
 				Filters: squirrel.Eq{"album.library_id": lib2.ID},
 			})
@@ -267,11 +239,9 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("admin creates a share for a lib2 album", func() {
-			r := newReqWithUser(adminWithLibs, "createShare",
+			resp := doReqWithUser(adminWithLibs, "createShare",
 				"id", lib2AlbumID, "description", "Classical album share")
-			resp, err := router.CreateShare(r)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Shares).ToNot(BeNil())
 			Expect(resp.Shares.Share).To(HaveLen(1))
@@ -285,18 +255,15 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("Library access control", func() {
 		It("returns error when non-admin user requests inaccessible library", func() {
-			r := newReqWithUser(userLib1Only, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
-			_, err := router.GetArtists(r)
+			resp := doReqWithUser(userLib1Only, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
 
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not found"))
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("non-admin user sees only their library's content without musicFolderId", func() {
-			r := newReqWithUser(userLib1Only, "getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReqWithUser(userLib1Only, "getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			var artistNames []string

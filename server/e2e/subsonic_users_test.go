@@ -12,10 +12,8 @@ var _ = Describe("User Endpoints", func() {
 	})
 
 	It("getUser returns current user info", func() {
-		r := newReq("getUser", "username", adminUser.UserName)
-		resp, err := router.GetUser(r)
+		resp := doReq("getUser", "username", adminUser.UserName)
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.User).ToNot(BeNil())
 		Expect(resp.User.Username).To(Equal(adminUser.UserName))
@@ -25,28 +23,23 @@ var _ = Describe("User Endpoints", func() {
 	})
 
 	It("getUser with matching username case-insensitive succeeds", func() {
-		r := newReq("getUser", "username", "Admin")
-		resp, err := router.GetUser(r)
+		resp := doReq("getUser", "username", "Admin")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.User).ToNot(BeNil())
 		Expect(resp.User.Username).To(Equal(adminUser.UserName))
 	})
 
 	It("getUser with different username returns authorization error", func() {
-		r := newReq("getUser", "username", "otheruser")
-		_, err := router.GetUser(r)
+		resp := doReq("getUser", "username", "otheruser")
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not authorized"))
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
 	})
 
 	It("getUsers returns list with current user only", func() {
-		r := newReq("getUsers")
-		resp, err := router.GetUsers(r)
+		resp := doReq("getUsers")
 
-		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Users).ToNot(BeNil())
 		Expect(resp.Users.User).To(HaveLen(1))

@@ -15,10 +15,8 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getMusicFolders", func() {
 		It("returns the configured music library", func() {
-			r := newReq("getMusicFolders")
-			resp, err := router.GetMusicFolders(r)
+			resp := doReq("getMusicFolders")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.MusicFolders).ToNot(BeNil())
 			Expect(resp.MusicFolders.Folders).To(HaveLen(1))
@@ -29,20 +27,16 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getIndexes", func() {
 		It("returns artist indexes", func() {
-			r := newReq("getIndexes")
-			resp, err := router.GetIndexes(r)
+			resp := doReq("getIndexes")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Indexes).ToNot(BeNil())
 			Expect(resp.Indexes.Index).ToNot(BeEmpty())
 		})
 
 		It("includes all artists across indexes", func() {
-			r := newReq("getIndexes")
-			resp, err := router.GetIndexes(r)
+			resp := doReq("getIndexes")
 
-			Expect(err).ToNot(HaveOccurred())
 			var allArtistNames []string
 			for _, idx := range resp.Indexes.Index {
 				for _, a := range idx.Artists {
@@ -55,20 +49,16 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getArtists", func() {
 		It("returns artist indexes in ID3 format", func() {
-			r := newReq("getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReq("getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
 			Expect(resp.Artist.Index).ToNot(BeEmpty())
 		})
 
 		It("includes all artists across ID3 indexes", func() {
-			r := newReq("getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReq("getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			var allArtistNames []string
 			for _, idx := range resp.Artist.Index {
 				for _, a := range idx.Artists {
@@ -79,10 +69,8 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("reports correct album counts for artists", func() {
-			r := newReq("getArtists")
-			resp, err := router.GetArtists(r)
+			resp := doReq("getArtists")
 
-			Expect(err).ToNot(HaveOccurred())
 			var beatlesAlbumCount int32
 			for _, idx := range resp.Artist.Index {
 				for _, a := range idx.Artists {
@@ -104,10 +92,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			beatlesID := artists[0].ID
 
-			r := newReq("getMusicDirectory", "id", beatlesID)
-			resp, err := router.GetMusicDirectory(r)
+			resp := doReq("getMusicDirectory", "id", beatlesID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Directory).ToNot(BeNil())
 			Expect(resp.Directory.Name).To(Equal("The Beatles"))
@@ -122,20 +108,18 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			abbeyRoadID := albums[0].ID
 
-			r := newReq("getMusicDirectory", "id", abbeyRoadID)
-			resp, err := router.GetMusicDirectory(r)
+			resp := doReq("getMusicDirectory", "id", abbeyRoadID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Directory).ToNot(BeNil())
 			Expect(resp.Directory.Name).To(Equal("Abbey Road"))
 			Expect(resp.Directory.Child).To(HaveLen(2)) // Come Together, Something
 		})
 
 		It("returns an error for a non-existent ID", func() {
-			r := newReq("getMusicDirectory", "id", "non-existent-id")
-			_, err := router.GetMusicDirectory(r)
+			resp := doReq("getMusicDirectory", "id", "non-existent-id")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
@@ -148,10 +132,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			beatlesID := artists[0].ID
 
-			r := newReq("getArtist", "id", beatlesID)
-			resp, err := router.GetArtist(r)
+			resp := doReq("getArtist", "id", beatlesID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.ArtistWithAlbumsID3).ToNot(BeNil())
 			Expect(resp.ArtistWithAlbumsID3.Name).To(Equal("The Beatles"))
@@ -166,10 +148,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			beatlesID := artists[0].ID
 
-			r := newReq("getArtist", "id", beatlesID)
-			resp, err := router.GetArtist(r)
+			resp := doReq("getArtist", "id", beatlesID)
 
-			Expect(err).ToNot(HaveOccurred())
 			var albumNames []string
 			for _, a := range resp.ArtistWithAlbumsID3.Album {
 				albumNames = append(albumNames, a.Name)
@@ -178,10 +158,10 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns an error for a non-existent artist", func() {
-			r := newReq("getArtist", "id", "non-existent-id")
-			_, err := router.GetArtist(r)
+			resp := doReq("getArtist", "id", "non-existent-id")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("returns artist with a single album", func() {
@@ -192,10 +172,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			ledZepID := artists[0].ID
 
-			r := newReq("getArtist", "id", ledZepID)
-			resp, err := router.GetArtist(r)
+			resp := doReq("getArtist", "id", ledZepID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistWithAlbumsID3).ToNot(BeNil())
 			Expect(resp.ArtistWithAlbumsID3.Name).To(Equal("Led Zeppelin"))
 			Expect(resp.ArtistWithAlbumsID3.Album).To(HaveLen(1))
@@ -212,10 +190,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			abbeyRoadID := albums[0].ID
 
-			r := newReq("getAlbum", "id", abbeyRoadID)
-			resp, err := router.GetAlbum(r)
+			resp := doReq("getAlbum", "id", abbeyRoadID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumWithSongsID3).ToNot(BeNil())
 			Expect(resp.AlbumWithSongsID3.Name).To(Equal("Abbey Road"))
@@ -230,10 +206,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			abbeyRoadID := albums[0].ID
 
-			r := newReq("getAlbum", "id", abbeyRoadID)
-			resp, err := router.GetAlbum(r)
+			resp := doReq("getAlbum", "id", abbeyRoadID)
 
-			Expect(err).ToNot(HaveOccurred())
 			var trackTitles []string
 			for _, s := range resp.AlbumWithSongsID3.Song {
 				trackTitles = append(trackTitles, s.Title)
@@ -249,10 +223,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			kindOfBlueID := albums[0].ID
 
-			r := newReq("getAlbum", "id", kindOfBlueID)
-			resp, err := router.GetAlbum(r)
+			resp := doReq("getAlbum", "id", kindOfBlueID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumWithSongsID3).ToNot(BeNil())
 			Expect(resp.AlbumWithSongsID3.Name).To(Equal("Kind of Blue"))
 			Expect(resp.AlbumWithSongsID3.Artist).To(Equal("Miles Davis"))
@@ -261,10 +233,10 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns an error for a non-existent album", func() {
-			r := newReq("getAlbum", "id", "non-existent-id")
-			_, err := router.GetAlbum(r)
+			resp := doReq("getAlbum", "id", "non-existent-id")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
 
@@ -277,10 +249,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(songs).ToNot(BeEmpty())
 			songID := songs[0].ID
 
-			r := newReq("getSong", "id", songID)
-			resp, err := router.GetSong(r)
+			resp := doReq("getSong", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Song).ToNot(BeNil())
 			Expect(resp.Song.Title).To(Equal("Come Together"))
@@ -289,10 +259,10 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns an error for a non-existent song", func() {
-			r := newReq("getSong", "id", "non-existent-id")
-			_, err := router.GetSong(r)
+			resp := doReq("getSong", "id", "non-existent-id")
 
-			Expect(err).To(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
 		})
 
 		It("returns correct metadata for a jazz track", func() {
@@ -303,10 +273,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(songs).ToNot(BeEmpty())
 			songID := songs[0].ID
 
-			r := newReq("getSong", "id", songID)
-			resp, err := router.GetSong(r)
+			resp := doReq("getSong", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Song).ToNot(BeNil())
 			Expect(resp.Song.Title).To(Equal("So What"))
 			Expect(resp.Song.Album).To(Equal("Kind of Blue"))
@@ -316,20 +284,16 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getGenres", func() {
 		It("returns all genres", func() {
-			r := newReq("getGenres")
-			resp, err := router.GetGenres(r)
+			resp := doReq("getGenres")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Genres).ToNot(BeNil())
 			Expect(resp.Genres.Genre).To(HaveLen(3))
 		})
 
 		It("includes correct genre names", func() {
-			r := newReq("getGenres")
-			resp, err := router.GetGenres(r)
+			resp := doReq("getGenres")
 
-			Expect(err).ToNot(HaveOccurred())
 			var genreNames []string
 			for _, g := range resp.Genres.Genre {
 				genreNames = append(genreNames, g.Name)
@@ -338,10 +302,8 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("reports correct song and album counts for Rock", func() {
-			r := newReq("getGenres")
-			resp, err := router.GetGenres(r)
+			resp := doReq("getGenres")
 
-			Expect(err).ToNot(HaveOccurred())
 			var rockGenre *responses.Genre
 			for i, g := range resp.Genres.Genre {
 				if g.Name == "Rock" {
@@ -355,10 +317,8 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("reports correct song and album counts for Jazz", func() {
-			r := newReq("getGenres")
-			resp, err := router.GetGenres(r)
+			resp := doReq("getGenres")
 
-			Expect(err).ToNot(HaveOccurred())
 			var jazzGenre *responses.Genre
 			for i, g := range resp.Genres.Genre {
 				if g.Name == "Jazz" {
@@ -372,10 +332,8 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("reports correct song and album counts for Pop", func() {
-			r := newReq("getGenres")
-			resp, err := router.GetGenres(r)
+			resp := doReq("getGenres")
 
-			Expect(err).ToNot(HaveOccurred())
 			var popGenre *responses.Genre
 			for i, g := range resp.Genres.Genre {
 				if g.Name == "Pop" {
@@ -398,10 +356,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			abbeyRoadID := albums[0].ID
 
-			r := newReq("getAlbumInfo", "id", abbeyRoadID)
-			resp, err := router.GetAlbumInfo(r)
+			resp := doReq("getAlbumInfo", "id", abbeyRoadID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumInfo).ToNot(BeNil())
 		})
@@ -416,10 +372,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(albums).ToNot(BeEmpty())
 			abbeyRoadID := albums[0].ID
 
-			r := newReq("getAlbumInfo2", "id", abbeyRoadID)
-			resp, err := router.GetAlbumInfo(r)
+			resp := doReq("getAlbumInfo2", "id", abbeyRoadID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumInfo).ToNot(BeNil())
 		})
@@ -434,10 +388,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			beatlesID := artists[0].ID
 
-			r := newReq("getArtistInfo", "id", beatlesID)
-			resp, err := router.GetArtistInfo(r)
+			resp := doReq("getArtistInfo", "id", beatlesID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.ArtistInfo).ToNot(BeNil())
 		})
@@ -452,10 +404,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(artists).ToNot(BeEmpty())
 			beatlesID := artists[0].ID
 
-			r := newReq("getArtistInfo2", "id", beatlesID)
-			resp, err := router.GetArtistInfo2(r)
+			resp := doReq("getArtistInfo2", "id", beatlesID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.ArtistInfo2).ToNot(BeNil())
 		})
@@ -463,20 +413,16 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getTopSongs", func() {
 		It("returns a response for a known artist name", func() {
-			r := newReq("getTopSongs", "artist", "The Beatles")
-			resp, err := router.GetTopSongs(r)
+			resp := doReq("getTopSongs", "artist", "The Beatles")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.TopSongs).ToNot(BeNil())
 			// noopProvider returns empty list, so Songs may be empty
 		})
 
 		It("returns an empty list for an unknown artist", func() {
-			r := newReq("getTopSongs", "artist", "Unknown Artist")
-			resp, err := router.GetTopSongs(r)
+			resp := doReq("getTopSongs", "artist", "Unknown Artist")
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.TopSongs).ToNot(BeNil())
 			Expect(resp.TopSongs.Song).To(BeEmpty())
 		})
@@ -491,10 +437,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(songs).ToNot(BeEmpty())
 			songID := songs[0].ID
 
-			r := newReq("getSimilarSongs", "id", songID)
-			resp, err := router.GetSimilarSongs(r)
+			resp := doReq("getSimilarSongs", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SimilarSongs).ToNot(BeNil())
 			// noopProvider returns empty list
@@ -510,10 +454,8 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(songs).ToNot(BeEmpty())
 			songID := songs[0].ID
 
-			r := newReq("getSimilarSongs2", "id", songID)
-			resp, err := router.GetSimilarSongs2(r)
+			resp := doReq("getSimilarSongs2", "id", songID)
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SimilarSongs2).ToNot(BeNil())
 			// noopProvider returns empty list
