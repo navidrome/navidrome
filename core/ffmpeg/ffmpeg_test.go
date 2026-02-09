@@ -86,6 +86,9 @@ var _ = Describe("ffmpeg", func() {
 			Expect(isDefaultCommand("opus", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
 		})
 		It("returns true for known default aac command", func() {
+			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -")).To(BeTrue())
+		})
+		It("returns true for legacy default aac command", func() {
 			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
@@ -174,7 +177,7 @@ var _ = Describe("ffmpeg", func() {
 			}))
 		})
 
-		It("builds aac args correctly", func() {
+		It("builds aac args with fragmented MP4 container", func() {
 			args := buildDynamicArgs(TranscodeOptions{
 				Format:   "aac",
 				FilePath: "/music/file.flac",
@@ -186,7 +189,8 @@ var _ = Describe("ffmpeg", func() {
 				"-c:a", "aac",
 				"-b:a", "256k",
 				"-v", "0",
-				"-f", "adts",
+				"-f", "ipod",
+				"-movflags", "frag_keyframe+empty_moov",
 				"-",
 			}))
 		})
