@@ -260,10 +260,28 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
-		From("media_file").LeftJoin("annotation on (" +
-		"annotation.item_id = media_file.id" +
-		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + usr.ID + "')")
+		From("media_file").
+		LeftJoin("annotation on ("+
+			"annotation.item_id = media_file.id"+
+			" AND annotation.item_type = 'media_file'"+
+			" AND annotation.user_id = ?)", usr.ID)
+
+	// Conditionally add album/artist joins only when the criteria references those fields
+	joins := rules.RequiredJoins()
+	if joins&criteria.JoinAlbumAnnotation != 0 {
+		sq = sq.
+			LeftJoin("annotation album_annotation on ("+
+				"album_annotation.item_id = media_file.album_id"+
+				" AND album_annotation.item_type = 'album'"+
+				" AND album_annotation.user_id = ?)", usr.ID)
+	}
+	if joins&criteria.JoinArtistAnnotation != 0 {
+		sq = sq.
+			LeftJoin("annotation artist_annotation on ("+
+				"artist_annotation.item_id = media_file.artist_id"+
+				" AND artist_annotation.item_type = 'artist'"+
+				" AND artist_annotation.user_id = ?)", usr.ID)
+	}
 
 	// Only include media files from libraries the user has access to
 	sq = r.applyLibraryFilter(sq, "media_file")

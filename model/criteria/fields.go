@@ -9,6 +9,14 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+// JoinType is a bitmask indicating which additional JOINs are required for a field.
+type JoinType int
+
+const (
+	JoinAlbumAnnotation  JoinType = 1 << iota // Requires LEFT JOIN annotation (album) via media_file.album_id
+	JoinArtistAnnotation                      // Requires LEFT JOIN annotation (artist)
+)
+
 var fieldMap = map[string]*mappedField{
 	"title":                {field: "media_file.title"},
 	"album":                {field: "media_file.album"},
@@ -55,6 +63,22 @@ var fieldMap = map[string]*mappedField{
 	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
 	"library_id":           {field: "media_file.library_id", numeric: true},
 
+	// Album annotation fields (require album + album_annotation joins)
+	"albumrating":     {field: "COALESCE(album_annotation.rating, 0)", join: JoinAlbumAnnotation},
+	"albumloved":      {field: "COALESCE(album_annotation.starred, false)", join: JoinAlbumAnnotation},
+	"albumdateloved":  {field: "album_annotation.starred_at", join: JoinAlbumAnnotation},
+	"albumplaycount":  {field: "COALESCE(album_annotation.play_count, 0)", join: JoinAlbumAnnotation},
+	"albumlastplayed": {field: "album_annotation.play_date", join: JoinAlbumAnnotation},
+	"albumdaterated":  {field: "album_annotation.rated_at", join: JoinAlbumAnnotation},
+
+	// Artist annotation fields (require artist_annotation join)
+	"artistrating":     {field: "COALESCE(artist_annotation.rating, 0)", join: JoinArtistAnnotation},
+	"artistloved":      {field: "COALESCE(artist_annotation.starred, false)", join: JoinArtistAnnotation},
+	"artistdateloved":  {field: "artist_annotation.starred_at", join: JoinArtistAnnotation},
+	"artistplaycount":  {field: "COALESCE(artist_annotation.play_count, 0)", join: JoinArtistAnnotation},
+	"artistlastplayed": {field: "artist_annotation.play_date", join: JoinArtistAnnotation},
+	"artistdaterated":  {field: "artist_annotation.rated_at", join: JoinArtistAnnotation},
+
 	// Backward compatibility: albumtype is an alias for releasetype tag
 	"albumtype": {field: "releasetype", isTag: true},
 
@@ -66,10 +90,11 @@ var fieldMap = map[string]*mappedField{
 type mappedField struct {
 	field   string
 	order   string
-	isRole  bool   // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
-	isTag   bool   // true if the field is a tag imported from the file metadata
-	alias   string // name from `mappings.yml` that may differ from the name used in the smart playlist
-	numeric bool   // true if the field/tag should be treated as numeric
+	isRole  bool     // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
+	isTag   bool     // true if the field is a tag imported from the file metadata
+	alias   string   // name from `mappings.yml` that may differ from the name used in the smart playlist
+	numeric bool     // true if the field/tag should be treated as numeric
+	join    JoinType // additional JOINs required when this field is used
 }
 
 func mapFields(expr map[string]any) map[string]any {
@@ -240,4 +265,52 @@ func AddNumericTags(tagNames []string) {
 			fieldMap[name] = &mappedField{field: name, isTag: true, numeric: true}
 		}
 	}
+}
+
+// requiredJoins walks an expression tree and returns a bitmask of JoinType flags
+// indicating which additional JOINs are needed to satisfy the fields referenced.
+func requiredJoins(expr Expression) JoinType {
+	if expr == nil {
+		return 0
+	}
+	var joins JoinType
+	switch e := expr.(type) {
+	case All:
+		for _, sub := range e {
+			joins |= requiredJoins(sub)
+		}
+	case Any:
+		for _, sub := range e {
+			joins |= requiredJoins(sub)
+		}
+	default:
+		rv := reflect.ValueOf(expr)
+		if rv.Kind() == reflect.Map && rv.Type().Key().Kind() == reflect.String {
+			for _, key := range rv.MapKeys() {
+				name := strings.ToLower(key.String())
+				if fm, ok := fieldMap[name]; ok {
+					joins |= fm.join
+				}
+			}
+		}
+	}
+	return joins
+}
+
+// requiredSortJoins returns the JoinType flags required by the sort fields.
+func requiredSortJoins(sort string) JoinType {
+	var joins JoinType
+	for _, p := range strings.Split(sort, ",") {
+		p = strings.TrimSpace(p)
+		p = strings.TrimLeft(p, "+-")
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		name := strings.ToLower(p)
+		if fm, ok := fieldMap[name]; ok {
+			joins |= fm.join
+		}
+	}
+	return joins
 }

@@ -179,6 +179,46 @@ var _ = Describe("Criteria", func() {
 		})
 	})
 
+	Describe("RequiredJoins", func() {
+		It("returns 0 when no album/artist fields are used", func() {
+			c := Criteria{
+				Expression: All{Is{"title": "test"}, Gt{"rating": 3}},
+				Sort:       "title",
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinType(0)))
+		})
+
+		It("detects album annotation fields in expression", func() {
+			c := Criteria{
+				Expression: All{Gt{"albumRating": 3}},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinAlbumAnnotation))
+		})
+
+		It("detects artist annotation fields in expression", func() {
+			c := Criteria{
+				Expression: All{Is{"artistLoved": true}},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinArtistAnnotation))
+		})
+
+		It("detects album fields from sort only", func() {
+			c := Criteria{
+				Expression: All{Is{"title": "test"}},
+				Sort:       "albumRating",
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinAlbumAnnotation))
+		})
+
+		It("combines expression and sort join requirements", func() {
+			c := Criteria{
+				Expression: All{Gt{"albumRating": 3}},
+				Sort:       "artistRating",
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinAlbumAnnotation | JoinArtistAnnotation))
+		})
+	})
+
 	Context("with child playlists", func() {
 		var (
 			topLevelInPlaylistID     string

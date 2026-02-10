@@ -95,6 +95,12 @@ func (c Criteria) ToSql() (sql string, args []any, err error) {
 	return c.Expression.ToSql()
 }
 
+// RequiredJoins inspects both the filter expression and sort fields to determine
+// which additional JOINs are needed for the query.
+func (c Criteria) RequiredJoins() JoinType {
+	return requiredJoins(c.Expression) | requiredSortJoins(c.Sort)
+}
+
 func (c Criteria) ChildPlaylistIds() []string {
 	if c.Expression == nil {
 		return nil

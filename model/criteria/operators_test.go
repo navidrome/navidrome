@@ -54,6 +54,22 @@ var _ = Describe("Operators", func() {
 		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", StartOfPeriod(30, time.Now())),
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
 
+		// Album annotation tests
+		Entry("albumrating [gt]", Gt{"albumRating": 3}, "COALESCE(album_annotation.rating, 0) > ?", 3),
+		Entry("albumloved [is]", Is{"albumLoved": true}, "COALESCE(album_annotation.starred, false) = ?", true),
+		Entry("albumplaycount [gt]", Gt{"albumPlayCount": 10}, "COALESCE(album_annotation.play_count, 0) > ?", 10),
+		Entry("albumlastplayed [after]", After{"albumLastPlayed": rangeStart}, "album_annotation.play_date > ?", rangeStart),
+		Entry("albumdaterated [before]", Before{"albumDateRated": rangeStart}, "album_annotation.rated_at < ?", rangeStart),
+		Entry("albumdateloved [after]", After{"albumDateLoved": rangeStart}, "album_annotation.starred_at > ?", rangeStart),
+
+		// Artist annotation tests
+		Entry("artistrating [gt]", Gt{"artistRating": 3}, "COALESCE(artist_annotation.rating, 0) > ?", 3),
+		Entry("artistloved [is]", Is{"artistLoved": true}, "COALESCE(artist_annotation.starred, false) = ?", true),
+		Entry("artistplaycount [gt]", Gt{"artistPlayCount": 10}, "COALESCE(artist_annotation.play_count, 0) > ?", 10),
+		Entry("artistlastplayed [after]", After{"artistLastPlayed": rangeStart}, "artist_annotation.play_date > ?", rangeStart),
+		Entry("artistdaterated [before]", Before{"artistDateRated": rangeStart}, "artist_annotation.rated_at < ?", rangeStart),
+		Entry("artistdateloved [after]", After{"artistDateLoved": rangeStart}, "artist_annotation.starred_at > ?", rangeStart),
+
 		// Tag tests
 		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
