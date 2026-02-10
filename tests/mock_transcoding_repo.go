@@ -21,7 +21,7 @@ func (m *MockTranscodingRepo) FindByFormat(format string) (*model.Transcoding, e
 	case "flac":
 		return &model.Transcoding{ID: "flac1", TargetFormat: "flac", DefaultBitRate: 0, Command: "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -"}, nil
 	case "aac":
-		return &model.Transcoding{ID: "aac1", TargetFormat: "aac", DefaultBitRate: 256, Command: "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -"}, nil
+		return &model.Transcoding{ID: "aac1", TargetFormat: "aac", DefaultBitRate: 256, Command: "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -"}, nil
 	default:
 		return nil, model.ErrNotFound
 	}

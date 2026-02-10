@@ -15,6 +15,16 @@ import (
 const (
 	tokenTTL       = 12 * time.Hour
 	defaultBitrate = 256 // kbps
+
+	// JWT claim keys for transcode params tokens
+	claimMediaID    = "mid" // Media file ID
+	claimDirectPlay = "dp"  // Direct play flag (bool)
+	claimUpdatedAt  = "ua"  // Source file updated-at (Unix seconds)
+	claimFormat     = "fmt" // Target transcoding format
+	claimBitrate    = "br"  // Target bitrate (kbps)
+	claimChannels   = "ch"  // Target channels
+	claimSampleRate = "sr"  // Target sample rate (Hz)
+	claimBitDepth   = "bd"  // Target bit depth
 )
 
 func NewDecider(ds model.DataStore) Decider {
@@ -299,21 +309,21 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
 	exp := time.Now().Add(tokenTTL)
 	claims := map[string]any{
-		"mid": decision.MediaID,
-		"dp":  decision.CanDirectPlay,
-		"ua":  decision.SourceUpdatedAt.Truncate(time.Second).Unix(),
+		claimMediaID:    decision.MediaID,
+		claimDirectPlay: decision.CanDirectPlay,
+		claimUpdatedAt:  decision.SourceUpdatedAt.Truncate(time.Second).Unix(),
 	}
 	if decision.CanTranscode && decision.TargetFormat != "" {
-		claims["fmt"] = decision.TargetFormat
-		claims["br"] = decision.TargetBitrate
+		claims[claimFormat] = decision.TargetFormat
+		claims[claimBitrate] = decision.TargetBitrate
 		if decision.TargetChannels > 0 {
-			claims["ch"] = decision.TargetChannels
+			claims[claimChannels] = decision.TargetChannels
 		}
 		if decision.TargetSampleRate > 0 {
-			claims["sr"] = decision.TargetSampleRate
+			claims[claimSampleRate] = decision.TargetSampleRate
 		}
 		if decision.TargetBitDepth > 0 {
-			claims["bd"] = decision.TargetBitDepth
+			claims[claimBitDepth] = decision.TargetBitDepth
 		}
 	}
 	return auth.CreateExpiringPublicToken(exp, claims)
@@ -328,38 +338,38 @@ func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
 	params := &Params{}
 
 	// Required claims
-	mid, ok := claims["mid"].(string)
+	mid, ok := claims[claimMediaID].(string)
 	if !ok || mid == "" {
-		return nil, fmt.Errorf("invalid transcode token: missing media ID")
+		return nil, fmt.Errorf("%w: invalid transcode token: missing media ID", ErrTokenInvalid)
 	}
 	params.MediaID = mid
 
-	dp, ok := claims["dp"].(bool)
+	dp, ok := claims[claimDirectPlay].(bool)
 	if !ok {
-		return nil, fmt.Errorf("invalid transcode token: missing direct play flag")
+		return nil, fmt.Errorf("%w: invalid transcode token: missing direct play flag", ErrTokenInvalid)
 	}
 	params.DirectPlay = dp
 
 	// Optional claims (legitimately absent for direct-play tokens)
-	if f, ok := claims["fmt"].(string); ok {
+	if f, ok := claims[claimFormat].(string); ok {
 		params.TargetFormat = f
 	}
-	if br, ok := claims["br"].(float64); ok {
+	if br, ok := claims[claimBitrate].(float64); ok {
 		params.TargetBitrate = int(br)
 	}
-	if ch, ok := claims["ch"].(float64); ok {
+	if ch, ok := claims[claimChannels].(float64); ok {
 		params.TargetChannels = int(ch)
 	}
-	if sr, ok := claims["sr"].(float64); ok {
+	if sr, ok := claims[claimSampleRate].(float64); ok {
 		params.TargetSampleRate = int(sr)
 	}
-	if bd, ok := claims["bd"].(float64); ok {
+	if bd, ok := claims[claimBitDepth].(float64); ok {
 		params.TargetBitDepth = int(bd)
 	}
 
-	ua, ok := claims["ua"].(float64)
+	ua, ok := claims[claimUpdatedAt].(float64)
 	if !ok {
-		return nil, fmt.Errorf("invalid transcode token: missing source timestamp")
+		return nil, fmt.Errorf("%w: invalid transcode token: missing source timestamp", ErrTokenInvalid)
 	}
 	params.SourceUpdatedAt = time.Unix(int64(ua), 0)
 

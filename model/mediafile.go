@@ -232,7 +232,9 @@ func (mf MediaFile) IsLossless() bool {
 	if slices.Contains(confmime.LosslessFormats, mf.Suffix) {
 		return true
 	}
-	// Fallback heuristic: if BitDepth is set, it's likely lossless
+	// Fallback heuristic: if BitDepth is set, it's likely lossless.
+	// This may produce false positives for lossy formats that report bit depth,
+	// but it becomes irrelevant once the Codec column is populated after a full rescan.
 	return mf.BitDepth > 0
 }
 
