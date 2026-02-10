@@ -1,338 +1,337 @@
 {
-    "languageName": "简体中文",
-    "resources": {
-        "song": {
-            "name": "歌曲",
-            "fields": {
-                "albumArtist": "专辑艺人",
-                "duration": "时长",
-                "trackNumber": "音轨号",
-                "playCount": "播放次数",
-                "title": "标题",
-                "artist": "艺人",
-                "composer": "作曲者",
-                "album": "专辑",
-                "path": "文件路径",
-                "genre": "流派",
-                "libraryName": "媒体库",
-                "compilation": "合辑",
-                "year": "发行年份",
-                "size": "文件大小",
-                "updatedAt": "更新于",
-                "bitRate": "比特率",
-                "bitDepth": "位深度",
-                "sampleRate": "采样率",
-                "channels": "声道",
-                "discSubtitle": "碟片副标题",
-                "starred": "收藏",
-                "comment": "注释",
-                "rating": "评分",
-                "quality": "品质",
-                "bpm": "BPM",
-                "playDate": "最后一次播放",
-                "createdAt": "加入日期",
-                "grouping": "分组",
-                "mood": "情绪",
-                "participants": "其他参与人员",
-                "tags": "附加标签",
-                "mappedTags": "映射标签",
-                "rawTags": "原始标签",
-                "missing": "丢失"
-            },
-            "actions": {
-                "addToQueue": "添加到播放队列",
-                "playNow": "立即播放",
-                "addToPlaylist": "添加到歌单",
-                "showInPlaylist": "在歌单中显示",
-                "shuffleAll": "全部随机播放",
-                "download": "下载",
-                "playNext": "下一首播放",
-                "info": "查看信息",
-                "instantMix": "即兴推荐"
-            }
-        },
-        "album": {
-            "name": "专辑",
-            "fields": {
-                "albumArtist": "专辑艺人",
-                "artist": "艺人",
-                "duration": "时长",
-                "songCount": "歌曲数",
-                "playCount": "播放次数",
-                "size": "文件大小",
-                "name": "名称",
-                "genre": "流派",
-                "libraryName": "媒体库",
-                "compilation": "合辑",
-                "year": "发行年份",
-                "date": "录制日期",
-                "originalDate": "原始日期",
-                "releaseDate": "发⾏日期",
-                "releases": "发行版本",
-                "released": "已发⾏",
-                "updatedAt": "更新于",
-                "comment": "注释",
-                "rating": "评分",
-                "createdAt": "加入日期",
-                "recordLabel": "厂牌",
-                "catalogNum": "目录编号",
-                "releaseType": "发行类型",
-                "grouping": "分组",
-                "media": "发行媒介",
-                "mood": "情绪",
-                "missing": "丢失"
-            },
-            "actions": {
-                "playAll": "立即播放",
-                "playNext": "下一首播放",
-                "addToQueue": "添加到播放队列",
-                "share": "分享",
-                "shuffle": "随机播放",
-                "addToPlaylist": "添加到歌单",
-                "download": "下载",
-                "info": "查看信息"
-            },
-            "lists": {
-                "all": "全部",
-                "random": "随机",
-                "recentlyAdded": "最近加入",
-                "recentlyPlayed": "最近播放",
-                "mostPlayed": "最多播放",
-                "starred": "收藏",
-                "topRated": "评分榜单"
-            }
-        },
-        "artist": {
-            "name": "艺人",
-            "fields": {
-                "name": "名称",
-                "albumCount": "专辑数",
-                "songCount": "歌曲数",
-                "size": "文件大小",
-                "playCount": "播放次数",
-                "rating": "评分",
-                "genre": "流派",
-                "role": "参与角色",
-                "missing": "丢失"
-            },
-            "roles": {
-                "albumartist": "专辑艺人",
-                "artist": "艺人",
-                "composer": "作曲者",
-                "conductor": "指挥家",
-                "lyricist": "作词者",
-                "arranger": "编曲者",
-                "producer": "制作人",
-                "director": "总监",
-                "engineer": "工程师",
-                "mixer": "混音师",
-                "remixer": "重混师",
-                "djmixer": "DJ混音师",
-                "performer": "演奏家",
-                "maincredit": "专辑艺人或艺人"
-            },
-            "actions": {
-                "topSongs": "热门歌曲",
-                "shuffle": "随机播放",
-                "radio": "电台"
-            }
-        },
-        "user": {
-            "name": "用户",
-            "fields": {
-                "userName": "用户名",
-                "isAdmin": "是否管理员",
-                "lastLoginAt": "上次登录",
-                "lastAccessAt": "上次访问",
-                "updatedAt": "更新于",
-                "name": "名称",
-                "password": "密码",
-                "createdAt": "创建于",
-                "changePassword": "修改密码？",
-                "currentPassword": "当前密码",
-                "newPassword": "新密码",
-                "token": "令牌",
-                "libraries": "媒体库"
-            },
-            "helperTexts": {
-                "name": "名称的更改将在下次登录时生效",
-                "libraries": "为此用户选择指定媒体库，留空则使用默认媒体库"
-            },
-            "notifications": {
-                "created": "用户已创建",
-                "updated": "用户已更新",
-                "deleted": "用户已删除"
-            },
-            "validation": {
-                "librariesRequired": "至少为非管理员用户选择一个媒体库"
-            },
-            "message": {
-                "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
-                "clickHereForToken": "点此获得您的令牌",
-                "selectAllLibraries": "选择全部媒体库",
-                "adminAutoLibraries": "管理员用户自动拥有所有媒体库的访问权限"
-            }
-        },
-        "player": {
-            "name": "播放器",
-            "fields": {
-                "name": "名称",
-                "transcodingId": "转码",
-                "maxBitRate": "最大比特率",
-                "client": "客户端",
-                "userName": "用户名",
-                "lastSeen": "上次浏览",
-                "reportRealPath": "报告真实路径",
-                "scrobbleEnabled": "发送个性化记录到外部服务"
-            }
-        },
-        "transcoding": {
-            "name": "转码",
-            "fields": {
-                "name": "名称",
-                "targetFormat": "目标格式",
-                "defaultBitRate": "默认比特率",
-                "command": "命令"
-            }
-        },
-        "playlist": {
-            "name": "歌单",
-            "fields": {
-                "name": "名称",
-                "duration": "时长",
-                "ownerName": "所有者",
-                "public": "公开",
-                "updatedAt": "更新于",
-                "createdAt": "创建于",
-                "songCount": "歌曲数",
-                "comment": "注释",
-                "sync": "自动导入",
-                "path": "导入路径"
-            },
-            "actions": {
-                "selectPlaylist": "选择歌单",
-                "addNewPlaylist": "创建%{name}",
-                "export": "导出",
-                "saveQueue": "保存为歌单",
-                "makePublic": "设为公开",
-                "makePrivate": "设为私有",
-                "searchOrCreate": "搜索歌单，或输入名称以创建…",
-                "pressEnterToCreate": "按 Enter 键创建歌单",
-                "removeFromSelection": "移除选中项"
-            },
-            "message": {
-                "duplicate_song": "添加了重复的歌曲",
-                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？",
-                "noPlaylistsFound": "未找到歌单",
-                "noPlaylists": "暂无可用歌单"
-            }
-        },
-        "radio": {
-            "name": "电台",
-            "fields": {
-                "name": "名称",
-                "streamUrl": "推流 URL",
-                "homePageUrl": "首页 URL",
-                "updatedAt": "更新于",
-                "createdAt": "创建于"
-            },
-            "actions": {
-                "playNow": "开始播放"
-            }
-        },
-        "share": {
-            "name": "分享",
-            "fields": {
-                "username": "分享者",
-                "url": "URL",
-                "description": "描述",
-                "downloadable": "是否允许下载？",
-                "contents": "目录",
-                "expiresAt": "过期于",
-                "lastVisitedAt": "上次访问",
-                "visitCount": "访问数",
-                "format": "格式",
-                "maxBitRate": "最大比特率",
-                "updatedAt": "更新于",
-                "createdAt": "创建于"
-            },
-            "notifications": {},
-            "actions": {}
-        },
-        "missing": {
-            "name": "丢失文件",
-            "empty": "无丢失文件",
-            "fields": {
-                "path": "路径",
-                "size": "文件大小",
-                "libraryName": "媒体库",
-                "updatedAt": "丢失于"
-            },
-            "actions": {
-                "remove": "移除",
-                "remove_all": "移除所有"
-            },
-            "notifications": {
-                "removed": "丢失文件已移除"
-            }
-        },
-        "library": {
-            "name": "媒体库",
-            "fields": {
-                "name": "名称",
-                "path": "路径",
-                "remotePath": "远程路径",
-                "lastScanAt": "上次扫描",
-                "songCount": "歌曲数",
-                "albumCount": "专辑数",
-                "artistCount": "艺人数",
-                "totalSongs": "歌曲数",
-                "totalAlbums": "专辑数",
-                "totalArtists": "艺人数",
-                "totalFolders": "目录数",
-                "totalFiles": "文件数",
-                "totalMissingFiles": "丢失的文件数",
-                "totalSize": "总大小",
-                "totalDuration": "时长",
-                "defaultNewUsers": "新用户默认",
-                "createdAt": "创建于",
-                "updatedAt": "更新于"
-            },
-            "sections": {
-                "basic": "基本信息",
-                "statistics": "统计数据"
-            },
-            "actions": {
-                "scan": "扫描媒体库",
-                "quickScan": "快速扫描",
-                "fullScan": "完全扫描",
-                "manageUsers": "管理用户权限",
-                "viewDetails": "查看详情"
-            },
-            "notifications": {
-                "created": "媒体库创建成功",
-                "updated": "媒体库更新成功",
-                "deleted": "媒体库删除成功",
-                "scanStarted": "媒体库扫描已开始",
-                "quickScanStarted": "快速扫描已开始",
-                "fullScanStarted": "完全扫描已开始",
-                "scanError": "开始扫描时出错，请检查日志",
-                "scanCompleted": "媒体库扫描已完成"
-            },
-            "validation": {
-                "nameRequired": "媒体库名称不能为空",
-                "pathRequired": "媒体库路径不能为空",
-                "pathNotDirectory": "媒体库路径必须为目录",
-                "pathNotFound": "媒体库路径未找到",
-                "pathNotAccessible": "媒体库路径无法访问",
-                "pathInvalid": "媒体库路径无效"
-            },
-            "messages": {
-                "deleteConfirm": "您确定要删除此媒体库吗？这将删除所有关联数据及用户访问权限。",
-                "scanInProgress": "正在扫描...",
-                "noLibrariesAssigned": "未向此用户分配媒体库"
-            }
-        }
+  "languageName": "简体中文",
+  "resources": {
+    "song": {
+      "name": "歌曲",
+      "fields": {
+        "albumArtist": "专辑艺人",
+        "duration": "时长",
+        "trackNumber": "音轨号",
+        "playCount": "播放次数",
+        "title": "标题",
+        "artist": "艺人",
+        "composer": "作曲者",
+        "album": "专辑",
+        "path": "文件路径",
+        "genre": "流派",
+        "libraryName": "媒体库",
+        "compilation": "合辑",
+        "year": "发行年份",
+        "size": "文件大小",
+        "updatedAt": "更新于",
+        "bitRate": "比特率",
+        "bitDepth": "位深度",
+        "sampleRate": "采样率",
+        "channels": "声道",
+        "discSubtitle": "碟片副标题",
+        "starred": "收藏",
+        "comment": "注释",
+        "rating": "评分",
+        "quality": "品质",
+        "bpm": "BPM",
+        "playDate": "最后一次播放",
+        "createdAt": "加入日期",
+        "grouping": "分组",
+        "mood": "情绪",
+        "participants": "其他参与人员",
+        "tags": "附加标签",
+        "mappedTags": "映射标签",
+        "rawTags": "原始标签",
+        "missing": "丢失"
+      },
+      "actions": {
+        "addToQueue": "添加到播放队列",
+        "playNow": "立即播放",
+        "addToPlaylist": "添加到歌单",
+        "showInPlaylist": "在歌单中显示",
+        "shuffleAll": "全部随机播放",
+        "download": "下载",
+        "playNext": "下一首播放",
+        "info": "查看信息",
+        "instantMix": "即兴推荐"
+      }
+    },
+    "album": {
+      "name": "专辑",
+      "fields": {
+        "albumArtist": "专辑艺人",
+        "artist": "艺人",
+        "duration": "时长",
+        "songCount": "歌曲数",
+        "playCount": "播放次数",
+        "size": "文件大小",
+        "name": "名称",
+        "genre": "流派",
+        "libraryName": "媒体库",
+        "compilation": "合辑",
+        "year": "发行年份",
+        "date": "录制日期",
+        "originalDate": "原始日期",
+        "releaseDate": "发⾏日期",
+        "releases": "发行版本",
+        "released": "已发⾏",
+        "updatedAt": "更新于",
+        "comment": "注释",
+        "rating": "评分",
+        "createdAt": "加入日期",
+        "recordLabel": "厂牌",
+        "catalogNum": "目录编号",
+        "releaseType": "发行类型",
+        "grouping": "分组",
+        "media": "发行媒介",
+        "mood": "情绪",
+        "missing": "丢失"
+      },
+      "actions": {
+        "playAll": "立即播放",
+        "playNext": "下一首播放",
+        "addToQueue": "添加到播放队列",
+        "share": "分享",
+        "shuffle": "随机播放",
+        "addToPlaylist": "添加到歌单",
+        "download": "下载",
+        "info": "查看信息"
+      },
+      "lists": {
+        "all": "全部",
+        "random": "随机",
+        "recentlyAdded": "最近加入",
+        "recentlyPlayed": "最近播放",
+        "mostPlayed": "最多播放",
+        "starred": "收藏",
+        "topRated": "评分榜单"
+      }
+    },
+    "artist": {
+      "name": "艺人",
+      "fields": {
+        "name": "名称",
+        "albumCount": "专辑数",
+        "songCount": "歌曲数",
+        "size": "文件大小",
+        "playCount": "播放次数",
+        "rating": "评分",
+        "genre": "流派",
+        "role": "参与角色",
+        "missing": "丢失"
+      },
+      "roles": {
+        "albumartist": "专辑艺人",
+        "artist": "艺人",
+        "composer": "作曲者",
+        "conductor": "指挥家",
+        "lyricist": "作词者",
+        "arranger": "编曲者",
+        "producer": "制作人",
+        "director": "总监",
+        "engineer": "工程师",
+        "mixer": "混音师",
+        "remixer": "重混师",
+        "djmixer": "DJ混音师",
+        "performer": "演奏家",
+        "maincredit": "专辑艺人或艺人"
+      },
+      "actions": {
+        "topSongs": "热门歌曲",
+        "shuffle": "随机播放",
+        "radio": "电台"
+      }
+    },
+    "user": {
+      "name": "用户",
+      "fields": {
+        "userName": "用户名",
+        "isAdmin": "是否管理员",
+        "lastLoginAt": "上次登录",
+        "lastAccessAt": "上次访问",
+        "updatedAt": "更新于",
+        "name": "名称",
+        "password": "密码",
+        "createdAt": "创建于",
+        "changePassword": "修改密码？",
+        "currentPassword": "当前密码",
+        "newPassword": "新密码",
+        "token": "令牌",
+        "libraries": "媒体库"
+      },
+      "helperTexts": {
+        "name": "名称的更改将在下次登录时生效",
+        "libraries": "为此用户选择指定媒体库，留空则使用默认媒体库"
+      },
+      "notifications": {
+        "created": "用户已创建",
+        "updated": "用户已更新",
+        "deleted": "用户已删除"
+      },
+      "validation": {
+        "librariesRequired": "至少为非管理员用户选择一个媒体库"
+      },
+      "message": {
+        "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
+        "clickHereForToken": "点此获得您的令牌",
+        "selectAllLibraries": "选择全部媒体库",
+        "adminAutoLibraries": "管理员用户自动拥有所有媒体库的访问权限"
+      }
+    },
+    "player": {
+      "name": "播放器",
+      "fields": {
+        "name": "名称",
+        "transcodingId": "转码",
+        "maxBitRate": "最大比特率",
+        "client": "客户端",
+        "userName": "用户名",
+        "lastSeen": "上次浏览",
+        "reportRealPath": "报告真实路径",
+        "scrobbleEnabled": "发送个性化记录到外部服务"
+      }
+    },
+    "transcoding": {
+      "name": "转码",
+      "fields": {
+        "name": "名称",
+        "targetFormat": "目标格式",
+        "defaultBitRate": "默认比特率",
+        "command": "命令"
+      }
+    },
+    "playlist": {
+      "name": "歌单",
+      "fields": {
+        "name": "名称",
+        "duration": "时长",
+        "ownerName": "所有者",
+        "public": "公开",
+        "updatedAt": "更新于",
+        "createdAt": "创建于",
+        "songCount": "歌曲数",
+        "comment": "注释",
+        "sync": "自动导入",
+        "path": "导入路径"
+      },
+      "actions": {
+        "selectPlaylist": "选择歌单",
+        "addNewPlaylist": "创建%{name}",
+        "export": "导出",
+        "saveQueue": "保存为歌单",
+        "makePublic": "设为公开",
+        "makePrivate": "设为私有",
+        "searchOrCreate": "搜索歌单，或输入名称以创建…",
+        "pressEnterToCreate": "按 Enter 键创建歌单",
+        "removeFromSelection": "移除选中项"
+      },
+      "message": {
+        "duplicate_song": "添加了重复的歌曲",
+        "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？",
+        "noPlaylistsFound": "未找到歌单",
+        "noPlaylists": "暂无可用歌单"
+      }
+    },
+    "radio": {
+      "name": "电台",
+      "fields": {
+        "name": "名称",
+        "streamUrl": "推流 URL",
+        "homePageUrl": "首页 URL",
+        "updatedAt": "更新于",
+        "createdAt": "创建于"
+      },
+      "actions": {
+        "playNow": "开始播放"
+      }
+    },
+    "share": {
+      "name": "分享",
+      "fields": {
+        "username": "分享者",
+        "url": "URL",
+        "description": "描述",
+        "downloadable": "是否允许下载？",
+        "contents": "目录",
+        "expiresAt": "过期于",
+        "lastVisitedAt": "上次访问",
+        "visitCount": "访问数",
+        "format": "格式",
+        "maxBitRate": "最大比特率",
+        "updatedAt": "更新于",
+        "createdAt": "创建于"
+      },
+      "notifications": {},
+      "actions": {}
+    },
+    "missing": {
+      "name": "丢失文件",
+      "empty": "无丢失文件",
+      "fields": {
+        "path": "路径",
+        "size": "文件大小",
+        "libraryName": "媒体库",
+        "updatedAt": "丢失于"
+      },
+      "actions": {
+        "remove": "移除",
+        "remove_all": "移除所有"
+      },
+      "notifications": {
+        "removed": "丢失文件已移除"
+      }
+    },
+    "library": {
+      "name": "媒体库",
+      "fields": {
+        "name": "名称",
+        "path": "路径",
+        "remotePath": "远程路径",
+        "lastScanAt": "上次扫描",
+        "songCount": "歌曲数",
+        "albumCount": "专辑数",
+        "artistCount": "艺人数",
+        "totalSongs": "歌曲数",
+        "totalAlbums": "专辑数",
+        "totalArtists": "艺人数",
+        "totalFolders": "目录数",
+        "totalFiles": "文件数",
+        "totalMissingFiles": "丢失的文件数",
+        "totalSize": "总大小",
+        "totalDuration": "时长",
+        "defaultNewUsers": "新用户默认",
+        "createdAt": "创建于",
+        "updatedAt": "更新于"
+      },
+      "sections": {
+        "basic": "基本信息",
+        "statistics": "统计数据"
+      },
+      "actions": {
+        "scan": "扫描媒体库",
+        "quickScan": "快速扫描",
+        "fullScan": "完全扫描",
+        "manageUsers": "管理用户权限",
+        "viewDetails": "查看详情"
+      },
+      "notifications": {
+        "created": "媒体库创建成功",
+        "updated": "媒体库更新成功",
+        "deleted": "媒体库删除成功",
+        "scanStarted": "媒体库扫描已开始",
+        "quickScanStarted": "快速扫描已开始",
+        "fullScanStarted": "完全扫描已开始",
+        "scanError": "开始扫描时出错，请检查日志",
+        "scanCompleted": "媒体库扫描已完成"
+      },
+      "validation": {
+        "nameRequired": "媒体库名称不能为空",
+        "pathRequired": "媒体库路径不能为空",
+        "pathNotDirectory": "媒体库路径必须为目录",
+        "pathNotFound": "媒体库路径未找到",
+        "pathNotAccessible": "媒体库路径无法访问",
+        "pathInvalid": "媒体库路径无效"
+      },
+      "messages": {
+        "deleteConfirm": "您确定要删除此媒体库吗？这将删除所有关联数据及用户访问权限。",
+        "scanInProgress": "正在扫描...",
+        "noLibrariesAssigned": "未向此用户分配媒体库"
+      }
     },
     "plugin": {
       "name": "插件",
@@ -407,307 +406,308 @@
         "configKey": "键",
         "configValue": "值"
       }
+    }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "感谢您安装 Navidrome！",
+      "welcome2": "开始使用前，请创建一个管理员账户",
+      "confirmPassword": "确认密码",
+      "buttonCreateAdmin": "创建管理员",
+      "auth_check_error": "请登录以继续",
+      "user_menu": "用户档案",
+      "username": "用户名",
+      "password": "密码",
+      "sign_in": "登录",
+      "sign_in_error": "验证失败，请重试",
+      "logout": "注销",
+      "insightsCollectionNote": "Navidrome 会收集匿名使用数据以帮助改进项目。\n点击[此处]了解详情或选择不参与收集。"
     },
-    "ra": {
-        "auth": {
-            "welcome1": "感谢您安装 Navidrome！",
-            "welcome2": "开始使用前，请创建一个管理员账户",
-            "confirmPassword": "确认密码",
-            "buttonCreateAdmin": "创建管理员",
-            "auth_check_error": "请登录以继续",
-            "user_menu": "用户档案",
-            "username": "用户名",
-            "password": "密码",
-            "sign_in": "登录",
-            "sign_in_error": "验证失败，请重试",
-            "logout": "注销",
-            "insightsCollectionNote": "Navidrome 会收集匿名使用数据以帮助改进项目。\n点击[此处]了解详情或选择不参与收集。"
-        },
-        "validation": {
-            "invalidChars": "请只使用字母和数字",
-            "passwordDoesNotMatch": "密码不匹配",
-            "required": "必填",
-            "minLength": "不得少于 %{min} 个字符",
-            "maxLength": "不得多于 %{max} 个字符",
-            "minValue": "不得小于 %{min}",
-            "maxValue": "不得大于 %{max}",
-            "number": "必须为数字",
-            "email": "必须为有效的电子邮箱",
-            "oneOf": "必须为: %{options} 其中一项",
-            "regex": "必须符合指定的格式（正则表达式）：%{pattern}",
-            "unique": "必须唯一",
-            "url": "必须为有效的 URL"
-        },
-        "action": {
-            "add_filter": "添加筛选",
-            "add": "添加",
-            "back": "返回",
-            "bulk_actions": "选中 %{smart_count} 项",
-            "bulk_actions_mobile": "%{smart_count}",
-            "cancel": "取消",
-            "clear_input_value": "清除",
-            "clone": "复制",
-            "confirm": "确认",
-            "create": "创建",
-            "delete": "删除",
-            "edit": "编辑",
-            "export": "导出",
-            "list": "列表",
-            "refresh": "刷新",
-            "remove_filter": "取消筛选",
-            "remove": "移除",
-            "save": "保存",
-            "search": "搜索",
-            "show": "显示",
-            "sort": "排序",
-            "undo": "撤销",
-            "expand": "展开",
-            "close": "关闭",
-            "open_menu": "打开菜单",
-            "close_menu": "关闭菜单",
-            "unselect": "取消选择",
-            "skip": "跳过",
-            "share": "分享",
-            "download": "下载"
-        },
-        "boolean": {
-            "true": "是",
-            "false": "否"
-        },
-        "page": {
-            "create": "创建%{name}",
-            "dashboard": "仪表盘",
-            "edit": "%{name} #%{id}",
-            "error": "发生错误",
-            "list": "%{name}",
-            "loading": "加载中",
-            "not_found": "未找到",
-            "show": "%{name} #%{id}",
-            "empty": "还没有%{name}。",
-            "invite": "您要创建一个吗？"
-        },
-        "input": {
-            "file": {
-                "upload_several": "拖拽多个文件上传或点击以选择",
-                "upload_single": "拖拽文件上传或点击以选择"
-            },
-            "image": {
-                "upload_several": "拖拽多个图片上传或点击以选择",
-                "upload_single": "拖拽图片上传或点击以选择"
-            },
-            "references": {
-                "all_missing": "未找到引用数据",
-                "many_missing": "至少有一条关联的引用不再可用",
-                "single_missing": "关联的引用不再可用"
-            },
-            "password": {
-                "toggle_visible": "隐藏密码",
-                "toggle_hidden": "显示密码"
-            }
-        },
-        "message": {
-            "about": "关于",
-            "are_you_sure": "您确定要进行此操作？",
-            "bulk_delete_content": "您确定要删除这 %{smart_count} 项%{name}？",
-            "bulk_delete_title": "删除 %{smart_count} 项%{name}",
-            "delete_content": "您确定要删除此项？",
-            "delete_title": "删除 %{name} #%{id}",
-            "details": "详情",
-            "error": "发生一个客户端错误，您的请求无法完成",
-            "invalid_form": "提交内容无效，请检查错误",
-            "loading": "页面加载中，请稍候",
-            "no": "否",
-            "not_found": "您输入了错误的 URL，或 URL 无效",
-            "yes": "是",
-            "unsaved_changes": "某些更改尚未保存，您确定要忽视吗？"
-        },
-        "navigation": {
-            "no_results": "未找到结果",
-            "no_more_results": "页码 %{page} 超出范围，尝试返回上一页",
-            "page_out_of_boundaries": "页码 %{page} 超出范围",
-            "page_out_from_end": "已经最后一页",
-            "page_out_from_begin": "已经是第一页",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "每页项目数：",
-            "next": "下一页",
-            "prev": "上一页",
-            "skip_nav": "跳转到内容"
-        },
-        "notification": {
-            "updated": "项目已更新 |||| 已更新 %{smart_count} 项",
-            "created": "项目已创建",
-            "deleted": "项目已删除 |||| 已删除 %{smart_count} 项",
-            "bad_item": "不正确的项",
-            "item_doesnt_exist": "项目不存在",
-            "http_error": "与服务器通信出错",
-            "data_provider_error": "dataProvider 错误，请检查控制台以查看详情。",
-            "i18n_error": "加载所选语言时出错",
-            "canceled": "操作已取消",
-            "logged_out": "您的会话已结束，请重新登录。",
-            "new_version": "发现新版本！请刷新此页面。"
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "显示的列",
-            "layout": "布局",
-            "grid": "网格",
-            "table": "表格"
-        }
+    "validation": {
+      "invalidChars": "请只使用字母和数字",
+      "passwordDoesNotMatch": "密码不匹配",
+      "required": "必填",
+      "minLength": "不得少于 %{min} 个字符",
+      "maxLength": "不得多于 %{max} 个字符",
+      "minValue": "不得小于 %{min}",
+      "maxValue": "不得大于 %{max}",
+      "number": "必须为数字",
+      "email": "必须为有效的电子邮箱",
+      "oneOf": "必须为: %{options} 其中一项",
+      "regex": "必须符合指定的格式（正则表达式）：%{pattern}",
+      "unique": "必须唯一",
+      "url": "必须为有效的 URL"
+    },
+    "action": {
+      "add_filter": "添加筛选",
+      "add": "添加",
+      "back": "返回",
+      "bulk_actions": "选中 %{smart_count} 项",
+      "bulk_actions_mobile": "%{smart_count}",
+      "cancel": "取消",
+      "clear_input_value": "清除",
+      "clone": "复制",
+      "confirm": "确认",
+      "create": "创建",
+      "delete": "删除",
+      "edit": "编辑",
+      "export": "导出",
+      "list": "列表",
+      "refresh": "刷新",
+      "remove_filter": "取消筛选",
+      "remove": "移除",
+      "save": "保存",
+      "search": "搜索",
+      "show": "显示",
+      "sort": "排序",
+      "undo": "撤销",
+      "expand": "展开",
+      "close": "关闭",
+      "open_menu": "打开菜单",
+      "close_menu": "关闭菜单",
+      "unselect": "取消选择",
+      "skip": "跳过",
+      "share": "分享",
+      "download": "下载"
+    },
+    "boolean": {
+      "true": "是",
+      "false": "否"
+    },
+    "page": {
+      "create": "创建%{name}",
+      "dashboard": "仪表盘",
+      "edit": "%{name} #%{id}",
+      "error": "发生错误",
+      "list": "%{name}",
+      "loading": "加载中",
+      "not_found": "未找到",
+      "show": "%{name} #%{id}",
+      "empty": "还没有%{name}。",
+      "invite": "您要创建一个吗？"
+    },
+    "input": {
+      "file": {
+        "upload_several": "拖拽多个文件上传或点击以选择",
+        "upload_single": "拖拽文件上传或点击以选择"
+      },
+      "image": {
+        "upload_several": "拖拽多个图片上传或点击以选择",
+        "upload_single": "拖拽图片上传或点击以选择"
+      },
+      "references": {
+        "all_missing": "未找到引用数据",
+        "many_missing": "至少有一条关联的引用不再可用",
+        "single_missing": "关联的引用不再可用"
+      },
+      "password": {
+        "toggle_visible": "隐藏密码",
+        "toggle_hidden": "显示密码"
+      }
     },
     "message": {
-        "note": "注意",
-        "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
-        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过从 Web 界面配置转码选项来执行任意命令。建议禁用此选项，并且仅在需要配置转码选项时启用此功能。",
-        "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
-        "noSimilarSongsFound": "未找到相似歌曲",
-        "startingInstantMix": "即兴推荐加载中...",
-        "noTopSongsFound": "未找到热门歌曲",
-        "noPlaylistsAvailable": "没有有效的歌单",
-        "delete_user_title": "删除用户%{name}",
-        "delete_user_content": "您确定要删除此用户及其相关数据（包括歌单和用户配置）吗？",
-        "remove_missing_title": "移除丢失文件",
-        "remove_missing_content": "您确定要从数据库中移除选中的丢失文件吗？这将永久删除对它们的所有引用，包括播放次数和评分。",
-        "remove_all_missing_title": "移除所有丢失文件",
-        "remove_all_missing_content": "您确定要从数据库中移除所有丢失文件吗？这将永久删除对它们的所有引用，包括播放次数和评分。",
-        "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
-        "notifications_not_available": "此浏览器不支持桌面通知，或者您未通过 https 访问 Navidrome",
-        "lastfmLinkSuccess": "Last.fm 成功关联并启用个性化记录",
-        "lastfmLinkFailure": "Last.fm 无法关联",
-        "lastfmUnlinkSuccess": "Last.fm 已取消关联并禁用个性化记录",
-        "lastfmUnlinkFailure": "Last.fm 无法取消关联",
-        "listenBrainzLinkSuccess": "ListenBrainz 成功关联并启用个性化记录，用户：%{user}",
-        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz 已取消关联并禁用个性化记录",
-        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
-        "openIn": {
-            "lastfm": "在 Last.fm 中打开",
-            "musicbrainz": "在 MusicBrainz 中打开"
-        },
-        "lastfmLink": "查看更多…",
-        "shareOriginalFormat": "分享原始格式",
-        "shareDialogTitle": "分享 %{resource} '%{name}'",
-        "shareBatchDialogTitle": "分享 %{smart_count} 项 %{resource}",
-        "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter",
-        "shareSuccess": "URL 已复制: %{url}",
-        "shareFailure": "URL 复制失败: %{url}",
-        "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
-        "downloadOriginalFormat": "下载原始格式"
+      "about": "关于",
+      "are_you_sure": "您确定要进行此操作？",
+      "bulk_delete_content": "您确定要删除这 %{smart_count} 项%{name}？",
+      "bulk_delete_title": "删除 %{smart_count} 项%{name}",
+      "delete_content": "您确定要删除此项？",
+      "delete_title": "删除 %{name} #%{id}",
+      "details": "详情",
+      "error": "发生一个客户端错误，您的请求无法完成",
+      "invalid_form": "提交内容无效，请检查错误",
+      "loading": "页面加载中，请稍候",
+      "no": "否",
+      "not_found": "您输入了错误的 URL，或 URL 无效",
+      "yes": "是",
+      "unsaved_changes": "某些更改尚未保存，您确定要忽视吗？"
     },
-    "menu": {
-        "library": "媒体库",
-        "librarySelector": {
-            "allLibraries": "全部媒体库 (%{count})",
-            "multipleLibraries": "已选 %{selected} 共 %{total} 个媒体库",
-            "selectLibraries": "选择媒体库",
-            "none": "无"
-        },
-        "settings": "设置",
-        "version": "版本",
-        "theme": "主题",
-        "personal": {
-            "name": "个性化",
-            "options": {
-                "theme": "主题",
-                "language": "语言",
-                "defaultView": "默认视图",
-                "desktop_notifications": "桌面通知",
-                "lastfmNotConfigured": "未配置 Last.fm 的 API-Key",
-                "lastfmScrobbling": "启用 Last.fm 的个性化记录",
-                "listenBrainzScrobbling": "启用 ListenBrainz 的个性化记录",
-                "replaygain": "回放增益",
-                "preAmp": "前置放大器 (dB)",
-                "gain": {
-                    "none": "禁用增益",
-                    "album": "使用专辑增益信息",
-                    "track": "使用歌曲增益信息"
-                }
-            }
-        },
-        "albumList": "专辑",
-        "playlists": "歌单",
-        "sharedPlaylists": "共享的歌单",
-        "about": "关于"
+    "navigation": {
+      "no_results": "未找到结果",
+      "no_more_results": "页码 %{page} 超出范围，尝试返回上一页",
+      "page_out_of_boundaries": "页码 %{page} 超出范围",
+      "page_out_from_end": "已经最后一页",
+      "page_out_from_begin": "已经是第一页",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
+      "page_rows_per_page": "每页项目数：",
+      "next": "下一页",
+      "prev": "上一页",
+      "skip_nav": "跳转到内容"
     },
-    "player": {
-        "playListsText": "播放队列",
-        "openText": "打开",
-        "closeText": "关闭",
-        "notContentText": "没有音乐",
-        "clickToPlayText": "点击播放",
-        "clickToPauseText": "点击暂停",
-        "nextTrackText": "下一首",
-        "previousTrackText": "上一首",
-        "reloadText": "重新播放",
-        "volumeText": "音量",
-        "toggleLyricText": "切换歌词",
-        "toggleMiniModeText": "最小化",
-        "destroyText": "关闭",
-        "downloadText": "下载",
-        "removeAudioListsText": "清空播放队列",
-        "clickToDeleteText": "点击删除%{name}",
-        "emptyLyricText": "无歌词",
-        "playModeText": {
-            "order": "顺序播放",
-            "orderLoop": "列表循环",
-            "singleLoop": "单曲循环",
-            "shufflePlay": "随机播放"
-        }
+    "notification": {
+      "updated": "项目已更新 |||| 已更新 %{smart_count} 项",
+      "created": "项目已创建",
+      "deleted": "项目已删除 |||| 已删除 %{smart_count} 项",
+      "bad_item": "不正确的项",
+      "item_doesnt_exist": "项目不存在",
+      "http_error": "与服务器通信出错",
+      "data_provider_error": "dataProvider 错误，请检查控制台以查看详情。",
+      "i18n_error": "加载所选语言时出错",
+      "canceled": "操作已取消",
+      "logged_out": "您的会话已结束，请重新登录。",
+      "new_version": "发现新版本！请刷新此页面。"
     },
-    "about": {
-        "links": {
-            "homepage": "主页",
-            "source": "源代码",
-            "featureRequests": "功能需求",
-            "lastInsightsCollection": "最近的分析收集",
-            "insights": {
-                "disabled": "禁用",
-                "waiting": "等待"
-            }
-        },
-        "tabs": {
-            "about": "关于",
-            "config": "配置"
-        },
-        "config": {
-            "configName": "配置名称",
-            "environmentVariable": "环境变量",
-            "currentValue": "当前值",
-            "configurationFile": "配置文件",
-            "exportToml": "导出配置（TOML）",
-            "exportSuccess": "以 TOML 格式导出配置到剪贴板",
-            "exportFailed": "复制配置失败",
-            "devFlagsHeader": "开发标志（可能会更改/删除）",
-            "devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
-        }
-    },
-    "activity": {
-        "title": "运行情况",
-        "totalScanned": "已完成扫描的文件夹",
-        "quickScan": "快速扫描",
-        "fullScan": "完全扫描",
-        "selectiveScan": "选择性扫描",
-        "serverUptime": "服务器已运行",
-        "serverDown": "服务器已离线",
-        "scanType": "上次扫描",
-        "status": "扫描错误",
-        "elapsedTime": "用时"
-    },
-    "nowPlaying": {
-        "title": "正在播放",
-        "empty": "无播放内容",
-        "minutesAgo": "%{smart_count} 分钟前"
-    },
-    "help": {
-        "title": "Navidrome 快捷键",
-        "hotkeys": {
-            "show_help": "显示此帮助",
-            "toggle_menu": "显示/隐藏菜单侧栏",
-            "toggle_play": "播放/暂停",
-            "prev_song": "上一首",
-            "next_song": "下一首",
-            "current_song": "转到当前播放",
-            "vol_up": "增大音量",
-            "vol_down": "减小音量",
-            "toggle_love": "添加/移除收藏"
-        }
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "显示的列",
+      "layout": "布局",
+      "grid": "网格",
+      "table": "表格"
     }
+  },
+  "message": {
+    "note": "注意",
+    "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
+    "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过从 Web 界面配置转码选项来执行任意命令。建议禁用此选项，并且仅在需要配置转码选项时启用此功能。",
+    "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
+    "noSimilarSongsFound": "未找到相似歌曲",
+    "startingInstantMix": "即兴推荐加载中...",
+    "noTopSongsFound": "未找到热门歌曲",
+    "noPlaylistsAvailable": "没有有效的歌单",
+    "delete_user_title": "删除用户%{name}",
+    "delete_user_content": "您确定要删除此用户及其相关数据（包括歌单和用户配置）吗？",
+    "remove_missing_title": "移除丢失文件",
+    "remove_missing_content": "您确定要从数据库中移除选中的丢失文件吗？这将永久删除对它们的所有引用，包括播放次数和评分。",
+    "remove_all_missing_title": "移除所有丢失文件",
+    "remove_all_missing_content": "您确定要从数据库中移除所有丢失文件吗？这将永久删除对它们的所有引用，包括播放次数和评分。",
+    "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
+    "notifications_not_available": "此浏览器不支持桌面通知，或者您未通过 https 访问 Navidrome",
+    "lastfmLinkSuccess": "Last.fm 成功关联并启用个性化记录",
+    "lastfmLinkFailure": "Last.fm 无法关联",
+    "lastfmUnlinkSuccess": "Last.fm 已取消关联并禁用个性化记录",
+    "lastfmUnlinkFailure": "Last.fm 无法取消关联",
+    "listenBrainzLinkSuccess": "ListenBrainz 成功关联并启用个性化记录，用户：%{user}",
+    "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz 已取消关联并禁用个性化记录",
+    "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
+    "openIn": {
+      "lastfm": "在 Last.fm 中打开",
+      "musicbrainz": "在 MusicBrainz 中打开"
+    },
+    "lastfmLink": "查看更多…",
+    "shareOriginalFormat": "分享原始格式",
+    "shareDialogTitle": "分享 %{resource} '%{name}'",
+    "shareBatchDialogTitle": "分享 %{smart_count} 项 %{resource}",
+    "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter",
+    "shareSuccess": "URL 已复制: %{url}",
+    "shareFailure": "URL 复制失败: %{url}",
+    "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
+    "downloadOriginalFormat": "下载原始格式"
+  },
+  "menu": {
+    "library": "媒体库",
+    "librarySelector": {
+      "allLibraries": "全部媒体库 (%{count})",
+      "multipleLibraries": "已选 %{selected} 共 %{total} 个媒体库",
+      "selectLibraries": "选择媒体库",
+      "none": "无"
+    },
+    "settings": "设置",
+    "version": "版本",
+    "theme": "主题",
+    "personal": {
+      "name": "个性化",
+      "options": {
+        "theme": "主题",
+        "language": "语言",
+        "defaultView": "默认视图",
+        "desktop_notifications": "桌面通知",
+        "lastfmNotConfigured": "未配置 Last.fm 的 API-Key",
+        "lastfmScrobbling": "启用 Last.fm 的个性化记录",
+        "listenBrainzScrobbling": "启用 ListenBrainz 的个性化记录",
+        "replaygain": "回放增益",
+        "preAmp": "前置放大器 (dB)",
+        "gain": {
+          "none": "禁用增益",
+          "album": "使用专辑增益信息",
+          "track": "使用歌曲增益信息"
+        }
+      }
+    },
+    "albumList": "专辑",
+    "playlists": "歌单",
+    "sharedPlaylists": "共享的歌单",
+    "about": "关于"
+  },
+  "player": {
+    "playListsText": "播放队列",
+    "openText": "打开",
+    "closeText": "关闭",
+    "notContentText": "没有音乐",
+    "clickToPlayText": "点击播放",
+    "clickToPauseText": "点击暂停",
+    "nextTrackText": "下一首",
+    "previousTrackText": "上一首",
+    "reloadText": "重新播放",
+    "volumeText": "音量",
+    "toggleLyricText": "切换歌词",
+    "toggleMiniModeText": "最小化",
+    "destroyText": "关闭",
+    "downloadText": "下载",
+    "removeAudioListsText": "清空播放队列",
+    "clickToDeleteText": "点击删除%{name}",
+    "emptyLyricText": "无歌词",
+    "playModeText": {
+      "order": "顺序播放",
+      "orderLoop": "列表循环",
+      "singleLoop": "单曲循环",
+      "shufflePlay": "随机播放"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "主页",
+      "source": "源代码",
+      "featureRequests": "功能需求",
+      "lastInsightsCollection": "最近的分析收集",
+      "insights": {
+        "disabled": "禁用",
+        "waiting": "等待"
+      }
+    },
+    "tabs": {
+      "about": "关于",
+      "config": "配置"
+    },
+    "config": {
+      "configName": "配置名称",
+      "environmentVariable": "环境变量",
+      "currentValue": "当前值",
+      "configurationFile": "配置文件",
+      "exportToml": "导出配置（TOML）",
+      "exportSuccess": "配置以 TOML 格式导出到剪贴板完成",
+      "exportFailed": "复制配置失败",
+      "devFlagsHeader": "开发标志（可能会更改/删除）",
+      "devFlagsComment": "这些是实验性设置，可能会在未来版本中删除"
+    }
+  },
+  "activity": {
+    "title": "运行情况",
+    "totalScanned": "已完成扫描的文件夹",
+    "quickScan": "快速扫描",
+    "fullScan": "完全扫描",
+    "selectiveScan": "选择性扫描",
+    "serverUptime": "服务器已运行",
+    "serverDown": "服务器已离线",
+    "scanType": "上次扫描",
+    "status": "扫描错误",
+    "elapsedTime": "用时"
+  },
+  "nowPlaying": {
+    "title": "正在播放",
+    "empty": "无播放内容",
+    "minutesAgo": "%{smart_count} 分钟前"
+  },
+  "help": {
+    "title": "Navidrome 快捷键",
+    "hotkeys": {
+      "show_help": "显示此帮助",
+      "toggle_menu": "显示/隐藏菜单侧栏",
+      "toggle_play": "播放/暂停",
+      "prev_song": "上一首",
+      "next_song": "下一首",
+      "current_song": "转到当前播放",
+      "vol_up": "增大音量",
+      "vol_down": "减小音量",
+      "toggle_love": "添加/移除收藏"
+    }
+  }
 }
