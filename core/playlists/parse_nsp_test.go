@@ -160,7 +160,7 @@ var _ = Describe("getPositionFromOffset", func() {
 
 	It("returns correct position at start of new line", func() {
 		data := []byte("line1\nline2")
-		// After \n at offset 5, col resets to 1; offset 6 is 'l' -> col=2
+		// After \n at offset 5, col resets to 1; offset 6 is 'l' -> col=1
 		line, col := getPositionFromOffset(data, 6)
 		Expect(line).To(Equal(2))
 		Expect(col).To(Equal(1))
