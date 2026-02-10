@@ -497,66 +497,39 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
-	usr, _ := request.UserFrom(ctx)
-	if !usr.IsAdmin {
-		pls, err := s.ds.Playlist(ctx).Get(playlistID)
-		if err != nil {
-			return err
-		}
-		if pls.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
+	pls, err := s.checkWritable(ctx, playlistID)
+	if err != nil {
+		return err
 	}
-
-	needsInfoUpdate := name != nil || comment != nil || public != nil
-	needsTrackRefresh := len(idxToRemove) > 0
-
 	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
-		var pls *model.Playlist
-		var err error
 		repo := tx.Playlist(ctx)
-		tracks := repo.Tracks(playlistID, true)
-		if tracks == nil {
-			return fmt.Errorf("%w: playlist '%s'", model.ErrNotFound, playlistID)
-		}
-		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistID, true, false)
+
+		if len(idxToRemove) > 0 {
+			// Must re-fetch with tracks inside the transaction for index-based removal
+			pls, err := repo.GetWithTracks(playlistID, true, false)
+			if err != nil {
+				return err
+			}
 			pls.RemoveTracks(idxToRemove)
 			pls.AddMediaFilesByID(idsToAdd)
-		} else {
-			if len(idsToAdd) > 0 {
-				_, err = tracks.Add(idsToAdd)
-				if err != nil {
+			if len(pls.Tracks) == 0 {
+				if err = repo.Tracks(playlistID, false).DeleteAll(); err != nil {
 					return err
 				}
 			}
-			if needsInfoUpdate {
-				pls, err = repo.Get(playlistID)
-			}
-		}
-		if err != nil {
-			return err
-		}
-		if !needsTrackRefresh && !needsInfoUpdate {
-			return nil
+			return s.updateMetadata(ctx, tx, pls, name, comment, public)
 		}
 
-		if name != nil {
-			pls.Name = *name
-		}
-		if comment != nil {
-			pls.Comment = *comment
-		}
-		if public != nil {
-			pls.Public = *public
-		}
-		// Special case: The playlist is now empty
-		if len(idxToRemove) > 0 && len(pls.Tracks) == 0 {
-			if err = tracks.DeleteAll(); err != nil {
+		if len(idsToAdd) > 0 {
+			if _, err := repo.Tracks(playlistID, false).Add(idsToAdd); err != nil {
 				return err
 			}
 		}
-		return repo.Put(pls)
+		if name == nil && comment == nil && public == nil {
+			return nil
+		}
+		// Reuse the playlist from checkWritable (no tracks loaded, so Put only refreshes counters)
+		return s.updateMetadata(ctx, tx, pls, name, comment, public)
 	})
 }
 
@@ -594,7 +567,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 				return err
 			}
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
-				return rest.ErrPermissionDenied
+				return model.ErrNotAuthorized
 			}
 		} else {
 			pls = &model.Playlist{Name: name}
@@ -611,93 +584,131 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 }
 
 func (s *playlists) Delete(ctx context.Context, id string) error {
-	usr, _ := request.UserFrom(ctx)
-	if !usr.IsAdmin {
-		pls, err := s.ds.Playlist(ctx).Get(id)
-		if err != nil {
-			return err
-		}
-		if pls.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
+	if _, err := s.checkWritable(ctx, id); err != nil {
+		return err
 	}
 	return s.ds.Playlist(ctx).Delete(id)
 }
 
-// --- Track management operations ---
+// --- Permission helpers ---
 
-func (s *playlists) checkTracksEditable(ctx context.Context, pls *model.Playlist) error {
-	if pls.IsSmartPlaylist() {
-		return rest.ErrPermissionDenied
+// checkWritable fetches the playlist and verifies the current user can modify it.
+func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(id)
+	if err != nil {
+		return nil, err
 	}
 	usr, _ := request.UserFrom(ctx)
 	if !usr.IsAdmin && pls.OwnerID != usr.ID {
-		return rest.ErrPermissionDenied
+		return nil, model.ErrNotAuthorized
 	}
-	return nil
+	return pls, nil
 }
 
-func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []string) (int, error) {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.checkWritable(ctx, playlistID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if pls.IsSmartPlaylist() {
+		return nil, model.ErrNotAuthorized
+	}
+	return pls, nil
+}
+
+// updateMetadata applies optional metadata changes to a playlist and persists it.
+// Accepts a DataStore parameter so it can be used inside transactions.
+// The caller is responsible for permission checks.
+func (s *playlists) updateMetadata(ctx context.Context, ds model.DataStore, pls *model.Playlist, name *string, comment *string, public *bool) error {
+	if name != nil {
+		pls.Name = *name
+	}
+	if comment != nil {
+		pls.Comment = *comment
+	}
+	if public != nil {
+		pls.Public = *public
+	}
+	return ds.Playlist(ctx).Put(pls)
+}
+
+// savePlaylist creates a new playlist, assigning the owner from context.
+func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (string, error) {
+	usr, _ := request.UserFrom(ctx)
+	pls.OwnerID = usr.ID
+	pls.ID = "" // Force new creation
+	err := s.ds.Playlist(ctx).Put(pls)
+	if err != nil {
+		return "", err
+	}
+	return pls.ID, nil
+}
+
+// updatePlaylistEntity updates playlist metadata with permission checks.
+// Used by the REST API wrapper.
+func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, cols ...string) error {
+	current, err := s.checkWritable(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrNotFound):
+			return rest.ErrNotFound
+		case errors.Is(err, model.ErrNotAuthorized):
+			return rest.ErrPermissionDenied
+		default:
+			return err
+		}
+	}
+	usr, _ := request.UserFrom(ctx)
+	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
+		return rest.ErrPermissionDenied
+	}
+	// Apply ownership change (admin only)
+	if entity.OwnerID != "" {
+		current.OwnerID = entity.OwnerID
+	}
+	return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
+}
+
+// --- Track management operations ---
+
+func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []string) (int, error) {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).Add(ids)
 }
 
 func (s *playlists) AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error) {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
-	if err != nil {
-		return 0, err
-	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddAlbums(albumIds)
 }
 
 func (s *playlists) AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error) {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
-	if err != nil {
-		return 0, err
-	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddArtists(artistIds)
 }
 
 func (s *playlists) AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error) {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
-	if err != nil {
-		return 0, err
-	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddDiscs(discs)
 }
 
 func (s *playlists) RemoveTracks(ctx context.Context, playlistID string, trackIds []string) error {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
-	if err != nil {
-		return err
-	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).Delete(trackIds...)
 }
 
 func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int, newPos int) error {
-	pls, err := s.ds.Playlist(ctx).Get(playlistID)
-	if err != nil {
-		return err
-	}
-	if err := s.checkTracksEditable(ctx, pls); err != nil {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
@@ -706,61 +717,40 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 // --- REST adapter (follows Share/Library pattern) ---
 
 func (s *playlists) NewRepository(ctx context.Context) rest.Repository {
-	repo := s.ds.Playlist(ctx)
 	return &playlistRepositoryWrapper{
 		ctx:                ctx,
-		PlaylistRepository: repo,
-		persistable:        repo.(rest.Persistable),
+		PlaylistRepository: s.ds.Playlist(ctx),
 		service:            s,
 	}
 }
 
-// playlistRepositoryWrapper wraps the playlist repository to intercept Save, Update, and Delete
-// with business logic (permission checks, owner assignment). It satisfies rest.Repository
-// through the embedded PlaylistRepository (via ResourceRepository), and rest.Persistable
-// through directly implemented methods.
+// playlistRepositoryWrapper wraps the playlist repository as a thin REST-to-service adapter.
+// It satisfies rest.Repository through the embedded PlaylistRepository (via ResourceRepository),
+// and rest.Persistable by delegating to service methods for all mutations.
 type playlistRepositoryWrapper struct {
 	model.PlaylistRepository
-	persistable rest.Persistable
-	ctx         context.Context
-	service     *playlists
+	ctx     context.Context
+	service *playlists
 }
 
 func (r *playlistRepositoryWrapper) Save(entity any) (string, error) {
-	pls := entity.(*model.Playlist)
-	usr, _ := request.UserFrom(r.ctx)
-	pls.OwnerID = usr.ID
-	pls.ID = "" // Force new creation
-	err := r.PlaylistRepository.Put(pls)
-	if err != nil {
-		return "", err
-	}
-	return pls.ID, nil
+	return r.service.savePlaylist(r.ctx, entity.(*model.Playlist))
 }
 
 func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	pls := entity.(*model.Playlist)
-	current, err := r.PlaylistRepository.Get(id)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return rest.ErrNotFound
-		}
-		return err
-	}
-	usr, _ := request.UserFrom(r.ctx)
-	if !usr.IsAdmin {
-		if current.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
-		if pls.OwnerID != "" && pls.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
-	}
-	return r.persistable.Update(id, entity, cols...)
+	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist), cols...)
 }
 
 func (r *playlistRepositoryWrapper) Delete(id string) error {
-	return r.service.Delete(r.ctx, id)
+	err := r.service.Delete(r.ctx, id)
+	switch {
+	case errors.Is(err, model.ErrNotFound):
+		return rest.ErrNotFound
+	case errors.Is(err, model.ErrNotAuthorized):
+		return rest.ErrPermissionDenied
+	default:
+		return err
+	}
 }
 
 func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository {
