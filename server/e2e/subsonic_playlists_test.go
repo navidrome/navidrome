@@ -1,7 +1,11 @@
 package e2e
 
 import (
+	"time"
+
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -423,6 +427,94 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Playlist.Name).To(Equal("Admin Public"))
 			Expect(resp.Playlist.SongCount).To(Equal(int32(2)))
+		})
+	})
+
+	Describe("Smart Playlist Protection", Ordered, func() {
+		var smartPlaylistID string
+		var songID string
+
+		BeforeAll(func() {
+			setupTestDB()
+
+			// Look up a song ID for mutation tests
+			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Sort: "title", Max: 1})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).ToNot(BeEmpty())
+			songID = songs[0].ID
+
+			// Insert a smart playlist directly into the DB
+			smartPls := &model.Playlist{
+				Name:    "Smart Playlist",
+				OwnerID: adminUser.ID,
+				Public:  false,
+				Rules:   &criteria.Criteria{Expression: criteria.Contains{"title": ""}},
+			}
+			Expect(ds.Playlist(ctx).Put(smartPls)).To(Succeed())
+			smartPlaylistID = smartPls.ID
+		})
+
+		It("getPlaylist returns smart playlist with readonly flag and validUntil", func() {
+			resp := doReq("getPlaylist", "id", smartPlaylistID)
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.Playlist.Name).To(Equal("Smart Playlist"))
+			Expect(resp.Playlist.OpenSubsonicPlaylist).ToNot(BeNil())
+			Expect(resp.Playlist.OpenSubsonicPlaylist.Readonly).To(BeTrue())
+			expectedValidUntil := time.Now().Add(conf.Server.SmartPlaylistRefreshDelay)
+			Expect(*resp.Playlist.OpenSubsonicPlaylist.ValidUntil).To(BeTemporally("~", expectedValidUntil, time.Second))
+		})
+
+		It("createPlaylist rejects replacing tracks on smart playlist", func() {
+			resp := doReq("createPlaylist", "playlistId", smartPlaylistID, "songId", songID)
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
+			Expect(resp.Error.Code).To(Equal(int32(50)))
+		})
+
+		It("updatePlaylist rejects adding songs to smart playlist", func() {
+			resp := doReq("updatePlaylist", "playlistId", smartPlaylistID,
+				"songIdToAdd", songID)
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
+			Expect(resp.Error.Code).To(Equal(int32(50)))
+		})
+
+		It("updatePlaylist rejects removing songs from smart playlist", func() {
+			resp := doReq("updatePlaylist", "playlistId", smartPlaylistID,
+				"songIndexToRemove", "0")
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
+			Expect(resp.Error.Code).To(Equal(int32(50)))
+		})
+
+		It("updatePlaylist allows renaming smart playlist", func() {
+			resp := doReq("updatePlaylist", "playlistId", smartPlaylistID,
+				"name", "Renamed Smart")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			resp = doReq("getPlaylist", "id", smartPlaylistID)
+			Expect(resp.Playlist.Name).To(Equal("Renamed Smart"))
+		})
+
+		It("updatePlaylist allows setting comment on smart playlist", func() {
+			resp := doReq("updatePlaylist", "playlistId", smartPlaylistID,
+				"comment", "Auto-generated playlist")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			resp = doReq("getPlaylist", "id", smartPlaylistID)
+			Expect(resp.Playlist.Comment).To(Equal("Auto-generated playlist"))
+		})
+
+		It("deletePlaylist can delete smart playlist", func() {
+			resp := doReq("deletePlaylist", "id", smartPlaylistID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			resp = doReq("getPlaylist", "id", smartPlaylistID)
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
 		})
 	})
 })
