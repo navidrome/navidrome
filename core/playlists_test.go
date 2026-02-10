@@ -711,6 +711,51 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("Update", func() {
+		var mockTracks *mockedPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &mockedPlaylistTrackRepo{addCount: 2}
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+					"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+				},
+				tracks: mockTracks,
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("allows owner to update their playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("allows admin to update any playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "pls-other", &newName, nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("denies non-owner, non-admin from updating", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("returns error when playlist not found", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "nonexistent", &newName, nil, nil, nil, nil)
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+	})
+
 	Describe("AddTracks", func() {
 		var mockTracks *mockedPlaylistTrackRepo
 

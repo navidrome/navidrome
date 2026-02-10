@@ -497,6 +497,17 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
+	usr, _ := request.UserFrom(ctx)
+	if !usr.IsAdmin {
+		pls, err := s.ds.Playlist(ctx).Get(playlistID)
+		if err != nil {
+			return err
+		}
+		if pls.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+	}
+
 	needsInfoUpdate := name != nil || comment != nil || public != nil
 	needsTrackRefresh := len(idxToRemove) > 0
 
