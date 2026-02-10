@@ -318,6 +318,11 @@ func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(func() {
+		// Wait for any background scan (e.g. from startScan endpoint) to finish
+		// before config cleanup runs, to avoid a data race on conf.Server.
+		Eventually(scanner.IsScanning).Should(BeFalse())
+	})
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.DevExternalScanner = false
 
