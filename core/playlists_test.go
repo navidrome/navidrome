@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
@@ -615,6 +616,314 @@ var _ = Describe("Playlists", func() {
 			Expect(core.InPlaylistsPath(folder2)).To(BeTrue())
 		})
 	})
+
+	// --- Tests for service methods added during the playlist refactoring ---
+
+	Describe("Delete", func() {
+		var mockTracks *mockedPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &mockedPlaylistTrackRepo{addCount: 3}
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				},
+				tracks: mockTracks,
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("allows owner to delete their playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Delete(ctx, "pls-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+		})
+
+		It("allows admin to delete any playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
+			err := ps.Delete(ctx, "pls-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+		})
+
+		It("denies non-owner, non-admin from deleting", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			err := ps.Delete(ctx, "pls-1")
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(mockPlsRepo.deleted).To(BeEmpty())
+		})
+
+		It("returns error when playlist not found", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Delete(ctx, "nonexistent")
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+	})
+
+	Describe("Create", func() {
+		BeforeEach(func() {
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "Existing", OwnerID: "user-1"},
+					"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
+				},
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("creates a new playlist with owner set from context", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			id, err := ps.Create(ctx, "", "New Playlist", []string{"song-1", "song-2"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(id).ToNot(BeEmpty())
+			Expect(mockPlsRepo.last.Name).To(Equal("New Playlist"))
+			Expect(mockPlsRepo.last.OwnerID).To(Equal("user-1"))
+		})
+
+		It("replaces tracks on existing playlist when owner matches", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			id, err := ps.Create(ctx, "pls-1", "", []string{"song-3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(id).To(Equal("pls-1"))
+			Expect(mockPlsRepo.last.Tracks).To(HaveLen(1))
+		})
+
+		It("allows admin to replace tracks on any playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
+			id, err := ps.Create(ctx, "pls-2", "", []string{"song-3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(id).To(Equal("pls-2"))
+		})
+
+		It("denies non-owner, non-admin from replacing tracks on existing playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "pls-2", "", []string{"song-3"})
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("returns error when existing playlistId not found", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "nonexistent", "", []string{"song-1"})
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+	})
+
+	Describe("AddTracks", func() {
+		var mockTracks *mockedPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &mockedPlaylistTrackRepo{addCount: 2}
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+					"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+				},
+				tracks: mockTracks,
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("allows owner to add tracks", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			count, err := ps.AddTracks(ctx, "pls-1", []string{"song-1", "song-2"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(2))
+			Expect(mockTracks.addedIds).To(ConsistOf("song-1", "song-2"))
+		})
+
+		It("allows admin to add tracks to any playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
+			count, err := ps.AddTracks(ctx, "pls-other", []string{"song-1"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(2))
+		})
+
+		It("denies non-owner, non-admin", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			_, err := ps.AddTracks(ctx, "pls-1", []string{"song-1"})
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("denies editing smart playlists", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.AddTracks(ctx, "pls-smart", []string{"song-1"})
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("returns error when playlist not found", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.AddTracks(ctx, "nonexistent", []string{"song-1"})
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+	})
+
+	Describe("RemoveTracks", func() {
+		var mockTracks *mockedPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &mockedPlaylistTrackRepo{}
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				},
+				tracks: mockTracks,
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("allows owner to remove tracks", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.RemoveTracks(ctx, "pls-1", []string{"track-1", "track-2"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockTracks.deletedIds).To(ConsistOf("track-1", "track-2"))
+		})
+
+		It("denies on smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.RemoveTracks(ctx, "pls-smart", []string{"track-1"})
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("denies non-owner", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			err := ps.RemoveTracks(ctx, "pls-1", []string{"track-1"})
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+	})
+
+	Describe("ReorderTrack", func() {
+		var mockTracks *mockedPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &mockedPlaylistTrackRepo{}
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				},
+				tracks: mockTracks,
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		It("allows owner to reorder", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.ReorderTrack(ctx, "pls-1", 1, 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockTracks.reordered).To(BeTrue())
+		})
+
+		It("denies on smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.ReorderTrack(ctx, "pls-smart", 1, 3)
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+	})
+
+	Describe("NewRepository", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			mockPlsRepo = mockedPlaylistRepo{
+				entities: map[string]*model.Playlist{
+					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				},
+			}
+			ds.MockedPlaylist = &mockPlsRepo
+			ps = core.NewPlaylists(ds)
+		})
+
+		Describe("Save", func() {
+			It("sets the owner from the context user", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "New Playlist"}
+				id, err := repo.Save(pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(id).ToNot(BeEmpty())
+				Expect(pls.OwnerID).To(Equal("user-1"))
+			})
+
+			It("forces a new creation by clearing ID", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{ID: "should-be-cleared", Name: "New"}
+				_, err := repo.Save(pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ID).ToNot(Equal("should-be-cleared"))
+			})
+		})
+
+		Describe("Update", func() {
+			It("allows owner to update their playlist", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Updated"}
+				err := repo.Update("pls-1", pls)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("allows admin to update any playlist", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Updated"}
+				err := repo.Update("pls-1", pls)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("denies non-owner, non-admin", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Updated"}
+				err := repo.Update("pls-1", pls)
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("denies regular user from changing ownership", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Updated", OwnerID: "other-user"}
+				err := repo.Update("pls-1", pls)
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("returns rest.ErrNotFound when playlist doesn't exist", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Updated"}
+				err := repo.Update("nonexistent", pls)
+				Expect(err).To(Equal(rest.ErrNotFound))
+			})
+		})
+
+		Describe("Delete", func() {
+			It("delegates to service Delete with permission checks", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				err := repo.Delete("pls-1")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+			})
+
+			It("denies non-owner", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				err := repo.Delete("pls-1")
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+		})
+	})
 })
 
 // mockedMediaFileRepo's FindByPaths method returns MediaFiles for the given paths.
@@ -695,9 +1004,13 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 }
 
 type mockedPlaylistRepo struct {
-	last *model.Playlist
-	data map[string]*model.Playlist // keyed by path
 	model.PlaylistRepository
+	last     *model.Playlist
+	data     map[string]*model.Playlist // keyed by path
+	entities map[string]*model.Playlist // keyed by ID
+	deleted  []string
+	tracks   *mockedPlaylistTrackRepo
+	updated  map[string]any
 }
 
 func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
@@ -710,6 +1023,96 @@ func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
 }
 
 func (r *mockedPlaylistRepo) Put(pls *model.Playlist) error {
+	if pls.ID == "" {
+		pls.ID = "new-id"
+	}
 	r.last = pls
+	if r.entities != nil {
+		r.entities[pls.ID] = pls
+	}
 	return nil
+}
+
+func (r *mockedPlaylistRepo) Get(id string) (*model.Playlist, error) {
+	if r.entities != nil {
+		if pls, ok := r.entities[id]; ok {
+			return pls, nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
+
+func (r *mockedPlaylistRepo) GetWithTracks(id string, _, _ bool) (*model.Playlist, error) {
+	return r.Get(id)
+}
+
+func (r *mockedPlaylistRepo) Delete(id string) error {
+	r.deleted = append(r.deleted, id)
+	return nil
+}
+
+func (r *mockedPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
+	return r.tracks
+}
+
+// rest.Persistable methods (needed by playlistRepositoryWrapper)
+func (r *mockedPlaylistRepo) Save(entity any) (string, error) {
+	pls := entity.(*model.Playlist)
+	return pls.ID, r.Put(pls)
+}
+
+func (r *mockedPlaylistRepo) Update(id string, entity any, _ ...string) error {
+	if r.updated == nil {
+		r.updated = make(map[string]any)
+	}
+	r.updated[id] = entity
+	return nil
+}
+
+type mockedPlaylistTrackRepo struct {
+	model.PlaylistTrackRepository
+	addedIds   []string
+	deletedIds []string
+	reordered  bool
+	addCount   int
+	err        error
+}
+
+func (r *mockedPlaylistTrackRepo) Add(ids []string) (int, error) {
+	r.addedIds = append(r.addedIds, ids...)
+	if r.err != nil {
+		return 0, r.err
+	}
+	return r.addCount, nil
+}
+
+func (r *mockedPlaylistTrackRepo) AddAlbums(_ []string) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	return r.addCount, nil
+}
+
+func (r *mockedPlaylistTrackRepo) AddArtists(_ []string) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	return r.addCount, nil
+}
+
+func (r *mockedPlaylistTrackRepo) AddDiscs(_ []model.DiscID) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	return r.addCount, nil
+}
+
+func (r *mockedPlaylistTrackRepo) Delete(ids ...string) error {
+	r.deletedIds = append(r.deletedIds, ids...)
+	return r.err
+}
+
+func (r *mockedPlaylistTrackRepo) Reorder(_, _ int) error {
+	r.reordered = true
+	return r.err
 }
