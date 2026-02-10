@@ -23,6 +23,7 @@ var fieldMap = map[string]*mappedField{
 	"releasedate":          {field: "media_file.release_date"},
 	"size":                 {field: "media_file.size"},
 	"compilation":          {field: "media_file.compilation"},
+	"explicitstatus":       {field: "media_file.explicit_status"},
 	"dateadded":            {field: "media_file.created_at"},
 	"datemodified":         {field: "media_file.updated_at"},
 	"discsubtitle":         {field: "media_file.disc_subtitle"},
