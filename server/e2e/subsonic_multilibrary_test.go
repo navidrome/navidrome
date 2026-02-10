@@ -6,9 +6,9 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
@@ -53,7 +53,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		// Run incremental scan to import lib2 content (lib1 files unchanged → skipped)
 		s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			core.NewPlaylists(ds), metrics.NewNoopInstance())
+			playlists.New(ds), metrics.NewNoopInstance())
 		_, err = s.ScanAll(ctx, false)
 		Expect(err).ToNot(HaveOccurred())
 

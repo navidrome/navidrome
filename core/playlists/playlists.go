@@ -1,4 +1,4 @@
-package core
+package playlists
 
 import (
 	"cmp"
@@ -60,11 +60,11 @@ type playlists struct {
 	ds model.DataStore
 }
 
-func NewPlaylists(ds model.DataStore) Playlists {
+func New(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
 }
 
-func InPlaylistsPath(folder model.Folder) bool {
+func InPath(folder model.Folder) bool {
 	if conf.Server.PlaylistsPath == "" {
 		return true
 	}

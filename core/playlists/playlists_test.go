@@ -1,4 +1,4 @@
-package core_test
+package playlists_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -22,7 +22,7 @@ import (
 
 var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
-	var ps core.Playlists
+	var ps playlists.Playlists
 	var mockPlsRepo mockedPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
@@ -40,7 +40,7 @@ var _ = Describe("Playlists", func() {
 	Describe("ImportFile", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			// Set up library with the actual library path that matches the folder
@@ -150,7 +150,7 @@ var _ = Describe("Playlists", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
-				ps = core.NewPlaylists(ds)
+				ps = playlists.New(ds)
 
 				// Create the playlist file on disk with the filesystem's normalization form
 				plsFile := tmpDir + "/" + filesystemName + ".m3u"
@@ -210,7 +210,7 @@ var _ = Describe("Playlists", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = core.NewPlaylists(ds)
+				ps = playlists.New(ds)
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -366,7 +366,7 @@ var _ = Describe("Playlists", func() {
 					},
 				}
 				// Recreate playlists service to pick up new mock
-				ps = core.NewPlaylists(ds)
+				ps = playlists.New(ds)
 
 				// Create playlist in music library that references both tracks
 				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
@@ -409,7 +409,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
@@ -571,7 +571,7 @@ var _ = Describe("Playlists", func() {
 
 	})
 
-	Describe("InPlaylistsPath", func() {
+	Describe("InPath", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
@@ -585,27 +585,27 @@ var _ = Describe("Playlists", func() {
 
 		It("returns true if PlaylistsPath is empty", func() {
 			conf.Server.PlaylistsPath = ""
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
 			conf.Server.PlaylistsPath = "**/**"
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other/**:playlists/**"
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other"
-			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
+			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
 			conf.Server.PlaylistsPath = "."
-			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
+			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{
 				LibraryPath: "/music",
@@ -613,7 +613,7 @@ var _ = Describe("Playlists", func() {
 				Name:        ".",
 			}
 
-			Expect(core.InPlaylistsPath(folder2)).To(BeTrue())
+			Expect(playlists.InPath(folder2)).To(BeTrue())
 		})
 	})
 
@@ -631,7 +631,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("allows owner to delete their playlist", func() {
@@ -671,7 +671,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("creates a new playlist with owner set from context", func() {
@@ -724,7 +724,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("allows owner to update their playlist", func() {
@@ -771,7 +771,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("allows owner to add tracks", func() {
@@ -822,7 +822,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("allows owner to remove tracks", func() {
@@ -859,7 +859,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		It("allows owner to reorder", func() {
@@ -886,7 +886,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.New(ds)
 		})
 
 		Describe("Save", func() {
