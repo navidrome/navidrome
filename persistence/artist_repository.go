@@ -196,7 +196,15 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 
 	query = r.applyLibraryFilterToArtistQuery(query)
 	query = query.GroupBy("artist.id")
-	return r.withAnnotation(query, "artist.id")
+	query = r.withAnnotation(query, "artist.id")
+	if db.IsPostgres() {
+		query = query.GroupBy(
+			"annotation.user_id", "annotation.item_id", "annotation.item_type",
+			"annotation.starred", "annotation.starred_at", "annotation.rating",
+			"annotation.rated_at", "annotation.play_count", "annotation.play_date",
+		)
+	}
+	return query
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
