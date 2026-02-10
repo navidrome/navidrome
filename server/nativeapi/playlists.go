@@ -191,7 +191,7 @@ func reorderItem(pls core.Playlists) http.HandlerFunc {
 			return
 		}
 		err = pls.ReorderTrack(ctx, playlistId, id, newPos)
-		if errors.Is(err, rest.ErrPermissionDenied) {
+		if errors.Is(err, model.ErrNotAuthorized) {
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}

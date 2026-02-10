@@ -69,6 +69,14 @@ var (
 		Name:     "Admin User",
 		IsAdmin:  true,
 	}
+
+	// Regular (non-admin) user for permission tests
+	regularUser = model.User{
+		ID:       "regular-1",
+		UserName: "regular",
+		Name:     "Regular User",
+		IsAdmin:  false,
+	}
 )
 
 func createFS(files fstest.MapFS) storagetest.FakeFS {
@@ -288,14 +296,24 @@ var _ = BeforeSuite(func() {
 	adminUserWithPass.NewPassword = "password"
 	Expect(initDS.User(ctx).Put(&adminUserWithPass)).To(Succeed())
 
+	regularUserWithPass := regularUser
+	regularUserWithPass.NewPassword = "password"
+	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
+
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
 
 	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	adminUser.Libraries = loadedUser.Libraries
+
+	loadedRegular, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
+	Expect(err).ToNot(HaveOccurred())
+	regularUser.Libraries = loadedRegular.Libraries
+
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	buildTestFS()

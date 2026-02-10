@@ -290,6 +290,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorGeneric, err.Error())
 	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
+	case errors.Is(err, model.ErrNotAuthorized):
+		err = newError(responses.ErrorAuthorizationFail)
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}

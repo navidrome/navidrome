@@ -651,7 +651,7 @@ var _ = Describe("Playlists", func() {
 		It("denies non-owner, non-admin from deleting", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			err := ps.Delete(ctx, "pls-1")
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 			Expect(mockPlsRepo.deleted).To(BeEmpty())
 		})
 
@@ -701,7 +701,7 @@ var _ = Describe("Playlists", func() {
 		It("denies non-owner, non-admin from replacing tracks on existing playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.Create(ctx, "pls-2", "", []string{"song-3"})
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("returns error when existing playlistId not found", func() {
@@ -745,7 +745,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			newName := "Updated Name"
 			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("returns error when playlist not found", func() {
@@ -792,13 +792,13 @@ var _ = Describe("Playlists", func() {
 		It("denies non-owner, non-admin", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "pls-1", []string{"song-1"})
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("denies editing smart playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "pls-smart", []string{"song-1"})
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("returns error when playlist not found", func() {
@@ -835,13 +835,13 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveTracks(ctx, "pls-smart", []string{"track-1"})
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("denies non-owner", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			err := ps.RemoveTracks(ctx, "pls-1", []string{"track-1"})
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 	})
 
@@ -872,7 +872,7 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.ReorderTrack(ctx, "pls-smart", 1, 3)
-			Expect(err).To(Equal(rest.ErrPermissionDenied))
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 	})
 
@@ -1055,7 +1055,6 @@ type mockedPlaylistRepo struct {
 	entities map[string]*model.Playlist // keyed by ID
 	deleted  []string
 	tracks   *mockedPlaylistTrackRepo
-	updated  map[string]any
 }
 
 func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
@@ -1098,20 +1097,6 @@ func (r *mockedPlaylistRepo) Delete(id string) error {
 
 func (r *mockedPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
 	return r.tracks
-}
-
-// rest.Persistable methods (needed by playlistRepositoryWrapper)
-func (r *mockedPlaylistRepo) Save(entity any) (string, error) {
-	pls := entity.(*model.Playlist)
-	return pls.ID, r.Put(pls)
-}
-
-func (r *mockedPlaylistRepo) Update(id string, entity any, _ ...string) error {
-	if r.updated == nil {
-		r.updated = make(map[string]any)
-	}
-	r.updated[id] = entity
-	return nil
 }
 
 type mockedPlaylistTrackRepo struct {
