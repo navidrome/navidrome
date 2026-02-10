@@ -79,7 +79,7 @@ func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[str
 		Columns(
 			"case when client = 'NavidromeUI' then name else client end as player",
 			"count(*) as count",
-		).GroupBy("client")
+		).GroupBy("client", "name")
 	var res []struct {
 		Player string
 		Count  int64
