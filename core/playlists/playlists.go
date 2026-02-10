@@ -96,6 +96,9 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			if err != nil {
 				return err
 			}
+			if pls.IsSmartPlaylist() {
+				return model.ErrNotAuthorized
+			}
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
 				return model.ErrNotAuthorized
 			}
@@ -123,7 +126,14 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
-	pls, err := s.checkWritable(ctx, playlistID)
+	var pls *model.Playlist
+	var err error
+	hasTrackChanges := len(idsToAdd) > 0 || len(idxToRemove) > 0
+	if hasTrackChanges {
+		pls, err = s.checkTracksEditable(ctx, playlistID)
+	} else {
+		pls, err = s.checkWritable(ctx, playlistID)
+	}
 	if err != nil {
 		return err
 	}

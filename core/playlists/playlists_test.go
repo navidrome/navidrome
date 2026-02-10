@@ -76,6 +76,8 @@ var _ = Describe("Playlists", func() {
 				entities: map[string]*model.Playlist{
 					"pls-1": {ID: "pls-1", Name: "Existing", OwnerID: "user-1"},
 					"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
+					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 				},
 			}
 			ds.MockedPlaylist = &mockPlsRepo
@@ -117,6 +119,12 @@ var _ = Describe("Playlists", func() {
 			_, err := ps.Create(ctx, "nonexistent", "", []string{"song-1"})
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
+
+		It("denies replacing tracks on a smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "pls-smart", "", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
 	})
 
 	Describe("Update", func() {
@@ -128,6 +136,8 @@ var _ = Describe("Playlists", func() {
 				entities: map[string]*model.Playlist{
 					"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 					"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 				},
 				tracks: mockTracks,
 			}
@@ -161,6 +171,25 @@ var _ = Describe("Playlists", func() {
 			newName := "Updated Name"
 			err := ps.Update(ctx, "nonexistent", &newName, nil, nil, nil, nil)
 			Expect(err).To(Equal(model.ErrNotFound))
+		})
+
+		It("denies adding tracks to a smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-smart", nil, nil, nil, []string{"song-1"}, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies removing tracks from a smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-smart", nil, nil, nil, nil, []int{0})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("allows metadata updates on a smart playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newName := "Updated Smart"
+			err := ps.Update(ctx, "pls-smart", &newName, nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
