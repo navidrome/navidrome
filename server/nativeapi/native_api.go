@@ -121,7 +121,7 @@ func (api *Router) RX(r chi.Router, pathPrefix string, constructor rest.Reposito
 
 func (api *Router) addPlaylistRoute(r chi.Router) {
 	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Resource(ctx, model.Playlist{})
+		return api.playlists.NewRepository(ctx)
 	}
 
 	r.Route("/playlist", func(r chi.Router) {
@@ -146,26 +146,26 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 func (api *Router) addPlaylistTrackRoute(r chi.Router) {
 	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			getPlaylist(api.ds)(w, r)
+			getPlaylist(api.playlists)(w, r)
 		})
 		r.With(server.URLParamsMiddleware).Route("/", func(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteFromPlaylist(api.ds)(w, r)
+				deleteFromPlaylist(api.playlists)(w, r)
 			})
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				addToPlaylist(api.ds)(w, r)
+				addToPlaylist(api.playlists)(w, r)
 			})
 		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				getPlaylistTrack(api.ds)(w, r)
+				getPlaylistTrack(api.playlists)(w, r)
 			})
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
-				reorderItem(api.ds)(w, r)
+				reorderItem(api.playlists)(w, r)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteFromPlaylist(api.ds)(w, r)
+				deleteFromPlaylist(api.playlists)(w, r)
 			})
 		})
 	})
@@ -173,7 +173,7 @@ func (api *Router) addPlaylistTrackRoute(r chi.Router) {
 
 func (api *Router) addSongPlaylistsRoute(r chi.Router) {
 	r.With(server.URLParamsMiddleware).Get("/song/{id}/playlists", func(w http.ResponseWriter, r *http.Request) {
-		getSongPlaylists(api.ds)(w, r)
+		getSongPlaylists(api.playlists)(w, r)
 	})
 }
 
