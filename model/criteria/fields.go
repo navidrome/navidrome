@@ -23,6 +23,7 @@ var fieldMap = map[string]*mappedField{
 	"releasedate":          {field: "media_file.release_date"},
 	"size":                 {field: "media_file.size"},
 	"compilation":          {field: "media_file.compilation"},
+	"explicitstatus":       {field: "media_file.explicit_status"},
 	"dateadded":            {field: "media_file.created_at"},
 	"datemodified":         {field: "media_file.updated_at"},
 	"discsubtitle":         {field: "media_file.disc_subtitle"},
@@ -54,7 +55,6 @@ var fieldMap = map[string]*mappedField{
 	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
 	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
 	"library_id":           {field: "media_file.library_id", numeric: true},
-	"explicit_status":      {field: "media_file.explicit_status"},
 
 	// Backward compatibility: albumtype is an alias for releasetype tag
 	"albumtype": {field: "releasetype", isTag: true},
