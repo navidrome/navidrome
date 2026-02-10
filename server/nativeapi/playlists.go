@@ -11,7 +11,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
@@ -19,7 +19,7 @@ import (
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-func getPlaylist(pls core.Playlists) http.HandlerFunc {
+func getPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	wrapper := func(handler restHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			constructor := func(ctx context.Context) rest.Repository {
@@ -43,7 +43,7 @@ func getPlaylist(pls core.Playlists) http.HandlerFunc {
 	}
 }
 
-func getPlaylistTrack(pls core.Playlists) http.HandlerFunc {
+func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
 	wrapper := func(handler restHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			constructor := func(ctx context.Context) rest.Repository {
@@ -58,10 +58,10 @@ func getPlaylistTrack(pls core.Playlists) http.HandlerFunc {
 	return wrapper(rest.Get)
 }
 
-func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
+func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		pls, err := playlists.ImportM3U(ctx, r.Body)
+		pl, err := pls.ImportM3U(ctx, r.Body)
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
 			// TODO: consider returning StatusBadRequest for playlists that are malformed
@@ -69,7 +69,7 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(pls.ToM3U8()))
+		_, err = w.Write([]byte(pl.ToM3U8()))
 		if err != nil {
 			log.Error(ctx, "Error sending m3u contents", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	}
 }
 
-func handleExportPlaylist(pls core.Playlists) http.HandlerFunc {
+func handleExportPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		plsId := chi.URLParam(r, "playlistId")
@@ -107,7 +107,7 @@ func handleExportPlaylist(pls core.Playlists) http.HandlerFunc {
 	}
 }
 
-func deleteFromPlaylist(pls core.Playlists) http.HandlerFunc {
+func deleteFromPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
@@ -127,7 +127,7 @@ func deleteFromPlaylist(pls core.Playlists) http.HandlerFunc {
 	}
 }
 
-func addToPlaylist(pls core.Playlists) http.HandlerFunc {
+func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	type addTracksPayload struct {
 		Ids       []string       `json:"ids"`
 		AlbumIds  []string       `json:"albumIds"`
@@ -175,7 +175,7 @@ func addToPlaylist(pls core.Playlists) http.HandlerFunc {
 	}
 }
 
-func reorderItem(pls core.Playlists) http.HandlerFunc {
+func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 	type reorderPayload struct {
 		InsertBefore string `json:"insert_before"`
 	}
@@ -217,7 +217,7 @@ func reorderItem(pls core.Playlists) http.HandlerFunc {
 	}
 }
 
-func getSongPlaylists(svc core.Playlists) http.HandlerFunc {
+func getSongPlaylists(svc playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p := req.Params(r)
 		trackId, _ := p.String(":id")

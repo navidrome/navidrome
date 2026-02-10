@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -318,7 +319,7 @@ var _ = BeforeSuite(func() {
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(initDS), metrics.NewNoopInstance())
+		playlists.New(initDS), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -352,7 +353,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS + noop stubs
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(ds), metrics.NewNoopInstance())
+		playlists.New(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -362,7 +363,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		core.NewPlaylists(ds),
+		playlists.New(ds),
 		noopPlayTracker{},
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
