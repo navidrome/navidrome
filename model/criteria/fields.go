@@ -54,6 +54,7 @@ var fieldMap = map[string]*mappedField{
 	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
 	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
 	"library_id":           {field: "media_file.library_id", numeric: true},
+	"explicit_status":      {field: "media_file.explicit_status"},
 
 	// Backward compatibility: albumtype is an alias for releasetype tag
 	"albumtype": {field: "releasetype", isTag: true},
