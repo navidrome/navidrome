@@ -140,15 +140,7 @@ func (r *playlistTrackRepository) NewInstance() any {
 	return &model.PlaylistTrack{}
 }
 
-func (r *playlistTrackRepository) isTracksEditable() bool {
-	return r.playlistRepo.isWritable(r.playlistId) && !r.playlist.IsSmartPlaylist()
-}
-
 func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
-	if !r.isTracksEditable() {
-		return 0, rest.ErrPermissionDenied
-	}
-
 	if len(mediaFileIds) > 0 {
 		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
 	} else {
@@ -209,9 +201,6 @@ func (r *playlistTrackRepository) getTracks() ([]string, error) {
 }
 
 func (r *playlistTrackRepository) Delete(ids ...string) error {
-	if !r.isTracksEditable() {
-		return rest.ErrPermissionDenied
-	}
 	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
 	if err != nil {
 		return err
@@ -221,9 +210,6 @@ func (r *playlistTrackRepository) Delete(ids ...string) error {
 }
 
 func (r *playlistTrackRepository) DeleteAll() error {
-	if !r.isTracksEditable() {
-		return rest.ErrPermissionDenied
-	}
 	err := r.delete(Eq{"playlist_id": r.playlistId})
 	if err != nil {
 		return err
@@ -233,9 +219,6 @@ func (r *playlistTrackRepository) DeleteAll() error {
 }
 
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
-	if !r.isTracksEditable() {
-		return rest.ErrPermissionDenied
-	}
 	ids, err := r.getTracks()
 	if err != nil {
 		return err

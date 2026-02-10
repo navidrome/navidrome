@@ -16,6 +16,7 @@ import (
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -27,9 +28,32 @@ import (
 )
 
 type Playlists interface {
-	ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error)
+	// Reads
+	GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error)
+	Get(ctx context.Context, id string) (*model.Playlist, error)
+	GetWithTracks(ctx context.Context, id string) (*model.Playlist, error)
+	GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error)
+
+	// Mutations
+	Create(ctx context.Context, playlistId string, name string, ids []string) (string, error)
+	Delete(ctx context.Context, id string) error
 	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
+
+	// Track management
+	AddTracks(ctx context.Context, playlistID string, ids []string) (int, error)
+	AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error)
+	AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error)
+	AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error)
+	RemoveTracks(ctx context.Context, playlistID string, trackIds []string) error
+	ReorderTrack(ctx context.Context, playlistID string, pos int, newPos int) error
+
+	// Import
+	ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error)
 	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
+
+	// REST adapters (follows Share/Library pattern)
+	NewRepository(ctx context.Context) rest.Repository
+	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
 }
 
 type playlists struct {
@@ -523,6 +547,218 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		}
 		return repo.Put(pls)
 	})
+}
+
+// --- Read operations ---
+
+func (s *playlists) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error) {
+	return s.ds.Playlist(ctx).GetAll(options...)
+}
+
+func (s *playlists) Get(ctx context.Context, id string) (*model.Playlist, error) {
+	return s.ds.Playlist(ctx).Get(id)
+}
+
+func (s *playlists) GetWithTracks(ctx context.Context, id string) (*model.Playlist, error) {
+	return s.ds.Playlist(ctx).GetWithTracks(id, true, false)
+}
+
+func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error) {
+	return s.ds.Playlist(ctx).GetPlaylists(mediaFileId)
+}
+
+// --- Mutation operations ---
+
+// Create creates a new playlist (when name is provided) or replaces tracks on an existing
+// playlist (when playlistId is provided). This matches the Subsonic createPlaylist semantics.
+func (s *playlists) Create(ctx context.Context, playlistId string, name string, ids []string) (string, error) {
+	usr, _ := request.UserFrom(ctx)
+	err := s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		var pls *model.Playlist
+		var err error
+
+		if playlistId != "" {
+			pls, err = tx.Playlist(ctx).Get(playlistId)
+			if err != nil {
+				return err
+			}
+			if !usr.IsAdmin && pls.OwnerID != usr.ID {
+				return rest.ErrPermissionDenied
+			}
+		} else {
+			pls = &model.Playlist{Name: name}
+			pls.OwnerID = usr.ID
+		}
+		pls.Tracks = nil
+		pls.AddMediaFilesByID(ids)
+
+		err = tx.Playlist(ctx).Put(pls)
+		playlistId = pls.ID
+		return err
+	})
+	return playlistId, err
+}
+
+func (s *playlists) Delete(ctx context.Context, id string) error {
+	usr, _ := request.UserFrom(ctx)
+	if !usr.IsAdmin {
+		pls, err := s.ds.Playlist(ctx).Get(id)
+		if err != nil {
+			return err
+		}
+		if pls.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+	}
+	return s.ds.Playlist(ctx).Delete(id)
+}
+
+// --- Track management operations ---
+
+func (s *playlists) checkTracksEditable(ctx context.Context, pls *model.Playlist) error {
+	if pls.IsSmartPlaylist() {
+		return rest.ErrPermissionDenied
+	}
+	usr, _ := request.UserFrom(ctx)
+	if !usr.IsAdmin && pls.OwnerID != usr.ID {
+		return rest.ErrPermissionDenied
+	}
+	return nil
+}
+
+func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []string) (int, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return 0, err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).Add(ids)
+}
+
+func (s *playlists) AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return 0, err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddAlbums(albumIds)
+}
+
+func (s *playlists) AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return 0, err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddArtists(artistIds)
+}
+
+func (s *playlists) AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return 0, err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddDiscs(discs)
+}
+
+func (s *playlists) RemoveTracks(ctx context.Context, playlistID string, trackIds []string) error {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).Delete(trackIds...)
+}
+
+func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int, newPos int) error {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return err
+	}
+	if err := s.checkTracksEditable(ctx, pls); err != nil {
+		return err
+	}
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
+}
+
+// --- REST adapter (follows Share/Library pattern) ---
+
+func (s *playlists) NewRepository(ctx context.Context) rest.Repository {
+	repo := s.ds.Playlist(ctx)
+	return &playlistRepositoryWrapper{
+		ctx:                ctx,
+		PlaylistRepository: repo,
+		persistable:        repo.(rest.Persistable),
+		service:            s,
+	}
+}
+
+// playlistRepositoryWrapper wraps the playlist repository to intercept Save, Update, and Delete
+// with business logic (permission checks, owner assignment). It satisfies rest.Repository
+// through the embedded PlaylistRepository (via ResourceRepository), and rest.Persistable
+// through directly implemented methods.
+type playlistRepositoryWrapper struct {
+	model.PlaylistRepository
+	persistable rest.Persistable
+	ctx         context.Context
+	service     *playlists
+}
+
+func (r *playlistRepositoryWrapper) Save(entity any) (string, error) {
+	pls := entity.(*model.Playlist)
+	usr, _ := request.UserFrom(r.ctx)
+	pls.OwnerID = usr.ID
+	pls.ID = "" // Force new creation
+	err := r.PlaylistRepository.Put(pls)
+	if err != nil {
+		return "", err
+	}
+	return pls.ID, nil
+}
+
+func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string) error {
+	pls := entity.(*model.Playlist)
+	current, err := r.PlaylistRepository.Get(id)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return rest.ErrNotFound
+		}
+		return err
+	}
+	usr, _ := request.UserFrom(r.ctx)
+	if !usr.IsAdmin {
+		if current.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+		if pls.OwnerID != "" && pls.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+	}
+	return r.persistable.Update(id, entity, cols...)
+}
+
+func (r *playlistRepositoryWrapper) Delete(id string) error {
+	return r.service.Delete(r.ctx, id)
+}
+
+func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository {
+	repo := s.ds.Playlist(ctx)
+	tracks := repo.Tracks(playlistId, refreshSmartPlaylist)
+	if tracks == nil {
+		return nil
+	}
+	return tracks.(rest.Repository)
 }
 
 type nspFile struct {

@@ -96,16 +96,6 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin {
-		pls, err := r.Get(id)
-		if err != nil {
-			return err
-		}
-		if pls.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
-	}
 	return r.delete(And{Eq{"id": id}, r.userFilter()})
 }
 
@@ -113,14 +103,6 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	pls := dbPlaylist{Playlist: *p}
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
-	} else {
-		ok, err := r.Exists(pls.ID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return model.ErrNotAuthorized
-		}
 	}
 	pls.UpdatedAt = time.Now()
 
@@ -132,7 +114,6 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 
 	if p.IsSmartPlaylist() {
 		// Do not update tracks at this point, as it may take a long time and lock the DB, breaking the scan process
-		//r.refreshSmartPlaylist(p)
 		return nil
 	}
 	// Only update tracks if they were specified
@@ -320,10 +301,6 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 }
 
 func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []string) error {
-	if !r.isWritable(playlistId) {
-		return rest.ErrPermissionDenied
-	}
-
 	// Remove old tracks
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": playlistId})
 	_, err := r.executeSQL(del)
@@ -439,8 +416,7 @@ func (r *playlistRepository) NewInstance() any {
 
 func (r *playlistRepository) Save(entity any) (string, error) {
 	pls := entity.(*model.Playlist)
-	pls.OwnerID = loggedUser(r.ctx).ID
-	pls.ID = "" // Make sure we don't override an existing playlist
+	pls.ID = "" // Force new creation
 	err := r.Put(pls)
 	if err != nil {
 		return "", err
@@ -450,24 +426,9 @@ func (r *playlistRepository) Save(entity any) (string, error) {
 
 func (r *playlistRepository) Update(id string, entity any, cols ...string) error {
 	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
-	current, err := r.Get(id)
-	if err != nil {
-		return err
-	}
-	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin {
-		// Only the owner can update the playlist
-		if current.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
-		// Regular users can't change the ownership of a playlist
-		if pls.OwnerID != "" && pls.OwnerID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
-	}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
-	_, err = r.put(id, pls, append(cols, "updatedAt")...)
+	_, err := r.put(id, pls, append(cols, "updatedAt")...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
@@ -515,15 +476,6 @@ func (r *playlistRepository) renumber(id string) error {
 		return err
 	}
 	return r.updatePlaylist(id, ids)
-}
-
-func (r *playlistRepository) isWritable(playlistId string) bool {
-	usr := loggedUser(r.ctx)
-	if usr.IsAdmin {
-		return true
-	}
-	pls, err := r.Get(playlistId)
-	return err == nil && pls.OwnerID == usr.ID
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
