@@ -218,13 +218,45 @@ func (r *playlistTrackRepository) DeleteAll() error {
 	return r.playlistRepo.renumber(r.playlistId)
 }
 
+// Reorder moves a track from pos to newPos, shifting other tracks accordingly.
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
-	ids, err := r.getTracks()
+	if pos == newPos {
+		return nil
+	}
+	pid := r.playlistId
+
+	// Step 1: Move the source track out of the way (temporary sentinel value)
+	_, err := r.executeSQL(Expr(
+		`UPDATE playlist_tracks SET id = -999999 WHERE playlist_id = ? AND id = ?`, pid, pos))
 	if err != nil {
 		return err
 	}
-	newOrder := slice.Move(ids, pos-1, newPos-1)
-	return r.playlistRepo.updatePlaylist(r.playlistId, newOrder)
+
+	// Step 2: Shift the affected range using negative values to avoid unique constraint violations
+	if pos < newPos {
+		_, err = r.executeSQL(Expr(
+			`UPDATE playlist_tracks SET id = -(id - 1) WHERE playlist_id = ? AND id > ? AND id <= ?`,
+			pid, pos, newPos))
+	} else {
+		_, err = r.executeSQL(Expr(
+			`UPDATE playlist_tracks SET id = -(id + 1) WHERE playlist_id = ? AND id >= ? AND id < ?`,
+			pid, newPos, pos))
+	}
+	if err != nil {
+		return err
+	}
+
+	// Step 3: Flip the shifted range back to positive
+	_, err = r.executeSQL(Expr(
+		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id < 0 AND id != -999999`, pid))
+	if err != nil {
+		return err
+	}
+
+	// Step 4: Place the source track at its new position
+	_, err = r.executeSQL(Expr(
+		`UPDATE playlist_tracks SET id = ? WHERE playlist_id = ? AND id = -999999`, newPos, pid))
+	return err
 }
 
 var _ model.PlaylistTrackRepository = (*playlistTrackRepository)(nil)
