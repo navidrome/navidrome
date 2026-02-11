@@ -188,18 +188,6 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 	return r.addMediaFileIds(clauses)
 }
 
-// Get ids from all current tracks
-func (r *playlistTrackRepository) getTracks() ([]string, error) {
-	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
-	var ids []string
-	err := r.queryAllSlice(all, &ids)
-	if err != nil {
-		log.Error(r.ctx, "Error querying current tracks from playlist", "playlistId", r.playlistId, err)
-		return nil, err
-	}
-	return ids, nil
-}
-
 func (r *playlistTrackRepository) Delete(ids ...string) error {
 	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
 	if err != nil {
