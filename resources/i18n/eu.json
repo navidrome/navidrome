@@ -388,7 +388,7 @@
         "invalidJson": "Konfigurazioa baliozko JSON-a izan behar da"
       },
       "messages": {
-        "configHelp": "Konfiguratu plugina gako-balio bikoteak erabiliz. Hutsi utzik pluginak konfiguraziorik behar ez badu.",
+        "configHelp": "Konfiguratu plugina gako-balio bikoteak erabiliz. Utzi hutsik pluginak konfiguraziorik behar ez badu.",
         "configValidationError": "Huts egin du konfigurazioaren balidazioak:",
         "schemaRenderError": "Ezin izan da konfigurazioaren formularioa bihurtu. Litekeena da pluginaren eskema baliozkoa ez izatea.",
         "clickPermissions": "Sakatu baimen batean xehetasunetarako",
