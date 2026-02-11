@@ -468,14 +468,27 @@ func (r *playlistRepository) removeOrphans() error {
 	return nil
 }
 
+// renumber updates the position of all tracks in the playlist to be sequential starting from 1, ordered by their
+// current position. This is needed after removing orphan tracks, to ensure there are no gaps in the track numbering.
+// The two-step approach avoids violating the unique constraint on (playlist_id, id) during the update.
 func (r *playlistRepository) renumber(id string) error {
-	var ids []string
-	sq := Select("media_file_id").From("playlist_tracks").Where(Eq{"playlist_id": id}).OrderBy("id")
-	err := r.queryAllSlice(sq, &ids)
+	// Step 1: set each id to the negative of its sequential position (all unique, no collisions)
+	_, err := r.executeSQL(Expr(
+		`UPDATE playlist_tracks SET id = -(
+			SELECT COUNT(*) FROM playlist_tracks pt2
+			WHERE pt2.playlist_id = playlist_tracks.playlist_id
+			AND pt2.id <= playlist_tracks.id
+		) WHERE playlist_id = ?`, id))
 	if err != nil {
 		return err
 	}
-	return r.updatePlaylist(id, ids)
+	// Step 2: flip to positive
+	_, err = r.executeSQL(Expr(
+		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ?`, id))
+	if err != nil {
+		return err
+	}
+	return r.refreshCounters(&model.Playlist{ID: id})
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
