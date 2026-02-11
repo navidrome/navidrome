@@ -250,12 +250,16 @@ func (s *playlists) RemoveTracks(ctx context.Context, playlistID string, trackId
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).Delete(trackIds...)
+	return s.ds.WithTx(func(tx model.DataStore) error {
+		return tx.Playlist(ctx).Tracks(playlistID, false).Delete(trackIds...)
+	})
 }
 
 func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int, newPos int) error {
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
+	return s.ds.WithTx(func(tx model.DataStore) error {
+		return tx.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
+	})
 }
