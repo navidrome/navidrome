@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -141,15 +142,18 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		repo := tx.Playlist(ctx)
 
 		if len(idxToRemove) > 0 {
-			// Must re-fetch with tracks inside the transaction for index-based removal
-			pls, err := repo.GetWithTracks(playlistID, true, false)
-			if err != nil {
+			tracksRepo := repo.Tracks(playlistID, false)
+			// Convert 0-based indices to 1-based position IDs and delete them directly,
+			// avoiding the need to load all tracks into memory.
+			positions := make([]string, len(idxToRemove))
+			for i, idx := range idxToRemove {
+				positions[i] = strconv.Itoa(idx + 1)
+			}
+			if err := tracksRepo.Delete(positions...); err != nil {
 				return err
 			}
-			pls.RemoveTracks(idxToRemove)
-			pls.AddMediaFilesByID(idsToAdd)
-			if len(pls.Tracks) == 0 {
-				if err = repo.Tracks(playlistID, false).DeleteAll(); err != nil {
+			if len(idsToAdd) > 0 {
+				if _, err := tracksRepo.Add(idsToAdd); err != nil {
 					return err
 				}
 			}
