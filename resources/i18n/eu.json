@@ -2,7 +2,7 @@
   "languageName": "Euskara",
   "resources": {
     "song": {
-      "name": "Abestia |||| Abestiak",
+      "name": "Abestia |||| Abesti",
       "fields": {
         "albumArtist": "Albumaren artista",
         "duration": "Iraupena",
@@ -10,6 +10,7 @@
         "playCount": "Erreprodukzioak",
         "title": "Titulua",
         "artist": "Artista",
+        "composer": "Konpositorea",
         "album": "Albuma",
         "path": "Fitxategiaren bidea",
         "libraryName": "Liburutegia",
@@ -33,9 +34,9 @@
         "grouping": "Multzokatzea",
         "mood": "Aldartea",
         "participants": "Partaide gehiago",
-        "tags": "Traola gehiago",
-        "mappedTags": "Esleitutako traolak",
-        "rawTags": "Traola gordinak",
+        "tags": "Etiketa gehiago",
+        "mappedTags": "Esleitutako etiketak",
+        "rawTags": "Etiketa gordinak",
         "missing": "Ez da aurkitu"
       },
       "actions": {
@@ -46,11 +47,12 @@
         "shuffleAll": "Erreprodukzio aleatorioa",
         "download": "Deskargatu",
         "playNext": "Hurrengoa",
-        "info": "Erakutsi informazioa"
+        "info": "Erakutsi informazioa",
+        "instantMix": "Berehalako nahastea"
       }
     },
     "album": {
-      "name": "Albuma |||| Albumak",
+      "name": "Albuma |||| Album",
       "fields": {
         "albumArtist": "Albumaren artista",
         "artist": "Artista",
@@ -66,7 +68,7 @@
         "date": "Recording Date",
         "originalDate": "Jatorrizkoa",
         "releaseDate": "Argitaratze-data",
-        "releases": "Argitaratzea |||| Argitaratzeak",
+        "releases": "Argitaratzea |||| Argitaratze",
         "released": "Argitaratua",
         "updatedAt": "Aktualizatze-data:",
         "comment": "Iruzkina",
@@ -101,7 +103,7 @@
       }
     },
     "artist": {
-      "name": "Artista |||| Artistak",
+      "name": "Artista |||| Artista",
       "fields": {
         "name": "Izena",
         "albumCount": "Album kopurua",
@@ -330,6 +332,80 @@
         "scanInProgress": "Araketa abian da…",
         "noLibrariesAssigned": "Ez da liburutegirik egokitu erabiltzaile honentzat"
       }
+    },
+    "plugin": {
+      "name": "Plugina |||| Plugin",
+      "fields": {
+        "id": "IDa",
+        "name": "Izena",
+        "description": "Deskribapena",
+        "version": "Bertsioa",
+        "author": "Autorea",
+        "website": "Webgunea",
+        "permissions": "Baimenak",
+        "enabled": "Gaituta",
+        "status": "Egoera",
+        "path": "Bidea",
+        "lastError": "Errorea",
+        "hasError": "Errorea",
+        "updatedAt": "Eguneratuta",
+        "createdAt": "Instalatuta",
+        "configKey": "Gakoa",
+        "configValue": "Balioa",
+        "allUsers": "Baimendu erabiltzaile guztiak",
+        "selectedUsers": "Hautatutako erabiltzaileak",
+        "allLibraries": "Baimendu liburutegi guztiak",
+        "selectedLibraries": "Hautatutako liburutegiak"
+      },
+      "sections": {
+        "status": "Egoera",
+        "info": "Pluginaren informazioa",
+        "configuration": "Konfigurazioa",
+        "manifest": "Manifestua",
+        "usersPermission": "Erabiltzaileen baimenak",
+        "libraryPermission": "Liburutegien baimenak"
+      },
+      "status": {
+        "enabled": "Gaituta",
+        "disabled": "Ezgaituta"
+      },
+      "actions": {
+        "enable": "Gaitu",
+        "disable": "Ezgaitu",
+        "disabledDueToError": "Konpondu errorea gaitu baino lehen",
+        "disabledUsersRequired": "Hautatu erabiltzaileak gaitu baino lehen",
+        "disabledLibrariesRequired": "Hautatu liburutegiak gaitu baino lehen",
+        "addConfig": "Gehitu konfigurazioa",
+        "rescan": "Arakatu berriro"
+      },
+      "notifications": {
+        "enabled": "Plugina gaituta",
+        "disabled": "Plugina ezgaituta",
+        "updated": "Plugina eguneratuta",
+        "error": "Errorea plugina eguneratzean"
+      },
+      "validation": {
+        "invalidJson": "Konfigurazioa baliozko JSON-a izan behar da"
+      },
+      "messages": {
+        "configHelp": "Konfiguratu plugina gako-balio bikoteak erabiliz. Hutsi utzik pluginak konfiguraziorik behar ez badu.",
+        "configValidationError": "Huts egin du konfigurazioaren balidazioak:",
+        "schemaRenderError": "Ezin izan da konfigurazioaren formularioa bihurtu. Litekeena da pluginaren eskema baliozkoa ez izatea.",
+        "clickPermissions": "Sakatu baimen batean xehetasunetarako",
+        "noConfig": "Ez da konfiguraziorik ezarri",
+        "allUsersHelp": "Gaituta dagoenean, pluginak erabiltzaile guztiak atzitu ditzazke, baita etorkizunean sortuko direnak ere.",
+        "noUsers": "Ez da erabiltzailerik hautatu",
+        "permissionReason": "Arrazoia",
+        "usersRequired": "Plugin honek erabiltzaileen informaziora sarbidea behar du. Hautatu zein erabiltzaile atzitu dezakeen pluginak, edo gaitu 'Baimendu erabiltzaile guztiak'.",
+        "allLibrariesHelp": "Gaituta dagoenean, pluginak liburutegi guztietara izango du sarbidea, baita etorkizunean sortuko direnetara ere.",
+        "noLibraries": "Ez da liburutegirik hautatu",
+        "librariesRequired": "Plugin honek liburutegien informaziora sarbidea behar du. Hautatu zein liburutegi atzitu dezakeen pluginak, edo gaitu 'Baimendu liburutegi guztiak'.",
+        "requiredHosts": "Beharrezko ostatatzaileak"
+      },
+      "placeholders": {
+        "configKey": "gakoa",
+        "configValue": "balioa"
+      }
     }
   },
   "ra": {
@@ -483,6 +559,7 @@
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
     "songsAddedToPlaylist": "Abesti bat zerrendara gehitu da |||| %{smart_count} abesti zerrendara gehitu dira",
     "noSimilarSongsFound": "Ez da antzeko abestirik aurkitu",
+    "startingInstantMix": "Berehalako nahastea kargatzen…",
     "noTopSongsFound": "Ez da aparteko abestirik aurkitu",
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
