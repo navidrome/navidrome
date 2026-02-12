@@ -22,8 +22,6 @@ var _ = Describe("Scan Endpoints", func() {
 	})
 
 	It("startScan requires admin user", func() {
-		regularUser := createUser("user-2", "regular", "Regular User", false)
-
 		resp := doReqWithUser(regularUser, "startScan")
 
 		Expect(resp.Status).To(Equal(responses.StatusFailed))

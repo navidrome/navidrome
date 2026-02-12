@@ -1,4 +1,4 @@
-package core_test
+package playlists_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -19,18 +19,18 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var _ = Describe("Playlists", func() {
+var _ = Describe("Playlists - Import", func() {
 	var ds *tests.MockDataStore
-	var ps core.Playlists
-	var mockPlsRepo mockedPlaylistRepo
+	var ps playlists.Playlists
+	var mockPlsRepo *tests.MockPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		mockPlsRepo = mockedPlaylistRepo{}
+		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
-			MockedPlaylist: &mockPlsRepo,
+			MockedPlaylist: mockPlsRepo,
 			MockedLibrary:  mockLibRepo,
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
@@ -39,7 +39,7 @@ var _ = Describe("Playlists", func() {
 	Describe("ImportFile", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			ps = core.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			// Set up library with the actual library path that matches the folder
@@ -61,7 +61,7 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
 				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/playlists/test.ogg"))
-				Expect(mockPlsRepo.last).To(Equal(pls))
+				Expect(mockPlsRepo.Last).To(Equal(pls))
 			})
 
 			It("parses playlists using LF ending", func() {
@@ -99,7 +99,7 @@ var _ = Describe("Playlists", func() {
 			It("parses well-formed playlists", func() {
 				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mockPlsRepo.last).To(Equal(pls))
+				Expect(mockPlsRepo.Last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("Recently Played"))
 				Expect(pls.Comment).To(Equal("Recently played tracks"))
@@ -149,7 +149,7 @@ var _ = Describe("Playlists", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
-				ps = core.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds)
 
 				// Create the playlist file on disk with the filesystem's normalization form
 				plsFile := tmpDir + "/" + filesystemName + ".m3u"
@@ -163,7 +163,7 @@ var _ = Describe("Playlists", func() {
 					Path: storedPath,
 					Sync: true,
 				}
-				mockPlsRepo.data = map[string]*model.Playlist{storedPath: existingPls}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{storedPath: existingPls}
 
 				// Import using the filesystem's normalization form
 				plsFolder := &model.Folder{
@@ -209,7 +209,7 @@ var _ = Describe("Playlists", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = core.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds)
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -365,7 +365,7 @@ var _ = Describe("Playlists", func() {
 					},
 				}
 				// Recreate playlists service to pick up new mock
-				ps = core.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds)
 
 				// Create playlist in music library that references both tracks
 				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
@@ -408,7 +408,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = core.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds)
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
@@ -439,7 +439,7 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[1].Path).To(Equal("tests/test.ogg"))
 			Expect(pls.Tracks[2].Path).To(Equal("downloads/newfile.flac"))
 			Expect(pls.Tracks[3].Path).To(Equal("tests/01 Invisible (RED) Edit Version.mp3"))
-			Expect(mockPlsRepo.last).To(Equal(pls))
+			Expect(mockPlsRepo.Last).To(Equal(pls))
 		})
 
 		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
@@ -460,7 +460,7 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks).To(HaveLen(2))
 		})
 
-		It("returns only tracks that exist in the database and in the same other as the m3u", func() {
+		It("returns only tracks that exist in the database and in the same order as the m3u", func() {
 			repo.data = []string{
 				"album1/test1.mp3",
 				"album2/test2.mp3",
@@ -570,7 +570,7 @@ var _ = Describe("Playlists", func() {
 
 	})
 
-	Describe("InPlaylistsPath", func() {
+	Describe("InPath", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
@@ -584,27 +584,27 @@ var _ = Describe("Playlists", func() {
 
 		It("returns true if PlaylistsPath is empty", func() {
 			conf.Server.PlaylistsPath = ""
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
 			conf.Server.PlaylistsPath = "**/**"
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other/**:playlists/**"
-			Expect(core.InPlaylistsPath(folder)).To(BeTrue())
+			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other"
-			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
+			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
 			conf.Server.PlaylistsPath = "."
-			Expect(core.InPlaylistsPath(folder)).To(BeFalse())
+			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{
 				LibraryPath: "/music",
@@ -612,7 +612,7 @@ var _ = Describe("Playlists", func() {
 				Name:        ".",
 			}
 
-			Expect(core.InPlaylistsPath(folder2)).To(BeTrue())
+			Expect(playlists.InPath(folder2)).To(BeTrue())
 		})
 	})
 })
@@ -692,24 +692,4 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 		}
 	}
 	return mfs, nil
-}
-
-type mockedPlaylistRepo struct {
-	last *model.Playlist
-	data map[string]*model.Playlist // keyed by path
-	model.PlaylistRepository
-}
-
-func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
-	if r.data != nil {
-		if pls, ok := r.data[path]; ok {
-			return pls, nil
-		}
-	}
-	return nil, model.ErrNotFound
-}
-
-func (r *mockedPlaylistRepo) Put(pls *model.Playlist) error {
-	r.last = pls
-	return nil
 }

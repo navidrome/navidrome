@@ -121,7 +121,7 @@ func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository 
 	if db.RealDS != nil {
 		return db.RealDS.Playlist(ctx)
 	}
-	db.MockedPlaylist = &MockPlaylistRepo{}
+	db.MockedPlaylist = CreateMockPlaylistRepo()
 	return db.MockedPlaylist
 }
 
