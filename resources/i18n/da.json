@@ -333,76 +333,76 @@
     },
     "plugin": {
       "name": "Plugin |||| Plugins",
-      "actions": {
-        "addConfig": "Tilføj konfiguration",
-        "disable": "Deaktivér",
-        "disabledDueToError": "Ret fejlen før aktivering",
-        "disabledLibrariesRequired": "Vælg biblioteker før aktivering",
-        "disabledUsersRequired": "Vælg brugere før aktivering",
-        "enable": "Aktivér",
-        "rescan": "Genskan"
-      },
       "fields": {
-        "allLibraries": "Tillad alle biblioteker",
-        "allUsers": "Tillad alle brugere",
+        "id": "ID",
+        "name": "Navn",
+        "description": "Beskrivelse",
+        "version": "Version",
         "author": "Forfatter",
+        "website": "Hjemmeside",
+        "permissions": "Tilladelser",
+        "enabled": "Aktiveret",
+        "status": "Status",
+        "path": "Sti",
+        "lastError": "Fejl",
+        "hasError": "Fejl",
+        "updatedAt": "Opdateret",
+        "createdAt": "Installeret",
         "configKey": "Nøgle",
         "configValue": "Værdi",
-        "createdAt": "Installeret",
-        "description": "Beskrivelse",
-        "enabled": "Aktiveret",
-        "hasError": "Fejl",
-        "id": "ID",
-        "lastError": "Fejl",
-        "name": "Navn",
-        "path": "Sti",
-        "permissions": "Tilladelser",
-        "selectedLibraries": "Valgte biblioteker",
+        "allUsers": "Tillad alle brugere",
         "selectedUsers": "Valgte brugere",
-        "status": "Status",
-        "updatedAt": "Opdateret",
-        "version": "Version",
-        "website": "Hjemmeside"
+        "allLibraries": "Tillad alle biblioteker",
+        "selectedLibraries": "Valgte biblioteker"
       },
-      "messages": {
-        "allLibrariesHelp": "Når aktiveret, vil pluginet have adgang til alle biblioteker, inklusiv dem der oprettes i fremtiden.",
-        "allUsersHelp": "Når aktiveret, vil pluginet have adgang til alle brugere, inklusiv dem der oprettes i fremtiden.",
-        "clickPermissions": "Klik på en tilladelse for detaljer",
-        "configHelp": "Konfigurér pluginet med nøgle-værdi-par. Lad stå tomt, hvis pluginet ikke kræver konfiguration.",
-        "configValidationError": "Konfigurationsvalidering mislykkedes:",
-        "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
-        "noConfig": "Ingen konfiguration angivet",
-        "noLibraries": "Ingen biblioteker valgt",
-        "noUsers": "Ingen brugere valgt",
-        "permissionReason": "Årsag",
-        "requiredHosts": "Påkrævede værter",
-        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt.",
-        "usersRequired": "Dette plugin kræver adgang til brugeroplysninger. Vælg hvilke brugere pluginet kan tilgå, eller aktivér 'Tillad alle brugere'."
+      "sections": {
+        "status": "Status",
+        "info": "Pluginoplysninger",
+        "configuration": "Konfiguration",
+        "manifest": "Manifest",
+        "usersPermission": "Brugertilladelse",
+        "libraryPermission": "Bibliotekstilladelse"
+      },
+      "status": {
+        "enabled": "Aktiveret",
+        "disabled": "Deaktiveret"
+      },
+      "actions": {
+        "enable": "Aktivér",
+        "disable": "Deaktivér",
+        "disabledDueToError": "Ret fejlen før aktivering",
+        "disabledUsersRequired": "Vælg brugere før aktivering",
+        "disabledLibrariesRequired": "Vælg biblioteker før aktivering",
+        "addConfig": "Tilføj konfiguration",
+        "rescan": "Genskan"
       },
       "notifications": {
-        "disabled": "Plugin deaktiveret",
         "enabled": "Plugin aktiveret",
-        "error": "Fejl ved opdatering af plugin",
-        "updated": "Plugin opdateret"
+        "disabled": "Plugin deaktiveret",
+        "updated": "Plugin opdateret",
+        "error": "Fejl ved opdatering af plugin"
+      },
+      "validation": {
+        "invalidJson": "Konfigurationen skal være gyldig JSON"
+      },
+      "messages": {
+        "configHelp": "Konfigurér pluginet med nøgle-værdi-par. Lad stå tomt, hvis pluginet ikke kræver konfiguration.",
+        "clickPermissions": "Klik på en tilladelse for detaljer",
+        "noConfig": "Ingen konfiguration angivet",
+        "allUsersHelp": "Når aktiveret, vil pluginet have adgang til alle brugere, inklusiv dem der oprettes i fremtiden.",
+        "noUsers": "Ingen brugere valgt",
+        "permissionReason": "Årsag",
+        "usersRequired": "Dette plugin kræver adgang til brugeroplysninger. Vælg hvilke brugere pluginet kan tilgå, eller aktivér 'Tillad alle brugere'.",
+        "allLibrariesHelp": "Når aktiveret, vil pluginet have adgang til alle biblioteker, inklusiv dem der oprettes i fremtiden.",
+        "noLibraries": "Ingen biblioteker valgt",
+        "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
+        "requiredHosts": "Påkrævede hosts",
+        "configValidationError": "Konfigurationsvalidering mislykkedes:",
+        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt."
       },
       "placeholders": {
         "configKey": "nøgle",
         "configValue": "værdi"
-      },
-      "sections": {
-        "configuration": "Konfiguration",
-        "info": "Pluginoplysninger",
-        "libraryPermission": "Bibliotekstilladelse",
-        "manifest": "Manifest",
-        "status": "Status",
-        "usersPermission": "Brugertilladelse"
-      },
-      "status": {
-        "disabled": "Deaktiveret",
-        "enabled": "Aktiveret"
-      },
-      "validation": {
-        "invalidJson": "Konfigurationen skal være gyldig JSON"
       }
     }
   },
@@ -674,7 +674,8 @@
       "exportSuccess": "Konfigurationen eksporteret til udklipsholder i TOML-format",
       "exportFailed": "Kunne ikke kopiere konfigurationen",
       "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
-      "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver"
+      "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver",
+      "downloadToml": ""
     }
   },
   "activity": {
