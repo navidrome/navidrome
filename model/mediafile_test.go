@@ -475,7 +475,7 @@ var _ = Describe("MediaFile", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableMediaFileCoverArt = true
 	})
-	Describe(".CoverArtId()", func() {
+	Describe("CoverArtId", func() {
 		It("returns its own id if it HasCoverArt", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
@@ -494,6 +494,94 @@ var _ = Describe("MediaFile", func() {
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
+		})
+	})
+
+	Describe("AudioCodec", func() {
+		It("returns normalized stored codec when available", func() {
+			mf := MediaFile{Codec: "AAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("aac"))
+		})
+
+		It("returns stored codec lowercased", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+
+		DescribeTable("infers codec from suffix when Codec field is empty",
+			func(suffix string, bitDepth int, expected string) {
+				mf := MediaFile{Suffix: suffix, BitDepth: bitDepth}
+				Expect(mf.AudioCodec()).To(Equal(expected))
+			},
+			Entry("mp3", "mp3", 0, "mp3"),
+			Entry("mpga", "mpga", 0, "mp3"),
+			Entry("mp2", "mp2", 0, "mp2"),
+			Entry("ogg", "ogg", 0, "vorbis"),
+			Entry("oga", "oga", 0, "vorbis"),
+			Entry("opus", "opus", 0, "opus"),
+			Entry("mpc", "mpc", 0, "mpc"),
+			Entry("wma", "wma", 0, "wma"),
+			Entry("flac", "flac", 0, "flac"),
+			Entry("wav", "wav", 0, "pcm"),
+			Entry("aif", "aif", 0, "pcm"),
+			Entry("aiff", "aiff", 0, "pcm"),
+			Entry("aifc", "aifc", 0, "pcm"),
+			Entry("ape", "ape", 0, "ape"),
+			Entry("wv", "wv", 0, "wv"),
+			Entry("wvp", "wvp", 0, "wv"),
+			Entry("tta", "tta", 0, "tta"),
+			Entry("tak", "tak", 0, "tak"),
+			Entry("shn", "shn", 0, "shn"),
+			Entry("dsf", "dsf", 0, "dsd"),
+			Entry("dff", "dff", 0, "dsd"),
+			Entry("m4a with BitDepth=0 (AAC)", "m4a", 0, "aac"),
+			Entry("m4a with BitDepth>0 (ALAC)", "m4a", 16, "alac"),
+			Entry("m4b", "m4b", 0, "aac"),
+			Entry("m4p", "m4p", 0, "aac"),
+			Entry("m4r", "m4r", 0, "aac"),
+			Entry("unknown suffix", "xyz", 0, ""),
+		)
+
+		It("prefers stored codec over suffix inference", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a", BitDepth: 0}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+	})
+
+	Describe("IsLossless", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		DescribeTable("detects lossless codecs",
+			func(codec string, suffix string, bitDepth int, expected bool) {
+				mf := MediaFile{Codec: codec, Suffix: suffix, BitDepth: bitDepth}
+				Expect(mf.IsLossless()).To(Equal(expected))
+			},
+			Entry("flac", "FLAC", "flac", 16, true),
+			Entry("alac", "ALAC", "m4a", 24, true),
+			Entry("pcm via wav", "", "wav", 16, true),
+			Entry("pcm via aiff", "", "aiff", 24, true),
+			Entry("ape", "", "ape", 16, true),
+			Entry("wv", "", "wv", 0, true),
+			Entry("tta", "", "tta", 0, true),
+			Entry("tak", "", "tak", 0, true),
+			Entry("shn", "", "shn", 0, true),
+			Entry("dsd", "", "dsf", 0, true),
+			Entry("mp3 is lossy", "MP3", "mp3", 0, false),
+			Entry("aac is lossy", "AAC", "m4a", 0, false),
+			Entry("vorbis is lossy", "", "ogg", 0, false),
+			Entry("opus is lossy", "", "opus", 0, false),
+		)
+
+		It("detects lossless via BitDepth fallback when codec is unknown", func() {
+			mf := MediaFile{Suffix: "xyz", BitDepth: 24}
+			Expect(mf.IsLossless()).To(BeTrue())
+		})
+
+		It("returns false for unknown with no BitDepth", func() {
+			mf := MediaFile{Suffix: "xyz", BitDepth: 0}
+			Expect(mf.IsLossless()).To(BeFalse())
 		})
 	})
 })

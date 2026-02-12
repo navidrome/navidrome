@@ -65,6 +65,7 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		Channels:   int(props.Channels),
 		SampleRate: int(props.SampleRate),
 		BitDepth:   int(props.BitsPerSample),
+		Codec:      props.Codec,
 	}
 
 	// Convert normalized tags to lowercase keys (go-taglib returns UPPERCASE keys)
