@@ -3,6 +3,7 @@ package playlists_test
 import (
 	"context"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,15 +22,15 @@ import (
 var _ = Describe("Playlists - Import", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
-	var mockPlsRepo mockedPlaylistRepo
+	var mockPlsRepo *tests.MockPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		mockPlsRepo = mockedPlaylistRepo{}
+		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
-			MockedPlaylist: &mockPlsRepo,
+			MockedPlaylist: mockPlsRepo,
 			MockedLibrary:  mockLibRepo,
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
@@ -60,7 +61,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
 				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/playlists/test.ogg"))
-				Expect(mockPlsRepo.last).To(Equal(pls))
+				Expect(mockPlsRepo.Last).To(Equal(pls))
 			})
 
 			It("parses playlists using LF ending", func() {
@@ -98,7 +99,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("parses well-formed playlists", func() {
 				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mockPlsRepo.last).To(Equal(pls))
+				Expect(mockPlsRepo.Last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("Recently Played"))
 				Expect(pls.Comment).To(Equal("Recently played tracks"))
@@ -162,7 +163,7 @@ var _ = Describe("Playlists - Import", func() {
 					Path: storedPath,
 					Sync: true,
 				}
-				mockPlsRepo.data = map[string]*model.Playlist{storedPath: existingPls}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{storedPath: existingPls}
 
 				// Import using the filesystem's normalization form
 				plsFolder := &model.Folder{
@@ -438,7 +439,7 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.Tracks[1].Path).To(Equal("tests/test.ogg"))
 			Expect(pls.Tracks[2].Path).To(Equal("downloads/newfile.flac"))
 			Expect(pls.Tracks[3].Path).To(Equal("tests/01 Invisible (RED) Edit Version.mp3"))
-			Expect(mockPlsRepo.last).To(Equal(pls))
+			Expect(mockPlsRepo.Last).To(Equal(pls))
 		})
 
 		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
@@ -615,3 +616,80 @@ var _ = Describe("Playlists - Import", func() {
 		})
 	})
 })
+
+// mockedMediaFileRepo's FindByPaths method returns MediaFiles for the given paths.
+// If data map is provided, looks up files by key; otherwise creates them from paths.
+type mockedMediaFileRepo struct {
+	model.MediaFileRepository
+	data map[string]model.MediaFile
+}
+
+func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+	var mfs model.MediaFiles
+
+	// If data map provided, look up files
+	if r.data != nil {
+		for _, path := range paths {
+			if mf, ok := r.data[path]; ok {
+				mfs = append(mfs, mf)
+			}
+		}
+		return mfs, nil
+	}
+
+	// Otherwise, create MediaFiles from paths
+	for idx, path := range paths {
+		// Strip library qualifier if present (format: "libraryID:path")
+		actualPath := path
+		libraryID := 1
+		if parts := strings.SplitN(path, ":", 2); len(parts) == 2 {
+			if id, err := strconv.Atoi(parts[0]); err == nil {
+				libraryID = id
+				actualPath = parts[1]
+			}
+		}
+
+		mfs = append(mfs, model.MediaFile{
+			ID:        strconv.Itoa(idx),
+			Path:      actualPath,
+			LibraryID: libraryID,
+		})
+	}
+	return mfs, nil
+}
+
+// mockedMediaFileFromListRepo's FindByPaths method returns a list of MediaFiles based on the data field
+type mockedMediaFileFromListRepo struct {
+	model.MediaFileRepository
+	data []string
+}
+
+func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+	var mfs model.MediaFiles
+
+	for idx, dataPath := range r.data {
+		for _, requestPath := range paths {
+			// Strip library qualifier if present (format: "libraryID:path")
+			actualPath := requestPath
+			libraryID := 1
+			if parts := strings.SplitN(requestPath, ":", 2); len(parts) == 2 {
+				if id, err := strconv.Atoi(parts[0]); err == nil {
+					libraryID = id
+					actualPath = parts[1]
+				}
+			}
+
+			// Case-insensitive comparison (like SQL's "collate nocase"), but with no
+			// implicit Unicode normalization (SQLite does not normalize NFC/NFD).
+			if strings.EqualFold(actualPath, dataPath) {
+				mfs = append(mfs, model.MediaFile{
+					ID:        strconv.Itoa(idx),
+					Path:      dataPath, // Return original path from DB
+					LibraryID: libraryID,
+				})
+				break
+			}
+		}
+	}
+	return mfs, nil
+}
