@@ -674,7 +674,8 @@
       "exportSuccess": "Configuração exportada para o clipboard em formato TOML",
       "exportFailed": "Falha ao copiar configuração",
       "devFlagsHeader": "Flags de Desenvolvimento (sujeitas a mudança/remoção)",
-      "devFlagsComment": "Estas são configurações experimentais e podem ser removidas em versões futuras"
+      "devFlagsComment": "Estas são configurações experimentais e podem ser removidas em versões futuras",
+      "downloadToml": "Baixar configuração (TOML)"
     }
   },
   "activity": {
