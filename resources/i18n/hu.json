@@ -10,6 +10,7 @@
         "playCount": "Lejátszások",
         "title": "Cím",
         "artist": "Előadó",
+        "composer": "Zeneszerző",
         "album": "Album",
         "path": "Elérési út",
         "libraryName": "Könyvtár",
@@ -46,7 +47,8 @@
         "shuffleAll": "Keverés",
         "download": "Letöltés",
         "playNext": "Lejátszás következőként",
-        "info": "Részletek"
+        "info": "Részletek",
+        "instantMix": "Instant keverés"
       }
     },
     "album": {
@@ -325,6 +327,80 @@
         "scanInProgress": "Szkennelés folyamatban...",
         "noLibrariesAssigned": "Ehhez a felhasználóhoz nincsenek könyvtárak adva"
       }
+    },
+    "plugin": {
+      "name": "Kiegészítő |||| Kiegészítők",
+      "fields": {
+        "id": "ID",
+        "name": "Név",
+        "description": "Leírás",
+        "version": "Verzió",
+        "author": "Fejlesztő",
+        "website": "Weboldal",
+        "permissions": "Engedélyek",
+        "enabled": "Engedélyezve",
+        "status": "Státusz",
+        "path": "Útvonal",
+        "lastError": "Hiba",
+        "hasError": "Hiba",
+        "updatedAt": "Frissítve",
+        "createdAt": "Telepítve",
+        "configKey": "Kulcs",
+        "configValue": "Érték",
+        "allUsers": "Összes felhasználó engedélyezése",
+        "selectedUsers": "Kiválasztott felhasználók engedélyezése",
+        "allLibraries": "Összes könyvtár engedélyezése",
+        "selectedLibraries": "Kiválasztott könyvtárak engedélyezése"
+      },
+      "sections": {
+        "status": "Státusz",
+        "info": "Kiegészítő információi",
+        "configuration": "Konfiguráció",
+        "manifest": "Manifest",
+        "usersPermission": "Felhasználói engedélyek",
+        "libraryPermission": "Könyvtári engedélyek"
+      },
+      "status": {
+        "enabled": "Engedélyezve",
+        "disabled": "Letiltva"
+      },
+      "actions": {
+        "enable": "Engedélyezés",
+        "disable": "Letiltás",
+        "disabledDueToError": "Javítsd ki a kiegészítő hibáját",
+        "disabledUsersRequired": "Válassz felhasználókat",
+        "disabledLibrariesRequired": "Válassz könyvtárakat",
+        "addConfig": "Konfiguráció hozzáadása",
+        "rescan": "Újraszkennelés"
+      },
+      "notifications": {
+        "enabled": "Kiegészítő engedélyezve",
+        "disabled": "Kiegészítő letiltva",
+        "updated": "Kiegészítő frissítve",
+        "error": "Hiba történt a kiegészítő frissítése közben"
+      },
+      "validation": {
+        "invalidJson": "A konfigurációs JSON érvénytelen"
+      },
+      "messages": {
+        "configHelp": "Konfiguráld a kiegészítőt kulcs-érték párokkal. Hagyd a mezőt üresen, ha nincs szükség konfigurációra.",
+        "configValidationError": "Helytelen konfiguráció:",
+        "schemaRenderError": "Nem sikerült megjeleníteni a konfigurációs űrlapot. A bővítmény sémája érvénytelen lehet.",
+        "clickPermissions": "Kattints egy engedélyre a részletekért",
+        "noConfig": "Nincs konfiguráció beállítva",
+        "allUsersHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott felhasználóhoz.",
+        "noUsers": "Nincsenek kiválasztott felhasználók",
+        "permissionReason": "Indok",
+        "usersRequired": "Ez a kiegészítő hozzáférést kér felhasználói információkhoz. Válaszd ki, melyik felhasználókat érheti el, vagy az 'Összes felhasználó engedélyezése' opciót.",
+        "allLibrariesHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott könyvtárhoz.",
+        "noLibraries": "Nincs kiválasztott könyvtár",
+        "librariesRequired": "Ez a kiegészítő hozzáférést kér könyvtárinformációkhoz. Válaszd ki, melyik könyvtárakat érheti el, vagy az 'Összes könyvtár engedélyezése' opciót.",
+        "requiredHosts": "Szükséges hostok"
+      },
+      "placeholders": {
+        "configKey": "kulcs",
+        "configValue": "érték"
+      }
     }
   },
   "ra": {
@@ -478,6 +554,7 @@
     "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd ezt le, és csak az átkódolási beállítások konfigurálásának idejére kapcsold be.",
     "songsAddedToPlaylist": "1 szám hozzáadva a lejátszási listához |||| %{smart_count} szám hozzáadva a lejátszási listához",
     "noSimilarSongsFound": "Nem találhatóak hasonló számok",
+    "startingInstantMix": "Instant keverés töltődik...",
     "noTopSongsFound": "Nincsenek top számok",
     "noPlaylistsAvailable": "Nem áll rendelkezésre",
     "delete_user_title": "Felhasználó törlése '%{name}'",
@@ -591,6 +668,7 @@
       "currentValue": "Jelenlegi érték",
       "configurationFile": "Konfigurációs fájl",
       "exportToml": "Konfiguráció exportálása (TOML)",
+      "downloadToml": "Konfiguráció letöltése (TOML)",
       "exportSuccess": "Konfiguráció kiexportálva a vágólapra, TOML formában",
       "exportFailed": "Nem sikerült kimásolni a konfigurációt",
       "devFlagsHeader": "Fejlesztői beállítások (változások/eltávolítás jogát fenntartjuk)",
