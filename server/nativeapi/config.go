@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -95,6 +96,31 @@ func applySensitiveFieldMasking(ctx context.Context, config map[string]any, pref
 	}
 }
 
+// redactConnectionString strips only the password from a database connection string.
+func redactConnectionString(connStr string) string {
+	u, err := url.Parse(connStr)
+	if err == nil && u.Host != "" {
+		// URL format: postgres://user:password@host:port/dbname?sslmode=disable
+		if u.User != nil {
+			u.User = url.User(u.User.Username())
+		}
+		return u.String()
+	}
+	// Key=value format: host=localhost password=secret dbname=navidrome
+	var parts []string
+	for _, part := range strings.Fields(connStr) {
+		k, _, _ := strings.Cut(part, "=")
+		if k == "password" {
+			continue
+		}
+		parts = append(parts, part)
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, " ")
+	}
+	return "****"
+}
+
 func getConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -117,6 +143,11 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Apply sensitive field masking
 	applySensitiveFieldMasking(ctx, configMap, "")
+
+	// Redact DbConnectionString to show only the host
+	if connStr, ok := configMap["DbConnectionString"].(string); ok && connStr != "" {
+		configMap["DbConnectionString"] = redactConnectionString(connStr)
+	}
 
 	resp := configResponse{
 		ID:         "config",

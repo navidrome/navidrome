@@ -12,7 +12,7 @@ func init() {
 }
 
 func upAddAlbumInfo(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table album
 	add description varchar(255) default '' not null;
 alter table album
@@ -25,7 +25,7 @@ alter table album
 	add external_url varchar(255) default '' not null;
 alter table album
 	add external_info_updated_at datetime;
-`)
+`))
 	return err
 }
 

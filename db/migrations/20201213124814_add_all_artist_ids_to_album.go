@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
@@ -29,16 +30,21 @@ create index if not exists album_all_artist_ids
 }
 
 func updateAlbums20201213124814(tx *sql.Tx) error {
-	rows, err := tx.Query(`
-select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, ' ') 
-       from album a left join media_file mf on a.id = mf.album_id group by a.id
-   `)
+	selectQuery := `select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, ' ')
+       from album a left join media_file mf on a.id = mf.album_id group by a.id`
+	updateQuery := "update album set all_artist_ids = ? where id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		selectQuery = `select a.id, a.name, a.artist_id, a.album_artist_id, string_agg(mf.artist_id, ' ')
+       from album a left join media_file mf on a.id = mf.album_id group by a.id, a.name, a.artist_id, a.album_artist_id`
+		updateQuery = "update album set all_artist_ids = $1 where id = $2"
+	}
+	rows, err := tx.Query(selectQuery)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update album set all_artist_ids = ? where id = ?")
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

@@ -7,20 +7,26 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
 
 var (
+	// Dialect is the goose dialect name (for backward compatibility)
 	Dialect = "sqlite3"
-	Driver  = Dialect + "_custom"
+	Driver  = "sqlite3_custom"
 	Path    string
 )
+
+func init() {
+	// Initialize default dialect (SQLite) for tests and early access
+	dialect.Current = dialect.NewSQLite()
+}
 
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
@@ -29,31 +35,48 @@ const migrationsFolder = "migrations"
 
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
-		sql.Register(Driver, &sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
-			},
-		})
-		Path = conf.Server.DbPath
-		if Path == ":memory:" {
-			Path = "file::memory:?cache=shared&_foreign_keys=on"
-			conf.Server.DbPath = Path
+		initDialect()
+
+		if err := dialect.Current.RegisterDriver(); err != nil {
+			log.Fatal("Error registering database driver", err)
 		}
-		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
+
+		Path = dialect.Current.DSN()
+		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver, "dialect", Dialect)
+
 		db, err := sql.Open(Driver, Path)
-		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
-		if conf.Server.DevOptimizeDB {
-			_, err = db.Exec("PRAGMA optimize=0x10002")
-			if err != nil {
-				log.Error("Error applying PRAGMA optimize", err)
-				return nil
-			}
+
+		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
+
+		ctx := context.Background()
+		if err := dialect.Current.ConfigureConnection(ctx, db); err != nil {
+			log.Fatal("Error configuring database connection", err)
 		}
+
 		return db
 	})
+}
+
+func initDialect() {
+	switch conf.Server.DbDriver {
+	case consts.DbDriverPostgres:
+		dialect.Current = dialect.NewPostgres()
+	default:
+		dialect.Current = dialect.NewSQLite()
+	}
+	Dialect = dialect.Current.GooseDialect()
+	Driver = dialect.Current.Driver()
+}
+
+func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
+	return dialect.Current.IsSchemaEmpty(ctx, db)
+}
+
+func IsPostgres() bool {
+	return conf.Server.DbDriver == consts.DbDriverPostgres
 }
 
 func Close(ctx context.Context) {
@@ -73,24 +96,26 @@ func Close(ctx context.Context) {
 func Init(ctx context.Context) func() {
 	db := Db()
 
-	// Disable foreign_keys to allow re-creating tables in migrations
-	_, err := db.ExecContext(ctx, "PRAGMA foreign_keys=off")
-	defer func() {
-		_, err := db.ExecContext(ctx, "PRAGMA foreign_keys=on")
+	// SQLite-specific: Disable foreign_keys to allow re-creating tables in migrations
+	if Dialect == "sqlite3" {
+		_, err := db.ExecContext(ctx, "PRAGMA foreign_keys=off")
+		defer func() {
+			_, err := db.ExecContext(ctx, "PRAGMA foreign_keys=on")
+			if err != nil {
+				log.Error(ctx, "Error re-enabling foreign_keys", err)
+			}
+		}()
 		if err != nil {
-			log.Error(ctx, "Error re-enabling foreign_keys", err)
+			log.Error(ctx, "Error disabling foreign_keys", err)
 		}
-	}()
-	if err != nil {
-		log.Error(ctx, "Error disabling foreign_keys", err)
 	}
 
 	goose.SetBaseFS(embedMigrations)
-	err = goose.SetDialect(Dialect)
+	err := goose.SetDialect(Dialect)
 	if err != nil {
-		log.Fatal(ctx, "Invalid DB driver", "driver", Driver, err)
+		log.Fatal(ctx, "Invalid DB dialect", "dialect", Dialect, err)
 	}
-	schemaEmpty := isSchemaEmpty(ctx, db)
+	schemaEmpty := dialect.Current.IsSchemaEmpty(ctx, db)
 	hasSchemaChanges := hasPendingMigrations(ctx, db, migrationsFolder)
 	if !schemaEmpty && hasSchemaChanges {
 		log.Info(ctx, "Upgrading DB Schema to latest version")
@@ -101,11 +126,9 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
-	if hasSchemaChanges && conf.Server.DevOptimizeDB {
-		log.Debug(ctx, "Applying PRAGMA optimize after schema changes")
-		_, err = db.ExecContext(ctx, "PRAGMA optimize")
-		if err != nil {
-			log.Error(ctx, "Error applying PRAGMA optimize", err)
+	if hasSchemaChanges {
+		if err := dialect.Current.PostSchemaChange(ctx, db); err != nil {
+			log.Error(ctx, "Error running post-schema-change optimization", err)
 		}
 	}
 
@@ -114,34 +137,9 @@ func Init(ctx context.Context) func() {
 	}
 }
 
-// Optimize runs PRAGMA optimize on each connection in the pool
 func Optimize(ctx context.Context) {
-	if !conf.Server.DevOptimizeDB {
-		return
-	}
-	numConns := Db().Stats().OpenConnections
-	if numConns == 0 {
-		log.Debug(ctx, "No open connections to optimize")
-		return
-	}
-	log.Debug(ctx, "Optimizing open connections", "numConns", numConns)
-	var conns []*sql.Conn
-	for range numConns {
-		conn, err := Db().Conn(ctx)
-		conns = append(conns, conn)
-		if err != nil {
-			log.Error(ctx, "Error getting connection from pool", err)
-			continue
-		}
-		_, err = conn.ExecContext(ctx, "PRAGMA optimize;")
-		if err != nil {
-			log.Error(ctx, "Error running PRAGMA optimize", err)
-		}
-	}
-
-	// Return all connections to the Connection Pool
-	for _, conn := range conns {
-		conn.Close()
+	if err := dialect.Current.Optimize(ctx, Db()); err != nil {
+		log.Error(ctx, "Error running database optimization", err)
 	}
 }
 
@@ -169,14 +167,6 @@ func hasPendingMigrations(ctx context.Context, db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
-func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
-	if err != nil {
-		log.Fatal(ctx, "Database could not be opened!", err)
-	}
-	defer rows.Close()
-	return !rows.Next()
-}
 
 type logAdapter struct {
 	ctx    context.Context

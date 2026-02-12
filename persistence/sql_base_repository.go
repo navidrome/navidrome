@@ -14,6 +14,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	id2 "github.com/navidrome/navidrome/model/id"
@@ -365,12 +366,16 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
+	// PostgreSQL handles OFFSET natively with proper index support
+	if db.IsPostgres() {
+		return sq
+	}
 	if options.Offset > conf.Server.DevOffsetOptimize {
 		sq = sq.RemoveOffset()
-		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
+		rowidSq := sq.RemoveColumns().Columns(RowID(r.tableName))
 		rowidSq = rowidSq.Limit(uint64(options.Offset))
 		rowidSql, args, _ := rowidSq.ToSql()
-		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
+		sq = sq.Where(RowID(r.tableName)+" not in ("+rowidSql+")", args...)
 	}
 	return sq
 }
@@ -386,8 +391,11 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
+	// PostgreSQL doesn't allow ORDER BY with aggregates without GROUP BY
+	if !db.IsPostgres() {
+		countQuery = countQuery.OrderBy(r.tableName + ".id")
+	}
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)

@@ -12,7 +12,8 @@ func init() {
 }
 
 func Up20200327193744(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	// adaptSQL() converts varchar(255) to text for PostgreSQL
+	_, err := tx.Exec(adaptSQL(`
 create table album_dg_tmp
 (
 	id varchar(255) not null
@@ -35,7 +36,7 @@ create table album_dg_tmp
 	album_artist_id varchar(255) default ''
 );
 
-insert into album_dg_tmp(id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, max_year, compilation, song_count, duration, genre, created_at, updated_at, full_text, album_artist_id) select id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, year, compilation, song_count, duration, genre, created_at, updated_at, full_text, album_artist_id from album;
+insert into album_dg_tmp(id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, min_year, compilation, song_count, duration, genre, created_at, updated_at, full_text, album_artist_id) select id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, year, compilation, song_count, duration, genre, created_at, updated_at, full_text, album_artist_id from album;
 
 drop table album;
 
@@ -68,7 +69,7 @@ create index album_min_year
 create index album_max_year
 	on album (max_year);
 
-`)
+`))
 	if err != nil {
 		return err
 	}

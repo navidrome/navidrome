@@ -12,7 +12,7 @@ func init() {
 }
 
 func upAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table playlist
 	add column rules varchar null;
 alter table playlist
@@ -29,7 +29,7 @@ create table playlist_fields (
 );
 create unique index playlist_fields_idx
 	on playlist_fields (field, playlist_id);
-`)
+`))
 	return err
 }
 

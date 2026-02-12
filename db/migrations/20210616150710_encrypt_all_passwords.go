@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/pressly/goose/v3"
@@ -16,13 +17,17 @@ func init() {
 }
 
 func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.Query(`SELECT id, user_name, password from user;`)
+	rows, err := tx.Query(`SELECT id, user_name, password from "user";`)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("UPDATE user SET password = ? WHERE id = ?")
+	updateQuery := `UPDATE "user" SET password = ? WHERE id = ?`
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		updateQuery = `UPDATE "user" SET password = $1 WHERE id = $2`
+	}
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

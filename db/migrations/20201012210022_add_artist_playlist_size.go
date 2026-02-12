@@ -12,13 +12,13 @@ func init() {
 }
 
 func Up20201012210022(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table artist
 	add size integer default 0 not null;
 create index if not exists artist_size
 	on artist(size);
 
-update artist set size = ifnull((
+update artist set size = COALESCE((
    select sum(f.size)
    from album f
    where f.album_artist_id = artist.id
@@ -30,12 +30,12 @@ alter table playlist
 create index if not exists playlist_size
 	on playlist(size);
 
-update playlist set size = ifnull((
+update playlist set size = COALESCE((
     select sum(size)
     from media_file f
              left join playlist_tracks pt on f.id = pt.media_file_id
     where pt.playlist_id = playlist.id
-), 0);`)
+), 0);`))
 
 	return err
 }

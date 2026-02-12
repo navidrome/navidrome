@@ -6,8 +6,13 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 )
+
+func isPostgres() bool {
+	return dialect.Current != nil && dialect.Current.Name() == "postgres"
+}
 
 var fieldMap = map[string]*mappedField{
 	"title":                {field: "media_file.title"},
@@ -165,12 +170,22 @@ func (e tagCond) ToSql() (string, []any, error) {
 			tagName = fm.field
 		}
 		if fm.numeric {
-			cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+			if isPostgres() {
+				cond = strings.ReplaceAll(cond, "elem->>'value'", "(elem->>'value')::real")
+			} else {
+				cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+			}
 		}
 	}
 
-	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
-		tagName, cond)
+	if isPostgres() {
+		cond = strings.ReplaceAll(cond, "value", "elem->>'value'")
+		cond = fmt.Sprintf("exists (select 1 from jsonb_array_elements(tags::jsonb->'%s') as elem where %s)",
+			tagName, cond)
+	} else {
+		cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
+			tagName, cond)
+	}
 	if e.not {
 		cond = "not " + cond
 	}
@@ -189,8 +204,14 @@ type roleCond struct {
 
 func (e roleCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
-	cond = fmt.Sprintf(`exists (select 1 from json_tree(participants, '$.%s') where key='name' and %s)`,
-		e.role, cond)
+	if isPostgres() {
+		cond = strings.ReplaceAll(cond, "value", "elem->>'name'")
+		cond = fmt.Sprintf(`exists (select 1 from jsonb_array_elements(participants::jsonb->'%s') as elem where %s)`,
+			e.role, cond)
+	} else {
+		cond = fmt.Sprintf(`exists (select 1 from json_tree(participants, '$.%s') where key='name' and %s)`,
+			e.role, cond)
+	}
 	if e.not {
 		cond = "not " + cond
 	}

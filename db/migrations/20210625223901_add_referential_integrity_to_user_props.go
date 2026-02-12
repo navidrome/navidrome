@@ -12,16 +12,17 @@ func init() {
 }
 
 func upAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
+	// Use temporary constraint names to avoid conflicts in PostgreSQL
 	_, err := tx.Exec(`
 create table user_props_dg_tmp
 (
 	user_id varchar not null
-		constraint user_props_user_id_fk
-			references user
+		constraint user_props_user_id_fk_tmp
+			references "user"
 				on update cascade on delete cascade,
 	key varchar not null,
 	value varchar,
-	constraint user_props_pk
+	constraint user_props_pk_tmp
 		primary key (user_id, key)
 );
 
