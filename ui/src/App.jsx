@@ -31,6 +31,7 @@ import {
   activityReducer,
   settingsReducer,
   replayGainReducer,
+  infiniteScrollReducer,
   downloadMenuDialogReducer,
   shareDialogReducer,
 } from './reducers'
@@ -72,6 +73,7 @@ const adminStore = createAdminStore({
     activity: activityReducer,
     settings: settingsReducer,
     replayGain: replayGainReducer,
+    infiniteScroll: infiniteScrollReducer,
   },
 })
 
