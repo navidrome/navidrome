@@ -478,7 +478,7 @@
       "loading": "Betöltés",
       "not_found": "Nem található",
       "show": "%{name} #%{id}",
-      "empty": "Nincs %{name} még.",
+      "empty": "Nincsenek %{name}.",
       "invite": "Szeretnél egyet hozzáadni?"
     },
     "input": {
