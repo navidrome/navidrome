@@ -470,21 +470,25 @@ func (r *playlistRepository) removeOrphans() error {
 
 // renumber updates the position of all tracks in the playlist to be sequential starting from 1, ordered by their
 // current position. This is needed after removing orphan tracks, to ensure there are no gaps in the track numbering.
-// The two-step approach avoids violating the unique constraint on (playlist_id, id) during the update.
+// The two-step approach (negate then reassign via CTE) avoids UNIQUE constraint violations on (playlist_id, id).
 func (r *playlistRepository) renumber(id string) error {
-	// Step 1: set each id to the negative of its sequential position (all unique, no collisions)
+	// Step 1: Negate all IDs to clear the positive ID space
 	_, err := r.executeSQL(Expr(
-		`UPDATE playlist_tracks SET id = -(
-			SELECT COUNT(*) FROM playlist_tracks pt2
-			WHERE pt2.playlist_id = playlist_tracks.playlist_id
-			AND pt2.id <= playlist_tracks.id
-		) WHERE playlist_id = ?`, id))
+		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id > 0`, id))
 	if err != nil {
 		return err
 	}
-	// Step 2: flip to positive
+	// Step 2: Assign new sequential positive IDs using UPDATE...FROM with a CTE.
+	// The CTE is fully materialized before the UPDATE begins, avoiding self-referencing issues.
+	// ORDER BY id DESC restores original order since IDs are now negative.
 	_, err = r.executeSQL(Expr(
-		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ?`, id))
+		`WITH new_ids AS (
+			SELECT rowid as rid, ROW_NUMBER() OVER (ORDER BY id DESC) as new_id
+			FROM playlist_tracks WHERE playlist_id = ?
+		)
+		UPDATE playlist_tracks SET id = new_ids.new_id
+		FROM new_ids
+		WHERE playlist_tracks.rowid = new_ids.rid AND playlist_tracks.playlist_id = ?`, id, id))
 	if err != nil {
 		return err
 	}
