@@ -38,7 +38,7 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFile", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			// Set up library with the actual library path that matches the folder
@@ -148,7 +148,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
-				ps = playlists.New(ds)
+				ps = playlists.NewPlaylists(ds)
 
 				// Create the playlist file on disk with the filesystem's normalization form
 				plsFile := tmpDir + "/" + filesystemName + ".m3u"
@@ -208,7 +208,7 @@ var _ = Describe("Playlists - Import", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = playlists.New(ds)
+				ps = playlists.NewPlaylists(ds)
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -364,7 +364,7 @@ var _ = Describe("Playlists - Import", func() {
 					},
 				}
 				// Recreate playlists service to pick up new mock
-				ps = playlists.New(ds)
+				ps = playlists.NewPlaylists(ds)
 
 				// Create playlist in music library that references both tracks
 				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
@@ -407,7 +407,7 @@ var _ = Describe("Playlists - Import", func() {
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})

@@ -77,7 +77,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.New(ds), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 
 		// Create two test libraries (let DB auto-assign IDs)
 		lib1 = model.Library{Name: "Rock Collection", Path: "rock:///music"}
