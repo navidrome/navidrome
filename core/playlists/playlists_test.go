@@ -15,30 +15,27 @@ import (
 var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
-	var mockPlsRepo mockedPlaylistRepo
+	var mockPlsRepo *tests.MockPlaylistRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		mockPlsRepo = mockedPlaylistRepo{}
+		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		ds = &tests.MockDataStore{
-			MockedPlaylist: &mockPlsRepo,
+			MockedPlaylist: mockPlsRepo,
 			MockedLibrary:  &tests.MockLibraryRepo{},
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
 	})
 
 	Describe("Delete", func() {
-		var mockTracks *mockedPlaylistTrackRepo
+		var mockTracks *tests.MockPlaylistTrackRepo
 
 		BeforeEach(func() {
-			mockTracks = &mockedPlaylistTrackRepo{addCount: 3}
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-				},
-				tracks: mockTracks,
+			mockTracks = &tests.MockPlaylistTrackRepo{AddCount: 3}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
+			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -46,21 +43,21 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Delete(ctx, "pls-1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+			Expect(mockPlsRepo.Deleted).To(ContainElement("pls-1"))
 		})
 
 		It("allows admin to delete any playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
 			err := ps.Delete(ctx, "pls-1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+			Expect(mockPlsRepo.Deleted).To(ContainElement("pls-1"))
 		})
 
 		It("denies non-owner, non-admin from deleting", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			err := ps.Delete(ctx, "pls-1")
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
-			Expect(mockPlsRepo.deleted).To(BeEmpty())
+			Expect(mockPlsRepo.Deleted).To(BeEmpty())
 		})
 
 		It("returns error when playlist not found", func() {
@@ -72,15 +69,12 @@ var _ = Describe("Playlists", func() {
 
 	Describe("Create", func() {
 		BeforeEach(func() {
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "Existing", OwnerID: "user-1"},
-					"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
-					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
-						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				},
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "Existing", OwnerID: "user-1"},
+				"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -89,8 +83,8 @@ var _ = Describe("Playlists", func() {
 			id, err := ps.Create(ctx, "", "New Playlist", []string{"song-1", "song-2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(id).ToNot(BeEmpty())
-			Expect(mockPlsRepo.last.Name).To(Equal("New Playlist"))
-			Expect(mockPlsRepo.last.OwnerID).To(Equal("user-1"))
+			Expect(mockPlsRepo.Last.Name).To(Equal("New Playlist"))
+			Expect(mockPlsRepo.Last.OwnerID).To(Equal("user-1"))
 		})
 
 		It("replaces tracks on existing playlist when owner matches", func() {
@@ -98,7 +92,7 @@ var _ = Describe("Playlists", func() {
 			id, err := ps.Create(ctx, "pls-1", "", []string{"song-3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(id).To(Equal("pls-1"))
-			Expect(mockPlsRepo.last.Tracks).To(HaveLen(1))
+			Expect(mockPlsRepo.Last.Tracks).To(HaveLen(1))
 		})
 
 		It("allows admin to replace tracks on any playlist", func() {
@@ -128,20 +122,17 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("Update", func() {
-		var mockTracks *mockedPlaylistTrackRepo
+		var mockTracks *tests.MockPlaylistTrackRepo
 
 		BeforeEach(func() {
-			mockTracks = &mockedPlaylistTrackRepo{addCount: 2}
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-					"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
-					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
-						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				},
-				tracks: mockTracks,
+			mockTracks = &tests.MockPlaylistTrackRepo{AddCount: 2}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
+			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -194,20 +185,17 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("AddTracks", func() {
-		var mockTracks *mockedPlaylistTrackRepo
+		var mockTracks *tests.MockPlaylistTrackRepo
 
 		BeforeEach(func() {
-			mockTracks = &mockedPlaylistTrackRepo{addCount: 2}
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
-						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-					"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
-				},
-				tracks: mockTracks,
+			mockTracks = &tests.MockPlaylistTrackRepo{AddCount: 2}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
+			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -216,7 +204,7 @@ var _ = Describe("Playlists", func() {
 			count, err := ps.AddTracks(ctx, "pls-1", []string{"song-1", "song-2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(2))
-			Expect(mockTracks.addedIds).To(ConsistOf("song-1", "song-2"))
+			Expect(mockTracks.AddedIds).To(ConsistOf("song-1", "song-2"))
 		})
 
 		It("allows admin to add tracks to any playlist", func() {
@@ -246,19 +234,16 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("RemoveTracks", func() {
-		var mockTracks *mockedPlaylistTrackRepo
+		var mockTracks *tests.MockPlaylistTrackRepo
 
 		BeforeEach(func() {
-			mockTracks = &mockedPlaylistTrackRepo{}
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
-						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				},
-				tracks: mockTracks,
+			mockTracks = &tests.MockPlaylistTrackRepo{}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
+			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -266,7 +251,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveTracks(ctx, "pls-1", []string{"track-1", "track-2"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mockTracks.deletedIds).To(ConsistOf("track-1", "track-2"))
+			Expect(mockTracks.DeletedIds).To(ConsistOf("track-1", "track-2"))
 		})
 
 		It("denies on smart playlist", func() {
@@ -283,19 +268,16 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("ReorderTrack", func() {
-		var mockTracks *mockedPlaylistTrackRepo
+		var mockTracks *tests.MockPlaylistTrackRepo
 
 		BeforeEach(func() {
-			mockTracks = &mockedPlaylistTrackRepo{}
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-					"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
-						Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				},
-				tracks: mockTracks,
+			mockTracks = &tests.MockPlaylistTrackRepo{}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
+			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -303,7 +285,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.ReorderTrack(ctx, "pls-1", 1, 3)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mockTracks.reordered).To(BeTrue())
+			Expect(mockTracks.Reordered).To(BeTrue())
 		})
 
 		It("denies on smart playlist", func() {

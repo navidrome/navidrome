@@ -15,13 +15,13 @@ import (
 var _ = Describe("REST Adapter", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
-	var mockPlsRepo mockedPlaylistRepo
+	var mockPlsRepo *tests.MockPlaylistRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		mockPlsRepo = mockedPlaylistRepo{}
+		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		ds = &tests.MockDataStore{
-			MockedPlaylist: &mockPlsRepo,
+			MockedPlaylist: mockPlsRepo,
 			MockedLibrary:  &tests.MockLibraryRepo{},
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
@@ -31,12 +31,9 @@ var _ = Describe("REST Adapter", func() {
 		var repo rest.Persistable
 
 		BeforeEach(func() {
-			mockPlsRepo = mockedPlaylistRepo{
-				entities: map[string]*model.Playlist{
-					"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
-				},
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ds.MockedPlaylist = &mockPlsRepo
 			ps = playlists.NewPlaylists(ds)
 		})
 
@@ -109,7 +106,7 @@ var _ = Describe("REST Adapter", func() {
 				repo = ps.NewRepository(ctx).(rest.Persistable)
 				err := repo.Delete("pls-1")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mockPlsRepo.deleted).To(ContainElement("pls-1"))
+				Expect(mockPlsRepo.Deleted).To(ContainElement("pls-1"))
 			})
 
 			It("denies non-owner", func() {
