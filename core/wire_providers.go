@@ -17,7 +17,7 @@ var Set = wire.NewSet(
 	NewArchiver,
 	NewPlayers,
 	NewShare,
-	playlists.New,
+	playlists.NewPlaylists,
 	NewLibrary,
 	NewUser,
 	NewMaintenance,

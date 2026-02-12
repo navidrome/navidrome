@@ -39,7 +39,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("allows owner to delete their playlist", func() {
@@ -81,7 +81,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("creates a new playlist with owner set from context", func() {
@@ -142,7 +142,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("allows owner to update their playlist", func() {
@@ -208,7 +208,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("allows owner to add tracks", func() {
@@ -259,7 +259,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("allows owner to remove tracks", func() {
@@ -296,7 +296,7 @@ var _ = Describe("Playlists", func() {
 				tracks: mockTracks,
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		It("allows owner to reorder", func() {

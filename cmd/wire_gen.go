@@ -62,7 +62,7 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
-	playlistsPlaylists := playlists.New(dataStore)
+	playlistsPlaylists := playlists.NewPlaylists(dataStore)
 	insights := metrics.GetInstance(dataStore)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
@@ -99,7 +99,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	playlistsPlaylists := playlists.New(dataStore)
+	playlistsPlaylists := playlists.NewPlaylists(dataStore)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
@@ -166,7 +166,7 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	playlistsPlaylists := playlists.New(dataStore)
+	playlistsPlaylists := playlists.NewPlaylists(dataStore)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	return modelScanner
 }
@@ -183,7 +183,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	playlistsPlaylists := playlists.New(dataStore)
+	playlistsPlaylists := playlists.NewPlaylists(dataStore)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	return watcher

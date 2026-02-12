@@ -37,7 +37,7 @@ var _ = Describe("REST Adapter", func() {
 				},
 			}
 			ds.MockedPlaylist = &mockPlsRepo
-			ps = playlists.New(ds)
+			ps = playlists.NewPlaylists(ds)
 		})
 
 		Describe("Save", func() {

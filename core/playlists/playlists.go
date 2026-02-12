@@ -47,7 +47,7 @@ type playlists struct {
 	ds model.DataStore
 }
 
-func New(ds model.DataStore) Playlists {
+func NewPlaylists(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
 }
 

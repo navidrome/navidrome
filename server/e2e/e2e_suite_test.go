@@ -319,7 +319,7 @@ var _ = BeforeSuite(func() {
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.New(initDS), metrics.NewNoopInstance())
+		playlists.NewPlaylists(initDS), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -353,7 +353,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS + noop stubs
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.New(ds), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -363,7 +363,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		playlists.New(ds),
+		playlists.NewPlaylists(ds),
 		noopPlayTracker{},
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),

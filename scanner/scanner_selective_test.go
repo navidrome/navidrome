@@ -63,7 +63,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.New(ds), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
