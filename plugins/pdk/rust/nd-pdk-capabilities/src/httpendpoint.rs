@@ -28,13 +28,14 @@ pub struct HTTPHandleRequest {
     pub method: String,
     /// Path is the request path relative to the plugin's base URL.
     /// For example, if the full URL is /ext/my-plugin/webhook, Path is "/webhook".
+    /// Both /ext/my-plugin and /ext/my-plugin/ are normalized to Path = "".
     #[serde(default)]
     pub path: String,
     /// Query is the raw query string without the leading '?'.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub query: String,
     /// Headers contains the HTTP request headers.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub headers: std::collections::HashMap<String, Vec<String>>,
     /// Body is the request body content.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -48,10 +49,10 @@ pub struct HTTPHandleRequest {
 #[serde(rename_all = "camelCase")]
 pub struct HTTPHandleResponse {
     /// Status is the HTTP status code. Defaults to 200 if zero or not set.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
     pub status: i32,
     /// Headers contains the HTTP response headers to set.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub headers: std::collections::HashMap<String, Vec<String>>,
     /// Body is the response body content.
     #[serde(default, skip_serializing_if = "String::is_empty")]

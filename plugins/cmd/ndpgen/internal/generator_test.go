@@ -1432,12 +1432,16 @@ type OnInitOutput struct {
 
 var _ = Describe("Rust Generation", func() {
 	Describe("skipSerializingFunc", func() {
-		It("should return Option::is_none for pointer, slice, and map types", func() {
+		It("should return Option::is_none for pointer and slice types", func() {
 			Expect(skipSerializingFunc("*string")).To(Equal("Option::is_none"))
 			Expect(skipSerializingFunc("*MyStruct")).To(Equal("Option::is_none"))
 			Expect(skipSerializingFunc("[]string")).To(Equal("Option::is_none"))
 			Expect(skipSerializingFunc("[]int32")).To(Equal("Option::is_none"))
-			Expect(skipSerializingFunc("map[string]int")).To(Equal("Option::is_none"))
+		})
+
+		It("should return HashMap::is_empty for map types", func() {
+			Expect(skipSerializingFunc("map[string]int")).To(Equal("HashMap::is_empty"))
+			Expect(skipSerializingFunc("map[string]string")).To(Equal("HashMap::is_empty"))
 		})
 
 		It("should return String::is_empty for string type", func() {

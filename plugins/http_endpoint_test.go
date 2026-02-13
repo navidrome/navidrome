@@ -320,6 +320,38 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 		})
 	})
 
+	Describe("Security Headers", func() {
+		It("includes security headers in authenticated endpoint responses", func() {
+			req := httptest.NewRequest("GET", "/test-http-endpoint/hello?u=testuser", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("X-Content-Type-Options")).To(Equal("nosniff"))
+			Expect(w.Header().Get("Content-Security-Policy")).To(Equal("default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"))
+		})
+
+		It("includes security headers in public endpoint responses", func() {
+			req := httptest.NewRequest("POST", "/test-http-endpoint-public/webhook", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("X-Content-Type-Options")).To(Equal("nosniff"))
+			Expect(w.Header().Get("Content-Security-Policy")).To(Equal("default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"))
+		})
+
+		It("overrides plugin-set security headers", func() {
+			req := httptest.NewRequest("POST", "/test-http-endpoint/echo?u=testuser", strings.NewReader("body"))
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("X-Content-Type-Options")).To(Equal("nosniff"))
+			Expect(w.Header().Get("Content-Security-Policy")).To(Equal("default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"))
+		})
+	})
+
 	Describe("Unknown Plugin", func() {
 		It("returns 404 for nonexistent plugin", func() {
 			req := httptest.NewRequest("GET", "/nonexistent-plugin/hello", nil)

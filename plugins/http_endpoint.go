@@ -164,15 +164,19 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 		return
 	}
 
-	// Write response headers
+	// Write response headers from plugin
 	for key, values := range resp.Headers {
 		for _, v := range values {
 			w.Header().Add(key, v)
 		}
 	}
 
+	// Security hardening: override any plugin-set security headers
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox")
+
 	// Write status code (default to 200)
-	status := resp.Status
+	status := int(resp.Status)
 	if status == 0 {
 		status = http.StatusOK
 	}

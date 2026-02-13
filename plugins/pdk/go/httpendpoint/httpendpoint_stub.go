@@ -14,6 +14,7 @@ type HTTPHandleRequest struct {
 	Method string `json:"method"`
 	// Path is the request path relative to the plugin's base URL.
 	// For example, if the full URL is /ext/my-plugin/webhook, Path is "/webhook".
+	// Both /ext/my-plugin and /ext/my-plugin/ are normalized to Path = "".
 	Path string `json:"path"`
 	// Query is the raw query string without the leading '?'.
 	Query string `json:"query,omitempty"`
@@ -28,7 +29,7 @@ type HTTPHandleRequest struct {
 // HTTPHandleResponse is the response returned by the plugin's HandleRequest function.
 type HTTPHandleResponse struct {
 	// Status is the HTTP status code. Defaults to 200 if zero or not set.
-	Status int `json:"status,omitempty"`
+	Status int32 `json:"status,omitempty"`
 	// Headers contains the HTTP response headers to set.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the response body content.

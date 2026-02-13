@@ -560,8 +560,11 @@ func rustConstName(name string) string {
 
 // skipSerializingFunc returns the appropriate skip_serializing_if function name.
 func skipSerializingFunc(goType string) string {
-	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[]") || strings.HasPrefix(goType, "map[") {
+	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[]") {
 		return "Option::is_none"
+	}
+	if strings.HasPrefix(goType, "map[") {
+		return "HashMap::is_empty"
 	}
 	switch goType {
 	case "string":
