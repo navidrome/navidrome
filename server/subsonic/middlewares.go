@@ -153,6 +153,66 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
+// ValidateAuth validates Subsonic authentication from an HTTP request and returns the authenticated user.
+// Unlike the authenticate middleware, this function does not write any HTTP response, making it suitable
+// for use by external consumers (e.g., plugin endpoints) that need Subsonic auth but want to handle
+// errors themselves.
+//
+// It supports the same authentication methods as the Subsonic API:
+//   - Internal auth (from plugin SubsonicAPI calls)
+//   - Reverse proxy auth (via trusted external auth headers)
+//   - Subsonic classic auth (username + password/token/salt/jwt query params)
+func ValidateAuth(ds model.DataStore, r *http.Request) (*model.User, error) {
+	// Parse form data into query params (same as postFormToQueryParams middleware)
+	if err := r.ParseForm(); err != nil {
+		return nil, fmt.Errorf("parsing form: %w", err)
+	}
+	var parts []string
+	for key, values := range r.Form {
+		for _, v := range values {
+			parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(v))
+		}
+	}
+	r.URL.RawQuery = strings.Join(parts, "&")
+
+	ctx := r.Context()
+
+	// Check internal auth or reverse proxy auth first
+	username, isInternalAuth := fromInternalOrProxyAuth(r)
+	if username != "" {
+		usr, err := ds.User(ctx).FindByUsername(username)
+		if err != nil {
+			authType := If(isInternalAuth, "internal", "reverse-proxy")
+			log.Warn(ctx, "Plugin auth: Invalid login", "auth", authType, "username", username, err)
+			return nil, model.ErrInvalidAuth
+		}
+		return usr, nil
+	}
+
+	// Fall back to Subsonic classic auth (query params)
+	p := req.Params(r)
+	username, _ = p.String("u")
+	if username == "" {
+		return nil, fmt.Errorf("missing required parameter 'u' (username)")
+	}
+
+	pass, _ := p.String("p")
+	token, _ := p.String("t")
+	salt, _ := p.String("s")
+	jwt, _ := p.String("jwt")
+
+	usr, err := ds.User(ctx).FindByUsernameWithPassword(username)
+	if err != nil {
+		return nil, model.ErrInvalidAuth
+	}
+
+	if err := validateCredentials(usr, pass, token, salt, jwt); err != nil {
+		return nil, err
+	}
+
+	return usr, nil
+}
+
 func validateCredentials(user *model.User, pass, token, salt, jwt string) error {
 	valid := false
 
