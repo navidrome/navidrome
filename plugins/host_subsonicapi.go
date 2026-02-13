@@ -86,11 +86,8 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 		RawQuery: query.Encode(),
 	}
 
-	// Create HTTP request with a fresh context to avoid Chi RouteContext pollution.
-	// Using http.NewRequest (instead of http.NewRequestWithContext) ensures the internal
-	// SubsonicAPI call doesn't inherit routing information from the parent handler,
-	// which would cause Chi to invoke the wrong handler. Authentication context is
-	// explicitly added in the next step via request.WithInternalAuth.
+	// Use http.NewRequest (not WithContext) to avoid inheriting Chi RouteContext;
+	// auth context is set explicitly below via request.WithInternalAuth.
 	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)

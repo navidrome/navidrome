@@ -28,20 +28,29 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
+// mergeFormIntoQuery parses form data (both URL query params and POST body)
+// and writes all values back into r.URL.RawQuery. This is needed because
+// some Subsonic clients send parameters as form fields instead of query params.
+// This support the OpenSubsonic `formPost` extension
+func mergeFormIntoQuery(r *http.Request) error {
+	if err := r.ParseForm(); err != nil {
+		return err
+	}
+	var parts []string
+	for key, values := range r.Form {
+		for _, v := range values {
+			parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(v))
+		}
+	}
+	r.URL.RawQuery = strings.Join(parts, "&")
+	return nil
+}
+
 func postFormToQueryParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseForm()
-		if err != nil {
+		if err := mergeFormIntoQuery(r); err != nil {
 			sendError(w, r, newError(responses.ErrorGeneric, err.Error()))
 		}
-		var parts []string
-		for key, values := range r.Form {
-			for _, v := range values {
-				parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(v))
-			}
-		}
-		r.URL.RawQuery = strings.Join(parts, "&")
-
 		next.ServeHTTP(w, r)
 	})
 }
@@ -169,17 +178,9 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 func ValidateAuth(ds model.DataStore, r *http.Request) (*model.User, error) {
 	// Parse form data into query params (same as postFormToQueryParams middleware,
 	// which is not in the call chain when ValidateAuth is used directly)
-	if err := r.ParseForm(); err != nil {
+	if err := mergeFormIntoQuery(r); err != nil {
 		return nil, fmt.Errorf("parsing form: %w", err)
 	}
-	var parts []string
-	for key, values := range r.Form {
-		for _, v := range values {
-			parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(v))
-		}
-	}
-	r.URL.RawQuery = strings.Join(parts, "&")
-
 	return authenticateRequest(ds, r)
 }
 

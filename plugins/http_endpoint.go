@@ -104,7 +104,8 @@ func (h *endpointHandler) serveWithNativeAuth(w http.ResponseWriter, r *http.Req
 func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *plugin) {
 	ctx := r.Context()
 
-	// Check user authorization (skip for auth:"none")
+	// Check user authorization and extract user info (skip for auth:"none")
+	var httpUser *capabilities.HTTPUser
 	if p.manifest.Permissions.Endpoints.Auth != EndpointsPermissionAuthNone {
 		user, ok := request.UserFrom(ctx)
 		if !ok {
@@ -115,6 +116,12 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 			log.Warn(ctx, "Plugin endpoint access denied", "plugin", p.name, "user", user.UserName)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
+		}
+		httpUser = &capabilities.HTTPUser{
+			ID:       user.ID,
+			Username: user.UserName,
+			Name:     user.Name,
+			IsAdmin:  user.IsAdmin,
 		}
 	}
 
@@ -128,21 +135,10 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 
 	// Build the plugin request
 	// Normalize path: both /ext/plugin and /ext/plugin/ map to ""
-	relPath := "/" + chi.URLParam(r, "*")
-	if relPath == "/" || relPath == "" {
-		relPath = ""
-	}
-
-	var httpUser *capabilities.HTTPUser
-	if p.manifest.Permissions.Endpoints.Auth != EndpointsPermissionAuthNone {
-		if user, ok := request.UserFrom(ctx); ok {
-			httpUser = &capabilities.HTTPUser{
-				ID:       user.ID,
-				Username: user.UserName,
-				Name:     user.Name,
-				IsAdmin:  user.IsAdmin,
-			}
-		}
+	rawPath := chi.URLParam(r, "*")
+	relPath := ""
+	if rawPath != "" {
+		relPath = "/" + rawPath
 	}
 
 	pluginReq := capabilities.HTTPHandleRequest{
