@@ -38,8 +38,8 @@ pub struct HTTPHandleRequest {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub headers: std::collections::HashMap<String, Vec<String>>,
     /// Body is the request body content.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub body: String,
+    #[serde(skip)]
+    pub body: Vec<u8>,
     /// User contains the authenticated user information. Nil for auth:"none" endpoints.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user: Option<HTTPUser>,
@@ -55,8 +55,8 @@ pub struct HTTPHandleResponse {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub headers: std::collections::HashMap<String, Vec<String>>,
     /// Body is the response body content.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub body: String,
+    #[serde(skip)]
+    pub body: Vec<u8>,
 }
 /// HTTPUser contains authenticated user information passed to the plugin.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -112,11 +112,45 @@ macro_rules! register_httpendpoint {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
         pub fn nd_http_handle_request(
-            req: extism_pdk::Json<$crate::httpendpoint::HTTPHandleRequest>
-        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::httpendpoint::HTTPHandleResponse>> {
+            _raw_input: extism_pdk::Raw<Vec<u8>>
+        ) -> extism_pdk::FnResult<extism_pdk::Raw<Vec<u8>>> {
             let plugin = <$plugin_type>::default();
-            let result = $crate::httpendpoint::HTTPEndpoint::handle_request(&plugin, req.into_inner())?;
-            Ok(extism_pdk::Json(result))
+            // Parse input frame: [json_len:4B][JSON without []byte field][raw bytes]
+            let raw_bytes = _raw_input.0;
+            if raw_bytes.len() < 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"malformed input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let json_len = u32::from_be_bytes([raw_bytes[0], raw_bytes[1], raw_bytes[2], raw_bytes[3]]) as usize;
+            if json_len > raw_bytes.len() - 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"invalid json length in input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let mut req: $crate::httpendpoint::HTTPHandleRequest = serde_json::from_slice(&raw_bytes[4..4+json_len])
+                .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+            req.body = raw_bytes[4+json_len..].to_vec();
+            match $crate::httpendpoint::HTTPEndpoint::handle_request(&plugin, req) {
+                Ok(output) => {
+                    // Success frame: [0x00][json_len:4B][JSON without []byte field][raw bytes]
+                    let json_bytes = serde_json::to_vec(&output)
+                        .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+                    let raw_field = &output.body;
+                    let mut frame = Vec::with_capacity(1 + 4 + json_bytes.len() + raw_field.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&(json_bytes.len() as u32).to_be_bytes());
+                    frame.extend_from_slice(&json_bytes);
+                    frame.extend_from_slice(raw_field);
+                    Ok(extism_pdk::Raw(frame))
+                }
+                Err(e) => {
+                    // Error frame: [0x01][UTF-8 error message]
+                    let mut err_frame = vec![0x01u8];
+                    err_frame.extend_from_slice(e.message.as_bytes());
+                    Ok(extism_pdk::Raw(err_frame))
+                }
+            }
         }
     };
 }

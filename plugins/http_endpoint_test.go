@@ -446,6 +446,19 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 		})
 	})
 
+	Describe("Binary Response", func() {
+		It("returns raw binary data intact", func() {
+			req := httptest.NewRequest("GET", "/test-http-endpoint/binary?u=testuser", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("image/png"))
+			// PNG header bytes
+			Expect(w.Body.Bytes()).To(Equal([]byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}))
+		})
+	})
+
 	Describe("Request body handling", func() {
 		It("passes request body to the plugin", func() {
 			body := `{"event":"push","ref":"refs/heads/main"}`

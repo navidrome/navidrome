@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,6 +94,105 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 
 	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
 	return result, err
+}
+
+// callPluginFunctionRaw calls a plugin function using binary framing for []byte fields.
+// The input is JSON-encoded (with []byte field excluded via json:"-"), followed by raw bytes.
+// The output frame is: [status:1B][json_len:4B][JSON][raw bytes] for success (0x00),
+// or [0x01][UTF-8 error message] for errors.
+func callPluginFunctionRaw[I any, O any](
+	ctx context.Context, plugin *plugin, funcName string,
+	input I, rawInputBytes []byte,
+	setRawOutput func(*O, []byte),
+) (O, error) {
+	start := time.Now()
+
+	var result O
+
+	p, err := plugin.instance(ctx)
+	if err != nil {
+		return result, fmt.Errorf("failed to create plugin: %w", err)
+	}
+	defer p.Close(ctx)
+
+	if !p.FunctionExists(funcName) {
+		log.Trace(ctx, "Plugin function not found", "plugin", plugin.name, "function", funcName)
+		return result, fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
+	}
+
+	// Build input frame: [json_len:4B][JSON][raw bytes]
+	jsonBytes, err := json.Marshal(input)
+	if err != nil {
+		return result, fmt.Errorf("failed to marshal input: %w", err)
+	}
+	frame := make([]byte, 4+len(jsonBytes)+len(rawInputBytes))
+	binary.BigEndian.PutUint32(frame[:4], uint32(len(jsonBytes)))
+	copy(frame[4:4+len(jsonBytes)], jsonBytes)
+	copy(frame[4+len(jsonBytes):], rawInputBytes)
+
+	startCall := time.Now()
+	exit, output, err := p.CallWithContext(ctx, funcName, frame)
+	elapsed := time.Since(startCall)
+	if err != nil {
+		if ctx.Err() != nil {
+			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
+			return result, ctx.Err()
+		}
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
+		return result, fmt.Errorf("plugin call failed: %w", err)
+	}
+	if exit != 0 {
+		if exit == notImplementedCode {
+			log.Trace(ctx, "Plugin function not implemented", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start))
+			return result, fmt.Errorf("%w: %s", errNotImplemented, funcName)
+		}
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("plugin call exited with code %d", exit)
+	}
+
+	// Parse output frame
+	if len(output) < 1 {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("empty response from plugin")
+	}
+
+	statusByte := output[0]
+	if statusByte == 0x01 {
+		// Error frame: [0x01][UTF-8 error message]
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		errMsg := string(output[1:])
+		return result, fmt.Errorf("plugin error: %s", errMsg)
+	}
+
+	if statusByte != 0x00 {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("unknown response status byte: 0x%02x", statusByte)
+	}
+
+	// Success frame: [0x00][json_len:4B][JSON][raw bytes]
+	if len(output) < 5 {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("malformed success response from plugin")
+	}
+
+	jsonLen := binary.BigEndian.Uint32(output[1:5])
+	if uint32(len(output)-5) < jsonLen {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("invalid json length in response frame: %d exceeds available %d bytes", jsonLen, len(output)-5)
+	}
+	jsonData := output[5 : 5+jsonLen]
+	rawData := output[5+jsonLen:]
+
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		return result, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	setRawOutput(&result, rawData)
+
+	plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, true, elapsed.Milliseconds())
+	log.Trace(ctx, "Plugin call succeeded", "plugin", plugin.name, "function", funcName, "pluginDuration", time.Since(startCall), "navidromeDuration", startCall.Sub(start))
+	return result, nil
 }
 
 // extismLogger is a helper to log messages from Extism plugins

@@ -20,7 +20,7 @@ func (t *testPublicEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (
 			Headers: map[string][]string{
 				"Content-Type": {"text/plain"},
 			},
-			Body: "webhook received",
+			Body: []byte("webhook received"),
 		}, nil
 
 	case "/check-no-user":
@@ -31,13 +31,13 @@ func (t *testPublicEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (
 		}
 		return httpendpoint.HTTPHandleResponse{
 			Status: 200,
-			Body:   "hasUser=" + hasUser,
+			Body:   []byte("hasUser=" + hasUser),
 		}, nil
 
 	default:
 		return httpendpoint.HTTPHandleResponse{
 			Status: 404,
-			Body:   "Not found: " + req.Path,
+			Body:   []byte("Not found: " + req.Path),
 		}, nil
 	}
 }

@@ -22,7 +22,7 @@ func (t *testEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (httpen
 			Headers: map[string][]string{
 				"Content-Type": {"text/plain"},
 			},
-			Body: "Hello from plugin!",
+			Body: []byte("Hello from plugin!"),
 		}, nil
 
 	case "/echo":
@@ -31,7 +31,7 @@ func (t *testEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (httpen
 			"method":   req.Method,
 			"path":     req.Path,
 			"query":    req.Query,
-			"body":     req.Body,
+			"body":     string(req.Body),
 			"hasUser":  req.User != nil,
 			"username": userName(req.User),
 		})
@@ -40,19 +40,29 @@ func (t *testEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (httpen
 			Headers: map[string][]string{
 				"Content-Type": {"application/json"},
 			},
-			Body: string(data),
+			Body: data,
+		}, nil
+
+	case "/binary":
+		// Return raw binary data (PNG header)
+		return httpendpoint.HTTPHandleResponse{
+			Status: 200,
+			Headers: map[string][]string{
+				"Content-Type": {"image/png"},
+			},
+			Body: []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A},
 		}, nil
 
 	case "/error":
 		return httpendpoint.HTTPHandleResponse{
 			Status: 500,
-			Body:   "Something went wrong",
+			Body:   []byte("Something went wrong"),
 		}, nil
 
 	default:
 		return httpendpoint.HTTPHandleResponse{
 			Status: 404,
-			Body:   "Not found: " + req.Path,
+			Body:   []byte("Not found: " + req.Path),
 		}, nil
 	}
 }

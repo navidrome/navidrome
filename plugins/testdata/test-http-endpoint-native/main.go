@@ -22,7 +22,7 @@ func (t *testNativeEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (
 			Headers: map[string][]string{
 				"Content-Type": {"text/plain"},
 			},
-			Body: "Hello from native auth plugin!",
+			Body: []byte("Hello from native auth plugin!"),
 		}, nil
 
 	case "/echo":
@@ -31,7 +31,7 @@ func (t *testNativeEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (
 			"method":   req.Method,
 			"path":     req.Path,
 			"query":    req.Query,
-			"body":     req.Body,
+			"body":     string(req.Body),
 			"hasUser":  req.User != nil,
 			"username": userName(req.User),
 		})
@@ -40,13 +40,13 @@ func (t *testNativeEndpoint) HandleRequest(req httpendpoint.HTTPHandleRequest) (
 			Headers: map[string][]string{
 				"Content-Type": {"application/json"},
 			},
-			Body: string(data),
+			Body: data,
 		}, nil
 
 	default:
 		return httpendpoint.HTTPHandleResponse{
 			Status: 404,
-			Body:   "Not found: " + req.Path,
+			Body:   []byte("Not found: " + req.Path),
 		}, nil
 	}
 }

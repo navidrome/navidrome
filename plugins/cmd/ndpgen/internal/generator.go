@@ -364,6 +364,27 @@ func capabilityFuncMap(cap Capability) template.FuncMap {
 		"providerInterface": func(e Export) string { return e.ProviderInterfaceName() },
 		"implVar":           func(e Export) string { return e.ImplVarName() },
 		"exportFunc":        func(e Export) string { return e.ExportFuncName() },
+		"rawFieldName":      rawFieldName(cap),
+	}
+}
+
+// rawFieldName returns a template function that finds the first []byte field name
+// in a struct by type name. This is used by raw export templates to generate
+// field-specific binary frame code.
+func rawFieldName(cap Capability) func(string) string {
+	structMap := make(map[string]StructDef)
+	for _, s := range cap.Structs {
+		structMap[s.Name] = s
+	}
+	return func(typeName string) string {
+		if s, ok := structMap[typeName]; ok {
+			for _, f := range s.Fields {
+				if f.Type == "[]byte" {
+					return f.Name
+				}
+			}
+		}
+		return ""
 	}
 }
 
@@ -466,6 +487,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"providerInterface":   func(e Export) string { return e.ProviderInterfaceName() },
 		"registerMacroName":   func(name string) string { return registerMacroName(cap.Name, name) },
 		"snakeCase":           ToSnakeCase,
+		"rawFieldName":        rawFieldName(cap),
 		"indent": func(spaces int, s string) string {
 			indent := strings.Repeat(" ", spaces)
 			lines := strings.Split(s, "\n")
@@ -560,6 +582,9 @@ func rustConstName(name string) string {
 
 // skipSerializingFunc returns the appropriate skip_serializing_if function name.
 func skipSerializingFunc(goType string) string {
+	if goType == "[]byte" {
+		return "Vec::is_empty"
+	}
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[]") {
 		return "Option::is_none"
 	}

@@ -7,7 +7,7 @@ package capabilities
 //nd:capability name=httpendpoint required=true
 type HTTPEndpoint interface {
 	// HandleRequest processes an incoming HTTP request and returns a response.
-	//nd:export name=nd_http_handle_request
+	//nd:export name=nd_http_handle_request raw=true
 	HandleRequest(HTTPHandleRequest) (HTTPHandleResponse, error)
 }
 
@@ -24,7 +24,7 @@ type HTTPHandleRequest struct {
 	// Headers contains the HTTP request headers.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the request body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"body,omitempty"`
 	// User contains the authenticated user information. Nil for auth:"none" endpoints.
 	User *HTTPUser `json:"user,omitempty"`
 }
@@ -48,5 +48,5 @@ type HTTPHandleResponse struct {
 	// Headers contains the HTTP response headers to set.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the response body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"body,omitempty"`
 }

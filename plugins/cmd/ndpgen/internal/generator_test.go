@@ -1432,6 +1432,10 @@ type OnInitOutput struct {
 
 var _ = Describe("Rust Generation", func() {
 	Describe("skipSerializingFunc", func() {
+		It("should return Vec::is_empty for []byte type", func() {
+			Expect(skipSerializingFunc("[]byte")).To(Equal("Vec::is_empty"))
+		})
+
 		It("should return Option::is_none for pointer and slice types", func() {
 			Expect(skipSerializingFunc("*string")).To(Equal("Option::is_none"))
 			Expect(skipSerializingFunc("*MyStruct")).To(Equal("Option::is_none"))

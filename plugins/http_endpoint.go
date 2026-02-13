@@ -150,13 +150,15 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 		Path:    relPath,
 		Query:   r.URL.RawQuery,
 		Headers: r.Header,
-		Body:    string(body),
+		Body:    body,
 		User:    httpUser,
 	}
 
-	// Call the plugin
-	resp, err := callPluginFunction[capabilities.HTTPHandleRequest, capabilities.HTTPHandleResponse](
-		ctx, p, FuncHTTPHandleRequest, pluginReq,
+	// Call the plugin using binary framing for []byte Body fields
+	resp, err := callPluginFunctionRaw(
+		ctx, p, FuncHTTPHandleRequest,
+		pluginReq, pluginReq.Body,
+		func(r *capabilities.HTTPHandleResponse, raw []byte) { r.Body = raw },
 	)
 	if err != nil {
 		log.Error(ctx, "Plugin endpoint call failed", "plugin", p.name, "path", relPath, err)
@@ -183,8 +185,8 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 	w.WriteHeader(status)
 
 	// Write response body
-	if resp.Body != "" {
-		if _, err := w.Write([]byte(resp.Body)); err != nil {
+	if len(resp.Body) > 0 {
+		if _, err := w.Write(resp.Body); err != nil {
 			log.Error(ctx, "Failed to write plugin endpoint response", "plugin", p.name, err)
 		}
 	}

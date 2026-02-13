@@ -54,6 +54,14 @@ type (
 		Nullable    bool         `yaml:"nullable,omitempty"`
 		Items       *xtpProperty `yaml:"items,omitempty"`
 	}
+
+	// xtpMapProperty represents a map property in XTP (type: object with additionalProperties).
+	xtpMapProperty struct {
+		Type                 string       `yaml:"type"`
+		Description          string       `yaml:"description,omitempty"`
+		Nullable             bool         `yaml:"nullable,omitempty"`
+		AdditionalProperties *xtpProperty `yaml:"additionalProperties"`
+	}
 )
 
 // GenerateSchema generates an XTP YAML schema from a capability.
@@ -206,7 +214,12 @@ func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema
 
 	for _, field := range st.Fields {
 		propName := getJSONFieldName(field)
-		addToMap(&schema.Properties, propName, buildProperty(field, knownTypes))
+		goType := strings.TrimPrefix(field.Type, "*")
+		if strings.HasPrefix(goType, "map[") {
+			addToMap(&schema.Properties, propName, buildMapProperty(goType, field.Doc, strings.HasPrefix(field.Type, "*"), knownTypes))
+		} else {
+			addToMap(&schema.Properties, propName, buildProperty(field, knownTypes))
+		}
 
 		if !strings.HasPrefix(field.Type, "*") && !field.OmitEmpty {
 			schema.Required = append(schema.Required, propName)
@@ -246,6 +259,12 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 		return prop
 	}
 
+	// Handle []byte as buffer type (must be checked before generic slice handling)
+	if goType == "[]byte" {
+		prop.Type = "buffer"
+		return prop
+	}
+
 	// Handle slice types
 	if strings.HasPrefix(goType, "[]") {
 		elemType := goType[2:]
@@ -262,6 +281,55 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 	// Handle primitive types
 	prop.Type, prop.Format = goTypeToXTPTypeAndFormat(goType)
 	return prop
+}
+
+// buildMapProperty builds an XTP MapProperty for a Go map type.
+// It parses map[K]V and generates additionalProperties describing V.
+func buildMapProperty(goType, doc string, isPointer bool, knownTypes map[string]bool) xtpMapProperty {
+	prop := xtpMapProperty{
+		Type:        "object",
+		Description: cleanDocForYAML(doc),
+		Nullable:    isPointer,
+	}
+
+	// Parse value type from map[K]V
+	valueType := parseMapValueType(goType)
+
+	valProp := &xtpProperty{}
+	if strings.HasPrefix(valueType, "[]") {
+		elemType := valueType[2:]
+		valProp.Type = "array"
+		valProp.Items = &xtpProperty{}
+		if isKnownType(elemType, knownTypes) {
+			valProp.Items.Ref = "#/components/schemas/" + elemType
+		} else {
+			valProp.Items.Type = goTypeToXTPType(elemType)
+		}
+	} else if isKnownType(valueType, knownTypes) {
+		valProp.Ref = "#/components/schemas/" + valueType
+	} else {
+		valProp.Type, valProp.Format = goTypeToXTPTypeAndFormat(valueType)
+	}
+	prop.AdditionalProperties = valProp
+
+	return prop
+}
+
+// parseMapValueType extracts the value type from a Go map type string like "map[string][]string".
+func parseMapValueType(goType string) string {
+	// Find the closing bracket of the key type
+	depth := 0
+	for i, ch := range goType {
+		if ch == '[' {
+			depth++
+		} else if ch == ']' {
+			depth--
+			if depth == 0 {
+				return goType[i+1:]
+			}
+		}
+	}
+	return "object" // fallback
 }
 
 // addToMap adds a key-value pair to a yaml.Node map, preserving insertion order.

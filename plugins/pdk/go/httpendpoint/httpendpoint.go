@@ -8,6 +8,9 @@
 package httpendpoint
 
 import (
+	"encoding/binary"
+	"encoding/json"
+
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
@@ -24,7 +27,7 @@ type HTTPHandleRequest struct {
 	// Headers contains the HTTP request headers.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the request body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"-"`
 	// User contains the authenticated user information. Nil for auth:"none" endpoints.
 	User *HTTPUser `json:"user,omitempty"`
 }
@@ -36,7 +39,7 @@ type HTTPHandleResponse struct {
 	// Headers contains the HTTP response headers to set.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the response body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"-"`
 }
 
 // HTTPUser contains authenticated user information passed to the plugin.
@@ -80,22 +83,44 @@ func _NdHttpHandleRequest() int32 {
 		return NotImplementedCode
 	}
 
+	// Parse input frame: [json_len:4B][JSON without []byte field][raw bytes]
+	raw := pdk.Input()
+	if len(raw) < 4 {
+		pdk.SetErrorString("malformed input frame")
+		return -1
+	}
+	jsonLen := binary.BigEndian.Uint32(raw[:4])
+	if uint32(len(raw)-4) < jsonLen {
+		pdk.SetErrorString("invalid json length in input frame")
+		return -1
+	}
 	var input HTTPHandleRequest
-	if err := pdk.InputJSON(&input); err != nil {
+	if err := json.Unmarshal(raw[4:4+jsonLen], &input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
+	input.Body = raw[4+jsonLen:]
 
 	output, err := handleRequestImpl(input)
 	if err != nil {
-		pdk.SetError(err)
-		return -1
+		// Error frame: [0x01][UTF-8 error message]
+		errMsg := []byte(err.Error())
+		errFrame := make([]byte, 1+len(errMsg))
+		errFrame[0] = 0x01
+		copy(errFrame[1:], errMsg)
+		pdk.Output(errFrame)
+		return 0
 	}
 
-	if err := pdk.OutputJSON(output); err != nil {
-		pdk.SetError(err)
-		return -1
-	}
+	// Success frame: [0x00][json_len:4B][JSON without []byte field][raw bytes]
+	jsonBytes, _ := json.Marshal(output)
+	rawBytes := output.Body
+	frame := make([]byte, 1+4+len(jsonBytes)+len(rawBytes))
+	frame[0] = 0x00
+	binary.BigEndian.PutUint32(frame[1:5], uint32(len(jsonBytes)))
+	copy(frame[5:5+len(jsonBytes)], jsonBytes)
+	copy(frame[5+len(jsonBytes):], rawBytes)
+	pdk.Output(frame)
 
 	return 0
 }

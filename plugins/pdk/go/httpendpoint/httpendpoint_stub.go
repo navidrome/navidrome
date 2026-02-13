@@ -21,7 +21,7 @@ type HTTPHandleRequest struct {
 	// Headers contains the HTTP request headers.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the request body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"-"`
 	// User contains the authenticated user information. Nil for auth:"none" endpoints.
 	User *HTTPUser `json:"user,omitempty"`
 }
@@ -33,7 +33,7 @@ type HTTPHandleResponse struct {
 	// Headers contains the HTTP response headers to set.
 	Headers map[string][]string `json:"headers,omitempty"`
 	// Body is the response body content.
-	Body string `json:"body,omitempty"`
+	Body []byte `json:"-"`
 }
 
 // HTTPUser contains authenticated user information passed to the plugin.

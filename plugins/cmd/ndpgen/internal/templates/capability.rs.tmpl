@@ -52,6 +52,7 @@ pub const {{rustConstName $v.Name}}: &'static str = {{$v.Value}};
 {{- end}}
 
 {{- /* Generate struct definitions */ -}}
+{{- $capability := .Capability}}
 {{- range .Capability.Structs}}
 
 {{- if .Doc}}
@@ -66,12 +67,16 @@ pub struct {{.Name}} {
 {{- if .Doc}}
 {{rustDocComment .Doc | indent 4}}
 {{- end}}
-{{- if .OmitEmpty}}
+{{- if and (eq .Type "[]byte") $capability.HasRawMethods}}
+    #[serde(skip)]
+    pub {{rustFieldName .Name}}: {{fieldRustType .}},
+{{- else if .OmitEmpty}}
     #[serde(default, skip_serializing_if = "{{skipSerializingFunc .Type}}")]
+    pub {{rustFieldName .Name}}: {{fieldRustType .}},
 {{- else}}
     #[serde(default)]
-{{- end}}
     pub {{rustFieldName .Name}}: {{fieldRustType .}},
+{{- end}}
 {{- end}}
 }
 {{- end}}
@@ -124,6 +129,56 @@ pub trait {{agentName .Capability}} {
 macro_rules! register_{{snakeCase .Package}} {
     ($plugin_type:ty) => {
         {{- range .Capability.Methods}}
+        {{- if .Raw}}
+        #[extism_pdk::plugin_fn]
+        pub fn {{.ExportName}}(
+            {{- if .HasInput}}
+            _raw_input: extism_pdk::Raw<Vec<u8>>
+            {{- end}}
+        ) -> extism_pdk::FnResult<extism_pdk::Raw<Vec<u8>>> {
+            let plugin = <$plugin_type>::default();
+            {{- if .HasInput}}
+            // Parse input frame: [json_len:4B][JSON without []byte field][raw bytes]
+            let raw_bytes = _raw_input.0;
+            if raw_bytes.len() < 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"malformed input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let json_len = u32::from_be_bytes([raw_bytes[0], raw_bytes[1], raw_bytes[2], raw_bytes[3]]) as usize;
+            if json_len > raw_bytes.len() - 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"invalid json length in input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let mut req: $crate::{{snakeCase $.Package}}::{{rustOutputType .Input.Type}} = serde_json::from_slice(&raw_bytes[4..4+json_len])
+                .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+            req.{{rustFieldName (rawFieldName .Input.Type)}} = raw_bytes[4+json_len..].to_vec();
+            {{- end}}
+            {{- if and .HasInput .HasOutput}}
+            match $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req) {
+                Ok(output) => {
+                    // Success frame: [0x00][json_len:4B][JSON without []byte field][raw bytes]
+                    let json_bytes = serde_json::to_vec(&output)
+                        .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+                    let raw_field = &output.{{rustFieldName (rawFieldName .Output.Type)}};
+                    let mut frame = Vec::with_capacity(1 + 4 + json_bytes.len() + raw_field.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&(json_bytes.len() as u32).to_be_bytes());
+                    frame.extend_from_slice(&json_bytes);
+                    frame.extend_from_slice(raw_field);
+                    Ok(extism_pdk::Raw(frame))
+                }
+                Err(e) => {
+                    // Error frame: [0x01][UTF-8 error message]
+                    let mut err_frame = vec![0x01u8];
+                    err_frame.extend_from_slice(e.message.as_bytes());
+                    Ok(extism_pdk::Raw(err_frame))
+                }
+            }
+            {{- end}}
+        }
+        {{- else}}
         #[extism_pdk::plugin_fn]
         pub fn {{.ExportName}}(
             {{- if .HasInput}}
@@ -145,6 +200,7 @@ macro_rules! register_{{snakeCase .Package}} {
             Ok(())
             {{- end}}
         }
+        {{- end}}
         {{- end}}
     };
 }
@@ -171,6 +227,56 @@ pub trait {{providerInterface .}} {
 #[macro_export]
 macro_rules! {{registerMacroName .Name}} {
     ($plugin_type:ty) => {
+        {{- if .Raw}}
+        #[extism_pdk::plugin_fn]
+        pub fn {{.ExportName}}(
+            {{- if .HasInput}}
+            _raw_input: extism_pdk::Raw<Vec<u8>>
+            {{- end}}
+        ) -> extism_pdk::FnResult<extism_pdk::Raw<Vec<u8>>> {
+            let plugin = <$plugin_type>::default();
+            {{- if .HasInput}}
+            // Parse input frame: [json_len:4B][JSON without []byte field][raw bytes]
+            let raw_bytes = _raw_input.0;
+            if raw_bytes.len() < 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"malformed input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let json_len = u32::from_be_bytes([raw_bytes[0], raw_bytes[1], raw_bytes[2], raw_bytes[3]]) as usize;
+            if json_len > raw_bytes.len() - 4 {
+                let mut err_frame = vec![0x01u8];
+                err_frame.extend_from_slice(b"invalid json length in input frame");
+                return Ok(extism_pdk::Raw(err_frame));
+            }
+            let mut req: $crate::{{snakeCase $.Package}}::{{rustOutputType .Input.Type}} = serde_json::from_slice(&raw_bytes[4..4+json_len])
+                .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+            req.{{rustFieldName (rawFieldName .Input.Type)}} = raw_bytes[4+json_len..].to_vec();
+            {{- end}}
+            {{- if and .HasInput .HasOutput}}
+            match $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req) {
+                Ok(output) => {
+                    // Success frame: [0x00][json_len:4B][JSON without []byte field][raw bytes]
+                    let json_bytes = serde_json::to_vec(&output)
+                        .map_err(|e| extism_pdk::Error::msg(e.to_string()))?;
+                    let raw_field = &output.{{rustFieldName (rawFieldName .Output.Type)}};
+                    let mut frame = Vec::with_capacity(1 + 4 + json_bytes.len() + raw_field.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&(json_bytes.len() as u32).to_be_bytes());
+                    frame.extend_from_slice(&json_bytes);
+                    frame.extend_from_slice(raw_field);
+                    Ok(extism_pdk::Raw(frame))
+                }
+                Err(e) => {
+                    // Error frame: [0x01][UTF-8 error message]
+                    let mut err_frame = vec![0x01u8];
+                    err_frame.extend_from_slice(e.message.as_bytes());
+                    Ok(extism_pdk::Raw(err_frame))
+                }
+            }
+            {{- end}}
+        }
+        {{- else}}
         #[extism_pdk::plugin_fn]
         pub fn {{.ExportName}}(
             {{- if .HasInput}}
@@ -192,6 +298,7 @@ macro_rules! {{registerMacroName .Name}} {
             Ok(())
             {{- end}}
         }
+        {{- end}}
     };
 }
 {{- end}}
