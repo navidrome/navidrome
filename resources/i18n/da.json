@@ -675,7 +675,7 @@
       "exportFailed": "Kunne ikke kopiere konfigurationen",
       "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
       "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver",
-      "downloadToml": ""
+      "downloadToml": "Download konfigurationen (TOML)"
     }
   },
   "activity": {
