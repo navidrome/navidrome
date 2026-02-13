@@ -9,16 +9,14 @@ import (
 )
 
 type usersServiceImpl struct {
-	ds           model.DataStore
-	allowedUsers []string // User IDs this plugin can access
-	allUsers     bool     // If true, plugin can access all users
+	ds         model.DataStore
+	userAccess UserAccess
 }
 
-func newUsersService(ds model.DataStore, allowedUsers []string, allUsers bool) host.UsersService {
+func newUsersService(ds model.DataStore, userAccess UserAccess) host.UsersService {
 	return &usersServiceImpl{
-		ds:           ds,
-		allowedUsers: allowedUsers,
-		allUsers:     allUsers,
+		ds:         ds,
+		userAccess: userAccess,
 	}
 }
 
@@ -28,17 +26,9 @@ func (s *usersServiceImpl) GetUsers(ctx context.Context) ([]host.User, error) {
 		return nil, err
 	}
 
-	// Build allowed users map for efficient lookup
-	allowedMap := make(map[string]bool, len(s.allowedUsers))
-	for _, id := range s.allowedUsers {
-		allowedMap[id] = true
-	}
-
 	var result []host.User
 	for _, u := range users {
-		// If allUsers is true, include all users
-		// Otherwise, only include users in the allowed list
-		if s.allUsers || allowedMap[u.ID] {
+		if s.userAccess.IsAllowed(u.ID) {
 			result = append(result, host.User{
 				UserName: u.UserName,
 				Name:     u.Name,

@@ -17,6 +17,7 @@ type HTTPHandleRequest struct {
 	Method string `json:"method"`
 	// Path is the request path relative to the plugin's base URL.
 	// For example, if the full URL is /ext/my-plugin/webhook, Path is "/webhook".
+	// Both /ext/my-plugin and /ext/my-plugin/ are normalized to Path = "".
 	Path string `json:"path"`
 	// Query is the raw query string without the leading '?'.
 	Query string `json:"query,omitempty"`

@@ -3,9 +3,10 @@ package plugins
 import (
 	"io"
 	"net/http"
-	"slices"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -28,6 +29,12 @@ type NativeAuthMiddleware func(ds model.DataStore) func(next http.Handler) http.
 // at runtime. Plugin lookup happens per-request under RLock.
 func NewEndpointRouter(manager *Manager, ds model.DataStore, subsonicAuth SubsonicAuthValidator, nativeAuth NativeAuthMiddleware) http.Handler {
 	r := chi.NewRouter()
+
+	// Apply rate limiting if configured
+	if conf.Server.Plugins.EndpointRequestLimit > 0 {
+		r.Use(httprate.LimitByIP(conf.Server.Plugins.EndpointRequestLimit, conf.Server.Plugins.EndpointRequestWindow))
+	}
+
 	h := &endpointHandler{
 		manager:      manager,
 		ds:           ds,
@@ -104,7 +111,7 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if !p.allUsers && !isUserAllowed(p.allowedUserIDs, user.ID) {
+		if !p.userAccess.IsAllowed(user.ID) {
 			log.Warn(ctx, "Plugin endpoint access denied", "plugin", p.name, "user", user.UserName)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -120,8 +127,9 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 	}
 
 	// Build the plugin request
+	// Normalize path: both /ext/plugin and /ext/plugin/ map to ""
 	relPath := "/" + chi.URLParam(r, "*")
-	if relPath == "/" {
+	if relPath == "/" || relPath == "" {
 		relPath = ""
 	}
 
@@ -176,9 +184,4 @@ func (h *endpointHandler) dispatch(w http.ResponseWriter, r *http.Request, p *pl
 			log.Error(ctx, "Failed to write plugin endpoint response", "plugin", p.name, err)
 		}
 	}
-}
-
-// isUserAllowed checks if the given user ID is in the allowed list.
-func isUserAllowed(allowedIDs []string, userID string) bool {
-	return slices.Contains(allowedIDs, userID)
 }

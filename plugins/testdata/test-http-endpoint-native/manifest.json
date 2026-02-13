@@ -1,0 +1,16 @@
+{
+  "name": "Test HTTP Endpoint Native Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "Test plugin for native (JWT) HTTP endpoint integration testing",
+  "permissions": {
+    "endpoints": {
+      "auth": "native",
+      "paths": ["/hello", "/echo"],
+      "reason": "Testing native auth HTTP endpoint handling"
+    },
+    "users": {
+      "reason": "Authenticated endpoints require user access"
+    }
+  }
+}

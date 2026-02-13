@@ -72,8 +72,8 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "http-endpoint-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy both test plugins
-		for _, pluginName := range []string{"test-http-endpoint", "test-http-endpoint-public"} {
+		// Copy all test plugins
+		for _, pluginName := range []string{"test-http-endpoint", "test-http-endpoint-public", "test-http-endpoint-native"} {
 			srcPath := filepath.Join(testdataDir, pluginName+PackageExtension)
 			destPath := filepath.Join(tmpDir, pluginName+PackageExtension)
 			data, err := os.ReadFile(srcPath)
@@ -109,7 +109,7 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 
 		// Build enabled plugins list
 		var enabledPlugins model.Plugins
-		for _, pluginName := range []string{"test-http-endpoint", "test-http-endpoint-public"} {
+		for _, pluginName := range []string{"test-http-endpoint", "test-http-endpoint-public", "test-http-endpoint-native"} {
 			pluginPath := filepath.Join(tmpDir, pluginName+PackageExtension)
 			data, err := os.ReadFile(pluginPath)
 			Expect(err).ToNot(HaveOccurred())
@@ -159,6 +159,18 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 			Expect(p.manifest.Name).To(Equal("Test HTTP Endpoint Plugin"))
 			Expect(p.manifest.Permissions.Endpoints).ToNot(BeNil())
 			Expect(string(p.manifest.Permissions.Endpoints.Auth)).To(Equal("subsonic"))
+			Expect(hasCapability(p.capabilities, CapabilityHTTPEndpoint)).To(BeTrue())
+		})
+
+		It("loads the native auth endpoint plugin", func() {
+			manager.mu.RLock()
+			p := manager.plugins["test-http-endpoint-native"]
+			manager.mu.RUnlock()
+
+			Expect(p).ToNot(BeNil())
+			Expect(p.manifest.Name).To(Equal("Test HTTP Endpoint Native Plugin"))
+			Expect(p.manifest.Permissions.Endpoints).ToNot(BeNil())
+			Expect(string(p.manifest.Permissions.Endpoints.Auth)).To(Equal("native"))
 			Expect(hasCapability(p.capabilities, CapabilityHTTPEndpoint)).To(BeTrue())
 		})
 
@@ -232,6 +244,55 @@ var _ = Describe("HTTP Endpoint Handler", Ordered, func() {
 
 		It("returns 401 with invalid auth credentials", func() {
 			req := httptest.NewRequest("GET", "/test-http-endpoint/hello?u=nonexistent", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
+	Describe("Native Auth Endpoints", func() {
+		It("returns hello response with valid native auth", func() {
+			req := httptest.NewRequest("GET", "/test-http-endpoint-native/hello", nil)
+			req.Header.Set("X-Test-User", "testuser")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(Equal("Hello from native auth plugin!"))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/plain"))
+		})
+
+		It("returns echo response with user details", func() {
+			req := httptest.NewRequest("POST", "/test-http-endpoint-native/echo?foo=bar", strings.NewReader("native body"))
+			req.Header.Set("X-Test-User", "adminuser")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+
+			var resp map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp["method"]).To(Equal("POST"))
+			Expect(resp["path"]).To(Equal("/echo"))
+			Expect(resp["body"]).To(Equal("native body"))
+			Expect(resp["hasUser"]).To(BeTrue())
+			Expect(resp["username"]).To(Equal("adminuser"))
+		})
+
+		It("returns 401 without auth header", func() {
+			req := httptest.NewRequest("GET", "/test-http-endpoint-native/hello", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("returns 401 with invalid auth header", func() {
+			req := httptest.NewRequest("GET", "/test-http-endpoint-native/hello", nil)
+			req.Header.Set("X-Test-User", "nonexistent")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
