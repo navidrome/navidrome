@@ -130,7 +130,11 @@ func callPluginFunctionRaw[I any, O any](
 	if err != nil {
 		return result, fmt.Errorf("failed to marshal input: %w", err)
 	}
-	frame := make([]byte, 4+len(jsonBytes)+len(rawInputBytes))
+	totalSize := 4 + len(jsonBytes) + len(rawInputBytes)
+	if totalSize < len(jsonBytes) || totalSize < len(rawInputBytes) {
+		return result, fmt.Errorf("input frame too large")
+	}
+	frame := make([]byte, totalSize)
 	binary.BigEndian.PutUint32(frame[:4], uint32(len(jsonBytes)))
 	copy(frame[4:4+len(jsonBytes)], jsonBytes)
 	copy(frame[4+len(jsonBytes):], rawInputBytes)
