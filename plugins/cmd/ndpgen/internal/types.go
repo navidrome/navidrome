@@ -48,6 +48,16 @@ type ConstDef struct {
 	Doc   string // Documentation comment
 }
 
+// HasRawMethods returns true if any export in the capability uses raw binary framing.
+func (c Capability) HasRawMethods() bool {
+	for _, m := range c.Methods {
+		if m.Raw {
+			return true
+		}
+	}
+	return false
+}
+
 // KnownStructs returns a map of struct names defined in this capability.
 func (c Capability) KnownStructs() map[string]bool {
 	result := make(map[string]bool)
@@ -64,6 +74,7 @@ type Export struct {
 	Input      Param  // Single input parameter (the struct type)
 	Output     Param  // Single output return value (the struct type)
 	Doc        string // Documentation comment for the method
+	Raw        bool   // If true, uses binary framing instead of JSON for []byte fields
 }
 
 // ProviderInterfaceName returns the optional provider interface name.

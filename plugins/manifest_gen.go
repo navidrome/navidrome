@@ -4,6 +4,7 @@ package plugins
 
 import "encoding/json"
 import "fmt"
+import "reflect"
 
 // Artwork service permissions for generating artwork URLs
 type ArtworkPermission struct {
@@ -42,6 +43,71 @@ func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	*j = ConfigDefinition(plain)
+	return nil
+}
+
+// HTTP endpoint permissions for registering custom HTTP endpoints on the Navidrome
+// server. Requires 'users' permission when auth is 'native' or 'subsonic'.
+type EndpointsPermission struct {
+	// Authentication type for plugin endpoints: 'native' (JWT), 'subsonic' (params),
+	// or 'none' (public/unauthenticated)
+	Auth EndpointsPermissionAuth `json:"auth" yaml:"auth" mapstructure:"auth"`
+
+	// Declared endpoint paths (informational, for admin UI display). Relative to
+	// plugin base URL.
+	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty" mapstructure:"paths,omitempty"`
+
+	// Explanation for why HTTP endpoint registration is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+type EndpointsPermissionAuth string
+
+const EndpointsPermissionAuthNative EndpointsPermissionAuth = "native"
+const EndpointsPermissionAuthNone EndpointsPermissionAuth = "none"
+const EndpointsPermissionAuthSubsonic EndpointsPermissionAuth = "subsonic"
+
+var enumValues_EndpointsPermissionAuth = []interface{}{
+	"native",
+	"subsonic",
+	"none",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EndpointsPermissionAuth) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EndpointsPermissionAuth {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EndpointsPermissionAuth, v)
+	}
+	*j = EndpointsPermissionAuth(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EndpointsPermission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["auth"]; raw != nil && !ok {
+		return fmt.Errorf("field auth in EndpointsPermission: required")
+	}
+	type Plain EndpointsPermission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = EndpointsPermission(plain)
 	return nil
 }
 
@@ -165,6 +231,9 @@ type Permissions struct {
 
 	// Cache corresponds to the JSON schema field "cache".
 	Cache *CachePermission `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache,omitempty"`
+
+	// Endpoints corresponds to the JSON schema field "endpoints".
+	Endpoints *EndpointsPermission `json:"endpoints,omitempty" yaml:"endpoints,omitempty" mapstructure:"endpoints,omitempty"`
 
 	// Http corresponds to the JSON schema field "http".
 	Http *HTTPPermission `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`

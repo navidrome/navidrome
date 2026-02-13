@@ -110,6 +110,33 @@
         },
         "users": {
           "$ref": "#/$defs/UsersPermission"
+        },
+        "endpoints": {
+          "$ref": "#/$defs/EndpointsPermission"
+        }
+      }
+    },
+    "EndpointsPermission": {
+      "type": "object",
+      "description": "HTTP endpoint permissions for registering custom HTTP endpoints on the Navidrome server. Requires 'users' permission when auth is 'native' or 'subsonic'.",
+      "additionalProperties": false,
+      "required": ["auth"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why HTTP endpoint registration is needed"
+        },
+        "auth": {
+          "type": "string",
+          "enum": ["native", "subsonic", "none"],
+          "description": "Authentication type for plugin endpoints: 'native' (JWT), 'subsonic' (params), or 'none' (public/unauthenticated)"
+        },
+        "paths": {
+          "type": "array",
+          "description": "Declared endpoint paths (informational, for admin UI display). Relative to plugin base URL.",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

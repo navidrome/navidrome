@@ -5,6 +5,7 @@
 //! This crate provides type definitions, traits, and registration macros
 //! for implementing Navidrome plugin capabilities in Rust.
 
+pub mod httpendpoint;
 pub mod lifecycle;
 pub mod metadata;
 pub mod scheduler;
