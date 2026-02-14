@@ -30,6 +30,7 @@ const defaultConfig = {
   enableExternalServices: true,
   enableCoverAnimation: true,
   enableNowPlaying: true,
+  nowPlayingAdminOnly: false,
   devShowArtistPage: true,
   devUIShowConfig: true,
   devNewEventStream: false,
