@@ -112,6 +112,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return nil
 	}
 	event := &events.RefreshResource{}
+	broadcastToAll := false
 	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
 		for _, id := range ids {
 			exist, err := tx.Album(ctx).Exists(id)
@@ -138,13 +139,31 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				event = event.With("artist", id)
 				continue
 			}
+			exist, err = tx.Playlist(ctx).Exists(id)
+			if err != nil {
+				return err
+			}
+			if exist {
+				err = tx.Playlist(ctx).SetStar(star, id)
+				if err != nil {
+					return err
+				}
+				event = event.With("playlist", "*")
+				// Ensure the refresh event is sent to all clients, including the originator
+				broadcastToAll = true
+				continue
+			}
 			err = tx.MediaFile(ctx).SetStar(star, id)
 			if err != nil {
 				return err
 			}
 			event = event.With("song", id)
 		}
-		api.broker.SendMessage(ctx, event)
+		if broadcastToAll {
+			api.broker.SendBroadcastMessage(ctx, event)
+		} else {
+			api.broker.SendMessage(ctx, event)
+		}
 		return nil
 	})
 	if err != nil {

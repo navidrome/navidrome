@@ -8,8 +8,9 @@ import (
 type MockPlaylistRepo struct {
 	model.PlaylistRepository
 
-	Entity *model.Playlist
-	Error  error
+	Entity           *model.Playlist
+	Error            error
+	SetStarWasCalled bool
 }
 
 func (m *MockPlaylistRepo) Get(_ string) (*model.Playlist, error) {
@@ -30,4 +31,19 @@ func (m *MockPlaylistRepo) Count(_ ...rest.QueryOptions) (int64, error) {
 		return 0, nil
 	}
 	return 1, nil
+}
+
+func (m *MockPlaylistRepo) Exists(_ string) (bool, error) {
+	if m.Error != nil {
+		return false, m.Error
+	}
+	return m.Entity != nil, nil
+}
+
+func (m *MockPlaylistRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	m.SetStarWasCalled = true
+	return nil
 }

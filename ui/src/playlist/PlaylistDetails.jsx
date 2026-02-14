@@ -10,7 +10,13 @@ import { useTranslate } from 'react-admin'
 import { useCallback, useState, useEffect } from 'react'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
-import { CollapsibleComment, DurationField, SizeField } from '../common'
+import {
+  CollapsibleComment,
+  DurationField,
+  SizeField,
+  LoveButton,
+} from '../common'
+import config from '../config'
 import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
@@ -67,6 +73,10 @@ const useStyles = makeStyles(
     },
     coverLoading: {
       opacity: 0.5,
+    },
+    loveButton: {
+      top: theme.spacing(-0.2),
+      left: theme.spacing(0.5),
     },
     title: {
       overflow: 'hidden',
@@ -146,6 +156,16 @@ const PlaylistDetails = (props) => {
               className={classes.title}
             >
               {record.name || translate('ra.page.loading')}
+              {config.enableFavourites && (
+                <LoveButton
+                  className={classes.loveButton}
+                  record={record}
+                  resource={'playlist'}
+                  size={isDesktop ? 'default' : 'small'}
+                  aria-label="love"
+                  color="primary"
+                />
+              )}
             </Typography>
             <Typography component="p" className={classes.stats}>
               {record.songCount ? (

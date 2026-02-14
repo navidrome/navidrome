@@ -12,7 +12,7 @@ import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { canChangeTracks } from '../common'
+import { canChangeTracks, useResourceRefresh } from '../common'
 import { DraggableTypes } from '../consts'
 import config from '../config'
 
@@ -51,6 +51,7 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const history = useHistory()
+  useResourceRefresh()
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',
@@ -60,6 +61,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
+      filter: config.enableFavourites ? { starred: true } : {},
     },
   })
 
