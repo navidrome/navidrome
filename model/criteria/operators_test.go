@@ -55,14 +55,14 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
 
 		// Tag tests
-		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value > ?)", "A"),
-		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value < ?)", "Z"),
-		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
-		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
+		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value > ?)", "A"),
+		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value < ?)", "Z"),
+		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
+		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
 
 		// Artist roles tests
 		Entry("role is [string]", Is{"artist": "u2"}, "exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?)", "u2"),
@@ -88,7 +88,7 @@ var _ = Describe("Operators", func() {
 			op := EndsWith{"mood": "Soft"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.mood') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.mood') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
 		})
 		It("casts numeric comparisons", func() {
@@ -96,7 +96,7 @@ var _ = Describe("Operators", func() {
 			op := Lt{"rate": 6}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements(6))
 		})
 		It("skips unknown tag names", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Operators", func() {
 			op := Contains{"releasetype": "soundtrack"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%soundtrack%"))
 		})
 		It("supports albumtype as alias for releasetype", func() {
@@ -118,7 +118,7 @@ var _ = Describe("Operators", func() {
 			op := Contains{"albumtype": "live"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
 		})
 		It("supports albumtype alias with Is operator", func() {
@@ -127,7 +127,7 @@ var _ = Describe("Operators", func() {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("album"))
 		})
 		It("supports albumtype alias with IsNot operator", func() {
@@ -136,7 +136,7 @@ var _ = Describe("Operators", func() {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("compilation"))
 		})
 	})
