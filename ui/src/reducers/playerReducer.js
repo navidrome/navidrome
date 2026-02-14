@@ -127,10 +127,12 @@ const reducePlayNext = (state, { data }) => {
   const newQueue = []
   const current = state.current || {}
   let foundPos = false
+  let currentIndex = 0
   state.queue.forEach((item) => {
     newQueue.push(item)
     if (item.uuid === current.uuid) {
       foundPos = true
+      currentIndex = newQueue.length - 1
       Object.keys(data).forEach((id) => {
         newQueue.push(mapToAudioLists(data[id]))
       })
@@ -145,6 +147,7 @@ const reducePlayNext = (state, { data }) => {
   return {
     ...state,
     queue: newQueue,
+    playIndex: foundPos ? currentIndex : undefined,
     clear: true,
   }
 }
