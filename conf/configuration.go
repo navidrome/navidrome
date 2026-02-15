@@ -154,6 +154,7 @@ type scannerOptions struct {
 
 type subsonicOptions struct {
 	AppendSubtitle        bool
+	AppendAlbumVersion    bool
 	ArtistParticipations  bool
 	DefaultReportRealPath bool
 	EnableAverageRating   bool
@@ -637,6 +638,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
+	viper.SetDefault("subsonic.appendalbumversion", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
 	viper.SetDefault("subsonic.enableaveragerating", true)

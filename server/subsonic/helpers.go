@@ -321,9 +321,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
-	child.Title = al.Name
-	child.Name = al.Name
-	child.Album = al.Name
+	child.Title = al.FullName()
+	child.Name = al.FullName()
+	child.Album = al.FullName()
 	child.Artist = al.AlbumArtist
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
@@ -405,7 +405,7 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
-	dir.Name = album.Name
+	dir.Name = album.FullName()
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
 	dir.CoverArt = album.CoverArtID().String()
