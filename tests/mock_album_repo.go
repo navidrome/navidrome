@@ -21,6 +21,7 @@ type MockAlbumRepo struct {
 	Err                     bool
 	Options                 model.QueryOptions
 	ReassignAnnotationCalls map[string]string // prevID -> newID
+	CopyAttributesCalls     map[string]string // fromID -> toID
 }
 
 func (m *MockAlbumRepo) SetError(err bool) {
@@ -139,6 +140,32 @@ func (m *MockAlbumRepo) ReassignAnnotation(prevID string, newID string) error {
 		m.ReassignAnnotationCalls = make(map[string]string)
 	}
 	m.ReassignAnnotationCalls[prevID] = newID
+	return nil
+}
+
+// CopyAttributes copies attributes from one album to another
+func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	from, ok := m.Data[fromID]
+	if !ok {
+		return model.ErrNotFound
+	}
+	to, ok := m.Data[toID]
+	if !ok {
+		return model.ErrNotFound
+	}
+	for _, col := range columns {
+		switch col {
+		case "created_at":
+			to.CreatedAt = from.CreatedAt
+		}
+	}
+	if m.CopyAttributesCalls == nil {
+		m.CopyAttributesCalls = make(map[string]string)
+	}
+	m.CopyAttributesCalls[fromID] = toID
 	return nil
 }
 
