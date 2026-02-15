@@ -220,6 +220,11 @@ export default {
         backgroundColor: 'rgb(117 117 117)',
       },
     },
+	MuiCircularProgress: {
+		root: {
+			color: '#80ea00!important'
+		},
+	},
     MuiAvatar: {
       img: {
         borderRadius: '5px',
