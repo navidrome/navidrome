@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/nativeapi/apimodel"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -127,13 +128,13 @@ var _ = Describe("Song Endpoints", func() {
 
 	Describe("GET /song", func() {
 		Context("when user is authenticated", func() {
-			It("returns all songs", func() {
+			It("returns all songs as apimodel.Song types", func() {
 				req := createAuthenticatedRequest("GET", "/song", nil)
 				router.ServeHTTP(w, req)
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response []model.MediaFile
+				var response []apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -142,6 +143,22 @@ var _ = Describe("Song Endpoints", func() {
 				Expect(response[0].Title).To(Equal("Test Song 1"))
 				Expect(response[1].ID).To(Equal("song-2"))
 				Expect(response[1].Title).To(Equal("Test Song 2"))
+			})
+
+			It("does not expose internal model fields like Path", func() {
+				req := createAuthenticatedRequest("GET", "/song", nil)
+				router.ServeHTTP(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+
+				// Parse into a raw map to check that Path is not present
+				var rawResponse []map[string]any
+				err := json.Unmarshal(w.Body.Bytes(), &rawResponse)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rawResponse).To(HaveLen(2))
+				Expect(rawResponse[0]).ToNot(HaveKey("path"))
+				Expect(rawResponse[0]).ToNot(HaveKey("folderId"))
+				Expect(rawResponse[0]).ToNot(HaveKey("libraryPath"))
 			})
 
 			It("handles repository errors gracefully", func() {
@@ -166,13 +183,13 @@ var _ = Describe("Song Endpoints", func() {
 
 	Describe("GET /song/{id}", func() {
 		Context("when user is authenticated", func() {
-			It("returns the specific song", func() {
+			It("returns the specific song as apimodel.Song type", func() {
 				req := createAuthenticatedRequest("GET", "/song/song-1", nil)
 				router.ServeHTTP(w, req)
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response model.MediaFile
+				var response apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -265,7 +282,7 @@ var _ = Describe("Song Endpoints", func() {
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response []model.MediaFile
+				var response []apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -280,7 +297,7 @@ var _ = Describe("Song Endpoints", func() {
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response []model.MediaFile
+				var response []apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -299,7 +316,7 @@ var _ = Describe("Song Endpoints", func() {
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response []model.MediaFile
+				var response []apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -349,7 +366,7 @@ var _ = Describe("Song Endpoints", func() {
 
 				Expect(w.Code).To(Equal(http.StatusOK))
 
-				var response []model.MediaFile
+				var response []apimodel.Song
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 

@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/nativeapi/apimodel"
 )
 
 // PluginManager defines the interface for plugin management operations.
@@ -63,7 +64,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.JWTRefresher)
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
 		api.RX(r, "/user", api.users.NewRepository, true)
-		api.R(r, "/song", model.MediaFile{}, false)
+		api.addSongRoute(r)
 		api.R(r, "/album", model.Album{}, false)
 		api.R(r, "/artist", model.Artist{}, false)
 		api.R(r, "/genre", model.Genre{}, false)
@@ -100,6 +101,24 @@ func (api *Router) R(r chi.Router, pathPrefix string, model any, persistable boo
 		return api.ds.Resource(ctx, model)
 	}
 	api.RX(r, pathPrefix, constructor, persistable)
+}
+
+func (api *Router) addSongRoute(r chi.Router) {
+	constructor := func(ctx context.Context) rest.Repository {
+		repo := api.ds.Resource(ctx, model.MediaFile{})
+		return &mappedRepository{
+			repo: repo,
+			mapOne: func(v any) (any, error) {
+				mf := v.(*model.MediaFile)
+				return apimodel.FromMediaFile(*mf), nil
+			},
+			mapMany: func(v any) (any, error) {
+				mfs := v.(model.MediaFiles)
+				return apimodel.FromMediaFiles(mfs), nil
+			},
+		}
+	}
+	api.RX(r, "/song", constructor, false)
 }
 
 func (api *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
