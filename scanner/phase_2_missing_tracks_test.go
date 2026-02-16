@@ -801,6 +801,11 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			// Album's created_at should be copied from old to new
 			Expect(albumRepo.CopyAttributesCalls).To(HaveKeyWithValue("old-album", "new-album"))
+
+			// Verify the new album's CreatedAt was actually updated
+			newAlbum, err := albumRepo.Get("new-album")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.CreatedAt).To(Equal(originalTime))
 		})
 
 		It("should not copy album created_at when album ID does not change", func() {
