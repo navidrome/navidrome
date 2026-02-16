@@ -38,7 +38,7 @@ type MediaFile struct {
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
 	// AlbumArtist is the display name used for the album artist.
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
-	AlbumID              string   `structs:"album_id" json:"albumId"`
+	AlbumID              string   `structs:"album_id" json:"albumId" hash:"ignore"`
 	HasCoverArt          bool     `structs:"has_cover_art" json:"hasCoverArt"`
 	TrackNumber          int      `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int      `structs:"disc_number" json:"discNumber"`
