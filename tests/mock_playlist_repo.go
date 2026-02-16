@@ -8,8 +8,9 @@ import (
 type MockPlaylistRepo struct {
 	model.PlaylistRepository
 
-	Entity *model.Playlist
-	Error  error
+	Entity       *model.Playlist
+	Error        error
+	TracksReturn model.PlaylistTrackRepository
 }
 
 func (m *MockPlaylistRepo) Get(_ string) (*model.Playlist, error) {
@@ -20,6 +21,10 @@ func (m *MockPlaylistRepo) Get(_ string) (*model.Playlist, error) {
 		return nil, model.ErrNotFound
 	}
 	return m.Entity, nil
+}
+
+func (m *MockPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
+	return m.TracksReturn
 }
 
 func (m *MockPlaylistRepo) Count(_ ...rest.QueryOptions) (int64, error) {
