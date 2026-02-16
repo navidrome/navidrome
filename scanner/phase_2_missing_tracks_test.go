@@ -724,6 +724,115 @@ var _ = Describe("phaseMissingTracks", func() {
 		}) // End of Context "with multiple libraries"
 	})
 
+	Describe("CreatedAt preservation (#5050)", func() {
+		var albumRepo *tests.MockAlbumRepo
+
+		BeforeEach(func() {
+			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo.ReassignAnnotationCalls = make(map[string]string)
+			albumRepo.CopyAttributesCalls = make(map[string]string)
+		})
+
+		It("should preserve the missing track's created_at when moving within a library", func() {
+			originalTime := time.Date(2020, 3, 15, 10, 0, 0, 0, time.UTC)
+			missingTrack := model.MediaFile{
+				ID: "1", PID: "A", Path: "old/song.mp3",
+				AlbumID:   "album-1",
+				LibraryID: 1,
+				CreatedAt: originalTime,
+				Tags:      model.Tags{"title": []string{"My Song"}},
+				Size:      100,
+			}
+			matchedTrack := model.MediaFile{
+				ID: "2", PID: "A", Path: "new/song.mp3",
+				AlbumID:   "album-1", // Same album
+				LibraryID: 1,
+				CreatedAt: time.Now(), // Much newer
+				Tags:      model.Tags{"title": []string{"My Song"}},
+				Size:      100,
+			}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			in := &missingTracks{
+				missing: []model.MediaFile{missingTrack},
+				matched: []model.MediaFile{matchedTrack},
+			}
+
+			_, err := phase.processMissingTracks(in)
+			Expect(err).ToNot(HaveOccurred())
+
+			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			Expect(movedTrack.Path).To(Equal("new/song.mp3"))
+			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
+		})
+
+		It("should preserve created_at during cross-library moves with album change", func() {
+			originalTime := time.Date(2019, 6, 1, 12, 0, 0, 0, time.UTC)
+			missingTrack := model.MediaFile{
+				ID: "missing-ca", PID: "B", Path: "lib1/song.mp3",
+				AlbumID:   "old-album",
+				LibraryID: 1,
+				CreatedAt: originalTime,
+			}
+			matchedTrack := model.MediaFile{
+				ID: "matched-ca", PID: "B", Path: "lib2/song.mp3",
+				AlbumID:   "new-album",
+				LibraryID: 2,
+				CreatedAt: time.Now(),
+			}
+
+			// Set up albums so CopyAttributes can find them
+			albumRepo.SetData(model.Albums{
+				{ID: "old-album", LibraryID: 1, CreatedAt: originalTime},
+				{ID: "new-album", LibraryID: 2, CreatedAt: time.Now()},
+			})
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			err := phase.moveMatched(matchedTrack, missingTrack)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Track's created_at should be preserved from the missing file
+			movedTrack, _ := ds.MediaFile(ctx).Get("missing-ca")
+			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
+
+			// Album's created_at should be copied from old to new
+			Expect(albumRepo.CopyAttributesCalls).To(HaveKeyWithValue("old-album", "new-album"))
+		})
+
+		It("should not copy album created_at when album ID does not change", func() {
+			originalTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+			missingTrack := model.MediaFile{
+				ID: "missing-same", PID: "C", Path: "dir1/song.mp3",
+				AlbumID:   "same-album",
+				LibraryID: 1,
+				CreatedAt: originalTime,
+			}
+			matchedTrack := model.MediaFile{
+				ID: "matched-same", PID: "C", Path: "dir2/song.mp3",
+				AlbumID:   "same-album", // Same album
+				LibraryID: 1,
+				CreatedAt: time.Now(),
+			}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			err := phase.moveMatched(matchedTrack, missingTrack)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Track's created_at should still be preserved
+			movedTrack, _ := ds.MediaFile(ctx).Get("missing-same")
+			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
+
+			// CopyAttributes should NOT have been called (same album)
+			Expect(albumRepo.CopyAttributesCalls).To(BeEmpty())
+		})
+	})
+
 	Describe("Album Annotation Reassignment", func() {
 		var (
 			albumRepo    *tests.MockAlbumRepo
