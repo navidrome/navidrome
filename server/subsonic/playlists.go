@@ -19,7 +19,7 @@ import (
 
 func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	allPls, err := api.ds.Playlist(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	allPls, err := api.playlists.GetAll(ctx, model.QueryOptions{Sort: "name"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -42,7 +42,7 @@ func (api *Router) GetPlaylist(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subsonic, error) {
-	pls, err := api.ds.Playlist(ctx).GetWithTracks(id, true, false)
+	pls, err := api.playlists.GetWithTracks(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "playlist not found")
@@ -60,34 +60,6 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 	return response, nil
 }
 
-func (api *Router) create(ctx context.Context, playlistId, name string, ids []string) (string, error) {
-	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
-		owner := getUser(ctx)
-		var pls *model.Playlist
-		var err error
-
-		if playlistId != "" {
-			pls, err = tx.Playlist(ctx).Get(playlistId)
-			if err != nil {
-				return err
-			}
-			if owner.ID != pls.OwnerID {
-				return model.ErrNotAuthorized
-			}
-		} else {
-			pls = &model.Playlist{Name: name}
-			pls.OwnerID = owner.ID
-		}
-		pls.Tracks = nil
-		pls.AddMediaFilesByID(ids)
-
-		err = tx.Playlist(ctx).Put(pls)
-		playlistId = pls.ID
-		return err
-	})
-	return playlistId, err
-}
-
 func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	p := req.Params(r)
@@ -97,7 +69,7 @@ func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	if playlistId == "" && name == "" {
 		return nil, errors.New("required parameter name is missing")
 	}
-	id, err := api.create(ctx, playlistId, name, songIds)
+	id, err := api.playlists.Create(ctx, playlistId, name, songIds)
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -111,7 +83,7 @@ func (api *Router) DeletePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
-	err = api.ds.Playlist(r.Context()).Delete(id)
+	err = api.playlists.Delete(r.Context(), id)
 	if errors.Is(err, model.ErrNotAuthorized) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}

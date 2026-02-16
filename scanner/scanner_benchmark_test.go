@@ -12,9 +12,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
@@ -40,7 +40,7 @@ func BenchmarkScan(b *testing.B) {
 	ds := persistence.New(db.Db())
 	conf.Server.DevExternalScanner = false
 	s := scanner.New(context.Background(), ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(ds), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)

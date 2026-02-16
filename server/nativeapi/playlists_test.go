@@ -1,6 +1,7 @@
 package nativeapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
@@ -48,11 +50,19 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 	return nil, rest.ErrNotFound
 }
 
+type mockPlaylistsService struct {
+	playlists.Playlists
+	tracksRepo rest.Repository
+}
+
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+	return m.tracksRepo
+}
+
 var _ = Describe("Playlist Tracks Endpoint", func() {
 	var (
 		router   http.Handler
-		ds       *tests.MockDataStore
-		plsRepo  *tests.MockPlaylistRepo
+		plsSvc   *mockPlaylistsService
 		userRepo *tests.MockedUserRepo
 		w        *httptest.ResponseRecorder
 	)
@@ -61,11 +71,10 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.SessionTimeout = time.Minute
 
-		plsRepo = &tests.MockPlaylistRepo{}
+		plsSvc = &mockPlaylistsService{}
 		userRepo = tests.CreateMockUserRepo()
 
-		ds = &tests.MockDataStore{
-			MockedPlaylist: plsRepo,
+		ds := &tests.MockDataStore{
 			MockedUser:     userRepo,
 			MockedProperty: &tests.MockedPropertyRepo{},
 		}
@@ -82,7 +91,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		err := userRepo.Put(&testUser)
 		Expect(err).ToNot(HaveOccurred())
 
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
+		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})
@@ -105,7 +114,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns tracks when playlist exists", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
 				tracks: model.PlaylistTracks{
 					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
 					{ID: "2", MediaFileID: "mf-2", PlaylistID: "pls-1"},
@@ -135,7 +144,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns the track when playlist exists", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
 				tracks: model.PlaylistTracks{
 					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
 				},
@@ -154,7 +163,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns 404 when track does not exist in playlist", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
 				tracks: model.PlaylistTracks{},
 			}
 
