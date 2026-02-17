@@ -71,8 +71,11 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
-// Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
+// Ex: order_title => (coalesce(nullif(sort_title,"),order_title) collate NATURALSORT)
 // To avoid performance issues, indexes should be created for these sort expressions
+//
+// All order_* fields are wrapped with NATURALSORT collation to enable natural number ordering
+// (e.g., "Album 2" sorts before "Album 10").
 //
 // NOTE: if an individual item has spaces, it should be wrapped in parentheses. For example,
 // you should write "(lyrics != '[]')". This prevents the item being split unexpectedly.
@@ -82,11 +85,13 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 	if len(tableName) > 0 {
 		tn = tableName[0]
 	}
-	if conf.Server.PreferSortTags {
-		for k, v := range mappings {
+	for k, v := range mappings {
+		if conf.Server.PreferSortTags {
 			v = mapSortOrder(tn, v)
-			mappings[k] = v
+		} else {
+			v = mapNaturalSortCollation(v)
 		}
+		mappings[k] = v
 	}
 	r.sortMappings = mappings
 }

@@ -94,13 +94,23 @@ var _ = Describe("Helpers", func() {
 			sort := "ORDER_ALBUM_NAME asc"
 			mapped := mapSortOrder("album", sort)
 			Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
-				` collate nocase) asc`))
+				` collate NATURALSORT) asc`))
 		})
 		It("changes multiple order columns to sort expressions", func() {
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
 			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
-				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate NATURALSORT) asc,` +
+				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate NATURALSORT) desc, year desc`))
+		})
+		It("wraps bare order columns with NATURALSORT collation", func() {
+			sort := "order_album_name, order_album_artist_name"
+			mapped := mapNaturalSortCollation(sort)
+			Expect(mapped).To(Equal(`(order_album_name collate NATURALSORT), (order_album_artist_name collate NATURALSORT)`))
+		})
+		It("does not change non-order columns in mapNaturalSortCollation", func() {
+			sort := "compilation, year desc"
+			mapped := mapNaturalSortCollation(sort)
+			Expect(mapped).To(Equal(sort))
 		})
 	})
 })

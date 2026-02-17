@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
 )
 
@@ -31,7 +32,10 @@ func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		sql.Register(Driver, &sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
+				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
+					return err
+				}
+				return conn.RegisterCollation("NATURALSORT", str.NaturalSortCompare)
 			},
 		})
 		Path = conf.Server.DbPath
