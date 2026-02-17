@@ -90,11 +90,3 @@ func mapSortOrder(tableName, order string) string {
 	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate NATURALSORT)", tableName)
 	return sortOrderRegex.ReplaceAllString(order, repl)
 }
-
-// mapNaturalSortCollation wraps bare order_* column references with NATURALSORT collation. Example:
-// order_album_name -> (order_album_name collate NATURALSORT)
-// It finds order column names anywhere in the substring
-func mapNaturalSortCollation(order string) string {
-	order = strings.ToLower(order)
-	return sortOrderRegex.ReplaceAllString(order, "(order_$1 collate NATURALSORT)")
-}

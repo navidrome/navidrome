@@ -1,5 +1,14 @@
 -- +goose Up
 
+-- Change order_*/sort_* column collation from NOCASE to NATURALSORT.
+-- This way bare ORDER BY on these columns automatically uses natural sorting,
+-- without needing explicit COLLATE NATURALSORT in every query.
+PRAGMA writable_schema = ON;
+UPDATE sqlite_master
+SET sql = replace(sql, 'collate NOCASE', 'collate NATURALSORT')
+WHERE type = 'table' AND name IN ('artist', 'album', 'media_file');
+PRAGMA writable_schema = OFF;
+
 -- Recreate indexes on order_* and sort expression fields to use NATURALSORT collation.
 -- This enables natural number ordering (e.g., "Album 2" before "Album 10").
 
@@ -59,6 +68,13 @@ create index media_file_sort_album_name
     on media_file (coalesce(nullif(sort_album_name,''),order_album_name) collate NATURALSORT);
 
 -- +goose Down
+
+-- Restore NOCASE column collation
+PRAGMA writable_schema = ON;
+UPDATE sqlite_master
+SET sql = replace(sql, 'collate NATURALSORT', 'collate NOCASE')
+WHERE type = 'table' AND name IN ('artist', 'album', 'media_file');
+PRAGMA writable_schema = OFF;
 
 -- Restore NOCASE collation indexes
 

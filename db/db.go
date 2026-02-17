@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/maruel/natural"
 	"github.com/mattn/go-sqlite3"
@@ -35,7 +36,9 @@ func Db() *sql.DB {
 				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
 					return err
 				}
-				return conn.RegisterCollation("NATURALSORT", natural.Compare)
+				return conn.RegisterCollation("NATURALSORT", func(a, b string) int {
+					return natural.Compare(strings.ToLower(a), strings.ToLower(b))
+				})
 			},
 		})
 		Path = conf.Server.DbPath
