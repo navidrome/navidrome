@@ -24,8 +24,9 @@ type Broker interface {
 
 const (
 	keepAliveFrequency = 15 * time.Second
-	writeTimeOut       = 5 * time.Second
-	bufferSize         = 1
+	// The timeout must be higher than the keepAliveFrequency, or the lack of activity will cause the channel to close.
+	writeTimeOut = keepAliveFrequency + 5*time.Second
+	bufferSize   = 1
 )
 
 type (
