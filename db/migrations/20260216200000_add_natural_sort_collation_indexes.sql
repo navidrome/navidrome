@@ -6,7 +6,7 @@
 PRAGMA writable_schema = ON;
 UPDATE sqlite_master
 SET sql = replace(sql, 'collate NOCASE', 'collate NATURALSORT')
-WHERE type = 'table' AND name IN ('artist', 'album', 'media_file');
+WHERE type = 'table' AND name IN ('artist', 'album', 'media_file', 'playlist', 'radio');
 PRAGMA writable_schema = OFF;
 
 -- Recreate indexes on order_* and sort expression fields to use NATURALSORT collation.
@@ -67,13 +67,22 @@ drop index if exists media_file_sort_album_name;
 create index media_file_sort_album_name
     on media_file (coalesce(nullif(sort_album_name,''),order_album_name) collate NATURALSORT);
 
+-- Playlist and radio indexes: recreate to match new NATURALSORT column collation
+drop index if exists playlist_name;
+create index playlist_name
+    on playlist (name collate NATURALSORT);
+
+drop index if exists radio_name;
+create index radio_name
+    on radio (name collate NATURALSORT);
+
 -- +goose Down
 
 -- Restore NOCASE column collation
 PRAGMA writable_schema = ON;
 UPDATE sqlite_master
 SET sql = replace(sql, 'collate NATURALSORT', 'collate NOCASE')
-WHERE type = 'table' AND name IN ('artist', 'album', 'media_file');
+WHERE type = 'table' AND name IN ('artist', 'album', 'media_file', 'playlist', 'radio');
 PRAGMA writable_schema = OFF;
 
 -- Restore NOCASE collation indexes
@@ -132,3 +141,12 @@ create index media_file_sort_artist_name
 drop index if exists media_file_sort_album_name;
 create index media_file_sort_album_name
     on media_file (coalesce(nullif(sort_album_name,''),order_album_name) collate NOCASE);
+
+-- Restore playlist and radio indexes
+drop index if exists playlist_name;
+create index playlist_name
+    on playlist (name);
+
+drop index if exists radio_name;
+create index radio_name
+    on radio (name);
