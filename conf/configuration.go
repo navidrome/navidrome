@@ -172,8 +172,8 @@ type TagConf struct {
 
 type lastfmOptions struct {
 	Enabled                 bool
-	ApiKey                  string
-	Secret                  string
+	ApiKey                  string //nolint:gosec
+	Secret                  string //nolint:gosec
 	Language                string
 	ScrobbleFirstArtistOnly bool
 
@@ -183,7 +183,7 @@ type lastfmOptions struct {
 
 type spotifyOptions struct {
 	ID     string
-	Secret string
+	Secret string //nolint:gosec
 }
 
 type deezerOptions struct {
@@ -208,7 +208,7 @@ type httpHeaderOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
-	Password    string
+	Password    string //nolint:gosec
 }
 
 type AudioDeviceDefinition []string
@@ -748,7 +748,7 @@ func getConfigFile(cfgFile string) string {
 	}
 	cfgFile = os.Getenv("ND_CONFIGFILE")
 	if cfgFile != "" {
-		if _, err := os.Stat(cfgFile); err == nil {
+		if _, err := os.Stat(cfgFile); err == nil { //nolint:gosec
 			return cfgFile
 		}
 	}

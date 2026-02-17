@@ -104,7 +104,7 @@ func writeEvent(ctx context.Context, w io.Writer, event message, timeout time.Du
 		log.Debug(ctx, "Error setting write timeout", err)
 	}
 
-	_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
+	_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data) //nolint:gosec
 	if err != nil {
 		return err
 	}

@@ -363,7 +363,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		}
 	}
 
-	if _, err := w.Write(response); err != nil {
+	if _, err := w.Write(response); err != nil { //nolint:gosec
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
 }

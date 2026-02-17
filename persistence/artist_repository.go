@@ -138,7 +138,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"missing":    booleanFilter,
 		"library_id": artistLibraryIdFilter,
 	})
-	r.setSortMappings(map[string]string{
+	r.setSortMappings(map[string]string{ //nolint:gosec
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",

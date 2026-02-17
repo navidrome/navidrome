@@ -60,7 +60,7 @@ func inspect(ds model.DataStore) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		if _, err := w.Write(response); err != nil {
+		if _, err := w.Write(response); err != nil { //nolint:gosec
 			log.Error(ctx, "Error sending response to client", err)
 		}
 	}

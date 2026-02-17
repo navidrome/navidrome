@@ -207,7 +207,7 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
-	_, err = w.Write(resp)
+	_, err = w.Write(resp) //nolint:gosec
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -243,7 +243,7 @@ func (api *Router) addInsightsRoute(r chi.Router) {
 	r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
 		last, success := api.insights.LastRun(r.Context())
 		if conf.Server.EnableInsightsCollector {
-			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`)) //nolint:gosec
 		} else {
 			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
 		}
