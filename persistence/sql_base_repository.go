@@ -74,9 +74,6 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 // Ex: order_title => (coalesce(nullif(sort_title,""), order_title) collate NATURALSORT)
 // To avoid performance issues, indexes should be created for these sort expressions.
 //
-// When PreferSortTags is off, bare order_* columns automatically use their column-defined NATURALSORT
-// collation, so no query-time wrapping is needed.
-//
 // NOTE: if an individual item has spaces, it should be wrapped in parentheses. For example,
 // you should write "(lyrics != '[]')". This prevents the item being split unexpectedly.
 // Without parentheses, "lyrics != '[]'" would be mapped as simply "lyrics"
