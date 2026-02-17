@@ -148,7 +148,9 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	m.CreatedAt = time.Now()
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = time.Now()
+	}
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
