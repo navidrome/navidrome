@@ -19,47 +19,33 @@ import (
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-func getPlaylist(ds model.DataStore) http.HandlerFunc {
-	// Add a middleware to capture the playlistId
-	wrapper := func(handler restHandler) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			constructor := func(ctx context.Context) rest.Repository {
-				plsRepo := ds.Playlist(ctx)
-				plsId := chi.URLParam(r, "playlistId")
-				p := req.Params(r)
-				start := p.Int64Or("_start", 0)
-				return plsRepo.Tracks(plsId, start == 0)
-			}
-
-			handler(constructor).ServeHTTP(w, r)
-		}
-	}
-
+func playlistTracksHandler(ds model.DataStore, handler restHandler, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accept := r.Header.Get("accept")
-		if strings.ToLower(accept) == "audio/x-mpegurl" {
+		plsId := chi.URLParam(r, "playlistId")
+		tracks := ds.Playlist(r.Context()).Tracks(plsId, refreshSmartPlaylist(r))
+		if tracks == nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		handler(func(ctx context.Context) rest.Repository { return tracks }).ServeHTTP(w, r)
+	}
+}
+
+func getPlaylist(ds model.DataStore) http.HandlerFunc {
+	handler := playlistTracksHandler(ds, rest.GetAll, func(r *http.Request) bool {
+		return req.Params(r).Int64Or("_start", 0) == 0
+	})
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.ToLower(r.Header.Get("accept")) == "audio/x-mpegurl" {
 			handleExportPlaylist(ds)(w, r)
 			return
 		}
-		wrapper(rest.GetAll)(w, r)
+		handler(w, r)
 	}
 }
 
 func getPlaylistTrack(ds model.DataStore) http.HandlerFunc {
-	// Add a middleware to capture the playlistId
-	wrapper := func(handler restHandler) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			constructor := func(ctx context.Context) rest.Repository {
-				plsRepo := ds.Playlist(ctx)
-				plsId := chi.URLParam(r, "playlistId")
-				return plsRepo.Tracks(plsId, true)
-			}
-
-			handler(constructor).ServeHTTP(w, r)
-		}
-	}
-
-	return wrapper(rest.Get)
+	return playlistTracksHandler(ds, rest.Get, func(*http.Request) bool { return true })
 }
 
 func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
@@ -73,7 +59,7 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(pls.ToM3U8()))
+		_, err = w.Write([]byte(pls.ToM3U8())) //nolint:gosec
 		if err != nil {
 			log.Error(ctx, "Error sending m3u contents", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -104,7 +90,7 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", pls.Name)
 		w.Header().Set("Content-Disposition", disposition)
 
-		_, err = w.Write([]byte(pls.ToM3U8()))
+		_, err = w.Write([]byte(pls.ToM3U8())) //nolint:gosec
 		if err != nil {
 			log.Error(ctx, "Error sending playlist", "name", pls.Name)
 			return
@@ -176,7 +162,7 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 		count += c
 
 		// Must return an object with an ID, to satisfy ReactAdmin `create` call
-		_, err = fmt.Fprintf(w, `{"added":%d}`, count)
+		_, err = fmt.Fprintf(w, `{"added":%d}`, count) //nolint:gosec
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -218,7 +204,7 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
-		_, err = w.Write(fmt.Appendf(nil, `{"id":"%d"}`, id))
+		_, err = w.Write(fmt.Appendf(nil, `{"id":"%d"}`, id)) //nolint:gosec
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -239,6 +225,6 @@ func getSongPlaylists(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, _ = w.Write(data)
+		_, _ = w.Write(data) //nolint:gosec
 	}
 }

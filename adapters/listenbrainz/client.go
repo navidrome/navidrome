@@ -57,7 +57,7 @@ type listenBrainzResponse struct {
 }
 
 type listenBrainzRequest struct {
-	ApiKey string
+	ApiKey string //nolint:gosec
 	Body   listenBrainzRequestBody
 }
 

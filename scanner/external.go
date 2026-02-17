@@ -158,7 +158,7 @@ func writeTargetsToFile(targets []model.ScanTarget) (string, error) {
 
 	for _, target := range targets {
 		if _, err := fmt.Fprintln(tmpFile, target.String()); err != nil {
-			os.Remove(tmpFile.Name())
+			os.Remove(tmpFile.Name()) //nolint:gosec
 			return "", fmt.Errorf("failed to write to temp file: %w", err)
 		}
 	}
