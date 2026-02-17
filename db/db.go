@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/maruel/natural"
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
 )
 
@@ -35,7 +35,7 @@ func Db() *sql.DB {
 				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
 					return err
 				}
-				return conn.RegisterCollation("NATURALSORT", str.NaturalSortCompare)
+				return conn.RegisterCollation("NATURALSORT", natural.Compare)
 			},
 		})
 		Path = conf.Server.DbPath
