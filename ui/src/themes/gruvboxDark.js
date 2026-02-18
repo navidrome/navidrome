@@ -97,6 +97,16 @@ export default {
         boxShadow: '3px 3px 5px #3c3836',
       },
     },
+    MuiSwitch: {
+      colorSecondary: {
+        '&$checked': {
+          color: '#458588',
+        },
+        '&$checked + $track': {
+          backgroundColor: '#458588',
+        },
+      },
+    },
     NDMobileArtistDetails: {
       bgContainer: {
         background:
