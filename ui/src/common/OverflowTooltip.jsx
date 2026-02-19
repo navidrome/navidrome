@@ -13,19 +13,19 @@ export const OverflowTooltip = ({
   const [isOverflowing, setIsOverflowing] = React.useState(false)
 
   React.useLayoutEffect(() => {
-  const el = textRef.current
-  if (!el) return
+    const el = textRef.current
+    if (!el) return
 
-  const checkOverflow = () => {
+    const checkOverflow = () => {
       setIsOverflowing(el.scrollWidth > el.clientWidth)
-  }
+    }
 
-  const resizeObserver = new ResizeObserver(checkOverflow)
-  resizeObserver.observe(el)
+    const resizeObserver = new ResizeObserver(checkOverflow)
+    resizeObserver.observe(el)
 
-  checkOverflow()
+    checkOverflow()
 
-  return () => resizeObserver.disconnect()
+    return () => resizeObserver.disconnect()
   }, [title])
 
   return (
