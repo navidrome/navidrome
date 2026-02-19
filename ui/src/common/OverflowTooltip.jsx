@@ -13,17 +13,20 @@ export const OverflowTooltip = ({
   const [isOverflowing, setIsOverflowing] = React.useState(false)
 
   React.useLayoutEffect(() => {
-    const el = textRef.current
-    if (!el) return
+  const el = textRef.current
+  if (!el) return
 
-    const checkOverflow = () =>
+  const checkOverflow = () => {
       setIsOverflowing(el.scrollWidth > el.clientWidth)
+  }
 
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
+  const resizeObserver = new ResizeObserver(checkOverflow)
+  resizeObserver.observe(el)
 
-    return () => window.removeEventListener('resize', checkOverflow)
-  }, [title, children])
+  checkOverflow()
+
+  return () => resizeObserver.disconnect()
+  }, [title])
 
   return (
     <Tooltip
@@ -34,7 +37,18 @@ export const OverflowTooltip = ({
       TransitionProps={{ timeout: 0 }}
       classes={{ tooltip: classes.tooltip }}
     >
-      {React.cloneElement(children, { ref: textRef })}
+      {React.cloneElement(children, {
+        ref: (el) => {
+          textRef.current = el
+
+          const { ref } = children
+          if (typeof ref === 'function') {
+            ref(el)
+          } else if (ref && typeof ref === 'object') {
+            ref.current = el
+          }
+        },
+      })}
     </Tooltip>
   )
 }
