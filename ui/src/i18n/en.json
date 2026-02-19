@@ -610,6 +610,7 @@
         "language": "Language",
         "defaultView": "Default View",
         "desktop_notifications": "Desktop Notifications",
+        "infinite_scroll": "Infinite scroll on album list",
         "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",

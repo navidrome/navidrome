@@ -65,6 +65,8 @@ const createAdminStore = ({
         }))(state.player),
         albumView: state.albumView,
         settings: state.settings,
+        // Only persist the 'enabled' setting, not transient page/scroll state
+        infiniteScroll: { enabled: state.infiniteScroll?.enabled ?? false },
       })
     }),
     1000,
