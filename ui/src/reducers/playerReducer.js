@@ -7,6 +7,7 @@ import {
   PLAYER_CURRENT,
   PLAYER_PLAY_NEXT,
   PLAYER_PLAY_TRACKS,
+  PLAYER_UPDATE_LYRIC,
   PLAYER_SET_TRACK,
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
@@ -60,21 +61,25 @@ const mapToAudioLists = (item) => {
   let lyricText = ''
 
   if (lyrics) {
-    const structured = JSON.parse(lyrics)
-    for (const structuredLyric of structured) {
-      if (structuredLyric.synced) {
-        for (const line of structuredLyric.line) {
-          let time = Math.floor(line.start / 10)
-          const ms = time % 100
-          time = Math.floor(time / 100)
-          const sec = time % 60
-          time = Math.floor(time / 60)
-          const min = time % 60
+    try {
+      const structured = JSON.parse(lyrics)
+      for (const structuredLyric of structured) {
+        if (structuredLyric.synced) {
+          for (const line of structuredLyric.line) {
+            let time = Math.floor(line.start / 10)
+            const ms = time % 100
+            time = Math.floor(time / 100)
+            const sec = time % 60
+            time = Math.floor(time / 60)
+            const min = time % 60
 
-          ms.toString()
-          lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`
+            ms.toString()
+            lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`
+          }
         }
       }
+    } catch {
+      lyricText = ''
     }
   }
 
@@ -206,6 +211,45 @@ const reduceMode = (state, { data: { mode } }) => {
   }
 }
 
+const reduceUpdateLyric = (state, { data: { trackId, lyric } }) => {
+  if (!trackId) {
+    return state
+  }
+
+  let changed = false
+  const queue = state.queue.map((item) => {
+    if (item.trackId !== trackId) {
+      return item
+    }
+    if (item.lyric === lyric) {
+      return item
+    }
+    changed = true
+    return {
+      ...item,
+      lyric,
+    }
+  })
+
+  if (!changed) {
+    return state
+  }
+
+  const current =
+    state.current?.trackId === trackId
+      ? {
+          ...state.current,
+          lyric,
+        }
+      : state.current
+
+  return {
+    ...state,
+    queue,
+    current,
+  }
+}
+
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
@@ -243,6 +287,8 @@ export const playerReducer = (previousState = initialState, payload) => {
           previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
       }
     }
+    case PLAYER_UPDATE_LYRIC:
+      return reduceUpdateLyric(previousState, payload)
     default:
       return previousState
   }
