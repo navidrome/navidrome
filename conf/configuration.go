@@ -340,6 +340,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
+		validateExtAuthLogoutURL,
 	)
 	if err != nil {
 		os.Exit(1)
@@ -538,6 +539,23 @@ func validateSchedule(schedule, field string) (string, error) {
 		c.Remove(id)
 	}
 	return schedule, err
+}
+
+func validateExtAuthLogoutURL() error {
+	if Server.ExtAuth.LogoutURL == "" {
+		return nil
+	}
+	u, err := url.Parse(Server.ExtAuth.LogoutURL)
+	if err != nil {
+		log.Error("Invalid ExtAuth.LogoutURL: it could not be parsed", "url", Server.ExtAuth.LogoutURL, "err", err)
+		return err
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		err := fmt.Errorf("invalid scheme for ExtAuth.LogoutURL: '%s'. Only 'http' and 'https' are allowed", u.Scheme)
+		log.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
