@@ -19,8 +19,9 @@ var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
-// It preserves quoted phrases and * prefix wildcards, strips FTS5 operators
-// and special characters to prevent query injection.
+// It preserves quoted phrases and * prefix wildcards, neutralizes FTS5 operators
+// (by lowercasing them, since FTS5 operators are case-sensitive) and strips
+// special characters to prevent query injection.
 func buildFTS5Query(userInput string) string {
 	q := strings.TrimSpace(userInput)
 	if q == "" {
@@ -47,7 +48,8 @@ func buildFTS5Query(userInput string) string {
 		result = result[:start] + "\x00PHRASE" + string(rune('0'+len(phrases)-1)) + "\x00" + result[end+1:]
 	}
 
-	// Strip FTS5 operators (as whole words)
+	// Neutralize FTS5 operators by lowercasing them (FTS5 operators are case-sensitive:
+	// AND, OR, NOT, NEAR are operators, but and, or, not, near are plain tokens)
 	result = fts5Operators.ReplaceAllStringFunc(result, strings.ToLower)
 
 	// Strip special FTS5 characters (but keep * for prefix queries)
