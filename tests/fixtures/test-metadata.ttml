@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+  <head>
+    <metadata>
+      <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+        <translations>
+          <translation xml:lang="es">
+            <text for="L1">Hola</text>
+          </translation>
+        </translations>
+        <transliterations>
+          <transliteration xml:lang="ja-Latn">
+            <text for="L2"><span begin="00:02.000" end="00:02.300" xmlns="http://www.w3.org/ns/ttml">ko</span><span begin="00:02.300" end="00:02.600" xmlns="http://www.w3.org/ns/ttml">nni</span></text>
+          </transliteration>
+        </transliterations>
+      </iTunesMetadata>
+    </metadata>
+  </head>
+  <body xml:lang="ja">
+    <div>
+      <p begin="00:01.000" end="00:01.500" itunes:key="L1">こんにちは</p>
+      <p begin="00:02.000" end="00:02.700" itunes:key="L2">こんばんは</p>
+    </div>
+  </body>
+</tt>

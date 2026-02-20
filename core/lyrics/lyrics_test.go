@@ -43,6 +43,35 @@ var _ = Describe("sources", func() {
 		},
 	}
 
+	ttmlLyrics := model.LyricList{
+		model.Lyrics{
+			Kind: "main",
+			Lang: "eng",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					Value: "We're no strangers to love",
+				},
+				{
+					Start: gg.P(int64(22800)),
+					Value: "You know the rules and so do I",
+				},
+			},
+			Synced: true,
+		},
+		model.Lyrics{
+			Kind: "main",
+			Lang: "por",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					Value: "Nao somos estranhos ao amor",
+				},
+			},
+			Synced: true,
+		},
+	}
+
 	unsyncedLyrics := model.LyricList{
 		model.Lyrics{
 			Lang: "xxx",
@@ -78,7 +107,8 @@ var _ = Describe("sources", func() {
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
 		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics),
-		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics))
+		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
+		Entry("ttml > lrc > embedded", ".ttml,.lrc,embedded", ttmlLyrics))
 
 	Context("Errors", func() {
 		var RegularUserContext = XContext

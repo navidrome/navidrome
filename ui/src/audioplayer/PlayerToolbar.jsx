@@ -4,7 +4,9 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
+import Tooltip from '@material-ui/core/Tooltip'
 import { RiSaveLine } from 'react-icons/ri'
+import { RiFileMusicLine } from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
@@ -55,7 +57,13 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const PlayerToolbar = ({ id, isRadio }) => {
+const PlayerToolbar = ({
+  id,
+  isRadio,
+  onToggleLyrics,
+  lyricsActive = false,
+  lyricsDisabled = false,
+}) => {
   const dispatch = useDispatch()
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
@@ -99,6 +107,25 @@ const PlayerToolbar = ({ id, isRadio }) => {
     />
   )
 
+  const toggleLyricsButton = (
+    <Tooltip title="Toggle synchronized lyrics">
+      <span>
+        <IconButton
+          size={isDesktop ? 'small' : undefined}
+          onClick={onToggleLyrics}
+          disabled={!onToggleLyrics || lyricsDisabled}
+          data-testid="toggle-lyrics-button"
+          className={buttonClass}
+          color={lyricsActive ? 'primary' : 'default'}
+        >
+          <RiFileMusicLine
+            className={!isDesktop ? classes.mobileIcon : undefined}
+          />
+        </IconButton>
+      </span>
+    </Tooltip>
+  )
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
@@ -106,11 +133,13 @@ const PlayerToolbar = ({ id, isRadio }) => {
         <li className={`${listItemClass} item`}>
           {saveQueueButton}
           {loveButton}
+          {toggleLyricsButton}
         </li>
       ) : (
         <>
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
+          <li className={`${listItemClass} item`}>{toggleLyricsButton}</li>
         </>
       )}
     </>

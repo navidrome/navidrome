@@ -109,6 +109,41 @@ var _ = Describe("sources", func() {
 			}))
 		})
 
+		It("should return synchronized multilingual lyrics from a TTML file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				{
+					Kind: "main",
+					Lang: "eng",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "We're no strangers to love",
+						},
+						{
+							Start: gg.P(int64(22800)),
+							Value: "You know the rules and so do I",
+						},
+					},
+					Synced: true,
+				},
+				{
+					Kind: "main",
+					Lang: "por",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "Nao somos estranhos ao amor",
+						},
+					},
+					Synced: true,
+				},
+			}))
+		})
+
 		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
 			// The function looks for <basePath-without-ext><suffix>, so we need to pass
 			// a MediaFile with .mp3 path and look for .lrc suffix
@@ -141,6 +176,34 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[0].Value).To(Equal("We're no strangers to love"))
 			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
+		})
+
+		It("should handle TTML files with UTF-8 BOM marker", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(1))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(0))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("BOM test line"))
+		})
+
+		It("should handle UTF-16 LE encoded TTML files", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-utf16-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(2))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(18800))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("UTF16 line one"))
+			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
 		})
 	})
 })

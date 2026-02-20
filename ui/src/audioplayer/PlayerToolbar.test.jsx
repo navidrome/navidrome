@@ -71,6 +71,7 @@ describe('<PlayerToolbar />', () => {
       // Verify both buttons are rendered
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
+      expect(screen.getByTestId('toggle-lyrics-button')).toBeInTheDocument()
 
       // Verify desktop classes are applied
       expect(listItems[0].className).toContain('toolbar')
@@ -102,6 +103,14 @@ describe('<PlayerToolbar />', () => {
         type: 'OPEN_SAVE_QUEUE_DIALOG',
       })
     })
+
+    it('triggers lyric toggle callback when lyrics button is clicked', () => {
+      const onToggleLyrics = vi.fn()
+      render(<PlayerToolbar id="song-1" onToggleLyrics={onToggleLyrics} />)
+
+      fireEvent.click(screen.getByTestId('toggle-lyrics-button'))
+      expect(onToggleLyrics).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('Mobile layout', () => {
@@ -114,11 +123,12 @@ describe('<PlayerToolbar />', () => {
 
       // Each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(2)
+      expect(listItems).toHaveLength(3)
 
       // Verify both buttons are rendered
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
+      expect(screen.getByTestId('toggle-lyrics-button')).toBeInTheDocument()
 
       // Verify mobile classes are applied
       expect(listItems[0].className).toContain('mobileListItem')
@@ -139,6 +149,13 @@ describe('<PlayerToolbar />', () => {
 
       const loveButton = screen.getByTestId('love-button')
       expect(loveButton).toBeDisabled()
+    })
+
+    it('disables lyrics button when lyrics are unavailable', () => {
+      render(<PlayerToolbar id="song-1" lyricsDisabled={true} />)
+
+      const lyricsButton = screen.getByTestId('toggle-lyrics-button')
+      expect(lyricsButton).toBeDisabled()
     })
   })
 
