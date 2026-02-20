@@ -46,12 +46,12 @@ stop: ##@Development Stop development servers (UI and backend)
 .PHONY: stop
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go tool ginkgo watch -tags=netgo -notify ./...
+	go tool ginkgo watch -tags=netgo,sqlite_fts5 -notify ./...
 .PHONY: watch
 
 PKG ?= ./...
 test: ##@Development Run Go tests. Use PKG variable to specify packages to test, e.g. make test PKG=./server
-	go test -tags netgo $(PKG)
+	go test -tags netgo,sqlite_fts5 $(PKG)
 .PHONY: test
 
 test-ndpgen: ##@Development Run tests for ndpgen plugin
@@ -62,7 +62,7 @@ testall: test test-ndpgen test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on  $(PKG)
+	go test -tags netgo,sqlite_fts5 -race -shuffle=on  $(PKG)
 .PHONY: test-race
 
 test-js: ##@Development Run JS tests
@@ -108,7 +108,7 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go tool wire gen -tags=netgo ./...
+	go tool wire gen -tags=netgo,sqlite_fts5 ./...
 .PHONY: wire
 
 gen: check_go_env ##@Development Run go generate for code generation
@@ -144,14 +144,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo,sqlite_fts5
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo,sqlite_fts5
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
