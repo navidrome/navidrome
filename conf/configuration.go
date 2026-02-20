@@ -59,6 +59,7 @@ type configOptions struct {
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
 	SearchFullString                bool
+	SearchBackend                   string
 	SimilarSongsMatchThreshold      int
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
@@ -586,6 +587,7 @@ func setViperDefaults() {
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("searchfullstring", false)
+	viper.SetDefault("searchbackend", "fts")
 	viper.SetDefault("similarsongsmatchthreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
