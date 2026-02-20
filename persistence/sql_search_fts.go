@@ -8,10 +8,12 @@ import (
 	. "github.com/Masterminds/squirrel"
 )
 
-// fts5SpecialChars matches FTS5 operator characters that must be stripped from user input.
-// This includes: ^ (column weight), : (column filter), + (token position), - (unary NOT).
-// Parentheses are also removed to prevent grouping injection.
-var fts5SpecialChars = regexp.MustCompile(`[():^+\-]`)
+// fts5SpecialChars matches characters that should be stripped from user input.
+// We keep only Unicode letters, numbers, whitespace, * (prefix wildcard), " (phrase quotes),
+// and \x00 (internal placeholder marker). All punctuation is removed because the unicode61
+// tokenizer treats it as token separators, and characters like ' can cause FTS5 parse errors
+// as unbalanced string delimiters.
+var fts5SpecialChars = regexp.MustCompile(`[^\p{L}\p{N}\s*"\x00]`)
 
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)

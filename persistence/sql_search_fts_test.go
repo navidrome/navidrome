@@ -30,6 +30,10 @@ var _ = DescribeTable("buildFTS5Query",
 	Entry("strips leading * from tokens and appends trailing *", "*livia", "livia*"),
 	Entry("strips leading * and preserves existing trailing *", "*livia oliv*", "livia* oliv*"),
 	Entry("strips standalone *", "*", ""),
+	Entry("strips apostrophe from input", "Guns N' Roses", "Guns* N* Roses*"),
+	Entry("strips slash and splits into tokens", "AC/DC", "AC* DC*"),
+	Entry("strips miscellaneous punctuation", "rock & roll, vol. 2", "rock* roll* vol* 2*"),
+	Entry("preserves unicode characters with diacritics", "Björk début", "Björk* début*"),
 )
 
 var _ = Describe("FTS5 Integration Search", func() {
