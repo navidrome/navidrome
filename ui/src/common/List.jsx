@@ -1,5 +1,6 @@
 import React from 'react'
 import { List as RAList } from 'react-admin'
+import config from '../config'
 import { Pagination } from './Pagination'
 import { Title } from './index'
 
@@ -13,6 +14,7 @@ export const List = (props) => {
           args={{ smart_count: 2 }}
         />
       }
+      debounce={config.uiSearchDebounceMs}
       perPage={15}
       pagination={<Pagination />}
       {...props}
