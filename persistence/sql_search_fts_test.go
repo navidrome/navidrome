@@ -12,63 +12,25 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("buildFTS5Query", func() {
-	It("returns empty string for empty input", func() {
-		Expect(buildFTS5Query("")).To(BeEmpty())
-	})
-
-	It("returns empty string for whitespace-only input", func() {
-		Expect(buildFTS5Query("   ")).To(BeEmpty())
-	})
-
-	It("appends * to a single word for prefix matching", func() {
-		Expect(buildFTS5Query("beatles")).To(Equal("beatles*"))
-	})
-
-	It("appends * to each word for prefix matching", func() {
-		Expect(buildFTS5Query("abbey road")).To(Equal("abbey* road*"))
-	})
-
-	It("preserves quoted phrases without appending *", func() {
-		Expect(buildFTS5Query(`"the beatles"`)).To(Equal(`"the beatles"`))
-	})
-
-	It("does not double-append * to existing prefix wildcard", func() {
-		Expect(buildFTS5Query("beat*")).To(Equal("beat*"))
-	})
-
-	It("strips FTS5 operators and appends * to lowercased words", func() {
-		Expect(buildFTS5Query("AND OR NOT NEAR")).To(Equal("and* or* not* near*"))
-	})
-
-	It("strips special FTS5 syntax characters and appends *", func() {
-		Expect(buildFTS5Query("test^col:val")).To(Equal("test* col* val*"))
-	})
-
-	It("handles mixed phrases and words", func() {
-		Expect(buildFTS5Query(`"the beatles" abbey`)).To(Equal(`"the beatles" abbey*`))
-	})
-
-	It("handles prefix with multiple words", func() {
-		Expect(buildFTS5Query("beat* abbey")).To(Equal("beat* abbey*"))
-	})
-
-	It("collapses multiple spaces", func() {
-		Expect(buildFTS5Query("abbey   road")).To(Equal("abbey* road*"))
-	})
-
-	It("strips leading * from tokens and appends trailing *", func() {
-		Expect(buildFTS5Query("*livia")).To(Equal("livia*"))
-	})
-
-	It("strips leading * and preserves existing trailing *", func() {
-		Expect(buildFTS5Query("*livia oliv*")).To(Equal("livia* oliv*"))
-	})
-
-	It("strips standalone *", func() {
-		Expect(buildFTS5Query("*")).To(BeEmpty())
-	})
-})
+var _ = DescribeTable("buildFTS5Query",
+	func(input, expected string) {
+		Expect(buildFTS5Query(input)).To(Equal(expected))
+	},
+	Entry("returns empty string for empty input", "", ""),
+	Entry("returns empty string for whitespace-only input", "   ", ""),
+	Entry("appends * to a single word for prefix matching", "beatles", "beatles*"),
+	Entry("appends * to each word for prefix matching", "abbey road", "abbey* road*"),
+	Entry("preserves quoted phrases without appending *", `"the beatles"`, `"the beatles"`),
+	Entry("does not double-append * to existing prefix wildcard", "beat*", "beat*"),
+	Entry("strips FTS5 operators and appends * to lowercased words", "AND OR NOT NEAR", "and* or* not* near*"),
+	Entry("strips special FTS5 syntax characters and appends *", "test^col:val", "test* col* val*"),
+	Entry("handles mixed phrases and words", `"the beatles" abbey`, `"the beatles" abbey*`),
+	Entry("handles prefix with multiple words", "beat* abbey", "beat* abbey*"),
+	Entry("collapses multiple spaces", "abbey   road", "abbey* road*"),
+	Entry("strips leading * from tokens and appends trailing *", "*livia", "livia*"),
+	Entry("strips leading * and preserves existing trailing *", "*livia oliv*", "livia* oliv*"),
+	Entry("strips standalone *", "*", ""),
+)
 
 var _ = Describe("FTS5 Integration Search", func() {
 	var (
