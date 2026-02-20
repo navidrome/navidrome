@@ -52,6 +52,43 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("validateUrl", func() {
+		It("accepts a valid http URL", func() {
+			fn := conf.ValidateUrl("TestOption", "http://example.com/path")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("accepts a valid https URL", func() {
+			fn := conf.ValidateUrl("TestOption", "https://example.com/path")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("rejects a URL with no scheme", func() {
+			fn := conf.ValidateUrl("TestOption", "example.com/path")
+			Expect(fn()).To(MatchError(ContainSubstring("invalid scheme")))
+		})
+
+		It("rejects a URL with an unsupported scheme", func() {
+			fn := conf.ValidateUrl("TestOption", "javascript://example.com/path")
+			Expect(fn()).To(MatchError(ContainSubstring("invalid scheme")))
+		})
+
+		It("accepts an empty URL (optional config)", func() {
+			fn := conf.ValidateUrl("TestOption", "")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("includes the option name in the error message", func() {
+			fn := conf.ValidateUrl("MyOption", "ftp://example.com")
+			Expect(fn()).To(MatchError(ContainSubstring("MyOption")))
+		})
+
+		It("rejects a URL that cannot be parsed", func() {
+			fn := conf.ValidateUrl("TestOption", "://invalid")
+			Expect(fn()).To(HaveOccurred())
+		})
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

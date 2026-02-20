@@ -340,7 +340,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
-		validateExtAuthLogoutURL,
+		validateUrl("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
 		os.Exit(1)
@@ -541,21 +541,25 @@ func validateSchedule(schedule, field string) (string, error) {
 	return schedule, err
 }
 
-func validateExtAuthLogoutURL() error {
-	if Server.ExtAuth.LogoutURL == "" {
+// validateUrl checks if the provided URL is valid and has either http or https scheme.
+// It returns a function that can be used as a hook to validate URLs in the config.
+func validateUrl(optionName, optionUrl string) func() error {
+	return func() error {
+		if optionUrl == "" {
+			return nil
+		}
+		u, err := url.Parse(optionUrl)
+		if err != nil {
+			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionUrl, "err", err)
+			return err
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			err := fmt.Errorf("invalid scheme for %s: '%s'. Only 'http' and 'https' are allowed", optionName, u.Scheme)
+			log.Error(err.Error())
+			return err
+		}
 		return nil
 	}
-	u, err := url.Parse(Server.ExtAuth.LogoutURL)
-	if err != nil {
-		log.Error("Invalid ExtAuth.LogoutURL: it could not be parsed", "url", Server.ExtAuth.LogoutURL, "err", err)
-		return err
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		err := fmt.Errorf("invalid scheme for ExtAuth.LogoutURL: '%s'. Only 'http' and 'https' are allowed", u.Scheme)
-		log.Error(err.Error())
-		return err
-	}
-	return nil
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
