@@ -56,6 +56,18 @@ var _ = Describe("buildFTS5Query", func() {
 	It("collapses multiple spaces", func() {
 		Expect(buildFTS5Query("abbey   road")).To(Equal("abbey road"))
 	})
+
+	It("strips leading * from tokens", func() {
+		Expect(buildFTS5Query("*livia")).To(Equal("livia"))
+	})
+
+	It("strips leading * but preserves trailing *", func() {
+		Expect(buildFTS5Query("*livia oliv*")).To(Equal("livia oliv*"))
+	})
+
+	It("strips standalone *", func() {
+		Expect(buildFTS5Query("*")).To(BeEmpty())
+	})
 })
 
 var _ = Describe("FTS5 Integration Search", func() {

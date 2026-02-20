@@ -15,6 +15,9 @@ var fts5SpecialChars = regexp.MustCompile(`[():^+\-]`)
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 
+// fts5LeadingStar matches a * at the start of a token. FTS5 only supports * at the end (prefix queries).
+var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
+
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
 // It preserves quoted phrases and * prefix wildcards, strips FTS5 operators
 // and special characters to prevent query injection.
@@ -49,6 +52,9 @@ func buildFTS5Query(userInput string) string {
 
 	// Strip special FTS5 characters (but keep * for prefix queries)
 	result = fts5SpecialChars.ReplaceAllString(result, " ")
+
+	// Remove leading * from tokens (FTS5 only supports trailing * for prefix queries)
+	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 
 	// Restore phrases
 	for i, phrase := range phrases {
