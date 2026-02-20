@@ -2,6 +2,7 @@ version: "2"
 run:
   build-tags:
     - netgo
+    - sqlite_fts5
 linters:
   enable:
     - asasalint
