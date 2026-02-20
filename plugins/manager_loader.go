@@ -24,10 +24,9 @@ type serviceContext struct {
 	manager          *Manager
 	permissions      *Permissions
 	config           map[string]string
-	allowedUsers     []string // User IDs this plugin can access
-	allUsers         bool     // If true, plugin can access all users
-	allowedLibraries []int    // Library IDs this plugin can access
-	allLibraries     bool     // If true, plugin can access all libraries
+	userAccess       UserAccess // User authorization for this plugin
+	allowedLibraries []int      // Library IDs this plugin can access
+	allLibraries     bool       // If true, plugin can access all libraries
 }
 
 // hostServiceEntry defines a host service for table-driven registration.
@@ -52,7 +51,7 @@ var hostServices = []hostServiceEntry{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.userAccess)
 			return host.RegisterSubsonicAPIHostFunctions(service), nil
 		},
 	},
@@ -115,7 +114,7 @@ var hostServices = []hostServiceEntry{
 		name:          "Users",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			service := newUsersService(ctx.manager.ds, ctx.userAccess)
 			return host.RegisterUsersHostFunctions(service), nil
 		},
 	},
@@ -302,13 +301,14 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	var hostFunctions []extism.HostFunction
 	var closers []io.Closer
 
+	userAccess := NewUserAccess(p.AllUsers, allowedUsers)
+
 	svcCtx := &serviceContext{
 		pluginName:       p.ID,
 		manager:          m,
 		permissions:      pkg.Manifest.Permissions,
 		config:           pluginConfig,
-		allowedUsers:     allowedUsers,
-		allUsers:         p.AllUsers,
+		userAccess:       userAccess,
 		allowedLibraries: allowedLibraries,
 		allLibraries:     p.AllLibraries,
 	}
@@ -361,15 +361,14 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	m.mu.Lock()
 	m.plugins[p.ID] = &plugin{
-		name:           p.ID,
-		path:           p.Path,
-		manifest:       pkg.Manifest,
-		compiled:       compiled,
-		capabilities:   capabilities,
-		closers:        closers,
-		metrics:        m.metrics,
-		allowedUserIDs: allowedUsers,
-		allUsers:       p.AllUsers,
+		name:         p.ID,
+		path:         p.Path,
+		manifest:     pkg.Manifest,
+		compiled:     compiled,
+		capabilities: capabilities,
+		closers:      closers,
+		metrics:      m.metrics,
+		userAccess:   userAccess,
 	}
 	m.mu.Unlock()
 

@@ -33,11 +33,8 @@ func init() {
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
-	name           string
-	plugin         *plugin
-	allowedUserIDs []string            // User IDs this plugin can access (from DB configuration)
-	allUsers       bool                // If true, plugin can access all users
-	userIDMap      map[string]struct{} // Cached map for fast lookups
+	name   string
+	plugin *plugin
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler.
@@ -45,7 +42,7 @@ type ScrobblerPlugin struct {
 // then delegates to the plugin for service-specific authorization.
 func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
 	// First check server-side authorization based on plugin configuration
-	if !s.isUserAllowed(userId) {
+	if !s.plugin.userAccess.IsAllowed(userId) {
 		return false
 	}
 
@@ -61,18 +58,6 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 	}
 
 	return result
-}
-
-// isUserAllowed checks if the given user ID is allowed to use this plugin.
-func (s *ScrobblerPlugin) isUserAllowed(userId string) bool {
-	if s.allUsers {
-		return true
-	}
-	if len(s.allowedUserIDs) == 0 {
-		return false
-	}
-	_, ok := s.userIDMap[userId]
-	return ok
 }
 
 // NowPlaying sends a now playing notification to the scrobbler

@@ -635,6 +635,68 @@ type Output struct {
 		})
 	})
 
+	Describe("ParseCapabilities raw=true", func() {
+		It("should parse raw=true export annotation", func() {
+			src := `package capabilities
+
+//nd:capability name=httpendpoint required=true
+type HTTPEndpoint interface {
+	//nd:export name=nd_http_handle_request raw=true
+	HandleRequest(HTTPHandleRequest) (HTTPHandleResponse, error)
+}
+
+type HTTPHandleRequest struct {
+	Method string ` + "`json:\"method\"`" + `
+	Body   []byte ` + "`json:\"body,omitempty\"`" + `
+}
+
+type HTTPHandleResponse struct {
+	Status int32  ` + "`json:\"status,omitempty\"`" + `
+	Body   []byte ` + "`json:\"body,omitempty\"`" + `
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "http_endpoint.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			capabilities, err := ParseCapabilities(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capabilities).To(HaveLen(1))
+
+			cap := capabilities[0]
+			Expect(cap.Methods).To(HaveLen(1))
+			Expect(cap.Methods[0].Raw).To(BeTrue())
+			Expect(cap.HasRawMethods()).To(BeTrue())
+		})
+
+		It("should default Raw to false for export annotations without raw", func() {
+			src := `package capabilities
+
+//nd:capability name=test required=true
+type TestCapability interface {
+	//nd:export name=nd_test
+	Test(TestInput) (TestOutput, error)
+}
+
+type TestInput struct {
+	Value string ` + "`json:\"value\"`" + `
+}
+
+type TestOutput struct {
+	Result string ` + "`json:\"result\"`" + `
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte(src), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			capabilities, err := ParseCapabilities(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capabilities).To(HaveLen(1))
+
+			Expect(capabilities[0].Methods[0].Raw).To(BeFalse())
+			Expect(capabilities[0].HasRawMethods()).To(BeFalse())
+		})
+	})
+
 	Describe("Export helpers", func() {
 		It("should generate correct provider interface name", func() {
 			e := Export{Name: "GetArtistBiography"}

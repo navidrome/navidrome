@@ -1,0 +1,52 @@
+package capabilities
+
+// HTTPEndpoint allows plugins to handle incoming HTTP requests.
+// Plugins that declare the 'endpoints' permission must implement this capability.
+// The host dispatches incoming HTTP requests to the plugin's HandleRequest function.
+//
+//nd:capability name=httpendpoint required=true
+type HTTPEndpoint interface {
+	// HandleRequest processes an incoming HTTP request and returns a response.
+	//nd:export name=nd_http_handle_request raw=true
+	HandleRequest(HTTPHandleRequest) (HTTPHandleResponse, error)
+}
+
+// HTTPHandleRequest is the input provided when an HTTP request is dispatched to a plugin.
+type HTTPHandleRequest struct {
+	// Method is the HTTP method (GET, POST, PUT, DELETE, PATCH, etc.).
+	Method string `json:"method"`
+	// Path is the request path relative to the plugin's base URL.
+	// For example, if the full URL is /ext/my-plugin/webhook, Path is "/webhook".
+	// Both /ext/my-plugin and /ext/my-plugin/ are normalized to Path = "".
+	Path string `json:"path"`
+	// Query is the raw query string without the leading '?'.
+	Query string `json:"query,omitempty"`
+	// Headers contains the HTTP request headers.
+	Headers map[string][]string `json:"headers,omitempty"`
+	// Body is the request body content.
+	Body []byte `json:"body,omitempty"`
+	// User contains the authenticated user information. Nil for auth:"none" endpoints.
+	User *HTTPUser `json:"user,omitempty"`
+}
+
+// HTTPUser contains authenticated user information passed to the plugin.
+type HTTPUser struct {
+	// ID is the internal Navidrome user ID.
+	ID string `json:"id"`
+	// Username is the user's login name.
+	Username string `json:"username"`
+	// Name is the user's display name.
+	Name string `json:"name"`
+	// IsAdmin indicates whether the user has admin privileges.
+	IsAdmin bool `json:"isAdmin"`
+}
+
+// HTTPHandleResponse is the response returned by the plugin's HandleRequest function.
+type HTTPHandleResponse struct {
+	// Status is the HTTP status code. Defaults to 200 if zero or not set.
+	Status int32 `json:"status,omitempty"`
+	// Headers contains the HTTP response headers to set.
+	Headers map[string][]string `json:"headers,omitempty"`
+	// Body is the response body content.
+	Body []byte `json:"body,omitempty"`
+}
