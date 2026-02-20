@@ -3,6 +3,8 @@ package persistence
 import (
 	"regexp"
 	"strings"
+
+	. "github.com/Masterminds/squirrel"
 )
 
 // fts5SpecialChars matches FTS5 operator characters that must be stripped from user input.
@@ -58,4 +60,19 @@ func buildFTS5Query(userInput string) string {
 	result = strings.Join(strings.Fields(result), " ")
 
 	return result
+}
+
+// ftsSearchExpr generates an FTS5 MATCH-based search filter.
+// Returns a subquery: `tableName.rowid IN (SELECT rowid FROM tableName_fts WHERE tableName_fts MATCH ?)`.
+func ftsSearchExpr(tableName string, s string) Sqlizer {
+	q := buildFTS5Query(s)
+	if q == "" {
+		return nil
+	}
+	ftsTable := tableName + "_fts"
+
+	return Expr(
+		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
+		q,
+	)
 }

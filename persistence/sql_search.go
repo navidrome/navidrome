@@ -15,6 +15,19 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
+// searchExprFunc is the function signature for search expression builders.
+// It takes a table name and a query string, and returns a Squirrel Sqlizer
+// that can be used as a WHERE clause. Returns nil if the query is empty.
+type searchExprFunc func(tableName string, query string) Sqlizer
+
+// getSearchExpr returns the active search expression function based on config.
+func getSearchExpr() searchExprFunc {
+	if conf.Server.SearchBackend == "legacy" {
+		return legacySearchExpr
+	}
+	return ftsSearchExpr
+}
+
 // doSearch performs a full-text search with the specified parameters.
 // The naturalOrder is used to sort results when no full-text filter is applied. It is useful for cases like
 // OpenSubsonic, where an empty search query should return all results in a natural order. Normally the parameter
@@ -26,7 +39,8 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		return nil
 	}
 
-	filter := fullTextExpr(r.tableName, q)
+	searchExpr := getSearchExpr()
+	filter := searchExpr(r.tableName, q)
 	if filter != nil {
 		sq = sq.Where(filter)
 		sq = sq.OrderBy(orderBys...)
@@ -59,7 +73,9 @@ func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
 	return Or(cond)
 }
 
-func fullTextExpr(tableName string, s string) Sqlizer {
+// legacySearchExpr generates LIKE-based search filters against the full_text column.
+// This is the original search implementation, used when SearchBackend="legacy".
+func legacySearchExpr(tableName string, s string) Sqlizer {
 	q := str.SanitizeStrings(s)
 	if q == "" {
 		return nil

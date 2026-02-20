@@ -26,7 +26,9 @@ var _ = Describe("sqlRestful", func() {
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeNil())
 		})
 
-		It(`returns nil if tries a filter with fullTextExpr("'")`, func() {
+		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SearchBackend = "legacy"
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
@@ -77,6 +79,7 @@ var _ = Describe("sqlRestful", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SearchBackend = "legacy"
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}
 			filter = fullTextFilter(tableName, mbidFields...)
