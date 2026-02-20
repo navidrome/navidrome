@@ -1,5 +1,10 @@
 import { vi } from 'vitest'
+import { httpClient } from '../dataProvider'
 import subsonic from './index'
+
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn(() => Promise.resolve({})),
+}))
 
 describe('getCoverArtUrl', () => {
   beforeEach(() => {
@@ -125,5 +130,31 @@ describe('getAvatarUrl', () => {
     const url = subsonic.getAvatarUrl('john')
     expect(url).toContain('getAvatar')
     expect(url).toContain('username=john')
+  })
+})
+
+describe('getLyricsBySongId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('calls the getLyricsBySongId endpoint', async () => {
+    await subsonic.getLyricsBySongId('song-1')
+
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    const calledUrl = httpClient.mock.calls[0][0]
+    expect(calledUrl).toContain('/rest/getLyricsBySongId?')
+    expect(calledUrl).toContain('id=song-1')
   })
 })
