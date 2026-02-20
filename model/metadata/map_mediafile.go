@@ -65,6 +65,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.SampleRate = md.AudioProperties().SampleRate
 	mf.BitDepth = md.AudioProperties().BitDepth
 	mf.Channels = md.AudioProperties().Channels
+	mf.Codec = md.AudioProperties().Codec
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()
