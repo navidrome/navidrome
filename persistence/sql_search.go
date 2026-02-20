@@ -16,8 +16,6 @@ func formatFullText(text ...string) string {
 }
 
 // searchExprFunc is the function signature for search expression builders.
-// It takes a table name and a query string, and returns a Squirrel Sqlizer
-// that can be used as a WHERE clause. Returns nil if the query is empty.
 type searchExprFunc func(tableName string, query string) Sqlizer
 
 // getSearchExpr returns the active search expression function based on config.

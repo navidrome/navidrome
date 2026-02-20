@@ -260,7 +260,6 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 }
 
 func downAddFts5Search(ctx context.Context, tx *sql.Tx) error {
-	// Drop triggers
 	for _, trigger := range []string{
 		"media_file_fts_ai", "media_file_fts_ad", "media_file_fts_au",
 		"album_fts_ai", "album_fts_ad", "album_fts_au",
@@ -272,7 +271,6 @@ func downAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 
-	// Drop FTS5 virtual tables
 	for _, table := range []string{"media_file_fts", "album_fts", "artist_fts"} {
 		_, err := tx.ExecContext(ctx, "DROP TABLE IF EXISTS "+table)
 		if err != nil {

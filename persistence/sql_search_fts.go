@@ -29,7 +29,6 @@ func buildFTS5Query(userInput string) string {
 		return ""
 	}
 
-	// Extract quoted phrases first, replace with placeholders
 	var phrases []string
 	result := q
 	for {
@@ -53,13 +52,8 @@ func buildFTS5Query(userInput string) string {
 	// AND, OR, NOT, NEAR are operators, but and, or, not, near are plain tokens)
 	result = fts5Operators.ReplaceAllStringFunc(result, strings.ToLower)
 
-	// Strip special FTS5 characters (but keep * for prefix queries)
 	result = fts5SpecialChars.ReplaceAllString(result, " ")
-
-	// Remove leading * from tokens (FTS5 only supports trailing * for prefix queries)
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
-
-	// Collapse whitespace and split into tokens
 	tokens := strings.Fields(result)
 
 	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
@@ -73,7 +67,6 @@ func buildFTS5Query(userInput string) string {
 
 	result = strings.Join(tokens, " ")
 
-	// Restore phrases
 	for i, phrase := range phrases {
 		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)
 		result = strings.ReplaceAll(result, placeholder, phrase)
@@ -83,7 +76,6 @@ func buildFTS5Query(userInput string) string {
 }
 
 // ftsSearchExpr generates an FTS5 MATCH-based search filter.
-// Returns a subquery: `tableName.rowid IN (SELECT rowid FROM tableName_fts WHERE tableName_fts MATCH ?)`.
 func ftsSearchExpr(tableName string, s string) Sqlizer {
 	q := buildFTS5Query(s)
 	if q == "" {
