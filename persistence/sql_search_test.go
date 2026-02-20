@@ -46,7 +46,7 @@ var _ = Describe("sqlRepository", func() {
 			Expect(sql).To(ContainSubstring("media_file.rowid IN"))
 			Expect(sql).To(ContainSubstring("media_file_fts"))
 			Expect(sql).To(ContainSubstring("MATCH"))
-			Expect(args).To(ContainElement("beatles"))
+			Expect(args).To(ContainElement("beatles*"))
 		})
 
 		It("generates correct FTS table name from entity table", func() {
@@ -68,6 +68,7 @@ var _ = Describe("sqlRepository", func() {
 			expr := ftsSearchExpr("media_file", `"the beatles"`)
 			_, args, err := expr.ToSql()
 			Expect(err).ToNot(HaveOccurred())
+			// Phrase is preserved as-is, no * appended
 			Expect(args).To(ContainElement(`"the beatles"`))
 		})
 

@@ -21,48 +21,48 @@ var _ = Describe("buildFTS5Query", func() {
 		Expect(buildFTS5Query("   ")).To(BeEmpty())
 	})
 
-	It("passes through a single word", func() {
-		Expect(buildFTS5Query("beatles")).To(Equal("beatles"))
+	It("appends * to a single word for prefix matching", func() {
+		Expect(buildFTS5Query("beatles")).To(Equal("beatles*"))
 	})
 
-	It("joins multiple words with implicit AND", func() {
-		Expect(buildFTS5Query("abbey road")).To(Equal("abbey road"))
+	It("appends * to each word for prefix matching", func() {
+		Expect(buildFTS5Query("abbey road")).To(Equal("abbey* road*"))
 	})
 
-	It("preserves quoted phrases", func() {
+	It("preserves quoted phrases without appending *", func() {
 		Expect(buildFTS5Query(`"the beatles"`)).To(Equal(`"the beatles"`))
 	})
 
-	It("preserves prefix wildcard", func() {
+	It("does not double-append * to existing prefix wildcard", func() {
 		Expect(buildFTS5Query("beat*")).To(Equal("beat*"))
 	})
 
-	It("strips FTS5 operators to prevent injection", func() {
-		Expect(buildFTS5Query("AND OR NOT NEAR")).To(Equal("and or not near"))
+	It("strips FTS5 operators and appends * to lowercased words", func() {
+		Expect(buildFTS5Query("AND OR NOT NEAR")).To(Equal("and* or* not* near*"))
 	})
 
-	It("strips special FTS5 syntax characters", func() {
-		Expect(buildFTS5Query("test^col:val")).To(Equal("test col val"))
+	It("strips special FTS5 syntax characters and appends *", func() {
+		Expect(buildFTS5Query("test^col:val")).To(Equal("test* col* val*"))
 	})
 
 	It("handles mixed phrases and words", func() {
-		Expect(buildFTS5Query(`"the beatles" abbey`)).To(Equal(`"the beatles" abbey`))
+		Expect(buildFTS5Query(`"the beatles" abbey`)).To(Equal(`"the beatles" abbey*`))
 	})
 
 	It("handles prefix with multiple words", func() {
-		Expect(buildFTS5Query("beat* abbey")).To(Equal("beat* abbey"))
+		Expect(buildFTS5Query("beat* abbey")).To(Equal("beat* abbey*"))
 	})
 
 	It("collapses multiple spaces", func() {
-		Expect(buildFTS5Query("abbey   road")).To(Equal("abbey road"))
+		Expect(buildFTS5Query("abbey   road")).To(Equal("abbey* road*"))
 	})
 
-	It("strips leading * from tokens", func() {
-		Expect(buildFTS5Query("*livia")).To(Equal("livia"))
+	It("strips leading * from tokens and appends trailing *", func() {
+		Expect(buildFTS5Query("*livia")).To(Equal("livia*"))
 	})
 
-	It("strips leading * but preserves trailing *", func() {
-		Expect(buildFTS5Query("*livia oliv*")).To(Equal("livia oliv*"))
+	It("strips leading * and preserves existing trailing *", func() {
+		Expect(buildFTS5Query("*livia oliv*")).To(Equal("livia* oliv*"))
 	})
 
 	It("strips standalone *", func() {

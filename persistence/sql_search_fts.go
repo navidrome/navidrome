@@ -56,14 +56,25 @@ func buildFTS5Query(userInput string) string {
 	// Remove leading * from tokens (FTS5 only supports trailing * for prefix queries)
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 
+	// Collapse whitespace and split into tokens
+	tokens := strings.Fields(result)
+
+	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
+	// Skip tokens that are already wildcarded or are quoted phrase placeholders.
+	for i, t := range tokens {
+		if strings.HasPrefix(t, "\x00") || strings.HasSuffix(t, "*") {
+			continue
+		}
+		tokens[i] = t + "*"
+	}
+
+	result = strings.Join(tokens, " ")
+
 	// Restore phrases
 	for i, phrase := range phrases {
 		placeholder := "\x00PHRASE" + string(rune('0'+i)) + "\x00"
 		result = strings.ReplaceAll(result, placeholder, phrase)
 	}
-
-	// Collapse whitespace
-	result = strings.Join(strings.Fields(result), " ")
 
 	return result
 }
