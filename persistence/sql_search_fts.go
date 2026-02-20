@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -45,7 +46,7 @@ func buildFTS5Query(userInput string) string {
 		end += start + 1
 		phrase := result[start : end+1] // includes quotes
 		phrases = append(phrases, phrase)
-		result = result[:start] + "\x00PHRASE" + string(rune('0'+len(phrases)-1)) + "\x00" + result[end+1:]
+		result = result[:start] + fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1) + result[end+1:]
 	}
 
 	// Neutralize FTS5 operators by lowercasing them (FTS5 operators are case-sensitive:
@@ -74,7 +75,7 @@ func buildFTS5Query(userInput string) string {
 
 	// Restore phrases
 	for i, phrase := range phrases {
-		placeholder := "\x00PHRASE" + string(rune('0'+i)) + "\x00"
+		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)
 		result = strings.ReplaceAll(result, placeholder, phrase)
 	}
 
