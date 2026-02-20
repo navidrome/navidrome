@@ -34,6 +34,28 @@ var _ = DescribeTable("buildFTS5Query",
 	Entry("strips slash and splits into tokens", "AC/DC", "AC* DC*"),
 	Entry("strips miscellaneous punctuation", "rock & roll, vol. 2", "rock* roll* vol* 2*"),
 	Entry("preserves unicode characters with diacritics", "Björk début", "Björk* début*"),
+	Entry("collapses dotted abbreviation into phrase+concat OR", "R.E.M.", `("R E M" OR REM*)`),
+	Entry("collapses abbreviation without trailing dot", "R.E.M", `("R E M" OR REM*)`),
+	Entry("collapses abbreviation mixed with words", "best of R.E.M.", `best* of* ("R E M" OR REM*)`),
+	Entry("collapses two-letter abbreviation", "U.K.", `("U K" OR UK*)`),
+	Entry("does not collapse single letter surrounded by words", "I am fine", "I* am* fine*"),
+	Entry("does not collapse single standalone letter", "A test", "A* test*"),
+	Entry("preserves quoted phrase with punctuation verbatim", `"ac/dc"`, `"ac/dc"`),
+	Entry("preserves quoted abbreviation verbatim", `"R.E.M."`, `"R.E.M."`),
+)
+
+var _ = DescribeTable("normalizeForFTS",
+	func(expected string, values ...string) {
+		Expect(normalizeForFTS(values...)).To(Equal(expected))
+	},
+	Entry("strips dots and concatenates", "REM", "R.E.M."),
+	Entry("strips slash", "ACDC", "AC/DC"),
+	Entry("strips hyphen", "Aha", "A-ha"),
+	Entry("skips unchanged words", "", "The Beatles"),
+	Entry("handles mixed input", "REM", "R.E.M.", "Automatic for the People"),
+	Entry("deduplicates", "REM", "R.E.M.", "R.E.M."),
+	Entry("strips apostrophe from word", "N", "Guns N' Roses"),
+	Entry("handles multiple values with punctuation", "REM ACDC", "R.E.M.", "AC/DC"),
 )
 
 var _ = Describe("FTS5 Integration Search", func() {
