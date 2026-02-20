@@ -74,7 +74,7 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE VIRTUAL TABLE IF NOT EXISTS album_fts USING fts5(
 			name, sort_album_name, album_artist,
-			search_participants, discs, catalog_num, album_version,
+			search_participants, discs, catalog_num,
 			content='', content_rowid='rowid',
 			tokenize='unicode61 remove_diacritics 2'
 		)
@@ -110,10 +110,10 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-			search_participants, discs, catalog_num, album_version)
+			search_participants, discs, catalog_num)
 		SELECT rowid, name, COALESCE(sort_album_name, ''), COALESCE(album_artist, ''),
 			COALESCE(search_participants, ''), COALESCE(discs, ''),
-			COALESCE(catalog_num, ''), COALESCE(album_version, '')
+			COALESCE(catalog_num, '')
 		FROM album
 	`)
 	if err != nil {
@@ -182,10 +182,10 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TRIGGER album_fts_ai AFTER INSERT ON album BEGIN
 			INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, album_version)
+				search_participants, discs, catalog_num)
 			VALUES (NEW.rowid, NEW.name, COALESCE(NEW.sort_album_name, ''), COALESCE(NEW.album_artist, ''),
 				COALESCE(NEW.search_participants, ''), COALESCE(NEW.discs, ''),
-				COALESCE(NEW.catalog_num, ''), COALESCE(NEW.album_version, ''));
+				COALESCE(NEW.catalog_num, ''));
 		END
 	`)
 	if err != nil {
@@ -195,10 +195,10 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TRIGGER album_fts_ad AFTER DELETE ON album BEGIN
 			INSERT INTO album_fts(album_fts, rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, album_version)
+				search_participants, discs, catalog_num)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_album_name, ''), COALESCE(OLD.album_artist, ''),
 				COALESCE(OLD.search_participants, ''), COALESCE(OLD.discs, ''),
-				COALESCE(OLD.catalog_num, ''), COALESCE(OLD.album_version, ''));
+				COALESCE(OLD.catalog_num, ''));
 		END
 	`)
 	if err != nil {
@@ -208,15 +208,15 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TRIGGER album_fts_au AFTER UPDATE ON album BEGIN
 			INSERT INTO album_fts(album_fts, rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, album_version)
+				search_participants, discs, catalog_num)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_album_name, ''), COALESCE(OLD.album_artist, ''),
 				COALESCE(OLD.search_participants, ''), COALESCE(OLD.discs, ''),
-				COALESCE(OLD.catalog_num, ''), COALESCE(OLD.album_version, ''));
+				COALESCE(OLD.catalog_num, ''));
 			INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, album_version)
+				search_participants, discs, catalog_num)
 			VALUES (NEW.rowid, NEW.name, COALESCE(NEW.sort_album_name, ''), COALESCE(NEW.album_artist, ''),
 				COALESCE(NEW.search_participants, ''), COALESCE(NEW.discs, ''),
-				COALESCE(NEW.catalog_num, ''), COALESCE(NEW.album_version, ''));
+				COALESCE(NEW.catalog_num, ''));
 		END
 	`)
 	if err != nil {
