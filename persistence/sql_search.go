@@ -19,8 +19,10 @@ func formatFullText(text ...string) string {
 type searchExprFunc func(tableName string, query string) Sqlizer
 
 // getSearchExpr returns the active search expression function based on config.
+// It falls back to legacySearchExpr when SearchFullString is enabled, because
+// FTS5 is token-based and cannot match substrings within words.
 func getSearchExpr() searchExprFunc {
-	if conf.Server.SearchBackend == "legacy" {
+	if conf.Server.SearchBackend == "legacy" || conf.Server.SearchFullString {
 		return legacySearchExpr
 	}
 	return ftsSearchExpr
