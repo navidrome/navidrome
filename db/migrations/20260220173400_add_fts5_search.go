@@ -159,7 +159,19 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	_, err = tx.ExecContext(ctx, `
-		CREATE TRIGGER media_file_fts_au AFTER UPDATE ON media_file BEGIN
+		CREATE TRIGGER media_file_fts_au AFTER UPDATE ON media_file
+		WHEN
+			OLD.title IS NOT NEW.title OR
+			OLD.album IS NOT NEW.album OR
+			OLD.artist IS NOT NEW.artist OR
+			OLD.album_artist IS NOT NEW.album_artist OR
+			OLD.sort_title IS NOT NEW.sort_title OR
+			OLD.sort_album_name IS NOT NEW.sort_album_name OR
+			OLD.sort_artist_name IS NOT NEW.sort_artist_name OR
+			OLD.sort_album_artist_name IS NOT NEW.sort_album_artist_name OR
+			OLD.disc_subtitle IS NOT NEW.disc_subtitle OR
+			OLD.search_participants IS NOT NEW.search_participants
+		BEGIN
 			INSERT INTO media_file_fts(media_file_fts, rowid, title, album, artist, album_artist,
 				sort_title, sort_album_name, sort_artist_name, sort_album_artist_name,
 				disc_subtitle, search_participants)
@@ -206,7 +218,15 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	_, err = tx.ExecContext(ctx, `
-		CREATE TRIGGER album_fts_au AFTER UPDATE ON album BEGIN
+		CREATE TRIGGER album_fts_au AFTER UPDATE ON album
+		WHEN
+			OLD.name IS NOT NEW.name OR
+			OLD.sort_album_name IS NOT NEW.sort_album_name OR
+			OLD.album_artist IS NOT NEW.album_artist OR
+			OLD.search_participants IS NOT NEW.search_participants OR
+			OLD.discs IS NOT NEW.discs OR
+			OLD.catalog_num IS NOT NEW.catalog_num
+		BEGIN
 			INSERT INTO album_fts(album_fts, rowid, name, sort_album_name, album_artist,
 				search_participants, discs, catalog_num)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_album_name, ''), COALESCE(OLD.album_artist, ''),
@@ -245,7 +265,11 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	_, err = tx.ExecContext(ctx, `
-		CREATE TRIGGER artist_fts_au AFTER UPDATE ON artist BEGIN
+		CREATE TRIGGER artist_fts_au AFTER UPDATE ON artist
+		WHEN
+			OLD.name IS NOT NEW.name OR
+			OLD.sort_artist_name IS NOT NEW.sort_artist_name
+		BEGIN
 			INSERT INTO artist_fts(artist_fts, rowid, name, sort_artist_name)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_artist_name, ''));
 			INSERT INTO artist_fts(rowid, name, sort_artist_name)
