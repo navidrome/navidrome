@@ -345,6 +345,8 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
+	Server.SearchBackend = normalizeSearchBackend(Server.SearchBackend)
+
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
@@ -538,6 +540,17 @@ func validateSchedule(schedule, field string) (string, error) {
 		c.Remove(id)
 	}
 	return schedule, err
+}
+
+func normalizeSearchBackend(value string) string {
+	v := strings.ToLower(strings.TrimSpace(value))
+	switch v {
+	case "fts", "legacy":
+		return v
+	default:
+		log.Error("Invalid SearchBackend value, falling back to 'fts'", "value", value)
+		return "fts"
+	}
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
