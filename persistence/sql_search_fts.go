@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
 )
@@ -51,8 +52,8 @@ func normalizeForFTS(values ...string) string {
 
 // isSingleUnicodeLetter returns true if token is exactly one Unicode letter.
 func isSingleUnicodeLetter(token string) bool {
-	runes := []rune(token)
-	return len(runes) == 1 && unicode.IsLetter(runes[0])
+	r, size := utf8.DecodeRuneInString(token)
+	return size == len(token) && size > 0 && unicode.IsLetter(r)
 }
 
 // collapseSingleLetterRuns scans tokens for runs of 2+ consecutive single Unicode letters
