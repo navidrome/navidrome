@@ -58,8 +58,7 @@ type configOptions struct {
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
-	SearchFullString                bool
-	SearchBackend                   string
+	Search                          searchOptions `json:",omitzero"`
 	SimilarSongsMatchThreshold      int
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
@@ -253,6 +252,11 @@ type extAuthOptions struct {
 	UserHeader     string
 }
 
+type searchOptions struct {
+	Backend    string
+	FullString bool
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -346,7 +350,7 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
-	Server.SearchBackend = normalizeSearchBackend(Server.SearchBackend)
+	Server.Search.Backend = normalizeSearchBackend(Server.Search.Backend)
 
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
@@ -396,6 +400,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
 	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+	logDeprecatedOptions("SearchFullString", "Search.FullString")
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
@@ -549,7 +554,7 @@ func normalizeSearchBackend(value string) string {
 	case "fts", "legacy":
 		return v
 	default:
-		log.Error("Invalid SearchBackend value, falling back to 'fts'", "value", value)
+		log.Error("Invalid Search.Backend value, falling back to 'fts'", "value", value)
 		return "fts"
 	}
 }
@@ -600,8 +605,8 @@ func setViperDefaults() {
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
-	viper.SetDefault("searchfullstring", false)
-	viper.SetDefault("searchbackend", "fts")
+	viper.SetDefault("search.fullstring", false)
+	viper.SetDefault("search.backend", "fts")
 	viper.SetDefault("similarsongsmatchthreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)

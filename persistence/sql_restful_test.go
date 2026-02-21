@@ -28,7 +28,7 @@ var _ = Describe("sqlRestful", func() {
 
 		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "legacy"
+			conf.Server.Search.Backend = "legacy"
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
@@ -79,7 +79,7 @@ var _ = Describe("sqlRestful", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "legacy"
+			conf.Server.Search.Backend = "legacy"
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}
 			filter = fullTextFilter(tableName, mbidFields...)
@@ -139,7 +139,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("when SearchFullString config changes behavior", func() {
 			It("uses different separator with SearchFullString=false", func() {
-				conf.Server.SearchFullString = false
+				conf.Server.Search.FullString = false
 				result := filter("search", "test query")
 
 				andCondition, ok := result.(squirrel.And)
@@ -152,7 +152,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("uses no separator with SearchFullString=true", func() {
-				conf.Server.SearchFullString = true
+				conf.Server.Search.FullString = true
 				result := filter("search", "test query")
 
 				andCondition, ok := result.(squirrel.And)

@@ -296,7 +296,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 	Describe("Legacy backend fallback", func() {
 		It("returns results using legacy LIKE-based search when configured", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "legacy"
+			conf.Server.Search.Backend = "legacy"
 
 			results, err := mr.Search("Radioactivity", 0, 10)
 			Expect(err).ToNot(HaveOccurred())

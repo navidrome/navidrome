@@ -39,8 +39,8 @@ var _ = Describe("sqlRepository", func() {
 	Describe("getSearchExpr", func() {
 		It("returns ftsSearchExpr by default", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "fts"
-			conf.Server.SearchFullString = false
+			conf.Server.Search.Backend = "fts"
+			conf.Server.Search.FullString = false
 
 			expr := getSearchExpr()("media_file", "test")
 			sql, _, err := expr.ToSql()
@@ -50,8 +50,8 @@ var _ = Describe("sqlRepository", func() {
 
 		It("returns legacySearchExpr when SearchBackend is legacy", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "legacy"
-			conf.Server.SearchFullString = false
+			conf.Server.Search.Backend = "legacy"
+			conf.Server.Search.FullString = false
 
 			expr := getSearchExpr()("media_file", "test")
 			sql, _, err := expr.ToSql()
@@ -61,8 +61,8 @@ var _ = Describe("sqlRepository", func() {
 
 		It("falls back to legacySearchExpr when SearchFullString is enabled", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "fts"
-			conf.Server.SearchFullString = true
+			conf.Server.Search.Backend = "fts"
+			conf.Server.Search.FullString = true
 
 			expr := getSearchExpr()("media_file", "test")
 			sql, _, err := expr.ToSql()
@@ -72,8 +72,8 @@ var _ = Describe("sqlRepository", func() {
 
 		It("routes CJK queries to cjkSearchExpr instead of ftsSearchExpr", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "fts"
-			conf.Server.SearchFullString = false
+			conf.Server.Search.Backend = "fts"
+			conf.Server.Search.FullString = false
 
 			expr := getSearchExpr()("media_file", "周杰伦")
 			sql, _, err := expr.ToSql()
@@ -85,8 +85,8 @@ var _ = Describe("sqlRepository", func() {
 
 		It("routes non-CJK queries to ftsSearchExpr", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "fts"
-			conf.Server.SearchFullString = false
+			conf.Server.Search.Backend = "fts"
+			conf.Server.Search.FullString = false
 
 			expr := getSearchExpr()("media_file", "beatles")
 			sql, _, err := expr.ToSql()
@@ -96,8 +96,8 @@ var _ = Describe("sqlRepository", func() {
 
 		It("uses legacy for CJK when SearchBackend is legacy", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SearchBackend = "legacy"
-			conf.Server.SearchFullString = false
+			conf.Server.Search.Backend = "legacy"
+			conf.Server.Search.FullString = false
 
 			expr := getSearchExpr()("media_file", "周杰伦")
 			sql, _, err := expr.ToSql()

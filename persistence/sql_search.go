@@ -20,10 +20,10 @@ func formatFullText(text ...string) string {
 type searchExprFunc func(tableName string, query string) Sqlizer
 
 // getSearchExpr returns the active search expression function based on config.
-// It falls back to legacySearchExpr when SearchFullString is enabled, because
+// It falls back to legacySearchExpr when Search.FullString is enabled, because
 // FTS5 is token-based and cannot match substrings within words.
 func getSearchExpr() searchExprFunc {
-	if conf.Server.SearchBackend == "legacy" || conf.Server.SearchFullString {
+	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
 		return legacySearchExpr
 	}
 	return func(tableName, query string) Sqlizer {
@@ -80,7 +80,7 @@ func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
 }
 
 // legacySearchExpr generates LIKE-based search filters against the full_text column.
-// This is the original search implementation, used when SearchBackend="legacy".
+// This is the original search implementation, used when Search.Backend="legacy".
 func legacySearchExpr(tableName string, s string) Sqlizer {
 	q := str.SanitizeStrings(s)
 	if q == "" {
@@ -88,7 +88,7 @@ func legacySearchExpr(tableName string, s string) Sqlizer {
 		return nil
 	}
 	var sep string
-	if !conf.Server.SearchFullString {
+	if !conf.Server.Search.FullString {
 		sep = " "
 	}
 	parts := strings.Split(q, " ")
