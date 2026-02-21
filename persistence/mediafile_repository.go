@@ -58,8 +58,11 @@ func (m *dbMediaFile) PostScan() error {
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText := []string{m.FullTitle(), m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
-	fullText = append(fullText, m.MediaFile.Participants.AllNames()...)
+	participantNames := m.MediaFile.Participants.AllNames()
+	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
+	args["search_participants"] = strings.Join(participantNames, " ")
+	args["search_normalized"] = normalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	return nil

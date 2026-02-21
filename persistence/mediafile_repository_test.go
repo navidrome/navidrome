@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(10)))
+		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
 	Describe("CountBySuffix", func() {

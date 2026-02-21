@@ -109,7 +109,7 @@ RUN --mount=type=bind,source=. \
         export EXT=".exe"
     fi
 
-    go build -tags=netgo -ldflags="${LD_EXTRA} -w -s \
+    go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
