@@ -471,19 +471,47 @@ func mapExplicitStatus(explicitStatus string) string {
 
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
 	lines := make([]responses.Line, len(lyrics.Line))
+	tokenLines := make([]responses.TokenLine, 0, len(lyrics.Line))
 
 	for i, line := range lyrics.Line {
 		lines[i] = responses.Line{
 			Start: line.Start,
 			Value: line.Value,
 		}
+		if len(line.Token) == 0 {
+			continue
+		}
+
+		tokens := make([]responses.LyricToken, len(line.Token))
+		for j, token := range line.Token {
+			tokens[j] = responses.LyricToken{
+				Start: token.Start,
+				End:   token.End,
+				Value: token.Value,
+				Role:  token.Role,
+			}
+		}
+		tokenLines = append(tokenLines, responses.TokenLine{
+			Index: int32(i),
+			Start: line.Start,
+			End:   line.End,
+			Value: line.Value,
+			Token: tokens,
+		})
+	}
+
+	kind := strings.TrimSpace(lyrics.Kind)
+	if kind == "" {
+		kind = "main"
 	}
 
 	structured := responses.StructuredLyric{
 		DisplayArtist: lyrics.DisplayArtist,
 		DisplayTitle:  lyrics.DisplayTitle,
+		Kind:          kind,
 		Lang:          lyrics.Lang,
 		Line:          lines,
+		TokenLine:     tokenLines,
 		Offset:        lyrics.Offset,
 		Synced:        lyrics.Synced,
 	}

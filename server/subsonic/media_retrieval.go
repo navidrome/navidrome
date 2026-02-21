@@ -99,7 +99,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsByArtistTitleWithLyricsFirst(artist, title))
+	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
+	opts.Max = 0
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
 
 	if err != nil {
 		return nil, err
@@ -109,24 +111,25 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[0])
-	if err != nil {
-		return nil, err
+	for i := range mediaFiles {
+		structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[i])
+		if err != nil {
+			return nil, err
+		}
+		if len(structuredLyrics) == 0 {
+			continue
+		}
+
+		lyricsResponse.Artist = artist
+		lyricsResponse.Title = title
+
+		var lyricsText strings.Builder
+		for _, line := range structuredLyrics[0].Line {
+			lyricsText.WriteString(line.Value + "\n")
+		}
+		lyricsResponse.Value = lyricsText.String()
+		break
 	}
-
-	if len(structuredLyrics) == 0 {
-		return response, nil
-	}
-
-	lyricsResponse.Artist = artist
-	lyricsResponse.Title = title
-
-	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
-		lyricsText.WriteString(line.Value + "\n")
-	}
-
-	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
 }
