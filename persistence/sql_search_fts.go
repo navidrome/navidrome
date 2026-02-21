@@ -56,15 +56,49 @@ func isSingleUnicodeLetter(token string) bool {
 	return size == len(token) && size > 0 && unicode.IsLetter(r)
 }
 
-// namePunctuation matches characters commonly found as separators in artist/album names.
-// Only words containing these characters are candidates for punctuated-word handling.
-var namePunctuation = regexp.MustCompile(`[-/.'']`)
+// namePunctuation is the set of characters commonly used as separators in artist/album
+// names (hyphens, slashes, dots, apostrophes). Only words containing these are candidates
+// for punctuated-word processing; other special characters (^, :, &) are just stripped.
+const namePunctuation = `-/.''`
 
-// isDottedAbbreviation returns true if w is a dot-separated abbreviation where all
-// sub-tokens are single letters (e.g., "R.E.M.", "U.K."). These are handled by
-// collapseSingleLetterRuns instead of extractPunctuatedWords.
+// processPunctuatedWords handles words with embedded name punctuation before the general
+// special-character stripping. For each punctuated word it produces either:
+//   - A quoted phrase for dotted abbreviations: R.E.M. → "R E M"
+//   - A phrase+concat OR for other patterns:    a-ha  → ("a ha" OR aha*)
+func processPunctuatedWords(input string, phrases []string) (string, []string) {
+	words := strings.Fields(input)
+	var result []string
+	for _, w := range words {
+		if strings.HasPrefix(w, "\x00") || strings.ContainsAny(w, `*"`) || !strings.ContainsAny(w, namePunctuation) {
+			result = append(result, w)
+			continue
+		}
+		concat := fts5PunctStrip.ReplaceAllString(w, "")
+		if concat == "" || concat == w {
+			result = append(result, w)
+			continue
+		}
+		subTokens := strings.Fields(fts5SpecialChars.ReplaceAllString(w, " "))
+		if len(subTokens) < 2 {
+			// Single sub-token after splitting (e.g., N' → N): just use the stripped form
+			result = append(result, concat)
+			continue
+		}
+		// Dotted abbreviations (R.E.M., U.K.) — all single letters separated by dots only
+		if isDottedAbbreviation(w, subTokens) {
+			phrases = append(phrases, fmt.Sprintf(`"%s"`, strings.Join(subTokens, " ")))
+		} else {
+			// Punctuated names (a-ha, AC/DC, Jay-Z) — phrase for adjacency + concat for search_normalized
+			phrases = append(phrases, fmt.Sprintf(`("%s" OR %s*)`, strings.Join(subTokens, " "), concat))
+		}
+		result = append(result, fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1))
+	}
+	return strings.Join(result, " "), phrases
+}
+
+// isDottedAbbreviation returns true if w uses only dots as punctuation and all sub-tokens
+// are single letters (e.g., "R.E.M.", "U.K." but not "a-ha" or "AC/DC").
 func isDottedAbbreviation(w string, subTokens []string) bool {
-	// Check that punctuation is only dots
 	for _, r := range w {
 		if !unicode.IsLetter(r) && !unicode.IsNumber(r) && r != '.' {
 			return false
@@ -76,104 +110,6 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 		}
 	}
 	return true
-}
-
-// extractPunctuatedWords scans whitespace-delimited words for embedded name punctuation
-// (hyphens, slashes, dots, apostrophes — e.g., "a-ha", "AC/DC", "Jay-Z") and replaces
-// each with an OR expression: ("a ha" OR aha*).
-// The phrase matches adjacent tokens in name columns; the concatenated form matches
-// the search_normalized column.
-// Words where all sub-tokens are single letters (e.g., "R.E.M.") are skipped
-// and left for collapseSingleLetterRuns to handle.
-func extractPunctuatedWords(input string, phrases []string) (string, []string) {
-	words := strings.Fields(input)
-	var result []string
-	for _, w := range words {
-		// Skip phrase placeholders
-		if strings.HasPrefix(w, "\x00") {
-			result = append(result, w)
-			continue
-		}
-		// Skip tokens that contain wildcards or quotes (already processed)
-		if strings.ContainsAny(w, `*"`) {
-			result = append(result, w)
-			continue
-		}
-		// Only process words that contain common name punctuation
-		if !namePunctuation.MatchString(w) {
-			result = append(result, w)
-			continue
-		}
-		// Strip all punctuation to get concatenated form
-		concat := fts5PunctStrip.ReplaceAllString(w, "")
-		if concat == "" || concat == w {
-			result = append(result, w)
-			continue
-		}
-		// Get the space-separated form (what fts5SpecialChars would produce)
-		spaced := fts5SpecialChars.ReplaceAllString(w, " ")
-		subTokens := strings.Fields(spaced)
-		if len(subTokens) < 2 {
-			// Single sub-token (e.g., N' → N): replace inline, normal processing continues
-			result = append(result, concat)
-			continue
-		}
-		// If all sub-tokens are single letters and the word only contains dots as
-		// punctuation (e.g., R.E.M.), skip — collapseSingleLetterRuns handles these.
-		// For other separators (a-h, A/B), handle here so the concat form provides
-		// prefix matching (e.g., ah* matches "aha" in search_normalized).
-		if isDottedAbbreviation(w, subTokens) {
-			result = append(result, w)
-			continue
-		}
-		// Build OR expression: ("a ha" OR aha*)
-		phraseContent := strings.Join(subTokens, " ")
-		orExpr := fmt.Sprintf(`("%s" OR %s*)`, phraseContent, concat)
-		phrases = append(phrases, orExpr)
-		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1)
-		result = append(result, placeholder)
-	}
-	return strings.Join(result, " "), phrases
-}
-
-// collapseSingleLetterRuns scans tokens for runs of 2+ consecutive single Unicode letters
-// (from abbreviations like R.E.M. where all segments are single letters) and collapses
-// each run into a quoted phrase: "R E M".
-// The phrase matches consecutive tokens in name columns and the concatenated form in
-// the search_normalized column.
-func collapseSingleLetterRuns(tokens []string, phrases []string) ([]string, []string) {
-	var result []string
-	i := 0
-	for i < len(tokens) {
-		// Skip phrase placeholders
-		if strings.HasPrefix(tokens[i], "\x00") {
-			result = append(result, tokens[i])
-			i++
-			continue
-		}
-		// Detect start of a single-letter run
-		if isSingleUnicodeLetter(tokens[i]) {
-			j := i + 1
-			for j < len(tokens) && !strings.HasPrefix(tokens[j], "\x00") && isSingleUnicodeLetter(tokens[j]) {
-				j++
-			}
-			if j-i >= 2 {
-				// Collapse the run into a quoted phrase (e.g., R.E.M. → "R E M")
-				letters := tokens[i:j]
-				phraseContent := strings.Join(letters, " ")
-				phrase := fmt.Sprintf(`"%s"`, phraseContent)
-				// Store the phrase as a placeholder
-				phrases = append(phrases, phrase)
-				placeholder := fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1)
-				result = append(result, placeholder)
-				i = j
-				continue
-			}
-		}
-		result = append(result, tokens[i])
-		i++
-	}
-	return result, phrases
 }
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
@@ -209,16 +145,12 @@ func buildFTS5Query(userInput string) string {
 	// AND, OR, NOT, NEAR are operators, but and, or, not, near are plain tokens)
 	result = fts5Operators.ReplaceAllStringFunc(result, strings.ToLower)
 
-	// Detect words with embedded punctuation (a-ha, AC/DC, Jay-Z) before stripping,
-	// and replace them with phrase+concat OR expressions.
-	result, phrases = extractPunctuatedWords(result, phrases)
+	// Handle words with embedded punctuation (a-ha, AC/DC, R.E.M.) before stripping
+	result, phrases = processPunctuatedWords(result, phrases)
 
 	result = fts5SpecialChars.ReplaceAllString(result, " ")
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 	tokens := strings.Fields(result)
-
-	// Collapse runs of single letters (from abbreviations like R.E.M.) into quoted phrases
-	tokens, phrases = collapseSingleLetterRuns(tokens, phrases)
 
 	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
 	// Skip tokens that are already wildcarded or are quoted phrase placeholders.
