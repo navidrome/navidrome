@@ -674,7 +674,8 @@
       "exportSuccess": "La configuration a été copiée vers le presse-papier au format TOML",
       "exportFailed": "Une erreur est survenue en copiant la configuration",
       "devFlagsHeader": "Options de développement (peuvent être amenés à changer / être supprimés)",
-      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur"
+      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur",
+      "downloadToml": "Télécharger la configuration (TOML)"
     }
   },
   "activity": {

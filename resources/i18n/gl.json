@@ -674,7 +674,8 @@
       "exportSuccess": "Configuración exportada ao portapapeis no formato TOML",
       "exportFailed": "Fallou a copia da configuración",
       "devFlagsHeader": "Configuracións de Desenvolvemento (suxeitas a cambio/retirada)",
-      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións"
+      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións",
+      "downloadToml": "Descargar configuración (TOML)"
     }
   },
   "activity": {
