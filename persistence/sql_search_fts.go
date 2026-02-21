@@ -57,8 +57,8 @@ func isSingleUnicodeLetter(token string) bool {
 }
 
 // collapseSingleLetterRuns scans tokens for runs of 2+ consecutive single Unicode letters
-// and collapses each run into an OR expression: ("R E M" OR REM*).
-// The phrase part matches consecutive tokens in name columns; the concatenated part matches
+// and collapses each run into a quoted phrase: "R E M".
+// The phrase matches consecutive tokens in name columns and the concatenated form in
 // the search_normalized column.
 func collapseSingleLetterRuns(tokens []string, phrases []string) ([]string, []string) {
 	var result []string
@@ -77,13 +77,12 @@ func collapseSingleLetterRuns(tokens []string, phrases []string) ([]string, []st
 				j++
 			}
 			if j-i >= 2 {
-				// Collapse the run into a phrase+concat OR expression
+				// Collapse the run into a quoted phrase (e.g., R.E.M. → "R E M")
 				letters := tokens[i:j]
 				phraseContent := strings.Join(letters, " ")
-				concat := strings.Join(letters, "")
-				orExpr := fmt.Sprintf(`("%s" OR %s*)`, phraseContent, concat)
-				// Store the OR expression as a phrase placeholder
-				phrases = append(phrases, orExpr)
+				phrase := fmt.Sprintf(`"%s"`, phraseContent)
+				// Store the phrase as a placeholder
+				phrases = append(phrases, phrase)
 				placeholder := fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1)
 				result = append(result, placeholder)
 				i = j
