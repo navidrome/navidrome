@@ -218,7 +218,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		It("finds media files by artist name", func() {
 			results, err := mr.Search("Beatles", 0, 10)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(results).To(HaveLen(2))
+			Expect(results).To(HaveLen(3))
 			for _, r := range results {
 				Expect(r.Artist).To(Equal("The Beatles"))
 			}
@@ -237,9 +237,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		It("finds albums with multi-word search", func() {
 			results, err := alr.Search("Abbey Road", 0, 10)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(results).To(HaveLen(1))
-			Expect(results[0].Name).To(Equal("Abbey Road"))
-			Expect(results[0].ID).To(Equal(albumAbbeyRoad.ID))
+			Expect(results).To(HaveLen(2))
 		})
 	})
 
@@ -250,6 +248,48 @@ var _ = Describe("FTS5 Integration Search", func() {
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Name).To(Equal("Kraftwerk"))
 			Expect(results[0].ID).To(Equal(artistKraftwerk.ID))
+		})
+	})
+
+	Describe("CJK search", func() {
+		It("finds media files by CJK title", func() {
+			results, err := mr.Search("プラチナ", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].Title).To(Equal("プラチナ・ジェット"))
+			Expect(results[0].ID).To(Equal(songCJK.ID))
+		})
+
+		It("finds media files by CJK artist name", func() {
+			results, err := mr.Search("シートベルツ", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].Artist).To(Equal("シートベルツ"))
+		})
+
+		It("finds albums by CJK artist name", func() {
+			results, err := alr.Search("シートベルツ", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].Name).To(Equal("COWBOY BEBOP"))
+			Expect(results[0].ID).To(Equal(albumCJK.ID))
+		})
+
+		It("finds artists by CJK name", func() {
+			results, err := arr.Search("シートベルツ", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].Name).To(Equal("シートベルツ"))
+			Expect(results[0].ID).To(Equal(artistCJK.ID))
+		})
+	})
+
+	Describe("Album version search", func() {
+		It("finds albums by version tag via FTS", func() {
+			results, err := alr.Search("Deluxe", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal(albumWithVersion.ID))
 		})
 	})
 

@@ -129,7 +129,7 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE VIRTUAL TABLE IF NOT EXISTS album_fts USING fts5(
 			name, sort_album_name, album_artist,
-			search_participants, discs, catalog_num, search_normalized,
+			search_participants, discs, catalog_num, album_version, search_normalized,
 			content='', content_rowid='rowid',
 			tokenize='unicode61 remove_diacritics 2'
 		)
@@ -166,10 +166,13 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-			search_participants, discs, catalog_num, search_normalized)
+			search_participants, discs, catalog_num, album_version, search_normalized)
 		SELECT rowid, name, COALESCE(sort_album_name, ''), COALESCE(album_artist, ''),
 			COALESCE(search_participants, ''), COALESCE(discs, ''),
-			COALESCE(catalog_num, ''), COALESCE(search_normalized, '')
+			COALESCE(catalog_num, ''),
+			COALESCE((SELECT group_concat(json_extract(je.value, '$.value'), ' ')
+				FROM json_each(album.tags, '$.albumversion') AS je), ''),
+			COALESCE(search_normalized, '')
 		FROM album
 	`)
 	if err != nil {
@@ -255,10 +258,13 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TRIGGER album_fts_ai AFTER INSERT ON album BEGIN
 			INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, search_normalized)
+				search_participants, discs, catalog_num, album_version, search_normalized)
 			VALUES (NEW.rowid, NEW.name, COALESCE(NEW.sort_album_name, ''), COALESCE(NEW.album_artist, ''),
 				COALESCE(NEW.search_participants, ''), COALESCE(NEW.discs, ''),
-				COALESCE(NEW.catalog_num, ''), COALESCE(NEW.search_normalized, ''));
+				COALESCE(NEW.catalog_num, ''),
+				COALESCE((SELECT group_concat(json_extract(je.value, '$.value'), ' ')
+					FROM json_each(NEW.tags, '$.albumversion') AS je), ''),
+				COALESCE(NEW.search_normalized, ''));
 		END
 	`)
 	if err != nil {
@@ -268,10 +274,13 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TRIGGER album_fts_ad AFTER DELETE ON album BEGIN
 			INSERT INTO album_fts(album_fts, rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, search_normalized)
+				search_participants, discs, catalog_num, album_version, search_normalized)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_album_name, ''), COALESCE(OLD.album_artist, ''),
 				COALESCE(OLD.search_participants, ''), COALESCE(OLD.discs, ''),
-				COALESCE(OLD.catalog_num, ''), COALESCE(OLD.search_normalized, ''));
+				COALESCE(OLD.catalog_num, ''),
+				COALESCE((SELECT group_concat(json_extract(je.value, '$.value'), ' ')
+					FROM json_each(OLD.tags, '$.albumversion') AS je), ''),
+				COALESCE(OLD.search_normalized, ''));
 		END
 	`)
 	if err != nil {
@@ -287,18 +296,25 @@ func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
 			OLD.search_participants IS NOT NEW.search_participants OR
 			OLD.discs IS NOT NEW.discs OR
 			OLD.catalog_num IS NOT NEW.catalog_num OR
+			OLD.tags IS NOT NEW.tags OR
 			OLD.search_normalized IS NOT NEW.search_normalized
 		BEGIN
 			INSERT INTO album_fts(album_fts, rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, search_normalized)
+				search_participants, discs, catalog_num, album_version, search_normalized)
 			VALUES ('delete', OLD.rowid, OLD.name, COALESCE(OLD.sort_album_name, ''), COALESCE(OLD.album_artist, ''),
 				COALESCE(OLD.search_participants, ''), COALESCE(OLD.discs, ''),
-				COALESCE(OLD.catalog_num, ''), COALESCE(OLD.search_normalized, ''));
+				COALESCE(OLD.catalog_num, ''),
+				COALESCE((SELECT group_concat(json_extract(je.value, '$.value'), ' ')
+					FROM json_each(OLD.tags, '$.albumversion') AS je), ''),
+				COALESCE(OLD.search_normalized, ''));
 			INSERT INTO album_fts(rowid, name, sort_album_name, album_artist,
-				search_participants, discs, catalog_num, search_normalized)
+				search_participants, discs, catalog_num, album_version, search_normalized)
 			VALUES (NEW.rowid, NEW.name, COALESCE(NEW.sort_album_name, ''), COALESCE(NEW.album_artist, ''),
 				COALESCE(NEW.search_participants, ''), COALESCE(NEW.discs, ''),
-				COALESCE(NEW.catalog_num, ''), COALESCE(NEW.search_normalized, ''));
+				COALESCE(NEW.catalog_num, ''),
+				COALESCE((SELECT group_concat(json_extract(je.value, '$.value'), ' ')
+					FROM json_each(NEW.tags, '$.albumversion') AS je), ''),
+				COALESCE(NEW.search_normalized, ''));
 		END
 	`)
 	if err != nil {

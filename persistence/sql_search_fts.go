@@ -227,7 +227,7 @@ func cjkSearchExpr(tableName string, s string) Sqlizer {
 // enabling future additions (comments, lyrics, bios) without affecting general search.
 var ftsSearchColumns = map[string]string{
 	"media_file": "{title album artist album_artist sort_title sort_album_name sort_artist_name sort_album_artist_name disc_subtitle search_participants search_normalized}",
-	"album":      "{name sort_album_name album_artist search_participants discs catalog_num search_normalized}",
+	"album":      "{name sort_album_name album_artist search_participants discs catalog_num album_version search_normalized}",
 	"artist":     "{name sort_artist_name search_normalized}",
 }
 
