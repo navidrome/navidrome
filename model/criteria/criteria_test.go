@@ -27,6 +27,7 @@ var _ = Describe("Criteria", func() {
 						StartsWith{"comment": "this"},
 						InTheRange{"year": []int{1980, 1990}},
 						IsNot{"genre": "Rock"},
+						Gt{"albumrating": 3},
 					},
 				},
 				Sort:   "title",
@@ -48,7 +49,8 @@ var _ = Describe("Criteria", func() {
 		{ "all": [
 				{ "startsWith": {"comment": "this"} },
 				{ "inTheRange": {"year":[1980,1990]} },
-				{ "isNot": { "genre": "Rock" }}
+				{ "isNot": { "genre": "Rock" }},
+				{ "gt": { "albumrating": 3 } }
 			]
 		}
 	],
@@ -70,8 +72,8 @@ var _ = Describe("Criteria", func() {
 				`(media_file.title LIKE ? AND media_file.title NOT LIKE ? ` +
 					`AND (not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) ` +
 					`OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) ` +
-					`AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))`))
-			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
+					`AND not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?) AND COALESCE(album_annotation.rating, 0) > ?))`))
+			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock", 3))
 		})
 		It("marshals to JSON", func() {
 			j, err := json.Marshal(goObj)
