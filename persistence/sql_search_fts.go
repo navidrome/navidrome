@@ -60,6 +60,24 @@ func isSingleUnicodeLetter(token string) bool {
 // Only words containing these characters are candidates for punctuated-word handling.
 var namePunctuation = regexp.MustCompile(`[-/.'']`)
 
+// isDottedAbbreviation returns true if w is a dot-separated abbreviation where all
+// sub-tokens are single letters (e.g., "R.E.M.", "U.K."). These are handled by
+// collapseSingleLetterRuns instead of extractPunctuatedWords.
+func isDottedAbbreviation(w string, subTokens []string) bool {
+	// Check that punctuation is only dots
+	for _, r := range w {
+		if !unicode.IsLetter(r) && !unicode.IsNumber(r) && r != '.' {
+			return false
+		}
+	}
+	for _, st := range subTokens {
+		if !isSingleUnicodeLetter(st) {
+			return false
+		}
+	}
+	return true
+}
+
 // extractPunctuatedWords scans whitespace-delimited words for embedded name punctuation
 // (hyphens, slashes, dots, apostrophes — e.g., "a-ha", "AC/DC", "Jay-Z") and replaces
 // each with an OR expression: ("a ha" OR aha*).
@@ -100,15 +118,11 @@ func extractPunctuatedWords(input string, phrases []string) (string, []string) {
 			result = append(result, concat)
 			continue
 		}
-		// Skip if all sub-tokens are single letters (handled by collapseSingleLetterRuns)
-		allSingleLetters := true
-		for _, st := range subTokens {
-			if !isSingleUnicodeLetter(st) {
-				allSingleLetters = false
-				break
-			}
-		}
-		if allSingleLetters {
+		// If all sub-tokens are single letters and the word only contains dots as
+		// punctuation (e.g., R.E.M.), skip — collapseSingleLetterRuns handles these.
+		// For other separators (a-h, A/B), handle here so the concat form provides
+		// prefix matching (e.g., ah* matches "aha" in search_normalized).
+		if isDottedAbbreviation(w, subTokens) {
 			result = append(result, w)
 			continue
 		}
