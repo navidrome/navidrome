@@ -19,7 +19,7 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.1.1-2
+CROSS_TAGLIB_VERSION ?= 2.2.0-1
 GOLANGCI_LINT_VERSION ?= v2.10.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -201,8 +201,8 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
 
-run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
-	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+docker-run: ##@Development Run a Navidrome Docker image. Usage: make docker-run tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make docker-run tag=<tag>"; exit 1; fi
 	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
     VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
 	if [ -f navidrome.toml ]; then \
@@ -213,7 +213,7 @@ run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker 
 	  	fi; \
 	fi; \
 	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
-.PHONY: run-docker
+.PHONY: docker-run
 
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
