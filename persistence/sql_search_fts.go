@@ -8,7 +8,23 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 )
+
+// containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
+// CJK text doesn't use spaces between words, so FTS5's unicode61 tokenizer treats entire
+// CJK phrases as single tokens, making token-based search ineffective for CJK content.
+func containsCJK(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) ||
+			unicode.Is(unicode.Hiragana, r) ||
+			unicode.Is(unicode.Katakana, r) ||
+			unicode.Is(unicode.Hangul, r) {
+			return true
+		}
+	}
+	return false
+}
 
 // fts5SpecialChars matches characters that should be stripped from user input.
 // We keep only Unicode letters, numbers, whitespace, * (prefix wildcard), " (phrase quotes),
@@ -171,6 +187,41 @@ func buildFTS5Query(userInput string) string {
 	return result
 }
 
+// cjkSearchColumns defines the core columns to search with LIKE for CJK queries.
+// These are the primary user-visible fields for each entity type.
+var cjkSearchColumns = map[string][]string{
+	"media_file": {"title", "album", "artist", "album_artist"},
+	"album":      {"name", "album_artist"},
+	"artist":     {"name"},
+}
+
+// cjkSearchExpr generates LIKE-based search filters against core columns for CJK queries.
+// Each word in the query must match at least one column (AND between words),
+// and each word can match any column (OR within a word).
+func cjkSearchExpr(tableName string, s string) Sqlizer {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		log.Trace("Search using CJK backend, query is empty", "table", tableName)
+		return nil
+	}
+	columns, ok := cjkSearchColumns[tableName]
+	if !ok {
+		log.Trace("Search using CJK backend, couldn't find columns for this table", "table", tableName)
+		return nil
+	}
+	words := strings.Fields(s)
+	wordFilters := And{}
+	for _, word := range words {
+		colFilters := Or{}
+		for _, col := range columns {
+			colFilters = append(colFilters, Like{tableName + "." + col: "%" + word + "%"})
+		}
+		wordFilters = append(wordFilters, colFilters)
+	}
+	log.Trace("Search using CJK backend", "query", wordFilters, "table", tableName)
+	return wordFilters
+}
+
 // ftsSearchColumns defines which FTS5 columns are included in general search.
 // Columns not listed here are indexed but not searched by default,
 // enabling future additions (comments, lyrics, bios) without affecting general search.
@@ -184,6 +235,7 @@ var ftsSearchColumns = map[string]string{
 func ftsSearchExpr(tableName string, s string) Sqlizer {
 	q := buildFTS5Query(s)
 	if q == "" {
+		log.Trace("Search using legacy backend, query is empty", "table", tableName)
 		return nil
 	}
 	ftsTable := tableName + "_fts"
@@ -192,8 +244,10 @@ func ftsSearchExpr(tableName string, s string) Sqlizer {
 		matchExpr = cols + " : (" + q + ")"
 	}
 
-	return Expr(
+	filter := Expr(
 		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
 		matchExpr,
 	)
+	log.Trace("Search using FTS5 backend", "table", tableName, "query", q, "filter", filter)
+	return filter
 }

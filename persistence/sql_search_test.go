@@ -69,6 +69,43 @@ var _ = Describe("sqlRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("LIKE"))
 		})
+
+		It("routes CJK queries to cjkSearchExpr instead of ftsSearchExpr", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SearchBackend = "fts"
+			conf.Server.SearchFullString = false
+
+			expr := getSearchExpr()("media_file", "周杰伦")
+			sql, _, err := expr.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// CJK should use LIKE, not MATCH
+			Expect(sql).To(ContainSubstring("LIKE"))
+			Expect(sql).NotTo(ContainSubstring("MATCH"))
+		})
+
+		It("routes non-CJK queries to ftsSearchExpr", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SearchBackend = "fts"
+			conf.Server.SearchFullString = false
+
+			expr := getSearchExpr()("media_file", "beatles")
+			sql, _, err := expr.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(ContainSubstring("MATCH"))
+		})
+
+		It("uses legacy for CJK when SearchBackend is legacy", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SearchBackend = "legacy"
+			conf.Server.SearchFullString = false
+
+			expr := getSearchExpr()("media_file", "周杰伦")
+			sql, _, err := expr.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Legacy should still use full_text column LIKE
+			Expect(sql).To(ContainSubstring("LIKE"))
+			Expect(sql).To(ContainSubstring("full_text"))
+		})
 	})
 
 })

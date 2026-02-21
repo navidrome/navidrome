@@ -63,6 +63,77 @@ var _ = DescribeTable("normalizeForFTS",
 	Entry("handles multiple values with punctuation", "REM ACDC", "R.E.M.", "AC/DC"),
 )
 
+var _ = DescribeTable("containsCJK",
+	func(input string, expected bool) {
+		Expect(containsCJK(input)).To(Equal(expected))
+	},
+	Entry("returns false for empty string", "", false),
+	Entry("returns false for ASCII text", "hello world", false),
+	Entry("returns false for Latin with diacritics", "Björk début", false),
+	Entry("detects Chinese characters (Han)", "周杰伦", true),
+	Entry("detects Japanese Hiragana", "こんにちは", true),
+	Entry("detects Japanese Katakana", "カタカナ", true),
+	Entry("detects Korean Hangul", "한국어", true),
+	Entry("detects CJK mixed with Latin", "best of 周杰伦", true),
+	Entry("detects single CJK character", "a曲b", true),
+)
+
+var _ = Describe("cjkSearchExpr", func() {
+	It("returns nil for empty query", func() {
+		Expect(cjkSearchExpr("media_file", "")).To(BeNil())
+	})
+
+	It("returns nil for whitespace-only query", func() {
+		Expect(cjkSearchExpr("media_file", "   ")).To(BeNil())
+	})
+
+	It("generates LIKE filters against core columns for single CJK word", func() {
+		expr := cjkSearchExpr("media_file", "周杰伦")
+		sql, args, err := expr.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		// Should have OR between columns for the single word
+		Expect(sql).To(ContainSubstring("OR"))
+		Expect(sql).To(ContainSubstring("media_file.title LIKE"))
+		Expect(sql).To(ContainSubstring("media_file.album LIKE"))
+		Expect(sql).To(ContainSubstring("media_file.artist LIKE"))
+		Expect(sql).To(ContainSubstring("media_file.album_artist LIKE"))
+		Expect(args).To(HaveLen(4))
+		for _, arg := range args {
+			Expect(arg).To(Equal("%周杰伦%"))
+		}
+	})
+
+	It("generates AND of OR groups for multi-word query", func() {
+		expr := cjkSearchExpr("media_file", "周杰伦 greatest")
+		sql, args, err := expr.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		// Two groups AND'd together, each with 4 columns OR'd
+		Expect(sql).To(ContainSubstring("AND"))
+		Expect(args).To(HaveLen(8))
+	})
+
+	It("uses correct columns for album table", func() {
+		expr := cjkSearchExpr("album", "周杰伦")
+		sql, args, err := expr.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("album.name LIKE"))
+		Expect(sql).To(ContainSubstring("album.album_artist LIKE"))
+		Expect(args).To(HaveLen(2))
+	})
+
+	It("uses correct columns for artist table", func() {
+		expr := cjkSearchExpr("artist", "周杰伦")
+		sql, args, err := expr.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("artist.name LIKE"))
+		Expect(args).To(HaveLen(1))
+	})
+
+	It("returns nil for unknown table", func() {
+		Expect(cjkSearchExpr("unknown_table", "周杰伦")).To(BeNil())
+	})
+})
+
 var _ = Describe("ftsSearchExpr", func() {
 	It("returns nil for empty query", func() {
 		Expect(ftsSearchExpr("media_file", "")).To(BeNil())

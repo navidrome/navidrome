@@ -6,6 +6,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -25,7 +26,12 @@ func getSearchExpr() searchExprFunc {
 	if conf.Server.SearchBackend == "legacy" || conf.Server.SearchFullString {
 		return legacySearchExpr
 	}
-	return ftsSearchExpr
+	return func(tableName, query string) Sqlizer {
+		if containsCJK(query) {
+			return cjkSearchExpr(tableName, query)
+		}
+		return ftsSearchExpr(tableName, query)
+	}
 }
 
 // doSearch performs a full-text search with the specified parameters.
@@ -78,6 +84,7 @@ func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
 func legacySearchExpr(tableName string, s string) Sqlizer {
 	q := str.SanitizeStrings(s)
 	if q == "" {
+		log.Trace("Search using legacy backend, query is empty", "table", tableName)
 		return nil
 	}
 	var sep string
@@ -89,5 +96,6 @@ func legacySearchExpr(tableName string, s string) Sqlizer {
 	for _, part := range parts {
 		filters = append(filters, Like{tableName + ".full_text": "%" + sep + part + "%"})
 	}
+	log.Trace("Search using legacy backend", "query", filters, "table", tableName)
 	return filters
 }
