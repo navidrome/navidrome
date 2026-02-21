@@ -156,6 +156,15 @@ func buildFTS5Query(userInput string) string {
 	return result
 }
 
+// ftsSearchColumns defines which FTS5 columns are included in general search.
+// Columns not listed here are indexed but not searched by default,
+// enabling future additions (comments, lyrics, bios) without affecting general search.
+var ftsSearchColumns = map[string]string{
+	"media_file": "{title album artist album_artist sort_title sort_album_name sort_artist_name sort_album_artist_name disc_subtitle search_participants search_normalized}",
+	"album":      "{name sort_album_name album_artist search_participants discs catalog_num search_normalized}",
+	"artist":     "{name sort_artist_name search_normalized}",
+}
+
 // ftsSearchExpr generates an FTS5 MATCH-based search filter.
 func ftsSearchExpr(tableName string, s string) Sqlizer {
 	q := buildFTS5Query(s)
@@ -163,9 +172,13 @@ func ftsSearchExpr(tableName string, s string) Sqlizer {
 		return nil
 	}
 	ftsTable := tableName + "_fts"
+	matchExpr := q
+	if cols, ok := ftsSearchColumns[tableName]; ok {
+		matchExpr = cols + " : (" + q + ")"
+	}
 
 	return Expr(
 		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
-		q,
+		matchExpr,
 	)
 }
