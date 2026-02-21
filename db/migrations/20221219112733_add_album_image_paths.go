@@ -13,7 +13,7 @@ func init() {
 
 func upAddAlbumImagePaths(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
-alter table main.album add image_files varchar;
+alter table album add image_files varchar;
 `)
 	if err != nil {
 		return err

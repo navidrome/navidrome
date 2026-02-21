@@ -12,7 +12,7 @@ func init() {
 }
 
 func upCreateSharesTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table share
 (
 	id             varchar(255) not null primary key,
@@ -25,7 +25,7 @@ create table share
 	resource_type  varchar(255) not null,
 	visit_count    integer default 0
 );
-`)
+`))
 
 	return err
 }

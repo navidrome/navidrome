@@ -5,6 +5,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 )
@@ -47,13 +48,25 @@ func AlbumsByArtist() Options {
 }
 
 func AlbumsByArtistID(artistId string) Options {
-	filters := []Sqlizer{
-		persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
-	}
-	if conf.Server.Subsonic.ArtistParticipations {
-		filters = append(filters,
-			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
-		)
+	var filters []Sqlizer
+	if db.IsPostgres() {
+		filters = []Sqlizer{
+			persistence.Exists("jsonb_array_elements(participants::jsonb->'albumartist') as elem", Eq{"elem->>'id'": artistId}),
+		}
+		if conf.Server.Subsonic.ArtistParticipations {
+			filters = append(filters,
+				persistence.Exists("jsonb_array_elements(participants::jsonb->'artist') as elem", Eq{"elem->>'id'": artistId}),
+			)
+		}
+	} else {
+		filters = []Sqlizer{
+			persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
+		}
+		if conf.Server.Subsonic.ArtistParticipations {
+			filters = append(filters,
+				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
+			)
+		}
 	}
 	return addDefaultFilters(Options{
 		Sort:    "max_year",
@@ -109,16 +122,25 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 }
 
 func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
+	var artistFilter Sqlizer
+	if db.IsPostgres() {
+		artistFilter = Or{
+			persistence.Exists("jsonb_array_elements(participants::jsonb->'albumartist') as elem", Eq{"elem->>'id'": artist}),
+			persistence.Exists("jsonb_array_elements(participants::jsonb->'artist') as elem", Eq{"elem->>'id'": artist}),
+		}
+	} else {
+		artistFilter = Or{
+			persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
+			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
+		}
+	}
 	return addDefaultFilters(Options{
 		Sort:  "lyrics, updated_at",
 		Order: "desc",
 		Max:   1,
 		Filters: And{
 			Eq{"title": title},
-			Or{
-				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
-				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
-			},
+			artistFilter,
 		},
 	})
 }
@@ -163,6 +185,9 @@ func ByGenre(genre string) Options {
 }
 
 func filterByGenre(genre string) Sqlizer {
+	if db.IsPostgres() {
+		return persistence.Exists(`jsonb_array_elements(tags::jsonb->'genre') as elem`, Like{"elem->>'value'": genre})
+	}
 	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
 		Like{"value": genre},
 		NotEq{"atom": nil},

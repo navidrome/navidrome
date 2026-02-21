@@ -12,7 +12,7 @@ func init() {
 }
 
 func Up20200423204116(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table artist
 	add order_artist_name varchar(255) collate nocase;
 alter table artist
@@ -53,7 +53,7 @@ create index if not exists media_file_order_album_name
 	on media_file (order_album_name);
 create index if not exists media_file_order_artist_name
 	on media_file (order_artist_name);
-`)
+`))
 	if err != nil {
 		return err
 	}

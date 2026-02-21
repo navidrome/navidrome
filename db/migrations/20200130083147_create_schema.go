@@ -14,7 +14,7 @@ func init() {
 
 func Up20200130083147(_ context.Context, tx *sql.Tx) error {
 	log.Info("Creating DB Schema")
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table if not exists album
 (
 	id varchar(255) not null
@@ -160,7 +160,7 @@ create index if not exists search_full_text
 create index if not exists search_table
 	on search ("table");
 
-create table if not exists user
+create table if not exists "user"
 (
 	id varchar(255) not null
 		primary key,
@@ -175,7 +175,7 @@ create table if not exists user
 	last_access_at datetime,
 	created_at datetime not null,
 	updated_at datetime not null
-);`)
+);`))
 	return err
 }
 

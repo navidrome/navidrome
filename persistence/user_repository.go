@@ -14,6 +14,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -51,11 +52,11 @@ var (
 	encKey []byte
 )
 
-func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository {
+func NewUserRepository(ctx context.Context, d dbx.Builder) model.UserRepository {
 	r := &userRepository{}
 	r.ctx = ctx
-	r.db = db
-	r.tableName = "user"
+	r.db = d
+	r.tableName = UserTable() // Use quoted "user" for PostgreSQL
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"id":       idFilter(r.tableName),
 		"password": invalidFilter(ctx),
@@ -69,9 +70,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 
 // selectUserWithLibraries returns a SelectBuilder that includes library information
 func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
-		Columns(`user.*`,
-			`COALESCE(json_group_array(json_object(
+	librariesJSON := `COALESCE(json_group_array(json_object(
 				'id', library.id,
 				'name', library.name,
 				'path', library.path,
@@ -81,10 +80,25 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 				'full_scan_in_progress', library.full_scan_in_progress,
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
-			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin("user_library ul ON user.id = ul.user_id").
+			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`
+	if db.IsPostgres() {
+		librariesJSON = `COALESCE(json_agg(json_build_object(
+				'id', library.id,
+				'name', library.name,
+				'path', library.path,
+				'remote_path', library.remote_path,
+				'last_scan_at', library.last_scan_at,
+				'last_scan_started_at', library.last_scan_started_at,
+				'full_scan_in_progress', library.full_scan_in_progress,
+				'updated_at', library.updated_at,
+				'created_at', library.created_at
+			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`
+	}
+	return r.newSelect(options...).
+		Columns(`"user".*`, librariesJSON).
+		LeftJoin(`user_library ul ON "user".id = ul.user_id`).
 		LeftJoin("library ON ul.library_id = library.id").
-		GroupBy("user.id")
+		GroupBy(`"user".id`)
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
@@ -92,7 +106,7 @@ func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Eq{"user.id": id})
+	sel := r.selectUserWithLibraries().Where(Eq{UserColumn("id"): id})
 	var res dbUser
 	err := r.queryOne(sel, &res)
 	if err != nil {
@@ -144,19 +158,13 @@ func (r *userRepository) Put(u *model.User) error {
 
 	// Auto-assign all libraries to admin users in a single SQL operation
 	if u.IsAdmin {
-		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library",
-			u.ID,
-		)
+		sql := Expr(insertOrIgnore("user_library", "SELECT ?, id FROM library"), u.ID)
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign all libraries to admin user: %w", err)
 		}
 	} else if isNewUser { // Only for new regular users
 		// Auto-assign default libraries to new regular users
-		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
-			u.ID,
-		)
+		sql := Expr(insertOrIgnore("user_library", "SELECT ?, id FROM library WHERE default_new_users = true"), u.ID)
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
 		}
@@ -166,7 +174,7 @@ func (r *userRepository) Put(u *model.User) error {
 }
 
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
-	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
+	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{UserColumn("is_admin"): true})
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
@@ -176,7 +184,13 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Expr("user.user_name = ? COLLATE NOCASE", username))
+	var whereClause Sqlizer
+	if db.IsPostgres() {
+		whereClause = Expr(`LOWER("user".user_name) = LOWER(?)`, username)
+	} else {
+		whereClause = Expr("user.user_name = ? COLLATE NOCASE", username)
+	}
+	sel := r.selectUserWithLibraries().Where(whereClause)
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {

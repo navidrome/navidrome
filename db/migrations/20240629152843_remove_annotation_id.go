@@ -12,7 +12,7 @@ func init() {
 }
 
 func upRemoveAnnotationId(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, adaptSQL(`
 create table annotation_dg_tmp
 (
     user_id    varchar(255) default ''    not null,
@@ -57,7 +57,7 @@ create index annotation_starred
 create index annotation_starred_at
     on annotation (starred_at);
 
-`)
+`))
 	return err
 }
 

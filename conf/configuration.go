@@ -29,7 +29,9 @@ type configOptions struct {
 	MusicFolder                     string
 	DataFolder                      string
 	CacheFolder                     string
+	DbDriver                        string
 	DbPath                          string
+	DbConnectionString              string
 	LogLevel                        string
 	LogFile                         string
 	SessionTimeout                  time.Duration
@@ -307,7 +309,8 @@ func Load(noConfigDump bool) {
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
-	if Server.DbPath == "" {
+	// Only set default DbPath for SQLite
+	if Server.DbPath == "" && (Server.DbDriver == "" || Server.DbDriver == consts.DbDriverSQLite) {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
@@ -335,6 +338,7 @@ func Load(noConfigDump bool) {
 	log.SetRedacting(Server.EnableLogRedacting)
 
 	err = run.Sequentially(
+		validateDatabaseConfig,
 		validateScanSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
@@ -505,6 +509,26 @@ func validatePurgeMissingOption() error {
 	return nil
 }
 
+func validateDatabaseConfig() error {
+	switch Server.DbDriver {
+	case "", consts.DbDriverSQLite:
+		Server.DbDriver = consts.DbDriverSQLite
+		return nil
+	case consts.DbDriverPostgres:
+		if Server.DbConnectionString == "" {
+			err := fmt.Errorf("DbConnectionString is required when DbDriver is '%s'", consts.DbDriverPostgres)
+			log.Error(err.Error())
+			return err
+		}
+		return nil
+	default:
+		err := fmt.Errorf("unsupported DbDriver: '%s'. Must be '%s' or '%s'",
+			Server.DbDriver, consts.DbDriverSQLite, consts.DbDriverPostgres)
+		log.Error(err.Error())
+		return err
+	}
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -558,6 +582,8 @@ func setViperDefaults() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
 	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
+	viper.SetDefault("dbdriver", consts.DbDriverSQLite)
+	viper.SetDefault("dbconnectionstring", "")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("logfile", "")
 	viper.SetDefault("address", "0.0.0.0")

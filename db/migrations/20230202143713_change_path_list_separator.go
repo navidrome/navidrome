@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
 )
@@ -18,14 +19,18 @@ func init() {
 
 func upChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
 	//nolint:gosec
-	rows, err := tx.Query(`
-	select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id
-	`)
+	selectQuery := `select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id`
+	updateQuery := "update album set paths = ? where id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		selectQuery = `select album_id, string_agg(path, '` + consts.Zwsp + `') from media_file group by album_id`
+		updateQuery = "update album set paths = $1 where id = $2"
+	}
+	rows, err := tx.Query(selectQuery)
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("update album set paths = ? where id = ?")
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

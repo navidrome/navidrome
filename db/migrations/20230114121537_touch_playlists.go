@@ -12,7 +12,7 @@ func init() {
 }
 
 func upTouchPlaylists(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`update playlist set updated_at = datetime('now');`)
+	_, err := tx.Exec(adaptSQL(`update playlist set updated_at = datetime('now');`))
 	return err
 }
 
