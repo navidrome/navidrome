@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/plugins"
@@ -37,7 +38,6 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
 	_ "github.com/navidrome/navidrome/adapters/spotify"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 // Injectors from wire_injectors.go:
@@ -55,6 +55,23 @@ func CreateServer() *server.Server {
 	insights := metrics.GetInstance(dataStore)
 	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	broker := events.GetBroker()
+	fFmpeg := ffmpeg.New()
+	transcodingCache := core.GetTranscodingCache()
+	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	fileCache := artwork.GetImageCache()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, metricsMetrics)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
+	dlnaServer := dlna.New(dataStore, broker, mediaStreamer, artworkArtwork)
+	return dlnaServer
 }
 
 func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
@@ -206,7 +223,11 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
+<<<<<<< HEAD
 var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+=======
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, dlna.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, plugins.GetManager, metrics.GetPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)), wire.Bind(new(metrics.PluginLoader), new(plugins.Manager)), wire.Bind(new(core.Scanner), new(scanner.Scanner)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+>>>>>>> e237eb27 (Fixing screwups during rebase)
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

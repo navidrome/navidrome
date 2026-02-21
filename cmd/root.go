@@ -83,6 +83,9 @@ func runNavidrome(ctx context.Context) {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
+	if conf.Server.DLNAServer.Enabled {
+		g.Go(startDLNAServer(ctx))
+	}
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
@@ -139,6 +142,13 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
+	}
+}
+
+func startDLNAServer(ctx context.Context) func() error {
+	return func() error {
+		a := CreateDLNAServer()
+		return a.Run(ctx, conf.Server.Address, conf.Server.Port)
 	}
 }
 
@@ -387,6 +397,8 @@ func init() {
 	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
 	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
 
+	rootCmd.Flags().Bool("dlnaserver.enabled", viper.GetBool("dlnaserver.enabled"), "enable/disable DLNA server")
+
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("tlscert", rootCmd.Flags().Lookup("tlscert"))
@@ -400,6 +412,8 @@ func init() {
 
 	_ = viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
 	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
+
+	_ = viper.BindPFlag("dlnaserver.enabled", rootCmd.Flags().Lookup("dlnaserver.enabled"))
 
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("enabletranscodingcancellation", rootCmd.Flags().Lookup("enabletranscodingcancellation"))

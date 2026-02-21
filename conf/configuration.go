@@ -107,6 +107,7 @@ type configOptions struct {
 	EnableScrobbleHistory           bool
 	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
+	DLNAServer                      dlnaServerOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogLevels                      map[string]string `json:",omitempty"`
@@ -249,6 +250,10 @@ type pluginsOptions struct {
 type extAuthOptions struct {
 	TrustedSources string
 	UserHeader     string
+}
+
+type dlnaServerOptions struct {
+	Enabled bool
 }
 
 var (
@@ -671,6 +676,8 @@ func setViperDefaults() {
 	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")
 	viper.SetDefault("plugins.autoreload", false)
+
+	viper.SetDefault("dlnaserver.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

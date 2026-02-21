@@ -70,7 +70,7 @@ test-js: ##@Development Run JS tests
 .PHONY: test-js
 
 test-i18n: ##@Development Validate all translations files
-	./.github/workflows/validate-translations.sh 
+	./.github/workflows/validate-translations.sh
 .PHONY: test-i18n
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
@@ -143,9 +143,12 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
 
-build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+build: check_go_env buildjs buildgo ##@Build Build the project
 .PHONY: build
+
+buildgo:
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+.PHONY: buildgo
 
 buildall: deprecated build
 .PHONY: buildall
