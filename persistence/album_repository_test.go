@@ -61,11 +61,13 @@ var _ = Describe("AlbumRepository", func() {
 				albumMultiDisc,
 				albumRadioactivity,
 				albumSgtPeppers,
+				albumPunctuation,
 			}))
 		})
 
 		It("returns all records sorted desc", func() {
 			Expect(GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
+				albumPunctuation,
 				albumSgtPeppers,
 				albumRadioactivity,
 				albumMultiDisc,

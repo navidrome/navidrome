@@ -70,7 +70,7 @@ var _ = Describe("sqlRepository", func() {
 			Expect(sql).To(ContainSubstring("LIKE"))
 		})
 
-		It("routes CJK queries to cjkSearchExpr instead of ftsSearchExpr", func() {
+		It("routes CJK queries to likeSearchExpr instead of ftsSearchExpr", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false

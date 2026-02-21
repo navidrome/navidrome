@@ -47,6 +47,8 @@ var _ = DescribeTable("buildFTS5Query",
 	Entry("does not collapse single standalone letter", "A test", "A* test*"),
 	Entry("preserves quoted phrase with punctuation verbatim", `"ac/dc"`, `"ac/dc"`),
 	Entry("preserves quoted abbreviation verbatim", `"R.E.M."`, `"R.E.M."`),
+	Entry("returns empty string for punctuation-only input", "!!!!!!!", ""),
+	Entry("returns empty string for mixed punctuation", "!@#$%^&", ""),
 )
 
 var _ = DescribeTable("normalizeForFTS",
@@ -78,17 +80,17 @@ var _ = DescribeTable("containsCJK",
 	Entry("detects single CJK character", "a曲b", true),
 )
 
-var _ = Describe("cjkSearchExpr", func() {
+var _ = Describe("likeSearchExpr", func() {
 	It("returns nil for empty query", func() {
-		Expect(cjkSearchExpr("media_file", "")).To(BeNil())
+		Expect(likeSearchExpr("media_file", "")).To(BeNil())
 	})
 
 	It("returns nil for whitespace-only query", func() {
-		Expect(cjkSearchExpr("media_file", "   ")).To(BeNil())
+		Expect(likeSearchExpr("media_file", "   ")).To(BeNil())
 	})
 
 	It("generates LIKE filters against core columns for single CJK word", func() {
-		expr := cjkSearchExpr("media_file", "周杰伦")
+		expr := likeSearchExpr("media_file", "周杰伦")
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		// Should have OR between columns for the single word
@@ -104,7 +106,7 @@ var _ = Describe("cjkSearchExpr", func() {
 	})
 
 	It("generates AND of OR groups for multi-word query", func() {
-		expr := cjkSearchExpr("media_file", "周杰伦 greatest")
+		expr := likeSearchExpr("media_file", "周杰伦 greatest")
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		// Two groups AND'd together, each with 4 columns OR'd
@@ -113,7 +115,7 @@ var _ = Describe("cjkSearchExpr", func() {
 	})
 
 	It("uses correct columns for album table", func() {
-		expr := cjkSearchExpr("album", "周杰伦")
+		expr := likeSearchExpr("album", "周杰伦")
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("album.name LIKE"))
@@ -122,7 +124,7 @@ var _ = Describe("cjkSearchExpr", func() {
 	})
 
 	It("uses correct columns for artist table", func() {
-		expr := cjkSearchExpr("artist", "周杰伦")
+		expr := likeSearchExpr("artist", "周杰伦")
 		sql, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("artist.name LIKE"))
@@ -130,7 +132,7 @@ var _ = Describe("cjkSearchExpr", func() {
 	})
 
 	It("returns nil for unknown table", func() {
-		Expect(cjkSearchExpr("unknown_table", "周杰伦")).To(BeNil())
+		Expect(likeSearchExpr("unknown_table", "周杰伦")).To(BeNil())
 	})
 })
 
@@ -187,6 +189,20 @@ var _ = Describe("ftsSearchExpr", func() {
 		_, args, err := expr.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(args[0]).To(ContainSubstring("beat*"))
+	})
+
+	It("falls back to LIKE search for punctuation-only query", func() {
+		expr := ftsSearchExpr("media_file", "!!!!!!!")
+		Expect(expr).ToNot(BeNil())
+		sql, args, err := expr.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("LIKE"))
+		Expect(args).To(ContainElement("%!!!!!!!%"))
+	})
+
+	It("returns nil for empty string even with LIKE fallback", func() {
+		Expect(ftsSearchExpr("media_file", "")).To(BeNil())
+		Expect(ftsSearchExpr("media_file", "   ")).To(BeNil())
 	})
 })
 
@@ -290,6 +306,16 @@ var _ = Describe("FTS5 Integration Search", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].ID).To(Equal(albumWithVersion.ID))
+		})
+	})
+
+	Describe("Punctuation-only search", func() {
+		It("finds media files with punctuation-only title", func() {
+			results, err := mr.Search("!!!!!!!", 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].Title).To(Equal("!!!!!!!"))
+			Expect(results[0].ID).To(Equal(songPunctuation.ID))
 		})
 	})
 

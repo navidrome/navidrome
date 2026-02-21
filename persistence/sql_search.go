@@ -22,13 +22,15 @@ type searchExprFunc func(tableName string, query string) Sqlizer
 // getSearchExpr returns the active search expression function based on config.
 // It falls back to legacySearchExpr when Search.FullString is enabled, because
 // FTS5 is token-based and cannot match substrings within words.
+// CJK queries are routed to likeSearchExpr, since FTS5's unicode61 tokenizer
+// cannot segment CJK text.
 func getSearchExpr() searchExprFunc {
 	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
 		return legacySearchExpr
 	}
 	return func(tableName, query string) Sqlizer {
 		if containsCJK(query) {
-			return cjkSearchExpr(tableName, query)
+			return likeSearchExpr(tableName, query)
 		}
 		return ftsSearchExpr(tableName, query)
 	}

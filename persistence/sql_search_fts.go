@@ -187,26 +187,28 @@ func buildFTS5Query(userInput string) string {
 	return result
 }
 
-// cjkSearchColumns defines the core columns to search with LIKE for CJK queries.
+// likeSearchColumns defines the core columns to search with LIKE queries.
 // These are the primary user-visible fields for each entity type.
-var cjkSearchColumns = map[string][]string{
+// Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
+var likeSearchColumns = map[string][]string{
 	"media_file": {"title", "album", "artist", "album_artist"},
 	"album":      {"name", "album_artist"},
 	"artist":     {"name"},
 }
 
-// cjkSearchExpr generates LIKE-based search filters against core columns for CJK queries.
+// likeSearchExpr generates LIKE-based search filters against core columns.
 // Each word in the query must match at least one column (AND between words),
 // and each word can match any column (OR within a word).
-func cjkSearchExpr(tableName string, s string) Sqlizer {
+// Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
+func likeSearchExpr(tableName string, s string) Sqlizer {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		log.Trace("Search using CJK backend, query is empty", "table", tableName)
+		log.Trace("Search using LIKE backend, query is empty", "table", tableName)
 		return nil
 	}
-	columns, ok := cjkSearchColumns[tableName]
+	columns, ok := likeSearchColumns[tableName]
 	if !ok {
-		log.Trace("Search using CJK backend, couldn't find columns for this table", "table", tableName)
+		log.Trace("Search using LIKE backend, couldn't find columns for this table", "table", tableName)
 		return nil
 	}
 	words := strings.Fields(s)
@@ -218,7 +220,7 @@ func cjkSearchExpr(tableName string, s string) Sqlizer {
 		}
 		wordFilters = append(wordFilters, colFilters)
 	}
-	log.Trace("Search using CJK backend", "query", wordFilters, "table", tableName)
+	log.Trace("Search using LIKE backend", "query", wordFilters, "table", tableName)
 	return wordFilters
 }
 
@@ -232,10 +234,16 @@ var ftsSearchColumns = map[string]string{
 }
 
 // ftsSearchExpr generates an FTS5 MATCH-based search filter.
+// If the query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!"),
+// it falls back to LIKE-based search.
 func ftsSearchExpr(tableName string, s string) Sqlizer {
 	q := buildFTS5Query(s)
 	if q == "" {
-		log.Trace("Search using legacy backend, query is empty", "table", tableName)
+		s = strings.TrimSpace(s)
+		if s != "" {
+			log.Trace("Search using LIKE fallback for non-tokenizable query", "table", tableName, "query", s)
+			return likeSearchExpr(tableName, s)
+		}
 		return nil
 	}
 	ftsTable := tableName + "_fts"
