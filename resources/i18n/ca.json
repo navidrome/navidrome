@@ -674,7 +674,8 @@
       "exportSuccess": "Configuració exportada al porta-retalls en format TOML",
       "exportFailed": "La còpia de la configuració ha fallat",
       "devFlagsHeader": "Indicadors de desenvolupament (subjecte a canvis o eliminació)",
-      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures"
+      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures",
+      "downloadToml": "Descarrega la configuració (TOML)"
     }
   },
   "activity": {

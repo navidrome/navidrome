@@ -674,7 +674,8 @@
       "exportSuccess": "Configuración exportada al portapapeles en formato TOML",
       "exportFailed": "Error al copiar la configuración",
       "devFlagsHeader": "Indicadores de desarrollo (sujetos a cambios o eliminación)",
-      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras"
+      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras",
+      "downloadToml": "Descargar la configuración (TOML)"
     }
   },
   "activity": {

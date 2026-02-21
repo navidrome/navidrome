@@ -674,7 +674,8 @@
       "exportSuccess": "Määritykset viety leikepöydälle TOML-muodossa",
       "exportFailed": "Määritysten kopiointi epäonnistui",
       "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
-      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
+      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa",
+      "downloadToml": "Lataa määritykset (TOML)"
     }
   },
   "activity": {
