@@ -249,6 +249,7 @@ type pluginsOptions struct {
 type extAuthOptions struct {
 	TrustedSources string
 	UserHeader     string
+	LogoutURL      string
 }
 
 var (
@@ -339,6 +340,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
+		validateUrl("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
 		os.Exit(1)
@@ -539,6 +541,27 @@ func validateSchedule(schedule, field string) (string, error) {
 	return schedule, err
 }
 
+// validateUrl checks if the provided URL is valid and has either http or https scheme.
+// It returns a function that can be used as a hook to validate URLs in the config.
+func validateUrl(optionName, optionUrl string) func() error {
+	return func() error {
+		if optionUrl == "" {
+			return nil
+		}
+		u, err := url.Parse(optionUrl)
+		if err != nil {
+			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionUrl, "err", err)
+			return err
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			err := fmt.Errorf("invalid scheme for %s: '%s'. Only 'http' and 'https' are allowed", optionName, u.Scheme)
+			log.Error(err.Error())
+			return err
+		}
+		return nil
+	}
+}
+
 // AddHook is used to register initialization code that should run as soon as the config is loaded
 func AddHook(hook func()) {
 	hooks = append(hooks, hook)
@@ -619,6 +642,7 @@ func setViperDefaults() {
 	viper.SetDefault("passwordencryptionkey", "")
 	viper.SetDefault("extauth.userheader", "Remote-User")
 	viper.SetDefault("extauth.trustedsources", "")
+	viper.SetDefault("extauth.logouturl", "")
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")
