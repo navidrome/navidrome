@@ -436,7 +436,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int, options ...
 			return nil, fmt.Errorf("searching media_file by MBID %q: %w", q, err)
 		}
 	} else {
-		err := r.doSearch(r.selectMediaFile(options...), q, offset, size, &res, "media_file.rowid", "title")
+		err := r.doSearch(r.selectMediaFile(options...), q, offset, size, &res, "media_file.rowid", "rank", "title")
 		if err != nil {
 			return nil, fmt.Errorf("searching media_file by query %q: %w", q, err)
 		}

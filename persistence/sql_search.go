@@ -65,8 +65,16 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 	}
 
 	// For non-FTS filters (LIKE, legacy), use the original single-query approach.
+	// Strip "rank" from ORDER BY since it's only available in FTS queries.
+	nonFTSOrderBys := make([]string, 0, len(orderBys))
+	for _, ob := range orderBys {
+		col := strings.Fields(strings.TrimSpace(ob))[0]
+		if col != "rank" {
+			nonFTSOrderBys = append(nonFTSOrderBys, ob)
+		}
+	}
 	sq = sq.Where(filter)
-	sq = sq.OrderBy(orderBys...)
+	sq = sq.OrderBy(nonFTSOrderBys...)
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
@@ -89,8 +97,12 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	// parens or commas) can be safely qualified; complex expressions indicate
 	// the sort depends on JOINed tables, so we fall back to the single-query approach.
 	qualifiedOrderBys := make([]string, 0, len(orderBys))
+	// Phase 2 ORDER BY excludes "rank" (the FTS table isn't JOINed in Phase 2).
+	// Phase 1 already selected the correct page of rowids by rank, so Phase 2 only
+	// needs the tiebreaker columns to maintain stable sort among the hydrated rows.
+	phase2OrderBys := make([]string, 0, len(orderBys))
 	for _, ob := range orderBys {
-		qualified := qualifyOrderBy(r.tableName, ob)
+		qualified := qualifyOrderBy(r.tableName, fts.ftsTable, ob)
 		if qualified == "" {
 			// Complex expression that can't be used in the lightweight query — fall back.
 			sq = sq.Where(fts)
@@ -100,6 +112,10 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 			return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 		}
 		qualifiedOrderBys = append(qualifiedOrderBys, qualified)
+		col := strings.Fields(strings.TrimSpace(ob))[0]
+		if col != "rank" {
+			phase2OrderBys = append(phase2OrderBys, ob)
+		}
 	}
 
 	// Phase 1: Lightweight rowid query — only main table + FTS, no annotation/bookmark/library JOINs.
@@ -117,14 +133,16 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 
 	// Phase 2: Hydrate the rowids with the full SelectBuilder (all JOINs included).
 	sq = sq.Where(r.tableName+".rowid IN ("+rowidSQL+")", rowidArgs...)
-	sq = sq.OrderBy(orderBys...)
+	sq = sq.OrderBy(phase2OrderBys...)
 	return r.queryAll(sq, results)
 }
 
 // qualifyOrderBy prepends tableName to a simple ORDER BY column name if it's not already
-// qualified. Returns empty string for complex expressions (containing parens, commas, or
-// function calls) that can't be safely used in a lightweight query without extra JOINs.
-func qualifyOrderBy(tableName, orderBy string) string {
+// qualified. The ftsTable parameter is used to qualify the special "rank" column, which
+// belongs to the FTS table rather than the main table. Returns empty string for complex
+// expressions (containing parens, commas, or function calls) that can't be safely used
+// in a lightweight query without extra JOINs.
+func qualifyOrderBy(tableName, ftsTable, orderBy string) string {
 	orderBy = strings.TrimSpace(orderBy)
 	if orderBy == "" {
 		return ""
@@ -143,6 +161,12 @@ func qualifyOrderBy(tableName, orderBy string) string {
 	// Already qualified (contains a dot)
 	if strings.Contains(col, ".") {
 		return orderBy
+	}
+
+	// The "rank" column belongs to the FTS table, not the main table
+	if col == "rank" {
+		parts[0] = ftsTable + "." + col
+		return strings.Join(parts, " ")
 	}
 
 	// Qualify with table name

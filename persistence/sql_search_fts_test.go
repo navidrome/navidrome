@@ -137,6 +137,23 @@ var _ = Describe("likeSearchExpr", func() {
 	})
 })
 
+var _ = DescribeTable("qualifyOrderBy",
+	func(tableName, ftsTable, orderBy, expected string) {
+		Expect(qualifyOrderBy(tableName, ftsTable, orderBy)).To(Equal(expected))
+	},
+	Entry("returns empty string for empty input", "artist", "artist_fts", "", ""),
+	Entry("qualifies simple column with table name", "artist", "artist_fts", "name", "artist.name"),
+	Entry("qualifies column with direction", "artist", "artist_fts", "name desc", "artist.name desc"),
+	Entry("qualifies rank with FTS table name", "artist", "artist_fts", "rank", "artist_fts.rank"),
+	Entry("qualifies rank with direction using FTS table name", "artist", "artist_fts", "rank asc", "artist_fts.rank asc"),
+	Entry("preserves already-qualified column", "artist", "artist_fts", "artist.name", "artist.name"),
+	Entry("preserves already-qualified column with direction", "artist", "artist_fts", "artist.name desc", "artist.name desc"),
+	Entry("returns empty for function call expression", "artist", "artist_fts", "sum(json_extract(stats, '$.total.m')) desc", ""),
+	Entry("returns empty for expression with comma", "artist", "artist_fts", "a, b", ""),
+	Entry("qualifies media_file column", "media_file", "media_file_fts", "title", "media_file.title"),
+	Entry("qualifies rank for media_file FTS table", "media_file", "media_file_fts", "rank", "media_file_fts.rank"),
+)
+
 var _ = Describe("ftsSearchExpr", func() {
 	It("returns nil for empty query", func() {
 		Expect(ftsSearchExpr("media_file", "")).To(BeNil())
