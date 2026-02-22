@@ -279,11 +279,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					for k, realCue := range realCueLine.Cue {
 						expectedCue := expectedCueLine.Cue[k]
 						Expect(realCue.Value).To(Equal(expectedCue.Value))
-						if expectedCue.Start == nil {
-							Expect(realCue.Start).To(BeNil())
-						} else {
-							Expect(*realCue.Start).To(Equal(*expectedCue.Start))
-						}
+						Expect(realCue.Start).To(Equal(expectedCue.Start))
 						if expectedCue.End == nil {
 							Expect(realCue.End).To(BeNil())
 						} else {
@@ -521,12 +517,12 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "konni",
 								Cue: []responses.LyricCue{
 									{
-										Start: &tokenStartA,
+										Start: tokenStartA,
 										End:   &tokenEndA,
 										Value: "ko",
 									},
 									{
-										Start: &tokenStartB,
+										Start: tokenStartB,
 										End:   &tokenEndB,
 										Value: "nni",
 									},
@@ -607,7 +603,7 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "Hello echo",
 								Cue: []responses.LyricCue{
 									{
-										Start: &tokenStartA,
+										Start: tokenStartA,
 										End:   &tokenEndA,
 										Value: "Hello",
 									},
@@ -618,10 +614,10 @@ var _ = Describe("MediaRetrievalController", func() {
 								Start: &lineStart,
 								End:   &lineEnd,
 								Value: "Hello echo",
-								Role:  "x-bg",
+								Role:  "bg",
 								Cue: []responses.LyricCue{
 									{
-										Start: &tokenStartB,
+										Start: tokenStartB,
 										End:   &tokenEndB,
 										Value: "echo",
 									},
