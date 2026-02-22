@@ -287,6 +287,106 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Smart Playlists with Album/Artist Annotation Criteria", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+		})
+
+		It("matches tracks from starred albums using albumLoved", func() {
+			// albumRadioactivity (ID "103") is starred in test fixtures
+			// Songs in album 103: 1003, 1004, 1005, 1006
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Album Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1003", "1004", "1005", "1006"))
+		})
+
+		It("matches tracks from starred artists using artistLoved", func() {
+			// artistBeatles (ID "3") is starred in test fixtures
+			// Songs with ArtistID "3": 1001, 1002, 3002
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Artist Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "3002"))
+		})
+
+		It("matches tracks with combined album and artist criteria", func() {
+			// albumLoved=true → songs from album 103 (1003, 1004, 1005, 1006)
+			// artistLoved=true → songs with artist 3 (1001, 1002)
+			// Using Any: union of both sets
+			rules := &criteria.Criteria{
+				Expression: criteria.Any{
+					criteria.Is{"albumLoved": true},
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Combined Album+Artist", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "1003", "1004", "1005", "1006", "3002"))
+		})
+
+		It("returns no tracks when no albums/artists match", func() {
+			// No album has rating 5 in fixtures
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumRating": 5},
+				},
+			}
+			newPls := model.Playlist{Name: "No Match", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(pls.Tracks).To(BeEmpty())
+		})
+	})
+
 	Describe("Smart Playlists with Tag Criteria", func() {
 		var mfRepo model.MediaFileRepository
 		var testPlaylistID string
