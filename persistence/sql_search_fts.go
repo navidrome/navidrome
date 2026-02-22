@@ -221,7 +221,7 @@ func likeSearchExpr(tableName string, s string) *searchFilter {
 		wordFilters = append(wordFilters, colFilters)
 	}
 	log.Trace("Search using LIKE backend", "query", wordFilters, "table", tableName)
-	return &searchFilter{Where: wordFilters}
+	return &searchFilter{where: wordFilters}
 }
 
 // ftsSearchColumns defines which FTS5 columns are included in general search.
@@ -282,7 +282,7 @@ func ftsSearchExpr(tableName string, s string) *searchFilter {
 	if !ok {
 		// Fallback: no weights available, filter only (no ranking)
 		log.Trace("Search using FTS5 backend (no ranking)", "table", tableName, "query", q)
-		return &searchFilter{Where: whereFilter}
+		return &searchFilter{where: whereFilter}
 	}
 
 	// Build bm25 weight args string: "10, 5, 5, ..."
@@ -306,8 +306,8 @@ func ftsSearchExpr(tableName string, s string) *searchFilter {
 
 	log.Trace("Search using FTS5 backend with BM25 ranking", "table", tableName, "query", q, "weights", bm25Args)
 	return &searchFilter{
-		Where:     whereFilter,
-		RankOrder: rankOrder,
-		RankArgs:  []any{matchExpr},
+		where:     whereFilter,
+		rankOrder: rankOrder,
+		rankArgs:  []any{matchExpr},
 	}
 }

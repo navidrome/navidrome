@@ -16,43 +16,51 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
-// searchFilter carries the result of a search expression builder.
-// For WHERE-based filters (legacy LIKE, CJK LIKE), only Where is set.
-// For FTS5 ranked search, Where contains a rowid IN subquery for filtering,
-// and RankOrder contains a correlated subquery for BM25 relevance ordering.
+// searchFilter is the internal result from search expression builders.
+// It is never exposed to callers — they use getSearchFilter or applySearchFilter instead.
 type searchFilter struct {
-	Where     Sqlizer // WHERE clause (LIKE/legacy/FTS5 rowid IN)
-	RankOrder string  // ORDER BY expression for relevance (correlated bm25 subquery)
-	RankArgs  []any   // Args for the rank ORDER BY expression
+	where     Sqlizer // WHERE clause (LIKE/legacy/FTS5 rowid IN)
+	rankOrder string  // ORDER BY expression for relevance (correlated bm25 subquery)
+	rankArgs  []any   // Args for the rank ORDER BY expression
 }
 
-// AsSqlizer returns a Sqlizer suitable for use in a WHERE clause.
-// This is used in contexts like fullTextFilter where only filtering is needed, not ranking.
-func (sf *searchFilter) AsSqlizer() Sqlizer {
-	if sf == nil {
+// buildSearchFilter returns the search filter for the given table and query,
+// selecting the appropriate backend based on config (FTS5, legacy LIKE, CJK LIKE).
+func buildSearchFilter(tableName, query string) *searchFilter {
+	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
+		return legacySearchExpr(tableName, query)
+	}
+	if containsCJK(query) {
+		return likeSearchExpr(tableName, query)
+	}
+	return ftsSearchExpr(tableName, query)
+}
+
+// getSearchFilter returns a Sqlizer for WHERE-only filtering.
+// Used by fullTextFilter where only filtering is needed, not ranking.
+func getSearchFilter(tableName, query string) Sqlizer {
+	filter := buildSearchFilter(tableName, query)
+	if filter == nil {
 		return nil
 	}
-	return sf.Where
+	return filter.where
 }
 
-// searchExprFunc is the function signature for search expression builders.
-type searchExprFunc func(tableName string, query string) *searchFilter
-
-// getSearchExpr returns the active search expression function based on config.
-// It falls back to legacySearchExpr when Search.FullString is enabled, because
-// FTS5 is token-based and cannot match substrings within words.
-// CJK queries are routed to likeSearchExpr, since FTS5's unicode61 tokenizer
-// cannot segment CJK text.
-func getSearchExpr() searchExprFunc {
-	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
-		return legacySearchExpr
+// applySearchFilter applies search filtering and ordering to a query builder.
+// When a filter matches, it adds the WHERE clause, optional BM25 ranking, and orderBys as tiebreakers.
+// When no filter matches (empty query), it falls back to naturalOrder.
+func applySearchFilter(sq SelectBuilder, tableName, query, naturalOrder string, orderBys ...string) SelectBuilder {
+	filter := buildSearchFilter(tableName, query)
+	if filter == nil {
+		return sq.OrderBy(naturalOrder)
 	}
-	return func(tableName, query string) *searchFilter {
-		if containsCJK(query) {
-			return likeSearchExpr(tableName, query)
-		}
-		return ftsSearchExpr(tableName, query)
+	sq = sq.Where(filter.where)
+	if filter.rankOrder != "" {
+		rankArgs := make([]interface{}, len(filter.rankArgs))
+		copy(rankArgs, filter.rankArgs)
+		sq = sq.OrderByClause(filter.rankOrder, rankArgs...)
 	}
+	return sq.OrderBy(orderBys...)
 }
 
 // doSearch performs a full-text search with the specified parameters.
@@ -66,26 +74,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		return nil
 	}
 
-	searchExpr := getSearchExpr()
-	filter := searchExpr(r.tableName, q)
-	if filter != nil {
-		sq = sq.Where(filter.Where)
-		if filter.RankOrder != "" {
-			// FTS5 ranked search: use correlated subquery for BM25 relevance ordering.
-			// OrderByClause supports parameterized args (unlike OrderBy).
-			rankArgs := make([]interface{}, len(filter.RankArgs))
-			copy(rankArgs, filter.RankArgs)
-			sq = sq.OrderByClause(filter.RankOrder, rankArgs...)
-			sq = sq.OrderBy(orderBys...)
-		} else {
-			// WHERE-based search (legacy LIKE, CJK LIKE): no ranking
-			sq = sq.OrderBy(orderBys...)
-		}
-	} else {
-		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
-		// If the filter is empty, we sort by the specified natural order.
-		sq = sq.OrderBy(naturalOrder)
-	}
+	sq = applySearchFilter(sq, r.tableName, q, naturalOrder, orderBys...)
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
@@ -128,5 +117,5 @@ func legacySearchExpr(tableName string, s string) *searchFilter {
 		filters = append(filters, Like{tableName + ".full_text": "%" + sep + part + "%"})
 	}
 	log.Trace("Search using legacy backend", "query", filters, "table", tableName)
-	return &searchFilter{Where: filters}
+	return &searchFilter{where: filters}
 }

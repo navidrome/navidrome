@@ -90,18 +90,17 @@ var _ = Describe("likeSearchExpr", func() {
 		Expect(likeSearchExpr("media_file", "   ")).To(BeNil())
 	})
 
-	It("returns a searchFilter with Where set and no ranking", func() {
+	It("returns a filter with no ranking", func() {
 		filter := likeSearchExpr("media_file", "周杰伦")
 		Expect(filter).ToNot(BeNil())
-		Expect(filter.Where).ToNot(BeNil())
-		Expect(filter.RankOrder).To(BeEmpty())
+		Expect(filter.where).ToNot(BeNil())
+		Expect(filter.rankOrder).To(BeEmpty())
 	})
 
 	It("generates LIKE filters against core columns for single CJK word", func() {
 		filter := likeSearchExpr("media_file", "周杰伦")
-		sql, args, err := filter.Where.ToSql()
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
-		// Should have OR between columns for the single word
 		Expect(sql).To(ContainSubstring("OR"))
 		Expect(sql).To(ContainSubstring("media_file.title LIKE"))
 		Expect(sql).To(ContainSubstring("media_file.album LIKE"))
@@ -115,16 +114,15 @@ var _ = Describe("likeSearchExpr", func() {
 
 	It("generates AND of OR groups for multi-word query", func() {
 		filter := likeSearchExpr("media_file", "周杰伦 greatest")
-		sql, args, err := filter.Where.ToSql()
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
-		// Two groups AND'd together, each with 4 columns OR'd
 		Expect(sql).To(ContainSubstring("AND"))
 		Expect(args).To(HaveLen(8))
 	})
 
 	It("uses correct columns for album table", func() {
 		filter := likeSearchExpr("album", "周杰伦")
-		sql, args, err := filter.Where.ToSql()
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("album.name LIKE"))
 		Expect(sql).To(ContainSubstring("album.album_artist LIKE"))
@@ -133,7 +131,7 @@ var _ = Describe("likeSearchExpr", func() {
 
 	It("uses correct columns for artist table", func() {
 		filter := likeSearchExpr("artist", "周杰伦")
-		sql, args, err := filter.Where.ToSql()
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("artist.name LIKE"))
 		Expect(args).To(HaveLen(1))
@@ -152,8 +150,7 @@ var _ = Describe("ftsSearchExpr", func() {
 	It("generates WHERE IN filter with correlated bm25 ranking for known tables", func() {
 		filter := ftsSearchExpr("media_file", "beatles")
 		Expect(filter).ToNot(BeNil())
-		// WHERE clause should use rowid IN subquery
-		sql, args, err := filter.Where.ToSql()
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("media_file.rowid IN"))
 		Expect(sql).To(ContainSubstring("media_file_fts"))
@@ -163,32 +160,31 @@ var _ = Describe("ftsSearchExpr", func() {
 		Expect(ok).To(BeTrue())
 		Expect(matchExpr).To(HavePrefix("{title album artist album_artist"))
 		Expect(matchExpr).To(ContainSubstring("beatles*"))
-		// RankOrder should contain correlated bm25 subquery
-		Expect(filter.RankOrder).To(ContainSubstring("bm25(media_file_fts"))
-		Expect(filter.RankOrder).To(ContainSubstring("MATCH"))
-		Expect(filter.RankArgs).To(HaveLen(1))
+		Expect(filter.rankOrder).To(ContainSubstring("bm25(media_file_fts"))
+		Expect(filter.rankOrder).To(ContainSubstring("MATCH"))
+		Expect(filter.rankArgs).To(HaveLen(1))
 	})
 
 	It("includes correct BM25 weights for media_file", func() {
 		filter := ftsSearchExpr("media_file", "test")
-		Expect(filter.RankOrder).To(ContainSubstring("bm25(media_file_fts, 10, 5, 5, 5, 1, 1, 1, 1, 2, 3, 1)"))
+		Expect(filter.rankOrder).To(ContainSubstring("bm25(media_file_fts, 10, 5, 5, 5, 1, 1, 1, 1, 2, 3, 1)"))
 	})
 
 	It("includes correct BM25 weights for album", func() {
 		filter := ftsSearchExpr("album", "test")
-		Expect(filter.RankOrder).To(ContainSubstring("bm25(album_fts, 10, 1, 5, 3, 1, 2, 2, 1)"))
+		Expect(filter.rankOrder).To(ContainSubstring("bm25(album_fts, 10, 1, 5, 3, 1, 2, 2, 1)"))
 	})
 
 	It("includes correct BM25 weights for artist", func() {
 		filter := ftsSearchExpr("artist", "test")
-		Expect(filter.RankOrder).To(ContainSubstring("bm25(artist_fts, 10, 1, 1)"))
+		Expect(filter.rankOrder).To(ContainSubstring("bm25(artist_fts, 10, 1, 1)"))
 	})
 
 	It("generates correct FTS table name per entity", func() {
 		for _, table := range []string{"media_file", "album", "artist"} {
 			filter := ftsSearchExpr(table, "test")
 			Expect(filter).ToNot(BeNil())
-			sql, _, err := filter.Where.ToSql()
+			sql, _, err := filter.where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring(table + "_fts"))
 			Expect(sql).To(ContainSubstring(table + ".rowid"))
@@ -197,7 +193,7 @@ var _ = Describe("ftsSearchExpr", func() {
 
 	It("wraps query with column filter for known tables", func() {
 		filter := ftsSearchExpr("artist", "Beatles")
-		sql, args, _ := filter.Where.ToSql()
+		sql, args, _ := filter.where.ToSql()
 		Expect(sql).To(ContainSubstring("MATCH"))
 		Expect(args[0]).To(Equal("{name sort_artist_name search_normalized} : (Beatles*)"))
 	})
@@ -205,10 +201,9 @@ var _ = Describe("ftsSearchExpr", func() {
 	It("passes query without column filter for unknown tables (WHERE IN fallback)", func() {
 		filter := ftsSearchExpr("unknown_table", "test")
 		Expect(filter).ToNot(BeNil())
-		// Unknown tables have no BM25 weights, so they fall back to WHERE IN without ranking
-		Expect(filter.Where).ToNot(BeNil())
-		Expect(filter.RankOrder).To(BeEmpty())
-		sql, args, err := filter.Where.ToSql()
+		Expect(filter.where).ToNot(BeNil())
+		Expect(filter.rankOrder).To(BeEmpty())
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("MATCH"))
 		Expect(args[0]).To(Equal("test*"))
@@ -216,14 +211,14 @@ var _ = Describe("ftsSearchExpr", func() {
 
 	It("preserves phrase queries inside column filter", func() {
 		filter := ftsSearchExpr("media_file", `"the beatles"`)
-		sql, args, _ := filter.Where.ToSql()
+		sql, args, _ := filter.where.ToSql()
 		Expect(sql).To(ContainSubstring("MATCH"))
 		Expect(args[0]).To(ContainSubstring(`"the beatles"`))
 	})
 
 	It("preserves prefix queries inside column filter", func() {
 		filter := ftsSearchExpr("media_file", "beat*")
-		sql, args, _ := filter.Where.ToSql()
+		sql, args, _ := filter.where.ToSql()
 		Expect(sql).To(ContainSubstring("MATCH"))
 		Expect(args[0]).To(ContainSubstring("beat*"))
 	})
@@ -231,9 +226,9 @@ var _ = Describe("ftsSearchExpr", func() {
 	It("falls back to LIKE search for punctuation-only query", func() {
 		filter := ftsSearchExpr("media_file", "!!!!!!!")
 		Expect(filter).ToNot(BeNil())
-		Expect(filter.Where).ToNot(BeNil())
-		Expect(filter.RankOrder).To(BeEmpty())
-		sql, args, err := filter.Where.ToSql()
+		Expect(filter.where).ToNot(BeNil())
+		Expect(filter.rankOrder).To(BeEmpty())
+		sql, args, err := filter.where.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("LIKE"))
 		Expect(args).To(ContainElement("%!!!!!!!%"))
@@ -246,35 +241,6 @@ var _ = Describe("ftsSearchExpr", func() {
 
 	It("returns nil for empty quoted phrase", func() {
 		Expect(ftsSearchExpr("media_file", `""`)).To(BeNil())
-	})
-
-	It("AsSqlizer returns Where for FTS5 filter", func() {
-		filter := ftsSearchExpr("media_file", "beatles")
-		Expect(filter).ToNot(BeNil())
-		sqlizer := filter.AsSqlizer()
-		Expect(sqlizer).ToNot(BeNil())
-		sql, args, err := sqlizer.ToSql()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(sql).To(ContainSubstring("media_file.rowid IN"))
-		Expect(sql).To(ContainSubstring("media_file_fts"))
-		Expect(sql).To(ContainSubstring("MATCH"))
-		Expect(args).To(HaveLen(1))
-		Expect(args[0]).To(ContainSubstring("beatles*"))
-	})
-
-	It("AsSqlizer returns Where directly for LIKE-based filter", func() {
-		filter := likeSearchExpr("media_file", "周杰伦")
-		Expect(filter).ToNot(BeNil())
-		sqlizer := filter.AsSqlizer()
-		Expect(sqlizer).ToNot(BeNil())
-		sql, _, err := sqlizer.ToSql()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(sql).To(ContainSubstring("LIKE"))
-	})
-
-	It("AsSqlizer returns nil for nil filter", func() {
-		var filter *searchFilter
-		Expect(filter.AsSqlizer()).To(BeNil())
 	})
 })
 
