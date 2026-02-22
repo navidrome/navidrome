@@ -65,16 +65,8 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 	}
 
 	// For non-FTS filters (LIKE, legacy), use the original single-query approach.
-	// Strip "rank" from ORDER BY since it's only available in FTS queries.
-	nonFTSOrderBys := make([]string, 0, len(orderBys))
-	for _, ob := range orderBys {
-		col := strings.Fields(strings.TrimSpace(ob))[0]
-		if col != "rank" {
-			nonFTSOrderBys = append(nonFTSOrderBys, ob)
-		}
-	}
 	sq = sq.Where(filter)
-	sq = sq.OrderBy(nonFTSOrderBys...)
+	sq = sq.OrderBy(orderBys...)
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
@@ -84,28 +76,25 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 // expensive LEFT JOINs (annotation, bookmark, library) on high-cardinality FTS results.
 //
 // Phase 1 builds a lightweight query that only touches the main table + FTS index to get
-// the sorted, paginated rowids.
+// the sorted, paginated rowids. FTS5 `rank` (BM25 relevance) is always used as the primary
+// sort key, with the caller's orderBys as tiebreakers.
 //
 // Phase 2 uses the full SelectBuilder (with all JOINs) but
 // filters by the small set of rowids from Phase 1, making the JOINs nearly free.
 //
-// If the ORDER BY references columns from other tables (e.g. aggregated stats), the two-phase
-// approach is skipped and the original single-query approach is used instead.
+// If the caller's ORDER BY contains complex expressions (function calls, aggregations),
+// they are dropped from the two-phase query and only `rank` + simple columns are used.
 func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, size int, results any, orderBys ...string) error {
-	// Qualify ORDER BY columns for the lightweight query to avoid ambiguity between
-	// the main table and the FTS table. Only simple column names (no expressions with
-	// parens or commas) can be safely qualified; complex expressions indicate
-	// the sort depends on JOINed tables, so we fall back to the single-query approach.
-	qualifiedOrderBys := make([]string, 0, len(orderBys))
+	// Build qualified ORDER BY: always start with FTS rank, then add caller's columns as tiebreakers.
+	// Complex expressions (containing parens, commas) are skipped since they can't be used
+	// in the lightweight Phase 1 query without extra JOINs.
+	qualifiedOrderBys := []string{fts.ftsTable + ".rank"}
 	for _, ob := range orderBys {
 		qualified := qualifyOrderBy(r.tableName, fts.ftsTable, ob)
 		if qualified == "" {
-			// Complex expression that can't be used in the lightweight query — fall back.
-			sq = sq.Where(fts)
-			sq = sq.OrderBy(orderBys...)
-			sq = sq.Where(Eq{r.tableName + ".missing": false})
-			sq = sq.Limit(uint64(size)).Offset(uint64(offset))
-			return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
+			// Complex expression — skip it in the two-phase query.
+			// The rank column provides the primary ordering; tiebreakers are best-effort.
+			continue
 		}
 		qualifiedOrderBys = append(qualifiedOrderBys, qualified)
 	}
@@ -124,11 +113,14 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	}
 
 	// Phase 2: Hydrate the rowids with the full SelectBuilder (all JOINs included).
-	// Join the FTS table so we can ORDER BY rank to preserve Phase 1's relevance ordering.
-	sq = sq.Where(r.tableName+".rowid IN ("+rowidSQL+")", rowidArgs...)
-	ftsJoin := fts.ftsTable + " ON " + fts.ftsTable + ".rowid = " + r.tableName + ".rowid AND " + fts.ftsTable + " MATCH ?"
-	sq = sq.Join(ftsJoin, fts.matchExpr)
-	sq = sq.OrderBy(qualifiedOrderBys...)
+	// Use a subquery join with row_number to preserve Phase 1's relevance ordering
+	// without re-joining the FTS table (which would be expensive).
+	rankedSubquery := fmt.Sprintf(
+		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
+		rowidSQL,
+	)
+	sq = sq.Join(rankedSubquery+" ON "+r.tableName+".rowid = _ranked._rid", rowidArgs...)
+	sq = sq.OrderBy("_ranked._rn")
 	return r.queryAll(sq, results)
 }
 

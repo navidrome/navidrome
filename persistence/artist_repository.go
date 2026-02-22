@@ -523,7 +523,7 @@ func (r *artistRepository) Search(q string, offset int, size int, options ...mod
 	} else {
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
 		err := r.doSearch(r.selectArtist(options...), q, offset, size, &res, "artist.id",
-			"rank", "name")
+			"sum(json_extract(stats, '$.total.m')) desc", "name")
 		if err != nil {
 			return nil, fmt.Errorf("searching artist by query %q: %w", q, err)
 		}
