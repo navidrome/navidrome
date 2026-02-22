@@ -219,7 +219,7 @@ describe('lyrics helpers', () => {
           start: 1000,
           end: 3000,
           value: 'Hello world',
-          role: 'x-bg',
+          role: 'bg',
           cue: [{ start: 2000, end: 2500, value: 'world' }],
         },
       ],
@@ -233,7 +233,7 @@ describe('lyrics helpers', () => {
         value: 'Hello world',
         tokens: [
           { start: 1000, end: 1500, value: 'Hello', role: '' },
-          { start: 2000, end: 2500, value: 'world', role: 'x-bg' },
+          { start: 2000, end: 2500, value: 'world', role: 'bg' },
         ],
       },
     ])
