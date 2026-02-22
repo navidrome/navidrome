@@ -138,20 +138,17 @@ var _ = Describe("likeSearchExpr", func() {
 })
 
 var _ = DescribeTable("qualifyOrderBy",
-	func(tableName, ftsTable, orderBy, expected string) {
-		Expect(qualifyOrderBy(tableName, ftsTable, orderBy)).To(Equal(expected))
+	func(tableName, orderBy, expected string) {
+		Expect(qualifyOrderBy(tableName, orderBy)).To(Equal(expected))
 	},
-	Entry("returns empty string for empty input", "artist", "artist_fts", "", ""),
-	Entry("qualifies simple column with table name", "artist", "artist_fts", "name", "artist.name"),
-	Entry("qualifies column with direction", "artist", "artist_fts", "name desc", "artist.name desc"),
-	Entry("qualifies rank with FTS table name", "artist", "artist_fts", "rank", "artist_fts.rank"),
-	Entry("qualifies rank with direction using FTS table name", "artist", "artist_fts", "rank asc", "artist_fts.rank asc"),
-	Entry("preserves already-qualified column", "artist", "artist_fts", "artist.name", "artist.name"),
-	Entry("preserves already-qualified column with direction", "artist", "artist_fts", "artist.name desc", "artist.name desc"),
-	Entry("returns empty for function call expression", "artist", "artist_fts", "sum(json_extract(stats, '$.total.m')) desc", ""),
-	Entry("returns empty for expression with comma", "artist", "artist_fts", "a, b", ""),
-	Entry("qualifies media_file column", "media_file", "media_file_fts", "title", "media_file.title"),
-	Entry("qualifies rank for media_file FTS table", "media_file", "media_file_fts", "rank", "media_file_fts.rank"),
+	Entry("returns empty string for empty input", "artist", "", ""),
+	Entry("qualifies simple column with table name", "artist", "name", "artist.name"),
+	Entry("qualifies column with direction", "artist", "name desc", "artist.name desc"),
+	Entry("preserves already-qualified column", "artist", "artist.name", "artist.name"),
+	Entry("preserves already-qualified column with direction", "artist", "artist.name desc", "artist.name desc"),
+	Entry("returns empty for function call expression", "artist", "sum(json_extract(stats, '$.total.m')) desc", ""),
+	Entry("returns empty for expression with comma", "artist", "a, b", ""),
+	Entry("qualifies media_file column", "media_file", "title", "media_file.title"),
 )
 
 var _ = Describe("ftsSearchExpr", func() {
@@ -187,6 +184,26 @@ var _ = Describe("ftsSearchExpr", func() {
 			Expect(fts.tableName).To(Equal(table))
 			Expect(fts.ftsTable).To(Equal(table + "_fts"))
 		}
+	})
+
+	It("builds bm25() rank expression with column weights", func() {
+		expr := ftsSearchExpr("media_file", "beatles")
+		fts, ok := expr.(*ftsFilter)
+		Expect(ok).To(BeTrue())
+		Expect(fts.rankExpr).To(HavePrefix("bm25(media_file_fts,"))
+		Expect(fts.rankExpr).To(ContainSubstring("10.0"))
+
+		expr = ftsSearchExpr("artist", "beatles")
+		fts, ok = expr.(*ftsFilter)
+		Expect(ok).To(BeTrue())
+		Expect(fts.rankExpr).To(HavePrefix("bm25(artist_fts,"))
+	})
+
+	It("falls back to ftsTable.rank for unknown tables", func() {
+		expr := ftsSearchExpr("unknown_table", "test")
+		fts, ok := expr.(*ftsFilter)
+		Expect(ok).To(BeTrue())
+		Expect(fts.rankExpr).To(Equal("unknown_table_fts.rank"))
 	})
 
 	It("wraps query with column filter for known tables", func() {

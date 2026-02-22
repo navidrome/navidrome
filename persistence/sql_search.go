@@ -88,9 +88,9 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	// Build qualified ORDER BY: always start with FTS rank, then add caller's columns as tiebreakers.
 	// Complex expressions (containing parens, commas) are skipped since they can't be used
 	// in the lightweight Phase 1 query without extra JOINs.
-	qualifiedOrderBys := []string{fts.ftsTable + ".rank"}
+	qualifiedOrderBys := []string{fts.rankExpr}
 	for _, ob := range orderBys {
-		qualified := qualifyOrderBy(r.tableName, fts.ftsTable, ob)
+		qualified := qualifyOrderBy(r.tableName, ob)
 		if qualified == "" {
 			// Complex expression — skip it in the two-phase query.
 			// The rank column provides the primary ordering; tiebreakers are best-effort.
@@ -125,11 +125,9 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 }
 
 // qualifyOrderBy prepends tableName to a simple ORDER BY column name if it's not already
-// qualified. The ftsTable parameter is used to qualify the special "rank" column, which
-// belongs to the FTS table rather than the main table. Returns empty string for complex
-// expressions (containing parens, commas, or function calls) that can't be safely used
-// in a lightweight query without extra JOINs.
-func qualifyOrderBy(tableName, ftsTable, orderBy string) string {
+// qualified. Returns empty string for complex expressions (containing parens, commas, or
+// function calls) that can't be safely used in the lightweight Phase 1 query without extra JOINs.
+func qualifyOrderBy(tableName, orderBy string) string {
 	orderBy = strings.TrimSpace(orderBy)
 	if orderBy == "" {
 		return ""
@@ -148,12 +146,6 @@ func qualifyOrderBy(tableName, ftsTable, orderBy string) string {
 	// Already qualified (contains a dot)
 	if strings.Contains(col, ".") {
 		return orderBy
-	}
-
-	// The "rank" column belongs to the FTS table, not the main table
-	if col == "rank" {
-		parts[0] = ftsTable + "." + col
-		return strings.Join(parts, " ")
 	}
 
 	// Qualify with table name
