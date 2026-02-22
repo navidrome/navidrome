@@ -56,9 +56,7 @@ func applySearchFilter(sq SelectBuilder, tableName, query, naturalOrder string, 
 	}
 	sq = sq.Where(filter.where)
 	if filter.rankOrder != "" {
-		rankArgs := make([]interface{}, len(filter.rankArgs))
-		copy(rankArgs, filter.rankArgs)
-		sq = sq.OrderByClause(filter.rankOrder, rankArgs...)
+		sq = sq.OrderByClause(filter.rankOrder, filter.rankArgs...)
 	}
 	return sq.OrderBy(orderBys...)
 }
