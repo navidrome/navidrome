@@ -1,13 +1,16 @@
 package lyrics
 
 import (
-	"testing"
-
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/gg"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func TestParseTTML_MultiLanguageAndTiming(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+var _ = Describe("parseTTML", func() {
+	Describe("Multi-language and timing", func() {
+		It("should parse multiple language divs with inherited offsets and frame/tick timing", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:frameRate="30" ttp:subFrameRate="2" ttp:tickRate="10">
   <body>
     <div xml:lang="eng" begin="1s">
@@ -20,33 +23,30 @@ func TestParseTTML_MultiLanguageAndTiming(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 2 {
-		t.Fatalf("expected 2 lyric tracks, got %d", len(list))
-	}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(2))
 
-	eng := list[0]
-	if eng.Lang != "eng" {
-		t.Fatalf("expected first track language 'eng', got %q", eng.Lang)
-	}
-	if !eng.Synced {
-		t.Fatal("expected first track to be synced")
-	}
-	assertTimedLine(t, eng.Line[0], 3000, "Line one")
-	assertTimedLine(t, eng.Line[1], 4517, "Line two\nwith break")
+			By("parsing the English track")
+			eng := list[0]
+			Expect(eng.Lang).To(Equal("eng"))
+			Expect(eng.Synced).To(BeTrue())
+			Expect(eng.Line[0].Start).To(Equal(gg.P(int64(3000))))
+			Expect(eng.Line[0].Value).To(Equal("Line one"))
+			Expect(eng.Line[1].Start).To(Equal(gg.P(int64(4517))))
+			Expect(eng.Line[1].Value).To(Equal("Line two\nwith break"))
 
-	por := list[1]
-	if por.Lang != "por" {
-		t.Fatalf("expected second track language 'por', got %q", por.Lang)
-	}
-	assertTimedLine(t, por.Line[0], 4500, "Linha")
-}
+			By("parsing the Portuguese track")
+			por := list[1]
+			Expect(por.Lang).To(Equal("por"))
+			Expect(por.Line[0].Start).To(Equal(gg.P(int64(4500))))
+			Expect(por.Line[0].Value).To(Equal("Linha"))
+		})
+	})
 
-func TestParseTTML_UnsupportedCueSkipped(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Unsupported cue handling", func() {
+		It("should skip wallclock cues and keep valid ones", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body xml:lang="eng">
     <div>
@@ -56,21 +56,18 @@ func TestParseTTML_UnsupportedCueSkipped(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 lyric track, got %d", len(list))
-	}
-	if len(list[0].Line) != 1 {
-		t.Fatalf("expected 1 line in lyric track, got %d", len(list[0].Line))
-	}
-	assertTimedLine(t, list[0].Line[0], 1000, "Keep me")
-}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Start).To(Equal(gg.P(int64(1000))))
+			Expect(list[0].Line[0].Value).To(Equal("Keep me"))
+		})
+	})
 
-func TestParseTTML_BeginEndDurWithInheritance(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Begin/End/Dur with inheritance", func() {
+		It("should correctly accumulate nested timing from body, div, and p elements", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body xml:lang="eng" begin="10s">
     <div begin="5s" dur="8s">
@@ -80,25 +77,21 @@ func TestParseTTML_BeginEndDurWithInheritance(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 lyric track, got %d", len(list))
-	}
-	if list[0].Lang != "eng" {
-		t.Fatalf("expected language 'eng', got %q", list[0].Lang)
-	}
-	if len(list[0].Line) != 2 {
-		t.Fatalf("expected 2 lines, got %d", len(list[0].Line))
-	}
-	assertTimedLine(t, list[0].Line[0], 16000, "First line")
-	assertTimedLine(t, list[0].Line[1], 18000, "Second line")
-}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Lang).To(Equal("eng"))
+			Expect(list[0].Line).To(HaveLen(2))
+			Expect(list[0].Line[0].Start).To(Equal(gg.P(int64(16000))))
+			Expect(list[0].Line[0].Value).To(Equal("First line"))
+			Expect(list[0].Line[1].Start).To(Equal(gg.P(int64(18000))))
+			Expect(list[0].Line[1].Value).To(Equal("Second line"))
+		})
+	})
 
-func TestParseTTML_NonStandardBareSecondOffsets(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Non-standard bare second offsets", func() {
+		It("should parse bare decimal numbers as seconds", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body xml:lang="eng" begin="10">
     <div>
@@ -108,22 +101,20 @@ func TestParseTTML_NonStandardBareSecondOffsets(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 lyric track, got %d", len(list))
-	}
-	if len(list[0].Line) != 2 {
-		t.Fatalf("expected 2 lines, got %d", len(list[0].Line))
-	}
-	assertTimedLine(t, list[0].Line[0], 10170, "First line")
-	assertTimedLine(t, list[0].Line[1], 13710, "Second line")
-}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(2))
+			Expect(list[0].Line[0].Start).To(Equal(gg.P(int64(10170))))
+			Expect(list[0].Line[0].Value).To(Equal("First line"))
+			Expect(list[0].Line[1].Start).To(Equal(gg.P(int64(13710))))
+			Expect(list[0].Line[1].Value).To(Equal("Second line"))
+		})
+	})
 
-func TestParseTTML_WordTimingTokens(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Word timing tokens", func() {
+		It("should extract timed tokens from spans including background role", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
   <body xml:lang="eng">
     <div>
@@ -135,33 +126,26 @@ func TestParseTTML_WordTimingTokens(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 lyric track, got %d", len(list))
-	}
-	if len(list[0].Line) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(list[0].Line))
-	}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
 
-	line := list[0].Line[0]
-	assertTimedLine(t, line, 1000, "Hello\necho")
-	if line.End == nil || *line.End != 3000 {
-		t.Fatalf("expected line end 3000, got %v", line.End)
-	}
-	if len(line.Token) != 3 {
-		t.Fatalf("expected 3 timed tokens, got %d", len(line.Token))
-	}
+			line := list[0].Line[0]
+			Expect(line.Start).To(Equal(gg.P(int64(1000))))
+			Expect(line.Value).To(Equal("Hello\necho"))
+			Expect(line.End).To(Equal(gg.P(int64(3000))))
+			Expect(line.Token).To(HaveLen(3))
 
-	assertToken(t, line.Token[0], 1000, 1400, "He", "")
-	assertToken(t, line.Token[1], 1400, 1800, "llo", "")
-	assertToken(t, line.Token[2], 2000, 2500, "echo", "x-bg")
-}
+			Expect(line.Token[0]).To(Equal(model.Token{Start: gg.P(int64(1000)), End: gg.P(int64(1400)), Value: "He"}))
+			Expect(line.Token[1]).To(Equal(model.Token{Start: gg.P(int64(1400)), End: gg.P(int64(1800)), Value: "llo"}))
+			Expect(line.Token[2]).To(Equal(model.Token{Start: gg.P(int64(2000)), End: gg.P(int64(2500)), Value: "echo", Role: "x-bg"}))
+		})
+	})
 
-func TestParseTTML_AmbiguousDecimalTimingPrefersAbsoluteWhenInsideParentWindow(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Ambiguous decimal timing", func() {
+		It("should prefer absolute timing when values fall inside parent window", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body xml:lang="eng">
     <div begin="37.870" end="45.570">
@@ -173,28 +157,24 @@ func TestParseTTML_AmbiguousDecimalTimingPrefersAbsoluteWhenInsideParentWindow(t
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 || len(list[0].Line) != 1 {
-		t.Fatalf("expected one parsed lyric line, got %#v", list)
-	}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
 
-	line := list[0].Line[0]
-	assertTimedLine(t, line, 43444, "go\ngo")
-	if line.End == nil || *line.End != 45570 {
-		t.Fatalf("expected line end 45570, got %v", line.End)
-	}
-	if len(line.Token) != 2 {
-		t.Fatalf("expected 2 timed tokens, got %d", len(line.Token))
-	}
-	assertToken(t, line.Token[0], 43444, 43716, "go", "")
-	assertToken(t, line.Token[1], 43716, 43887, "go", "")
-}
+			line := list[0].Line[0]
+			Expect(line.Start).To(Equal(gg.P(int64(43444))))
+			Expect(line.Value).To(Equal("go\ngo"))
+			Expect(line.End).To(Equal(gg.P(int64(45570))))
+			Expect(line.Token).To(HaveLen(2))
+			Expect(line.Token[0]).To(Equal(model.Token{Start: gg.P(int64(43444)), End: gg.P(int64(43716)), Value: "go"}))
+			Expect(line.Token[1]).To(Equal(model.Token{Start: gg.P(int64(43716)), End: gg.P(int64(43887)), Value: "go"}))
+		})
+	})
 
-func TestParseTTML_UnsyncedFallback(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Unsynced fallback", func() {
+		It("should return unsynced lyrics when no timing is present", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body>
     <div>
@@ -203,32 +183,20 @@ func TestParseTTML_UnsyncedFallback(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 lyric track, got %d", len(list))
-	}
-	if list[0].Lang != "xxx" {
-		t.Fatalf("expected default language 'xxx', got %q", list[0].Lang)
-	}
-	if list[0].Synced {
-		t.Fatal("expected lyric track to be unsynced")
-	}
-	if len(list[0].Line) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(list[0].Line))
-	}
-	if list[0].Line[0].Start != nil {
-		t.Fatalf("expected line start to be nil, got %v", *list[0].Line[0].Start)
-	}
-	if list[0].Line[0].Value != "No timing here" {
-		t.Fatalf("expected line value %q, got %q", "No timing here", list[0].Line[0].Value)
-	}
-}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Lang).To(Equal("xxx"))
+			Expect(list[0].Synced).To(BeFalse())
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Start).To(BeNil())
+			Expect(list[0].Line[0].Value).To(Equal("No timing here"))
+		})
+	})
 
-func TestParseTTML_MetadataTracksByKey(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Metadata tracks", func() {
+		It("should produce main, translation, and pronunciation tracks from iTunesMetadata", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
   <head>
     <metadata>
@@ -255,63 +223,42 @@ func TestParseTTML_MetadataTracksByKey(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
-	if len(list) != 3 {
-		t.Fatalf("expected 3 lyric tracks, got %d", len(list))
-	}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(3))
 
-	main := list[0]
-	if main.Kind != "main" {
-		t.Fatalf("expected main track kind %q, got %q", "main", main.Kind)
-	}
-	if main.Lang != "ja" {
-		t.Fatalf("expected main track language %q, got %q", "ja", main.Lang)
-	}
-	if len(main.Line) != 2 {
-		t.Fatalf("expected 2 lines in main track, got %d", len(main.Line))
-	}
+			By("checking the main track")
+			main := list[0]
+			Expect(main.Kind).To(Equal("main"))
+			Expect(main.Lang).To(Equal("ja"))
+			Expect(main.Line).To(HaveLen(2))
 
-	translation := list[1]
-	if translation.Kind != "translation" {
-		t.Fatalf("expected translation kind %q, got %q", "translation", translation.Kind)
-	}
-	if translation.Lang != "es" {
-		t.Fatalf("expected translation language %q, got %q", "es", translation.Lang)
-	}
-	if len(translation.Line) != 1 {
-		t.Fatalf("expected 1 translation line, got %d", len(translation.Line))
-	}
-	assertTimedLine(t, translation.Line[0], 1000, "Hola")
-	if translation.Line[0].End == nil || *translation.Line[0].End != 1500 {
-		t.Fatalf("expected translation line end %d, got %v", 1500, translation.Line[0].End)
-	}
+			By("checking the translation track")
+			translation := list[1]
+			Expect(translation.Kind).To(Equal("translation"))
+			Expect(translation.Lang).To(Equal("es"))
+			Expect(translation.Line).To(HaveLen(1))
+			Expect(translation.Line[0].Start).To(Equal(gg.P(int64(1000))))
+			Expect(translation.Line[0].Value).To(Equal("Hola"))
+			Expect(translation.Line[0].End).To(Equal(gg.P(int64(1500))))
 
-	pronunciation := list[2]
-	if pronunciation.Kind != "pronunciation" {
-		t.Fatalf("expected pronunciation kind %q, got %q", "pronunciation", pronunciation.Kind)
-	}
-	if pronunciation.Lang != "ja-latn" {
-		t.Fatalf("expected pronunciation language %q, got %q", "ja-latn", pronunciation.Lang)
-	}
-	if len(pronunciation.Line) != 1 {
-		t.Fatalf("expected 1 pronunciation line, got %d", len(pronunciation.Line))
-	}
-	assertTimedLine(t, pronunciation.Line[0], 2000, "konni")
-	if pronunciation.Line[0].End == nil || *pronunciation.Line[0].End != 2600 {
-		t.Fatalf("expected pronunciation line end %d, got %v", 2600, pronunciation.Line[0].End)
-	}
-	if len(pronunciation.Line[0].Token) != 2 {
-		t.Fatalf("expected 2 pronunciation tokens, got %d", len(pronunciation.Line[0].Token))
-	}
-	assertToken(t, pronunciation.Line[0].Token[0], 2000, 2300, "ko", "")
-	assertToken(t, pronunciation.Line[0].Token[1], 2300, 2600, "nni", "")
-}
+			By("checking the pronunciation track")
+			pronunciation := list[2]
+			Expect(pronunciation.Kind).To(Equal("pronunciation"))
+			Expect(pronunciation.Lang).To(Equal("ja-latn"))
+			Expect(pronunciation.Line).To(HaveLen(1))
+			Expect(pronunciation.Line[0].Start).To(Equal(gg.P(int64(2000))))
+			Expect(pronunciation.Line[0].Value).To(Equal("konni"))
+			Expect(pronunciation.Line[0].End).To(Equal(gg.P(int64(2600))))
+			Expect(pronunciation.Line[0].Token).To(HaveLen(2))
+			Expect(pronunciation.Line[0].Token[0]).To(Equal(model.Token{Start: gg.P(int64(2000)), End: gg.P(int64(2300)), Value: "ko"}))
+			Expect(pronunciation.Line[0].Token[1]).To(Equal(model.Token{Start: gg.P(int64(2300)), End: gg.P(int64(2600)), Value: "nni"}))
+		})
+	})
 
-func TestParseTTML_PronunciationBareDecimalEndTimes(t *testing.T) {
-	content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	Describe("Pronunciation with bare decimal end times", func() {
+		It("should correctly parse bare decimal times in transliteration spans", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
   <head>
     <metadata>
@@ -331,68 +278,26 @@ func TestParseTTML_PronunciationBareDecimalEndTimes(t *testing.T) {
   </body>
 </tt>`)
 
-	list, err := parseTTML(content)
-	if err != nil {
-		t.Fatalf("parseTTML returned error: %v", err)
-	}
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
 
-	var pronunciation *model.Lyrics
-	for i := range list {
-		if list[i].Kind == "pronunciation" {
-			pronunciation = &list[i]
-			break
-		}
-	}
-	if pronunciation == nil {
-		t.Fatal("expected a pronunciation track")
-	}
-	if len(pronunciation.Line) != 1 {
-		t.Fatalf("expected 1 pronunciation line, got %d", len(pronunciation.Line))
-	}
+			var pronunciation *model.Lyrics
+			for i := range list {
+				if list[i].Kind == "pronunciation" {
+					pronunciation = &list[i]
+					break
+				}
+			}
+			Expect(pronunciation).ToNot(BeNil())
+			Expect(pronunciation.Line).To(HaveLen(1))
 
-	line := pronunciation.Line[0]
-	assertTimedLine(t, line, 2747, "I woke up")
-	if len(line.Token) != 3 {
-		t.Fatalf("expected 3 tokens, got %d", len(line.Token))
-	}
-	assertToken(t, line.Token[0], 2747, 3018, "I", "")
-	assertToken(t, line.Token[1], 3018, 3179, "woke", "")
-	assertToken(t, line.Token[2], 3179, 3582, "up", "")
-}
-
-func assertTimedLine(t *testing.T, line model.Line, expectedStart int64, expectedValue string) {
-	t.Helper()
-
-	if line.Start == nil {
-		t.Fatal("expected line start to be set, got nil")
-	}
-	if *line.Start != expectedStart {
-		t.Fatalf("expected line start %d, got %d", expectedStart, *line.Start)
-	}
-	if line.Value != expectedValue {
-		t.Fatalf("expected line value %q, got %q", expectedValue, line.Value)
-	}
-}
-
-func assertToken(t *testing.T, token model.Token, expectedStart int64, expectedEnd int64, expectedValue string, expectedRole string) {
-	t.Helper()
-
-	if token.Start == nil {
-		t.Fatal("expected token start to be set, got nil")
-	}
-	if *token.Start != expectedStart {
-		t.Fatalf("expected token start %d, got %d", expectedStart, *token.Start)
-	}
-	if token.End == nil {
-		t.Fatal("expected token end to be set, got nil")
-	}
-	if *token.End != expectedEnd {
-		t.Fatalf("expected token end %d, got %d", expectedEnd, *token.End)
-	}
-	if token.Value != expectedValue {
-		t.Fatalf("expected token value %q, got %q", expectedValue, token.Value)
-	}
-	if token.Role != expectedRole {
-		t.Fatalf("expected token role %q, got %q", expectedRole, token.Role)
-	}
-}
+			line := pronunciation.Line[0]
+			Expect(line.Start).To(Equal(gg.P(int64(2747))))
+			Expect(line.Value).To(Equal("I woke up"))
+			Expect(line.Token).To(HaveLen(3))
+			Expect(line.Token[0]).To(Equal(model.Token{Start: gg.P(int64(2747)), End: gg.P(int64(3018)), Value: "I"}))
+			Expect(line.Token[1]).To(Equal(model.Token{Start: gg.P(int64(3018)), End: gg.P(int64(3179)), Value: "woke"}))
+			Expect(line.Token[2]).To(Equal(model.Token{Start: gg.P(int64(3179)), End: gg.P(int64(3582)), Value: "up"}))
+		})
+	})
+})
