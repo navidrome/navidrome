@@ -21,9 +21,20 @@ struct SubsonicAPICallResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SubsonicAPICallRawRequest {
+    uri: String,
+}
+
 #[host_fn]
 extern "ExtismHost" {
     fn subsonicapi_call(input: Json<SubsonicAPICallRequest>) -> Json<SubsonicAPICallResponse>;
+}
+
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn subsonicapi_callraw(offset: u64) -> u64;
 }
 
 /// Call executes a Subsonic API request and returns the JSON response.
@@ -51,4 +62,57 @@ pub fn call(uri: &str) -> Result<String, Error> {
     }
 
     Ok(response.0.response_json)
+}
+
+/// CallRaw executes a Subsonic API request and returns the raw binary response.
+/// Optimized for binary endpoints like getCoverArt and stream that return
+/// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+///
+/// # Arguments
+/// * `uri` - String parameter.
+///
+/// # Returns
+/// A tuple of (content_type, data) with the raw binary response.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn call_raw(uri: &str) -> Result<(String, Vec<u8>), Error> {
+    let req = SubsonicAPICallRawRequest {
+        uri: uri.to_owned(),
+    };
+    let input_bytes = serde_json::to_vec(&req).map_err(|e| Error::msg(e.to_string()))?;
+    let input_mem = Memory::from_bytes(&input_bytes).map_err(|e| Error::msg(e.to_string()))?;
+
+    let response_offset = unsafe { subsonicapi_callraw(input_mem.offset()) };
+
+    let response_mem = Memory::find(response_offset)
+        .ok_or_else(|| Error::msg("empty response from host"))?;
+    let response_bytes = response_mem.to_vec();
+
+    if response_bytes.is_empty() {
+        return Err(Error::msg("empty response from host"));
+    }
+    if response_bytes[0] == 0x01 {
+        let msg = String::from_utf8_lossy(&response_bytes[1..]).to_string();
+        return Err(Error::msg(msg));
+    }
+    if response_bytes[0] != 0x00 {
+        return Err(Error::msg("unknown response status"));
+    }
+    if response_bytes.len() < 5 {
+        return Err(Error::msg("malformed raw response: incomplete header"));
+    }
+    let ct_len = u32::from_be_bytes([
+        response_bytes[1],
+        response_bytes[2],
+        response_bytes[3],
+        response_bytes[4],
+    ]) as usize;
+    if ct_len > response_bytes.len() - 5 {
+        return Err(Error::msg("malformed raw response: content-type overflow"));
+    }
+    let ct_end = 5 + ct_len;
+    let content_type = String::from_utf8_lossy(&response_bytes[5..ct_end]).to_string();
+    let data = response_bytes[ct_end..].to_vec();
+    Ok((content_type, data))
 }

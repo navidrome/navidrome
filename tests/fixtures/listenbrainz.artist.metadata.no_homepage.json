@@ -1,0 +1,15 @@
+[
+	{
+		"area": "Japan",
+		"artist_mbid": "7c2cc610-f998-43ef-a08f-dae3344b8973",
+		"mbid": "7c2cc610-f998-43ef-a08f-dae3344b8973",
+		"name": "Feryquitous",
+		"rels": {
+			"free streaming": "https://www.deezer.com/artist/9841008",
+			"purchase for download": "https://itunes.apple.com/jp/artist/id1083544578",
+			"social network": "https://twitter.com/Feryquitous_",
+			"youtube": "https://www.youtube.com/channel/UCj2nw_9puY3sJoDbkE-FCQA"
+		},
+		"type": "Person"
+	}
+]

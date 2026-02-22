@@ -102,6 +102,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	similarArtists, _ := json.Marshal(sa)
 	m["similar_artists"] = string(similarArtists)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
+	m["search_normalized"] = normalizeForFTS(a.Name)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -138,7 +139,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"missing":    booleanFilter,
 		"library_id": artistLibraryIdFilter,
 	})
-	r.setSortMappings(map[string]string{
+	r.setSortMappings(map[string]string{ //nolint:gosec
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",
@@ -164,7 +165,7 @@ func roleFilter(_ string, role any) Sqlizer {
 }
 
 // artistLibraryIdFilter filters artists based on library access through the library_artist table
-func artistLibraryIdFilter(_ string, value interface{}) Sqlizer {
+func artistLibraryIdFilter(_ string, value any) Sqlizer {
 	return Eq{"library_artist.library_id": value}
 }
 
@@ -534,11 +535,11 @@ func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *artistRepository) Read(id string) (interface{}, error) {
+func (r *artistRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	role := "total"
 	if len(options) > 0 {
 		if v, ok := options[0].Filters["role"].(string); ok {
@@ -555,7 +556,7 @@ func (r *artistRepository) EntityName() string {
 	return "artist"
 }
 
-func (r *artistRepository) NewInstance() interface{} {
+func (r *artistRepository) NewInstance() any {
 	return &model.Artist{}
 }
 

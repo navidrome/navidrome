@@ -36,7 +36,8 @@
         "bitDepth": "Profondeur de bits",
         "sampleRate": "Fréquence d'échantillonnage",
         "missing": "Manquant",
-        "libraryName": "Bibliothèque"
+        "libraryName": "Bibliothèque",
+        "composer": "Compositeur·e"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -46,7 +47,8 @@
         "download": "Télécharger",
         "playNext": "Jouer ensuite",
         "info": "Plus d'informations",
-        "showInPlaylist": "Montrer dans la playlist"
+        "showInPlaylist": "Montrer dans la playlist",
+        "instantMix": "Mix instantanné"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Scan en cours...",
         "noLibrariesAssigned": "Aucune bibliothèque pour cet utilisateur"
       }
+    },
+    "plugin": {
+      "name": "Extension |||| Extensions",
+      "fields": {
+        "id": "ID",
+        "name": "Nom",
+        "description": "Description",
+        "version": "Version",
+        "author": "Auteur.e",
+        "website": "Site web",
+        "permissions": "Permissions",
+        "enabled": "Activée",
+        "status": "Statut",
+        "path": "Chemin",
+        "lastError": "Erreur",
+        "hasError": "Erreur",
+        "updatedAt": "Mise à jour",
+        "createdAt": "Installée",
+        "configKey": "Clef",
+        "configValue": "Valeur",
+        "allUsers": "Autoriser tous les utilisateur·rices",
+        "selectedUsers": "Utilisateur·rices sélectionné.e.s",
+        "allLibraries": "Autoriser toutes les bibliothèques",
+        "selectedLibraries": "Bibliothèques sélectionnées"
+      },
+      "sections": {
+        "status": "Statut",
+        "info": "Informations de l'extension",
+        "configuration": "Configuration",
+        "manifest": "Manifeste",
+        "usersPermission": "Permissions utilisateur·ices",
+        "libraryPermission": "Permissions des bibliothèques"
+      },
+      "status": {
+        "enabled": "Activées",
+        "disabled": "Désactivées"
+      },
+      "actions": {
+        "enable": "Activer",
+        "disable": "Désactiver",
+        "disabledDueToError": "L'erreur doit être réglée avant de pouvoir activer la bibliothèque",
+        "disabledUsersRequired": "Sélectionner des utilisateur·ices avant d'activer la bibliothèque",
+        "disabledLibrariesRequired": "Sélectionner au moins une bibliothèque",
+        "addConfig": "Ajouter une configuration",
+        "rescan": "Rescanner"
+      },
+      "notifications": {
+        "enabled": "Extension activée",
+        "disabled": "Extension désactivée",
+        "updated": "Extension mise à jour",
+        "error": "Erreur pendant la mise à jour de l'extension"
+      },
+      "validation": {
+        "invalidJson": "La configuration doit être un JSON valide"
+      },
+      "messages": {
+        "configHelp": "Configurer l'extension en utilisant des paires clef/valeurs. Laisser vide si l'extension ne requiert aucune configuration.",
+        "clickPermissions": "Cliquer sur une permission pour plus de détails",
+        "noConfig": "Aucune configuration",
+        "allUsersHelp": "Quand sélectionnée, l'extension aura accès à l'ensemble des utilisateur·rices, y compris ceux créé.e.s dans le future.",
+        "noUsers": "Aucun.e utilisateur·rice sélectionné.e",
+        "permissionReason": "Raison",
+        "usersRequired": "Cette extension nécessite un accès aux informations utilisateurs. Sélectionnez les utilisateur·rices autorisé.e.s ou sélectionnez 'Tout autoriser'.",
+        "allLibrariesHelp": "Quand sélectionnée, cette extension aura accès à l'ensemble des bibliothèques, y compris celles créées dans le futur.",
+        "noLibraries": "Aucune bibliothèque sélectionnée",
+        "librariesRequired": "Cette extension nécessite l'accès aux information de la bibliothèque. Sélectionnez à quelles bibliothèque cette extension a accès, ou sélectionnez 'Autoriser toutes les bibliothèques'.",
+        "requiredHosts": "Hôtes requis",
+        "configValidationError": "Erreur lors de la validation de la configuration",
+        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide."
+      },
+      "placeholders": {
+        "configKey": "clef",
+        "configValue": "valeur"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Supprimer tous les fichiers manquants",
     "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence.",
     "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
-    "noTopSongsFound": "Aucun meilleur titre n'a été trouvé"
+    "noTopSongsFound": "Aucun meilleur titre n'a été trouvé",
+    "startingInstantMix": "Chargement du mix instantanné..."
   },
   "menu": {
     "library": "Bibliothèque",

@@ -173,6 +173,16 @@ func (s Service) HasErrors() bool {
 	return false
 }
 
+// HasRawMethods returns true if any method in the service uses raw binary framing.
+func (s Service) HasRawMethods() bool {
+	for _, m := range s.Methods {
+		if m.Raw {
+			return true
+		}
+	}
+	return false
+}
+
 // Method represents a host function method within a service.
 type Method struct {
 	Name       string  // Go method name (e.g., "Call")
@@ -181,6 +191,7 @@ type Method struct {
 	Returns    []Param // Return values (excluding error)
 	HasError   bool    // Whether the method returns an error
 	Doc        string  // Documentation comment for the method
+	Raw        bool    // If true, response uses binary framing instead of JSON
 }
 
 // FunctionName returns the Extism host function export name.
@@ -466,9 +477,7 @@ func RustDefaultValue(goType string) string {
 	switch goType {
 	case "string":
 		return `String::new()`
-	case "int", "int32":
-		return "0"
-	case "int64":
+	case "int", "int32", "int64", "uint", "uint32", "uint64":
 		return "0"
 	case "float32", "float64":
 		return "0.0"
@@ -602,6 +611,10 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		return "i32"
 	case "int64":
 		return "i64"
+	case "uint", "uint32":
+		return "u32"
+	case "uint64":
+		return "u64"
 	case "float32":
 		return "f32"
 	case "float64":

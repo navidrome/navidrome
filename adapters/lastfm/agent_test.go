@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -38,12 +39,12 @@ var _ = Describe("lastfmAgent", func() {
 	})
 	Describe("lastFMConstructor", func() {
 		When("Agent is properly configured", func() {
-			It("uses configured api key and language", func() {
-				conf.Server.LastFM.Language = "pt"
+			It("uses configured api key and languages", func() {
+				conf.Server.LastFM.Languages = []string{"pt", "en"}
 				agent := lastFMConstructor(ds)
 				Expect(agent.apiKey).To(Equal("123"))
 				Expect(agent.secret).To(Equal("secret"))
-				Expect(agent.lang).To(Equal("pt"))
+				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 			})
 		})
 		When("Agent is disabled", func() {
@@ -71,7 +72,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -79,7 +80,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("returns the biography", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			Expect(agent.GetArtistBiography(ctx, "123", "U2", "")).To(Equal("U2 é uma das mais importantes bandas de rock de todos os tempos. Formada em 1976 em Dublin, composta por Bono (vocalista  e guitarrista), The Edge (guitarrista, pianista e backing vocal), Adam Clayton (baixista), Larry Mullen, Jr. (baterista e percussionista).\n\nDesde a década de 80, U2 é uma das bandas mais populares no mundo. Seus shows são únicos e um verdadeiro festival de efeitos especiais, além de serem um dos que mais arrecadam anualmente. <a href=\"https://www.last.fm/music/U2\">Read more on Last.fm</a>"))
+			Expect(agent.GetArtistBiography(ctx, "123", "U2", "")).To(Equal("U2 é uma das mais importantes bandas de rock de todos os tempos. Formada em 1976 em Dublin, composta por Bono (vocalista  e guitarrista), The Edge (guitarrista, pianista e backing vocal), Adam Clayton (baixista), Larry Mullen, Jr. (baterista e percussionista).\n\nDesde a década de 80, U2 é uma das bandas mais populares no mundo. Seus shows são únicos e um verdadeiro festival de efeitos especiais, além de serem um dos que mais arrecadam anualmente."))
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("U2"))
 		})
@@ -101,12 +102,129 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 
+	Describe("Language Fallback", func() {
+		Describe("GetArtistBiography", func() {
+			var agent *lastfmAgent
+			var httpClient *langAwareHttpClient
+
+			BeforeEach(func() {
+				httpClient = newLangAwareHttpClient()
+			})
+
+			It("returns content in first language when available (1 API call)", func() {
+				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Portuguese biography available
+				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+				httpClient.responses["pt"] = http.Response{Body: f, StatusCode: 200}
+
+				bio, err := agent.GetArtistBiography(ctx, "123", "U2", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(ContainSubstring("U2 é uma das mais importantes bandas de rock"))
+				Expect(httpClient.requestCount).To(Equal(1))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("pt"))
+			})
+
+			It("falls back to second language when first returns empty (2 API calls)", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Japanese returns empty/ignored biography (actual Last.fm response with just "Read more" link)
+				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// English returns full biography
+				fEn, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.en.json")
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+
+				bio, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(bio).To(ContainSubstring("Legião Urbana was a Brazilian post-punk band"))
+				Expect(httpClient.requestCount).To(Equal(2))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("ja"))
+				Expect(httpClient.requests[1].URL.Query().Get("lang")).To(Equal("en"))
+			})
+
+			It("returns ErrNotFound when all languages return empty", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Both languages return empty/ignored biography (using actual Last.fm response format)
+				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// Second language also returns empty
+				fXx, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+
+				_, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
+
+				Expect(err).To(MatchError(agents.ErrNotFound))
+				Expect(httpClient.requestCount).To(Equal(2))
+			})
+		})
+
+		Describe("GetAlbumInfo", func() {
+			var agent *lastfmAgent
+			var httpClient *langAwareHttpClient
+
+			BeforeEach(func() {
+				httpClient = newLangAwareHttpClient()
+			})
+
+			It("falls back to second language when first returns empty description (2 API calls)", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Japanese returns album without wiki/description (actual Last.fm response)
+				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				// English returns album with description
+				fEn, _ := os.Open("tests/fixtures/lastfm.album.getinfo.en.json")
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+
+				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albumInfo.Name).To(Equal("Dois"))
+				Expect(albumInfo.Description).To(ContainSubstring("segundo álbum de estúdio"))
+				Expect(httpClient.requestCount).To(Equal(2))
+				Expect(httpClient.requests[0].URL.Query().Get("lang")).To(Equal("ja"))
+				Expect(httpClient.requests[1].URL.Query().Get("lang")).To(Equal("en"))
+			})
+
+			It("returns album without description when all languages return empty", func() {
+				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				agent = lastFMConstructor(ds)
+				agent.client = newClient("API_KEY", "SECRET", httpClient)
+
+				// Both languages return album without description
+				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				fXx, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+
+				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albumInfo.Name).To(Equal("Dois"))
+				Expect(albumInfo.Description).To(BeEmpty())
+				Expect(httpClient.requestCount).To(Equal(2))
+			})
+		})
+	})
+
 	Describe("GetSimilarArtists", func() {
 		var agent *lastfmAgent
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -144,7 +262,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -177,6 +295,54 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 
+	Describe("GetSimilarSongsByTrack", func() {
+		var agent *lastfmAgent
+		var httpClient *tests.FakeHttpClient
+		BeforeEach(func() {
+			httpClient = &tests.FakeHttpClient{}
+			client := newClient("API_KEY", "SECRET", httpClient)
+			agent = lastFMConstructor(ds)
+			agent.client = client
+		})
+
+		It("returns similar songs", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			Expect(agent.GetSimilarSongsByTrack(ctx, "123", "Just Can't Get Enough", "Depeche Mode", "", 5)).To(Equal([]agents.Song{
+				{Name: "Dreaming of Me", MBID: "027b553e-7c74-3ed4-a95e-1d4fea51f174", Artist: "Depeche Mode", ArtistMBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"},
+				{Name: "Everything Counts", MBID: "5a5a3ca4-bdb8-4641-a674-9b54b9b319a6", Artist: "Depeche Mode", ArtistMBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"},
+				{Name: "Don't You Want Me", MBID: "", Artist: "The Human League", ArtistMBID: "7adaabfb-acfb-47bc-8c7c-59471c2f0db8"},
+				{Name: "Tainted Love", MBID: "", Artist: "Soft Cell", ArtistMBID: "7fb50287-029d-47cc-825a-235ca28024b2"},
+				{Name: "Blue Monday", MBID: "727e84c6-1b56-31dd-a958-a5f46305cec0", Artist: "New Order", ArtistMBID: "f1106b17-dcbb-45f6-b938-199ccfab50cc"},
+			}))
+			Expect(httpClient.RequestCount).To(Equal(1))
+			Expect(httpClient.SavedRequest.URL.Query().Get("track")).To(Equal("Just Can't Get Enough"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Depeche Mode"))
+		})
+
+		It("returns ErrNotFound when no similar songs found", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "UnknownTrack", "UnknownArtist", "", 3)
+			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		It("returns an error if Last.fm call fails", func() {
+			httpClient.Err = errors.New("error")
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+
+		It("returns an error if Last.fm call returns an error", func() {
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)
+			Expect(err).To(HaveOccurred())
+			Expect(httpClient.RequestCount).To(Equal(1))
+		})
+	})
+
 	Describe("Scrobbling", func() {
 		var agent *lastfmAgent
 		var httpClient *tests.FakeHttpClient
@@ -184,7 +350,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "en", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			track = &model.MediaFile{
@@ -217,7 +383,8 @@ var _ = Describe("lastfmAgent", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				sentParams := httpClient.SavedRequest.URL.Query()
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
 				Expect(sentParams.Get("method")).To(Equal("track.updateNowPlaying"))
 				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
@@ -245,7 +412,8 @@ var _ = Describe("lastfmAgent", func() {
 					err := agent.NowPlaying(ctx, "user-1", track, 0)
 
 					Expect(err).ToNot(HaveOccurred())
-					sentParams := httpClient.SavedRequest.URL.Query()
+					body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+					sentParams, _ := url.ParseQuery(string(body))
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
@@ -261,7 +429,8 @@ var _ = Describe("lastfmAgent", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
-				sentParams := httpClient.SavedRequest.URL.Query()
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
 				Expect(sentParams.Get("method")).To(Equal("track.scrobble"))
 				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
@@ -286,7 +455,8 @@ var _ = Describe("lastfmAgent", func() {
 					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
 					Expect(err).ToNot(HaveOccurred())
-					sentParams := httpClient.SavedRequest.URL.Query()
+					body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+					sentParams, _ := url.ParseQuery(string(body))
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
@@ -354,7 +524,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -365,7 +535,7 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(agent.GetAlbumInfo(ctx, "Believe", "Cher", "03c91c40-49a6-44a7-90e7-a700edf97a62")).To(Equal(&agents.AlbumInfo{
 				Name:        "Believe",
 				MBID:        "03c91c40-49a6-44a7-90e7-a700edf97a62",
-				Description: "Believe is the twenty-third studio album by American singer-actress Cher, released on November 10, 1998 by Warner Bros. Records. The RIAA certified it Quadruple Platinum on December 23, 1999, recognizing four million shipments in the United States; Worldwide, the album has sold more than 20 million copies, making it the biggest-selling album of her career. In 1999 the album received three Grammy Awards nominations including \"Record of the Year\", \"Best Pop Album\" and winning \"Best Dance Recording\" for the single \"Believe\". It was released by Warner Bros. Records at the end of 1998. The album was executive produced by Rob <a href=\"https://www.last.fm/music/Cher/Believe\">Read more on Last.fm</a>.",
+				Description: "Believe is the twenty-third studio album by American singer-actress Cher, released on November 10, 1998 by Warner Bros. Records. The RIAA certified it Quadruple Platinum on December 23, 1999, recognizing four million shipments in the United States; Worldwide, the album has sold more than 20 million copies, making it the biggest-selling album of her career. In 1999 the album received three Grammy Awards nominations including \"Record of the Year\", \"Best Pop Album\" and winning \"Best Dance Recording\" for the single \"Believe\". It was released by Warner Bros. Records at the end of 1998. The album was executive produced by Rob",
 				URL:         "https://www.last.fm/music/Cher/Believe",
 			}))
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -424,7 +594,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			apiClient = &tests.FakeHttpClient{}
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", apiClient)
+			client := newClient("API_KEY", "SECRET", apiClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			agent.httpClient = httpClient
@@ -485,3 +655,31 @@ var _ = Describe("lastfmAgent", func() {
 		})
 	})
 })
+
+// langAwareHttpClient is a mock HTTP client that returns different responses based on the lang parameter
+type langAwareHttpClient struct {
+	responses    map[string]http.Response
+	requests     []*http.Request
+	requestCount int
+}
+
+func newLangAwareHttpClient() *langAwareHttpClient {
+	return &langAwareHttpClient{
+		responses: make(map[string]http.Response),
+		requests:  make([]*http.Request, 0),
+	}
+}
+
+func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
+	c.requestCount++
+	c.requests = append(c.requests, req)
+	lang := req.URL.Query().Get("lang")
+	if resp, ok := c.responses[lang]; ok {
+		return &resp, nil
+	}
+	// Return default empty response if no specific response is configured
+	return &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+	}, nil
+}

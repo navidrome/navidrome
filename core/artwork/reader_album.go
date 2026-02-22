@@ -79,7 +79,7 @@ func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string,
 
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
 	var ff []sourceFunc
-	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
+	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":

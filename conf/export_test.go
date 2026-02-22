@@ -5,3 +5,7 @@ func ResetConf() {
 }
 
 var SetViperDefaults = setViperDefaults
+
+var ParseLanguages = parseLanguages
+
+var NormalizeSearchBackend = normalizeSearchBackend

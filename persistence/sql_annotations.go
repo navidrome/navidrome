@@ -66,7 +66,7 @@ func (r sqlRepository) annId(itemID ...string) And {
 	}
 }
 
-func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...string) error {
+func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error {
 	upd := Update(annotationTable).Where(r.annId(itemIDs...))
 	for f, v := range values {
 		upd = upd.Set(f, v)
@@ -90,12 +90,12 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 
 func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 	starredAt := time.Now()
-	return r.annUpsert(map[string]interface{}{"starred": starred, "starred_at": starredAt}, ids...)
+	return r.annUpsert(map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
 }
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {
 	ratedAt := time.Now()
-	err := r.annUpsert(map[string]interface{}{"rating": rating, "rated_at": ratedAt}, itemID)
+	err := r.annUpsert(map[string]any{"rating": rating, "rated_at": ratedAt}, itemID)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		userID := loggedUser(r.ctx).ID
-		values := map[string]interface{}{}
+		values := map[string]any{}
 		values["user_id"] = userID
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID

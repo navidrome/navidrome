@@ -34,10 +34,10 @@ func newResponse() *responses.Subsonic {
 
 type subError struct {
 	code     int32
-	messages []interface{}
+	messages []any
 }
 
-func newError(code int32, message ...interface{}) error {
+func newError(code int32, message ...any) error {
 	return subError{
 		code:     code,
 		messages: message,
@@ -176,8 +176,8 @@ func isClientInList(clientList, client string) bool {
 	if clientList == "" || client == "" {
 		return false
 	}
-	clients := strings.Split(clientList, ",")
-	for _, c := range clients {
+	clients := strings.SplitSeq(clientList, ",")
+	for c := range clients {
 		if strings.TrimSpace(c) == client {
 			return true
 		}
@@ -240,7 +240,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
 	player, ok := request.PlayerFrom(ctx)
-	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+	if ok && isClientInList(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}

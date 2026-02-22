@@ -108,7 +108,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return
@@ -208,18 +208,20 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
 	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server.SessionTimeout.Seconds()))
-	data.Config.SearchFullString = conf.Server.SearchFullString
+	data.Config.SearchFullString = conf.Server.Search.FullString
+	data.Config.SearchBackend = conf.Server.Search.Backend
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server.PreferSortTags
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
 	data.Config.ScannerEnabled = conf.Server.Scanner.Enabled
+	data.Config.ScannerExtractor = conf.Server.Scanner.Extractor
 	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
 	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
 	data.Config.ReverseProxyConfigured = conf.Server.ExtAuth.TrustedSources != ""
-	data.Config.HasCustomPID = conf.Server.PID.Track != "" || conf.Server.PID.Album != ""
+	data.Config.HasCustomPID = conf.Server.PID.Track != consts.DefaultTrackPID || conf.Server.PID.Album != consts.DefaultAlbumPID
 	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
 	return data

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -200,9 +201,7 @@ func (s *webSocketServiceImpl) CloseConnection(ctx context.Context, connectionID
 func (s *webSocketServiceImpl) Close() error {
 	s.mu.Lock()
 	connections := make(map[string]*wsConnection, len(s.connections))
-	for k, v := range s.connections {
-		connections[k] = v
-	}
+	maps.Copy(connections, s.connections)
 	s.connections = make(map[string]*wsConnection)
 	s.mu.Unlock()
 
@@ -324,105 +323,52 @@ func (s *webSocketServiceImpl) readLoop(ctx context.Context, connectionID string
 	}
 }
 
-func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connectionID, message string) {
+// invokeWebSocketCallback is a generic helper that handles the common callback invocation pattern.
+func invokeWebSocketCallback[I any](ctx context.Context, s *webSocketServiceImpl, funcName string, input I, callbackName string, connectionID string) {
 	instance := s.getPluginInstance()
 	if instance == nil {
 		return
 	}
 
-	input := capabilities.OnTextMessageRequest{
-		ConnectionID: connectionID,
-		Message:      message,
-	}
-
-	// Create a timeout context for this callback invocation
 	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
 	defer cancel()
 
 	start := time.Now()
-	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnTextMessage, input)
+	err := callPluginFunctionNoOutput(callbackCtx, instance, funcName, input)
 	if err != nil {
-		// Don't log error if function simply doesn't exist (optional callback)
 		if !errors.Is(errFunctionNotFound, err) {
-			log.Error(ctx, "WebSocket text message callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
+			log.Error(ctx, "WebSocket "+callbackName+" callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
 		}
 	}
+}
+
+func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connectionID, message string) {
+	invokeWebSocketCallback(ctx, s, FuncWebSocketOnTextMessage, capabilities.OnTextMessageRequest{
+		ConnectionID: connectionID,
+		Message:      message,
+	}, "text message", connectionID)
 }
 
 func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connectionID string, data []byte) {
-	instance := s.getPluginInstance()
-	if instance == nil {
-		return
-	}
-
-	input := capabilities.OnBinaryMessageRequest{
+	invokeWebSocketCallback(ctx, s, FuncWebSocketOnBinaryMessage, capabilities.OnBinaryMessageRequest{
 		ConnectionID: connectionID,
 		Data:         base64.StdEncoding.EncodeToString(data),
-	}
-
-	// Create a timeout context for this callback invocation
-	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
-	defer cancel()
-
-	start := time.Now()
-	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnBinaryMessage, input)
-	if err != nil {
-		// Don't log error if function simply doesn't exist (optional callback)
-		if !errors.Is(errFunctionNotFound, err) {
-			log.Error(ctx, "WebSocket binary message callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
-		}
-	}
+	}, "binary message", connectionID)
 }
 
 func (s *webSocketServiceImpl) invokeOnError(ctx context.Context, connectionID, errorMsg string) {
-	instance := s.getPluginInstance()
-	if instance == nil {
-		return
-	}
-
-	input := capabilities.OnErrorRequest{
+	invokeWebSocketCallback(ctx, s, FuncWebSocketOnError, capabilities.OnErrorRequest{
 		ConnectionID: connectionID,
 		Error:        errorMsg,
-	}
-
-	// Create a timeout context for this callback invocation
-	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
-	defer cancel()
-
-	start := time.Now()
-	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnError, input)
-	if err != nil {
-		// Don't log error if function simply doesn't exist (optional callback)
-		if !errors.Is(errFunctionNotFound, err) {
-			log.Error(ctx, "WebSocket error callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
-		}
-	}
+	}, "error", connectionID)
 }
 
 func (s *webSocketServiceImpl) invokeOnClose(ctx context.Context, connectionID string, code int32, reason string) {
-	instance := s.getPluginInstance()
-	if instance == nil {
-		return
-	}
-
-	input := capabilities.OnCloseRequest{
+	invokeWebSocketCallback(ctx, s, FuncWebSocketOnClose, capabilities.OnCloseRequest{
 		ConnectionID: connectionID,
 		Code:         code,
 		Reason:       reason,
-	}
-
-	// Create a timeout context for this callback invocation
-	callbackCtx, cancel := context.WithTimeout(ctx, webSocketCallbackTimeout)
-	defer cancel()
-
-	start := time.Now()
-	err := callPluginFunctionNoOutput(callbackCtx, instance, FuncWebSocketOnClose, input)
-	if err != nil {
-		// Don't log error if function simply doesn't exist (optional callback)
-		if !errors.Is(errFunctionNotFound, err) {
-			log.Error(ctx, "WebSocket close callback failed", "plugin", s.pluginName, "connectionID", connectionID, "duration", time.Since(start), err)
-		}
-	}
+	}, "close", connectionID)
 }
 
 func (s *webSocketServiceImpl) getPluginInstance() *plugin {

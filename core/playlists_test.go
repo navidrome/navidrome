@@ -135,6 +135,55 @@ var _ = Describe("Playlists", func() {
 			})
 		})
 
+		DescribeTable("Playlist filename Unicode normalization (regression fix-playlist-filename-normalization)",
+			func(storedForm, filesystemForm string) {
+				// Use Polish characters that decompose: ó (U+00F3) -> o + combining acute (U+006F + U+0301)
+				plsNameNFC := "Piosenki_Polskie_zółć" // NFC form (composed)
+				plsNameNFD := norm.NFD.String(plsNameNFC)
+				Expect(plsNameNFD).ToNot(Equal(plsNameNFC)) // Verify they differ
+
+				nameByForm := map[string]string{"NFC": plsNameNFC, "NFD": plsNameNFD}
+				storedName := nameByForm[storedForm]
+				filesystemName := nameByForm[filesystemForm]
+
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
+				ps = core.NewPlaylists(ds)
+
+				// Create the playlist file on disk with the filesystem's normalization form
+				plsFile := tmpDir + "/" + filesystemName + ".m3u"
+				Expect(os.WriteFile(plsFile, []byte("#PLAYLIST:Test\n"), 0600)).To(Succeed())
+
+				// Pre-populate mock repo with the stored normalization form
+				storedPath := tmpDir + "/" + storedName + ".m3u"
+				existingPls := &model.Playlist{
+					ID:   "existing-id",
+					Name: "Existing Playlist",
+					Path: storedPath,
+					Sync: true,
+				}
+				mockPlsRepo.data = map[string]*model.Playlist{storedPath: existingPls}
+
+				// Import using the filesystem's normalization form
+				plsFolder := &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: tmpDir,
+					Path:        "",
+					Name:        "",
+				}
+				pls, err := ps.ImportFile(ctx, plsFolder, filesystemName+".m3u")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should update existing playlist, not create new one
+				Expect(pls.ID).To(Equal("existing-id"))
+				Expect(pls.Name).To(Equal("Existing Playlist"))
+			},
+			Entry("finds NFD-stored playlist when filesystem provides NFC path", "NFD", "NFC"),
+			Entry("finds NFC-stored playlist when filesystem provides NFD path", "NFC", "NFD"),
+		)
+
 		Describe("Cross-library relative paths", func() {
 			var tmpDir, plsDir, songsDir string
 
@@ -446,22 +495,78 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
 		})
 
-		It("handles Unicode normalization when comparing paths (NFD vs NFC)", func() {
-			// Simulate macOS filesystem: stores paths in NFD (decomposed) form
-			// "è" (U+00E8) in NFC becomes "e" + "◌̀" (U+0065 + U+0300) in NFD
-			nfdPath := "artist/Mich" + string([]rune{'e', '\u0300'}) + "le/song.mp3" // NFD: e + combining grave
-			repo.data = []string{nfdPath}
-
-			// Simulate Apple Music M3U: uses NFC (composed) form
-			nfcPath := "/music/artist/Mich\u00E8le/song.mp3" // NFC: single è character
-			m3u := nfcPath + "\n"
+		// Fullwidth characters (e.g., ＡＢＣＤ) are not handled by SQLite's NOCASE collation,
+		// so we need exact matching for non-ASCII characters.
+		It("matches fullwidth characters exactly (SQLite NOCASE limitation)", func() {
+			// Fullwidth uppercase ＡＣＲＯＳＳ (U+FF21, U+FF23, U+FF32, U+FF2F, U+FF33, U+FF33)
+			repo.data = []string{
+				"plex/02 - ＡＣＲＯＳＳ.flac",
+			}
+			m3u := "/music/plex/02 - ＡＣＲＯＳＳ.flac\n"
 			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
-			// Should match despite different Unicode normalization forms
-			Expect(pls.Tracks[0].Path).To(Equal(nfdPath))
+			Expect(pls.Tracks[0].Path).To(Equal("plex/02 - ＡＣＲＯＳＳ.flac"))
 		})
+
+		// Unicode normalization tests: NFC (composed) vs NFD (decomposed) forms
+		// macOS stores paths in NFD, Linux/Windows use NFC. Playlists may use either form.
+		DescribeTable("matches paths across Unicode NFC/NFD normalization",
+			func(description, pathNFC string, dbForm, playlistForm norm.Form) {
+				pathNFD := norm.NFD.String(pathNFC)
+				Expect(pathNFD).ToNot(Equal(pathNFC), "test path should have decomposable characters")
+
+				// Set up DB with specified normalization form
+				var dbPath string
+				if dbForm == norm.NFC {
+					dbPath = pathNFC
+				} else {
+					dbPath = pathNFD
+				}
+				repo.data = []string{dbPath}
+
+				// Set up playlist with specified normalization form
+				var playlistPath string
+				if playlistForm == norm.NFC {
+					playlistPath = pathNFC
+				} else {
+					playlistPath = pathNFD
+				}
+				m3u := "/music/" + playlistPath + "\n"
+				f := strings.NewReader(m3u)
+
+				pls, err := ps.ImportM3U(ctx, f)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].Path).To(Equal(dbPath))
+			},
+			// French: è (U+00E8) decomposes to e + combining grave (U+0065 + U+0300)
+			Entry("French diacritics - DB:NFD, playlist:NFC",
+				"macOS DB with Apple Music playlist",
+				"artist/Michèle/song.mp3", norm.NFD, norm.NFC),
+
+			// Japanese Katakana: ド (U+30C9) decomposes to ト (U+30C8) + combining dakuten (U+3099)
+			Entry("Japanese Katakana with dakuten - DB:NFC, playlist:NFC (#4884)",
+				"Linux/Windows DB with NFC playlist",
+				"artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3", norm.NFC, norm.NFC),
+			Entry("Japanese Katakana with dakuten - DB:NFD, playlist:NFC (#4884)",
+				"macOS DB with NFC playlist",
+				"artist/\u30a2\u30a4\u30c9\u30eb/\u30c9\u30ea\u30fc\u30e0\u30bd\u30f3\u30b0.mp3", norm.NFD, norm.NFC),
+
+			// Cyrillic: й (U+0439) decomposes to и (U+0438) + combining breve (U+0306)
+			Entry("Cyrillic characters - DB:NFD, playlist:NFC (#4791)",
+				"macOS DB with NFC playlist",
+				"Жуки/Батарейка/01 - Разлюбила.mp3", norm.NFD, norm.NFC),
+
+			// Polish: ó (U+00F3) decomposes to o + combining acute (U+0301)
+			Entry("Polish diacritics - DB:NFD, playlist:NFC (#4663)",
+				"macOS DB with NFC playlist",
+				"Zespół/Człowiek/Piosenka o miłości.mp3", norm.NFD, norm.NFC),
+			Entry("Polish diacritics - DB:NFC, playlist:NFD",
+				"Linux/Windows DB with macOS-exported playlist",
+				"Zespół/Człowiek/Piosenka o miłości.mp3", norm.NFC, norm.NFD),
+		)
 
 	})
 
@@ -563,9 +668,6 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
-		// Normalize the data path to NFD (simulates macOS filesystem storage)
-		normalizedDataPath := norm.NFD.String(dataPath)
-
 		for _, requestPath := range paths {
 			// Strip library qualifier if present (format: "libraryID:path")
 			actualPath := requestPath
@@ -577,12 +679,9 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 				}
 			}
 
-			// The request path should already be normalized to NFD by production code
-			// before calling FindByPaths (to match DB storage)
-			normalizedRequestPath := norm.NFD.String(actualPath)
-
-			// Case-insensitive comparison (like SQL's "collate nocase")
-			if strings.EqualFold(normalizedRequestPath, normalizedDataPath) {
+			// Case-insensitive comparison (like SQL's "collate nocase"), but with no
+			// implicit Unicode normalization (SQLite does not normalize NFC/NFD).
+			if strings.EqualFold(actualPath, dataPath) {
 				mfs = append(mfs, model.MediaFile{
 					ID:        strconv.Itoa(idx),
 					Path:      dataPath, // Return original path from DB
@@ -597,10 +696,16 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 
 type mockedPlaylistRepo struct {
 	last *model.Playlist
+	data map[string]*model.Playlist // keyed by path
 	model.PlaylistRepository
 }
 
-func (r *mockedPlaylistRepo) FindByPath(string) (*model.Playlist, error) {
+func (r *mockedPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
+	if r.data != nil {
+		if pls, ok := r.data[path]; ok {
+			return pls, nil
+		}
+	}
 	return nil, model.ErrNotFound
 }
 

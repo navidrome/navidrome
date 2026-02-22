@@ -8,10 +8,11 @@
 # main __init__.py file. Copy the needed functions from this file into your plugin.
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Tuple
 
 import extism
 import json
+import struct
 
 
 class HostFunctionError(Exception):
@@ -21,6 +22,12 @@ class HostFunctionError(Exception):
 
 @extism.import_fn("extism:host/user", "subsonicapi_call")
 def _subsonicapi_call(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
+@extism.import_fn("extism:host/user", "subsonicapi_callraw")
+def _subsonicapi_callraw(offset: int) -> int:
     """Raw host function - do not call directly."""
     ...
 
@@ -53,3 +60,42 @@ e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
         raise HostFunctionError(response["error"])
 
     return response.get("responseJson", "")
+
+
+def subsonicapi_call_raw(uri: str) -> Tuple[str, bytes]:
+    """CallRaw executes a Subsonic API request and returns the raw binary response.
+Optimized for binary endpoints like getCoverArt and stream that return
+non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+
+    Args:
+        uri: str parameter.
+
+    Returns:
+        Tuple of (content_type, data) with the raw binary response.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request = {
+        "uri": uri,
+    }
+    request_bytes = json.dumps(request).encode("utf-8")
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _subsonicapi_callraw(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response_bytes = response_mem.bytes()
+
+    if len(response_bytes) == 0:
+        raise HostFunctionError("empty response from host")
+    if response_bytes[0] == 0x01:
+        raise HostFunctionError(response_bytes[1:].decode("utf-8"))
+    if response_bytes[0] != 0x00:
+        raise HostFunctionError("unknown response status")
+    if len(response_bytes) < 5:
+        raise HostFunctionError("malformed raw response: incomplete header")
+    ct_len = struct.unpack(">I", response_bytes[1:5])[0]
+    if len(response_bytes) < 5 + ct_len:
+        raise HostFunctionError("malformed raw response: content-type overflow")
+    content_type = response_bytes[5:5 + ct_len].decode("utf-8")
+    data = response_bytes[5 + ct_len:]
+    return content_type, data

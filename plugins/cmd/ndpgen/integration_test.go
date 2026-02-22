@@ -282,6 +282,9 @@ type ServiceB interface {
 
 			Entry("option pattern (value, exists bool)",
 				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.py", "config_client_expected.rs"),
+
+			Entry("raw=true binary response",
+				"raw_service.go.txt", "raw_client_expected.go.txt", "raw_client_expected.py", "raw_client_expected.rs"),
 		)
 
 		It("generates compilable client code for comprehensive service", func() {

@@ -3,6 +3,7 @@ package playback
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -21,11 +22,11 @@ func NewQueue() *Queue {
 }
 
 func (pd *Queue) String() string {
-	filenames := ""
+	var filenames strings.Builder
 	for idx, item := range pd.Items {
-		filenames += fmt.Sprint(idx) + ":" + item.Path + " "
+		filenames.WriteString(fmt.Sprint(idx) + ":" + item.Path + " ")
 	}
-	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames)
+	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames.String())
 }
 
 // returns the current mediafile or nil

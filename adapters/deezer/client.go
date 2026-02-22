@@ -29,14 +29,12 @@ type httpDoer interface {
 
 type client struct {
 	httpDoer httpDoer
-	language string
 	jwt      jwtToken
 }
 
-func newClient(hc httpDoer, language string) *client {
+func newClient(hc httpDoer) *client {
 	return &client{
 		httpDoer: hc,
-		language: language,
 	}
 }
 
@@ -129,7 +127,7 @@ const pipeAPIURL = "https://pipe.deezer.com/api"
 
 var strictPolicy = bluemonday.StrictPolicy()
 
-func (c *client) getArtistBio(ctx context.Context, artistID int) (string, error) {
+func (c *client) getArtistBio(ctx context.Context, artistID int, lang string) (string, error) {
 	jwt, err := c.getJWT(ctx)
 	if err != nil {
 		return "", fmt.Errorf("deezer: failed to get JWT: %w", err)
@@ -160,10 +158,10 @@ func (c *client) getArtistBio(ctx context.Context, artistID int) (string, error)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept-Language", c.language)
+	req.Header.Set("Accept-Language", lang)
 	req.Header.Set("Authorization", "Bearer "+jwt)
 
-	log.Trace(ctx, "Fetching Deezer artist biography via GraphQL", "artistId", artistID, "language", c.language)
+	log.Trace(ctx, "Fetching Deezer artist biography via GraphQL", "artistId", artistID, "language", lang)
 	resp, err := c.httpDoer.Do(req)
 	if err != nil {
 		return "", err

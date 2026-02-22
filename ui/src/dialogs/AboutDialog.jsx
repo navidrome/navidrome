@@ -9,6 +9,7 @@ import TableBody from '@material-ui/core/TableBody'
 import TableRow from '@material-ui/core/TableRow'
 import TableCell from '@material-ui/core/TableCell'
 import Paper from '@material-ui/core/Paper'
+import CloudDownloadIcon from '@material-ui/icons/CloudDownload'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import FileCopyIcon from '@material-ui/icons/FileCopy'
 import Button from '@material-ui/core/Button'
@@ -245,6 +246,21 @@ const ConfigTabContent = ({ configData }) => {
     }
   }
 
+  const handleDownloadToml = () => {
+    const tomlContent = configToToml(configData, translate)
+    const tomlFile = new File([tomlContent], 'navidrome.toml', {
+      type: 'text/plain',
+    })
+
+    const tomlFileLink = document.createElement('a')
+    const tomlFileUrl = URL.createObjectURL(tomlFile)
+    tomlFileLink.href = tomlFileUrl
+    tomlFileLink.download = tomlFile.name
+    tomlFileLink.click()
+
+    URL.revokeObjectURL(tomlFileUrl)
+  }
+
   return (
     <div className={classes.configContainer}>
       <Button
@@ -252,10 +268,22 @@ const ConfigTabContent = ({ configData }) => {
         startIcon={<FileCopyIcon />}
         onClick={handleCopyToml}
         className={classes.copyButton}
-        disabled={!configData}
+        disabled={
+          !configData || !navigator.clipboard || !window.isSecureContext
+        }
         size="small"
       >
         {translate('about.config.exportToml')}
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<CloudDownloadIcon />}
+        onClick={handleDownloadToml}
+        className={classes.copyButton}
+        disabled={!configData}
+        size="small"
+      >
+        {translate('about.config.downloadToml')}
       </Button>
       <TableContainer className={classes.tableContainer}>
         <Table size="small" stickyHeader>

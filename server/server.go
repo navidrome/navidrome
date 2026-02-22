@@ -80,8 +80,8 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	// Create a listener based on the address type (either Unix socket or TCP)
 	var listener net.Listener
 	var err error
-	if strings.HasPrefix(addr, "unix:") {
-		socketPath := strings.TrimPrefix(addr, "unix:")
+	if after, ok := strings.CutPrefix(addr, "unix:"); ok {
+		socketPath := after
 		listener, err = createUnixSocketFile(socketPath, conf.Server.UnixSocketPerm)
 		if err != nil {
 			return err
@@ -244,7 +244,7 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 // It provides detailed error messages for common issues like encrypted private keys.
 func validateTLSCertificates(certFile, keyFile string) error {
 	// Read the key file to check for encryption
-	keyData, err := os.ReadFile(keyFile)
+	keyData, err := os.ReadFile(keyFile) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("reading TLS key file: %w", err)
 	}

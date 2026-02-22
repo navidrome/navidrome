@@ -24,7 +24,7 @@ const subsonicAPIVersion = "1.16.1"
 //
 // Authentication: The plugin must provide a valid 'u' (username) parameter in the URL.
 // URL Format: Only the path and query parameters are used - host/protocol are ignored.
-// Automatic Parameters: The service adds 'c' (client), 'v' (version), 'f' (format).
+// Automatic Parameters: The service adds 'c' (client), 'v' (version), and optionally 'f' (format).
 type subsonicAPIServiceImpl struct {
 	pluginID       string
 	router         SubsonicRouter
@@ -50,15 +50,18 @@ func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.Data
 	}
 }
 
-func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, error) {
+// executeRequest handles URL parsing, validation, permission checks, HTTP request creation,
+// and router invocation. Shared between Call and CallRaw.
+// If setJSON is true, the 'f=json' query parameter is added.
+func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string, setJSON bool) (*httptest.ResponseRecorder, error) {
 	if s.router == nil {
-		return "", fmt.Errorf("SubsonicAPI router not available")
+		return nil, fmt.Errorf("SubsonicAPI router not available")
 	}
 
 	// Parse the input URL
 	parsedURL, err := url.Parse(uri)
 	if err != nil {
-		return "", fmt.Errorf("invalid URL format: %w", err)
+		return nil, fmt.Errorf("invalid URL format: %w", err)
 	}
 
 	// Extract query parameters
@@ -67,18 +70,20 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, 
 	// Validate that 'u' (username) parameter is present
 	username := query.Get("u")
 	if username == "" {
-		return "", fmt.Errorf("missing required parameter 'u' (username)")
+		return nil, fmt.Errorf("missing required parameter 'u' (username)")
 	}
 
 	if err := s.checkPermissions(ctx, username); err != nil {
 		log.Warn(ctx, "SubsonicAPI call blocked by permissions", "plugin", s.pluginID, "user", username, err)
-		return "", err
+		return nil, err
 	}
 
 	// Add required Subsonic API parameters
 	query.Set("c", s.pluginID)         // Client name (plugin ID)
-	query.Set("f", "json")             // Response format
 	query.Set("v", subsonicAPIVersion) // API version
+	if setJSON {
+		query.Set("f", "json") // Response format
+	}
 
 	// Extract the endpoint from the path
 	endpoint := path.Base(parsedURL.Path)
@@ -96,7 +101,7 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, 
 	// explicitly added in the next step via request.WithInternalAuth.
 	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create HTTP request: %w", err)
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
 	// Set internal authentication context using the username from the 'u' parameter
@@ -109,8 +114,24 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, 
 	// Call the subsonic router
 	s.router.ServeHTTP(recorder, httpReq)
 
-	// Return the response body as JSON
+	return recorder, nil
+}
+
+func (s *subsonicAPIServiceImpl) Call(ctx context.Context, uri string) (string, error) {
+	recorder, err := s.executeRequest(ctx, uri, true)
+	if err != nil {
+		return "", err
+	}
 	return recorder.Body.String(), nil
+}
+
+func (s *subsonicAPIServiceImpl) CallRaw(ctx context.Context, uri string) (string, []byte, error) {
+	recorder, err := s.executeRequest(ctx, uri, false)
+	if err != nil {
+		return "", nil, err
+	}
+	contentType := recorder.Header().Get("Content-Type")
+	return contentType, recorder.Body.Bytes(), nil
 }
 
 func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {

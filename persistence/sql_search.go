@@ -6,6 +6,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -13,6 +14,26 @@ import (
 func formatFullText(text ...string) string {
 	fullText := str.SanitizeStrings(text...)
 	return " " + fullText
+}
+
+// searchExprFunc is the function signature for search expression builders.
+type searchExprFunc func(tableName string, query string) Sqlizer
+
+// getSearchExpr returns the active search expression function based on config.
+// It falls back to legacySearchExpr when Search.FullString is enabled, because
+// FTS5 is token-based and cannot match substrings within words.
+// CJK queries are routed to likeSearchExpr, since FTS5's unicode61 tokenizer
+// cannot segment CJK text.
+func getSearchExpr() searchExprFunc {
+	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
+		return legacySearchExpr
+	}
+	return func(tableName, query string) Sqlizer {
+		if containsCJK(query) {
+			return likeSearchExpr(tableName, query)
+		}
+		return ftsSearchExpr(tableName, query)
+	}
 }
 
 // doSearch performs a full-text search with the specified parameters.
@@ -26,7 +47,8 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		return nil
 	}
 
-	filter := fullTextExpr(r.tableName, q)
+	searchExpr := getSearchExpr()
+	filter := searchExpr(r.tableName, q)
 	if filter != nil {
 		sq = sq.Where(filter)
 		sq = sq.OrderBy(orderBys...)
@@ -59,13 +81,16 @@ func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
 	return Or(cond)
 }
 
-func fullTextExpr(tableName string, s string) Sqlizer {
+// legacySearchExpr generates LIKE-based search filters against the full_text column.
+// This is the original search implementation, used when Search.Backend="legacy".
+func legacySearchExpr(tableName string, s string) Sqlizer {
 	q := str.SanitizeStrings(s)
 	if q == "" {
+		log.Trace("Search using legacy backend, query is empty", "table", tableName)
 		return nil
 	}
 	var sep string
-	if !conf.Server.SearchFullString {
+	if !conf.Server.Search.FullString {
 		sep = " "
 	}
 	parts := strings.Split(q, " ")
@@ -73,5 +98,6 @@ func fullTextExpr(tableName string, s string) Sqlizer {
 	for _, part := range parts {
 		filters = append(filters, Like{tableName + ".full_text": "%" + sep + part + "%"})
 	}
+	log.Trace("Search using legacy backend", "query", filters, "table", tableName)
 	return filters
 }

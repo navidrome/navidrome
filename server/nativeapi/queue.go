@@ -87,7 +87,7 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(resp)
+		_, _ = w.Write(resp) //nolint:gosec
 	}
 }
 

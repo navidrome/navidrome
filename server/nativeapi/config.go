@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -35,9 +36,9 @@ var sensitiveFieldsFullMask = []string{
 }
 
 type configResponse struct {
-	ID         string                 `json:"id"`
-	ConfigFile string                 `json:"configFile"`
-	Config     map[string]interface{} `json:"config"`
+	ID         string         `json:"id"`
+	ConfigFile string         `json:"configFile"`
+	Config     map[string]any `json:"config"`
 }
 
 func redactValue(key string, value string) string {
@@ -47,10 +48,8 @@ func redactValue(key string, value string) string {
 	}
 
 	// Check if this field should be fully masked
-	for _, field := range sensitiveFieldsFullMask {
-		if field == key {
-			return "****"
-		}
+	if slices.Contains(sensitiveFieldsFullMask, key) {
+		return "****"
 	}
 
 	// Check if this field should be partially masked
@@ -69,7 +68,7 @@ func redactValue(key string, value string) string {
 }
 
 // applySensitiveFieldMasking recursively applies masking to sensitive fields in the configuration map
-func applySensitiveFieldMasking(ctx context.Context, config map[string]interface{}, prefix string) {
+func applySensitiveFieldMasking(ctx context.Context, config map[string]any, prefix string) {
 	for key, value := range config {
 		fullKey := key
 		if prefix != "" {
@@ -77,7 +76,7 @@ func applySensitiveFieldMasking(ctx context.Context, config map[string]interface
 		}
 
 		switch v := value.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// Recursively process nested maps
 			applySensitiveFieldMasking(ctx, v, fullKey)
 		case string:
@@ -108,7 +107,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshal back to map to get the structure with proper field names
-	var configMap map[string]interface{}
+	var configMap map[string]any
 	err = json.Unmarshal(configBytes, &configMap)
 	if err != nil {
 		log.Error(ctx, "Error unmarshaling config to map", err)

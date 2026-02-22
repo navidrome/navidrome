@@ -29,21 +29,22 @@ var (
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
 	pls core.Playlists, m metrics.Metrics) model.Scanner {
 	c := &controller{
-		rootCtx: rootCtx,
-		ds:      ds,
-		cw:      cw,
-		broker:  broker,
-		pls:     pls,
-		metrics: m,
+		rootCtx:            rootCtx,
+		ds:                 ds,
+		cw:                 cw,
+		broker:             broker,
+		pls:                pls,
+		metrics:            m,
+		devExternalScanner: conf.Server.DevExternalScanner,
 	}
-	if !conf.Server.DevExternalScanner {
+	if !c.devExternalScanner {
 		c.limiter = P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
 	}
 	return c
 }
 
 func (s *controller) getScanner() scanner {
-	if conf.Server.DevExternalScanner {
+	if s.devExternalScanner {
 		return &scannerExternal{}
 	}
 	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
@@ -92,16 +93,17 @@ type scanner interface {
 }
 
 type controller struct {
-	rootCtx         context.Context
-	ds              model.DataStore
-	cw              artwork.CacheWarmer
-	broker          events.Broker
-	metrics         metrics.Metrics
-	pls             core.Playlists
-	limiter         *rate.Sometimes
-	count           atomic.Uint32
-	folderCount     atomic.Uint32
-	changesDetected bool
+	rootCtx            context.Context
+	ds                 model.DataStore
+	cw                 artwork.CacheWarmer
+	broker             events.Broker
+	metrics            metrics.Metrics
+	pls                core.Playlists
+	limiter            *rate.Sometimes
+	devExternalScanner bool
+	count              atomic.Uint32
+	folderCount        atomic.Uint32
+	changesDetected    bool
 }
 
 // getLastScanTime returns the most recent scan time across all libraries
@@ -223,6 +225,10 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	scanWarnings, scanError := s.trackProgress(ctx, progress)
 	for _, w := range scanWarnings {
 		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
+	}
+	// Store scan error in database so it can be displayed in the UI
+	if scanError != nil {
+		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {

@@ -24,7 +24,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 		id := id.NewRandom()
 		ids = append(ids, id)
 
-		ins := squirrel.Insert("scrobble_buffer").SetMap(map[string]interface{}{
+		ins := squirrel.Insert("scrobble_buffer").SetMap(map[string]any{
 			"id":            id,
 			"user_id":       userId,
 			"service":       service,

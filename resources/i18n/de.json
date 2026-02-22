@@ -36,7 +36,8 @@
         "bitDepth": "Bittiefe",
         "sampleRate": "Samplerate",
         "missing": "Fehlend",
-        "libraryName": "Bibliothek"
+        "libraryName": "Bibliothek",
+        "composer": "Komponist"
       },
       "actions": {
         "addToQueue": "Später abspielen",
@@ -46,7 +47,8 @@
         "download": "Herunterladen",
         "playNext": "Als nächstes abspielen",
         "info": "Mehr Informationen",
-        "showInPlaylist": "In Wiedergabeliste anzeigen"
+        "showInPlaylist": "In Wiedergabeliste anzeigen",
+        "instantMix": "Sofort-Mix"
       }
     },
     "album": {
@@ -328,6 +330,80 @@
         "scanInProgress": "Bibliothek Scan läuft...",
         "noLibrariesAssigned": "Keine Bibliotheken zugeordnet"
       }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Beschreibung",
+        "version": "Version",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Berechtigungen",
+        "enabled": "Aktiv",
+        "status": "Status",
+        "path": "Pfad",
+        "lastError": "Fehler",
+        "hasError": "Fehler",
+        "updatedAt": "Aktualisiert am",
+        "createdAt": "Installiert",
+        "configKey": "Schlüssel",
+        "configValue": "Wert",
+        "allUsers": "Alle Benutzer",
+        "selectedUsers": "Ausgewählte Benutzer",
+        "allLibraries": "Alle Bibliotheken",
+        "selectedLibraries": "Ausgewählte Bibliotheken"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Konfiguration",
+        "manifest": "Manifest",
+        "usersPermission": "Benutzer Zugriff",
+        "libraryPermission": "Bibliotheken Zugriff"
+      },
+      "status": {
+        "enabled": "Aktiv",
+        "disabled": "Inaktiv"
+      },
+      "actions": {
+        "enable": "Aktivieren",
+        "disable": "Deaktivieren",
+        "disabledDueToError": "Fehler beheben um Plugin zu aktivieren",
+        "disabledUsersRequired": "Wähle Benutzer Zugriff um Plugin zu aktivieren",
+        "disabledLibrariesRequired": "Wähle Bibliotheken Zugriff um Plugin zu aktivieren",
+        "addConfig": "Konfiguration hinzufügen",
+        "rescan": "Scan"
+      },
+      "notifications": {
+        "enabled": "Plugin aktiv",
+        "disabled": "Plugin inaktiv",
+        "updated": "Plugin aktualisiert",
+        "error": "Fehler beim aktualisieren des Plugins"
+      },
+      "validation": {
+        "invalidJson": "Konfiguration muss valides JSON sein"
+      },
+      "messages": {
+        "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
+        "clickPermissions": "Berechtigung anklicken für mehr Details",
+        "noConfig": "Keine Konfiguration gesetzt",
+        "allUsersHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Benutzer, inklusive solcher, die in Zukunft erstellt werden.",
+        "noUsers": "Keine Benutzer ausgewählt",
+        "permissionReason": "Begründung",
+        "usersRequired": "Dieses Plugin benötigt Zugriff auf Benutzerinformationen. Wähle aus, auf welche Nutzer das Plugin zugreifen darf oder wähle 'Alle Benutzer'.",
+        "allLibrariesHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Bibliotheken, inklusive solcher, die in Zukunft erstellt werden.",
+        "noLibraries": "Keine Bibliotheken ausgewählt",
+        "librariesRequired": "Dieses Plugin benötigt Zugriff auf Bibliotheken. Wähle aus, auf welche Bibliotheken das Plugin zugreifen darf oder wähle 'Alle Bibliotheken'.",
+        "requiredHosts": "Benötigte Hosts",
+        "configValidationError": "Validierung der Konfiguration fehlgeschlagen:",
+        "schemaRenderError": "Rendern der Konfiguration fehlgeschlagen. Das Schema das Plugins ist eventuell nicht korrekt."
+      },
+      "placeholders": {
+        "configKey": "Schlüssel",
+        "configValue": "Wert"
+      }
     }
   },
   "ra": {
@@ -511,7 +587,8 @@
     "remove_all_missing_title": "Alle fehlenden Dateien entfernen",
     "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
     "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
-    "noTopSongsFound": "Keine beliebten Titel gefunden"
+    "noTopSongsFound": "Keine beliebten Titel gefunden",
+    "startingInstantMix": "Lade Sofort-Mix..."
   },
   "menu": {
     "library": "Bibliothek",

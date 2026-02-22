@@ -44,3 +44,16 @@ export const shareCoverUrl = (id, square) => {
 }
 
 export const docsUrl = (path) => `https://www.navidrome.org${path}`
+
+export const isLastFmURL = (url) => {
+  try {
+    const parsed = new URL(url)
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      (parsed.hostname === 'last.fm' || parsed.hostname.endsWith('.last.fm')) &&
+      parsed.pathname.startsWith('/music/')
+    )
+  } catch (e) {
+    return false
+  }
+}

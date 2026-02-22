@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -117,9 +118,7 @@ func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...
 		if err != nil {
 			return nil, err
 		}
-		for id, info := range batchResult {
-			result[id] = info
-		}
+		maps.Copy(result, batchResult)
 	}
 
 	return result, nil

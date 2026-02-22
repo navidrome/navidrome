@@ -8,7 +8,7 @@
 			// Options
 			"INSTALL_NODE": "true",
 			"NODE_VERSION": "v24",
-			"CROSS_TAGLIB_VERSION": "2.1.1-1"
+			"CROSS_TAGLIB_VERSION": "2.2.0-1"
 		}
 	},
 	"workspaceMount": "",

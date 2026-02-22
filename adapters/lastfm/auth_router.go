@@ -44,7 +44,7 @@ func NewRouter(ds model.DataStore) *Router {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = newClient(r.apiKey, r.secret, "en", hc)
+	r.client = newClient(r.apiKey, r.secret, hc)
 	return r
 }
 
@@ -65,7 +65,7 @@ func (s *Router) routes() http.Handler {
 }
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]interface{}{
+	resp := map[string]any{
 		"apiKey": s.apiKey,
 	}
 	u, _ := request.UserFrom(r.Context())
@@ -110,7 +110,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx)))
+		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx))) //nolint:gosec
 		return
 	}
 

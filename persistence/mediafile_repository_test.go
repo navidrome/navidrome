@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(10)))
+		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
 	Describe("CountBySuffix", func() {
@@ -102,6 +102,68 @@ var _ = Describe("MediaRepository", func() {
 			Expect(item.Title).To(Equal("Antenna"))
 			Expect(item.Participants[model.RoleArtist][0].Name).To(Equal("Kraftwerk"))
 		}
+	})
+
+	Describe("Put CreatedAt behavior (#5050)", func() {
+		It("sets CreatedAt to now when inserting a new file with zero CreatedAt", func() {
+			before := time.Now().Add(-time.Second)
+			newFile := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Path: "/test/created-at-zero.mp3"}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			retrieved, err := mr.Get(newFile.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.CreatedAt).To(BeTemporally(">", before))
+
+			_ = mr.Delete(newFile.ID)
+		})
+
+		It("preserves CreatedAt when inserting a new file with non-zero CreatedAt", func() {
+			originalTime := time.Date(2020, 3, 15, 10, 30, 0, 0, time.UTC)
+			newFile := model.MediaFile{
+				ID:        id.NewRandom(),
+				LibraryID: 1,
+				Path:      "/test/created-at-preserved.mp3",
+				CreatedAt: originalTime,
+			}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			retrieved, err := mr.Get(newFile.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.CreatedAt).To(BeTemporally("~", originalTime, time.Second))
+
+			_ = mr.Delete(newFile.ID)
+		})
+
+		It("does not reset CreatedAt when updating an existing file", func() {
+			originalTime := time.Date(2019, 6, 1, 12, 0, 0, 0, time.UTC)
+			fileID := id.NewRandom()
+			newFile := model.MediaFile{
+				ID:        fileID,
+				LibraryID: 1,
+				Path:      "/test/created-at-update.mp3",
+				Title:     "Original Title",
+				CreatedAt: originalTime,
+			}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			// Update the file with a new title but zero CreatedAt
+			updatedFile := model.MediaFile{
+				ID:        fileID,
+				LibraryID: 1,
+				Path:      "/test/created-at-update.mp3",
+				Title:     "Updated Title",
+				// CreatedAt is zero - should NOT overwrite the stored value
+			}
+			Expect(mr.Put(&updatedFile)).To(Succeed())
+
+			retrieved, err := mr.Get(fileID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.Title).To(Equal("Updated Title"))
+			// CreatedAt should still be the original time (not reset)
+			Expect(retrieved.CreatedAt).To(BeTemporally("~", originalTime, time.Second))
+
+			_ = mr.Delete(fileID)
+		})
 	})
 
 	It("checks existence of mediafiles in the DB", func() {
@@ -310,7 +372,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "Old Song": created long ago, updated recently
 				_, err := db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": oldTime,
 						"updated_at": newTime,
 					},
@@ -319,7 +381,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "Middle Song": created and updated at the same middle time
 				_, err = db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": middleTime,
 						"updated_at": middleTime,
 					},
@@ -328,7 +390,7 @@ var _ = Describe("MediaRepository", func() {
 
 				// Update "New Song": created recently, updated long ago
 				_, err = db.Update("media_file",
-					map[string]interface{}{
+					map[string]any{
 						"created_at": newTime,
 						"updated_at": oldTime,
 					},
@@ -559,6 +621,94 @@ var _ = Describe("MediaRepository", func() {
 				// Clean up
 				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
 			})
+		})
+	})
+
+	Describe("FindByPaths", func() {
+		// Test fixtures for Unicode and case-sensitivity tests
+		var testFiles []model.MediaFile
+
+		BeforeEach(func() {
+			testFiles = []model.MediaFile{
+				{ID: "findpath-1", LibraryID: 1, Path: "artist/Album/track.mp3", Title: "Track"},
+				{ID: "findpath-2", LibraryID: 1, Path: "artist/Album/UPPER.mp3", Title: "Upper"},
+				// Fullwidth uppercase: ＡＣＲＯＳＳ (U+FF21 U+FF23 U+FF32 U+FF2F U+FF33 U+FF33)
+				{ID: "findpath-3", LibraryID: 1, Path: "plex/02 - ＡＣＲＯＳＳ.flac", Title: "Fullwidth"},
+				// French diacritic: è (U+00E8, can decompose to e + combining grave)
+				{ID: "findpath-4", LibraryID: 1, Path: "artist/Michèle/song.mp3", Title: "French"},
+			}
+			for _, mf := range testFiles {
+				Expect(mr.Put(&mf)).To(Succeed())
+			}
+		})
+
+		AfterEach(func() {
+			for _, mf := range testFiles {
+				_ = mr.Delete(mf.ID)
+			}
+		})
+
+		It("finds files by exact path", func() {
+			results, err := mr.FindByPaths([]string{"1:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-1"))
+		})
+
+		It("finds files case-insensitively for ASCII characters (NOCASE)", func() {
+			// SQLite's COLLATE NOCASE handles ASCII case-insensitivity
+			results, err := mr.FindByPaths([]string{"1:ARTIST/ALBUM/TRACK.MP3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-1"))
+		})
+
+		It("finds fullwidth characters only with exact case match (SQLite NOCASE limitation)", func() {
+			// SQLite's NOCASE does NOT handle fullwidth uppercase/lowercase equivalence
+			// The DB has fullwidth uppercase ＡＣＲＯＳＳ, searching with exact match should work
+			results, err := mr.FindByPaths([]string{"1:plex/02 - ＡＣＲＯＳＳ.flac"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-3"))
+
+			// Searching with fullwidth lowercase ａｃｒｏｓｓ should NOT match
+			// (this is the SQLite limitation that requires exact matching for non-ASCII)
+			results, err = mr.FindByPaths([]string{"1:plex/02 - ａｃｒｏｓｓ.flac"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("returns multiple files when querying multiple paths", func() {
+			results, err := mr.FindByPaths([]string{
+				"1:artist/Album/track.mp3",
+				"1:artist/Album/UPPER.mp3",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(2))
+		})
+
+		It("returns empty slice for non-existent paths", func() {
+			results, err := mr.FindByPaths([]string{"1:nonexistent/path.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("returns empty slice for empty input", func() {
+			results, err := mr.FindByPaths([]string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("handles library-qualified paths correctly", func() {
+			// Library 1 should find the file
+			results, err := mr.FindByPaths([]string{"1:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+
+			// Library 2 should NOT find it (file is in library 1)
+			results, err = mr.FindByPaths([]string{"2:artist/Album/track.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
 		})
 	})
 })

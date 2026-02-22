@@ -51,7 +51,13 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		conf.Server.MusicFolder = "default:///music" // Use a distinct schema for the default library
 		conf.Server.DevExternalScanner = false
+
+		// Register an empty fake storage for the default library
+		emptyFS := storagetest.FakeFS{}
+		emptyFS.SetFiles(fstest.MapFS{})
+		storagetest.Register("default", &emptyFS)
 
 		db.Init(ctx)
 		DeferCleanup(func() {
@@ -770,7 +776,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				// Second scan should recover and import all rock content
 				warnings, err = s.ScanAll(ctx, true)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(warnings).ToNot(BeEmpty(), "Should have warnings for temporary disk error")
+				Expect(warnings).To(BeEmpty(), "Should have no warnings after error recovery")
 
 				// Verify both libraries now have content (at least jazz should work)
 				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
