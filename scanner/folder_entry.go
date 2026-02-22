@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chrono"
 )
@@ -72,7 +72,7 @@ func (f *folderEntry) isOutdated() bool {
 func (f *folderEntry) toFolder() *model.Folder {
 	folder := model.NewFolder(f.job.lib, f.path)
 	folder.NumAudioFiles = len(f.audioFiles)
-	if core.InPlaylistsPath(*folder) {
+	if playlists.InPath(*folder) {
 		folder.NumPlaylists = f.numPlaylists
 	}
 	folder.ImageFiles = slices.Collect(maps.Keys(f.imageFiles))

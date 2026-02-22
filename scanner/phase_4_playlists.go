@@ -10,8 +10,8 @@ import (
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -21,12 +21,12 @@ type phasePlaylists struct {
 	ctx       context.Context
 	scanState *scanState
 	ds        model.DataStore
-	pls       core.Playlists
+	pls       playlists.Playlists
 	cw        artwork.CacheWarmer
 	refreshed atomic.Uint32
 }
 
-func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls core.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
+func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
 	return &phasePlaylists{
 		ctx:       ctx,
 		scanState: scanState,
