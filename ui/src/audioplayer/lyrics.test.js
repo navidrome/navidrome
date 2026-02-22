@@ -1,15 +1,15 @@
 import {
   buildKaraokeLines,
   findLayerLineIndexForMain,
-  getPreferredLyricLanguage,
   getActiveKaraokeState,
+  getPreferredLyricLanguage,
   hasStructuredLyricContent,
   pickStructuredLyric,
   resolveKaraokeTokenWindow,
   resolveLayerLineForMain,
   selectLyricLayers,
-  structuredLyricToLrc,
   structuredLyricsToLrc,
+  structuredLyricToLrc,
 } from './lyrics'
 
 describe('lyrics helpers', () => {
@@ -200,21 +200,27 @@ describe('lyrics helpers', () => {
     expect(getPreferredLyricLanguage()).toBe('pt-BR')
   })
 
-  it('builds karaoke lines from tokenLine payload', () => {
+  it('builds karaoke lines from cueLine payload', () => {
     const lines = buildKaraokeLines({
       lang: 'eng',
       synced: true,
       line: [{ start: 1000, end: 3000, value: 'Hello world' }],
-      tokenLine: [
+      cueLine: [
         {
           index: 0,
           start: 1000,
           end: 3000,
           value: 'Hello world',
-          token: [
-            { start: 1000, end: 1500, value: 'Hello' },
-            { start: 2000, end: 2500, value: 'world', role: 'x-bg' },
-          ],
+          role: '',
+          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
+        },
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          role: 'x-bg',
+          cue: [{ start: 2000, end: 2500, value: 'world' }],
         },
       ],
     })
@@ -238,15 +244,16 @@ describe('lyrics helpers', () => {
       lang: 'eng',
       synced: true,
       line: [{ start: 1000, end: 3000, value: 'Hello world' }],
-      tokenLine: [
+      cueLine: [
         {
           index: 0,
           start: 1000,
           end: 3000,
           value: 'Hello world',
-          token: [
-            { start: 2000, end: 2500, value: 'world', role: '' },
-            { start: 1000, end: 1500, value: 'Hello', role: '' },
+          role: '',
+          cue: [
+            { start: 2000, end: 2500, value: 'world' },
+            { start: 1000, end: 1500, value: 'Hello' },
           ],
         },
       ],
@@ -263,13 +270,14 @@ describe('lyrics helpers', () => {
       lang: 'ko-Latn',
       synced: true,
       line: [{ start: 1000, end: 2000, value: 'Da-la-lun, dun' }],
-      tokenLine: [
+      cueLine: [
         {
           index: 0,
           start: 1000,
           end: 2000,
           value: 'Da-la-lun, dun',
-          token: [{ start: 1000, end: 2000, value: 'Da-la-lun, dun' }],
+          role: '',
+          cue: [{ start: 1000, end: 2000, value: 'Da-la-lun, dun' }],
         },
       ],
     })
@@ -409,7 +417,7 @@ describe('lyrics helpers', () => {
   it('reports structured lyric content when token timing exists', () => {
     expect(
       hasStructuredLyricContent({
-        tokenLine: [{ token: [{ start: 100, value: 'a' }] }],
+        cueLine: [{ cue: [{ start: 100, value: 'a' }] }],
       }),
     ).toBe(true)
   })
