@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -66,9 +67,17 @@ func (c Criteria) OrderBy() string {
 			if f.field != "" {
 				tagName = f.field
 			}
-			mapped = "COALESCE(json_extract(media_file.tags, '$." + tagName + "[0].value'), '')"
+			if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+				mapped = "COALESCE(media_file.tags::jsonb->'" + tagName + "'->0->>'value', '')"
+			} else {
+				mapped = "COALESCE(json_extract(media_file.tags, '$." + tagName + "[0].value'), '')"
+			}
 		} else if f.isRole {
-			mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
+			if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+				mapped = "COALESCE(media_file.participants::jsonb->'" + sortField + "'->0->>'name', '')"
+			} else {
+				mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
+			}
 		} else {
 			mapped = f.field
 		}

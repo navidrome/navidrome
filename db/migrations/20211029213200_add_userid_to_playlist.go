@@ -12,7 +12,7 @@ func init() {
 }
 
 func upAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -31,15 +31,15 @@ create table playlist_dg_tmp
 	evaluated_at datetime,
 	owner_id varchar(255) not null
 		constraint playlist_user_user_id_fk
-			references user
+			references "user"
 				on update cascade on delete cascade
 );
 
 insert into playlist_dg_tmp(id, name, comment, duration, song_count, public, created_at, updated_at, path, sync, size, rules, evaluated_at, owner_id) 
 select id, name, comment, duration, song_count, public, created_at, updated_at, path, sync, size, rules, evaluated_at, 
-       (select id from user where user_name = owner) as user_id from playlist;
+       (select id from "user" where user_name = owner) as user_id from playlist;
 
-drop table playlist;
+drop table playlist` + dropCascadeIfPostgres() + `;
 alter table playlist_dg_tmp rename to playlist;
 create index playlist_created_at
 	on playlist (created_at);
@@ -52,7 +52,7 @@ create index playlist_size
 create index playlist_updated_at
 	on playlist (updated_at);
 
-`)
+`))
 	return err
 }
 

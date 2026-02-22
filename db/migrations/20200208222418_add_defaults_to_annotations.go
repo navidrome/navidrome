@@ -12,7 +12,7 @@ func init() {
 }
 
 func Up20200208222418(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 update annotation set play_count = 0 where play_count is null;
 update annotation set rating = 0 where rating is null;
 create table annotation_dg_tmp
@@ -47,7 +47,7 @@ create index annotation_rating
 
 create index annotation_starred
 	on annotation (starred);
-`)
+`))
 	return err
 }
 

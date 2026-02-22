@@ -25,7 +25,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			"annotation.item_id = "+idField+
 			" AND annotation.user_id = '"+userID+"')").
 		Columns(
-			"coalesce(starred, 0) as starred",
+			CoalesceBool("starred", false)+" as starred",
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
@@ -116,7 +116,7 @@ func (r sqlRepository) updateAvgRating(itemID string) error {
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	upd := Update(annotationTable).Where(r.annId(itemID)).
 		Set("play_count", Expr("play_count+1")).
-		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
+		Set("play_date", Expr("max(COALESCE(play_date,''),?)", ts))
 	c, err := r.executeSQL(upd)
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {

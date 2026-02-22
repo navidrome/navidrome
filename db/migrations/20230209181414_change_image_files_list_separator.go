@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
 )
@@ -22,7 +23,11 @@ func upChangeImageFilesListSeparator(_ context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("update album set image_files = ? where id = ?")
+	updateQuery := "update album set image_files = ? where id = ?"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		updateQuery = "update album set image_files = $1 where id = $2"
+	}
+	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		return err
 	}

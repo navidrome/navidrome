@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -42,10 +43,14 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 		return nil, err
 	}
 	// Only consider albums where the artist is the sole album artist.
+	jsonArrayLenExpr := "json_array_length(participants, '$.albumartist')"
+	if db.IsPostgres() {
+		jsonArrayLenExpr = "jsonb_array_length(participants::jsonb->'albumartist')"
+	}
 	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"album_artist_id": artID.ID},
-			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
+			squirrel.Eq{jsonArrayLenExpr: 1},
 		},
 	})
 	if err != nil {

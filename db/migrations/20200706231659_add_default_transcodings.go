@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db/dialect"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/pressly/goose/v3"
 )
@@ -24,7 +25,11 @@ func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 		return nil
 	}
 
-	stmt, err := tx.Prepare("insert into transcoding (id, name, target_format, default_bit_rate, command) values (?, ?, ?, ?, ?)")
+	insertQuery := "insert into transcoding (id, name, target_format, default_bit_rate, command) values (?, ?, ?, ?, ?)"
+	if dialect.Current != nil && dialect.Current.Name() == "postgres" {
+		insertQuery = "insert into transcoding (id, name, target_format, default_bit_rate, command) values ($1, $2, $3, $4, $5)"
+	}
+	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
 		return err
 	}

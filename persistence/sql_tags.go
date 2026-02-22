@@ -8,6 +8,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
@@ -50,6 +51,12 @@ func marshalTags(tags model.Tags) string {
 
 func tagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
+	if db.IsPostgres() {
+		return Exists(
+			fmt.Sprintf(`jsonb_array_elements(tags::jsonb->'%s') as elem`, name),
+			Eq{"elem->>'id'": idValue},
+		)
+	}
 	return Exists(
 		fmt.Sprintf(`json_tree(tags, "$.%s")`, name),
 		And{

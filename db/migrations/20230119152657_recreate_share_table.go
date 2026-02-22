@@ -12,7 +12,7 @@ func init() {
 }
 
 func upAddMissingShareInfo(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 drop table if exists share;
 create table share
 (
@@ -31,9 +31,9 @@ create table share
     updated_at      datetime,
     user_id         varchar(255) not null
         constraint share_user_id_fk
-            references user
+            references "user"
 );
-`)
+`))
 	return err
 }
 

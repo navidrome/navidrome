@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -83,7 +84,7 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 	// to automatically filter out non-existent artist IDs
 	query := fmt.Sprintf(`
 		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
-		SELECT ?, 
+		SELECT ?,
 		       json_extract(value, '$.artist_id') as artist_id,
 		       json_extract(value, '$.role') as role,
 		       COALESCE(json_extract(value, '$.sub_role'), '') as sub_role
@@ -94,6 +95,18 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		-- Handle duplicate insertions gracefully (e.g., if called multiple times)
 		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
 	`, r.tableName)
+	if db.IsPostgres() {
+		query = fmt.Sprintf(`
+		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
+		SELECT ?,
+		       elem->>'artist_id' as artist_id,
+		       elem->>'role' as role,
+		       COALESCE(elem->>'sub_role', '') as sub_role
+		FROM jsonb_array_elements(?::jsonb) as elem
+		JOIN artist ON artist.id = elem->>'artist_id'
+		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING
+	`, r.tableName)
+	}
 
 	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
 	return err

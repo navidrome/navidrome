@@ -12,13 +12,13 @@ func init() {
 }
 
 func upAddPlaylistPath(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(adaptSQL(`
 alter table playlist
 	add path string default '' not null;
 
 alter table playlist
 	add sync bool default false not null;
-`)
+`))
 
 	return err
 }
