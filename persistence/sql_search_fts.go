@@ -134,7 +134,7 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 // special characters to prevent query injection.
 func buildFTS5Query(userInput string) string {
 	q := strings.TrimSpace(userInput)
-	if q == "" {
+	if q == "" || q == `""` {
 		return ""
 	}
 
@@ -239,7 +239,7 @@ var ftsSearchColumns = map[string]string{
 func ftsSearchExpr(tableName string, s string) Sqlizer {
 	q := buildFTS5Query(s)
 	if q == "" {
-		s = strings.TrimSpace(s)
+		s = strings.TrimSpace(strings.ReplaceAll(s, `"`, ""))
 		if s != "" {
 			log.Trace("Search using LIKE fallback for non-tokenizable query", "table", tableName, "query", s)
 			return likeSearchExpr(tableName, s)

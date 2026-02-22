@@ -107,6 +107,16 @@ var _ = Describe("Search Endpoints", func() {
 			Expect(resp.SearchResult3.Artist[0].Id).ToNot(BeEmpty())
 		})
 
+		It("returns all results when query is empty (OpenSubsonic)", func() {
+			resp := doReq("search3", "query", "")
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.SearchResult3).ToNot(BeNil())
+			Expect(resp.SearchResult3.Artist).To(HaveLen(4))
+			Expect(resp.SearchResult3.Album).To(HaveLen(5))
+			Expect(resp.SearchResult3.Song).To(HaveLen(6))
+		})
+
 		It("finds across all entity types simultaneously", func() {
 			// "Beatles" should match artist, albums, and songs by The Beatles
 			resp := doReq("search3", "query", "Beatles")
