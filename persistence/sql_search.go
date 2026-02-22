@@ -97,10 +97,6 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	// parens or commas) can be safely qualified; complex expressions indicate
 	// the sort depends on JOINed tables, so we fall back to the single-query approach.
 	qualifiedOrderBys := make([]string, 0, len(orderBys))
-	// Phase 2 ORDER BY excludes "rank" (the FTS table isn't JOINed in Phase 2).
-	// Phase 1 already selected the correct page of rowids by rank, so Phase 2 only
-	// needs the tiebreaker columns to maintain stable sort among the hydrated rows.
-	phase2OrderBys := make([]string, 0, len(orderBys))
 	for _, ob := range orderBys {
 		qualified := qualifyOrderBy(r.tableName, fts.ftsTable, ob)
 		if qualified == "" {
@@ -112,10 +108,6 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 			return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 		}
 		qualifiedOrderBys = append(qualifiedOrderBys, qualified)
-		col := strings.Fields(strings.TrimSpace(ob))[0]
-		if col != "rank" {
-			phase2OrderBys = append(phase2OrderBys, ob)
-		}
 	}
 
 	// Phase 1: Lightweight rowid query — only main table + FTS, no annotation/bookmark/library JOINs.
@@ -132,8 +124,11 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	}
 
 	// Phase 2: Hydrate the rowids with the full SelectBuilder (all JOINs included).
+	// Join the FTS table so we can ORDER BY rank to preserve Phase 1's relevance ordering.
 	sq = sq.Where(r.tableName+".rowid IN ("+rowidSQL+")", rowidArgs...)
-	sq = sq.OrderBy(phase2OrderBys...)
+	ftsJoin := fts.ftsTable + " ON " + fts.ftsTable + ".rowid = " + r.tableName + ".rowid AND " + fts.ftsTable + " MATCH ?"
+	sq = sq.Join(ftsJoin, fts.matchExpr)
+	sq = sq.OrderBy(qualifiedOrderBys...)
 	return r.queryAll(sq, results)
 }
 
