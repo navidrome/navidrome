@@ -234,31 +234,24 @@ var ftsSearchColumns = map[string]string{
 }
 
 // ftsBM25Weights defines BM25 column weights for relevance ranking.
-// Higher weights make matches in that column score higher. The order must match
-// the column order in the FTS5 table definition (not ftsSearchColumns).
-// Columns like title/name get the highest weight so exact title matches rank above
-// matches in secondary fields like artist name or sort columns.
+// The order must match the column order in the FTS5 table definition.
 var ftsBM25Weights = map[string]string{
-	// media_file_fts columns: title, album, artist, album_artist, sort_title, sort_album_name, sort_artist_name, sort_album_artist_name, disc_subtitle, search_participants, search_normalized
 	"media_file": "10.0, 5.0, 3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0",
-	// album_fts columns: name, sort_album_name, album_artist, search_participants, discs, catalog_num, album_version, search_normalized
-	"album": "10.0, 1.0, 3.0, 2.0, 1.0, 1.0, 1.0, 1.0",
-	// artist_fts columns: name, sort_artist_name, search_normalized
-	"artist": "10.0, 1.0, 1.0",
+	"album":      "10.0, 1.0, 3.0, 2.0, 1.0, 1.0, 1.0, 1.0",
+	"artist":     "10.0, 1.0, 1.0",
 }
 
 // ftsFilter holds the information needed for a two-phase FTS5 search query.
-// It implements Sqlizer so it can be used as a WHERE clause fallback, but doSearch
-// detects this type and uses a more efficient two-phase approach instead.
+// It implements Sqlizer so it can be returned through the searchExprFunc interface;
+// doSearch type-asserts it to use the more efficient two-phase approach.
 type ftsFilter struct {
 	tableName string
 	ftsTable  string
 	matchExpr string
-	rankExpr  string // bm25() expression with column weights for ORDER BY
+	rankExpr  string
 }
 
-// ToSql implements Sqlizer. This is only used as a fallback when doSearch doesn't
-// handle ftsFilter specially (shouldn't happen in practice).
+// ToSql implements Sqlizer as a single-query fallback (rowid IN subquery).
 func (f *ftsFilter) ToSql() (string, []interface{}, error) {
 	sql := f.tableName + ".rowid IN (SELECT rowid FROM " + f.ftsTable + " WHERE " + f.ftsTable + " MATCH ?)"
 	return sql, []interface{}{f.matchExpr}, nil
@@ -283,8 +276,6 @@ func ftsSearchExpr(tableName string, s string) Sqlizer {
 		matchExpr = cols + " : (" + q + ")"
 	}
 
-	// Build bm25() ranking expression with column weights.
-	// Falls back to the built-in rank column if no weights are defined.
 	rankExpr := ftsTable + ".rank"
 	if weights, ok := ftsBM25Weights[tableName]; ok {
 		rankExpr = "bm25(" + ftsTable + ", " + weights + ")"

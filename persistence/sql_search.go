@@ -21,10 +21,6 @@ func formatFullText(text ...string) string {
 type searchExprFunc func(tableName string, query string) Sqlizer
 
 // getSearchExpr returns the active search expression function based on config.
-// It falls back to legacySearchExpr when Search.FullString is enabled, because
-// FTS5 is token-based and cannot match substrings within words.
-// CJK queries are routed to likeSearchExpr, since FTS5's unicode61 tokenizer
-// cannot segment CJK text.
 func getSearchExpr() searchExprFunc {
 	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
 		return legacySearchExpr
@@ -38,9 +34,8 @@ func getSearchExpr() searchExprFunc {
 }
 
 // doSearch performs a full-text search with the specified parameters.
-// The naturalOrder is used to sort results when no full-text filter is applied. It is useful for cases like
-// OpenSubsonic, where an empty search query should return all results in a natural order. Normally the parameter
-// should be `tableName + ".rowid"`, but some repositories (ex: artist) may use a different natural order.
+// The naturalOrder is used when no filter is applied (e.g. OpenSubsonic `search3?query=""`).
+// Normally it should be `tableName + ".rowid"`, but some repositories (e.g. artist) may differ.
 func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, results any, naturalOrder string, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
@@ -48,58 +43,45 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		return nil
 	}
 
-	searchExpr := getSearchExpr()
-	filter := searchExpr(r.tableName, q)
+	sq = sq.Where(Eq{r.tableName + ".missing": false})
+
+	filter := getSearchExpr()(r.tableName, q)
 	if filter == nil {
-		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
-		// If the filter is empty, we sort by the specified natural order.
+		// No search tokens; sort by natural order.
 		sq = sq.OrderBy(naturalOrder)
-		sq = sq.Where(Eq{r.tableName + ".missing": false})
 		sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 		return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 	}
 
-	// For FTS5 filters, use a two-phase query to avoid expensive JOINs on high-cardinality results.
+	// Two-phase query for FTS5 to avoid expensive JOINs on high-cardinality results.
 	if fts, ok := filter.(*ftsFilter); ok {
 		return r.doFTSSearch(sq, fts, offset, size, results, orderBys...)
 	}
 
-	// For non-FTS filters (LIKE, legacy), use the original single-query approach.
+	// LIKE/legacy: single-query approach.
 	sq = sq.Where(filter)
 	sq = sq.OrderBy(orderBys...)
-	sq = sq.Where(Eq{r.tableName + ".missing": false})
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 }
 
-// doFTSSearch implements a two-phase FTS5 search to avoid the performance penalty of
-// expensive LEFT JOINs (annotation, bookmark, library) on high-cardinality FTS results.
+// doFTSSearch implements a two-phase FTS5 search to avoid expensive LEFT JOINs on
+// high-cardinality FTS results.
 //
-// Phase 1 builds a lightweight query that only touches the main table + FTS index to get
-// the sorted, paginated rowids. FTS5 `rank` (BM25 relevance) is always used as the primary
-// sort key, with the caller's orderBys as tiebreakers.
+// Phase 1: lightweight query (main table + FTS only) to get sorted, paginated rowids.
+// Phase 2: full SELECT with all JOINs, filtered by the small set of Phase 1 rowids.
 //
-// Phase 2 uses the full SelectBuilder (with all JOINs) but
-// filters by the small set of rowids from Phase 1, making the JOINs nearly free.
-//
-// If the caller's ORDER BY contains complex expressions (function calls, aggregations),
-// they are dropped from the two-phase query and only `rank` + simple columns are used.
+// Complex ORDER BY expressions (function calls, aggregations) are dropped from Phase 1;
+// only FTS rank + simple columns are used.
 func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, size int, results any, orderBys ...string) error {
-	// Build qualified ORDER BY: always start with FTS rank, then add caller's columns as tiebreakers.
-	// Complex expressions (containing parens, commas) are skipped since they can't be used
-	// in the lightweight Phase 1 query without extra JOINs.
 	qualifiedOrderBys := []string{fts.rankExpr}
 	for _, ob := range orderBys {
-		qualified := qualifyOrderBy(r.tableName, ob)
-		if qualified == "" {
-			// Complex expression — skip it in the two-phase query.
-			// The rank column provides the primary ordering; tiebreakers are best-effort.
-			continue
+		if qualified := qualifyOrderBy(r.tableName, ob); qualified != "" {
+			qualifiedOrderBys = append(qualifiedOrderBys, qualified)
 		}
-		qualifiedOrderBys = append(qualifiedOrderBys, qualified)
 	}
 
-	// Phase 1: Lightweight rowid query — only main table + FTS, no annotation/bookmark/library JOINs.
+	// Phase 1: only main table + FTS index, no annotation/bookmark/library JOINs.
 	rowidQuery := Select(r.tableName+".rowid").
 		From(r.tableName).
 		Join(fts.ftsTable+" ON "+fts.ftsTable+".rowid = "+r.tableName+".rowid AND "+fts.ftsTable+" MATCH ?", fts.matchExpr).
@@ -112,9 +94,7 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 		return fmt.Errorf("building FTS rowid query: %w", err)
 	}
 
-	// Phase 2: Hydrate the rowids with the full SelectBuilder (all JOINs included).
-	// Use a subquery join with row_number to preserve Phase 1's relevance ordering
-	// without re-joining the FTS table (which would be expensive).
+	// Phase 2: hydrate with full JOINs, preserving Phase 1's ordering via row_number.
 	rankedSubquery := fmt.Sprintf(
 		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
 		rowidSQL,
@@ -124,32 +104,17 @@ func (r sqlRepository) doFTSSearch(sq SelectBuilder, fts *ftsFilter, offset, siz
 	return r.queryAll(sq, results)
 }
 
-// qualifyOrderBy prepends tableName to a simple ORDER BY column name if it's not already
-// qualified. Returns empty string for complex expressions (containing parens, commas, or
-// function calls) that can't be safely used in the lightweight Phase 1 query without extra JOINs.
+// qualifyOrderBy prepends tableName to a simple column name. Returns empty string for
+// complex expressions (function calls, aggregations) that can't be used in Phase 1.
 func qualifyOrderBy(tableName, orderBy string) string {
 	orderBy = strings.TrimSpace(orderBy)
-	if orderBy == "" {
+	if orderBy == "" || strings.ContainsAny(orderBy, "(,") {
 		return ""
 	}
-
-	// If the expression contains parens (function calls like sum(...)) or commas,
-	// it's too complex for the lightweight rowid query.
-	if strings.ContainsAny(orderBy, "(,") {
-		return ""
-	}
-
-	// Split into column and optional direction (e.g., "title" or "name desc")
 	parts := strings.Fields(orderBy)
-	col := parts[0]
-
-	// Already qualified (contains a dot)
-	if strings.Contains(col, ".") {
-		return orderBy
+	if !strings.Contains(parts[0], ".") {
+		parts[0] = tableName + "." + parts[0]
 	}
-
-	// Qualify with table name
-	parts[0] = tableName + "." + col
 	return strings.Join(parts, " ")
 }
 
