@@ -531,30 +531,30 @@ type Line struct {
 	Value string `xml:",chardata"            json:"value"`
 }
 
-type LyricToken struct {
+type LyricCue struct {
 	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
 	End   *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
 	Value string `xml:"value,attr"           json:"value"`
-	Role  string `xml:"role,attr,omitempty"  json:"role,omitempty"`
 }
 
-type TokenLine struct {
-	Index int32        `xml:"index,attr"                    json:"index"`
-	Start *int64       `xml:"start,attr,omitempty"         json:"start,omitempty"`
-	End   *int64       `xml:"end,attr,omitempty"           json:"end,omitempty"`
-	Value string       `xml:"value,attr,omitempty"         json:"value,omitempty"`
-	Token []LyricToken `xml:"token,omitempty"        json:"token,omitempty"`
+type CueLine struct {
+	Index int32      `xml:"index,attr"                    json:"index"`
+	Start *int64     `xml:"start,attr,omitempty"         json:"start,omitempty"`
+	End   *int64     `xml:"end,attr,omitempty"           json:"end,omitempty"`
+	Value string     `xml:"value,attr,omitempty"         json:"value,omitempty"`
+	Role  string     `xml:"role,attr,omitempty"          json:"role,omitempty"`
+	Cue   []LyricCue `xml:"cue,omitempty"        json:"cue,omitempty"`
 }
 
 type StructuredLyric struct {
-	DisplayArtist string      `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string      `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
-	Kind          string      `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
-	Lang          string      `xml:"lang,attr"                    json:"lang"`
-	Line          []Line      `xml:"line"                         json:"line"`
-	TokenLine     []TokenLine `xml:"tokenLine,omitempty"     json:"tokenLine,omitempty"`
-	Offset        *int64      `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
-	Synced        bool        `xml:"synced,attr"                  json:"synced"`
+	DisplayArtist string    `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string    `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string    `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
+	Lang          string    `xml:"lang,attr"                    json:"lang"`
+	Line          []Line    `xml:"line"                         json:"line"`
+	CueLine       []CueLine `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
+	Offset        *int64    `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Synced        bool      `xml:"synced,attr"                  json:"synced"`
 }
 
 type StructuredLyrics []StructuredLyric

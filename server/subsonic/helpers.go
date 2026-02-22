@@ -469,35 +469,49 @@ func mapExplicitStatus(explicitStatus string) string {
 	return ""
 }
 
-func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
+func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
 	lines := make([]responses.Line, len(lyrics.Line))
-	tokenLines := make([]responses.TokenLine, 0, len(lyrics.Line))
+	var cueLines []responses.CueLine
 
 	for i, line := range lyrics.Line {
 		lines[i] = responses.Line{
 			Start: line.Start,
 			Value: line.Value,
 		}
-		if len(line.Token) == 0 {
+		if !enhanced || len(line.Cue) == 0 {
 			continue
 		}
 
-		tokens := make([]responses.LyricToken, len(line.Token))
-		for j, token := range line.Token {
-			tokens[j] = responses.LyricToken{
-				Start: token.Start,
-				End:   token.End,
-				Value: token.Value,
-				Role:  token.Role,
+		// Group cues by role, preserving order of first appearance
+		roleOrder := make([]string, 0, 2)
+		cuesByRole := make(map[string][]responses.LyricCue)
+		for _, cue := range line.Cue {
+			role := cue.Role
+			if _, exists := cuesByRole[role]; !exists {
+				roleOrder = append(roleOrder, role)
 			}
+			cuesByRole[role] = append(cuesByRole[role], responses.LyricCue{
+				Start: cue.Start,
+				End:   cue.End,
+				Value: cue.Value,
+			})
 		}
-		tokenLines = append(tokenLines, responses.TokenLine{
-			Index: int32(i),
-			Start: line.Start,
-			End:   line.End,
-			Value: line.Value,
-			Token: tokens,
-		})
+
+		// Create a separate CueLine for each role group
+		for _, role := range roleOrder {
+			cues := cuesByRole[role]
+			cueLine := responses.CueLine{
+				Index: int32(i),
+				Start: line.Start,
+				End:   line.End,
+				Value: line.Value,
+				Cue:   cues,
+			}
+			if role != "" {
+				cueLine.Role = role
+			}
+			cueLines = append(cueLines, cueLine)
+		}
 	}
 
 	kind := strings.TrimSpace(lyrics.Kind)
@@ -511,7 +525,7 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.St
 		Kind:          kind,
 		Lang:          lyrics.Lang,
 		Line:          lines,
-		TokenLine:     tokenLines,
+		CueLine:       cueLines,
 		Offset:        lyrics.Offset,
 		Synced:        lyrics.Synced,
 	}
@@ -526,11 +540,23 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.St
 	return structured
 }
 
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
-	lyricList := make(responses.StructuredLyrics, len(lyricsList))
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
+	var filtered model.LyricList
+	if enhanced {
+		filtered = lyricsList
+	} else {
+		// Without enhanced, only return "main" kind entries
+		for _, l := range lyricsList {
+			kind := strings.TrimSpace(l.Kind)
+			if kind == "" || kind == "main" {
+				filtered = append(filtered, l)
+			}
+		}
+	}
 
-	for i, lyrics := range lyricsList {
-		lyricList[i] = buildStructuredLyric(mf, lyrics)
+	lyricList := make(responses.StructuredLyrics, len(filtered))
+	for i, lyrics := range filtered {
+		lyricList[i] = buildStructuredLyric(mf, lyrics, enhanced)
 	}
 
 	res := &responses.LyricsList{

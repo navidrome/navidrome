@@ -74,25 +74,25 @@ const normalizeToken = (token) => {
     start: toTime(token.start),
     end: toTime(token.end),
     value,
-    role: typeof token.role === 'string' ? token.role : '',
   }
 }
 
-const normalizeTokenLine = (tokenLine, fallbackIndex) => {
-  const index = Number.isFinite(Number(tokenLine?.index))
-    ? Number(tokenLine.index)
+const normalizeCueLine = (cueLine, fallbackIndex) => {
+  const index = Number.isFinite(Number(cueLine?.index))
+    ? Number(cueLine.index)
     : fallbackIndex
   const tokens = sortTokensByStart(
-    Array.isArray(tokenLine?.token)
-      ? tokenLine.token.map(normalizeToken).filter(Boolean)
+    Array.isArray(cueLine?.cue)
+      ? cueLine.cue.map(normalizeToken).filter(Boolean)
       : [],
   )
 
   return {
     index,
-    start: toTime(tokenLine?.start),
-    end: toTime(tokenLine?.end),
-    value: typeof tokenLine?.value === 'string' ? tokenLine.value : '',
+    start: toTime(cueLine?.start),
+    end: toTime(cueLine?.end),
+    value: typeof cueLine?.value === 'string' ? cueLine.value : '',
+    role: typeof cueLine?.role === 'string' ? cueLine.role : '',
     tokens,
   }
 }
@@ -197,14 +197,14 @@ const buildSyntheticWordTokens = (line, token) => {
   }))
 }
 
-export const hasTokenTiming = (structuredLyric) =>
+export const hasCueTiming = (structuredLyric) =>
   Boolean(
     structuredLyric &&
-    Array.isArray(structuredLyric.tokenLine) &&
-    structuredLyric.tokenLine.some(
-      (tokenLine) =>
-        Array.isArray(tokenLine?.token) &&
-        tokenLine.token.some((token) => Number.isFinite(Number(token?.start))),
+    Array.isArray(structuredLyric.cueLine) &&
+    structuredLyric.cueLine.some(
+      (cueLine) =>
+        Array.isArray(cueLine?.cue) &&
+        cueLine.cue.some((cue) => Number.isFinite(Number(cue?.start))),
     ),
   )
 
@@ -215,7 +215,7 @@ export const hasStructuredLyricContent = (structuredLyric) =>
       structuredLyric.line.some(
         (line) => typeof line?.value === 'string' && line.value.trim() !== '',
       )) ||
-      hasTokenTiming(structuredLyric)),
+      hasCueTiming(structuredLyric)),
   )
 
 export const getPreferredLyricLanguage = () => {
@@ -319,34 +319,57 @@ export const buildKaraokeLines = (structuredLyric) => {
   const baseLines = Array.isArray(structuredLyric.line)
     ? structuredLyric.line
     : []
-  const rawTokenLines = Array.isArray(structuredLyric.tokenLine)
-    ? structuredLyric.tokenLine
+  const rawCueLines = Array.isArray(structuredLyric.cueLine)
+    ? structuredLyric.cueLine
     : []
 
   const lines =
-    rawTokenLines.length > 0
-      ? rawTokenLines.map((tokenLine, fallbackIndex) => {
-          const normalized = normalizeTokenLine(tokenLine, fallbackIndex)
-          const baseLine = baseLines[normalized.index] || {}
-          const tokens = normalized.tokens
-          const fallbackStart =
-            tokens.find((token) => token.start != null)?.start ?? null
-          const fallbackEnd =
-            [...tokens].reverse().find((token) => token.end != null)?.end ??
-            null
-          const value =
-            normalized.value ||
-            (typeof baseLine.value === 'string' ? baseLine.value : '') ||
-            tokens.map((token) => token.value).join('')
+    rawCueLines.length > 0
+      ? (() => {
+          const normalizedCueLines = rawCueLines.map(
+            (cueLine, fallbackIndex) => {
+              const normalized = normalizeCueLine(cueLine, fallbackIndex)
+              return {
+                ...normalized,
+                tokens: normalized.tokens.map((token) => ({
+                  ...token,
+                  role: normalized.role,
+                })),
+              }
+            },
+          )
 
-          return {
-            index: normalized.index,
-            start: normalized.start ?? toTime(baseLine.start) ?? fallbackStart,
-            end: normalized.end ?? toTime(baseLine.end) ?? fallbackEnd,
-            value,
-            tokens,
+          const byIndex = new Map()
+          for (const cl of normalizedCueLines) {
+            if (!byIndex.has(cl.index)) {
+              byIndex.set(cl.index, [])
+            }
+            byIndex.get(cl.index).push(cl)
           }
-        })
+
+          return Array.from(byIndex.entries()).map(([index, group]) => {
+            const first = group[0]
+            const baseLine = baseLines[index] || {}
+            const tokens = sortTokensByStart(group.flatMap((cl) => cl.tokens))
+            const fallbackStart =
+              tokens.find((token) => token.start != null)?.start ?? null
+            const fallbackEnd =
+              [...tokens].reverse().find((token) => token.end != null)?.end ??
+              null
+            const value =
+              first.value ||
+              (typeof baseLine.value === 'string' ? baseLine.value : '') ||
+              tokens.map((token) => token.value).join('')
+
+            return {
+              index,
+              start: first.start ?? toTime(baseLine.start) ?? fallbackStart,
+              end: first.end ?? toTime(baseLine.end) ?? fallbackEnd,
+              value,
+              tokens,
+            }
+          })
+        })()
       : baseLines.map((line, index) => ({
           index,
           start: toTime(line.start),

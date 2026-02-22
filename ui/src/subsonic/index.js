@@ -1,5 +1,5 @@
-import { baseUrl } from '../utils'
 import { httpClient } from '../dataProvider'
+import { baseUrl } from '../utils'
 
 const url = (command, id, options) => {
   const username = localStorage.getItem('username')
@@ -108,7 +108,7 @@ const getTopSongs = (artist, count = 50) => {
 }
 
 const getLyricsBySongId = (id) => {
-  return httpClient(url('getLyricsBySongId', id))
+  return httpClient(url('getLyricsBySongId', id, { enhanced: true }))
 }
 
 const streamUrl = (id, options) => {

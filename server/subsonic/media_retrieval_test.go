@@ -257,36 +257,36 @@ var _ = Describe("MediaRetrievalController", func() {
 					}
 				}
 
-				Expect(realLyric.TokenLine).To(HaveLen(len(expectedLyric.TokenLine)))
-				for j, realTokenLine := range realLyric.TokenLine {
-					expectedTokenLine := expectedLyric.TokenLine[j]
-					Expect(realTokenLine.Index).To(Equal(expectedTokenLine.Index))
-					Expect(realTokenLine.Value).To(Equal(expectedTokenLine.Value))
-					if expectedTokenLine.Start == nil {
-						Expect(realTokenLine.Start).To(BeNil())
+				Expect(realLyric.CueLine).To(HaveLen(len(expectedLyric.CueLine)))
+				for j, realCueLine := range realLyric.CueLine {
+					expectedCueLine := expectedLyric.CueLine[j]
+					Expect(realCueLine.Index).To(Equal(expectedCueLine.Index))
+					Expect(realCueLine.Value).To(Equal(expectedCueLine.Value))
+					Expect(realCueLine.Role).To(Equal(expectedCueLine.Role))
+					if expectedCueLine.Start == nil {
+						Expect(realCueLine.Start).To(BeNil())
 					} else {
-						Expect(*realTokenLine.Start).To(Equal(*expectedTokenLine.Start))
+						Expect(*realCueLine.Start).To(Equal(*expectedCueLine.Start))
 					}
-					if expectedTokenLine.End == nil {
-						Expect(realTokenLine.End).To(BeNil())
+					if expectedCueLine.End == nil {
+						Expect(realCueLine.End).To(BeNil())
 					} else {
-						Expect(*realTokenLine.End).To(Equal(*expectedTokenLine.End))
+						Expect(*realCueLine.End).To(Equal(*expectedCueLine.End))
 					}
 
-					Expect(realTokenLine.Token).To(HaveLen(len(expectedTokenLine.Token)))
-					for k, realToken := range realTokenLine.Token {
-						expectedToken := expectedTokenLine.Token[k]
-						Expect(realToken.Value).To(Equal(expectedToken.Value))
-						Expect(realToken.Role).To(Equal(expectedToken.Role))
-						if expectedToken.Start == nil {
-							Expect(realToken.Start).To(BeNil())
+					Expect(realCueLine.Cue).To(HaveLen(len(expectedCueLine.Cue)))
+					for k, realCue := range realCueLine.Cue {
+						expectedCue := expectedCueLine.Cue[k]
+						Expect(realCue.Value).To(Equal(expectedCue.Value))
+						if expectedCue.Start == nil {
+							Expect(realCue.Start).To(BeNil())
 						} else {
-							Expect(*realToken.Start).To(Equal(*expectedToken.Start))
+							Expect(*realCue.Start).To(Equal(*expectedCue.Start))
 						}
-						if expectedToken.End == nil {
-							Expect(realToken.End).To(BeNil())
+						if expectedCue.End == nil {
+							Expect(realCue.End).To(BeNil())
 						} else {
-							Expect(*realToken.End).To(Equal(*expectedToken.End))
+							Expect(*realCue.End).To(Equal(*expectedCue.End))
 						}
 					}
 				}
@@ -447,7 +447,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should return metadata-linked translation and pronunciation tracks from TTML", func() {
 			conf.Server.LyricsPriority = ".ttml,embedded"
-			r := newGetRequest("id=1")
+			r := newGetRequest("id=1&enhanced=true")
 
 			mockRepo.SetData(model.MediaFiles{
 				{
@@ -512,13 +512,13 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "konni",
 							},
 						},
-						TokenLine: []responses.TokenLine{
+						CueLine: []responses.CueLine{
 							{
 								Index: 0,
 								Start: &mainStartB,
 								End:   &tokenEndB,
 								Value: "konni",
-								Token: []responses.LyricToken{
+								Cue: []responses.LyricCue{
 									{
 										Start: &tokenStartA,
 										End:   &tokenEndA,
@@ -537,8 +537,8 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 		})
 
-		It("should return tokenized lines for songLyrics v2 clients", func() {
-			r := newGetRequest("id=1")
+		It("should return cue lines for songLyrics v2 clients with enhanced=true", func() {
+			r := newGetRequest("id=1&enhanced=true")
 
 			lineStart := int64(1000)
 			lineEnd := int64(3000)
@@ -555,7 +555,7 @@ var _ = Describe("MediaRetrievalController", func() {
 							Start: &lineStart,
 							End:   &lineEnd,
 							Value: "Hello echo",
-							Token: []model.Token{
+							Cue: []model.Cue{
 								{
 									Start: &tokenStartA,
 									End:   &tokenEndA,
@@ -598,23 +598,31 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "Hello echo",
 							},
 						},
-						TokenLine: []responses.TokenLine{
+						CueLine: []responses.CueLine{
 							{
 								Index: 0,
 								Start: &lineStart,
 								End:   &lineEnd,
 								Value: "Hello echo",
-								Token: []responses.LyricToken{
+								Cue: []responses.LyricCue{
 									{
 										Start: &tokenStartA,
 										End:   &tokenEndA,
 										Value: "Hello",
 									},
+								},
+							},
+							{
+								Index: 0,
+								Start: &lineStart,
+								End:   &lineEnd,
+								Value: "Hello echo",
+								Role:  "x-bg",
+								Cue: []responses.LyricCue{
 									{
 										Start: &tokenStartB,
 										End:   &tokenEndB,
 										Value: "echo",
-										Role:  "x-bg",
 									},
 								},
 							},

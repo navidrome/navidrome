@@ -150,8 +150,10 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
+	enhanced, _ := req.Params(r).Bool("enhanced")
+
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
 
 	return response, nil
 }

@@ -162,7 +162,7 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 			parsedLine.End = &endMs
 		}
 		if len(tokens) > 0 {
-			parsedLine.Token = tokens
+			parsedLine.Cue = tokens
 		}
 		parsedLine = hydrateLineTimingFromTokens(parsedLine)
 
@@ -261,20 +261,20 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 		line.End = &endMs
 	}
 	if len(tokens) > 0 {
-		line.Token = tokens
+		line.Cue = tokens
 	}
 	line = hydrateLineTimingFromTokens(line)
 
-	if line.Value == "" && len(line.Token) == 0 {
+	if line.Value == "" && len(line.Cue) == 0 {
 		return ttmlMetadataEntry{}, false, nil
 	}
 
 	return ttmlMetadataEntry{key: forKey, line: line}, true, nil
 }
 
-func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.Token, error) {
+func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.Cue, error) {
 	var text strings.Builder
-	var tokens []model.Token
+	var tokens []model.Cue
 
 	for {
 		token, err := p.decoder.Token()
@@ -300,7 +300,7 @@ func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.T
 	}
 }
 
-func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimingContext) (string, []model.Token, error) {
+func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimingContext) (string, []model.Cue, error) {
 	local := strings.ToLower(start.Name.Local)
 	if local == "br" {
 		return "\n", nil, nil
@@ -313,7 +313,7 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 	hasOwnTiming := hasBegin || hasEnd || hasDur
 
 	var text strings.Builder
-	var tokens []model.Token
+	var tokens []model.Cue
 
 	for {
 		token, err := p.decoder.Token()
@@ -337,7 +337,7 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 			value := text.String()
 			tokenText := sanitizeTTMLText(value)
 			if local == "span" && hasOwnTiming && !ctx.invalid && tokenText != "" && len(tokens) == 0 {
-				parsedToken := model.Token{
+				parsedToken := model.Cue{
 					Value: tokenText,
 					Role:  ctx.role,
 				}
@@ -413,7 +413,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 			}
 			line = hydrateLineTimingFromTokens(line)
 
-			if line.Value == "" && len(line.Token) == 0 {
+			if line.Value == "" && len(line.Cue) == 0 {
 				continue
 			}
 
@@ -830,8 +830,8 @@ func linesAreSynced(lines []model.Line) bool {
 		if lines[i].Start != nil {
 			return true
 		}
-		for j := range lines[i].Token {
-			if lines[i].Token[j].Start != nil {
+		for j := range lines[i].Cue {
+			if lines[i].Cue[j].Start != nil {
 				return true
 			}
 		}
@@ -840,14 +840,14 @@ func linesAreSynced(lines []model.Line) bool {
 }
 
 func hydrateLineTimingFromTokens(line model.Line) model.Line {
-	if len(line.Token) == 0 {
+	if len(line.Cue) == 0 {
 		return line
 	}
 
 	var earliestStart *int64
 	var latestEnd *int64
-	for i := range line.Token {
-		token := line.Token[i]
+	for i := range line.Cue {
+		token := line.Cue[i]
 		if token.Start != nil {
 			if earliestStart == nil || *token.Start < *earliestStart {
 				v := *token.Start
