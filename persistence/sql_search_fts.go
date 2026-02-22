@@ -233,6 +233,22 @@ var ftsSearchColumns = map[string]string{
 	"artist":     "{name sort_artist_name search_normalized}",
 }
 
+// ftsFilter holds the information needed for a two-phase FTS5 search query.
+// It implements Sqlizer so it can be used as a WHERE clause fallback, but doSearch
+// detects this type and uses a more efficient two-phase approach instead.
+type ftsFilter struct {
+	tableName string
+	ftsTable  string
+	matchExpr string
+}
+
+// ToSql implements Sqlizer. This is only used as a fallback when doSearch doesn't
+// handle ftsFilter specially (shouldn't happen in practice).
+func (f *ftsFilter) ToSql() (string, []interface{}, error) {
+	sql := f.tableName + ".rowid IN (SELECT rowid FROM " + f.ftsTable + " WHERE " + f.ftsTable + " MATCH ?)"
+	return sql, []interface{}{f.matchExpr}, nil
+}
+
 // ftsSearchExpr generates an FTS5 MATCH-based search filter.
 // If the query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!"),
 // it falls back to LIKE-based search.
@@ -252,10 +268,11 @@ func ftsSearchExpr(tableName string, s string) Sqlizer {
 		matchExpr = cols + " : (" + q + ")"
 	}
 
-	filter := Expr(
-		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
-		matchExpr,
-	)
+	filter := &ftsFilter{
+		tableName: tableName,
+		ftsTable:  ftsTable,
+		matchExpr: matchExpr,
+	}
 	log.Trace("Search using FTS5 backend", "table", tableName, "query", q, "filter", filter)
 	return filter
 }
