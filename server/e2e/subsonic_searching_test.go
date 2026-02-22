@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -145,6 +146,76 @@ var _ = Describe("Search Endpoints", func() {
 				Expect(s.Id).ToNot(BeEmpty())
 				Expect(s.Title).ToNot(BeEmpty())
 			}
+		})
+
+		Describe("MBID search", func() {
+			It("finds songs by mbz_recording_id", func() {
+				resp := doReq("search3", "query", mbidComeTogetherRec)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Song).To(HaveLen(1))
+				Expect(resp.SearchResult3.Song[0].Title).To(Equal("Come Together"))
+			})
+
+			It("finds songs by mbz_release_track_id", func() {
+				resp := doReq("search3", "query", mbidSomething)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Song).To(HaveLen(1))
+				Expect(resp.SearchResult3.Song[0].Title).To(Equal("Something"))
+			})
+
+			It("finds albums by mbz_album_id", func() {
+				resp := doReq("search3", "query", mbidAbbeyRoadAlbum)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Album).To(HaveLen(1))
+				Expect(resp.SearchResult3.Album[0].Name).To(Equal("Abbey Road"))
+			})
+
+			It("finds albums by mbz_release_group_id", func() {
+				resp := doReq("search3", "query", mbidAbbeyRoadRelGroup)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Album).To(HaveLen(1))
+				Expect(resp.SearchResult3.Album[0].Name).To(Equal("Abbey Road"))
+			})
+
+			It("finds artists by mbz_artist_id", func() {
+				resp := doReq("search3", "query", mbidBeatlesArtist)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Artist).To(HaveLen(1))
+				Expect(resp.SearchResult3.Artist[0].Name).To(Equal("The Beatles"))
+			})
+
+			It("returns empty results for non-matching UUID", func() {
+				nonMatchingUUID := uuid.NewString()
+				resp := doReq("search3", "query", nonMatchingUUID)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Artist).To(BeEmpty())
+				Expect(resp.SearchResult3.Album).To(BeEmpty())
+				Expect(resp.SearchResult3.Song).To(BeEmpty())
+			})
+
+			It("does not return songs for artist MBID", func() {
+				// media_file MBID search only checks mbz_recording_id and mbz_release_track_id,
+				// so an artist MBID should return only the artist, not songs
+				resp := doReq("search3", "query", mbidBeatlesArtist)
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Artist).To(HaveLen(1))
+				Expect(resp.SearchResult3.Artist[0].Name).To(Equal("The Beatles"))
+				Expect(resp.SearchResult3.Song).To(BeEmpty())
+			})
 		})
 	})
 })
