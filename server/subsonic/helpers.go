@@ -469,6 +469,11 @@ func mapExplicitStatus(explicitStatus string) string {
 	return ""
 }
 
+// sanitizeRole strips the TTML x- prefix from role values for the API.
+func sanitizeRole(role string) string {
+	return strings.TrimPrefix(role, "x-")
+}
+
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
 	lines := make([]responses.Line, len(lyrics.Line))
 	var cueLines []responses.CueLine
@@ -486,12 +491,16 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 		roleOrder := make([]string, 0, 2)
 		cuesByRole := make(map[string][]responses.LyricCue)
 		for _, cue := range line.Cue {
-			role := cue.Role
+			role := sanitizeRole(cue.Role)
 			if _, exists := cuesByRole[role]; !exists {
 				roleOrder = append(roleOrder, role)
 			}
+			var start int64
+			if cue.Start != nil {
+				start = *cue.Start
+			}
 			cuesByRole[role] = append(cuesByRole[role], responses.LyricCue{
-				Start: cue.Start,
+				Start: start,
 				End:   cue.End,
 				Value: cue.Value,
 			})

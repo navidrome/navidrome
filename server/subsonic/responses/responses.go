@@ -532,7 +532,7 @@ type Line struct {
 }
 
 type LyricCue struct {
-	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
+	Start int64  `xml:"start,attr"           json:"start"`
 	End   *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
 	Value string `xml:"value,attr"           json:"value"`
 }
