@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-type Token struct {
+type Cue struct {
 	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
 	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
 	Value string `structs:"value"           json:"value"`
@@ -19,10 +19,10 @@ type Token struct {
 }
 
 type Line struct {
-	Start *int64  `structs:"start,omitempty" json:"start,omitempty"`
-	End   *int64  `structs:"end,omitempty"   json:"end,omitempty"`
-	Value string  `structs:"value"           json:"value"`
-	Token []Token `structs:"token,omitempty" json:"token,omitempty"`
+	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
+	Value string `structs:"value"           json:"value"`
+	Cue   []Cue  `structs:"cue,omitempty"   json:"cue,omitempty"`
 }
 
 type Lyrics struct {

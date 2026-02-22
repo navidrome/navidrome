@@ -149,12 +149,13 @@ describe('getLyricsBySongId', () => {
     Object.defineProperty(window, 'localStorage', { value: localStorageMock })
   })
 
-  it('calls the getLyricsBySongId endpoint', async () => {
+  it('calls the getLyricsBySongId endpoint with enhanced=true', async () => {
     await subsonic.getLyricsBySongId('song-1')
 
     expect(httpClient).toHaveBeenCalledTimes(1)
     const calledUrl = httpClient.mock.calls[0][0]
     expect(calledUrl).toContain('/rest/getLyricsBySongId?')
     expect(calledUrl).toContain('id=song-1')
+    expect(calledUrl).toContain('enhanced=true')
   })
 })
