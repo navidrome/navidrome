@@ -7,7 +7,7 @@ replace (
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
 	// Fork to implement raw tags support
-	go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260212150743-3f1b97cb0d1e
+	go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260221220301-2fab4903f48e
 )
 
 require (
@@ -46,13 +46,13 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/maruel/natural v1.3.0
 	github.com/matoous/go-nanoid/v2 v2.1.0
-	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/pocketbase/dbx v1.11.0
+	github.com/pocketbase/dbx v1.12.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rjeczalik/notify v0.9.3

@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(10)))
+		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
 	Describe("CountBySuffix", func() {
@@ -102,6 +102,68 @@ var _ = Describe("MediaRepository", func() {
 			Expect(item.Title).To(Equal("Antenna"))
 			Expect(item.Participants[model.RoleArtist][0].Name).To(Equal("Kraftwerk"))
 		}
+	})
+
+	Describe("Put CreatedAt behavior (#5050)", func() {
+		It("sets CreatedAt to now when inserting a new file with zero CreatedAt", func() {
+			before := time.Now().Add(-time.Second)
+			newFile := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Path: "/test/created-at-zero.mp3"}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			retrieved, err := mr.Get(newFile.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.CreatedAt).To(BeTemporally(">", before))
+
+			_ = mr.Delete(newFile.ID)
+		})
+
+		It("preserves CreatedAt when inserting a new file with non-zero CreatedAt", func() {
+			originalTime := time.Date(2020, 3, 15, 10, 30, 0, 0, time.UTC)
+			newFile := model.MediaFile{
+				ID:        id.NewRandom(),
+				LibraryID: 1,
+				Path:      "/test/created-at-preserved.mp3",
+				CreatedAt: originalTime,
+			}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			retrieved, err := mr.Get(newFile.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.CreatedAt).To(BeTemporally("~", originalTime, time.Second))
+
+			_ = mr.Delete(newFile.ID)
+		})
+
+		It("does not reset CreatedAt when updating an existing file", func() {
+			originalTime := time.Date(2019, 6, 1, 12, 0, 0, 0, time.UTC)
+			fileID := id.NewRandom()
+			newFile := model.MediaFile{
+				ID:        fileID,
+				LibraryID: 1,
+				Path:      "/test/created-at-update.mp3",
+				Title:     "Original Title",
+				CreatedAt: originalTime,
+			}
+			Expect(mr.Put(&newFile)).To(Succeed())
+
+			// Update the file with a new title but zero CreatedAt
+			updatedFile := model.MediaFile{
+				ID:        fileID,
+				LibraryID: 1,
+				Path:      "/test/created-at-update.mp3",
+				Title:     "Updated Title",
+				// CreatedAt is zero - should NOT overwrite the stored value
+			}
+			Expect(mr.Put(&updatedFile)).To(Succeed())
+
+			retrieved, err := mr.Get(fileID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.Title).To(Equal("Updated Title"))
+			// CreatedAt should still be the original time (not reset)
+			Expect(retrieved.CreatedAt).To(BeTemporally("~", originalTime, time.Second))
+
+			_ = mr.Delete(fileID)
+		})
 	})
 
 	It("checks existence of mediafiles in the DB", func() {

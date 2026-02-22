@@ -59,7 +59,7 @@ func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(pl.ToM3U8()))
+		_, err = w.Write([]byte(pl.ToM3U8())) //nolint:gosec
 		if err != nil {
 			log.Error(ctx, "Error sending m3u contents", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -89,7 +89,7 @@ func handleExportPlaylist(pls playlists.Playlists) http.HandlerFunc {
 		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", playlist.Name)
 		w.Header().Set("Content-Disposition", disposition)
 
-		_, err = w.Write([]byte(playlist.ToM3U8()))
+		_, err = w.Write([]byte(playlist.ToM3U8())) //nolint:gosec
 		if err != nil {
 			log.Error(ctx, "Error sending playlist", "name", playlist.Name)
 			return
@@ -158,7 +158,7 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 		count += c
 
 		// Must return an object with an ID, to satisfy ReactAdmin `create` call
-		_, err = fmt.Fprintf(w, `{"added":%d}`, count)
+		_, err = fmt.Fprintf(w, `{"added":%d}`, count) //nolint:gosec
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -200,7 +200,7 @@ func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 			return
 		}
 
-		_, err = w.Write(fmt.Appendf(nil, `{"id":"%d"}`, id))
+		_, err = w.Write(fmt.Appendf(nil, `{"id":"%d"}`, id)) //nolint:gosec
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -221,6 +221,6 @@ func getSongPlaylists(svc playlists.Playlists) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, _ = w.Write(data)
+		_, _ = w.Write(data) //nolint:gosec
 	}
 }

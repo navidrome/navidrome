@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.1.1-2"
+  CROSS_TAGLIB_VERSION: "2.2.0-1"
   CGO_CFLAGS_ALLOW: "--define-prefix"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
@@ -117,7 +117,7 @@ jobs:
       - name: Test
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo -race ./... -v
+          go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
 
       - name: Test ndpgen
         run: |

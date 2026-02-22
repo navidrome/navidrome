@@ -382,7 +382,7 @@ func restoreDB() {
 	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
 	Expect(err).ToNot(HaveOccurred())
 
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
 	var tables []string
 	for rows.Next() {

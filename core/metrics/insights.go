@@ -108,7 +108,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return
@@ -208,7 +208,8 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
 	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server.SessionTimeout.Seconds()))
-	data.Config.SearchFullString = conf.Server.SearchFullString
+	data.Config.SearchFullString = conf.Server.Search.FullString
+	data.Config.SearchBackend = conf.Server.Search.Backend
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server.PreferSortTags
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule

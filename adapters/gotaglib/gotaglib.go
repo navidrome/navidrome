@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -43,7 +44,7 @@ func (e extractor) Parse(files ...string) (map[string]metadata.Info, error) {
 }
 
 func (e extractor) Version() string {
-	return "go-taglib (TagLib 2.1.1 WASM)"
+	return "2.2 WASM"
 }
 
 func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
@@ -278,5 +279,8 @@ var _ local.Extractor = (*extractor)(nil)
 func init() {
 	local.RegisterExtractor("taglib", func(fsys fs.FS, baseDir string) local.Extractor {
 		return &extractor{fsys}
+	})
+	conf.AddHook(func() {
+		log.Debug("go-taglib version", "version", extractor{}.Version())
 	})
 }

@@ -230,7 +230,7 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
 	req.Header.Set("User-Agent", consts.HTTPUserAgent)
-	resp, err := hc.Do(req)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, "", err
 	}

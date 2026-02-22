@@ -102,6 +102,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	similarArtists, _ := json.Marshal(sa)
 	m["similar_artists"] = string(similarArtists)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
+	m["search_normalized"] = normalizeForFTS(a.Name)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -138,7 +139,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"missing":    booleanFilter,
 		"library_id": artistLibraryIdFilter,
 	})
-	r.setSortMappings(map[string]string{
+	r.setSortMappings(map[string]string{ //nolint:gosec
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",
