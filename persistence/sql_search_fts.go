@@ -200,7 +200,7 @@ var likeSearchColumns = map[string][]string{
 // Each word in the query must match at least one column (AND between words),
 // and each word can match any column (OR within a word).
 // Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
-func likeSearchExpr(tableName string, s string) Sqlizer {
+func likeSearchExpr(tableName string, s string) *searchFilter {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		log.Trace("Search using LIKE backend, query is empty", "table", tableName)
@@ -221,7 +221,7 @@ func likeSearchExpr(tableName string, s string) Sqlizer {
 		wordFilters = append(wordFilters, colFilters)
 	}
 	log.Trace("Search using LIKE backend", "query", wordFilters, "table", tableName)
-	return wordFilters
+	return &searchFilter{Where: wordFilters}
 }
 
 // ftsSearchColumns defines which FTS5 columns are included in general search.
@@ -233,10 +233,29 @@ var ftsSearchColumns = map[string]string{
 	"artist":     "{name sort_artist_name search_normalized}",
 }
 
-// ftsSearchExpr generates an FTS5 MATCH-based search filter.
+// ftsColumnWeights defines BM25 weights for each FTS5 table column.
+// Higher weights make matches in that column rank higher in results.
+// The order must match the column order in the FTS5 table definition.
+var ftsColumnWeights = map[string][]float64{
+	// title, album, artist, album_artist, sort_title, sort_album_name,
+	// sort_artist_name, sort_album_artist_name, disc_subtitle,
+	// search_participants, search_normalized
+	"media_file_fts": {10, 5, 5, 5, 1, 1, 1, 1, 2, 3, 1},
+	// name, sort_album_name, album_artist, search_participants,
+	// discs, catalog_num, album_version, search_normalized
+	"album_fts": {10, 1, 5, 3, 1, 2, 2, 1},
+	// name, sort_artist_name, search_normalized
+	"artist_fts": {10, 1, 1},
+}
+
+// ftsSearchExpr generates an FTS5 MATCH-based search filter with BM25 relevance ranking.
+// It uses a WHERE IN subquery for filtering and a correlated subquery for BM25 ranking.
+// The correlated subquery approach is used instead of a CTE+JOIN because SQLite's bm25()
+// function cannot be referenced from an outer query that has GROUP BY (it silently returns
+// 0 rows). The correlated subquery evaluates bm25() in a direct FTS5 query context.
 // If the query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!"),
 // it falls back to LIKE-based search.
-func ftsSearchExpr(tableName string, s string) Sqlizer {
+func ftsSearchExpr(tableName string, s string) *searchFilter {
 	q := buildFTS5Query(s)
 	if q == "" {
 		s = strings.TrimSpace(strings.ReplaceAll(s, `"`, ""))
@@ -252,10 +271,43 @@ func ftsSearchExpr(tableName string, s string) Sqlizer {
 		matchExpr = cols + " : (" + q + ")"
 	}
 
-	filter := Expr(
+	// WHERE clause: filter by matching rowids
+	whereFilter := Expr(
 		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
 		matchExpr,
 	)
-	log.Trace("Search using FTS5 backend", "table", tableName, "query", q, "filter", filter)
-	return filter
+
+	// Build BM25 weights string for the bm25() function
+	weights, ok := ftsColumnWeights[ftsTable]
+	if !ok {
+		// Fallback: no weights available, filter only (no ranking)
+		log.Trace("Search using FTS5 backend (no ranking)", "table", tableName, "query", q)
+		return &searchFilter{Where: whereFilter}
+	}
+
+	// Build bm25 weight args string: "10, 5, 5, ..."
+	weightStrs := make([]string, len(weights))
+	for i, w := range weights {
+		weightStrs[i] = fmt.Sprintf("%g", w)
+	}
+	bm25Args := strings.Join(weightStrs, ", ")
+
+	// ORDER BY clause: use a correlated subquery to compute BM25 rank.
+	// This evaluates bm25() in a direct FTS5 query context (FROM fts_table),
+	// which is required by SQLite. The correlated subquery matches the current
+	// row's rowid to get its specific BM25 score.
+	//
+	// ORDER BY (SELECT bm25(fts_table, w1, w2, ...) FROM fts_table
+	//           WHERE fts_table MATCH ? AND fts_table.rowid = tableName.rowid)
+	rankOrder := fmt.Sprintf(
+		"(SELECT bm25(%s, %s) FROM %s WHERE %s MATCH ? AND %s.rowid = %s.rowid)",
+		ftsTable, bm25Args, ftsTable, ftsTable, ftsTable, tableName,
+	)
+
+	log.Trace("Search using FTS5 backend with BM25 ranking", "table", tableName, "query", q, "weights", bm25Args)
+	return &searchFilter{
+		Where:     whereFilter,
+		RankOrder: rankOrder,
+		RankArgs:  []any{matchExpr},
+	}
 }

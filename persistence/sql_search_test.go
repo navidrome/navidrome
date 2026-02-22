@@ -20,16 +20,18 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("generates LIKE filter for single word", func() {
-			expr := legacySearchExpr("media_file", "beatles")
-			sql, args, err := expr.ToSql()
+			filter := legacySearchExpr("media_file", "beatles")
+			Expect(filter).ToNot(BeNil())
+			sql, args, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("media_file.full_text LIKE"))
 			Expect(args).To(ContainElement("% beatles%"))
 		})
 
 		It("generates AND of LIKE filters for multiple words", func() {
-			expr := legacySearchExpr("media_file", "abbey road")
-			sql, args, err := expr.ToSql()
+			filter := legacySearchExpr("media_file", "abbey road")
+			Expect(filter).ToNot(BeNil())
+			sql, args, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("AND"))
 			Expect(args).To(HaveLen(2))
@@ -37,13 +39,15 @@ var _ = Describe("sqlRepository", func() {
 	})
 
 	Describe("getSearchExpr", func() {
-		It("returns ftsSearchExpr by default", func() {
+		It("returns ftsSearchExpr by default (with BM25 ranking)", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			expr := getSearchExpr()("media_file", "test")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "test")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.RankOrder).To(ContainSubstring("bm25"))
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("MATCH"))
 		})
@@ -53,8 +57,10 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "legacy"
 			conf.Server.Search.FullString = false
 
-			expr := getSearchExpr()("media_file", "test")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "test")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.Where).ToNot(BeNil())
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("LIKE"))
 		})
@@ -64,8 +70,10 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = true
 
-			expr := getSearchExpr()("media_file", "test")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "test")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.Where).ToNot(BeNil())
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("LIKE"))
 		})
@@ -75,21 +83,26 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			expr := getSearchExpr()("media_file", "周杰伦")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "周杰伦")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.Where).ToNot(BeNil())
+			Expect(filter.RankOrder).To(BeEmpty())
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			// CJK should use LIKE, not MATCH
 			Expect(sql).To(ContainSubstring("LIKE"))
 			Expect(sql).NotTo(ContainSubstring("MATCH"))
 		})
 
-		It("routes non-CJK queries to ftsSearchExpr", func() {
+		It("routes non-CJK queries to ftsSearchExpr (with BM25 ranking)", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			expr := getSearchExpr()("media_file", "beatles")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "beatles")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.RankOrder).To(ContainSubstring("bm25"))
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(ContainSubstring("MATCH"))
 		})
@@ -99,8 +112,10 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "legacy"
 			conf.Server.Search.FullString = false
 
-			expr := getSearchExpr()("media_file", "周杰伦")
-			sql, _, err := expr.ToSql()
+			filter := getSearchExpr()("media_file", "周杰伦")
+			Expect(filter).ToNot(BeNil())
+			Expect(filter.Where).ToNot(BeNil())
+			sql, _, err := filter.Where.ToSql()
 			Expect(err).ToNot(HaveOccurred())
 			// Legacy should still use full_text column LIKE
 			Expect(sql).To(ContainSubstring("LIKE"))

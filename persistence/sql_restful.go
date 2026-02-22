@@ -110,9 +110,10 @@ func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sq
 	return func(field string, value any) Sqlizer {
 		v := strings.ToLower(value.(string))
 		searchExpr := getSearchExpr()
+		filter := searchExpr(tableName, v)
 		cond := cmp.Or(
 			mbidExpr(tableName, v, mbidFields...),
-			searchExpr(tableName, v),
+			filter.AsSqlizer(),
 		)
 		return cond
 	}
