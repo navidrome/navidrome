@@ -501,6 +501,79 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Track Deletion and Renumbering", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
+		// helper to get track positions and media file IDs
+		getTrackInfo := func(playlistID string) (ids []string, mediaFileIDs []string) {
+			pls, err := repo.GetWithTracks(playlistID, false, false)
+			Expect(err).ToNot(HaveOccurred())
+			for _, t := range pls.Tracks {
+				ids = append(ids, t.ID)
+				mediaFileIDs = append(mediaFileIDs, t.MediaFileID)
+			}
+			return
+		}
+
+		It("renumbers correctly after deleting a track from the middle", func() {
+			By("creating a playlist with 4 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Middle", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003", "1004"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the second track (position 2)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("2")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2", "3"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1003", "1004"}))
+		})
+
+		It("renumbers correctly after deleting the first track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test First", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the first track (position 1)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("1")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1002", "1003"}))
+		})
+
+		It("renumbers correctly after deleting the last track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Last", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the last track (position 3)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("3")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
+		})
+	})
+
 	Describe("Smart Playlists Library Filtering", func() {
 		var mfRepo model.MediaFileRepository
 		var testPlaylistID string

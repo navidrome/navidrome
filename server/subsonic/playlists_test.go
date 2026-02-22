@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ core.Playlists = (*fakePlaylists)(nil)
+var _ playlists.Playlists = (*fakePlaylists)(nil)
 
 var _ = Describe("buildPlaylist", func() {
 	var router *Router
@@ -272,7 +272,7 @@ var _ = Describe("UpdatePlaylist", func() {
 })
 
 type fakePlaylists struct {
-	core.Playlists
+	playlists.Playlists
 	lastPlaylistID string
 	lastName       *string
 	lastComment    *string

@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -68,6 +69,14 @@ var (
 		UserName: "admin",
 		Name:     "Admin User",
 		IsAdmin:  true,
+	}
+
+	// Regular (non-admin) user for permission tests
+	regularUser = model.User{
+		ID:       "regular-1",
+		UserName: "regular",
+		Name:     "Regular User",
+		IsAdmin:  false,
 	}
 )
 
@@ -288,19 +297,29 @@ var _ = BeforeSuite(func() {
 	adminUserWithPass.NewPassword = "password"
 	Expect(initDS.User(ctx).Put(&adminUserWithPass)).To(Succeed())
 
+	regularUserWithPass := regularUser
+	regularUserWithPass.NewPassword = "password"
+	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
+
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
 
 	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	adminUser.Libraries = loadedUser.Libraries
+
+	loadedRegular, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
+	Expect(err).ToNot(HaveOccurred())
+	regularUser.Libraries = loadedRegular.Libraries
+
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(initDS), metrics.NewNoopInstance())
+		playlists.NewPlaylists(initDS), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -334,7 +353,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS + noop stubs
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(ds), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -344,7 +363,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		core.NewPlaylists(ds),
+		playlists.NewPlaylists(ds),
 		noopPlayTracker{},
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
