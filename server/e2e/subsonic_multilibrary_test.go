@@ -141,7 +141,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib.ID))
 
 			Expect(resp.AlbumList).ToNot(BeNil())
-			Expect(resp.AlbumList.Album).To(HaveLen(5))
+			Expect(resp.AlbumList.Album).To(HaveLen(6))
 			for _, a := range resp.AlbumList.Album {
 				Expect(a.Title).ToNot(Equal("Symphony No. 9"))
 			}

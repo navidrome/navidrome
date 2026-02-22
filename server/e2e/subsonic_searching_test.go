@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -113,9 +115,9 @@ var _ = Describe("Search Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SearchResult3).ToNot(BeNil())
-			Expect(resp.SearchResult3.Artist).To(HaveLen(4))
-			Expect(resp.SearchResult3.Album).To(HaveLen(5))
-			Expect(resp.SearchResult3.Song).To(HaveLen(6))
+			Expect(resp.SearchResult3.Artist).To(HaveLen(5))
+			Expect(resp.SearchResult3.Album).To(HaveLen(6))
+			Expect(resp.SearchResult3.Song).To(HaveLen(7))
 		})
 
 		It("finds across all entity types simultaneously", func() {
@@ -215,6 +217,57 @@ var _ = Describe("Search Endpoints", func() {
 				Expect(resp.SearchResult3.Artist).To(HaveLen(1))
 				Expect(resp.SearchResult3.Artist[0].Name).To(Equal("The Beatles"))
 				Expect(resp.SearchResult3.Song).To(BeEmpty())
+			})
+		})
+
+		Describe("CJK search", func() {
+			It("finds songs by CJK title", func() {
+				resp := doReq("search3", "query", "プラチナ")
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Song).To(HaveLen(1))
+				Expect(resp.SearchResult3.Song[0].Title).To(Equal("プラチナ・ジェット"))
+			})
+
+			It("finds artists by CJK name", func() {
+				resp := doReq("search3", "query", "シートベルツ")
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Artist).To(HaveLen(1))
+				Expect(resp.SearchResult3.Artist[0].Name).To(Equal("シートベルツ"))
+			})
+
+			It("finds albums by CJK artist name", func() {
+				resp := doReq("search3", "query", "シートベルツ")
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Album).To(HaveLen(1))
+				Expect(resp.SearchResult3.Album[0].Name).To(Equal("COWBOY BEBOP"))
+			})
+		})
+
+		Describe("Legacy backend", func() {
+			It("returns results using legacy LIKE-based search when configured", func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Search.Backend = "legacy"
+
+				resp := doReq("search3", "query", "Beatles")
+
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.SearchResult3).ToNot(BeNil())
+				Expect(resp.SearchResult3.Artist).ToNot(BeEmpty())
+
+				found := false
+				for _, a := range resp.SearchResult3.Artist {
+					if a.Name == "The Beatles" {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "expected to find artist 'The Beatles' with legacy backend")
 			})
 		})
 	})
