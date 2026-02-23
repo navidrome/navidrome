@@ -41,7 +41,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 		opts = filter.ByStarred()
 	case "highest":
 		opts = filter.ByRating()
-	case "highestrated":
+	case "highestAverage":
 		minAlbumRating := p.FloatOr("minRating", 0.0)
 		opts = filter.ByAverageRating(minAlbumRating)
 	case "byGenre":
