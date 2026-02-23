@@ -15,6 +15,7 @@ func main() {
 	// To avoid these kind of errors, you should use `make build` to compile the project.
 	_ = buildtags.NETGO
 	_ = buildtags.SQLITE_FTS5
+	_ = buildtags.SQLITE_SPELLFIX
 
 	cmd.Execute()
 }
