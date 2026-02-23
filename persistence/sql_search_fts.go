@@ -279,12 +279,18 @@ func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg sea
 	}
 
 	// Phase 1: fresh query — must set LIMIT/OFFSET from options explicitly.
+	// Mirror applyOptions behavior: Max=0 means no limit, not LIMIT 0.
 	rowidQuery := Select(s.tableName+".rowid").
 		From(s.tableName).
 		Join(s.ftsTable+" ON "+s.ftsTable+".rowid = "+s.tableName+".rowid AND "+s.ftsTable+" MATCH ?", s.matchExpr).
 		Where(Eq{s.tableName + ".missing": false}).
-		OrderBy(qualifiedOrderBys...).
-		Limit(uint64(options.Max)).Offset(uint64(options.Offset))
+		OrderBy(qualifiedOrderBys...)
+	if options.Max > 0 {
+		rowidQuery = rowidQuery.Limit(uint64(options.Max))
+	}
+	if options.Offset > 0 {
+		rowidQuery = rowidQuery.Offset(uint64(options.Offset))
+	}
 
 	// Library filter + musicFolderId must be applied here, before pagination.
 	if cfg.LibraryFilter != nil {

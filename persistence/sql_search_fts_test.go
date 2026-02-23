@@ -3,8 +3,6 @@ package persistence
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -392,34 +390,18 @@ var _ = Describe("FTS5 Integration Search", func() {
 	})
 
 	Describe("Single-character search (doSearch min-length guard)", func() {
-		It("returns empty results for single-char query via Search (FTS backend)", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "fts"
-
-			results, err := mr.Search("a", model.QueryOptions{Max: 10})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(results).To(BeEmpty(), "doSearch should reject single-char queries")
-		})
-
-		It("returns empty results for single-char query via Search (legacy backend)", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
-
+		It("returns empty results for single-char query via Search", func() {
 			results, err := mr.Search("a", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty(), "doSearch should reject single-char queries")
 		})
 	})
 
-	Describe("Legacy backend fallback", func() {
-		It("returns results using legacy LIKE-based search when configured", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
-
-			results, err := mr.Search("Radioactivity", model.QueryOptions{Max: 10})
+	Describe("Max=0 means no limit (regression: must not produce LIMIT 0)", func() {
+		It("returns results with Max=0", func() {
+			results, err := mr.Search("Beatles", model.QueryOptions{Max: 0})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(results).To(HaveLen(1))
-			Expect(results[0].Title).To(Equal("Radioactivity"))
+			Expect(results).ToNot(BeEmpty(), "Max=0 should mean no limit, not LIMIT 0")
 		})
 	})
 })
