@@ -329,13 +329,8 @@ func qualifyOrderBy(tableName, orderBy string) string {
 
 // newFTSSearch creates an FTS5 search strategy. Falls back to LIKE search if the
 // query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!").
-// Returns nil when the query is too short or produces no searchable tokens at all.
-// Single-character queries are rejected because prefix matching (e.g., "a*") would
-// match most rows in the index.
+// Returns nil when the query produces no searchable tokens at all.
 func newFTSSearch(tableName, query string) searchStrategy {
-	if len(query) < 2 {
-		return nil
-	}
 	q := buildFTS5Query(query)
 	if q == "" {
 		// Punctuation-only fallback: try LIKE search with the raw query

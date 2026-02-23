@@ -34,7 +34,7 @@ type searchStrategy interface {
 }
 
 // getSearchStrategy returns the appropriate search strategy based on config and query content.
-// Returns nil when the query is too short for the selected strategy or produces no searchable tokens.
+// Returns nil when the query produces no searchable tokens.
 func getSearchStrategy(tableName, query string) searchStrategy {
 	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
 		return newLegacySearch(tableName, query)
@@ -65,6 +65,13 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 	if uuid.Validate(q) == nil && len(cfg.MBIDFields) > 0 {
 		sq = sq.Where(mbidExpr(r.tableName, q, cfg.MBIDFields...))
 		return r.queryAll(sq, results)
+	}
+
+	// Min-length guard: single-character queries are too broad for search3.
+	// This check lives here (not in the strategies) so that fullTextFilter
+	// (REST filter path) can still use single-character queries.
+	if len(q) < 2 {
+		return nil
 	}
 
 	strategy := getSearchStrategy(r.tableName, q)

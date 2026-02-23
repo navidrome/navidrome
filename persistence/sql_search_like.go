@@ -27,12 +27,8 @@ func (s *likeSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg se
 }
 
 // newLegacySearch creates a LIKE search against the full_text column.
-// Returns nil when the query is too short or produces no searchable tokens.
-// Single-character queries are rejected because LIKE '%x%' against full_text is too broad.
+// Returns nil when the query produces no searchable tokens.
 func newLegacySearch(tableName, query string) searchStrategy {
-	if len(query) < 2 {
-		return nil
-	}
 	filter := legacySearchExpr(tableName, query)
 	if filter == nil {
 		return nil

@@ -77,6 +77,24 @@ var _ = Describe("sqlRepository", func() {
 			Expect(sql).To(ContainSubstring("MATCH"))
 		})
 
+		It("returns non-nil for single-character query (no min-length in strategy)", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "fts"
+			conf.Server.Search.FullString = false
+
+			strategy := getSearchStrategy("media_file", "a")
+			Expect(strategy).ToNot(BeNil(), "single-char queries must be accepted by strategies (min-length is enforced in doSearch)")
+		})
+
+		It("returns non-nil for single-character query with legacy backend", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "legacy"
+			conf.Server.Search.FullString = false
+
+			strategy := getSearchStrategy("media_file", "a")
+			Expect(strategy).ToNot(BeNil(), "single-char queries must be accepted by legacy strategy (min-length is enforced in doSearch)")
+		})
+
 		It("uses legacy for CJK when SearchBackend is legacy", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Search.Backend = "legacy"

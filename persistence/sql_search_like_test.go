@@ -5,6 +5,16 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("newLegacySearch", func() {
+	It("returns non-nil for single-character query", func() {
+		strategy := newLegacySearch("media_file", "a")
+		Expect(strategy).ToNot(BeNil(), "single-char queries must not be rejected; min-length is enforced in doSearch, not here")
+		sql, _, err := strategy.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("LIKE"))
+	})
+})
+
 var _ = Describe("legacySearchExpr", func() {
 	It("returns nil for empty query", func() {
 		Expect(legacySearchExpr("media_file", "")).To(BeNil())

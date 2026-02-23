@@ -171,6 +171,14 @@ var _ = Describe("newFTSSearch", func() {
 		Expect(newFTSSearch("media_file", "")).To(BeNil())
 	})
 
+	It("returns non-nil for single-character query", func() {
+		strategy := newFTSSearch("media_file", "a")
+		Expect(strategy).ToNot(BeNil(), "single-char queries must not be rejected; min-length is enforced in doSearch, not here")
+		sql, _, err := strategy.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("MATCH"))
+	})
+
 	It("returns ftsSearch with correct table names and MATCH expression", func() {
 		strategy := newFTSSearch("media_file", "beatles")
 		fts, ok := strategy.(*ftsSearch)
@@ -380,6 +388,26 @@ var _ = Describe("FTS5 Integration Search", func() {
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Title).To(Equal("!!!!!!!"))
 			Expect(results[0].ID).To(Equal(songPunctuation.ID))
+		})
+	})
+
+	Describe("Single-character search (doSearch min-length guard)", func() {
+		It("returns empty results for single-char query via Search (FTS backend)", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "fts"
+
+			results, err := mr.Search("a", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty(), "doSearch should reject single-char queries")
+		})
+
+		It("returns empty results for single-char query via Search (legacy backend)", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "legacy"
+
+			results, err := mr.Search("a", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty(), "doSearch should reject single-char queries")
 		})
 	})
 

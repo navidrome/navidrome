@@ -162,6 +162,30 @@ var _ = Describe("sqlRestful", func() {
 			})
 		})
 
+		Context("single-character queries (regression: must not be rejected)", func() {
+			It("returns valid filter for single-char query with legacy backend", func() {
+				conf.Server.Search.Backend = "legacy"
+				result := filter("search", "a")
+				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("LIKE"))
+				Expect(args).ToNot(BeEmpty())
+			})
+
+			It("returns valid filter for single-char query with FTS backend", func() {
+				conf.Server.Search.Backend = "fts"
+				conf.Server.Search.FullString = false
+				ftsFilter := fullTextFilter(tableName, mbidFields...)
+				result := ftsFilter("search", "a")
+				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("MATCH"))
+				Expect(args).ToNot(BeEmpty())
+			})
+		})
+
 		Context("edge cases", func() {
 			It("returns nil for empty string", func() {
 				result := filter("search", "")
