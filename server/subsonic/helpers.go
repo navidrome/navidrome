@@ -506,6 +506,11 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			})
 		}
 
+		// Ensure main vocals (empty role) always comes first
+		sort.SliceStable(roleOrder, func(i, j int) bool {
+			return roleOrder[i] == "" && roleOrder[j] != ""
+		})
+
 		// Create a separate CueLine for each role group
 		for _, role := range roleOrder {
 			cues := cuesByRole[role]
