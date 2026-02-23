@@ -42,7 +42,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	case "highest":
 		opts = filter.ByRating()
 	case "highestAverage":
-		minAlbumRating := p.FloatOr("minRating", 0.0)
+		minAlbumRating := p.FloatOr("minAverageRating", 0.0)
 		opts = filter.ByAverageRating(minAlbumRating)
 	case "byGenre":
 		genre, err := p.String("genre")
@@ -233,19 +233,14 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	genre, _ := p.String("genre")
 	fromYear := p.IntOr("fromYear", 0)
 	toYear := p.IntOr("toYear", 0)
-	minRating := p.FloatOr("minRating", 0.0)
+	minAverageRating := p.FloatOr("minAverageRating", 0.0)
 
 	// Get optional library IDs from musicFolderId parameter
 	musicFolderIds, err := selectedMusicFolderIds(r, false)
 	if err != nil {
 		return nil, err
 	}
-	var opts filter.Options
-	if minRating > 0 {
-		opts = filter.SongsByAverageRating(minRating)
-	} else {
-		opts = filter.SongsByRandom(genre, fromYear, toYear)
-	}
+	opts := filter.SongsByRandom(genre, fromYear, toYear, minAverageRating)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
 	songs, err := api.getSongs(r.Context(), 0, size, opts)

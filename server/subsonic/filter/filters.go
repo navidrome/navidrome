@@ -90,7 +90,7 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
-func SongsByRandom(genre string, fromYear, toYear int) Options {
+func SongsByRandom(genre string, fromYear, toYear int, minAverageRating float64) Options {
 	options := Options{
 		Sort: "random",
 	}
@@ -103,6 +103,9 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	if toYear != 0 {
 		ff = append(ff, LtOrEq{"year": toYear})
+	}
+	if minAverageRating > 0 {
+		ff = append(ff, GtOrEq{"average_rating": minAverageRating})
 	}
 	options.Filters = ff
 	return addDefaultFilters(options)
@@ -173,12 +176,8 @@ func ByRating() Options {
 	return addDefaultFilters(Options{Sort: "rating", Order: "desc", Filters: Gt{"rating": 0}})
 }
 
-func ByAverageRating(minRating float64) Options {
-	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minRating}})
-}
-
-func SongsByAverageRating(minRating float64) Options {
-	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minRating}})
+func ByAverageRating(minAverageRating float64) Options {
+	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minAverageRating}})
 }
 
 func ByStarred() Options {
