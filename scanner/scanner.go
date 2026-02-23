@@ -11,8 +11,8 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -23,7 +23,7 @@ import (
 type scannerImpl struct {
 	ds  model.DataStore
 	cw  artwork.CacheWarmer
-	pls core.Playlists
+	pls playlists.Playlists
 }
 
 // scanState holds the state of an in-progress scan, to be passed to the various phases

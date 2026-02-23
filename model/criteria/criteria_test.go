@@ -27,6 +27,7 @@ var _ = Describe("Criteria", func() {
 						StartsWith{"comment": "this"},
 						InTheRange{"year": []int{1980, 1990}},
 						IsNot{"genre": "Rock"},
+						Gt{"albumrating": 3},
 					},
 				},
 				Sort:   "title",
@@ -48,7 +49,8 @@ var _ = Describe("Criteria", func() {
 		{ "all": [
 				{ "startsWith": {"comment": "this"} },
 				{ "inTheRange": {"year":[1980,1990]} },
-				{ "isNot": { "genre": "Rock" }}
+				{ "isNot": { "genre": "Rock" }},
+				{ "gt": { "albumrating": 3 } }
 			]
 		}
 	],
@@ -68,10 +70,10 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(
 				`(media_file.title LIKE ? AND media_file.title NOT LIKE ? ` +
-					`AND (not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) ` +
+					`AND (not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?) ` +
 					`OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) ` +
-					`AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))`))
-			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
+					`AND not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?) AND COALESCE(album_annotation.rating, 0) > ?))`))
+			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock", 3))
 		})
 		It("marshals to JSON", func() {
 			j, err := json.Marshal(goObj)
@@ -172,10 +174,92 @@ var _ = Describe("Criteria", func() {
 			sql, args, err := goObj.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(
-				`(exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) AND ` +
-					`exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?))`,
+				`(exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?) AND ` +
+					`exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?))`,
 			))
 			gomega.Expect(args).To(gomega.HaveExactElements("The Beatles", "%Lennon%"))
+		})
+	})
+
+	Describe("RequiredJoins", func() {
+		It("returns JoinNone when no annotation fields are used", func() {
+			c := Criteria{
+				Expression: All{
+					Contains{"title": "love"},
+				},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinNone))
+		})
+		It("returns JoinNone for media_file annotation fields", func() {
+			c := Criteria{
+				Expression: All{
+					Is{"loved": true},
+					Gt{"playCount": 5},
+				},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinNone))
+		})
+		It("returns JoinAlbumAnnotation for album annotation fields", func() {
+			c := Criteria{
+				Expression: All{
+					Gt{"albumRating": 3},
+				},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinAlbumAnnotation))
+		})
+		It("returns JoinArtistAnnotation for artist annotation fields", func() {
+			c := Criteria{
+				Expression: All{
+					Is{"artistLoved": true},
+				},
+			}
+			gomega.Expect(c.RequiredJoins()).To(gomega.Equal(JoinArtistAnnotation))
+		})
+		It("returns both join types when both are used", func() {
+			c := Criteria{
+				Expression: All{
+					Gt{"albumRating": 3},
+					Is{"artistLoved": true},
+				},
+			}
+			j := c.RequiredJoins()
+			gomega.Expect(j.Has(JoinAlbumAnnotation)).To(gomega.BeTrue())
+			gomega.Expect(j.Has(JoinArtistAnnotation)).To(gomega.BeTrue())
+		})
+		It("detects join types in nested expressions", func() {
+			c := Criteria{
+				Expression: All{
+					Any{
+						All{
+							Is{"albumLoved": true},
+						},
+					},
+					Any{
+						Gt{"artistPlayCount": 10},
+					},
+				},
+			}
+			j := c.RequiredJoins()
+			gomega.Expect(j.Has(JoinAlbumAnnotation)).To(gomega.BeTrue())
+			gomega.Expect(j.Has(JoinArtistAnnotation)).To(gomega.BeTrue())
+		})
+		It("detects join types from Sort field", func() {
+			c := Criteria{
+				Expression: All{
+					Contains{"title": "love"},
+				},
+				Sort: "albumRating",
+			}
+			gomega.Expect(c.RequiredJoins().Has(JoinAlbumAnnotation)).To(gomega.BeTrue())
+		})
+		It("detects join types from Sort field with direction prefix", func() {
+			c := Criteria{
+				Expression: All{
+					Contains{"title": "love"},
+				},
+				Sort: "-artistRating",
+			}
+			gomega.Expect(c.RequiredJoins().Has(JoinArtistAnnotation)).To(gomega.BeTrue())
 		})
 	})
 

@@ -110,7 +110,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx)))
+		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx))) //nolint:gosec
 		return
 	}
 

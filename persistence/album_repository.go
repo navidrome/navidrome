@@ -62,11 +62,14 @@ func (a *dbAlbum) PostScan() error {
 
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
-	fullText = append(fullText, a.Album.Participants.AllNames()...)
+	participantNames := a.Album.Participants.AllNames()
+	fullText = append(fullText, participantNames...)
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	fullText = append(fullText, a.Album.Tags[model.TagAlbumVersion]...)
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
+	args["search_participants"] = strings.Join(participantNames, " ")
+	args["search_normalized"] = normalizeForFTS(a.Name, a.AlbumArtist)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
