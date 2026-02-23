@@ -9,6 +9,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -251,8 +252,6 @@ func init() {
 }
 
 // ftsSearch implements searchStrategy using FTS5 full-text search with BM25 ranking.
-// execute() uses a two-phase query to avoid expensive JOINs on high-cardinality results.
-// ToSql() provides a single-query fallback for use in REST filter contexts.
 type ftsSearch struct {
 	tableName string
 	ftsTable  string
@@ -260,43 +259,51 @@ type ftsSearch struct {
 	rankExpr  string
 }
 
-// ToSql implements Sqlizer as a single-query fallback (rowid IN subquery).
-// Used by the REST filter path where the two-phase optimization isn't needed.
+// ToSql returns a single-query fallback for the REST filter path (no two-phase split).
 func (s *ftsSearch) ToSql() (string, []interface{}, error) {
 	sql := s.tableName + ".rowid IN (SELECT rowid FROM " + s.ftsTable + " WHERE " + s.ftsTable + " MATCH ?)"
 	return sql, []interface{}{s.matchExpr}, nil
 }
 
-// execute implements a two-phase FTS5 search to avoid expensive LEFT JOINs on
-// high-cardinality FTS results.
+// execute runs a two-phase FTS5 search:
+//   - Phase 1: lightweight rowid query (main table + FTS + library filter) for ranking and pagination.
+//   - Phase 2: full SELECT with all JOINs, scoped to Phase 1's rowid set.
 //
-// Phase 1: lightweight query (main table + FTS only) to get sorted, paginated rowids.
-// Phase 2: full SELECT with all JOINs, filtered by the small set of Phase 1 rowids.
-//
-// Complex ORDER BY expressions (function calls, aggregations) are dropped from Phase 1;
-// only FTS rank + simple columns are used.
-func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, offset, size int, dest any, orderBys ...string) error {
+// Complex ORDER BY (function calls, aggregations) are dropped from Phase 1.
+func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	qualifiedOrderBys := []string{s.rankExpr}
-	for _, ob := range orderBys {
+	for _, ob := range cfg.OrderBy {
 		if qualified := qualifyOrderBy(s.tableName, ob); qualified != "" {
 			qualifiedOrderBys = append(qualifiedOrderBys, qualified)
 		}
 	}
 
-	// Phase 1: only main table + FTS index, no annotation/bookmark/library JOINs.
+	// Phase 1: fresh query — must set LIMIT/OFFSET from options explicitly.
 	rowidQuery := Select(s.tableName+".rowid").
 		From(s.tableName).
 		Join(s.ftsTable+" ON "+s.ftsTable+".rowid = "+s.tableName+".rowid AND "+s.ftsTable+" MATCH ?", s.matchExpr).
 		Where(Eq{s.tableName + ".missing": false}).
 		OrderBy(qualifiedOrderBys...).
-		Limit(uint64(size)).Offset(uint64(offset))
+		Limit(uint64(options.Max)).Offset(uint64(options.Offset))
+
+	// Library filter + musicFolderId must be applied here, before pagination.
+	if cfg.LibraryFilter != nil {
+		rowidQuery = cfg.LibraryFilter(rowidQuery)
+	} else {
+		rowidQuery = r.applyLibraryFilter(rowidQuery)
+	}
+	if options.Filters != nil {
+		rowidQuery = rowidQuery.Where(options.Filters)
+	}
 
 	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
 	if err != nil {
 		return fmt.Errorf("building FTS rowid query: %w", err)
 	}
 
-	// Phase 2: hydrate with full JOINs, preserving Phase 1's ordering via row_number.
+	// Phase 2: strip LIMIT/OFFSET from sq (Phase 1 handled pagination),
+	// join on the ranked rowid set to hydrate with full columns.
+	sq = sq.RemoveLimit().RemoveOffset()
 	rankedSubquery := fmt.Sprintf(
 		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
 		rowidSQL,

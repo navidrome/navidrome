@@ -12,7 +12,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -353,18 +352,21 @@ func (r *albumRepository) purgeEmpty(libraryIDs ...int) error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int, options ...model.QueryOptions) (model.Albums, error) {
+var albumSearchConfig = searchConfig{
+	NaturalOrder: "album.rowid",
+	OrderBy:      []string{"name"},
+	MBIDFields:   []string{"mbz_album_id", "mbz_release_group_id"},
+}
+
+func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
 	var res dbAlbums
-	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectAlbum(options...), q, []string{"mbz_album_id", "mbz_release_group_id"}, &res)
-		if err != nil {
-			return nil, fmt.Errorf("searching album by MBID %q: %w", q, err)
-		}
-	} else {
-		err := r.doSearch(r.selectAlbum(options...), q, offset, size, &res, "album.rowid", "name")
-		if err != nil {
-			return nil, fmt.Errorf("searching album by query %q: %w", q, err)
-		}
+	err := r.doSearch(r.selectAlbum(options...), q, &res, albumSearchConfig, opts)
+	if err != nil {
+		return nil, fmt.Errorf("searching album %q: %w", q, err)
 	}
 	return res.toModels(), nil
 }

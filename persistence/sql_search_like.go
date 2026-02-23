@@ -20,11 +20,10 @@ func (s *likeSearch) ToSql() (string, []interface{}, error) {
 	return s.filter.ToSql()
 }
 
-func (s *likeSearch) execute(r sqlRepository, sq SelectBuilder, offset, size int, dest any, orderBys ...string) error {
+func (s *likeSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	sq = sq.Where(s.filter)
-	sq = sq.OrderBy(orderBys...)
-	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
-	return r.queryAll(sq, dest, model.QueryOptions{Offset: offset})
+	sq = sq.OrderBy(cfg.OrderBy...)
+	return r.queryAll(sq, dest, options)
 }
 
 // newLegacySearch creates a LIKE search against the full_text column.

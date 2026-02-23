@@ -15,12 +15,22 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
+// searchConfig holds per-repository constants for doSearch.
+type searchConfig struct {
+	NaturalOrder string   // ORDER BY for empty-query results (e.g. "album.rowid")
+	OrderBy      []string // ORDER BY for text search results (e.g. ["name"])
+	MBIDFields   []string // columns to match when query is a UUID
+	// LibraryFilter overrides the default applyLibraryFilter for FTS Phase 1.
+	// Needed when library access requires a junction table (e.g. artist → library_artist).
+	LibraryFilter func(sq SelectBuilder) SelectBuilder
+}
+
 // searchStrategy defines how to execute a text search against a repository table.
-// ToSql() (from embedded Sqlizer) is used by the REST filter path as a WHERE clause.
-// execute() is used by the Search endpoints for full search with pagination and ordering.
+// options carries filters and pagination that must reach all query phases,
+// including FTS Phase 1 which builds its own query outside sq.
 type searchStrategy interface {
 	Sqlizer
-	execute(r sqlRepository, sq SelectBuilder, offset, size int, dest any, orderBys ...string) error
+	execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error
 }
 
 // getSearchStrategy returns the appropriate search strategy based on config and query content.
@@ -35,21 +45,26 @@ func getSearchStrategy(tableName, query string) searchStrategy {
 	return newFTSSearch(tableName, query)
 }
 
-// doSearch performs a full-text search with the specified parameters.
-// Empty queries return all results in natural order (OpenSubsonic `search3?query=""`).
-// The naturalOrder column should normally be `tableName + ".rowid"`, but some repositories
-// (e.g. artist) may differ. Minimum query length is enforced by each strategy individually.
-func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, results any, naturalOrder string, orderBys ...string) error {
+// doSearch dispatches a search query: empty → natural order, UUID → MBID match,
+// otherwise delegates to getSearchStrategy. sq must already have LIMIT/OFFSET set
+// via newSelect(options...). options is forwarded so FTS Phase 1 can apply the same
+// filters and pagination independently.
+func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg searchConfig, options model.QueryOptions) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 
 	sq = sq.Where(Eq{r.tableName + ".missing": false})
 
-	// Empty or quoted-empty query (OpenSubsonic `search3?query=""`) — return all results in natural order.
+	// Empty query (OpenSubsonic `search3?query=""`) — return all in natural order.
 	if q == "" || q == `""` {
-		sq = sq.OrderBy(naturalOrder)
-		sq = sq.Limit(uint64(size)).Offset(uint64(offset))
-		return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
+		sq = sq.OrderBy(cfg.NaturalOrder)
+		return r.queryAll(sq, results, options)
+	}
+
+	// MBID search: if query is a valid UUID, search by MBID fields instead
+	if uuid.Validate(q) == nil && len(cfg.MBIDFields) > 0 {
+		sq = sq.Where(mbidExpr(r.tableName, q, cfg.MBIDFields...))
+		return r.queryAll(sq, results)
 	}
 
 	strategy := getSearchStrategy(r.tableName, q)
@@ -57,14 +72,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, re
 		return nil
 	}
 
-	return strategy.execute(r, sq, offset, size, results, orderBys...)
-}
-
-func (r sqlRepository) searchByMBID(sq SelectBuilder, mbid string, mbidFields []string, results any) error {
-	sq = sq.Where(mbidExpr(r.tableName, mbid, mbidFields...))
-	sq = sq.Where(Eq{r.tableName + ".missing": false})
-
-	return r.queryAll(sq, results)
+	return strategy.execute(r, sq, results, cfg, options)
 }
 
 func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {

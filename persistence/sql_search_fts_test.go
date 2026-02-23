@@ -288,7 +288,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("MediaFile search", func() {
 		It("finds media files by title", func() {
-			results, err := mr.Search("Radioactivity", 0, 10)
+			results, err := mr.Search("Radioactivity", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Title).To(Equal("Radioactivity"))
@@ -296,7 +296,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		})
 
 		It("finds media files by artist name", func() {
-			results, err := mr.Search("Beatles", 0, 10)
+			results, err := mr.Search("Beatles", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(3))
 			for _, r := range results {
@@ -307,7 +307,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("Album search", func() {
 		It("finds albums by name", func() {
-			results, err := alr.Search("Sgt Peppers", 0, 10)
+			results, err := alr.Search("Sgt Peppers", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Name).To(Equal("Sgt Peppers"))
@@ -315,7 +315,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		})
 
 		It("finds albums with multi-word search", func() {
-			results, err := alr.Search("Abbey Road", 0, 10)
+			results, err := alr.Search("Abbey Road", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(2))
 		})
@@ -323,7 +323,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("Artist search", func() {
 		It("finds artists by name", func() {
-			results, err := arr.Search("Kraftwerk", 0, 10)
+			results, err := arr.Search("Kraftwerk", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Name).To(Equal("Kraftwerk"))
@@ -333,7 +333,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("CJK search", func() {
 		It("finds media files by CJK title", func() {
-			results, err := mr.Search("プラチナ", 0, 10)
+			results, err := mr.Search("プラチナ", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Title).To(Equal("プラチナ・ジェット"))
@@ -341,14 +341,14 @@ var _ = Describe("FTS5 Integration Search", func() {
 		})
 
 		It("finds media files by CJK artist name", func() {
-			results, err := mr.Search("シートベルツ", 0, 10)
+			results, err := mr.Search("シートベルツ", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Artist).To(Equal("シートベルツ"))
 		})
 
 		It("finds albums by CJK artist name", func() {
-			results, err := alr.Search("シートベルツ", 0, 10)
+			results, err := alr.Search("シートベルツ", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Name).To(Equal("COWBOY BEBOP"))
@@ -356,7 +356,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		})
 
 		It("finds artists by CJK name", func() {
-			results, err := arr.Search("シートベルツ", 0, 10)
+			results, err := arr.Search("シートベルツ", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Name).To(Equal("シートベルツ"))
@@ -366,7 +366,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("Album version search", func() {
 		It("finds albums by version tag via FTS", func() {
-			results, err := alr.Search("Deluxe", 0, 10)
+			results, err := alr.Search("Deluxe", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].ID).To(Equal(albumWithVersion.ID))
@@ -375,7 +375,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("Punctuation-only search", func() {
 		It("finds media files with punctuation-only title", func() {
-			results, err := mr.Search("!!!!!!!", 0, 10)
+			results, err := mr.Search("!!!!!!!", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Title).To(Equal("!!!!!!!"))
@@ -388,7 +388,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Search.Backend = "legacy"
 
-			results, err := mr.Search("Radioactivity", 0, 10)
+			results, err := mr.Search("Radioactivity", model.QueryOptions{Max: 10})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].Title).To(Equal("Radioactivity"))
