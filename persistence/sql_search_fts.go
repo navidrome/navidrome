@@ -187,21 +187,67 @@ func buildFTS5Query(userInput string) string {
 	return result
 }
 
-// ftsSearchColumns defines which FTS5 columns are included in general search.
-// Columns not listed here are indexed but not searched by default,
-// enabling future additions (comments, lyrics, bios) without affecting general search.
-var ftsSearchColumns = map[string]string{
-	"media_file": "{title album artist album_artist sort_title sort_album_name sort_artist_name sort_album_artist_name disc_subtitle search_participants search_normalized}",
-	"album":      "{name sort_album_name album_artist search_participants discs catalog_num album_version search_normalized}",
-	"artist":     "{name sort_artist_name search_normalized}",
+// ftsColumn pairs an FTS5 column name with its BM25 relevance weight.
+type ftsColumn struct {
+	Name   string
+	Weight float64
 }
 
-// ftsBM25Weights defines BM25 column weights for relevance ranking.
-// The order must match the column order in the FTS5 table definition.
-var ftsBM25Weights = map[string]string{
-	"media_file": "10.0, 5.0, 3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0",
-	"album":      "10.0, 1.0, 3.0, 2.0, 1.0, 1.0, 1.0, 1.0",
-	"artist":     "10.0, 1.0, 1.0",
+// ftsColumnDefs defines FTS5 columns and their BM25 relevance weights.
+// The order MUST match the column order in the FTS5 table definition (see migrations).
+// All columns are both searched and ranked. When adding indexed-but-not-searched
+// columns in the future, use Weight: 0 to exclude from the search column filter.
+var ftsColumnDefs = map[string][]ftsColumn{
+	"media_file": {
+		{"title", 10.0},
+		{"album", 5.0},
+		{"artist", 3.0},
+		{"album_artist", 3.0},
+		{"sort_title", 1.0},
+		{"sort_album_name", 1.0},
+		{"sort_artist_name", 1.0},
+		{"sort_album_artist_name", 1.0},
+		{"disc_subtitle", 1.0},
+		{"search_participants", 2.0},
+		{"search_normalized", 1.0},
+	},
+	"album": {
+		{"name", 10.0},
+		{"sort_album_name", 1.0},
+		{"album_artist", 3.0},
+		{"search_participants", 2.0},
+		{"discs", 1.0},
+		{"catalog_num", 1.0},
+		{"album_version", 1.0},
+		{"search_normalized", 1.0},
+	},
+	"artist": {
+		{"name", 10.0},
+		{"sort_artist_name", 1.0},
+		{"search_normalized", 1.0},
+	},
+}
+
+// ftsColumnFilters and ftsBM25Weights are precomputed from ftsColumnDefs at init time
+// to avoid per-query allocations.
+var (
+	ftsColumnFilters = map[string]string{}
+	ftsBM25Weights   = map[string]string{}
+)
+
+func init() {
+	for table, cols := range ftsColumnDefs {
+		var names []string
+		weights := make([]string, len(cols))
+		for i, c := range cols {
+			if c.Weight > 0 {
+				names = append(names, c.Name)
+			}
+			weights[i] = fmt.Sprintf("%.1f", c.Weight)
+		}
+		ftsColumnFilters[table] = "{" + strings.Join(names, " ") + "}"
+		ftsBM25Weights[table] = strings.Join(weights, ", ")
+	}
 }
 
 // ftsSearch implements searchStrategy using FTS5 full-text search with BM25 ranking.
@@ -295,7 +341,7 @@ func newFTSSearch(tableName, query string) searchStrategy {
 	}
 	ftsTable := tableName + "_fts"
 	matchExpr := q
-	if cols, ok := ftsSearchColumns[tableName]; ok {
+	if cols, ok := ftsColumnFilters[tableName]; ok {
 		matchExpr = cols + " : (" + q + ")"
 	}
 

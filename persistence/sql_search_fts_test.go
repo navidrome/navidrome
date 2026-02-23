@@ -95,6 +95,77 @@ var _ = DescribeTable("qualifyOrderBy",
 	Entry("qualifies media_file column", "media_file", "title", "media_file.title"),
 )
 
+var _ = Describe("ftsColumnDefs helpers", func() {
+	Describe("ftsColumnFilters", func() {
+		It("returns column filter for media_file", func() {
+			Expect(ftsColumnFilters).To(HaveKeyWithValue("media_file",
+				"{title album artist album_artist sort_title sort_album_name sort_artist_name sort_album_artist_name disc_subtitle search_participants search_normalized}",
+			))
+		})
+
+		It("returns column filter for album", func() {
+			Expect(ftsColumnFilters).To(HaveKeyWithValue("album",
+				"{name sort_album_name album_artist search_participants discs catalog_num album_version search_normalized}",
+			))
+		})
+
+		It("returns column filter for artist", func() {
+			Expect(ftsColumnFilters).To(HaveKeyWithValue("artist",
+				"{name sort_artist_name search_normalized}",
+			))
+		})
+
+		It("has no entry for unknown table", func() {
+			Expect(ftsColumnFilters).ToNot(HaveKey("unknown"))
+		})
+	})
+
+	Describe("ftsBM25Weights", func() {
+		It("returns weight CSV for media_file", func() {
+			Expect(ftsBM25Weights).To(HaveKeyWithValue("media_file",
+				"10.0, 5.0, 3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0",
+			))
+		})
+
+		It("returns weight CSV for album", func() {
+			Expect(ftsBM25Weights).To(HaveKeyWithValue("album",
+				"10.0, 1.0, 3.0, 2.0, 1.0, 1.0, 1.0, 1.0",
+			))
+		})
+
+		It("returns weight CSV for artist", func() {
+			Expect(ftsBM25Weights).To(HaveKeyWithValue("artist",
+				"10.0, 1.0, 1.0",
+			))
+		})
+
+		It("has no entry for unknown table", func() {
+			Expect(ftsBM25Weights).ToNot(HaveKey("unknown"))
+		})
+	})
+
+	It("has definitions for all known tables", func() {
+		for _, table := range []string{"media_file", "album", "artist"} {
+			Expect(ftsColumnDefs).To(HaveKey(table))
+			Expect(ftsColumnDefs[table]).ToNot(BeEmpty())
+		}
+	})
+
+	It("has matching column count between filter and weights", func() {
+		for table, cols := range ftsColumnDefs {
+			// Column filter only includes Weight > 0 columns
+			filterCount := 0
+			for _, c := range cols {
+				if c.Weight > 0 {
+					filterCount++
+				}
+			}
+			// For now, all columns have Weight > 0, so filter count == total count
+			Expect(filterCount).To(Equal(len(cols)), "table %s: all columns should have positive weights", table)
+		}
+	})
+})
+
 var _ = Describe("newFTSSearch", func() {
 	It("returns nil for empty query", func() {
 		Expect(newFTSSearch("media_file", "")).To(BeNil())

@@ -68,7 +68,6 @@ var _ = Describe("Album List Endpoints", func() {
 			for _, a := range resp.AlbumList.Album {
 				Expect(a.Genre).To(Equal("Jazz"))
 			}
-
 		})
 
 		It("type=byYear filters by fromYear/toYear range", func() {
