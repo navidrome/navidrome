@@ -50,6 +50,23 @@ var _ = DescribeTable("buildFTS5Query",
 	Entry("returns empty string for empty quoted phrase", `""`, ""),
 )
 
+var _ = DescribeTable("ftsQueryDegraded",
+	func(original, ftsQuery string, expected bool) {
+		Expect(ftsQueryDegraded(original, ftsQuery)).To(Equal(expected))
+	},
+	Entry("not degraded for empty original", "", "1*", false),
+	Entry("not degraded for empty ftsQuery", "1+", "", false),
+	Entry("not degraded for purely alphanumeric query", "beatles", "beatles*", false),
+	Entry("not degraded when long tokens remain", "test^val", "test* val*", false),
+	Entry("not degraded for quoted phrase with long tokens", `"the beatles"`, `"the beatles"`, false),
+	Entry("degraded for quoted phrase with only short tokens after tokenizer strips special chars", `"1+"`, `"1+"`, true),
+	Entry("not degraded for quoted phrase with meaningful content", `"C++ programming"`, `"C++ programming"`, false),
+	Entry("degraded when special chars stripped leaving short token", "1+", "1*", true),
+	Entry("degraded when special chars stripped leaving two short tokens", "C# 1", "C* 1*", true),
+	Entry("not degraded when at least one long token remains", "1+ beatles", "1* beatles*", false),
+	Entry("not degraded for OR groups from processPunctuatedWords", "AC/DC", `("AC DC" OR ACDC*)`, false),
+)
+
 var _ = DescribeTable("normalizeForFTS",
 	func(expected string, values ...string) {
 		Expect(normalizeForFTS(values...)).To(Equal(expected))
@@ -264,6 +281,17 @@ var _ = Describe("newFTSSearch", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("LIKE"))
 		Expect(args).To(ContainElement("%!!!!!!!%"))
+	})
+
+	It("falls back to LIKE search for degraded query (special chars stripped leaving short tokens)", func() {
+		strategy := newFTSSearch("album", "1+")
+		Expect(strategy).ToNot(BeNil())
+		_, ok := strategy.(*ftsSearch)
+		Expect(ok).To(BeFalse(), "degraded query should fall back to LIKE, not FTS")
+		sql, args, err := strategy.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("LIKE"))
+		Expect(args).To(ContainElement("%1+%"))
 	})
 
 	It("returns nil for empty string even with LIKE fallback", func() {

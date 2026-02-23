@@ -333,13 +333,66 @@ func qualifyOrderBy(tableName, orderBy string) string {
 	return strings.Join(parts, " ")
 }
 
+// ftsQueryDegraded returns true when the FTS query lost significant discriminating
+// content compared to the original input. This happens when special characters that
+// are part of the entity name (e.g., "1+", "C++", "!!!", "C#") get stripped by FTS
+// tokenization, leaving only very short/broad tokens. Also detects quoted phrases
+// that would be degraded by FTS5's unicode61 tokenizer (e.g., "1+" → token "1").
+func ftsQueryDegraded(original, ftsQuery string) bool {
+	original = strings.TrimSpace(original)
+	if original == "" || ftsQuery == "" {
+		return false
+	}
+	// Strip quotes from original for comparison — we want the raw content
+	stripped := strings.ReplaceAll(original, `"`, "")
+	// Extract the alphanumeric content from the original query
+	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	// If the original is entirely alphanumeric, nothing was stripped — not degraded
+	if len(alphaNum) == len(stripped) {
+		return false
+	}
+	// Check if all effective FTS tokens are very short (≤2 chars).
+	// Short tokens with prefix matching are too broad when special chars were stripped.
+	// For quoted phrases, extract the content and check the tokens inside.
+	tokens := strings.Fields(ftsQuery)
+	for _, t := range tokens {
+		t = strings.TrimSuffix(t, "*")
+		// Skip internal phrase placeholders
+		if strings.HasPrefix(t, "\x00") {
+			return false
+		}
+		// For OR groups from processPunctuatedWords (e.g., ("a ha" OR aha*)),
+		// the punctuated word was already handled meaningfully — not degraded.
+		if strings.HasPrefix(t, "(") {
+			return false
+		}
+		// For quoted phrases, check the tokens inside as FTS5 will tokenize them
+		if strings.HasPrefix(t, `"`) {
+			// Extract content between quotes
+			inner := strings.Trim(t, `"`)
+			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
+			for _, it := range strings.Fields(innerAlpha) {
+				if len(it) > 2 {
+					return false
+				}
+			}
+			continue
+		}
+		if len(t) > 2 {
+			return false
+		}
+	}
+	return true
+}
+
 // newFTSSearch creates an FTS5 search strategy. Falls back to LIKE search if the
-// query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!").
+// query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!") or if FTS
+// tokenization stripped significant content from the query (e.g., "1+" → "1*").
 // Returns nil when the query produces no searchable tokens at all.
 func newFTSSearch(tableName, query string) searchStrategy {
 	q := buildFTS5Query(query)
-	if q == "" {
-		// Punctuation-only fallback: try LIKE search with the raw query
+	if q == "" || ftsQueryDegraded(query, q) {
+		// Fallback: try LIKE search with the raw query
 		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
 		if cleaned != "" {
 			log.Trace("Search using LIKE fallback for non-tokenizable query", "table", tableName, "query", cleaned)
