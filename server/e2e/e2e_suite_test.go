@@ -115,6 +115,7 @@ func buildTestFS() storagetest.FakeFS {
 	ledZepIV := template(_t{"albumartist": "Led Zeppelin", "artist": "Led Zeppelin", "album": "IV", "year": 1971, "genre": "Rock"})
 	kindOfBlue := template(_t{"albumartist": "Miles Davis", "artist": "Miles Davis", "album": "Kind of Blue", "year": 1959, "genre": "Jazz"})
 	popTrack := template(_t{"albumartist": "Various", "artist": "Various", "album": "Pop", "year": 2020, "genre": "Pop"})
+	cowboyBebop := template(_t{"albumartist": "シートベルツ", "artist": "シートベルツ", "album": "COWBOY BEBOP", "year": 1998, "genre": "Jazz"})
 
 	return createFS(fstest.MapFS{
 		// Rock / The Beatles / Abbey Road (with MBIDs)
@@ -132,6 +133,8 @@ func buildTestFS() storagetest.FakeFS {
 		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3": kindOfBlue(track(1, "So What")),
 		// Pop (standalone track, no MBIDs)
 		"Pop/01 - Standalone Track.mp3": popTrack(track(1, "Standalone Track")),
+		// CJK / シートベルツ / COWBOY BEBOP (Japanese artist, for CJK search tests)
+		"CJK/シートベルツ/COWBOY BEBOP/01 - プラチナ・ジェット.mp3": cowboyBebop(track(1, "プラチナ・ジェット")),
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
 	})
