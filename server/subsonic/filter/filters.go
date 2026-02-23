@@ -173,6 +173,14 @@ func ByRating() Options {
 	return addDefaultFilters(Options{Sort: "rating", Order: "desc", Filters: Gt{"rating": 0}})
 }
 
+func ByAverageRating(minRating float64) Options {
+	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minRating}})
+}
+
+func SongsByAverageRating(minRating float64) Options {
+	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minRating}})
+}
+
 func ByStarred() Options {
 	return addDefaultFilters(Options{Sort: "starred_at", Order: "desc", Filters: Eq{"starred": true}})
 }
