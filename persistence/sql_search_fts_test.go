@@ -49,6 +49,7 @@ var _ = DescribeTable("buildFTS5Query",
 	Entry("preserves quoted abbreviation verbatim", `"R.E.M."`, `"R.E.M."`),
 	Entry("returns empty string for punctuation-only input", "!!!!!!!", ""),
 	Entry("returns empty string for mixed punctuation", "!@#$%^&", ""),
+	Entry("returns empty string for empty quoted phrase", `""`, ""),
 )
 
 var _ = DescribeTable("normalizeForFTS",
@@ -203,6 +204,10 @@ var _ = Describe("ftsSearchExpr", func() {
 	It("returns nil for empty string even with LIKE fallback", func() {
 		Expect(ftsSearchExpr("media_file", "")).To(BeNil())
 		Expect(ftsSearchExpr("media_file", "   ")).To(BeNil())
+	})
+
+	It("returns nil for empty quoted phrase", func() {
+		Expect(ftsSearchExpr("media_file", `""`)).To(BeNil())
 	})
 })
 
