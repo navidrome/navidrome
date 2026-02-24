@@ -41,9 +41,6 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 		opts = filter.ByStarred()
 	case "highest":
 		opts = filter.ByRating()
-	case "highestAverage":
-		minAlbumRating := p.FloatOr("minAverageRating", 0.0)
-		opts = filter.ByAverageRating(minAlbumRating)
 	case "byGenre":
 		genre, err := p.String("genre")
 		if err != nil {
@@ -233,14 +230,13 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	genre, _ := p.String("genre")
 	fromYear := p.IntOr("fromYear", 0)
 	toYear := p.IntOr("toYear", 0)
-	minAverageRating := p.FloatOr("minAverageRating", 0.0)
 
 	// Get optional library IDs from musicFolderId parameter
 	musicFolderIds, err := selectedMusicFolderIds(r, false)
 	if err != nil {
 		return nil, err
 	}
-	opts := filter.SongsByRandom(genre, fromYear, toYear, minAverageRating)
+	opts := filter.SongsByRandom(genre, fromYear, toYear)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
 	songs, err := api.getSongs(r.Context(), 0, size, opts)
@@ -279,33 +275,6 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	response := newResponse()
 	response.SongsByGenre = &responses.Songs{}
 	response.SongsByGenre.Songs = slice.MapWithArg(songs, ctx, childFromMediaFile)
-	return response, nil
-}
-
-func (api *Router) GetSongsByAverageRating(r *http.Request) (*responses.Subsonic, error) {
-	p := req.Params(r)
-	count := p.IntOr("count", 10)
-	offset := p.IntOr("offset", 0)
-	minAverageRating := p.FloatOr("minAverageRating", 0.0)
-
-	// Get optional library IDs from musicFolderId parameter
-	musicFolderIds, err := selectedMusicFolderIds(r, false)
-	if err != nil {
-		return nil, err
-	}
-	opts := filter.SongsByAverageRating(minAverageRating)
-	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
-
-	ctx := r.Context()
-	songs, err := api.getSongs(ctx, offset, count, opts)
-	if err != nil {
-		log.Error(r, "Error retrieving songs by average rating", err)
-		return nil, err
-	}
-
-	response := newResponse()
-	response.SongsByAverageRating = &responses.Songs{}
-	response.SongsByAverageRating.Songs = slice.MapWithArg(songs, ctx, childFromMediaFile)
 	return response, nil
 }
 

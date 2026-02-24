@@ -90,7 +90,7 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
-func SongsByRandom(genre string, fromYear, toYear int, minAverageRating float64) Options {
+func SongsByRandom(genre string, fromYear, toYear int) Options {
 	options := Options{
 		Sort: "random",
 	}
@@ -104,21 +104,8 @@ func SongsByRandom(genre string, fromYear, toYear int, minAverageRating float64)
 	if toYear != 0 {
 		ff = append(ff, LtOrEq{"year": toYear})
 	}
-	if minAverageRating > 0 {
-		ff = append(ff, GtOrEq{"average_rating": minAverageRating})
-	}
 	options.Filters = ff
 	return addDefaultFilters(options)
-}
-
-func SongsByAverageRating(minAverageRating float64) Options {
-	opts := Options{Sort: "average_rating", Order: "desc"}
-	if minAverageRating > 0 {
-		opts.Filters = GtOrEq{"average_rating": minAverageRating}
-	} else {
-		opts.Filters = Gt{"average_rating": 0}
-	}
-	return addDefaultFilters(opts)
 }
 
 func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
@@ -184,10 +171,6 @@ func filterByGenre(genre string) Sqlizer {
 
 func ByRating() Options {
 	return addDefaultFilters(Options{Sort: "rating", Order: "desc", Filters: Gt{"rating": 0}})
-}
-
-func ByAverageRating(minAverageRating float64) Options {
-	return addDefaultFilters(Options{Sort: "average_rating", Order: "desc", Filters: GtOrEq{"average_rating": minAverageRating}})
 }
 
 func ByStarred() Options {
