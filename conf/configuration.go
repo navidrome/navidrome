@@ -346,7 +346,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
-		validateUrl("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
+		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
 		os.Exit(1)
@@ -550,16 +550,16 @@ func validateSchedule(schedule, field string) (string, error) {
 	return schedule, err
 }
 
-// validateUrl checks if the provided URL is valid and has either http or https scheme.
+// validateURL checks if the provided URL is valid and has either http or https scheme.
 // It returns a function that can be used as a hook to validate URLs in the config.
-func validateUrl(optionName, optionUrl string) func() error {
+func validateURL(optionName, optionURL string) func() error {
 	return func() error {
-		if optionUrl == "" {
+		if optionURL == "" {
 			return nil
 		}
-		u, err := url.Parse(optionUrl)
+		u, err := url.Parse(optionURL)
 		if err != nil {
-			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionUrl, "err", err)
+			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionURL, "err", err)
 			return err
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
