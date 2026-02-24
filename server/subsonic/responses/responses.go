@@ -30,8 +30,9 @@ type Subsonic struct {
 	Starred2      *Starred2          `xml:"starred2,omitempty"                            json:"starred2,omitempty"`
 	NowPlaying    *NowPlaying        `xml:"nowPlaying,omitempty"                          json:"nowPlaying,omitempty"`
 	Song          *Child             `xml:"song,omitempty"                                json:"song,omitempty"`
-	RandomSongs   *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
-	SongsByGenre  *Songs             `xml:"songsByGenre,omitempty"                        json:"songsByGenre,omitempty"`
+	RandomSongs          *Songs             `xml:"randomSongs,omitempty"                         json:"randomSongs,omitempty"`
+	SongsByGenre         *Songs             `xml:"songsByGenre,omitempty"                        json:"songsByGenre,omitempty"`
+	SongsByAverageRating *Songs             `xml:"songsByAverageRating,omitempty"                json:"songsByAverageRating,omitempty"`
 	Genres        *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
 
 	// ID3

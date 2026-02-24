@@ -111,6 +111,16 @@ func SongsByRandom(genre string, fromYear, toYear int, minAverageRating float64)
 	return addDefaultFilters(options)
 }
 
+func SongsByAverageRating(minAverageRating float64) Options {
+	opts := Options{Sort: "average_rating", Order: "desc"}
+	if minAverageRating > 0 {
+		opts.Filters = GtOrEq{"average_rating": minAverageRating}
+	} else {
+		opts.Filters = Gt{"average_rating": 0}
+	}
+	return addDefaultFilters(opts)
+}
+
 func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
 	return addDefaultFilters(Options{
 		Sort:  "lyrics, updated_at",

@@ -282,6 +282,33 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
+func (api *Router) GetSongsByAverageRating(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	count := p.IntOr("count", 10)
+	offset := p.IntOr("offset", 0)
+	minAverageRating := p.FloatOr("minAverageRating", 0.0)
+
+	// Get optional library IDs from musicFolderId parameter
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
+	opts := filter.SongsByAverageRating(minAverageRating)
+	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+
+	ctx := r.Context()
+	songs, err := api.getSongs(ctx, offset, count, opts)
+	if err != nil {
+		log.Error(r, "Error retrieving songs by average rating", err)
+		return nil, err
+	}
+
+	response := newResponse()
+	response.SongsByAverageRating = &responses.Songs{}
+	response.SongsByAverageRating.Songs = slice.MapWithArg(songs, ctx, childFromMediaFile)
+	return response, nil
+}
+
 func (api *Router) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size
