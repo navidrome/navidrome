@@ -424,7 +424,7 @@ jobs:
         run: echo 'RELEASE_FLAGS=--skip=publish --snapshot' >> $GITHUB_ENV
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: '~> v2'
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
