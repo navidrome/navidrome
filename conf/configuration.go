@@ -567,6 +567,12 @@ func validateURL(optionName, optionURL string) func() error {
 			log.Error(err.Error())
 			return err
 		}
+		// Require an absolute URL with a non-empty host and no opaque component.
+		if u.Host == "" || u.Opaque != "" {
+			err := fmt.Errorf("invalid %s: '%s'. A full http(s) URL with a non-empty host is required", optionName, optionURL)
+			log.Error(err.Error())
+			return err
+		}
 		return nil
 	}
 }

@@ -87,6 +87,11 @@ var _ = Describe("Configuration", func() {
 			fn := conf.ValidateURL("TestOption", "://invalid")
 			Expect(fn()).To(HaveOccurred())
 		})
+
+		It("rejects a URL without a host", func() {
+			fn := conf.ValidateURL("TestOption", "http:///path")
+			Expect(fn()).To(MatchError(ContainSubstring("non-empty host is required")))
+		})
 	})
 
 	DescribeTable("NormalizeSearchBackend",
