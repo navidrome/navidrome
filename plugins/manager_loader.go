@@ -119,6 +119,15 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterUsersHostFunctions(service), nil
 		},
 	},
+	{
+		name:          "HttpClient",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Http
+			service := newHttpClientService(ctx.pluginName, perm)
+			return host.RegisterHttpClientHostFunctions(service), nil
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
