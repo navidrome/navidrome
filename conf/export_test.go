@@ -9,3 +9,5 @@ var SetViperDefaults = setViperDefaults
 var ParseLanguages = parseLanguages
 
 var ValidateUrl = validateUrl
+
+var NormalizeSearchBackend = normalizeSearchBackend

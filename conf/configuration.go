@@ -58,7 +58,7 @@ type configOptions struct {
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
-	SearchFullString                bool
+	Search                          searchOptions `json:",omitzero"`
 	SimilarSongsMatchThreshold      int
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
@@ -82,6 +82,7 @@ type configOptions struct {
 	DefaultTheme                    string
 	DefaultLanguage                 string
 	DefaultUIVolume                 int
+	UISearchDebounceMs              int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -252,6 +253,11 @@ type extAuthOptions struct {
 	LogoutURL      string
 }
 
+type searchOptions struct {
+	Backend    string
+	FullString bool
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -346,6 +352,8 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
+	Server.Search.Backend = normalizeSearchBackend(Server.Search.Backend)
+
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
@@ -394,6 +402,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
 	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+	logDeprecatedOptions("SearchFullString", "Search.FullString")
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
@@ -562,6 +571,17 @@ func validateUrl(optionName, optionUrl string) func() error {
 	}
 }
 
+func normalizeSearchBackend(value string) string {
+	v := strings.ToLower(strings.TrimSpace(value))
+	switch v {
+	case "fts", "legacy":
+		return v
+	default:
+		log.Error("Invalid Search.Backend value, falling back to 'fts'", "value", value)
+		return "fts"
+	}
+}
+
 // AddHook is used to register initialization code that should run as soon as the config is loaded
 func AddHook(hook func()) {
 	hooks = append(hooks, hook)
@@ -608,7 +628,8 @@ func setViperDefaults() {
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
-	viper.SetDefault("searchfullstring", false)
+	viper.SetDefault("search.fullstring", false)
+	viper.SetDefault("search.backend", "fts")
 	viper.SetDefault("similarsongsmatchthreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
@@ -627,6 +648,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
+	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)

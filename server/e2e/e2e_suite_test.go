@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -51,6 +52,17 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
+// MusicBrainz ID constants for test data (valid UUID v4 values)
+const (
+	mbidBeatlesArtist     = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
+	mbidAbbeyRoadAlbum    = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+	mbidAbbeyRoadRelGroup = "d4c3b2a1-f6e5-4b7a-9d8c-1f0e3a2b5c4d"
+	mbidComeTogether      = "11111111-1111-4111-a111-111111111111" // mbz_release_track_id
+	mbidComeTogetherRec   = "22222222-2222-4222-a222-222222222222" // mbz_recording_id
+	mbidSomething         = "33333333-3333-4333-a333-333333333333" // mbz_release_track_id
+	mbidSomethingRec      = "44444444-4444-4444-a444-444444444444" // mbz_recording_id
+)
+
 // Shared test state
 var (
 	ctx    context.Context
@@ -69,6 +81,14 @@ var (
 		Name:     "Admin User",
 		IsAdmin:  true,
 	}
+
+	// Regular (non-admin) user for permission tests
+	regularUser = model.User{
+		ID:       "regular-1",
+		UserName: "regular",
+		Name:     "Regular User",
+		IsAdmin:  false,
+	}
 )
 
 func createFS(files fstest.MapFS) storagetest.FakeFS {
@@ -80,24 +100,41 @@ func createFS(files fstest.MapFS) storagetest.FakeFS {
 
 // buildTestFS creates the full test filesystem matching the plan
 func buildTestFS() storagetest.FakeFS {
-	abbeyRoad := template(_t{"albumartist": "The Beatles", "artist": "The Beatles", "album": "Abbey Road", "year": 1969, "genre": "Rock"})
+	abbeyRoad := template(_t{
+		"albumartist":                "The Beatles",
+		"artist":                     "The Beatles",
+		"album":                      "Abbey Road",
+		"year":                       1969,
+		"genre":                      "Rock",
+		"musicbrainz_artistid":       mbidBeatlesArtist,
+		"musicbrainz_albumartistid":  mbidBeatlesArtist,
+		"musicbrainz_albumid":        mbidAbbeyRoadAlbum,
+		"musicbrainz_releasegroupid": mbidAbbeyRoadRelGroup,
+	})
 	help := template(_t{"albumartist": "The Beatles", "artist": "The Beatles", "album": "Help!", "year": 1965, "genre": "Rock"})
 	ledZepIV := template(_t{"albumartist": "Led Zeppelin", "artist": "Led Zeppelin", "album": "IV", "year": 1971, "genre": "Rock"})
 	kindOfBlue := template(_t{"albumartist": "Miles Davis", "artist": "Miles Davis", "album": "Kind of Blue", "year": 1959, "genre": "Jazz"})
 	popTrack := template(_t{"albumartist": "Various", "artist": "Various", "album": "Pop", "year": 2020, "genre": "Pop"})
+	cowboyBebop := template(_t{"albumartist": "シートベルツ", "artist": "シートベルツ", "album": "COWBOY BEBOP", "year": 1998, "genre": "Jazz"})
 
 	return createFS(fstest.MapFS{
-		// Rock / The Beatles / Abbey Road
-		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together")),
-		"Rock/The Beatles/Abbey Road/02 - Something.mp3":     abbeyRoad(track(2, "Something")),
-		// Rock / The Beatles / Help!
+		// Rock / The Beatles / Abbey Road (with MBIDs)
+		// Note: "musicbrainz_trackid" is an alias for the musicbrainz_recordingid tag (populates MbzRecordingID),
+		//       "musicbrainz_releasetrackid" is an alias for the musicbrainz_trackid tag (populates MbzReleaseTrackID).
+		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
+			_t{"musicbrainz_releasetrackid": mbidComeTogether, "musicbrainz_trackid": mbidComeTogetherRec})),
+		"Rock/The Beatles/Abbey Road/02 - Something.mp3": abbeyRoad(track(2, "Something",
+			_t{"musicbrainz_releasetrackid": mbidSomething, "musicbrainz_trackid": mbidSomethingRec})),
+		// Rock / The Beatles / Help! (no MBIDs)
 		"Rock/The Beatles/Help!/01 - Help.mp3": help(track(1, "Help!")),
-		// Rock / Led Zeppelin / IV
+		// Rock / Led Zeppelin / IV (no MBIDs)
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3": ledZepIV(track(1, "Stairway To Heaven")),
-		// Jazz / Miles Davis / Kind of Blue
+		// Jazz / Miles Davis / Kind of Blue (no MBIDs)
 		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3": kindOfBlue(track(1, "So What")),
-		// Pop (standalone track)
+		// Pop (standalone track, no MBIDs)
 		"Pop/01 - Standalone Track.mp3": popTrack(track(1, "Standalone Track")),
+		// CJK / シートベルツ / COWBOY BEBOP (Japanese artist, for CJK search tests)
+		"CJK/シートベルツ/COWBOY BEBOP/01 - プラチナ・ジェット.mp3": cowboyBebop(track(1, "プラチナ・ジェット")),
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
 	})
@@ -288,19 +325,29 @@ var _ = BeforeSuite(func() {
 	adminUserWithPass.NewPassword = "password"
 	Expect(initDS.User(ctx).Put(&adminUserWithPass)).To(Succeed())
 
+	regularUserWithPass := regularUser
+	regularUserWithPass.NewPassword = "password"
+	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
+
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
 
 	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	adminUser.Libraries = loadedUser.Libraries
+
+	loadedRegular, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
+	Expect(err).ToNot(HaveOccurred())
+	regularUser.Libraries = loadedRegular.Libraries
+
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(initDS), metrics.NewNoopInstance())
+		playlists.NewPlaylists(initDS), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -334,7 +381,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS + noop stubs
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		core.NewPlaylists(ds), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -344,7 +391,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		core.NewPlaylists(ds),
+		playlists.NewPlaylists(ds),
 		noopPlayTracker{},
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
@@ -363,7 +410,7 @@ func restoreDB() {
 	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
 	Expect(err).ToNot(HaveOccurred())
 
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
 	var tables []string
 	for rows.Next() {

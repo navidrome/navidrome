@@ -54,23 +54,43 @@ var _ = Describe("Operators", func() {
 		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", StartOfPeriod(30, time.Now())),
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
 
+		// Album annotation fields
+		Entry("albumRating", Gt{"albumRating": 3}, "COALESCE(album_annotation.rating, 0) > ?", 3),
+		Entry("albumLoved", Is{"albumLoved": true}, "COALESCE(album_annotation.starred, false) = ?", true),
+		Entry("albumPlayCount", Gt{"albumPlayCount": 5}, "COALESCE(album_annotation.play_count, 0) > ?", 5),
+		Entry("albumLastPlayed", After{"albumLastPlayed": rangeStart}, "album_annotation.play_date > ?", rangeStart),
+		Entry("albumDateLoved", Before{"albumDateLoved": rangeStart}, "album_annotation.starred_at < ?", rangeStart),
+		Entry("albumDateRated", After{"albumDateRated": rangeStart}, "album_annotation.rated_at > ?", rangeStart),
+		Entry("albumLastPlayed inTheLast", InTheLast{"albumLastPlayed": 30}, "album_annotation.play_date > ?", StartOfPeriod(30, time.Now())),
+		Entry("albumLastPlayed notInTheLast", NotInTheLast{"albumLastPlayed": 30}, "(album_annotation.play_date < ? OR album_annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
+
+		// Artist annotation fields
+		Entry("artistRating", Gt{"artistRating": 3}, "COALESCE(artist_annotation.rating, 0) > ?", 3),
+		Entry("artistLoved", Is{"artistLoved": true}, "COALESCE(artist_annotation.starred, false) = ?", true),
+		Entry("artistPlayCount", Gt{"artistPlayCount": 5}, "COALESCE(artist_annotation.play_count, 0) > ?", 5),
+		Entry("artistLastPlayed", After{"artistLastPlayed": rangeStart}, "artist_annotation.play_date > ?", rangeStart),
+		Entry("artistDateLoved", Before{"artistDateLoved": rangeStart}, "artist_annotation.starred_at < ?", rangeStart),
+		Entry("artistDateRated", After{"artistDateRated": rangeStart}, "artist_annotation.rated_at > ?", rangeStart),
+		Entry("artistLastPlayed inTheLast", InTheLast{"artistLastPlayed": 30}, "artist_annotation.play_date > ?", StartOfPeriod(30, time.Now())),
+		Entry("artistLastPlayed notInTheLast", NotInTheLast{"artistLastPlayed": 30}, "(artist_annotation.play_date < ? OR artist_annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
+
 		// Tag tests
-		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value > ?)", "A"),
-		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value < ?)", "Z"),
-		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
-		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
+		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value > ?)", "A"),
+		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value < ?)", "Z"),
+		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
+		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
 
 		// Artist roles tests
-		Entry("role is [string]", Is{"artist": "u2"}, "exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?)", "u2"),
-		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?)", "u2"),
-		Entry("role contains [string]", Contains{"artist": "u2"}, "exists (select 1 from json_tree(participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
-		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
-		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?)", "John%"),
-		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon"),
+		Entry("role is [string]", Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
+		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
+		Entry("role contains [string]", Contains{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "John%"),
+		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon"),
 	)
 
 	// TODO Validate operators that are not valid for each field type.
@@ -88,7 +108,7 @@ var _ = Describe("Operators", func() {
 			op := EndsWith{"mood": "Soft"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.mood') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.mood') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
 		})
 		It("casts numeric comparisons", func() {
@@ -96,7 +116,7 @@ var _ = Describe("Operators", func() {
 			op := Lt{"rate": 6}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements(6))
 		})
 		It("skips unknown tag names", func() {
@@ -110,7 +130,7 @@ var _ = Describe("Operators", func() {
 			op := Contains{"releasetype": "soundtrack"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%soundtrack%"))
 		})
 		It("supports albumtype as alias for releasetype", func() {
@@ -118,7 +138,7 @@ var _ = Describe("Operators", func() {
 			op := Contains{"albumtype": "live"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
 		})
 		It("supports albumtype alias with Is operator", func() {
@@ -127,7 +147,7 @@ var _ = Describe("Operators", func() {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("album"))
 		})
 		It("supports albumtype alias with IsNot operator", func() {
@@ -136,7 +156,7 @@ var _ = Describe("Operators", func() {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(tags, '$.releasetype') where key='value' and value = ?)"))
+			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("compilation"))
 		})
 	})
@@ -147,7 +167,7 @@ var _ = Describe("Operators", func() {
 			op := EndsWith{"producer": "Eno"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(participants, '$.producer') where key='name' and value LIKE ?)"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.participants, '$.producer') where key='name' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Eno"))
 		})
 		It("skips unknown roles", func() {

@@ -11,7 +11,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -102,6 +101,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	similarArtists, _ := json.Marshal(sa)
 	m["similar_artists"] = string(similarArtists)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
+	m["search_normalized"] = normalizeForFTS(a.Name)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -512,20 +512,25 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-func (r *artistRepository) Search(q string, offset int, size int, options ...model.QueryOptions) (model.Artists, error) {
-	var res dbArtists
-	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectArtist(options...), q, []string{"mbz_artist_id"}, &res)
-		if err != nil {
-			return nil, fmt.Errorf("searching artist by MBID %q: %w", q, err)
-		}
-	} else {
+func (r *artistRepository) searchCfg() searchConfig {
+	return searchConfig{
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
-		err := r.doSearch(r.selectArtist(options...), q, offset, size, &res, "artist.id",
-			"sum(json_extract(stats, '$.total.m')) desc", "name")
-		if err != nil {
-			return nil, fmt.Errorf("searching artist by query %q: %w", q, err)
-		}
+		NaturalOrder:  "artist.id",
+		OrderBy:       []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
+		MBIDFields:    []string{"mbz_artist_id"},
+		LibraryFilter: r.applyLibraryFilterToArtistQuery,
+	}
+}
+
+func (r *artistRepository) Search(q string, options ...model.QueryOptions) (model.Artists, error) {
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	var res dbArtists
+	err := r.doSearch(r.selectArtist(options...), q, &res, r.searchCfg(), opts)
+	if err != nil {
+		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
 	return res.toModels(), nil
 }

@@ -11,7 +11,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -58,8 +57,11 @@ func (m *dbMediaFile) PostScan() error {
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText := []string{m.FullTitle(), m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
-	fullText = append(fullText, m.MediaFile.Participants.AllNames()...)
+	participantNames := m.MediaFile.Participants.AllNames()
+	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
+	args["search_participants"] = strings.Join(participantNames, " ")
+	args["search_normalized"] = normalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	return nil
@@ -425,18 +427,21 @@ func (r *mediaFileRepository) FindRecentFilesByProperties(missing model.MediaFil
 	return res.toModels(), nil
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int, options ...model.QueryOptions) (model.MediaFiles, error) {
+var mediaFileSearchConfig = searchConfig{
+	NaturalOrder: "media_file.rowid",
+	OrderBy:      []string{"title"},
+	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
 	var res dbMediaFiles
-	if uuid.Validate(q) == nil {
-		err := r.searchByMBID(r.selectMediaFile(options...), q, []string{"mbz_recording_id", "mbz_release_track_id"}, &res)
-		if err != nil {
-			return nil, fmt.Errorf("searching media_file by MBID %q: %w", q, err)
-		}
-	} else {
-		err := r.doSearch(r.selectMediaFile(options...), q, offset, size, &res, "media_file.rowid", "title")
-		if err != nil {
-			return nil, fmt.Errorf("searching media_file by query %q: %w", q, err)
-		}
+	err := r.doSearch(r.selectMediaFile(options...), q, &res, mediaFileSearchConfig, opts)
+	if err != nil {
+		return nil, fmt.Errorf("searching media_file %q: %w", q, err)
 	}
 	return res.toModels(), nil
 }

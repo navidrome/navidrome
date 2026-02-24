@@ -9,45 +9,71 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+// JoinType is a bitmask indicating which additional JOINs are needed by a smart playlist expression.
+type JoinType int
+
+const (
+	JoinNone            JoinType = 0
+	JoinAlbumAnnotation JoinType = 1 << iota
+	JoinArtistAnnotation
+)
+
+// Has returns true if j contains all bits in other.
+func (j JoinType) Has(other JoinType) bool { return j&other != 0 }
+
 var fieldMap = map[string]*mappedField{
-	"title":                {field: "media_file.title"},
-	"album":                {field: "media_file.album"},
-	"hascoverart":          {field: "media_file.has_cover_art"},
-	"tracknumber":          {field: "media_file.track_number"},
-	"discnumber":           {field: "media_file.disc_number"},
-	"year":                 {field: "media_file.year"},
-	"date":                 {field: "media_file.date", alias: "recordingdate"},
-	"originalyear":         {field: "media_file.original_year"},
-	"originaldate":         {field: "media_file.original_date"},
-	"releaseyear":          {field: "media_file.release_year"},
-	"releasedate":          {field: "media_file.release_date"},
-	"size":                 {field: "media_file.size"},
-	"compilation":          {field: "media_file.compilation"},
-	"explicitstatus":       {field: "media_file.explicit_status"},
-	"dateadded":            {field: "media_file.created_at"},
-	"datemodified":         {field: "media_file.updated_at"},
-	"discsubtitle":         {field: "media_file.disc_subtitle"},
-	"comment":              {field: "media_file.comment"},
-	"lyrics":               {field: "media_file.lyrics"},
-	"sorttitle":            {field: "media_file.sort_title"},
-	"sortalbum":            {field: "media_file.sort_album_name"},
-	"sortartist":           {field: "media_file.sort_artist_name"},
-	"sortalbumartist":      {field: "media_file.sort_album_artist_name"},
-	"albumcomment":         {field: "media_file.mbz_album_comment"},
-	"catalognumber":        {field: "media_file.catalog_num"},
-	"filepath":             {field: "media_file.path"},
-	"filetype":             {field: "media_file.suffix"},
-	"duration":             {field: "media_file.duration"},
-	"bitrate":              {field: "media_file.bit_rate"},
-	"bitdepth":             {field: "media_file.bit_depth"},
-	"bpm":                  {field: "media_file.bpm"},
-	"channels":             {field: "media_file.channels"},
-	"loved":                {field: "COALESCE(annotation.starred, false)"},
-	"dateloved":            {field: "annotation.starred_at"},
-	"lastplayed":           {field: "annotation.play_date"},
-	"daterated":            {field: "annotation.rated_at"},
-	"playcount":            {field: "COALESCE(annotation.play_count, 0)"},
-	"rating":               {field: "COALESCE(annotation.rating, 0)"},
+	"title":           {field: "media_file.title"},
+	"album":           {field: "media_file.album"},
+	"hascoverart":     {field: "media_file.has_cover_art"},
+	"tracknumber":     {field: "media_file.track_number"},
+	"discnumber":      {field: "media_file.disc_number"},
+	"year":            {field: "media_file.year"},
+	"date":            {field: "media_file.date", alias: "recordingdate"},
+	"originalyear":    {field: "media_file.original_year"},
+	"originaldate":    {field: "media_file.original_date"},
+	"releaseyear":     {field: "media_file.release_year"},
+	"releasedate":     {field: "media_file.release_date"},
+	"size":            {field: "media_file.size"},
+	"compilation":     {field: "media_file.compilation"},
+	"explicitstatus":  {field: "media_file.explicit_status"},
+	"dateadded":       {field: "media_file.created_at"},
+	"datemodified":    {field: "media_file.updated_at"},
+	"discsubtitle":    {field: "media_file.disc_subtitle"},
+	"comment":         {field: "media_file.comment"},
+	"lyrics":          {field: "media_file.lyrics"},
+	"sorttitle":       {field: "media_file.sort_title"},
+	"sortalbum":       {field: "media_file.sort_album_name"},
+	"sortartist":      {field: "media_file.sort_artist_name"},
+	"sortalbumartist": {field: "media_file.sort_album_artist_name"},
+	"albumcomment":    {field: "media_file.mbz_album_comment"},
+	"catalognumber":   {field: "media_file.catalog_num"},
+	"filepath":        {field: "media_file.path"},
+	"filetype":        {field: "media_file.suffix"},
+	"duration":        {field: "media_file.duration"},
+	"bitrate":         {field: "media_file.bit_rate"},
+	"bitdepth":        {field: "media_file.bit_depth"},
+	"bpm":             {field: "media_file.bpm"},
+	"channels":        {field: "media_file.channels"},
+	"loved":           {field: "COALESCE(annotation.starred, false)"},
+	"dateloved":       {field: "annotation.starred_at"},
+	"lastplayed":      {field: "annotation.play_date"},
+	"daterated":       {field: "annotation.rated_at"},
+	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
+	"rating":          {field: "COALESCE(annotation.rating, 0)"},
+	"albumrating":     {field: "COALESCE(album_annotation.rating, 0)", joinType: JoinAlbumAnnotation},
+	"albumloved":      {field: "COALESCE(album_annotation.starred, false)", joinType: JoinAlbumAnnotation},
+	"albumplaycount":  {field: "COALESCE(album_annotation.play_count, 0)", joinType: JoinAlbumAnnotation},
+	"albumlastplayed": {field: "album_annotation.play_date", joinType: JoinAlbumAnnotation},
+	"albumdateloved":  {field: "album_annotation.starred_at", joinType: JoinAlbumAnnotation},
+	"albumdaterated":  {field: "album_annotation.rated_at", joinType: JoinAlbumAnnotation},
+
+	"artistrating":     {field: "COALESCE(artist_annotation.rating, 0)", joinType: JoinArtistAnnotation},
+	"artistloved":      {field: "COALESCE(artist_annotation.starred, false)", joinType: JoinArtistAnnotation},
+	"artistplaycount":  {field: "COALESCE(artist_annotation.play_count, 0)", joinType: JoinArtistAnnotation},
+	"artistlastplayed": {field: "artist_annotation.play_date", joinType: JoinArtistAnnotation},
+	"artistdateloved":  {field: "artist_annotation.starred_at", joinType: JoinArtistAnnotation},
+	"artistdaterated":  {field: "artist_annotation.rated_at", joinType: JoinArtistAnnotation},
+
 	"mbz_album_id":         {field: "media_file.mbz_album_id"},
 	"mbz_album_artist_id":  {field: "media_file.mbz_album_artist_id"},
 	"mbz_artist_id":        {field: "media_file.mbz_artist_id"},
@@ -65,12 +91,13 @@ var fieldMap = map[string]*mappedField{
 }
 
 type mappedField struct {
-	field   string
-	order   string
-	isRole  bool   // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
-	isTag   bool   // true if the field is a tag imported from the file metadata
-	alias   string // name from `mappings.yml` that may differ from the name used in the smart playlist
-	numeric bool   // true if the field/tag should be treated as numeric
+	field    string
+	order    string
+	isRole   bool     // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
+	isTag    bool     // true if the field is a tag imported from the file metadata
+	alias    string   // name from `mappings.yml` that may differ from the name used in the smart playlist
+	numeric  bool     // true if the field/tag should be treated as numeric
+	joinType JoinType // which additional JOINs this field requires
 }
 
 func mapFields(expr map[string]any) map[string]any {
@@ -169,7 +196,7 @@ func (e tagCond) ToSql() (string, []any, error) {
 		}
 	}
 
-	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
+	cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and %s)",
 		tagName, cond)
 	if e.not {
 		cond = "not " + cond
@@ -189,12 +216,44 @@ type roleCond struct {
 
 func (e roleCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
-	cond = fmt.Sprintf(`exists (select 1 from json_tree(participants, '$.%s') where key='name' and %s)`,
+	cond = fmt.Sprintf(`exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name' and %s)`,
 		e.role, cond)
 	if e.not {
 		cond = "not " + cond
 	}
 	return cond, args, err
+}
+
+// fieldJoinType returns the JoinType for a given field name (case-insensitive).
+func fieldJoinType(name string) JoinType {
+	if f, ok := fieldMap[strings.ToLower(name)]; ok {
+		return f.joinType
+	}
+	return JoinNone
+}
+
+// extractJoinTypes walks an expression tree and collects all required JoinType flags.
+func extractJoinTypes(expr any) JoinType {
+	result := JoinNone
+	switch e := expr.(type) {
+	case All:
+		for _, sub := range e {
+			result |= extractJoinTypes(sub)
+		}
+	case Any:
+		for _, sub := range e {
+			result |= extractJoinTypes(sub)
+		}
+	default:
+		// Leaf expression: use reflection to check if it's a map with field names
+		rv := reflect.ValueOf(expr)
+		if rv.Kind() == reflect.Map && rv.Type().Key().Kind() == reflect.String {
+			for _, key := range rv.MapKeys() {
+				result |= fieldJoinType(key.String())
+			}
+		}
+	}
+	return result
 }
 
 // AddRoles adds roles to the field map. This is used to add all artist roles to the field map, so they can be used in

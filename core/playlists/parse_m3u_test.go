@@ -1,4 +1,4 @@
-package core
+package playlists
 
 import (
 	"context"
@@ -214,38 +214,38 @@ var _ = Describe("pathResolver", func() {
 	})
 
 	Describe("resolvePath", func() {
-		It("resolves absolute paths", func() {
-			resolution := resolver.resolvePath("/music/artist/album/track.mp3", nil)
+		Context("basic", func() {
+			It("resolves absolute paths", func() {
+				resolution := resolver.resolvePath("/music/artist/album/track.mp3", nil)
 
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(1))
-			Expect(resolution.libraryPath).To(Equal("/music"))
-			Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(1))
+				Expect(resolution.libraryPath).To(Equal("/music"))
+				Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+			})
+
+			It("resolves relative paths when folder is provided", func() {
+				folder := &model.Folder{
+					Path:        "playlists",
+					LibraryPath: "/music",
+					LibraryID:   1,
+				}
+
+				resolution := resolver.resolvePath("../artist/album/track.mp3", folder)
+
+				Expect(resolution.valid).To(BeTrue())
+				Expect(resolution.libraryID).To(Equal(1))
+				Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+			})
+
+			It("returns invalid resolution for paths outside any library", func() {
+				resolution := resolver.resolvePath("/outside/library/track.mp3", nil)
+
+				Expect(resolution.valid).To(BeFalse())
+			})
 		})
 
-		It("resolves relative paths when folder is provided", func() {
-			folder := &model.Folder{
-				Path:        "playlists",
-				LibraryPath: "/music",
-				LibraryID:   1,
-			}
-
-			resolution := resolver.resolvePath("../artist/album/track.mp3", folder)
-
-			Expect(resolution.valid).To(BeTrue())
-			Expect(resolution.libraryID).To(Equal(1))
-			Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
-		})
-
-		It("returns invalid resolution for paths outside any library", func() {
-			resolution := resolver.resolvePath("/outside/library/track.mp3", nil)
-
-			Expect(resolution.valid).To(BeFalse())
-		})
-	})
-
-	Describe("resolvePath", func() {
-		Context("With absolute paths", func() {
+		Context("cross-library", func() {
 			It("resolves path within a library", func() {
 				resolution := resolver.resolvePath("/music/track.mp3", nil)
 

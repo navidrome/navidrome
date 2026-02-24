@@ -66,11 +66,12 @@ const (
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
 
-	PlaceholderArtistArt = "artist-placeholder.webp"
-	PlaceholderAlbumArt  = "album-placeholder.webp"
-	PlaceholderAvatar    = "logo-192x192.png"
-	UICoverArtSize       = 300
-	DefaultUIVolume      = 100
+	PlaceholderArtistArt      = "artist-placeholder.webp"
+	PlaceholderAlbumArt       = "album-placeholder.webp"
+	PlaceholderAvatar         = "logo-192x192.png"
+	UICoverArtSize            = 300
+	DefaultUIVolume           = 100
+	DefaultUISearchDebounceMs = 200
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 

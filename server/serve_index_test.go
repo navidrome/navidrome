@@ -85,6 +85,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultTheme", func() { conf.Server.DefaultTheme = "Light" }, "defaultTheme", "Light"),
 		Entry("defaultLanguage", func() { conf.Server.DefaultLanguage = "pt" }, "defaultLanguage", "pt"),
 		Entry("defaultUIVolume", func() { conf.Server.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
+		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
 		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),

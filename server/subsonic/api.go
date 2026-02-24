@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -40,7 +41,7 @@ type Router struct {
 	archiver  core.Archiver
 	players   core.Players
 	provider  external.Provider
-	playlists core.Playlists
+	playlists playlistsvc.Playlists
 	scanner   model.Scanner
 	broker    events.Broker
 	scrobbler scrobbler.PlayTracker
@@ -51,7 +52,7 @@ type Router struct {
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
-	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
+	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics,
 ) *Router {
 	r := &Router{
@@ -290,6 +291,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorGeneric, err.Error())
 	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
+	case errors.Is(err, model.ErrNotAuthorized):
+		err = newError(responses.ErrorAuthorizationFail)
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}

@@ -287,6 +287,106 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Smart Playlists with Album/Artist Annotation Criteria", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+		})
+
+		It("matches tracks from starred albums using albumLoved", func() {
+			// albumRadioactivity (ID "103") is starred in test fixtures
+			// Songs in album 103: 1003, 1004, 1005, 1006
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Album Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1003", "1004", "1005", "1006"))
+		})
+
+		It("matches tracks from starred artists using artistLoved", func() {
+			// artistBeatles (ID "3") is starred in test fixtures
+			// Songs with ArtistID "3": 1001, 1002, 3002
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Artist Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "3002"))
+		})
+
+		It("matches tracks with combined album and artist criteria", func() {
+			// albumLoved=true → songs from album 103 (1003, 1004, 1005, 1006)
+			// artistLoved=true → songs with artist 3 (1001, 1002)
+			// Using Any: union of both sets
+			rules := &criteria.Criteria{
+				Expression: criteria.Any{
+					criteria.Is{"albumLoved": true},
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Combined Album+Artist", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "1003", "1004", "1005", "1006", "3002"))
+		})
+
+		It("returns no tracks when no albums/artists match", func() {
+			// No album has rating 5 in fixtures
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumRating": 5},
+				},
+			}
+			newPls := model.Playlist{Name: "No Match", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(pls.Tracks).To(BeEmpty())
+		})
+	})
+
 	Describe("Smart Playlists with Tag Criteria", func() {
 		var mfRepo model.MediaFileRepository
 		var testPlaylistID string
@@ -398,6 +498,79 @@ var _ = Describe("PlaylistRepository", func() {
 				}
 			}
 			Expect(foundWithoutGrouping).To(BeTrue())
+		})
+	})
+
+	Describe("Track Deletion and Renumbering", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
+		// helper to get track positions and media file IDs
+		getTrackInfo := func(playlistID string) (ids []string, mediaFileIDs []string) {
+			pls, err := repo.GetWithTracks(playlistID, false, false)
+			Expect(err).ToNot(HaveOccurred())
+			for _, t := range pls.Tracks {
+				ids = append(ids, t.ID)
+				mediaFileIDs = append(mediaFileIDs, t.MediaFileID)
+			}
+			return
+		}
+
+		It("renumbers correctly after deleting a track from the middle", func() {
+			By("creating a playlist with 4 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Middle", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003", "1004"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the second track (position 2)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("2")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2", "3"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1003", "1004"}))
+		})
+
+		It("renumbers correctly after deleting the first track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test First", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the first track (position 1)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("1")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1002", "1003"}))
+		})
+
+		It("renumbers correctly after deleting the last track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Last", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the last track (position 3)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("3")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
 		})
 	})
 

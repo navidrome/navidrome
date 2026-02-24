@@ -1,5 +1,6 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
+GO_BUILD_TAGS=netgo,sqlite_fts5
 
 # Set global environment variables, required for most targets
 export CGO_CFLAGS_ALLOW=--define-prefix
@@ -19,7 +20,7 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.1.1-2
+CROSS_TAGLIB_VERSION ?= 2.2.0-1
 GOLANGCI_LINT_VERSION ?= v2.10.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -46,12 +47,12 @@ stop: ##@Development Stop development servers (UI and backend)
 .PHONY: stop
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go tool ginkgo watch -tags=netgo -notify ./...
+	go tool ginkgo watch -tags=$(GO_BUILD_TAGS) -notify ./...
 .PHONY: watch
 
 PKG ?= ./...
 test: ##@Development Run Go tests. Use PKG variable to specify packages to test, e.g. make test PKG=./server
-	go test -tags netgo $(PKG)
+	go test -tags $(GO_BUILD_TAGS) $(PKG)
 .PHONY: test
 
 test-ndpgen: ##@Development Run tests for ndpgen plugin
@@ -62,7 +63,7 @@ testall: test test-ndpgen test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on  $(PKG)
+	go test -tags $(GO_BUILD_TAGS) -race -shuffle=on  $(PKG)
 .PHONY: test-race
 
 test-js: ##@Development Run JS tests
@@ -108,7 +109,7 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go tool wire gen -tags=netgo ./...
+	go tool wire gen -tags=$(GO_BUILD_TAGS) ./...
 .PHONY: wire
 
 gen: check_go_env ##@Development Run go generate for code generation
@@ -144,14 +145,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
@@ -201,8 +202,8 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
 
-run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
-	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+docker-run: ##@Development Run a Navidrome Docker image. Usage: make docker-run tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make docker-run tag=<tag>"; exit 1; fi
 	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
     VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
 	if [ -f navidrome.toml ]; then \
@@ -213,7 +214,7 @@ run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker 
 	  	fi; \
 	fi; \
 	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
-.PHONY: run-docker
+.PHONY: docker-run
 
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi

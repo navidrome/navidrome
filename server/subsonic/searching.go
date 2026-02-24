@@ -42,17 +42,17 @@ func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	return sp, nil
 }
 
-type searchFunc[T any] func(q string, offset int, size int, options ...model.QueryOptions) (T, error)
+type searchFunc[T any] func(q string, options ...model.QueryOptions) (T, error)
 
-func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, size int, result *T, options ...model.QueryOptions) func() error {
+func callSearch[T any](ctx context.Context, s searchFunc[T], q string, options model.QueryOptions, result *T) func() error {
 	return func() error {
-		if size == 0 {
+		if options.Max == 0 {
 			return nil
 		}
 		typ := strings.TrimPrefix(reflect.TypeOf(*result).String(), "model.")
 		var err error
 		start := time.Now()
-		*result, err = s(q, offset, size, options...)
+		*result, err = s(q, options)
 		if err != nil {
 			log.Error(ctx, "Error searching "+typ, "query", q, "elapsed", time.Since(start), err)
 		} else {
@@ -66,27 +66,22 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	start := time.Now()
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 
-	// Create query options for library filtering
-	var options []model.QueryOptions
-	var artistOptions []model.QueryOptions
+	// Build options with offset/size/filters packed in
+	songOpts := model.QueryOptions{Max: sp.songCount, Offset: sp.songOffset}
+	albumOpts := model.QueryOptions{Max: sp.albumCount, Offset: sp.albumOffset}
+	artistOpts := model.QueryOptions{Max: sp.artistCount, Offset: sp.artistOffset}
+
 	if len(musicFolderIds) > 0 {
-		// For MediaFiles and Albums, use direct library_id filter
-		options = append(options, model.QueryOptions{
-			Filters: Eq{"library_id": musicFolderIds},
-		})
-		// For Artists, use the repository's built-in library filtering mechanism
-		// which properly handles the library_artist table joins
-		// TODO Revisit library filtering in sql_base_repository.go
-		artistOptions = append(artistOptions, model.QueryOptions{
-			Filters: Eq{"library_artist.library_id": musicFolderIds},
-		})
+		songOpts.Filters = Eq{"library_id": musicFolderIds}
+		albumOpts.Filters = Eq{"library_id": musicFolderIds}
+		artistOpts.Filters = Eq{"library_artist.library_id": musicFolderIds}
 	}
 
 	// Run searches in parallel
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles, options...))
-	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums, options...))
-	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists, artistOptions...))
+	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, songOpts, &mediaFiles))
+	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, albumOpts, &albums))
+	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, artistOpts, &artists))
 	err := g.Wait()
 	if err == nil {
 		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",

@@ -327,8 +327,8 @@ var _ = Describe("Browsing Endpoints", func() {
 				}
 			}
 			Expect(jazzGenre).ToNot(BeNil())
-			Expect(jazzGenre.SongCount).To(Equal(int32(1)))
-			Expect(jazzGenre.AlbumCount).To(Equal(int32(1)))
+			Expect(jazzGenre.SongCount).To(Equal(int32(2)))
+			Expect(jazzGenre.AlbumCount).To(Equal(int32(2)))
 		})
 
 		It("reports correct song and album counts for Pop", func() {

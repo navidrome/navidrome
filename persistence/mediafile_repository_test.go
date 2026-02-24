@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(10)))
+		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
 	Describe("CountBySuffix", func() {
@@ -527,7 +527,7 @@ var _ = Describe("MediaRepository", func() {
 	Describe("Search", func() {
 		Context("text search", func() {
 			It("finds media files by title", func() {
-				results, err := mr.Search("Antenna", 0, 10)
+				results, err := mr.Search("Antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3)) // songAntenna, songAntennaWithLyrics, songAntenna2
 				for _, result := range results {
@@ -536,7 +536,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media files case insensitively", func() {
-				results, err := mr.Search("antenna", 0, 10)
+				results, err := mr.Search("antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3))
 				for _, result := range results {
@@ -545,7 +545,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when no matches found", func() {
-				results, err := mr.Search("nonexistent", 0, 10)
+				results, err := mr.Search("nonexistent", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -578,7 +578,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_recording_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -586,7 +586,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_release_track_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -594,7 +594,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when MBID is not found", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -614,7 +614,7 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Search never returns missing media files (hardcoded behavior)
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 

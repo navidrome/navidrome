@@ -6,9 +6,9 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
@@ -53,7 +53,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		// Run incremental scan to import lib2 content (lib1 files unchanged → skipped)
 		s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			core.NewPlaylists(ds), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 		_, err = s.ScanAll(ctx, false)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -141,7 +141,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib.ID))
 
 			Expect(resp.AlbumList).ToNot(BeNil())
-			Expect(resp.AlbumList.Album).To(HaveLen(5))
+			Expect(resp.AlbumList.Album).To(HaveLen(6))
 			for _, a := range resp.AlbumList.Album {
 				Expect(a.Title).ToNot(Equal("Symphony No. 9"))
 			}
@@ -274,6 +274,22 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			}
 			Expect(artistNames).To(ContainElements("The Beatles", "Led Zeppelin", "Miles Davis"))
 			Expect(artistNames).ToNot(ContainElement("Ludwig van Beethoven"))
+		})
+
+		It("non-admin user search returns only their library's content", func() {
+			resp := doReqWithUser(userLib1Only, "search3", "query", "Beethoven")
+
+			Expect(resp.SearchResult3).ToNot(BeNil())
+			Expect(resp.SearchResult3.Artist).To(BeEmpty(), "userLib1Only should not see Beethoven (lib2)")
+			Expect(resp.SearchResult3.Album).To(BeEmpty())
+			Expect(resp.SearchResult3.Song).To(BeEmpty())
+		})
+
+		It("non-admin user search finds content from their library", func() {
+			resp := doReqWithUser(userLib1Only, "search3", "query", "Beatles")
+
+			Expect(resp.SearchResult3).ToNot(BeNil())
+			Expect(resp.SearchResult3.Artist).ToNot(BeEmpty(), "userLib1Only should find Beatles (lib1)")
 		})
 	})
 })
