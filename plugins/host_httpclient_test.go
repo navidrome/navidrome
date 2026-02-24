@@ -95,10 +95,20 @@ var _ = Describe("httpServiceImpl", func() {
 			Expect(err.Error()).To(ContainSubstring("private/loopback"))
 		})
 
-		It("should block requests to IPv6 loopback", func() {
+		It("should block requests to IPv6 loopback with port", func() {
 			_, err := svc.Send(context.Background(), host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://[::1]:8080/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to IPv6 loopback without port", func() {
+			_, err := svc.Send(context.Background(), host.HTTPRequest{
+				Method:    "GET",
+				URL:       "http://[::1]/test",
 				TimeoutMs: 1000,
 			})
 			Expect(err).To(HaveOccurred())
@@ -480,6 +490,10 @@ var _ = Describe("extractHostname", func() {
 
 	It("should handle IPv6 without port", func() {
 		Expect(extractHostname("::1")).To(Equal("::1"))
+	})
+
+	It("should strip brackets from IPv6 without port", func() {
+		Expect(extractHostname("[::1]")).To(Equal("::1"))
 	})
 
 	It("should handle IPv4 with port", func() {

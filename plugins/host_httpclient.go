@@ -157,10 +157,15 @@ func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
 }
 
 // extractHostname returns the hostname portion of a host string, stripping
-// any port number. It handles IPv6 addresses correctly (e.g. "[::1]:8080").
+// any port number and IPv6 brackets. It handles IPv6 addresses correctly
+// (e.g. "[::1]:8080" → "::1", "[::1]" → "::1").
 func extractHostname(hostStr string) string {
 	if h, _, err := net.SplitHostPort(hostStr); err == nil {
 		return h
+	}
+	// Strip IPv6 brackets when no port is present (e.g. "[::1]" → "::1")
+	if strings.HasPrefix(hostStr, "[") && strings.HasSuffix(hostStr, "]") {
+		return hostStr[1 : len(hostStr)-1]
 	}
 	return hostStr
 }
