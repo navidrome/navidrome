@@ -35,7 +35,7 @@
 //! - [`artwork`] - provides artwork public URL generation capabilities for plugins.
 //! - [`cache`] - provides in-memory TTL-based caching capabilities for plugins.
 //! - [`config`] - provides access to plugin configuration values.
-//! - [`httpclient`] - provides outbound HTTP request capabilities for plugins.
+//! - [`http`] - provides outbound HTTP request capabilities for plugins.
 //! - [`kvstore`] - provides persistent key-value storage for plugins.
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
@@ -65,10 +65,10 @@ pub mod config {
 }
 
 #[doc(hidden)]
-mod nd_host_httpclient;
+mod nd_host_http;
 /// provides outbound HTTP request capabilities for plugins.
-pub mod httpclient {
-    pub use super::nd_host_httpclient::*;
+pub mod http {
+    pub use super::nd_host_http::*;
 }
 
 #[doc(hidden)]

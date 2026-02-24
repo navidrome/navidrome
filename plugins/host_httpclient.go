@@ -22,20 +22,20 @@ const (
 	httpClientMaxResponseBodyLen = 10 * 1024 * 1024 // 10 MB
 )
 
-// httpClientServiceImpl implements host.HttpClientService.
-type httpClientServiceImpl struct {
+// httpServiceImpl implements host.HTTPService.
+type httpServiceImpl struct {
 	pluginName    string
 	requiredHosts []string
 	client        *http.Client
 }
 
-// newHttpClientService creates a new HttpClientService for a plugin.
-func newHttpClientService(pluginName string, permission *HTTPPermission) *httpClientServiceImpl {
+// newHTTPService creates a new HTTPService for a plugin.
+func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceImpl {
 	var requiredHosts []string
 	if permission != nil {
 		requiredHosts = permission.RequiredHosts
 	}
-	svc := &httpClientServiceImpl{
+	svc := &httpServiceImpl{
 		pluginName:    pluginName,
 		requiredHosts: requiredHosts,
 	}
@@ -58,7 +58,7 @@ func newHttpClientService(pluginName string, permission *HTTPPermission) *httpCl
 	return svc
 }
 
-func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest) (*host.HttpResponse, error) {
+func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*host.HTTPResponse, error) {
 	// Parse and validate URL
 	parsedURL, err := url.Parse(request.URL)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 	}
 	defer resp.Body.Close()
 
-	log.Trace(ctx, "HttpClient request", "plugin", s.pluginName, "method", method, "url", request.URL, "status", resp.StatusCode)
+	log.Trace(ctx, "HTTP request", "plugin", s.pluginName, "method", method, "url", request.URL, "status", resp.StatusCode)
 
 	// Read response body (with size limit to prevent memory exhaustion)
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, httpClientMaxResponseBodyLen))
@@ -119,7 +119,7 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 		}
 	}
 
-	return &host.HttpResponse{
+	return &host.HTTPResponse{
 		StatusCode: int32(resp.StatusCode),
 		Headers:    headers,
 		Body:       respBody,
@@ -129,7 +129,7 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 // validateHost checks whether a request to the given host is permitted.
 // When requiredHosts is set, it checks against the allowlist.
 // When requiredHosts is empty, it blocks private/loopback IPs to prevent SSRF.
-func (s *httpClientServiceImpl) validateHost(ctx context.Context, hostStr string) error {
+func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) error {
 	hostname := extractHostname(hostStr)
 
 	if len(s.requiredHosts) > 0 {
@@ -147,7 +147,7 @@ func (s *httpClientServiceImpl) validateHost(ctx context.Context, hostStr string
 	return nil
 }
 
-func (s *httpClientServiceImpl) isHostAllowed(hostname string) bool {
+func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
 	for _, pattern := range s.requiredHosts {
 		if matchHostPattern(pattern, hostname) {
 			return true
@@ -182,4 +182,4 @@ func isPrivateOrLoopback(hostname string) bool {
 }
 
 // Verify interface implementation
-var _ host.HttpClientService = (*httpClientServiceImpl)(nil)
+var _ host.HTTPService = (*httpServiceImpl)(nil)

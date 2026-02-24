@@ -9,64 +9,64 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
-// HttpClientDoRequest is the request type for HttpClient.Do.
-type HttpClientDoRequest struct {
-	Request HttpRequest `json:"request"`
+// HTTPSendRequest is the request type for HTTP.Send.
+type HTTPSendRequest struct {
+	Request HTTPRequest `json:"request"`
 }
 
-// HttpClientDoResponse is the response type for HttpClient.Do.
-type HttpClientDoResponse struct {
-	Result *HttpResponse `json:"result,omitempty"`
+// HTTPSendResponse is the response type for HTTP.Send.
+type HTTPSendResponse struct {
+	Result *HTTPResponse `json:"result,omitempty"`
 	Error  string        `json:"error,omitempty"`
 }
 
-// RegisterHttpClientHostFunctions registers HttpClient service host functions.
+// RegisterHTTPHostFunctions registers HTTP service host functions.
 // The returned host functions should be added to the plugin's configuration.
-func RegisterHttpClientHostFunctions(service HttpClientService) []extism.HostFunction {
+func RegisterHTTPHostFunctions(service HTTPService) []extism.HostFunction {
 	return []extism.HostFunction{
-		newHttpClientDoHostFunction(service),
+		newHTTPSendHostFunction(service),
 	}
 }
 
-func newHttpClientDoHostFunction(service HttpClientService) extism.HostFunction {
+func newHTTPSendHostFunction(service HTTPService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
-		"httpclient_do",
+		"http_send",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
-				httpclientWriteError(p, stack, err)
+				httpWriteError(p, stack, err)
 				return
 			}
-			var req HttpClientDoRequest
+			var req HTTPSendRequest
 			if err := json.Unmarshal(reqBytes, &req); err != nil {
-				httpclientWriteError(p, stack, err)
+				httpWriteError(p, stack, err)
 				return
 			}
 
 			// Call the service method
-			result, svcErr := service.Do(ctx, req.Request)
+			result, svcErr := service.Send(ctx, req.Request)
 			if svcErr != nil {
-				httpclientWriteError(p, stack, svcErr)
+				httpWriteError(p, stack, svcErr)
 				return
 			}
 
 			// Write JSON response to plugin memory
-			resp := HttpClientDoResponse{
+			resp := HTTPSendResponse{
 				Result: result,
 			}
-			httpclientWriteResponse(p, stack, resp)
+			httpWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
 	)
 }
 
-// httpclientWriteResponse writes a JSON response to plugin memory.
-func httpclientWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
+// httpWriteResponse writes a JSON response to plugin memory.
+func httpWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
-		httpclientWriteError(p, stack, err)
+		httpWriteError(p, stack, err)
 		return
 	}
 	respPtr, err := p.WriteBytes(respBytes)
@@ -77,8 +77,8 @@ func httpclientWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) 
 	stack[0] = respPtr
 }
 
-// httpclientWriteError writes an error response to plugin memory.
-func httpclientWriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
+// httpWriteError writes an error response to plugin memory.
+func httpWriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
 	errResp := struct {
 		Error string `json:"error"`
 	}{Error: err.Error()}

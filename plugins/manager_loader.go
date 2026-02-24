@@ -120,12 +120,12 @@ var hostServices = []hostServiceEntry{
 		},
 	},
 	{
-		name:          "HttpClient",
+		name:          "HTTP",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Http
-			service := newHttpClientService(ctx.pluginName, perm)
-			return host.RegisterHttpClientHostFunctions(service), nil
+			service := newHTTPService(ctx.pluginName, perm)
+			return host.RegisterHTTPHostFunctions(service), nil
 		},
 	},
 }

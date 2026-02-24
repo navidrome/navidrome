@@ -10,9 +10,8 @@ package host
 
 import "github.com/stretchr/testify/mock"
 
-// HttpRequest represents the HttpRequest data structure.
-// HttpRequest represents an outbound HTTP request from a plugin.
-type HttpRequest struct {
+// HTTPRequest represents an outbound HTTP request from a plugin.
+type HTTPRequest struct {
 	Method    string            `json:"method"`
 	URL       string            `json:"url"`
 	Headers   map[string]string `json:"headers"`
@@ -20,31 +19,30 @@ type HttpRequest struct {
 	TimeoutMs int32             `json:"timeoutMs"`
 }
 
-// HttpResponse represents the HttpResponse data structure.
-// HttpResponse represents the response from an outbound HTTP request.
-type HttpResponse struct {
+// HTTPResponse represents the response from an outbound HTTP request.
+type HTTPResponse struct {
 	StatusCode int32             `json:"statusCode"`
 	Headers    map[string]string `json:"headers"`
 	Body       []byte            `json:"body"`
 }
 
-// mockHttpClientService is the mock implementation for testing.
-type mockHttpClientService struct {
+// mockHTTPService is the mock implementation for testing.
+type mockHTTPService struct {
 	mock.Mock
 }
 
-// HttpClientMock is the auto-instantiated mock instance for testing.
-// Use this to set expectations: host.HttpClientMock.On("MethodName", args...).Return(values...)
-var HttpClientMock = &mockHttpClientService{}
+// HTTPMock is the auto-instantiated mock instance for testing.
+// Use this to set expectations: host.HTTPMock.On("MethodName", args...).Return(values...)
+var HTTPMock = &mockHTTPService{}
 
-// Do is the mock method for HttpClientDo.
-func (m *mockHttpClientService) Do(request HttpRequest) (*HttpResponse, error) {
+// Send is the mock method for HTTPSend.
+func (m *mockHTTPService) Send(request HTTPRequest) (*HTTPResponse, error) {
 	args := m.Called(request)
-	return args.Get(0).(*HttpResponse), args.Error(1)
+	return args.Get(0).(*HTTPResponse), args.Error(1)
 }
 
-// HttpClientDo delegates to the mock instance.
-// Do executes an HTTP request and returns the response.
+// HTTPSend delegates to the mock instance.
+// Send executes an HTTP request and returns the response.
 //
 // Parameters:
 //   - request: The HTTP request to execute, including method, URL, headers, body, and timeout
@@ -52,6 +50,6 @@ func (m *mockHttpClientService) Do(request HttpRequest) (*HttpResponse, error) {
 // Returns the HTTP response with status code, headers, and body.
 // Network errors, timeouts, and permission failures are returned as Go errors.
 // Successful HTTP calls (including 4xx/5xx status codes) return a non-nil response with nil error.
-func HttpClientDo(request HttpRequest) (*HttpResponse, error) {
-	return HttpClientMock.Do(request)
+func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
+	return HTTPMock.Send(request)
 }
