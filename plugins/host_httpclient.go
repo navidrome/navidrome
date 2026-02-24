@@ -26,6 +26,7 @@ const (
 type httpClientServiceImpl struct {
 	pluginName    string
 	requiredHosts []string
+	client        *http.Client
 }
 
 // newHttpClientService creates a new HttpClientService for a plugin.
@@ -34,10 +35,27 @@ func newHttpClientService(pluginName string, permission *HTTPPermission) *httpCl
 	if permission != nil {
 		requiredHosts = permission.RequiredHosts
 	}
-	return &httpClientServiceImpl{
+	svc := &httpClientServiceImpl{
 		pluginName:    pluginName,
 		requiredHosts: requiredHosts,
 	}
+	svc.client = &http.Client{
+		Transport: http.DefaultTransport,
+		// Timeout is set per-request via context deadline, not here.
+		// CheckRedirect validates hosts and enforces redirect limits.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= httpClientMaxRedirects {
+				log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", req.URL.String(), "redirectCount", len(via))
+				return http.ErrUseLastResponse
+			}
+			if err := svc.validateHost(req.Context(), req.URL.Host); err != nil {
+				log.Warn(req.Context(), "HTTP redirect blocked", "plugin", svc.pluginName, "url", req.URL.String(), "err", err)
+				return err
+			}
+			return nil
+		},
+	}
+	return svc
 }
 
 func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest) (*host.HttpResponse, error) {
@@ -57,22 +75,10 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 		return nil, err
 	}
 
-	// Build HTTP client with timeout
+	// Apply per-request timeout via context deadline
 	timeout := cmp.Or(time.Duration(request.TimeoutMs)*time.Millisecond, httpClientDefaultTimeout)
-	client := &http.Client{
-		Timeout: timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= httpClientMaxRedirects {
-				log.Warn(ctx, "HTTP redirect limit exceeded", "plugin", s.pluginName, "url", req.URL.String(), "redirectCount", len(via))
-				return http.ErrUseLastResponse
-			}
-			if err := s.validateHost(ctx, req.URL.Host); err != nil {
-				log.Warn(ctx, "HTTP redirect blocked", "plugin", s.pluginName, "url", req.URL.String(), "err", err)
-				return err
-			}
-			return nil
-		},
-	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
 	// Build request body
 	method := strings.ToUpper(request.Method)
@@ -91,7 +97,7 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 	}
 
 	// Execute request
-	resp, err := client.Do(httpReq) //nolint:gosec // URL is validated against requiredHosts
+	resp, err := s.client.Do(httpReq) //nolint:gosec // URL is validated against requiredHosts
 	if err != nil {
 		return nil, err
 	}

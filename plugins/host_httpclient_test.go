@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/plugins/host"
@@ -26,16 +27,9 @@ var _ = Describe("httpClientServiceImpl", func() {
 		}
 	})
 
-	// localServerAllowList creates a requiredHosts list that allows the httptest
-	// server's loopback address (127.0.0.1). Without this, the default SSRF
-	// protection blocks requests to private/loopback IPs.
-	localServerAllowList := func() []string { return []string{"127.0.0.1"} }
-
 	Context("without host restrictions (default SSRF protection)", func() {
 		BeforeEach(func() {
-			svc = &httpClientServiceImpl{
-				pluginName: "test-plugin",
-			}
+			svc = newHttpClientService("test-plugin", nil)
 		})
 
 		It("should block requests to loopback IPs", func() {
@@ -145,10 +139,9 @@ var _ = Describe("httpClientServiceImpl", func() {
 
 	Context("with explicit requiredHosts allowing loopback", func() {
 		BeforeEach(func() {
-			svc = &httpClientServiceImpl{
-				pluginName:    "test-plugin",
-				requiredHosts: localServerAllowList(),
-			}
+			svc = newHttpClientService("test-plugin", &HTTPPermission{
+				RequiredHosts: []string{"127.0.0.1"},
+			})
 		})
 
 		It("should handle GET requests", func() {
@@ -325,10 +318,9 @@ var _ = Describe("httpClientServiceImpl", func() {
 
 	Context("with host restrictions", func() {
 		BeforeEach(func() {
-			svc = &httpClientServiceImpl{
-				pluginName:    "test-plugin",
-				requiredHosts: []string{"allowed.example.com", "*.allowed.org"},
-			}
+			svc = newHttpClientService("test-plugin", &HTTPPermission{
+				RequiredHosts: []string{"allowed.example.com", "*.allowed.org"},
+			})
 		})
 
 		It("should block requests to non-allowed hosts", func() {
@@ -383,21 +375,92 @@ var _ = Describe("httpClientServiceImpl", func() {
 			Expect(err.Error()).To(ContainSubstring("not allowed"))
 		})
 
-		It("should block redirects to private IPs when no requiredHosts", func() {
+		It("should block redirects to private IPs when allowlist is set", func() {
 			// Server that redirects to a private IP
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "http://10.0.0.1/internal", http.StatusFound)
 			}))
-			// Allow the test server but clear requiredHosts to test default SSRF protection
-			svc.requiredHosts = localServerAllowList()
+			// Allow the test server; redirect to 10.0.0.1 is blocked by allowlist
+			svc.requiredHosts = []string{"127.0.0.1"}
 			resp, err := svc.Do(context.Background(), host.HttpRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
 			})
-			// With requiredHosts set, redirect to 10.0.0.1 is blocked by allowlist
 			Expect(err).To(HaveOccurred())
 			Expect(resp).To(BeNil())
+		})
+
+		It("should allow wildcard host patterns", func() {
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("wildcard"))
+			}))
+			// *.allowed.org is in the requiredHosts from BeforeEach, but test server is 127.0.0.1
+			// Override with a wildcard that matches the test server
+			svc.requiredHosts = []string{"*.0.0.1"}
+			resp, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       ts.URL,
+				TimeoutMs: 1000,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(resp.Body)).To(Equal("wildcard"))
+		})
+
+		It("should reject hosts not matching wildcard patterns", func() {
+			svc.requiredHosts = []string{"*.example.com"}
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://evil.other.com/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not allowed"))
+		})
+	})
+
+	Context("response body size limit", func() {
+		BeforeEach(func() {
+			svc = newHttpClientService("test-plugin", &HTTPPermission{
+				RequiredHosts: []string{"127.0.0.1"},
+			})
+		})
+
+		It("should truncate response body at the size limit", func() {
+			// Serve a body larger than the limit
+			oversizedBody := strings.Repeat("x", httpClientMaxResponseBodyLen+1024)
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(oversizedBody))
+			}))
+			resp, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       ts.URL,
+				TimeoutMs: 5000,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(resp.Body)).To(Equal(httpClientMaxResponseBodyLen))
+		})
+	})
+
+	Context("edge cases", func() {
+		BeforeEach(func() {
+			svc = newHttpClientService("test-plugin", &HTTPPermission{
+				RequiredHosts: []string{"127.0.0.1"},
+			})
+		})
+
+		It("should default empty method to GET", func() {
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("method:" + r.Method))
+			}))
+			// Empty method — Go's http.NewRequestWithContext normalizes "" to "GET"
+			resp, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "",
+				URL:       ts.URL,
+				TimeoutMs: 1000,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(resp.Body)).To(Equal("method:GET"))
 		})
 	})
 })
