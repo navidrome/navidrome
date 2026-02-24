@@ -250,6 +250,7 @@ type pluginsOptions struct {
 type extAuthOptions struct {
 	TrustedSources string
 	UserHeader     string
+	LogoutURL      string
 }
 
 type searchOptions struct {
@@ -345,6 +346,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
+		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
 		os.Exit(1)
@@ -548,6 +550,33 @@ func validateSchedule(schedule, field string) (string, error) {
 	return schedule, err
 }
 
+// validateURL checks if the provided URL is valid and has either http or https scheme.
+// It returns a function that can be used as a hook to validate URLs in the config.
+func validateURL(optionName, optionURL string) func() error {
+	return func() error {
+		if optionURL == "" {
+			return nil
+		}
+		u, err := url.Parse(optionURL)
+		if err != nil {
+			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionURL, "err", err)
+			return err
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			err := fmt.Errorf("invalid scheme for %s: '%s'. Only 'http' and 'https' are allowed", optionName, u.Scheme)
+			log.Error(err.Error())
+			return err
+		}
+		// Require an absolute URL with a non-empty host and no opaque component.
+		if u.Host == "" || u.Opaque != "" {
+			err := fmt.Errorf("invalid %s: '%s'. A full http(s) URL with a non-empty host is required", optionName, optionURL)
+			log.Error(err.Error())
+			return err
+		}
+		return nil
+	}
+}
+
 func normalizeSearchBackend(value string) string {
 	v := strings.ToLower(strings.TrimSpace(value))
 	switch v {
@@ -641,6 +670,7 @@ func setViperDefaults() {
 	viper.SetDefault("passwordencryptionkey", "")
 	viper.SetDefault("extauth.userheader", "Remote-User")
 	viper.SetDefault("extauth.trustedsources", "")
+	viper.SetDefault("extauth.logouturl", "")
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")

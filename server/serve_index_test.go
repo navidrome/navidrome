@@ -104,6 +104,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("enableUserEditing", func() { conf.Server.EnableUserEditing = false }, "enableUserEditing", false),
 		Entry("enableSharing", func() { conf.Server.EnableSharing = true }, "enableSharing", true),
 		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
+		Entry("extAuthLogoutURL", func() { conf.Server.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
 	)
 
 	DescribeTable("sets other UI configuration values",
