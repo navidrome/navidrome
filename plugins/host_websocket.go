@@ -256,8 +256,11 @@ func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
 }
 
 // matchHostPattern matches a host against a pattern.
-// Supports wildcards like *.example.com
+// Supports "*" (allow all) and wildcards like "*.example.com".
 func matchHostPattern(pattern, host string) bool {
+	if pattern == "*" {
+		return true
+	}
 	if pattern == host {
 		return true
 	}

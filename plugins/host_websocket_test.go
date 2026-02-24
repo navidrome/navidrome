@@ -575,6 +575,12 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			Expect(matchHostPattern("*.example.com", "deep.api.example.com")).To(BeTrue())
 		})
 
+		It("should match bare '*' as allow-all", func() {
+			Expect(matchHostPattern("*", "anything.example.com")).To(BeTrue())
+			Expect(matchHostPattern("*", "127.0.0.1")).To(BeTrue())
+			Expect(matchHostPattern("*", "::1")).To(BeTrue())
+		})
+
 		It("should not match partial patterns", func() {
 			Expect(matchHostPattern("*.example.com", "example.com.evil.org")).To(BeFalse())
 		})
