@@ -26,10 +26,128 @@ var _ = Describe("httpClientServiceImpl", func() {
 		}
 	})
 
-	Context("without host restrictions", func() {
+	// localServerAllowList creates a requiredHosts list that allows the httptest
+	// server's loopback address (127.0.0.1). Without this, the default SSRF
+	// protection blocks requests to private/loopback IPs.
+	localServerAllowList := func() []string { return []string{"127.0.0.1"} }
+
+	Context("without host restrictions (default SSRF protection)", func() {
 		BeforeEach(func() {
 			svc = &httpClientServiceImpl{
 				pluginName: "test-plugin",
+			}
+		})
+
+		It("should block requests to loopback IPs", func() {
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+			}))
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       ts.URL,
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to localhost by name", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://localhost:12345/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to private IPs (10.x)", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://10.0.0.1/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to private IPs (192.168.x)", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://192.168.1.1/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to private IPs (172.16.x)", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://172.16.0.1/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to link-local IPs (169.254.x)", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://169.254.169.254/latest/meta-data/",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block requests to IPv6 loopback", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://[::1]:8080/test",
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should allow requests to public hostnames", func() {
+			// This will fail at the network level (connection refused or DNS),
+			// but it should NOT fail with a "private/loopback" error
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       "http://203.0.113.1:1/test", // TEST-NET-3, non-routable but not private
+				TimeoutMs: 100,
+			})
+			// Should get a network error, not a permission error
+			if err != nil {
+				Expect(err.Error()).ToNot(ContainSubstring("private/loopback"))
+			}
+		})
+
+		It("should return error for invalid URL", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method: "GET",
+				URL:    "://bad-url",
+			})
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should reject non-http/https URL schemes", func() {
+			_, err := svc.Do(context.Background(), host.HttpRequest{
+				Method: "GET",
+				URL:    "ftp://example.com/file",
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("must be http or https"))
+		})
+	})
+
+	Context("with explicit requiredHosts allowing loopback", func() {
+		BeforeEach(func() {
+			svc = &httpClientServiceImpl{
+				pluginName:    "test-plugin",
+				requiredHosts: localServerAllowList(),
 			}
 		})
 
@@ -174,23 +292,6 @@ var _ = Describe("httpClientServiceImpl", func() {
 			Expect(err.Error()).To(ContainSubstring("context canceled"))
 		})
 
-		It("should return error for invalid URL", func() {
-			_, err := svc.Do(context.Background(), host.HttpRequest{
-				Method: "GET",
-				URL:    "://bad-url",
-			})
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should reject non-http/https URL schemes", func() {
-			_, err := svc.Do(context.Background(), host.HttpRequest{
-				Method: "GET",
-				URL:    "ftp://example.com/file",
-			})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("must be http or https"))
-		})
-
 		It("should send request headers", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.Header.Get("X-Custom")))
@@ -265,5 +366,107 @@ var _ = Describe("httpClientServiceImpl", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not allowed"))
 		})
+
+		It("should block redirects to private IPs when no requiredHosts", func() {
+			// Server that redirects to a private IP
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "http://10.0.0.1/internal", http.StatusFound)
+			}))
+			// Allow the test server but clear requiredHosts to test default SSRF protection
+			svc.requiredHosts = localServerAllowList()
+			resp, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "GET",
+				URL:       ts.URL,
+				TimeoutMs: 1000,
+			})
+			// With requiredHosts set, redirect to 10.0.0.1 is blocked by allowlist
+			Expect(err).To(HaveOccurred())
+			Expect(resp).To(BeNil())
+		})
+	})
+})
+
+var _ = Describe("extractHostname", func() {
+	It("should extract hostname from host:port", func() {
+		Expect(extractHostname("example.com:8080")).To(Equal("example.com"))
+	})
+
+	It("should return hostname when no port", func() {
+		Expect(extractHostname("example.com")).To(Equal("example.com"))
+	})
+
+	It("should handle IPv6 with port", func() {
+		Expect(extractHostname("[::1]:8080")).To(Equal("::1"))
+	})
+
+	It("should handle IPv6 without port", func() {
+		Expect(extractHostname("::1")).To(Equal("::1"))
+	})
+
+	It("should handle IPv4 with port", func() {
+		Expect(extractHostname("127.0.0.1:9090")).To(Equal("127.0.0.1"))
+	})
+
+	It("should handle IPv4 without port", func() {
+		Expect(extractHostname("127.0.0.1")).To(Equal("127.0.0.1"))
+	})
+})
+
+var _ = Describe("isPrivateOrLoopback", func() {
+	It("should detect IPv4 loopback", func() {
+		Expect(isPrivateOrLoopback("127.0.0.1")).To(BeTrue())
+		Expect(isPrivateOrLoopback("127.0.0.2")).To(BeTrue())
+	})
+
+	It("should detect IPv6 loopback", func() {
+		Expect(isPrivateOrLoopback("::1")).To(BeTrue())
+	})
+
+	It("should detect localhost by name", func() {
+		Expect(isPrivateOrLoopback("localhost")).To(BeTrue())
+		Expect(isPrivateOrLoopback("LOCALHOST")).To(BeTrue())
+	})
+
+	It("should detect 10.x.x.x private range", func() {
+		Expect(isPrivateOrLoopback("10.0.0.1")).To(BeTrue())
+		Expect(isPrivateOrLoopback("10.255.255.255")).To(BeTrue())
+	})
+
+	It("should detect 172.16.x.x private range", func() {
+		Expect(isPrivateOrLoopback("172.16.0.1")).To(BeTrue())
+		Expect(isPrivateOrLoopback("172.31.255.255")).To(BeTrue())
+	})
+
+	It("should detect 192.168.x.x private range", func() {
+		Expect(isPrivateOrLoopback("192.168.0.1")).To(BeTrue())
+		Expect(isPrivateOrLoopback("192.168.255.255")).To(BeTrue())
+	})
+
+	It("should detect link-local addresses", func() {
+		Expect(isPrivateOrLoopback("169.254.169.254")).To(BeTrue())
+		Expect(isPrivateOrLoopback("169.254.0.1")).To(BeTrue())
+	})
+
+	It("should detect IPv6 private (fc00::/7)", func() {
+		Expect(isPrivateOrLoopback("fd00::1")).To(BeTrue())
+	})
+
+	It("should detect IPv6 link-local (fe80::/10)", func() {
+		Expect(isPrivateOrLoopback("fe80::1")).To(BeTrue())
+	})
+
+	It("should allow public IPs", func() {
+		Expect(isPrivateOrLoopback("8.8.8.8")).To(BeFalse())
+		Expect(isPrivateOrLoopback("203.0.113.1")).To(BeFalse())
+		Expect(isPrivateOrLoopback("2001:db8::1")).To(BeFalse())
+	})
+
+	It("should allow non-IP hostnames (DNS names)", func() {
+		Expect(isPrivateOrLoopback("example.com")).To(BeFalse())
+		Expect(isPrivateOrLoopback("api.example.com")).To(BeFalse())
+	})
+
+	It("should not treat 172.32.x.x as private", func() {
+		Expect(isPrivateOrLoopback("172.32.0.1")).To(BeFalse())
 	})
 })

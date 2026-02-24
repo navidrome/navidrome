@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,32 +52,26 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 		return nil, fmt.Errorf("invalid URL scheme %q: must be http or https", parsedURL.Scheme)
 	}
 
-	// Validate host against allowed hosts
-	if len(s.requiredHosts) > 0 {
-		if !s.isHostAllowed(parsedURL.Host) {
-			return nil, fmt.Errorf("host %q is not allowed", parsedURL.Host)
-		}
+	// Validate host against allowed hosts and private IP restrictions
+	if err := s.validateHost(ctx, parsedURL.Host); err != nil {
+		return nil, err
 	}
 
 	// Build HTTP client with timeout
 	timeout := cmp.Or(time.Duration(request.TimeoutMs)*time.Millisecond, httpClientDefaultTimeout)
 	client := &http.Client{
 		Timeout: timeout,
-	}
-
-	// Configure redirect policy to validate hosts
-	if len(s.requiredHosts) > 0 {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= httpClientMaxRedirects {
 				log.Warn(ctx, "HTTP redirect limit exceeded", "plugin", s.pluginName, "url", req.URL.String(), "redirectCount", len(via))
 				return http.ErrUseLastResponse
 			}
-			if !s.isHostAllowed(req.URL.Host) {
-				log.Warn(ctx, "HTTP redirect blocked by permissions", "plugin", s.pluginName, "url", req.URL.String())
-				return fmt.Errorf("host %q is not allowed", req.URL.Host)
+			if err := s.validateHost(ctx, req.URL.Host); err != nil {
+				log.Warn(ctx, "HTTP redirect blocked", "plugin", s.pluginName, "url", req.URL.String(), "err", err)
+				return err
 			}
 			return nil
-		}
+		},
 	}
 
 	// Build request body
@@ -125,19 +120,59 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 	}, nil
 }
 
-func (s *httpClientServiceImpl) isHostAllowed(hostStr string) bool {
-	// Strip port from host if present
-	hostWithoutPort := hostStr
-	if idx := strings.LastIndex(hostStr, ":"); idx != -1 {
-		hostWithoutPort = hostStr[:idx]
+// validateHost checks whether a request to the given host is permitted.
+// When requiredHosts is set, it checks against the allowlist.
+// When requiredHosts is empty, it blocks private/loopback IPs to prevent SSRF.
+func (s *httpClientServiceImpl) validateHost(ctx context.Context, hostStr string) error {
+	hostname := extractHostname(hostStr)
+
+	if len(s.requiredHosts) > 0 {
+		if !s.isHostAllowed(hostname) {
+			return fmt.Errorf("host %q is not allowed", hostStr)
+		}
+		return nil
 	}
 
+	// No explicit allowlist: block private/loopback IPs
+	if isPrivateOrLoopback(hostname) {
+		log.Warn(ctx, "HTTP request to private/loopback address blocked", "plugin", s.pluginName, "host", hostStr)
+		return fmt.Errorf("host %q is not allowed: private/loopback addresses require explicit requiredHosts in manifest", hostStr)
+	}
+	return nil
+}
+
+func (s *httpClientServiceImpl) isHostAllowed(hostname string) bool {
 	for _, pattern := range s.requiredHosts {
-		if matchHostPattern(pattern, hostWithoutPort) {
+		if matchHostPattern(pattern, hostname) {
 			return true
 		}
 	}
 	return false
+}
+
+// extractHostname returns the hostname portion of a host string, stripping
+// any port number. It handles IPv6 addresses correctly (e.g. "[::1]:8080").
+func extractHostname(hostStr string) string {
+	if h, _, err := net.SplitHostPort(hostStr); err == nil {
+		return h
+	}
+	return hostStr
+}
+
+// isPrivateOrLoopback returns true if the given hostname resolves to or is
+// a private, loopback, or link-local IP address. This includes:
+// IPv4: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
+// IPv6: ::1, fc00::/7, fe80::/10
+// It also blocks "localhost" by name.
+func isPrivateOrLoopback(hostname string) bool {
+	if strings.EqualFold(hostname, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(hostname)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
 }
 
 // Verify interface implementation
