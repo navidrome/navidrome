@@ -77,7 +77,7 @@ func (s *httpClientServiceImpl) Do(ctx context.Context, request host.HttpRequest
 	// Build request body
 	method := strings.ToUpper(request.Method)
 	var body io.Reader
-	if len(request.Body) > 0 && (method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch) {
+	if len(request.Body) > 0 {
 		body = bytes.NewReader(request.Body)
 	}
 

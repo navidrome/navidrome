@@ -216,6 +216,22 @@ var _ = Describe("httpClientServiceImpl", func() {
 			Expect(resp.StatusCode).To(Equal(int32(204)))
 		})
 
+		It("should handle DELETE requests with body", func() {
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.Method).To(Equal("DELETE"))
+				b, _ := io.ReadAll(r.Body)
+				_, _ = w.Write([]byte("del:" + string(b)))
+			}))
+			resp, err := svc.Do(context.Background(), host.HttpRequest{
+				Method:    "DELETE",
+				URL:       ts.URL,
+				Body:      []byte(`{"id":"123"}`),
+				TimeoutMs: 1000,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(resp.Body)).To(Equal(`del:{"id":"123"}`))
+		})
+
 		It("should handle PATCH requests with body", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal("PATCH"))
