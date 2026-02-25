@@ -25,6 +25,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -94,9 +95,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "No users found, skipping Insights data collection")
 		return
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	data := c.collect(ctx)
 	if data == nil {
 		return

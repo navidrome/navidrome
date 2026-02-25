@@ -14,6 +14,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/utils/httpclient"
 )
 
 const (
@@ -40,7 +41,7 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		requiredHosts: requiredHosts,
 	}
 	svc.client = &http.Client{
-		Transport: http.DefaultTransport,
+		Transport: httpclient.New(0).Transport,
 		// Timeout is set per-request via context deadline, not here.
 		// CheckRedirect validates hosts and enforces redirect limits.
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {

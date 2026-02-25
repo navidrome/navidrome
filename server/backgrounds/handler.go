@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/random"
 	"gopkg.in/yaml.v3"
 )
@@ -35,7 +36,7 @@ type Handler struct {
 
 func NewHandler() *Handler {
 	h := &Handler{}
-	h.httpClient = cache.NewHTTPClient(&http.Client{Timeout: 5 * time.Second}, imageListTTL)
+	h.httpClient = cache.NewHTTPClient(httpclient.New(5*time.Second), imageListTTL)
 	h.cache = cache.NewFileCache(imageCacheDir, imageCacheSize, imageCacheDir, imageCacheMaxItems, h.serveImage)
 	go func() {
 		_, _ = h.getImageList(log.NewContext(context.Background()))
@@ -78,7 +79,7 @@ func (h *Handler) serveImage(ctx context.Context, item cache.Item) (io.Reader, e
 	if image == "" {
 		return nil, errors.New("empty image name")
 	}
-	c := http.Client{Timeout: imageRequestTimeout}
+	c := httpclient.New(imageRequestTimeout)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageURL(image), nil)
 	resp, err := c.Do(req) //nolint:bodyclose,gosec // No need to close resp.Body, it will be closed via the CachedStream wrapper
 	if errors.Is(err, context.DeadlineExceeded) {
