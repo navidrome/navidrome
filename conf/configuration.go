@@ -46,6 +46,7 @@ type configOptions struct {
 	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
+	EnablePostQuantumTLS            bool
 	EnableInsightsCollector         bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
@@ -631,6 +632,7 @@ func setViperDefaults() {
 	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
+	viper.SetDefault("enablepostquantumtls", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
