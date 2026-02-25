@@ -1,6 +1,6 @@
 module github.com/navidrome/navidrome
 
-go 1.25.0
+go 1.26
 
 replace (
 	// Fork to fix https://github.com/navidrome/navidrome/issues/3254
