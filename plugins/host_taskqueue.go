@@ -483,10 +483,6 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 		return fmt.Errorf("plugin %s not loaded", s.pluginName)
 	}
 
-	if !hasCapability(p.capabilities, CapabilityTaskWorker) {
-		return fmt.Errorf("plugin %s lacks TaskWorker capability", s.pluginName)
-	}
-
 	input := capabilities.TaskExecuteRequest{
 		QueueName: queueName,
 		TaskID:    taskID,
