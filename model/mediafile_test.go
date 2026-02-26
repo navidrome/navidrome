@@ -475,7 +475,29 @@ var _ = Describe("MediaFile", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableMediaFileCoverArt = true
 	})
-	Describe(".CoverArtId()", func() {
+	DescribeTable("FullTitle",
+		func(enabled bool, tags Tags, expected string) {
+			conf.Server.Subsonic.AppendSubtitle = enabled
+			mf := MediaFile{Title: "Song", Tags: tags}
+			Expect(mf.FullTitle()).To(Equal(expected))
+		},
+		Entry("appends subtitle when enabled and tag is present", true, Tags{TagSubtitle: []string{"Live"}}, "Song (Live)"),
+		Entry("returns just title when disabled", false, Tags{TagSubtitle: []string{"Live"}}, "Song"),
+		Entry("returns just title when tag is absent", true, Tags{}, "Song"),
+		Entry("returns just title when tag is an empty slice", true, Tags{TagSubtitle: []string{}}, "Song"),
+	)
+	DescribeTable("FullAlbumName",
+		func(enabled bool, tags Tags, expected string) {
+			conf.Server.Subsonic.AppendAlbumVersion = enabled
+			mf := MediaFile{Album: "Album", Tags: tags}
+			Expect(mf.FullAlbumName()).To(Equal(expected))
+		},
+		Entry("appends version when enabled and tag is present", true, Tags{TagAlbumVersion: []string{"Deluxe Edition"}}, "Album (Deluxe Edition)"),
+		Entry("returns just album name when disabled", false, Tags{TagAlbumVersion: []string{"Deluxe Edition"}}, "Album"),
+		Entry("returns just album name when tag is absent", true, Tags{}, "Album"),
+		Entry("returns just album name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
+	)
+	Describe("CoverArtId()", func() {
 		It("returns its own id if it HasCoverArt", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()

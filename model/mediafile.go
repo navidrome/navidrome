@@ -95,10 +95,17 @@ type MediaFile struct {
 }
 
 func (mf MediaFile) FullTitle() string {
-	if conf.Server.Subsonic.AppendSubtitle && mf.Tags[TagSubtitle] != nil {
+	if conf.Server.Subsonic.AppendSubtitle && len(mf.Tags[TagSubtitle]) > 0 {
 		return fmt.Sprintf("%s (%s)", mf.Title, mf.Tags[TagSubtitle][0])
 	}
 	return mf.Title
+}
+
+func (mf MediaFile) FullAlbumName() string {
+	if conf.Server.Subsonic.AppendAlbumVersion && len(mf.Tags[TagAlbumVersion]) > 0 {
+		return fmt.Sprintf("%s (%s)", mf.Album, mf.Tags[TagAlbumVersion][0])
+	}
+	return mf.Album
 }
 
 func (mf MediaFile) ContentType() string {
