@@ -40,6 +40,7 @@
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
+//! - [`taskqueue`] - provides persistent task queues for plugins.
 //! - [`users`] - provides access to user information for plugins.
 //! - [`websocket`] - provides WebSocket communication capabilities for plugins.
 
@@ -97,6 +98,13 @@ mod nd_host_subsonicapi;
 /// provides access to Navidrome's Subsonic API from plugins.
 pub mod subsonicapi {
     pub use super::nd_host_subsonicapi::*;
+}
+
+#[doc(hidden)]
+mod nd_host_taskqueue;
+/// provides persistent task queues for plugins.
+pub mod taskqueue {
+    pub use super::nd_host_taskqueue::*;
 }
 
 #[doc(hidden)]
