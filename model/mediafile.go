@@ -102,7 +102,7 @@ func (mf MediaFile) FullTitle() string {
 }
 
 func (mf MediaFile) FullAlbumName() string {
-	if conf.Server.Subsonic.AppendAlbumVersion && mf.Tags[TagAlbumVersion] != nil {
+	if conf.Server.Subsonic.AppendAlbumVersion && len(mf.Tags[TagAlbumVersion]) > 0 {
 		return fmt.Sprintf("%s (%s)", mf.Album, mf.Tags[TagAlbumVersion][0])
 	}
 	return mf.Album
