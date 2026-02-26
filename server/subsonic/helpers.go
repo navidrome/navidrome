@@ -197,7 +197,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 
 	child.Parent = mf.AlbumID
-	child.Album = mf.Album
+	child.Album = mf.FullAlbumName()
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
@@ -302,7 +302,7 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 func fakePath(mf model.MediaFile) string {
 	builder := strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
+	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName())))
 	if mf.DiscNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
 	}

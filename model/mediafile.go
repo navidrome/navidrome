@@ -101,6 +101,13 @@ func (mf MediaFile) FullTitle() string {
 	return mf.Title
 }
 
+func (mf MediaFile) FullAlbumName() string {
+	if conf.Server.Subsonic.AppendAlbumVersion && mf.Tags[TagAlbumVersion] != nil {
+		return fmt.Sprintf("%s (%s)", mf.Album, mf.Tags[TagAlbumVersion][0])
+	}
+	return mf.Album
+}
+
 func (mf MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
 }
