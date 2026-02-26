@@ -9,6 +9,10 @@ package {{.Package}}
 
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+{{- if .Capability.HasRawMethods}}
+	"encoding/binary"
+	"encoding/json"
+{{- end}}
 )
 
 {{- /* Generate type alias definitions */ -}}
@@ -56,6 +60,7 @@ func (e {{$typeName}}) Error() string { return string(e) }
 {{- end}}
 
 {{- /* Generate struct definitions */ -}}
+{{- $capability := .Capability}}
 {{- range .Capability.Structs}}
 
 {{- if .Doc}}
@@ -68,7 +73,11 @@ type {{.Name}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc | indent 1}}
 {{- end}}
+{{- if and (eq .Type "[]byte") $capability.HasRawMethods}}
+	{{.Name}} {{.Type}} `json:"-"`
+{{- else}}
 	{{.Name}} {{.Type}} `json:"{{.JSONTag}}{{if .OmitEmpty}},omitempty{{end}}"`
+{{- end}}
 {{- end}}
 }
 {{- end}}
@@ -172,6 +181,53 @@ func {{exportFunc .}}() int32 {
 		// Return standard code - host will skip this plugin gracefully
 		return NotImplementedCode
 	}
+{{- if .Raw}}
+{{- /* Raw binary frame input/output */ -}}
+{{- if .HasInput}}
+
+	// Parse input frame: [json_len:4B][JSON without []byte field][raw bytes]
+	raw := pdk.Input()
+	if len(raw) < 4 {
+		pdk.SetErrorString("malformed input frame")
+		return -1
+	}
+	jsonLen := binary.BigEndian.Uint32(raw[:4])
+	if uint32(len(raw)-4) < jsonLen {
+		pdk.SetErrorString("invalid json length in input frame")
+		return -1
+	}
+	var input {{.Input.Type}}
+	if err := json.Unmarshal(raw[4:4+jsonLen], &input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+	input.{{rawFieldName .Input.Type}} = raw[4+jsonLen:]
+{{- end}}
+{{- if and .HasInput .HasOutput}}
+
+	output, err := {{implVar .}}(input)
+	if err != nil {
+		// Error frame: [0x01][UTF-8 error message]
+		errMsg := []byte(err.Error())
+		errFrame := make([]byte, 1+len(errMsg))
+		errFrame[0] = 0x01
+		copy(errFrame[1:], errMsg)
+		pdk.Output(errFrame)
+		return 0
+	}
+
+	// Success frame: [0x00][json_len:4B][JSON without []byte field][raw bytes]
+	jsonBytes, _ := json.Marshal(output)
+	rawBytes := output.{{rawFieldName .Output.Type}}
+	frame := make([]byte, 1+4+len(jsonBytes)+len(rawBytes))
+	frame[0] = 0x00
+	binary.BigEndian.PutUint32(frame[1:5], uint32(len(jsonBytes)))
+	copy(frame[5:5+len(jsonBytes)], jsonBytes)
+	copy(frame[5+len(jsonBytes):], rawBytes)
+	pdk.Output(frame)
+{{- end}}
+{{- else}}
+{{- /* Standard JSON input/output */ -}}
 {{- if .HasInput}}
 
 	var input {{.Input.Type}}
@@ -216,6 +272,7 @@ func {{exportFunc .}}() int32 {
 		pdk.SetError(err)
 		return -1
 	}
+{{- end}}
 {{- end}}
 
 	return 0

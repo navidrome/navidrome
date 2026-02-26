@@ -53,6 +53,7 @@ func (e {{$typeName}}) Error() string { return string(e) }
 {{- end}}
 
 {{- /* Generate struct definitions */ -}}
+{{- $capability := .Capability}}
 {{- range .Capability.Structs}}
 
 {{- if .Doc}}
@@ -65,7 +66,11 @@ type {{.Name}} struct {
 {{- if .Doc}}
 {{formatDoc .Doc | indent 1}}
 {{- end}}
+{{- if and (eq .Type "[]byte") $capability.HasRawMethods}}
+	{{.Name}} {{.Type}} `json:"-"`
+{{- else}}
 	{{.Name}} {{.Type}} `json:"{{.JSONTag}}{{if .OmitEmpty}},omitempty{{end}}"`
+{{- end}}
 {{- end}}
 }
 {{- end}}

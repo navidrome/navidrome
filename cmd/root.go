@@ -14,10 +14,13 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/backgrounds"
+	"github.com/navidrome/navidrome/server/subsonic"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -137,6 +140,13 @@ func startServer(ctx context.Context) func() error {
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
+		}
+		if conf.Server.Plugins.Enabled {
+			manager := GetPluginManager(ctx)
+			ds := CreateDataStore()
+			endpointRouter := plugins.NewEndpointRouter(manager, ds, subsonic.ValidateAuth, server.Authenticator)
+			a.MountRouter("Plugin Endpoints", consts.URLPathPluginEndpoints, endpointRouter)
+			a.MountRouter("Plugin Subsonic Endpoints", consts.URLPathPluginSubsonicEndpoints, endpointRouter)
 		}
 		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
 	}

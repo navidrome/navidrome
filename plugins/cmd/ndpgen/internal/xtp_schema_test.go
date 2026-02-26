@@ -719,4 +719,139 @@ var _ = Describe("XTP Schema Generation", func() {
 			Expect(schemas).NotTo(HaveKey("UnusedStatus"))
 		})
 	})
+
+	Describe("GenerateSchema with []byte fields", func() {
+		It("should render []byte as buffer type and validate against XTP JSONSchema", func() {
+			capability := Capability{
+				Name:       "buffer_test",
+				SourceFile: "buffer_test",
+				Methods: []Export{
+					{ExportName: "test", Input: NewParam("input", "Input"), Output: NewParam("output", "Output")},
+				},
+				Structs: []StructDef{
+					{
+						Name: "Input",
+						Fields: []FieldDef{
+							{Name: "Name", Type: "string", JSONTag: "name"},
+							{Name: "Data", Type: "[]byte", JSONTag: "data,omitempty", OmitEmpty: true},
+						},
+					},
+					{
+						Name: "Output",
+						Fields: []FieldDef{
+							{Name: "Body", Type: "[]byte", JSONTag: "body,omitempty", OmitEmpty: true},
+						},
+					},
+				},
+			}
+			schema, err := GenerateSchema(capability)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
+
+			doc := parseSchema(schema)
+			components := doc["components"].(map[string]any)
+			schemas := components["schemas"].(map[string]any)
+			input := schemas["Input"].(map[string]any)
+			props := input["properties"].(map[string]any)
+			data := props["data"].(map[string]any)
+			Expect(data["type"]).To(Equal("buffer"))
+			Expect(data).NotTo(HaveKey("items"))
+			Expect(data).NotTo(HaveKey("format"))
+
+			output := schemas["Output"].(map[string]any)
+			outProps := output["properties"].(map[string]any)
+			body := outProps["body"].(map[string]any)
+			Expect(body["type"]).To(Equal("buffer"))
+		})
+	})
+
+	Describe("GenerateSchema with map fields", func() {
+		It("should render map[string][]string as object with additionalProperties and validate", func() {
+			capability := Capability{
+				Name:       "map_test",
+				SourceFile: "map_test",
+				Methods: []Export{
+					{ExportName: "test", Input: NewParam("input", "Input"), Output: NewParam("output", "Output")},
+				},
+				Structs: []StructDef{
+					{
+						Name: "Input",
+						Fields: []FieldDef{
+							{Name: "Headers", Type: "map[string][]string", JSONTag: "headers,omitempty", OmitEmpty: true},
+						},
+					},
+					{
+						Name: "Output",
+						Fields: []FieldDef{
+							{Name: "Value", Type: "string", JSONTag: "value"},
+						},
+					},
+				},
+			}
+			schema, err := GenerateSchema(capability)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
+
+			doc := parseSchema(schema)
+			components := doc["components"].(map[string]any)
+			schemas := components["schemas"].(map[string]any)
+			input := schemas["Input"].(map[string]any)
+			props := input["properties"].(map[string]any)
+			headers := props["headers"].(map[string]any)
+			Expect(headers).To(HaveKey("additionalProperties"))
+			addlProps := headers["additionalProperties"].(map[string]any)
+			Expect(addlProps["type"]).To(Equal("array"))
+			items := addlProps["items"].(map[string]any)
+			Expect(items["type"]).To(Equal("string"))
+		})
+
+		It("should render map[string]string as object with string additionalProperties", func() {
+			capability := Capability{
+				Name:       "map_string_test",
+				SourceFile: "map_string_test",
+				Methods: []Export{
+					{ExportName: "test", Input: NewParam("input", "Input"), Output: NewParam("output", "Output")},
+				},
+				Structs: []StructDef{
+					{
+						Name: "Input",
+						Fields: []FieldDef{
+							{Name: "Metadata", Type: "map[string]string", JSONTag: "metadata,omitempty", OmitEmpty: true},
+						},
+					},
+					{
+						Name: "Output",
+						Fields: []FieldDef{
+							{Name: "Value", Type: "string", JSONTag: "value"},
+						},
+					},
+				},
+			}
+			schema, err := GenerateSchema(capability)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ValidateXTPSchema(schema)).To(Succeed())
+
+			doc := parseSchema(schema)
+			components := doc["components"].(map[string]any)
+			schemas := components["schemas"].(map[string]any)
+			input := schemas["Input"].(map[string]any)
+			props := input["properties"].(map[string]any)
+			metadata := props["metadata"].(map[string]any)
+			Expect(metadata).To(HaveKey("additionalProperties"))
+			addlProps := metadata["additionalProperties"].(map[string]any)
+			Expect(addlProps["type"]).To(Equal("string"))
+		})
+	})
+
+	Describe("parseMapValueType", func() {
+		DescribeTable("should extract value type from Go map types",
+			func(goType, wantValue string) {
+				Expect(parseMapValueType(goType)).To(Equal(wantValue))
+			},
+			Entry("map[string]string", "map[string]string", "string"),
+			Entry("map[string]int", "map[string]int", "int"),
+			Entry("map[string][]string", "map[string][]string", "[]string"),
+			Entry("map[string][]byte", "map[string][]byte", "[]byte"),
+		)
+	})
 })

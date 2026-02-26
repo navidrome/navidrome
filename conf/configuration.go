@@ -241,11 +241,13 @@ type inspectOptions struct {
 }
 
 type pluginsOptions struct {
-	Enabled    bool
-	Folder     string
-	CacheSize  string
-	AutoReload bool
-	LogLevel   string
+	Enabled               bool
+	Folder                string
+	CacheSize             string
+	AutoReload            bool
+	LogLevel              string
+	EndpointRequestLimit  int
+	EndpointRequestWindow time.Duration
 }
 
 type extAuthOptions struct {
@@ -725,6 +727,8 @@ func setViperDefaults() {
 	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")
 	viper.SetDefault("plugins.autoreload", false)
+	viper.SetDefault("plugins.endpointrequestlimit", 60)
+	viper.SetDefault("plugins.endpointrequestwindow", time.Minute)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

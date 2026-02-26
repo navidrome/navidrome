@@ -1,0 +1,81 @@
+version: v1-draft
+exports:
+    nd_http_handle_request:
+        description: HandleRequest processes an incoming HTTP request and returns a response.
+        input:
+            $ref: '#/components/schemas/HTTPHandleRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/HTTPHandleResponse'
+            contentType: application/json
+components:
+    schemas:
+        HTTPHandleRequest:
+            description: HTTPHandleRequest is the input provided when an HTTP request is dispatched to a plugin.
+            properties:
+                method:
+                    type: string
+                    description: Method is the HTTP method (GET, POST, PUT, DELETE, PATCH, etc.).
+                path:
+                    type: string
+                    description: |-
+                        Path is the request path relative to the plugin's base URL.
+                        For example, if the full URL is /ext/my-plugin/webhook, Path is "/webhook".
+                        Both /ext/my-plugin and /ext/my-plugin/ are normalized to Path = "".
+                query:
+                    type: string
+                    description: Query is the raw query string without the leading '?'.
+                headers:
+                    type: object
+                    description: Headers contains the HTTP request headers.
+                    additionalProperties:
+                        type: array
+                        items:
+                            type: string
+                body:
+                    type: buffer
+                    description: Body is the request body content.
+                user:
+                    $ref: '#/components/schemas/HTTPUser'
+                    description: User contains the authenticated user information. Nil for auth:"none" endpoints.
+                    nullable: true
+            required:
+                - method
+                - path
+        HTTPHandleResponse:
+            description: HTTPHandleResponse is the response returned by the plugin's HandleRequest function.
+            properties:
+                status:
+                    type: integer
+                    format: int32
+                    description: Status is the HTTP status code. Defaults to 200 if zero or not set.
+                headers:
+                    type: object
+                    description: Headers contains the HTTP response headers to set.
+                    additionalProperties:
+                        type: array
+                        items:
+                            type: string
+                body:
+                    type: buffer
+                    description: Body is the response body content.
+        HTTPUser:
+            description: HTTPUser contains authenticated user information passed to the plugin.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome user ID.
+                username:
+                    type: string
+                    description: Username is the user's login name.
+                name:
+                    type: string
+                    description: Name is the user's display name.
+                isAdmin:
+                    type: boolean
+                    description: IsAdmin indicates whether the user has admin privileges.
+            required:
+                - id
+                - username
+                - name
+                - isAdmin

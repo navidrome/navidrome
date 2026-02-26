@@ -32,6 +32,15 @@ func (m *Manifest) Validate() error {
 		}
 	}
 
+	// Endpoints permission with auth 'native' or 'subsonic' requires users permission
+	if m.Permissions != nil && m.Permissions.Endpoints != nil {
+		if m.Permissions.Endpoints.Auth != EndpointsPermissionAuthNone {
+			if m.Permissions.Users == nil {
+				return fmt.Errorf("'endpoints' permission with auth '%s' requires 'users' permission to be declared", m.Permissions.Endpoints.Auth)
+			}
+		}
+	}
+
 	// Validate config schema if present
 	if m.Config != nil && m.Config.Schema != nil {
 		if err := validateConfigSchema(m.Config.Schema); err != nil {
@@ -64,6 +73,14 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 			return fmt.Errorf("scrobbler capability requires 'users' permission to be declared in manifest")
 		}
 	}
+
+	// HTTPEndpoint capability requires endpoints permission
+	if hasCapability(capabilities, CapabilityHTTPEndpoint) {
+		if m.Permissions == nil || m.Permissions.Endpoints == nil {
+			return fmt.Errorf("HTTP endpoint capability requires 'endpoints' permission to be declared in manifest")
+		}
+	}
+
 	return nil
 }
 

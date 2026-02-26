@@ -269,6 +269,7 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 		Name:       name,
 		ExportName: annotation["name"],
 		Doc:        doc,
+		Raw:        annotation["raw"] == "true",
 	}
 
 	// Capability exports have exactly one input parameter (the struct type)

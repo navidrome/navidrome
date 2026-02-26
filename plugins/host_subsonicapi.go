@@ -26,27 +26,19 @@ const subsonicAPIVersion = "1.16.1"
 // URL Format: Only the path and query parameters are used - host/protocol are ignored.
 // Automatic Parameters: The service adds 'c' (client), 'v' (version), and optionally 'f' (format).
 type subsonicAPIServiceImpl struct {
-	pluginID       string
-	router         SubsonicRouter
-	ds             model.DataStore
-	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
-	allUsers       bool     // If true, plugin can access all users
-	userIDMap      map[string]struct{}
+	pluginName string
+	router     SubsonicRouter
+	ds         model.DataStore
+	userAccess UserAccess
 }
 
 // newSubsonicAPIService creates a new SubsonicAPIService for a plugin.
-func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, allowedUserIDs []string, allUsers bool) host.SubsonicAPIService {
-	userIDMap := make(map[string]struct{})
-	for _, id := range allowedUserIDs {
-		userIDMap[id] = struct{}{}
-	}
+func newSubsonicAPIService(pluginName string, router SubsonicRouter, ds model.DataStore, userAccess UserAccess) host.SubsonicAPIService {
 	return &subsonicAPIServiceImpl{
-		pluginID:       pluginID,
-		router:         router,
-		ds:             ds,
-		allowedUserIDs: allowedUserIDs,
-		allUsers:       allUsers,
-		userIDMap:      userIDMap,
+		pluginName: pluginName,
+		router:     router,
+		ds:         ds,
+		userAccess: userAccess,
 	}
 }
 
@@ -74,12 +66,12 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	}
 
 	if err := s.checkPermissions(ctx, username); err != nil {
-		log.Warn(ctx, "SubsonicAPI call blocked by permissions", "plugin", s.pluginID, "user", username, err)
+		log.Warn(ctx, "SubsonicAPI call blocked by permissions", "plugin", s.pluginName, "user", username, err)
 		return nil, err
 	}
 
 	// Add required Subsonic API parameters
-	query.Set("c", s.pluginID)         // Client name (plugin ID)
+	query.Set("c", s.pluginName)       // Client name (plugin ID)
 	query.Set("v", subsonicAPIVersion) // API version
 	if setJSON {
 		query.Set("f", "json") // Response format
@@ -94,11 +86,8 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 		RawQuery: query.Encode(),
 	}
 
-	// Create HTTP request with a fresh context to avoid Chi RouteContext pollution.
-	// Using http.NewRequest (instead of http.NewRequestWithContext) ensures the internal
-	// SubsonicAPI call doesn't inherit routing information from the parent handler,
-	// which would cause Chi to invoke the wrong handler. Authentication context is
-	// explicitly added in the next step via request.WithInternalAuth.
+	// Use http.NewRequest (not WithContext) to avoid inheriting Chi RouteContext;
+	// auth context is set explicitly below via request.WithInternalAuth.
 	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
@@ -135,14 +124,13 @@ func (s *subsonicAPIServiceImpl) CallRaw(ctx context.Context, uri string) (strin
 }
 
 func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {
-	// If allUsers is true, allow any user
-	if s.allUsers {
+	if s.userAccess.allUsers {
 		return nil
 	}
 
-	// Must have at least one allowed user ID configured
-	if len(s.allowedUserIDs) == 0 {
-		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
+	// Must have at least one allowed user configured
+	if !s.userAccess.HasConfiguredUsers() {
+		return fmt.Errorf("no users configured for plugin %s", s.pluginName)
 	}
 
 	// Look up the user by username to get their ID
@@ -155,7 +143,7 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Check if the user's ID is in the allowed list
-	if _, ok := s.userIDMap[usr.ID]; !ok {
+	if !s.userAccess.IsAllowed(usr.ID) {
 		return fmt.Errorf("user %s is not authorized for this plugin", username)
 	}
 

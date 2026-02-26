@@ -36,11 +36,13 @@ const (
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
-	URLPathUI           = "/app"
-	URLPathNativeAPI    = "/api"
-	URLPathSubsonicAPI  = "/rest"
-	URLPathPublic       = "/share"
-	URLPathPublicImages = URLPathPublic + "/img"
+	URLPathUI                      = "/app"
+	URLPathNativeAPI               = "/api"
+	URLPathSubsonicAPI             = "/rest"
+	URLPathPluginEndpoints         = "/ext"
+	URLPathPluginSubsonicEndpoints = "/rest/ext"
+	URLPathPublic                  = "/share"
+	URLPathPublicImages            = URLPathPublic + "/img"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome
