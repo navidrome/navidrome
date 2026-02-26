@@ -4,7 +4,12 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -12,7 +17,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -477,6 +484,346 @@ var _ = Describe("TaskQueueService", func() {
 				status, _ := service2.GetTaskStatus(ctx, taskID2)
 				return status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
+		})
+	})
+})
+
+var _ = Describe("TaskQueueService Integration", Ordered, func() {
+	var manager *Manager
+	var tmpDir string
+
+	BeforeAll(func() {
+		var err error
+		tmpDir, err = os.MkdirTemp("", "taskqueue-integration-test-*")
+		Expect(err).ToNot(HaveOccurred())
+
+		// Copy the test-taskqueue plugin
+		srcPath := filepath.Join(testdataDir, "test-taskqueue"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-taskqueue"+PackageExtension)
+		data, err := os.ReadFile(srcPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(destPath, data, 0600)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Compute SHA256 for the plugin
+		hash := sha256.Sum256(data)
+		hashHex := hex.EncodeToString(hash[:])
+
+		// Setup config
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Plugins.Enabled = true
+		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.AutoReload = false
+		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
+		conf.Server.DataFolder = tmpDir
+
+		// Setup mock DataStore with pre-enabled plugin
+		mockPluginRepo := tests.CreateMockPluginRepo()
+		mockPluginRepo.Permitted = true
+		mockPluginRepo.SetData(model.Plugins{{
+			ID:      "test-taskqueue",
+			Path:    destPath,
+			SHA256:  hashHex,
+			Enabled: true,
+		}})
+		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+
+		// Create and start manager
+		manager = &Manager{
+			plugins:        make(map[string]*plugin),
+			ds:             dataStore,
+			metrics:        noopMetricsRecorder{},
+			subsonicRouter: http.NotFoundHandler(),
+		}
+		err = manager.Start(GinkgoT().Context())
+		Expect(err).ToNot(HaveOccurred())
+
+		DeferCleanup(func() {
+			_ = manager.Stop()
+			_ = os.RemoveAll(tmpDir)
+		})
+	})
+
+	// Helper types for calling the test plugin
+	type testQueueConfig struct {
+		Concurrency int32 `json:"concurrency,omitempty"`
+		MaxRetries  int32 `json:"maxRetries,omitempty"`
+		BackoffMs   int64 `json:"backoffMs,omitempty"`
+		DelayMs     int64 `json:"delayMs,omitempty"`
+		RetentionMs int64 `json:"retentionMs,omitempty"`
+	}
+
+	type testTaskQueueInput struct {
+		Operation string           `json:"operation"`
+		QueueName string           `json:"queueName,omitempty"`
+		Config    *testQueueConfig `json:"config,omitempty"`
+		Payload   []byte           `json:"payload,omitempty"`
+		TaskID    string           `json:"taskId,omitempty"`
+	}
+
+	type testTaskQueueOutput struct {
+		TaskID string  `json:"taskId,omitempty"`
+		Status string  `json:"status,omitempty"`
+		Error  *string `json:"error,omitempty"`
+	}
+
+	callTestTaskQueue := func(ctx context.Context, input testTaskQueueInput) (*testTaskQueueOutput, error) {
+		manager.mu.RLock()
+		p := manager.plugins["test-taskqueue"]
+		manager.mu.RUnlock()
+
+		instance, err := p.instance(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer instance.Close(ctx)
+
+		inputBytes, _ := json.Marshal(input)
+		_, outputBytes, err := instance.Call("nd_test_taskqueue", inputBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		var output testTaskQueueOutput
+		if err := json.Unmarshal(outputBytes, &output); err != nil {
+			return nil, err
+		}
+		if output.Error != nil {
+			return nil, errors.New(*output.Error)
+		}
+		return &output, nil
+	}
+
+	Describe("Plugin Loading", func() {
+		It("should load plugin with taskqueue permission and TaskWorker capability", func() {
+			manager.mu.RLock()
+			p, ok := manager.plugins["test-taskqueue"]
+			manager.mu.RUnlock()
+			Expect(ok).To(BeTrue())
+			Expect(p.manifest.Permissions).ToNot(BeNil())
+			Expect(p.manifest.Permissions.Taskqueue).ToNot(BeNil())
+			Expect(p.manifest.Permissions.Taskqueue.MaxConcurrency).To(Equal(3))
+			Expect(p.capabilities).To(ContainElement(CapabilityTaskWorker))
+		})
+	})
+
+	Describe("Create Queue", func() {
+		It("should create a queue without error", func() {
+			ctx := GinkgoT().Context()
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-create",
+			})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return error for duplicate queue name", func() {
+			ctx := GinkgoT().Context()
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-dup",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-dup",
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("already exists"))
+		})
+	})
+
+	Describe("Enqueue and Task Completion", func() {
+		It("should enqueue a task and complete successfully", func() {
+			ctx := GinkgoT().Context()
+
+			// Create queue
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-complete",
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue task with payload "hello"
+			output, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "enqueue",
+				QueueName: "test-complete",
+				Payload:   []byte("hello"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.TaskID).ToNot(BeEmpty())
+
+			taskID := output.TaskID
+
+			// Poll until completed
+			Eventually(func() string {
+				out, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "get_task_status",
+					TaskID:    taskID,
+				})
+				if err != nil {
+					return "error"
+				}
+				return out.Status
+			}).WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(Equal("completed"))
+		})
+	})
+
+	Describe("Enqueue with Failure, No Retries", func() {
+		It("should fail when payload is 'fail' and maxRetries is 0", func() {
+			ctx := GinkgoT().Context()
+
+			// Create queue with no retries
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-fail-no-retry",
+				Config: &testQueueConfig{
+					MaxRetries: 0,
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue task that will fail
+			output, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "enqueue",
+				QueueName: "test-fail-no-retry",
+				Payload:   []byte("fail"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID := output.TaskID
+
+			// Poll until failed
+			Eventually(func() string {
+				out, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "get_task_status",
+					TaskID:    taskID,
+				})
+				if err != nil {
+					return "error"
+				}
+				return out.Status
+			}).WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(Equal("failed"))
+		})
+	})
+
+	Describe("Enqueue with Retry Then Success", func() {
+		It("should retry and eventually succeed with 'fail-then-succeed' payload", func() {
+			ctx := GinkgoT().Context()
+
+			// Create queue with retries and short backoff
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-retry-succeed",
+				Config: &testQueueConfig{
+					MaxRetries: 2,
+					BackoffMs:  100,
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue task that fails on attempt < 2, then succeeds
+			output, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "enqueue",
+				QueueName: "test-retry-succeed",
+				Payload:   []byte("fail-then-succeed"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID := output.TaskID
+
+			// Poll until completed
+			Eventually(func() string {
+				out, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "get_task_status",
+					TaskID:    taskID,
+				})
+				if err != nil {
+					return "error"
+				}
+				return out.Status
+			}).WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(Equal("completed"))
+		})
+	})
+
+	Describe("Cancel Pending Task", func() {
+		It("should cancel a pending task", func() {
+			ctx := GinkgoT().Context()
+
+			// Create queue with concurrency=1 and a large delay between dispatches.
+			// After the first task is dispatched (no delay for the first), the
+			// second task will be dequeued but the worker will block waiting for
+			// the 60s delay. Tasks 3+ remain in 'pending' status and can be cancelled.
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-cancel",
+				Config: &testQueueConfig{
+					Concurrency: 1,
+					DelayMs:     60000,
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue several tasks - the first will be processed immediately,
+			// the second will block in the delay wait (status=running),
+			// the rest will stay pending.
+			var taskIDs []string
+			for i := 0; i < 5; i++ {
+				output, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "enqueue",
+					QueueName: "test-cancel",
+					Payload:   []byte("hello"),
+				})
+				Expect(err).ToNot(HaveOccurred())
+				taskIDs = append(taskIDs, output.TaskID)
+			}
+
+			// Wait for the first task to complete (it has no delay)
+			Eventually(func() string {
+				out, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "get_task_status",
+					TaskID:    taskIDs[0],
+				})
+				if err != nil {
+					return "error"
+				}
+				return out.Status
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
+
+			// Give the worker a moment to dequeue the second task (which will
+			// block on the delay) so tasks 3+ stay in 'pending'
+			time.Sleep(100 * time.Millisecond)
+
+			// Cancel the last task - it should still be pending
+			lastTaskID := taskIDs[len(taskIDs)-1]
+			_, err = callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "cancel_task",
+				TaskID:    lastTaskID,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify status is cancelled
+			statusOut, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "get_task_status",
+				TaskID:    lastTaskID,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(statusOut.Status).To(Equal("cancelled"))
+		})
+	})
+
+	Describe("Enqueue to Non-Existent Queue", func() {
+		It("should return error when enqueueing to a queue that does not exist", func() {
+			ctx := GinkgoT().Context()
+
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "enqueue",
+				QueueName: "nonexistent-queue",
+				Payload:   []byte("payload"),
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
 	})
 })
