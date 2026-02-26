@@ -218,7 +218,13 @@
         "makePrivate": "Make Private",
         "searchOrCreate": "Search playlists or type to create new...",
         "pressEnterToCreate": "Press Enter to create new playlist",
-        "removeFromSelection": "Remove from selection"
+        "removeFromSelection": "Remove from selection",
+        "uploadCover": "Upload Cover",
+        "removeCover": "Remove Cover",
+        "coverUploaded": "Cover art updated",
+        "coverRemoved": "Cover art removed",
+        "coverUploadError": "Error uploading cover art",
+        "coverRemoveError": "Error removing cover art"
       },
       "message": {
         "duplicate_song": "Add duplicated songs",

@@ -8,9 +8,12 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -43,11 +46,26 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	ff := []sourceFunc{
+	var ff []sourceFunc
+	if a.pl.ImagePath != "" {
+		ff = append(ff, fromPlaylistImage(a.pl.ImagePath))
+	}
+	ff = append(ff,
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
-	}
+	)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func fromPlaylistImage(relPath string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		absPath := filepath.Join(conf.Server.DataFolder, relPath)
+		f, err := os.Open(absPath)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, absPath, nil
+	}
 }
 
 func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {

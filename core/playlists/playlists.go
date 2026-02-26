@@ -2,7 +2,9 @@ package playlists
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
@@ -33,6 +36,10 @@ type Playlists interface {
 	AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error)
 	RemoveTracks(ctx context.Context, playlistID string, trackIds []string) error
 	ReorderTrack(ctx context.Context, playlistID string, pos int, newPos int) error
+
+	// Cover art
+	SetImage(ctx context.Context, playlistID string, reader io.Reader, ext string) error
+	RemoveImage(ctx context.Context, playlistID string) error
 
 	// Import
 	ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error)
@@ -118,9 +125,19 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 }
 
 func (s *playlists) Delete(ctx context.Context, id string) error {
-	if _, err := s.checkWritable(ctx, id); err != nil {
+	pls, err := s.checkWritable(ctx, id)
+	if err != nil {
 		return err
 	}
+
+	// Clean up custom cover image file if one exists
+	if pls.ImagePath != "" {
+		absPath := filepath.Join(conf.Server.DataFolder, pls.ImagePath)
+		if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
+			log.Warn(ctx, "Failed to remove playlist image on delete", "path", absPath, err)
+		}
+	}
+
 	return s.ds.Playlist(ctx).Delete(id)
 }
 
@@ -262,4 +279,72 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 	return s.ds.WithTx(func(tx model.DataStore) error {
 		return tx.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
 	})
+}
+
+// --- Cover art operations ---
+
+const playlistImagesDir = "playlist_images"
+
+func playlistImageDir() string {
+	return filepath.Join(conf.Server.DataFolder, playlistImagesDir)
+}
+
+func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.Reader, ext string) error {
+	pls, err := s.checkWritable(ctx, playlistID)
+	if err != nil {
+		return err
+	}
+
+	dir := playlistImageDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating playlist images directory: %w", err)
+	}
+
+	// Remove any old image(s) for this playlist to avoid orphans from previous uploads with different extensions.
+	matches, err := filepath.Glob(filepath.Join(dir, playlistID+".*"))
+	if err != nil {
+		log.Warn(ctx, "Error while searching for old playlist images to clean up", "playlistID", playlistID, err)
+	} else {
+		for _, match := range matches {
+			if err := os.Remove(match); err != nil && !os.IsNotExist(err) {
+				log.Warn(ctx, "Failed to remove old playlist image", "path", match, err)
+			}
+		}
+	}
+
+	// Save new image
+	filename := playlistID + ext
+	relPath := filepath.Join(playlistImagesDir, filename)
+	absPath := filepath.Join(conf.Server.DataFolder, relPath)
+
+	f, err := os.Create(absPath)
+	if err != nil {
+		return fmt.Errorf("creating playlist image file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, reader); err != nil {
+		return fmt.Errorf("writing playlist image file: %w", err)
+	}
+
+	// Update playlist record
+	pls.ImagePath = relPath
+	return s.ds.Playlist(ctx).Put(pls)
+}
+
+func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
+	pls, err := s.checkWritable(ctx, playlistID)
+	if err != nil {
+		return err
+	}
+
+	if pls.ImagePath != "" {
+		absPath := filepath.Join(conf.Server.DataFolder, pls.ImagePath)
+		if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
+			log.Warn(ctx, "Failed to remove playlist image", "path", absPath, err)
+		}
+	}
+
+	pls.ImagePath = ""
+	return s.ds.Playlist(ctx).Put(pls)
 }
