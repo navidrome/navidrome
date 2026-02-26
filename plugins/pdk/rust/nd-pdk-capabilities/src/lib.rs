@@ -9,4 +9,5 @@ pub mod lifecycle;
 pub mod metadata;
 pub mod scheduler;
 pub mod scrobbler;
+pub mod taskworker;
 pub mod websocket;
