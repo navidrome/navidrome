@@ -527,7 +527,7 @@ func (s *taskQueueServiceImpl) runCleanup() {
 
 	now := time.Now().UnixMilli()
 	for name, qs := range queues {
-		result, err := s.db.Exec(`
+		result, err := s.db.ExecContext(s.ctx, `
 			DELETE FROM tasks WHERE queue_name = ? AND status IN (?, ?, ?) AND updated_at + ? < ?
 		`, name, taskStatusCompleted, taskStatusFailed, taskStatusCancelled, qs.config.RetentionMs, now)
 		if err != nil {
