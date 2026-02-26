@@ -110,6 +110,9 @@
         },
         "users": {
           "$ref": "#/$defs/UsersPermission"
+        },
+        "taskqueue": {
+          "$ref": "#/$defs/TaskQueuePermission"
         }
       }
     },
@@ -221,6 +224,23 @@
         "maxSize": {
           "type": "string",
           "description": "Maximum storage size (e.g., '1MB', '500KB'). Default: 1MB"
+        }
+      }
+    },
+    "TaskQueuePermission": {
+      "type": "object",
+      "description": "Task queue permissions for background task processing",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why task queue access is needed"
+        },
+        "maxConcurrency": {
+          "type": "integer",
+          "description": "Maximum total concurrent workers across all queues. Default: 1",
+          "minimum": 1,
+          "default": 1
         }
       }
     },
