@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
@@ -77,21 +78,28 @@ func sparqlQuery(endpoint, query string) (*SPARQLResult, error) {
 	form := url.Values{}
 	form.Set("query", query)
 
-	req := pdk.NewHTTPRequest(pdk.MethodPost, endpoint)
-	req.SetHeader("Accept", "application/sparql-results+json")
-	req.SetHeader("Content-Type", "application/x-www-form-urlencoded")
-	req.SetHeader("User-Agent", "NavidromeWikimediaPlugin/1.0")
-	req.SetBody([]byte(form.Encode()))
-
 	pdk.Log(pdk.LogDebug, fmt.Sprintf("SPARQL query to %s: %s", endpoint, query))
 
-	resp := req.Send()
-	if resp.Status() != 200 {
-		return nil, fmt.Errorf("SPARQL HTTP error: status %d", resp.Status())
+	resp, err := host.HTTPSend(host.HTTPRequest{
+		Method: "POST",
+		URL:    endpoint,
+		Headers: map[string]string{
+			"Accept":       "application/sparql-results+json",
+			"Content-Type": "application/x-www-form-urlencoded",
+			"User-Agent":   "NavidromeWikimediaPlugin/1.0",
+		},
+		Body:      []byte(form.Encode()),
+		TimeoutMs: 10000,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("SPARQL HTTP error: %w", err)
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("SPARQL HTTP error: status %d", resp.StatusCode)
 	}
 
 	var result SPARQLResult
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse SPARQL response: %w", err)
 	}
 	if len(result.Results.Bindings) == 0 {
@@ -104,15 +112,22 @@ func sparqlQuery(endpoint, query string) (*SPARQLResult, error) {
 func mediawikiQuery(params url.Values) ([]byte, error) {
 	apiURL := fmt.Sprintf("%s?%s", mediawikiAPIEndpoint, params.Encode())
 
-	req := pdk.NewHTTPRequest(pdk.MethodGet, apiURL)
-	req.SetHeader("Accept", "application/json")
-	req.SetHeader("User-Agent", "NavidromeWikimediaPlugin/1.0")
-
-	resp := req.Send()
-	if resp.Status() != 200 {
-		return nil, fmt.Errorf("MediaWiki HTTP error: status %d", resp.Status())
+	resp, err := host.HTTPSend(host.HTTPRequest{
+		Method: "GET",
+		URL:    apiURL,
+		Headers: map[string]string{
+			"Accept":     "application/json",
+			"User-Agent": "NavidromeWikimediaPlugin/1.0",
+		},
+		TimeoutMs: 10000,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("MediaWiki HTTP error: %w", err)
 	}
-	return resp.Body(), nil
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("MediaWiki HTTP error: status %d", resp.StatusCode)
+	}
+	return resp.Body, nil
 }
 
 // getWikidataWikipediaURL fetches the Wikipedia URL from Wikidata using MBID or name

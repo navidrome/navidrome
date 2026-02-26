@@ -38,6 +38,7 @@ The following host services are available:
   - Artwork: provides artwork public URL generation capabilities for plugins.
   - Cache: provides in-memory TTL-based caching capabilities for plugins.
   - Config: provides access to plugin configuration values.
+  - HTTP: provides outbound HTTP request capabilities for plugins.
   - KVStore: provides persistent key-value storage for plugins.
   - Library: provides access to music library metadata for plugins.
   - Scheduler: provides task scheduling capabilities for plugins.
