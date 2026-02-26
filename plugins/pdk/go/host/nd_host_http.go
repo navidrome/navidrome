@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
+// HTTPRequest represents the HTTPRequest data structure.
 // HTTPRequest represents an outbound HTTP request from a plugin.
 type HTTPRequest struct {
 	Method    string            `json:"method"`
@@ -23,6 +24,7 @@ type HTTPRequest struct {
 	TimeoutMs int32             `json:"timeoutMs"`
 }
 
+// HTTPResponse represents the HTTPResponse data structure.
 // HTTPResponse represents the response from an outbound HTTP request.
 type HTTPResponse struct {
 	StatusCode int32             `json:"statusCode"`
@@ -35,11 +37,11 @@ type HTTPResponse struct {
 //go:wasmimport extism:host/user http_send
 func http_send(uint64) uint64
 
-type httpSendRequest struct {
+type hTTPSendRequest struct {
 	Request HTTPRequest `json:"request"`
 }
 
-type httpSendResponse struct {
+type hTTPSendResponse struct {
 	Result *HTTPResponse `json:"result,omitempty"`
 	Error  string        `json:"error,omitempty"`
 }
@@ -55,7 +57,7 @@ type httpSendResponse struct {
 // Successful HTTP calls (including 4xx/5xx status codes) return a non-nil response with nil error.
 func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
 	// Marshal request to JSON
-	req := httpSendRequest{
+	req := hTTPSendRequest{
 		Request: request,
 	}
 	reqBytes, err := json.Marshal(req)
@@ -73,7 +75,7 @@ func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
 	responseBytes := responseMem.ReadBytes()
 
 	// Parse the response
-	var response httpSendResponse
+	var response hTTPSendResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}

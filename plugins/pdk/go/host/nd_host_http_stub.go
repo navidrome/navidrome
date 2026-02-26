@@ -10,6 +10,7 @@ package host
 
 import "github.com/stretchr/testify/mock"
 
+// HTTPRequest represents the HTTPRequest data structure.
 // HTTPRequest represents an outbound HTTP request from a plugin.
 type HTTPRequest struct {
 	Method    string            `json:"method"`
@@ -19,6 +20,7 @@ type HTTPRequest struct {
 	TimeoutMs int32             `json:"timeoutMs"`
 }
 
+// HTTPResponse represents the HTTPResponse data structure.
 // HTTPResponse represents the response from an outbound HTTP request.
 type HTTPResponse struct {
 	StatusCode int32             `json:"statusCode"`

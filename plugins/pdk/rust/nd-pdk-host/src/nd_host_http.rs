@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// HTTPRequest represents an outbound HTTP request from a plugin.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HttpRequest {
+pub struct HTTPRequest {
     pub method: String,
     pub url: String,
     #[serde(default)]
@@ -23,7 +23,7 @@ pub struct HttpRequest {
 /// HTTPResponse represents the response from an outbound HTTP request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HttpResponse {
+pub struct HTTPResponse {
     pub status_code: i32,
     #[serde(default)]
     pub headers: std::collections::HashMap<String, String>,
@@ -34,14 +34,14 @@ pub struct HttpResponse {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HTTPSendRequest {
-    request: HttpRequest,
+    request: HTTPRequest,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct HTTPSendResponse {
     #[serde(default)]
-    result: Option<HttpResponse>,
+    result: Option<HTTPResponse>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -52,23 +52,23 @@ extern "ExtismHost" {
 }
 
 /// Send executes an HTTP request and returns the response.
-///
+/// 
 /// Parameters:
 ///   - request: The HTTP request to execute, including method, URL, headers, body, and timeout
-///
+/// 
 /// Returns the HTTP response with status code, headers, and body.
-/// Network errors, timeouts, and permission failures are returned as errors.
+/// Network errors, timeouts, and permission failures are returned as Go errors.
 /// Successful HTTP calls (including 4xx/5xx status codes) return a non-nil response with nil error.
 ///
 /// # Arguments
-/// * `request` - HttpRequest parameter.
+/// * `request` - HTTPRequest parameter.
 ///
 /// # Returns
 /// The result value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn send(request: HttpRequest) -> Result<Option<HttpResponse>, Error> {
+pub fn send(request: HTTPRequest) -> Result<Option<HTTPResponse>, Error> {
     let response = unsafe {
         http_send(Json(HTTPSendRequest {
             request: request,
