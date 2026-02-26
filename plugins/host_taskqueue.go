@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/plugins/host"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -26,9 +27,20 @@ const (
 	defaultRetentionMs int64 = 3_600_000   // 1 hour
 	minRetentionMs     int64 = 60_000      // 1 minute
 	maxRetentionMs     int64 = 604_800_000 // 1 week
+	maxQueueNameLength       = 128
+	maxPayloadSize           = 1 * 1024 * 1024 // 1MB
+	maxBackoffMs             = 3_600_000       // 1 hour
 	cleanupInterval          = 5 * time.Minute
 	pollInterval             = 5 * time.Second
 	shutdownTimeout          = 10 * time.Second
+)
+
+const (
+	taskStatusPending   = "pending"
+	taskStatusRunning   = "running"
+	taskStatusCompleted = "completed"
+	taskStatusFailed    = "failed"
+	taskStatusCancelled = "cancelled"
 )
 
 // CapabilityTaskWorker indicates the plugin can receive task execution callbacks.
@@ -43,10 +55,9 @@ func init() {
 
 // queueState holds in-memory state for a single task queue.
 type queueState struct {
-	config         host.QueueConfig
-	signal         chan struct{}
-	lastDispatchAt time.Time
-	mu             sync.Mutex
+	config  host.QueueConfig
+	signal  chan struct{}
+	limiter *rate.Limiter // rate limiter for delay enforcement between dispatches
 }
 
 // taskQueueServiceImpl implements host.TaskQueueService with SQLite persistence
@@ -141,6 +152,14 @@ func createTaskQueueSchema(db *sql.DB) error {
 
 // CreateQueue creates a named task queue with the given configuration.
 func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, config host.QueueConfig) error {
+	// Validate queue name
+	if len(name) == 0 {
+		return fmt.Errorf("queue name cannot be empty")
+	}
+	if len(name) > maxQueueNameLength {
+		return fmt.Errorf("queue name exceeds maximum length of %d bytes", maxQueueNameLength)
+	}
+
 	// Apply defaults
 	if config.Concurrency <= 0 {
 		config.Concurrency = defaultConcurrency
@@ -148,7 +167,7 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 	if config.BackoffMs <= 0 {
 		config.BackoffMs = defaultBackoffMs
 	}
-	if config.RetentionMs == 0 {
+	if config.RetentionMs <= 0 {
 		config.RetentionMs = defaultRetentionMs
 	}
 
@@ -187,10 +206,16 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 		return fmt.Errorf("queue %q already exists", name)
 	}
 
-	// Insert into queues table
+	// Upsert into queues table (idempotent across restarts)
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO queues (name, concurrency, max_retries, backoff_ms, delay_ms, retention_ms)
 		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(name) DO UPDATE SET
+			concurrency = excluded.concurrency,
+			max_retries = excluded.max_retries,
+			backoff_ms = excluded.backoff_ms,
+			delay_ms = excluded.delay_ms,
+			retention_ms = excluded.retention_ms
 	`, name, config.Concurrency, config.MaxRetries, config.BackoffMs, config.DelayMs, config.RetentionMs)
 	if err != nil {
 		return fmt.Errorf("creating queue: %w", err)
@@ -199,8 +224,8 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 	// Reset stale running tasks from previous crash
 	now := time.Now().UnixMilli()
 	_, err = s.db.ExecContext(ctx, `
-		UPDATE tasks SET status = 'pending', updated_at = ? WHERE queue_name = ? AND status = 'running'
-	`, now, name)
+		UPDATE tasks SET status = ?, updated_at = ? WHERE queue_name = ? AND status = ?
+	`, taskStatusPending, now, name, taskStatusRunning)
 	if err != nil {
 		return fmt.Errorf("resetting stale tasks: %w", err)
 	}
@@ -209,6 +234,11 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 	qs := &queueState{
 		config: config,
 		signal: make(chan struct{}, 1),
+	}
+	if config.DelayMs > 0 {
+		// Rate limit dispatches to enforce delay between tasks.
+		// Burst of 1 allows one immediate dispatch, then enforces the delay interval.
+		qs.limiter = rate.NewLimiter(rate.Every(time.Duration(config.DelayMs)*time.Millisecond), 1)
 	}
 	s.queues[name] = qs
 
@@ -234,13 +264,17 @@ func (s *taskQueueServiceImpl) Enqueue(ctx context.Context, queueName string, pa
 		return "", fmt.Errorf("queue %q does not exist", queueName)
 	}
 
+	if len(payload) > maxPayloadSize {
+		return "", fmt.Errorf("payload size %d exceeds maximum of %d bytes", len(payload), maxPayloadSize)
+	}
+
 	taskID := id.NewRandom()
 	now := time.Now().UnixMilli()
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO tasks (id, queue_name, payload, status, attempt, max_retries, next_run_at, created_at, updated_at)
-		VALUES (?, ?, ?, 'pending', 0, ?, ?, ?, ?)
-	`, taskID, queueName, payload, qs.config.MaxRetries, now, now, now)
+		VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)
+	`, taskID, queueName, payload, taskStatusPending, qs.config.MaxRetries, now, now, now)
 	if err != nil {
 		return "", fmt.Errorf("enqueuing task: %w", err)
 	}
@@ -272,8 +306,8 @@ func (s *taskQueueServiceImpl) GetTaskStatus(ctx context.Context, taskID string)
 func (s *taskQueueServiceImpl) CancelTask(ctx context.Context, taskID string) error {
 	now := time.Now().UnixMilli()
 	result, err := s.db.ExecContext(ctx, `
-		UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'
-	`, now, taskID)
+		UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = ?
+	`, taskStatusCancelled, now, taskID, taskStatusPending)
 	if err != nil {
 		return fmt.Errorf("cancelling task: %w", err)
 	}
@@ -344,14 +378,14 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 	var attempt int32
 	var maxRetries int32
 	err := s.db.QueryRowContext(s.ctx, `
-		UPDATE tasks SET status = 'running', attempt = attempt + 1, updated_at = ?
+		UPDATE tasks SET status = ?, attempt = attempt + 1, updated_at = ?
 		WHERE id = (
 			SELECT id FROM tasks
-			WHERE queue_name = ? AND status = 'pending' AND next_run_at <= ?
+			WHERE queue_name = ? AND status = ? AND next_run_at <= ?
 			ORDER BY next_run_at, created_at LIMIT 1
 		)
 		RETURNING id, payload, attempt, max_retries
-	`, now, queueName, now).Scan(&taskID, &payload, &attempt, &maxRetries)
+	`, taskStatusRunning, now, queueName, taskStatusPending, now).Scan(&taskID, &payload, &attempt, &maxRetries)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
 	}
@@ -360,27 +394,14 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 		return false
 	}
 
-	// Enforce delay between task dispatches
-	if qs.config.DelayMs > 0 {
-		qs.mu.Lock()
-		elapsed := time.Since(qs.lastDispatchAt)
-		delay := time.Duration(qs.config.DelayMs) * time.Millisecond
-		if elapsed < delay {
-			waitTime := delay - elapsed
-			qs.mu.Unlock()
-
-			select {
-			case <-s.ctx.Done():
-				// Put the task back to pending on shutdown
-				s.revertTaskToPending(taskID)
-				return false
-			case <-time.After(waitTime):
-			}
-
-			qs.mu.Lock()
+	// Enforce delay between task dispatches using a rate limiter.
+	// This is done after dequeue so that empty polls don't consume rate tokens.
+	if qs.limiter != nil {
+		if err := qs.limiter.Wait(s.ctx); err != nil {
+			// Context cancelled during wait — revert task to pending for recovery
+			s.revertTaskToPending(taskID)
+			return false
 		}
-		qs.lastDispatchAt = time.Now()
-		qs.mu.Unlock()
 	}
 
 	// Invoke callback
@@ -396,7 +417,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 	now = time.Now().UnixMilli()
 	if callbackErr == nil {
 		// Success: mark as completed
-		_, err = s.db.ExecContext(s.ctx, `UPDATE tasks SET status = 'completed', updated_at = ? WHERE id = ?`, now, taskID)
+		_, err = s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`, taskStatusCompleted, now, taskID)
 		if err != nil {
 			log.Error(s.ctx, "Failed to mark task as completed", "plugin", s.pluginName, "taskID", taskID, err)
 		}
@@ -409,10 +430,13 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 		if attempt <= maxRetries {
 			// Retry with exponential backoff: backoffMs * 2^(attempt-1)
 			backoff := qs.config.BackoffMs * int64(math.Pow(2, float64(attempt-1)))
+			if backoff < 0 || backoff > maxBackoffMs {
+				backoff = maxBackoffMs
+			}
 			nextRunAt := now + backoff
 			_, err = s.db.ExecContext(s.ctx, `
-				UPDATE tasks SET status = 'pending', next_run_at = ?, updated_at = ? WHERE id = ?
-			`, nextRunAt, now, taskID)
+				UPDATE tasks SET status = ?, next_run_at = ?, updated_at = ? WHERE id = ?
+			`, taskStatusPending, nextRunAt, now, taskID)
 			if err != nil {
 				log.Error(s.ctx, "Failed to reschedule task for retry", "plugin", s.pluginName, "taskID", taskID, err)
 			}
@@ -428,7 +452,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 			})
 		} else {
 			// Exhausted retries: mark as failed
-			_, err = s.db.ExecContext(s.ctx, `UPDATE tasks SET status = 'failed', updated_at = ? WHERE id = ?`, now, taskID)
+			_, err = s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`, taskStatusFailed, now, taskID)
 			if err != nil {
 				log.Error(s.ctx, "Failed to mark task as failed", "plugin", s.pluginName, "taskID", taskID, err)
 			}
@@ -443,7 +467,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 // counter (used during shutdown to ensure the interrupted attempt doesn't count).
 func (s *taskQueueServiceImpl) revertTaskToPending(taskID string) {
 	now := time.Now().UnixMilli()
-	_, err := s.db.Exec(`UPDATE tasks SET status = 'pending', attempt = MAX(attempt - 1, 0), updated_at = ? WHERE id = ? AND status = 'running'`, now, taskID)
+	_, err := s.db.Exec(`UPDATE tasks SET status = ?, attempt = MAX(attempt - 1, 0), updated_at = ? WHERE id = ? AND status = ?`, taskStatusPending, now, taskID, taskStatusRunning)
 	if err != nil {
 		log.Error("Failed to revert task to pending", "plugin", s.pluginName, "taskID", taskID, err)
 	}
@@ -508,8 +532,8 @@ func (s *taskQueueServiceImpl) runCleanup() {
 	now := time.Now().UnixMilli()
 	for name, qs := range queues {
 		result, err := s.db.Exec(`
-			DELETE FROM tasks WHERE queue_name = ? AND status IN ('completed', 'failed', 'cancelled') AND updated_at + ? < ?
-		`, name, qs.config.RetentionMs, now)
+			DELETE FROM tasks WHERE queue_name = ? AND status IN (?, ?, ?) AND updated_at + ? < ?
+		`, name, taskStatusCompleted, taskStatusFailed, taskStatusCancelled, qs.config.RetentionMs, now)
 		if err != nil {
 			log.Error(s.ctx, "Failed to cleanup tasks", "plugin", s.pluginName, "queue", name, err)
 			continue
@@ -541,7 +565,7 @@ func (s *taskQueueServiceImpl) Close() error {
 	// Mark running tasks as pending for recovery on next startup
 	if s.db != nil {
 		now := time.Now().UnixMilli()
-		_, err := s.db.Exec(`UPDATE tasks SET status = 'pending', updated_at = ? WHERE status = 'running'`, now)
+		_, err := s.db.Exec(`UPDATE tasks SET status = ?, updated_at = ? WHERE status = ?`, taskStatusPending, now, taskStatusRunning)
 		if err != nil {
 			log.Error("Failed to reset running tasks on shutdown", "plugin", s.pluginName, err)
 		}
