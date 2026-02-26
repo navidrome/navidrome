@@ -12,6 +12,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -88,6 +91,30 @@ var _ = Describe("TaskQueueService", func() {
 		})
 	})
 
+	Describe("CreateQueue name validation", func() {
+		It("rejects empty queue name", func() {
+			err := service.CreateQueue(ctx, "", host.QueueConfig{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("queue name cannot be empty"))
+		})
+
+		It("rejects over-length queue name", func() {
+			longName := strings.Repeat("a", maxQueueNameLength+1)
+			err := service.CreateQueue(ctx, longName, host.QueueConfig{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("exceeds maximum length"))
+		})
+
+		It("accepts queue name at maximum length", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+				return nil
+			}
+			exactName := strings.Repeat("a", maxQueueNameLength)
+			err := service.CreateQueue(ctx, exactName, host.QueueConfig{})
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
 	Describe("CreateQueue defaults", func() {
 		It("applies defaults for zero-value config", func() {
 			err := service.CreateQueue(ctx, "defaults-queue", host.QueueConfig{})
@@ -98,6 +125,23 @@ var _ = Describe("TaskQueueService", func() {
 			service.mu.Unlock()
 			Expect(qs.config.Concurrency).To(Equal(defaultConcurrency))
 			Expect(qs.config.BackoffMs).To(Equal(defaultBackoffMs))
+			Expect(qs.config.RetentionMs).To(Equal(defaultRetentionMs))
+		})
+	})
+
+	Describe("CreateQueue defaults with negative values", func() {
+		It("applies default RetentionMs for negative value", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+				return nil
+			}
+			err := service.CreateQueue(ctx, "neg-retention", host.QueueConfig{
+				RetentionMs: -500,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			service.mu.Lock()
+			qs := service.queues["neg-retention"]
+			service.mu.Unlock()
 			Expect(qs.config.RetentionMs).To(Equal(defaultRetentionMs))
 		})
 	})
@@ -162,6 +206,20 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
+
+		It("rejects payload exceeding maximum size", func() {
+			bigPayload := make([]byte, maxPayloadSize+1)
+			_, err := service.Enqueue(ctx, "enqueue-test", bigPayload)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("exceeds maximum"))
+		})
+
+		It("accepts payload at maximum size", func() {
+			exactPayload := make([]byte, maxPayloadSize)
+			taskID, err := service.Enqueue(ctx, "enqueue-test", exactPayload)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(taskID).ToNot(BeEmpty())
+		})
 	})
 
 	Describe("GetTaskStatus", func() {
@@ -204,38 +262,30 @@ var _ = Describe("TaskQueueService", func() {
 		})
 
 		It("cancels a pending task", func() {
-			// Create queue with 0 concurrency via a trick: use delayMs to slow down processing
-			// Actually, just stop workers by closing and recreating without workers
-			service.Close()
-			service = nil
-
-			// Recreate without starting workers - we'll create the queue after overriding invokeCallbackFn
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
-			manager2 := &Manager{
-				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
-			}
-			var err error
-			service, err = newTaskQueueService("test_plugin_cancel", manager2, 5)
-			Expect(err).ToNot(HaveOccurred())
-
-			// Block the callback so task stays pending while we try to cancel
+			// Block the callback so the first task occupies the worker
+			started := make(chan struct{})
 			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) error {
-				time.Sleep(10 * time.Second)
-				return nil
+				close(started)
+				<-ctx.Done()
+				return ctx.Err()
 			}
 
-			err = service.CreateQueue(ctx, "cancel-test", host.QueueConfig{
+			err := service.CreateQueue(ctx, "cancel-test", host.QueueConfig{
 				Concurrency: 1,
-				DelayMs:     5000, // Large delay so worker doesn't grab it immediately
 			})
 			Expect(err).ToNot(HaveOccurred())
 
+			// Enqueue a blocker task to occupy the single worker
+			_, err = service.Enqueue(ctx, "cancel-test", []byte("blocker"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for the blocker task to start running
+			Eventually(started).WithTimeout(5 * time.Second).Should(BeClosed())
+
+			// Enqueue a second task — it stays pending since the worker is busy
 			taskID, err := service.Enqueue(ctx, "cancel-test", []byte("cancel-me"))
 			Expect(err).ToNot(HaveOccurred())
 
-			// Cancel quickly before worker picks it up
 			err = service.CancelTask(ctx, taskID)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -367,6 +417,89 @@ var _ = Describe("TaskQueueService", func() {
 		})
 	})
 
+	Describe("Backoff overflow cap", func() {
+		It("caps backoff at maxRetentionMs to prevent overflow", func() {
+			var callCount atomic.Int32
+
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+				callCount.Add(1)
+				return fmt.Errorf("always fail")
+			}
+
+			err := service.CreateQueue(ctx, "backoff-overflow", host.QueueConfig{
+				MaxRetries: 3,
+				BackoffMs:  1_000_000_000, // Very large backoff to trigger overflow on exponentiation
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID, err := service.Enqueue(ctx, "backoff-overflow", []byte("overflow-test"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for first attempt to fail
+			Eventually(func() int32 {
+				return callCount.Load()
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(BeNumerically(">=", int32(1)))
+
+			// Check next_run_at is positive and reasonable (capped at maxRetentionMs from now)
+			var nextRunAt int64
+			err = service.db.QueryRow(`SELECT next_run_at FROM tasks WHERE id = ?`, taskID).Scan(&nextRunAt)
+			Expect(err).ToNot(HaveOccurred())
+
+			now := time.Now().UnixMilli()
+			Expect(nextRunAt).To(BeNumerically(">", int64(0)), "next_run_at should be positive")
+			Expect(nextRunAt).To(BeNumerically("<=", now+maxBackoffMs+1000), "next_run_at should be at most maxBackoffMs from now")
+		})
+	})
+
+	Describe("Delay enforcement with concurrent workers", func() {
+		It("enforces delay between dispatches even with multiple workers", func() {
+			var mu sync.Mutex
+			var dispatchTimes []time.Time
+
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+				mu.Lock()
+				dispatchTimes = append(dispatchTimes, time.Now())
+				mu.Unlock()
+				return nil
+			}
+
+			err := service.CreateQueue(ctx, "delay-concurrent", host.QueueConfig{
+				Concurrency: 3,
+				DelayMs:     200,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue 5 tasks
+			for i := 0; i < 5; i++ {
+				_, err := service.Enqueue(ctx, "delay-concurrent", []byte(fmt.Sprintf("task-%d", i)))
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Wait for all tasks to complete
+			Eventually(func() int {
+				mu.Lock()
+				defer mu.Unlock()
+				return len(dispatchTimes)
+			}).WithTimeout(10 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal(5))
+
+			// Sort dispatch times and verify gaps
+			mu.Lock()
+			sort.Slice(dispatchTimes, func(i, j int) bool {
+				return dispatchTimes[i].Before(dispatchTimes[j])
+			})
+			times := make([]time.Time, len(dispatchTimes))
+			copy(times, dispatchTimes)
+			mu.Unlock()
+
+			// Consecutive dispatches should have at least ~160ms gap (80% of 200ms)
+			for i := 1; i < len(times); i++ {
+				gap := times[i].Sub(times[i-1])
+				Expect(gap).To(BeNumerically(">=", 160*time.Millisecond),
+					fmt.Sprintf("gap between dispatch %d and %d was %v, expected >= 160ms", i-1, i, gap))
+			}
+		})
+	})
+
 	Describe("Shutdown recovery", func() {
 		It("resets stale running tasks on CreateQueue", func() {
 			// Create a first service and queue, enqueue a task
@@ -405,15 +538,7 @@ var _ = Describe("TaskQueueService", func() {
 				return nil
 			}
 
-			// Re-create the queue - this should reset stale running tasks
-			// First we need to re-insert the queue row since it was from the old service
-			// Actually the queue row is already there from the first service, but
-			// CreateQueue will fail because the row exists. We need to handle this differently.
-			// The queue metadata exists in DB, but not in the new service's memory map.
-			// The schema has the queue row already. Let's delete it and re-create.
-			_, err = service.db.Exec(`DELETE FROM queues WHERE name = 'recovery-queue'`)
-			Expect(err).ToNot(HaveOccurred())
-
+			// Re-create the queue - the upsert handles the existing row from the old service
 			err = service.CreateQueue(ctx, "recovery-queue", host.QueueConfig{})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -752,9 +877,8 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			ctx := GinkgoT().Context()
 
 			// Create queue with concurrency=1 and a large delay between dispatches.
-			// After the first task is dispatched (no delay for the first), the
-			// second task will be dequeued but the worker will block waiting for
-			// the 60s delay. Tasks 3+ remain in 'pending' status and can be cancelled.
+			// The first task completes immediately (burst token), the second is dequeued
+			// but blocks on the rate limiter. Tasks 3+ remain in 'pending' and can be cancelled.
 			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
 				Operation: "create_queue",
 				QueueName: "test-cancel",
@@ -765,8 +889,8 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			// Enqueue several tasks - the first will be processed immediately,
-			// the second will block in the delay wait (status=running),
+			// Enqueue several tasks - the first will complete immediately,
+			// the second will be dequeued but block on the rate limiter (status=running),
 			// the rest will stay pending.
 			var taskIDs []string
 			for i := 0; i < 5; i++ {
