@@ -321,9 +321,10 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
-	child.Title = al.FullName()
-	child.Name = al.FullName()
-	child.Album = al.FullName()
+	fullName := al.FullName()
+	child.Title = fullName
+	child.Name = fullName
+	child.Album = fullName
 	child.Artist = al.AlbumArtist
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
