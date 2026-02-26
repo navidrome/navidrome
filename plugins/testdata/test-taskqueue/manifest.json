@@ -1,0 +1,12 @@
+{
+  "name": "Test TaskQueue Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for TaskQueue integration testing",
+  "permissions": {
+    "taskqueue": {
+      "reason": "For testing task queue operations",
+      "maxConcurrency": 3
+    }
+  }
+}
