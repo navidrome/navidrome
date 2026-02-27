@@ -114,8 +114,7 @@ func newTaskQueueService(pluginName string, manager *Manager, maxConcurrency int
 	}
 	s.invokeCallbackFn = s.defaultInvokeCallback
 
-	s.wg.Add(1)
-	go s.cleanupLoop()
+	s.wg.Go(s.cleanupLoop)
 
 	log.Debug("Initialized plugin taskqueue", "plugin", pluginName, "path", dbPath, "maxConcurrency", maxConcurrency)
 	return s, nil
@@ -253,8 +252,7 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 	s.queues[name] = qs
 
 	for i := int32(0); i < config.Concurrency; i++ {
-		s.wg.Add(1)
-		go s.worker(name, qs)
+		s.wg.Go(func() { s.worker(name, qs) })
 	}
 
 	log.Debug(ctx, "Created task queue", "plugin", s.pluginName, "queue", name,
@@ -338,8 +336,6 @@ func (s *taskQueueServiceImpl) CancelTask(ctx context.Context, taskID string) er
 
 // worker is the main loop for a single worker goroutine.
 func (s *taskQueueServiceImpl) worker(queueName string, qs *queueState) {
-	defer s.wg.Done()
-
 	// Process any existing pending tasks immediately on startup
 	s.drainQueue(queueName, qs)
 
@@ -494,7 +490,6 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 
 // cleanupLoop periodically removes terminal tasks past their retention period.
 func (s *taskQueueServiceImpl) cleanupLoop() {
-	defer s.wg.Done()
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
