@@ -5,6 +5,31 @@
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+{{- if .Service.HasByteFields}}
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
+{{- end}}
 {{- /* Generate struct definitions */ -}}
 {{- range .Service.Structs}}
 {{if .Doc}}
@@ -16,6 +41,9 @@ pub struct {{.Name}} {
 {{- range .Fields}}
 {{- if .NeedsDefault}}
     #[serde(default)]
+{{- end}}
+{{- if .IsByteSlice}}
+    #[serde(with = "base64_bytes")]
 {{- end}}
     pub {{.RustName}}: {{fieldRustType .}},
 {{- end}}
@@ -29,17 +57,22 @@ pub struct {{.Name}} {
 #[serde(rename_all = "camelCase")]
 struct {{requestType .}} {
 {{- range .Params}}
+{{- if .IsByteSlice}}
+    #[serde(with = "base64_bytes")]
+{{- end}}
     {{.RustName}}: {{rustType .}},
 {{- end}}
 }
 {{- end}}
-{{- if not .Raw}}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct {{responseType .}} {
 {{- range .Returns}}
     #[serde(default)]
+{{- if .IsByteSlice}}
+    #[serde(with = "base64_bytes")]
+{{- end}}
     {{.RustName}}: {{rustType .}},
 {{- end}}
 {{- if .HasError}}
@@ -48,92 +81,16 @@ struct {{responseType .}} {
 {{- end}}
 }
 {{- end}}
-{{- end}}
 
 #[host_fn]
 extern "ExtismHost" {
 {{- range .Service.Methods}}
-{{- if not .Raw}}
     fn {{exportName .}}(input: Json<{{if .HasParams}}{{requestType .}}{{else}}serde_json::Value{{end}}>) -> Json<{{responseType .}}>;
 {{- end}}
-{{- end}}
 }
-{{- /* Declare raw extern "C" imports for raw methods */ -}}
-{{- range .Service.Methods}}
-{{- if .Raw}}
-
-#[link(wasm_import_module = "extism:host/user")]
-extern "C" {
-    fn {{exportName .}}(offset: u64) -> u64;
-}
-{{- end}}
-{{- end}}
 
 {{- /* Generate wrapper functions */ -}}
 {{range .Service.Methods}}
-{{- if .Raw}}
-
-{{if .Doc}}{{rustDocComment .Doc}}{{else}}/// Calls the {{exportName .}} host function.{{end}}
-{{- if .HasParams}}
-///
-/// # Arguments
-{{- range .Params}}
-/// * `{{.RustName}}` - {{rustType .}} parameter.
-{{- end}}
-{{- end}}
-///
-/// # Returns
-/// A tuple of (content_type, data) with the raw binary response.
-///
-/// # Errors
-/// Returns an error if the host function call fails.
-pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<(String, Vec<u8>), Error> {
-{{- if .HasParams}}
-    let req = {{requestType .}} {
-{{- range .Params}}
-        {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
-{{- end}}
-    };
-    let input_bytes = serde_json::to_vec(&req).map_err(|e| Error::msg(e.to_string()))?;
-{{- else}}
-    let input_bytes = b"{}".to_vec();
-{{- end}}
-    let input_mem = Memory::from_bytes(&input_bytes).map_err(|e| Error::msg(e.to_string()))?;
-
-    let response_offset = unsafe { {{exportName .}}(input_mem.offset()) };
-
-    let response_mem = Memory::find(response_offset)
-        .ok_or_else(|| Error::msg("empty response from host"))?;
-    let response_bytes = response_mem.to_vec();
-
-    if response_bytes.is_empty() {
-        return Err(Error::msg("empty response from host"));
-    }
-    if response_bytes[0] == 0x01 {
-        let msg = String::from_utf8_lossy(&response_bytes[1..]).to_string();
-        return Err(Error::msg(msg));
-    }
-    if response_bytes[0] != 0x00 {
-        return Err(Error::msg("unknown response status"));
-    }
-    if response_bytes.len() < 5 {
-        return Err(Error::msg("malformed raw response: incomplete header"));
-    }
-    let ct_len = u32::from_be_bytes([
-        response_bytes[1],
-        response_bytes[2],
-        response_bytes[3],
-        response_bytes[4],
-    ]) as usize;
-    if ct_len > response_bytes.len() - 5 {
-        return Err(Error::msg("malformed raw response: content-type overflow"));
-    }
-    let ct_end = 5 + ct_len;
-    let content_type = String::from_utf8_lossy(&response_bytes[5..ct_end]).to_string();
-    let data = response_bytes[ct_end..].to_vec();
-    Ok((content_type, data))
-}
-{{- else}}
 
 {{if .Doc}}{{rustDocComment .Doc}}{{else}}/// Calls the {{exportName .}} host function.{{end}}
 {{- if .HasParams}}
@@ -207,6 +164,5 @@ pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName
     Ok(({{range $i, $r := .Returns}}{{if $i}}, {{end}}response.0.{{$r.RustName}}{{end}}))
 {{- end}}
 }
-{{- end}}
 {{- end}}
 {{- end}}

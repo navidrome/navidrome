@@ -4,9 +4,6 @@ package {{.Package}}
 
 import (
 	"context"
-{{- if .Service.HasRawMethods}}
-	"encoding/binary"
-{{- end}}
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
@@ -23,7 +20,6 @@ type {{requestType .}} struct {
 {{- end}}
 }
 {{- end}}
-{{- if not .Raw}}
 
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
@@ -34,7 +30,6 @@ type {{responseType .}} struct {
 	Error string `json:"error,omitempty"`
 {{- end}}
 }
-{{- end}}
 {{end}}
 
 // Register{{.Service.Name}}HostFunctions registers {{.Service.Name}} service host functions.
@@ -56,48 +51,18 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
-{{- if .Raw}}
-				{{$.Service.Name | lower}}WriteRawError(p, stack, err)
-{{- else}}
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
-{{- end}}
 				return
 			}
 			var req {{requestType .}}
 			if err := json.Unmarshal(reqBytes, &req); err != nil {
-{{- if .Raw}}
-				{{$.Service.Name | lower}}WriteRawError(p, stack, err)
-{{- else}}
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
-{{- end}}
 				return
 			}
 {{- end}}
 
 			// Call the service method
-{{- if .Raw}}
-			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
-			if svcErr != nil {
-				{{$.Service.Name | lower}}WriteRawError(p, stack, svcErr)
-				return
-			}
-
-			// Write binary-framed response to plugin memory:
-			// [0x00][4-byte content-type length (big-endian)][content-type string][raw data]
-			ctBytes := []byte({{lower (index .Returns 0).Name}})
-			frame := make([]byte, 1+4+len(ctBytes)+len({{lower (index .Returns 1).Name}}))
-			frame[0] = 0x00 // success
-			binary.BigEndian.PutUint32(frame[1:5], uint32(len(ctBytes)))
-			copy(frame[5:5+len(ctBytes)], ctBytes)
-			copy(frame[5+len(ctBytes):], {{lower (index .Returns 1).Name}})
-
-			respPtr, err := p.WriteBytes(frame)
-			if err != nil {
-				stack[0] = 0
-				return
-			}
-			stack[0] = respPtr
-{{- else if .HasReturns}}
+{{- if .HasReturns}}
 {{- if .HasError}}
 			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
 			if svcErr != nil {
@@ -162,16 +127,3 @@ func {{.Service.Name | lower}}WriteError(p *extism.CurrentPlugin, stack []uint64
 	respPtr, _ := p.WriteBytes(respBytes)
 	stack[0] = respPtr
 }
-{{- if .Service.HasRawMethods}}
-
-// {{.Service.Name | lower}}WriteRawError writes a binary-framed error response to plugin memory.
-// Format: [0x01][UTF-8 error message]
-func {{.Service.Name | lower}}WriteRawError(p *extism.CurrentPlugin, stack []uint64, err error) {
-	errMsg := []byte(err.Error())
-	frame := make([]byte, 1+len(errMsg))
-	frame[0] = 0x01 // error
-	copy(frame[1:], errMsg)
-	respPtr, _ := p.WriteBytes(frame)
-	stack[0] = respPtr
-}
-{{- end}}

@@ -8,12 +8,12 @@
 # main __init__.py file. Copy the needed functions from this file into your plugin.
 
 from dataclasses import dataclass
-from typing import Any{{- if .Service.HasRawMethods}}, Tuple{{end}}
+from typing import Any
 
 import extism
 import json
-{{- if .Service.HasRawMethods}}
-import struct
+{{- if .Service.HasByteFields}}
+import base64
 {{- end}}
 
 
@@ -32,7 +32,7 @@ def _{{exportName .}}(offset: int) -> int:
 {{- end}}
 {{- /* Generate dataclasses for multi-value returns */ -}}
 {{range .Service.Methods}}
-{{- if and .NeedsResultClass (not .Raw)}}
+{{- if .NeedsResultClass}}
 
 
 @dataclass
@@ -47,7 +47,7 @@ class {{pythonResultType .}}:
 {{range .Service.Methods}}
 
 
-def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonName}}: {{$p.PythonType}}{{end}}){{if .Raw}} -> Tuple[str, bytes]{{else if .NeedsResultClass}} -> {{pythonResultType .}}{{else if .HasReturns}} -> {{(index .Returns 0).PythonType}}{{else}} -> None{{end}}:
+def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonName}}: {{$p.PythonType}}{{end}}){{if .NeedsResultClass}} -> {{pythonResultType .}}{{else if .HasReturns}} -> {{(index .Returns 0).PythonType}}{{else}} -> None{{end}}:
     """{{if .Doc}}{{.Doc}}{{else}}Call the {{exportName .}} host function.{{end}}
 {{- if .HasParams}}
 
@@ -56,11 +56,7 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
         {{.PythonName}}: {{.PythonType}} parameter.
 {{- end}}
 {{- end}}
-{{- if .Raw}}
-
-    Returns:
-        Tuple of (content_type, data) with the raw binary response.
-{{- else if .HasReturns}}
+{{- if .HasReturns}}
 
     Returns:
 {{- if .NeedsResultClass}}
@@ -76,7 +72,11 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
 {{- if .HasParams}}
     request = {
 {{- range .Params}}
+{{- if .IsByteSlice}}
+        "{{.JSONName}}": base64.b64encode({{.PythonName}}).decode("ascii"),
+{{- else}}
         "{{.JSONName}}": {{.PythonName}},
+{{- end}}
 {{- end}}
     }
     request_bytes = json.dumps(request).encode("utf-8")
@@ -86,24 +86,6 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
     request_mem = extism.memory.alloc(request_bytes)
     response_offset = _{{exportName .}}(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
-{{- if .Raw}}
-    response_bytes = response_mem.bytes()
-
-    if len(response_bytes) == 0:
-        raise HostFunctionError("empty response from host")
-    if response_bytes[0] == 0x01:
-        raise HostFunctionError(response_bytes[1:].decode("utf-8"))
-    if response_bytes[0] != 0x00:
-        raise HostFunctionError("unknown response status")
-    if len(response_bytes) < 5:
-        raise HostFunctionError("malformed raw response: incomplete header")
-    ct_len = struct.unpack(">I", response_bytes[1:5])[0]
-    if len(response_bytes) < 5 + ct_len:
-        raise HostFunctionError("malformed raw response: content-type overflow")
-    content_type = response_bytes[5:5 + ct_len].decode("utf-8")
-    data = response_bytes[5 + ct_len:]
-    return content_type, data
-{{- else}}
     response = json.loads(extism.memory.string(response_mem))
 {{if .HasError}}
     if response.get("error"):
@@ -112,10 +94,17 @@ def {{pythonFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.PythonNam
 {{- if .NeedsResultClass}}
     return {{pythonResultType .}}(
 {{- range .Returns}}
+{{- if .IsByteSlice}}
+        {{.PythonName}}=base64.b64decode(response.get("{{.JSONName}}", "")),
+{{- else}}
         {{.PythonName}}=response.get("{{.JSONName}}"{{pythonDefault .}}),
+{{- end}}
 {{- end}}
     )
 {{- else if .HasReturns}}
+{{- if (index .Returns 0).IsByteSlice}}
+    return base64.b64decode(response.get("{{(index .Returns 0).JSONName}}", ""))
+{{- else}}
     return response.get("{{(index .Returns 0).JSONName}}"{{pythonDefault (index .Returns 0)}})
 {{- end}}
 {{- end}}
