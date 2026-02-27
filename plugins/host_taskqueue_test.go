@@ -157,7 +157,22 @@ var _ = Describe("TaskQueueService", func() {
 			service.mu.Lock()
 			qs := service.queues["clamped-queue"]
 			service.mu.Unlock()
-			Expect(qs.config.Concurrency).To(BeNumerically("<=", int32(5)))
+			Expect(qs.config.Concurrency).To(Equal(int32(5)))
+		})
+
+		It("returns error when concurrency budget is exhausted", func() {
+			// maxConcurrency is 5; create a queue that uses all 5
+			err := service.CreateQueue(ctx, "full-budget", host.QueueConfig{
+				Concurrency: 5,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Next queue should fail — no budget remaining
+			err = service.CreateQueue(ctx, "over-budget", host.QueueConfig{
+				Concurrency: 1,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("concurrency budget exhausted"))
 		})
 
 		It("clamps retention below minimum", func() {
@@ -727,7 +742,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			Expect(ok).To(BeTrue())
 			Expect(p.manifest.Permissions).ToNot(BeNil())
 			Expect(p.manifest.Permissions.Taskqueue).ToNot(BeNil())
-			Expect(p.manifest.Permissions.Taskqueue.MaxConcurrency).To(Equal(3))
+			Expect(p.manifest.Permissions.Taskqueue.MaxConcurrency).To(Equal(10))
 			Expect(p.capabilities).To(ContainElement(CapabilityTaskWorker))
 		})
 	})

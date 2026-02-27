@@ -6,7 +6,7 @@
   "permissions": {
     "taskqueue": {
       "reason": "For testing task queue operations",
-      "maxConcurrency": 3
+      "maxConcurrency": 10
     }
   }
 }

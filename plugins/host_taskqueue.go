@@ -175,18 +175,25 @@ func (s *taskQueueServiceImpl) applyConfigDefaults(ctx context.Context, name str
 }
 
 // clampConcurrency reduces config.Concurrency if it exceeds the remaining budget.
+// Returns an error when the concurrency budget is fully exhausted.
 // Must be called with s.mu held.
-func (s *taskQueueServiceImpl) clampConcurrency(ctx context.Context, name string, config *host.QueueConfig) {
+func (s *taskQueueServiceImpl) clampConcurrency(ctx context.Context, name string, config *host.QueueConfig) error {
 	var allocated int32
 	for _, qs := range s.queues {
 		allocated += qs.config.Concurrency
 	}
-	available := max(s.maxConcurrency-allocated, 1)
+	available := s.maxConcurrency - allocated
+	if available <= 0 {
+		log.Warn(ctx, "TaskQueue concurrency budget exhausted", "plugin", s.pluginName, "queue", name,
+			"allocated", allocated, "maxConcurrency", s.maxConcurrency)
+		return fmt.Errorf("concurrency budget exhausted (%d/%d allocated)", allocated, s.maxConcurrency)
+	}
 	if config.Concurrency > available {
 		log.Warn(ctx, "TaskQueue concurrency clamped", "plugin", s.pluginName, "queue", name,
 			"requested", config.Concurrency, "available", available, "maxConcurrency", s.maxConcurrency)
 		config.Concurrency = available
 	}
+	return nil
 }
 
 func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, config host.QueueConfig) error {
@@ -202,7 +209,9 @@ func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, con
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.clampConcurrency(ctx, name, &config)
+	if err := s.clampConcurrency(ctx, name, &config); err != nil {
+		return err
+	}
 
 	if _, exists := s.queues[name]; exists {
 		return fmt.Errorf("queue %q already exists", name)
