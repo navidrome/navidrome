@@ -256,6 +256,15 @@ func GenerateClientRust(svc Service) ([]byte, error) {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
 
+	partialContent, err := templatesFS.ReadFile("templates/base64_bytes.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading base64_bytes partial: %w", err)
+	}
+	tmpl, err = tmpl.Parse(string(partialContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing base64_bytes partial: %w", err)
+	}
+
 	data := templateData{
 		Service: svc,
 	}
@@ -620,6 +629,15 @@ func GenerateCapabilityRust(cap Capability) ([]byte, error) {
 	tmpl, err := template.New("capability_rust").Funcs(rustCapabilityFuncMap(cap)).Parse(string(tmplContent))
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	partialContent, err := templatesFS.ReadFile("templates/base64_bytes.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading base64_bytes partial: %w", err)
+	}
+	tmpl, err = tmpl.Parse(string(partialContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing base64_bytes partial: %w", err)
 	}
 
 	data := capabilityTemplateData{
