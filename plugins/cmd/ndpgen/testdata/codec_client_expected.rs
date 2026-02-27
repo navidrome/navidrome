@@ -5,10 +5,34 @@
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CodecEncodeRequest {
+    #[serde(with = "base64_bytes")]
     data: Vec<u8>,
 }
 
@@ -16,6 +40,7 @@ struct CodecEncodeRequest {
 #[serde(rename_all = "camelCase")]
 struct CodecEncodeResponse {
     #[serde(default)]
+    #[serde(with = "base64_bytes")]
     result: Vec<u8>,
     #[serde(default)]
     error: Option<String>,

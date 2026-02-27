@@ -12,6 +12,7 @@ from typing import Any
 
 import extism
 import json
+import base64
 
 
 class HostFunctionError(Exception):
@@ -38,7 +39,7 @@ def codec_encode(data: bytes) -> bytes:
         HostFunctionError: If the host function returns an error.
     """
     request = {
-        "data": data,
+        "data": base64.b64encode(data).decode("ascii"),
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
@@ -49,4 +50,4 @@ def codec_encode(data: bytes) -> bytes:
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
-    return response.get("result", b"")
+    return base64.b64decode(response.get("result", ""))

@@ -12,6 +12,7 @@ from typing import Any
 
 import extism
 import json
+import base64
 
 
 class HostFunctionError(Exception):
@@ -80,7 +81,7 @@ Returns an error if the storage limit would be exceeded or the operation fails.
     """
     request = {
         "key": key,
-        "value": value,
+        "value": base64.b64encode(value).decode("ascii"),
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)
@@ -123,7 +124,7 @@ Returns the value and whether the key exists.
         raise HostFunctionError(response["error"])
 
     return KVStoreGetResult(
-        value=response.get("value", b""),
+        value=base64.b64decode(response.get("value", "")),
         exists=response.get("exists", False),
     )
 

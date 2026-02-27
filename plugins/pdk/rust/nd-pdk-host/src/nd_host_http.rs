@@ -5,6 +5,29 @@
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 /// HTTPRequest represents an outbound HTTP request from a plugin.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,6 +38,7 @@ pub struct HTTPRequest {
     #[serde(default)]
     pub headers: std::collections::HashMap<String, String>,
     #[serde(default)]
+    #[serde(with = "base64_bytes")]
     pub body: Vec<u8>,
     #[serde(default)]
     pub timeout_ms: i32,
@@ -28,6 +52,7 @@ pub struct HTTPResponse {
     #[serde(default)]
     pub headers: std::collections::HashMap<String, String>,
     #[serde(default)]
+    #[serde(with = "base64_bytes")]
     pub body: Vec<u8>,
 }
 
