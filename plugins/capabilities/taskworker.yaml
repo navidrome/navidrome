@@ -3,12 +3,13 @@ exports:
     nd_task_execute:
         description: |-
             OnTaskExecute is called when a queued task is ready to run.
+            The returned string is a status/result message stored in the tasks table.
             Return an error to trigger retry (if retries are configured).
         input:
             $ref: '#/components/schemas/TaskExecuteRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/TaskExecuteResponse'
+            type: string
             contentType: application/json
 components:
     schemas:
@@ -35,11 +36,3 @@ components:
                 - taskId
                 - payload
                 - attempt
-        TaskExecuteResponse:
-            description: TaskExecuteResponse is the response from task execution.
-            properties:
-                error:
-                    type: string
-                    description: |-
-                        Error, if non-empty, indicates the task failed. The task will be retried
-                        if retries are configured and attempts remain.

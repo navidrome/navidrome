@@ -77,7 +77,7 @@ type taskQueueServiceImpl struct {
 	queues         map[string]*queueState
 
 	// For testing: override how callbacks are invoked
-	invokeCallbackFn func(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) error
+	invokeCallbackFn func(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) (string, error)
 }
 
 // newTaskQueueService creates a new taskQueueServiceImpl with its own SQLite database.
@@ -140,7 +140,8 @@ func createTaskQueueSchema(db *sql.DB) error {
 			max_retries INTEGER NOT NULL,
 			next_run_at INTEGER NOT NULL,
 			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL
+			updated_at INTEGER NOT NULL,
+			message TEXT NOT NULL DEFAULT ''
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_tasks_dequeue ON tasks(queue_name, status, next_run_at);
@@ -289,21 +290,22 @@ func (s *taskQueueServiceImpl) Enqueue(ctx context.Context, queueName string, pa
 	return taskID, nil
 }
 
-// GetTaskStatus returns the status of a task.
-func (s *taskQueueServiceImpl) GetTaskStatus(ctx context.Context, taskID string) (string, error) {
-	var status string
-	err := s.db.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, taskID).Scan(&status)
+// Get returns the current state of a task.
+func (s *taskQueueServiceImpl) Get(ctx context.Context, taskID string) (*host.TaskInfo, error) {
+	var info host.TaskInfo
+	err := s.db.QueryRowContext(ctx, `SELECT status, message, attempt FROM tasks WHERE id = ?`, taskID).
+		Scan(&info.Status, &info.Message, &info.Attempt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("task %q not found", taskID)
+		return nil, fmt.Errorf("task %q not found", taskID)
 	}
 	if err != nil {
-		return "", fmt.Errorf("getting task status: %w", err)
+		return nil, fmt.Errorf("getting task info: %w", err)
 	}
-	return status, nil
+	return &info, nil
 }
 
-// CancelTask cancels a pending task.
-func (s *taskQueueServiceImpl) CancelTask(ctx context.Context, taskID string) error {
+// Cancel cancels a pending task.
+func (s *taskQueueServiceImpl) Cancel(ctx context.Context, taskID string) error {
 	now := time.Now().UnixMilli()
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = ?
@@ -396,7 +398,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 
 	// Invoke callback
 	log.Debug(s.ctx, "Executing task", "plugin", s.pluginName, "queue", queueName, "taskID", taskID, "attempt", attempt)
-	callbackErr := s.invokeCallbackFn(s.ctx, queueName, taskID, payload, attempt)
+	message, callbackErr := s.invokeCallbackFn(s.ctx, queueName, taskID, payload, attempt)
 
 	// If context was cancelled (shutdown), revert task to pending for recovery
 	if s.ctx.Err() != nil {
@@ -405,28 +407,33 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 	}
 
 	if callbackErr == nil {
-		s.completeTask(queueName, taskID)
+		s.completeTask(queueName, taskID, message)
 	} else {
-		s.handleTaskFailure(queueName, taskID, attempt, maxRetries, qs, callbackErr)
+		s.handleTaskFailure(queueName, taskID, attempt, maxRetries, qs, callbackErr, message)
 	}
 	return true
 }
 
-func (s *taskQueueServiceImpl) completeTask(queueName, taskID string) {
+func (s *taskQueueServiceImpl) completeTask(queueName, taskID, message string) {
 	now := time.Now().UnixMilli()
-	if _, err := s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`, taskStatusCompleted, now, taskID); err != nil {
+	if _, err := s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, message = ?, updated_at = ? WHERE id = ?`, taskStatusCompleted, message, now, taskID); err != nil {
 		log.Error(s.ctx, "Failed to mark task as completed", "plugin", s.pluginName, "taskID", taskID, err)
 	}
 	log.Debug(s.ctx, "Task completed", "plugin", s.pluginName, "queue", queueName, "taskID", taskID)
 }
 
-func (s *taskQueueServiceImpl) handleTaskFailure(queueName, taskID string, attempt, maxRetries int32, qs *queueState, callbackErr error) {
+func (s *taskQueueServiceImpl) handleTaskFailure(queueName, taskID string, attempt, maxRetries int32, qs *queueState, callbackErr error, message string) {
 	log.Warn(s.ctx, "Task execution failed", "plugin", s.pluginName, "queue", queueName,
 		"taskID", taskID, "attempt", attempt, "maxRetries", maxRetries, "err", callbackErr)
 
+	// Use error message as fallback if no message was provided
+	if message == "" {
+		message = callbackErr.Error()
+	}
+
 	now := time.Now().UnixMilli()
 	if attempt > maxRetries {
-		if _, err := s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`, taskStatusFailed, now, taskID); err != nil {
+		if _, err := s.db.ExecContext(s.ctx, `UPDATE tasks SET status = ?, message = ?, updated_at = ? WHERE id = ?`, taskStatusFailed, message, now, taskID); err != nil {
 			log.Error(s.ctx, "Failed to mark task as failed", "plugin", s.pluginName, "taskID", taskID, err)
 		}
 		log.Warn(s.ctx, "Task failed after all retries", "plugin", s.pluginName, "queue", queueName, "taskID", taskID)
@@ -462,13 +469,13 @@ func (s *taskQueueServiceImpl) revertTaskToPending(taskID string) {
 }
 
 // defaultInvokeCallback calls the plugin's nd_task_execute function.
-func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) error {
+func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) (string, error) {
 	s.manager.mu.RLock()
 	p, ok := s.manager.plugins[s.pluginName]
 	s.manager.mu.RUnlock()
 
 	if !ok {
-		return fmt.Errorf("plugin %s not loaded", s.pluginName)
+		return "", fmt.Errorf("plugin %s not loaded", s.pluginName)
 	}
 
 	input := capabilities.TaskExecuteRequest{
@@ -478,14 +485,11 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 		Attempt:   attempt,
 	}
 
-	result, err := callPluginFunction[capabilities.TaskExecuteRequest, capabilities.TaskExecuteResponse](ctx, p, FuncTaskWorkerCallback, input)
+	message, err := callPluginFunction[capabilities.TaskExecuteRequest, string](ctx, p, FuncTaskWorkerCallback, input)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if result.Error != "" {
-		return fmt.Errorf("%s", result.Error)
-	}
-	return nil
+	return message, nil
 }
 
 // cleanupLoop periodically removes terminal tasks past their retention period.
@@ -558,5 +562,5 @@ func (s *taskQueueServiceImpl) Close() error {
 }
 
 // Compile-time verification
-var _ host.TaskQueueService = (*taskQueueServiceImpl)(nil)
+var _ host.TaskService = (*taskQueueServiceImpl)(nil)
 var _ io.Closer = (*taskQueueServiceImpl)(nil)

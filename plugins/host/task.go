@@ -2,6 +2,17 @@ package host
 
 import "context"
 
+// TaskInfo holds the current state of a task.
+type TaskInfo struct {
+	// Status is the current task status: "pending", "running",
+	// "completed", "failed", or "cancelled".
+	Status string `json:"status"`
+	// Message is the status/result message returned by the plugin callback.
+	Message string `json:"message"`
+	// Attempt is the current or last attempt number (1-based).
+	Attempt int32 `json:"attempt"`
+}
+
 // QueueConfig holds configuration for a task queue.
 type QueueConfig struct {
 	// Concurrency is the max number of parallel workers. Default: 1.
@@ -24,15 +35,15 @@ type QueueConfig struct {
 	RetentionMs int64 `json:"retentionMs"`
 }
 
-// TaskQueueService provides persistent task queues for plugins.
+// TaskService provides persistent task queues for plugins.
 //
 // This service allows plugins to create named queues with configurable concurrency,
 // retry policies, and rate limiting. Tasks are persisted to SQLite and survive
 // server restarts. When a task is ready to execute, the host calls the plugin's
 // nd_task_execute callback function.
 //
-//nd:hostservice name=TaskQueue permission=taskqueue
-type TaskQueueService interface {
+//nd:hostservice name=Task permission=taskqueue
+type TaskService interface {
 	// CreateQueue creates a named task queue with the given configuration.
 	// Zero-value fields in config use sensible defaults.
 	// If a queue with the same name already exists, returns an error.
@@ -45,13 +56,13 @@ type TaskQueueService interface {
 	//nd:hostfunc
 	Enqueue(ctx context.Context, queueName string, payload []byte) (string, error)
 
-	// GetTaskStatus returns the status of a task: "pending", "running",
-	// "completed", "failed", or "cancelled".
+	// Get returns the current state of a task including its status,
+	// message, and attempt count.
 	//nd:hostfunc
-	GetTaskStatus(ctx context.Context, taskID string) (string, error)
+	Get(ctx context.Context, taskID string) (*TaskInfo, error)
 
-	// CancelTask cancels a pending task. Returns error if already
+	// Cancel cancels a pending task. Returns error if already
 	// running, completed, or failed.
 	//nd:hostfunc
-	CancelTask(ctx context.Context, taskID string) error
+	Cancel(ctx context.Context, taskID string) error
 }

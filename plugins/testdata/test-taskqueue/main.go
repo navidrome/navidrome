@@ -3,6 +3,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/taskworker"
@@ -14,15 +16,15 @@ func init() {
 
 type handler struct{}
 
-func (h *handler) OnTaskExecute(req taskworker.TaskExecuteRequest) (taskworker.TaskExecuteResponse, error) {
+func (h *handler) OnTaskExecute(req taskworker.TaskExecuteRequest) (string, error) {
 	payload := string(req.Payload)
 	if payload == "fail" {
-		return taskworker.TaskExecuteResponse{Error: "task failed as instructed"}, nil
+		return "", fmt.Errorf("task failed as instructed")
 	}
 	if payload == "fail-then-succeed" && req.Attempt < 2 {
-		return taskworker.TaskExecuteResponse{Error: "transient failure"}, nil
+		return "", fmt.Errorf("transient failure")
 	}
-	return taskworker.TaskExecuteResponse{}, nil
+	return "completed successfully", nil
 }
 
 // Test helper types
@@ -35,9 +37,11 @@ type TestInput struct {
 }
 
 type TestOutput struct {
-	TaskID string  `json:"taskId,omitempty"`
-	Status string  `json:"status,omitempty"`
-	Error  *string `json:"error,omitempty"`
+	TaskID  string  `json:"taskId,omitempty"`
+	Status  string  `json:"status,omitempty"`
+	Message string  `json:"message,omitempty"`
+	Attempt int32   `json:"attempt,omitempty"`
+	Error   *string `json:"error,omitempty"`
 }
 
 //go:wasmexport nd_test_taskqueue
@@ -55,7 +59,7 @@ func ndTestTaskQueue() int32 {
 		if input.Config != nil {
 			config = *input.Config
 		}
-		err := host.TaskQueueCreateQueue(input.QueueName, config)
+		err := host.TaskCreateQueue(input.QueueName, config)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestOutput{Error: &errStr})
@@ -64,7 +68,7 @@ func ndTestTaskQueue() int32 {
 		pdk.OutputJSON(TestOutput{})
 
 	case "enqueue":
-		taskID, err := host.TaskQueueEnqueue(input.QueueName, input.Payload)
+		taskID, err := host.TaskEnqueue(input.QueueName, input.Payload)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestOutput{Error: &errStr})
@@ -73,16 +77,16 @@ func ndTestTaskQueue() int32 {
 		pdk.OutputJSON(TestOutput{TaskID: taskID})
 
 	case "get_task_status":
-		status, err := host.TaskQueueGetTaskStatus(input.TaskID)
+		info, err := host.TaskGet(input.TaskID)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestOutput{Error: &errStr})
 			return 0
 		}
-		pdk.OutputJSON(TestOutput{Status: status})
+		pdk.OutputJSON(TestOutput{Status: info.Status, Message: info.Message, Attempt: info.Attempt})
 
 	case "cancel_task":
-		err := host.TaskQueueCancelTask(input.TaskID)
+		err := host.TaskCancel(input.TaskID)
 		if err != nil {
 			errStr := err.Error()
 			pdk.OutputJSON(TestOutput{Error: &errStr})

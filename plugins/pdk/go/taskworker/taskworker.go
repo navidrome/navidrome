@@ -23,13 +23,6 @@ type TaskExecuteRequest struct {
 	Attempt int32 `json:"attempt"`
 }
 
-// TaskExecuteResponse is the response from task execution.
-type TaskExecuteResponse struct {
-	// Error, if non-empty, indicates the task failed. The task will be retried
-	// if retries are configured and attempts remain.
-	Error string `json:"error,omitempty"`
-}
-
 // TaskWorker is the marker interface for taskworker plugins.
 // Implement one or more of the provider interfaces below.
 // TaskWorker provides task execution handling.
@@ -40,10 +33,10 @@ type TaskWorker interface{}
 
 // TaskExecuteProvider provides the OnTaskExecute function.
 type TaskExecuteProvider interface {
-	OnTaskExecute(TaskExecuteRequest) (TaskExecuteResponse, error)
+	OnTaskExecute(TaskExecuteRequest) (string, error)
 } // Internal implementation holders
 var (
-	taskExecuteImpl func(TaskExecuteRequest) (TaskExecuteResponse, error)
+	taskExecuteImpl func(TaskExecuteRequest) (string, error)
 )
 
 // Register registers a taskworker implementation.
