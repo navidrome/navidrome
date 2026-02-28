@@ -16,6 +16,7 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -273,6 +274,22 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 		allowedUserIDs: plugin.allowedUserIDs,
 		allUsers:       plugin.allUsers,
 		userIDMap:      userIDMap,
+	}, true
+}
+
+// LoadLyricsProvider loads and returns a lyrics provider plugin by name.
+func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+	m.mu.RLock()
+	plugin, ok := m.plugins[name]
+	m.mu.RUnlock()
+
+	if !ok || !hasCapability(plugin.capabilities, CapabilityLyrics) {
+		return nil, false
+	}
+
+	return &LyricsPlugin{
+		name:   plugin.name,
+		plugin: plugin,
 	}, true
 }
 
