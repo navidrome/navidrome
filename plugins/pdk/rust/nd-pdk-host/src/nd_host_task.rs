@@ -108,12 +108,28 @@ struct TaskCancelResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskClearQueueRequest {
+    queue_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskClearQueueResponse {
+    #[serde(default)]
+    result: i64,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[host_fn]
 extern "ExtismHost" {
     fn task_createqueue(input: Json<TaskCreateQueueRequest>) -> Json<TaskCreateQueueResponse>;
     fn task_enqueue(input: Json<TaskEnqueueRequest>) -> Json<TaskEnqueueResponse>;
     fn task_get(input: Json<TaskGetRequest>) -> Json<TaskGetResponse>;
     fn task_cancel(input: Json<TaskCancelRequest>) -> Json<TaskCancelResponse>;
+    fn task_clearqueue(input: Json<TaskClearQueueRequest>) -> Json<TaskClearQueueResponse>;
 }
 
 /// CreateQueue creates a named task queue with the given configuration.
@@ -214,4 +230,29 @@ pub fn cancel(task_id: &str) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+/// ClearQueue removes all pending tasks from the named queue.
+/// Running tasks are not affected. Returns the number of tasks removed.
+///
+/// # Arguments
+/// * `queue_name` - String parameter.
+///
+/// # Returns
+/// The number of tasks removed.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn clear_queue(queue_name: &str) -> Result<i64, Error> {
+    let response = unsafe {
+        task_clearqueue(Json(TaskClearQueueRequest {
+            queue_name: queue_name.to_owned(),
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.result)
 }

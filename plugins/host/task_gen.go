@@ -53,6 +53,17 @@ type TaskCancelResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
+// TaskClearQueueRequest is the request type for Task.ClearQueue.
+type TaskClearQueueRequest struct {
+	QueueName string `json:"queueName"`
+}
+
+// TaskClearQueueResponse is the response type for Task.ClearQueue.
+type TaskClearQueueResponse struct {
+	Result int64  `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
 // RegisterTaskHostFunctions registers Task service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterTaskHostFunctions(service TaskService) []extism.HostFunction {
@@ -61,6 +72,7 @@ func RegisterTaskHostFunctions(service TaskService) []extism.HostFunction {
 		newTaskEnqueueHostFunction(service),
 		newTaskGetHostFunction(service),
 		newTaskCancelHostFunction(service),
+		newTaskClearQueueHostFunction(service),
 	}
 }
 
@@ -187,6 +199,40 @@ func newTaskCancelHostFunction(service TaskService) extism.HostFunction {
 
 			// Write JSON response to plugin memory
 			resp := TaskCancelResponse{}
+			taskWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newTaskClearQueueHostFunction(service TaskService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"task_clearqueue",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				taskWriteError(p, stack, err)
+				return
+			}
+			var req TaskClearQueueRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				taskWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.ClearQueue(ctx, req.QueueName)
+			if svcErr != nil {
+				taskWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := TaskClearQueueResponse{
+				Result: result,
+			}
 			taskWriteResponse(p, stack, resp)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},

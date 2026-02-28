@@ -44,6 +44,12 @@ def _task_cancel(offset: int) -> int:
     ...
 
 
+@extism.import_fn("extism:host/user", "task_clearqueue")
+def _task_clearqueue(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
 def task_create_queue(name: str, config: Any) -> None:
     """CreateQueue creates a named task queue with the given configuration.
 Zero-value fields in config use sensible defaults.
@@ -152,3 +158,30 @@ running, completed, or failed.
     if response.get("error"):
         raise HostFunctionError(response["error"])
 
+
+def task_clear_queue(queue_name: str) -> int:
+    """ClearQueue removes all pending tasks from the named queue.
+Running tasks are not affected. Returns the number of tasks removed.
+
+    Args:
+        queue_name: str parameter.
+
+    Returns:
+        int: The number of tasks removed.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request = {
+        "queueName": queue_name,
+    }
+    request_bytes = json.dumps(request).encode("utf-8")
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _task_clearqueue(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response = json.loads(extism.memory.string(response_mem))
+
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+    return response.get("result", 0)

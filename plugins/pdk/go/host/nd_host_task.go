@@ -52,6 +52,11 @@ func task_get(uint64) uint64
 //go:wasmimport extism:host/user task_cancel
 func task_cancel(uint64) uint64
 
+// task_clearqueue is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user task_clearqueue
+func task_clearqueue(uint64) uint64
+
 type taskCreateQueueRequest struct {
 	Name   string      `json:"name"`
 	Config QueueConfig `json:"config"`
@@ -78,6 +83,15 @@ type taskGetResponse struct {
 
 type taskCancelRequest struct {
 	TaskID string `json:"taskId"`
+}
+
+type taskClearQueueRequest struct {
+	QueueName string `json:"queueName"`
+}
+
+type taskClearQueueResponse struct {
+	Result int64  `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 // TaskCreateQueue calls the task_createqueue host function.
@@ -224,4 +238,40 @@ func TaskCancel(taskID string) error {
 		return errors.New(response.Error)
 	}
 	return nil
+}
+
+// TaskClearQueue calls the task_clearqueue host function.
+// ClearQueue removes all pending tasks from the named queue.
+// Running tasks are not affected. Returns the number of tasks removed.
+func TaskClearQueue(queueName string) (int64, error) {
+	// Marshal request to JSON
+	req := taskClearQueueRequest{
+		QueueName: queueName,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := task_clearqueue(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response taskClearQueueResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return 0, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return 0, errors.New(response.Error)
+	}
+
+	return response.Result, nil
 }
