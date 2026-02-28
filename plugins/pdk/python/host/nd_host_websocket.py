@@ -12,6 +12,7 @@ from typing import Any
 
 import extism
 import json
+import base64
 
 
 class HostFunctionError(Exception):
@@ -134,7 +135,7 @@ Returns an error if the connection is not found or if sending fails.
     """
     request = {
         "connectionId": connection_id,
-        "data": data,
+        "data": base64.b64encode(data).decode("ascii"),
     }
     request_bytes = json.dumps(request).encode("utf-8")
     request_mem = extism.memory.alloc(request_bytes)

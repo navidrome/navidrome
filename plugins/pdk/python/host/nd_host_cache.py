@@ -12,6 +12,7 @@ from typing import Any
 
 import extism
 import json
+import base64
 
 
 class HostFunctionError(Exception):
@@ -337,7 +338,7 @@ Returns an error if the operation fails.
     """
     request = {
         "key": key,
-        "value": value,
+        "value": base64.b64encode(value).decode("ascii"),
         "ttlSeconds": ttl_seconds,
     }
     request_bytes = json.dumps(request).encode("utf-8")
@@ -382,7 +383,7 @@ or the stored value is not a byte slice, exists will be false.
         raise HostFunctionError(response["error"])
 
     return CacheGetBytesResult(
-        value=response.get("value", b""),
+        value=base64.b64decode(response.get("value", "")),
         exists=response.get("exists", False),
     )
 
