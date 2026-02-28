@@ -1,0 +1,115 @@
+version: v1-draft
+exports:
+    nd_lyrics_get_lyrics:
+        input:
+            $ref: '#/components/schemas/GetLyricsRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetLyricsResponse'
+            contentType: application/json
+components:
+    schemas:
+        ArtistRef:
+            description: ArtistRef is a reference to an artist with name and optional MBID.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
+        GetLyricsRequest:
+            description: GetLyricsRequest contains the track information for lyrics lookup.
+            properties:
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+            required:
+                - track
+        GetLyricsResponse:
+            description: GetLyricsResponse contains the lyrics returned by the plugin.
+            properties:
+                lyrics:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsText'
+            required:
+                - lyrics
+        LyricsText:
+            description: |-
+                LyricsText represents a single set of lyrics in raw text format.
+                Text can be plain text or LRC format — Navidrome will parse it.
+            properties:
+                lang:
+                    type: string
+                text:
+                    type: string
+            required:
+                - text
+        TrackInfo:
+            description: TrackInfo contains track metadata for scrobbling.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome track ID.
+                title:
+                    type: string
+                    description: Title is the track title.
+                album:
+                    type: string
+                    description: Album is the album name.
+                artist:
+                    type: string
+                    description: Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+                albumArtist:
+                    type: string
+                    description: AlbumArtist is the formatted album artist name for display.
+                artists:
+                    type: array
+                    description: Artists is the list of track artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                albumArtists:
+                    type: array
+                    description: AlbumArtists is the list of album artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the track duration in seconds.
+                trackNumber:
+                    type: integer
+                    format: int32
+                    description: TrackNumber is the track number on the album.
+                discNumber:
+                    type: integer
+                    format: int32
+                    description: DiscNumber is the disc number.
+                mbzRecordingId:
+                    type: string
+                    description: MBZRecordingID is the MusicBrainz recording ID.
+                mbzAlbumId:
+                    type: string
+                    description: MBZAlbumID is the MusicBrainz album/release ID.
+                mbzReleaseGroupId:
+                    type: string
+                    description: MBZReleaseGroupID is the MusicBrainz release group ID.
+                mbzReleaseTrackId:
+                    type: string
+                    description: MBZReleaseTrackID is the MusicBrainz release track ID.
+            required:
+                - id
+                - title
+                - album
+                - artist
+                - albumArtist
+                - artists
+                - albumArtists
+                - duration
+                - trackNumber
+                - discNumber

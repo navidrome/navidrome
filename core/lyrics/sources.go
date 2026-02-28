@@ -49,3 +49,27 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	return model.LyricList{*lyrics}, nil
 }
+
+// fromPlugin attempts to load lyrics from a plugin with the given name.
+func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string) (model.LyricList, error) {
+	if l.pluginLoader == nil {
+		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
+		return nil, nil
+	}
+
+	provider, ok := l.pluginLoader.LoadLyricsProvider(pluginName)
+	if !ok {
+		log.Warn(ctx, "Lyrics plugin not found", "plugin", pluginName)
+		return nil, nil
+	}
+
+	lyricsList, err := provider.GetLyrics(ctx, mf)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lyricsList) > 0 {
+		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
+	}
+	return lyricsList, nil
+}
