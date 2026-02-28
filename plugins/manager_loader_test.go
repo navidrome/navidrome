@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -56,5 +57,68 @@ var _ = Describe("parsePluginConfig", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(HaveLen(0))
 		Expect(result).ToNot(BeNil())
+	})
+})
+
+var _ = Describe("buildAllowedPaths", func() {
+	var libraries model.Libraries
+
+	BeforeEach(func() {
+		libraries = model.Libraries{
+			{ID: 1, Path: "/music/library1"},
+			{ID: 2, Path: "/music/library2"},
+			{ID: 3, Path: "/music/library3"},
+		}
+	})
+
+	Context("read-only (default)", func() {
+		It("mounts all libraries with ro: prefix when allLibraries is true", func() {
+			result := buildAllowedPaths(nil, libraries, nil, true, false)
+			Expect(result).To(HaveLen(3))
+			Expect(result).To(HaveKeyWithValue("ro:/music/library1", "/libraries/1"))
+			Expect(result).To(HaveKeyWithValue("ro:/music/library2", "/libraries/2"))
+			Expect(result).To(HaveKeyWithValue("ro:/music/library3", "/libraries/3"))
+		})
+
+		It("mounts only selected libraries with ro: prefix", func() {
+			result := buildAllowedPaths(nil, libraries, []int{1, 3}, false, false)
+			Expect(result).To(HaveLen(2))
+			Expect(result).To(HaveKeyWithValue("ro:/music/library1", "/libraries/1"))
+			Expect(result).To(HaveKeyWithValue("ro:/music/library3", "/libraries/3"))
+			Expect(result).ToNot(HaveKey("ro:/music/library2"))
+		})
+	})
+
+	Context("read-write (allowWriteAccess=true)", func() {
+		It("mounts all libraries without ro: prefix when allLibraries is true", func() {
+			result := buildAllowedPaths(nil, libraries, nil, true, true)
+			Expect(result).To(HaveLen(3))
+			Expect(result).To(HaveKeyWithValue("/music/library1", "/libraries/1"))
+			Expect(result).To(HaveKeyWithValue("/music/library2", "/libraries/2"))
+			Expect(result).To(HaveKeyWithValue("/music/library3", "/libraries/3"))
+		})
+
+		It("mounts only selected libraries without ro: prefix", func() {
+			result := buildAllowedPaths(nil, libraries, []int{2}, false, true)
+			Expect(result).To(HaveLen(1))
+			Expect(result).To(HaveKeyWithValue("/music/library2", "/libraries/2"))
+		})
+	})
+
+	Context("edge cases", func() {
+		It("returns empty map when no libraries match", func() {
+			result := buildAllowedPaths(nil, libraries, []int{99}, false, false)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns empty map when libraries list is empty", func() {
+			result := buildAllowedPaths(nil, nil, []int{1}, false, false)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns empty map when allLibraries is false and no IDs provided", func() {
+			result := buildAllowedPaths(nil, libraries, nil, false, false)
+			Expect(result).To(BeEmpty())
+		})
 	})
 })

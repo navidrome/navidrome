@@ -79,8 +79,8 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 
 	// Upsert using INSERT ... ON CONFLICT for atomic operation
 	_, err := r.db.NewQuery(`
-		INSERT INTO plugin (id, path, manifest, config, users, all_users, libraries, all_libraries, enabled, last_error, sha256, created_at, updated_at)
-		VALUES ({:id}, {:path}, {:manifest}, {:config}, {:users}, {:all_users}, {:libraries}, {:all_libraries}, {:enabled}, {:last_error}, {:sha256}, {:created_at}, {:updated_at})
+		INSERT INTO plugin (id, path, manifest, config, users, all_users, libraries, all_libraries, allow_write_access, enabled, last_error, sha256, created_at, updated_at)
+		VALUES ({:id}, {:path}, {:manifest}, {:config}, {:users}, {:all_users}, {:libraries}, {:all_libraries}, {:allow_write_access}, {:enabled}, {:last_error}, {:sha256}, {:created_at}, {:updated_at})
 		ON CONFLICT(id) DO UPDATE SET
 			path = excluded.path,
 			manifest = excluded.manifest,
@@ -89,24 +89,26 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 			all_users = excluded.all_users,
 			libraries = excluded.libraries,
 			all_libraries = excluded.all_libraries,
+			allow_write_access = excluded.allow_write_access,
 			enabled = excluded.enabled,
 			last_error = excluded.last_error,
 			sha256 = excluded.sha256,
 			updated_at = excluded.updated_at
 	`).Bind(dbx.Params{
-		"id":            plugin.ID,
-		"path":          plugin.Path,
-		"manifest":      plugin.Manifest,
-		"config":        plugin.Config,
-		"users":         plugin.Users,
-		"all_users":     plugin.AllUsers,
-		"libraries":     plugin.Libraries,
-		"all_libraries": plugin.AllLibraries,
-		"enabled":       plugin.Enabled,
-		"last_error":    plugin.LastError,
-		"sha256":        plugin.SHA256,
-		"created_at":    time.Now(),
-		"updated_at":    plugin.UpdatedAt,
+		"id":                 plugin.ID,
+		"path":               plugin.Path,
+		"manifest":           plugin.Manifest,
+		"config":             plugin.Config,
+		"users":              plugin.Users,
+		"all_users":          plugin.AllUsers,
+		"libraries":          plugin.Libraries,
+		"all_libraries":      plugin.AllLibraries,
+		"allow_write_access": plugin.AllowWriteAccess,
+		"enabled":            plugin.Enabled,
+		"last_error":         plugin.LastError,
+		"sha256":             plugin.SHA256,
+		"created_at":         time.Now(),
+		"updated_at":         plugin.UpdatedAt,
 	}).Execute()
 	return err
 }

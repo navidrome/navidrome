@@ -226,6 +226,8 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 // loadPluginWithConfig loads a plugin with configuration from DB.
 // The p.Path should point to an .ndp package file.
 func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
+	ctx := log.NewContext(m.ctx, "plugin", p.ID)
+
 	if m.stopped.Load() {
 		return fmt.Errorf("manager is stopped")
 	}
@@ -283,27 +285,13 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	// Configure filesystem access for library permission
 	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Library != nil && pkg.Manifest.Permissions.Library.Filesystem {
-		adminCtx := adminContext(m.ctx)
+		adminCtx := adminContext(ctx)
 		libraries, err := m.ds.Library(adminCtx).GetAll()
 		if err != nil {
 			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 		}
 
-		// Build a set of allowed library IDs for fast lookup
-		allowedLibrarySet := make(map[int]struct{}, len(allowedLibraries))
-		for _, id := range allowedLibraries {
-			allowedLibrarySet[id] = struct{}{}
-		}
-
-		allowedPaths := make(map[string]string)
-		for _, lib := range libraries {
-			// Only mount if allLibraries is true or library is in the allowed list
-			if p.AllLibraries {
-				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
-			} else if _, ok := allowedLibrarySet[lib.ID]; ok {
-				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
-			}
-		}
+		allowedPaths := buildAllowedPaths(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
 		pluginManifest.AllowedPaths = allowedPaths
 	}
 
@@ -339,7 +327,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	// Enable experimental threads if requested in manifest
 	if pkg.Manifest.HasExperimentalThreads() {
 		runtimeConfig = runtimeConfig.WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesThreads)
-		log.Debug(m.ctx, "Enabling experimental threads support", "plugin", p.ID)
+		log.Debug(ctx, "Enabling experimental threads support")
 	}
 
 	extismConfig := extism.PluginConfig{
@@ -347,24 +335,24 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		RuntimeConfig:             runtimeConfig,
 		EnableHttpResponseHeaders: true,
 	}
-	compiled, err := extism.NewCompiledPlugin(m.ctx, pluginManifest, extismConfig, hostFunctions)
+	compiled, err := extism.NewCompiledPlugin(ctx, pluginManifest, extismConfig, hostFunctions)
 	if err != nil {
 		return fmt.Errorf("compiling plugin: %w", err)
 	}
 
 	// Create instance to detect capabilities
-	instance, err := compiled.Instance(m.ctx, extism.PluginInstanceConfig{})
+	instance, err := compiled.Instance(ctx, extism.PluginInstanceConfig{})
 	if err != nil {
-		compiled.Close(m.ctx)
+		compiled.Close(ctx)
 		return fmt.Errorf("creating instance: %w", err)
 	}
 	instance.SetLogger(extismLogger(p.ID))
 	capabilities := detectCapabilities(instance)
-	instance.Close(m.ctx)
+	instance.Close(ctx)
 
 	// Validate manifest against detected capabilities
 	if err := ValidateWithCapabilities(pkg.Manifest, capabilities); err != nil {
-		compiled.Close(m.ctx)
+		compiled.Close(ctx)
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
@@ -383,7 +371,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	m.mu.Unlock()
 
 	// Call plugin init function
-	callPluginInit(m.ctx, m.plugins[p.ID])
+	callPluginInit(ctx, m.plugins[p.ID])
 
 	return nil
 }
@@ -413,4 +401,33 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 		}
 	}
 	return pluginConfig, nil
+}
+
+// buildAllowedPaths constructs the extism AllowedPaths map for filesystem access.
+// When allowWriteAccess is false (default), paths are prefixed with "ro:" for read-only.
+// Only libraries that match the allowed set (or all libraries if allLibraries is true) are included.
+func buildAllowedPaths(ctx context.Context, libraries model.Libraries, allowedLibraryIDs []int, allLibraries, allowWriteAccess bool) map[string]string {
+	allowedLibrarySet := make(map[int]struct{}, len(allowedLibraryIDs))
+	for _, id := range allowedLibraryIDs {
+		allowedLibrarySet[id] = struct{}{}
+	}
+	allowedPaths := make(map[string]string)
+	for _, lib := range libraries {
+		_, allowed := allowedLibrarySet[lib.ID]
+		if allLibraries || allowed {
+			mountPoint := toPluginMountPoint(int32(lib.ID))
+			hostPath := lib.Path
+			if !allowWriteAccess {
+				hostPath = "ro:" + hostPath
+			}
+			allowedPaths[hostPath] = mountPoint
+			log.Trace(ctx, "Added library to allowed paths", "libraryID", lib.ID, "mountPoint", mountPoint, "writeAccess", allowWriteAccess, "hostPath", hostPath)
+		}
+	}
+	if allowWriteAccess {
+		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
+	} else {
+		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
+	}
+	return allowedPaths
 }
