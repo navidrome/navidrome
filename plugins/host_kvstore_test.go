@@ -435,6 +435,21 @@ var _ = Describe("KVStoreService", func() {
 			Expect(exists).To(BeTrue())
 			Expect(value).To(Equal([]byte("still alive")))
 		})
+		It("cleanup reclaims storage from expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('cleanup_me', '12345', 5, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			service.currentSize.Add(5)
+			used, err := service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(5)))
+			service.cleanupExpired(ctx)
+			used, err = service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(0)))
+		})
 	})
 })
 

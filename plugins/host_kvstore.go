@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	_ "github.com/mattn/go-sqlite3"
@@ -20,6 +22,7 @@ import (
 const (
 	defaultMaxKVStoreSize = 1 * 1024 * 1024 // 1MB default
 	maxKeyLength          = 256             // Max key length in bytes
+	cleanupInterval       = 60 * time.Second
 )
 
 // kvstoreServiceImpl implements the host.KVStoreService interface.
@@ -29,6 +32,8 @@ type kvstoreServiceImpl struct {
 	db          *sql.DB
 	maxSize     int64
 	currentSize atomic.Int64 // cached total size, updated on Set/Delete
+	lastCleanup time.Time
+	mu          sync.Mutex
 }
 
 // newKVStoreService creates a new kvstoreServiceImpl instance with its own SQLite database.
@@ -122,6 +127,8 @@ func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) 
 	if len(key) > maxKeyLength {
 		return fmt.Errorf("key exceeds maximum length of %d bytes", maxKeyLength)
 	}
+
+	s.maybeCleanup(ctx)
 
 	newValueSize := int64(len(value))
 
@@ -254,11 +261,46 @@ func (s *kvstoreServiceImpl) GetStorageUsed(ctx context.Context) (int64, error) 
 	return used, nil
 }
 
+// cleanupExpired deletes all expired keys from the database and updates the cached size.
+func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
+	var totalSize int64
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`).Scan(&totalSize)
+	if err != nil {
+		log.Error(ctx, "KVStore cleanup: failed to calculate expired size", "plugin", s.pluginName, err)
+		return
+	}
+	if totalSize == 0 {
+		return
+	}
+
+	_, err = s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`)
+	if err != nil {
+		log.Error(ctx, "KVStore cleanup: failed to delete expired keys", "plugin", s.pluginName, err)
+		return
+	}
+
+	s.currentSize.Add(-totalSize)
+	log.Debug("KVStore cleanup completed", "plugin", s.pluginName, "reclaimedBytes", totalSize)
+}
+
+// maybeCleanup runs cleanupExpired if enough time has passed since the last cleanup.
+func (s *kvstoreServiceImpl) maybeCleanup(ctx context.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if time.Since(s.lastCleanup) < cleanupInterval {
+		return
+	}
+	s.lastCleanup = time.Now()
+	s.cleanupExpired(ctx)
+}
+
 // Close closes the SQLite database connection.
 // This is called when the plugin is unloaded.
 func (s *kvstoreServiceImpl) Close() error {
 	if s.db != nil {
 		log.Debug("Closing plugin kvstore", "plugin", s.pluginName)
+		s.cleanupExpired(context.Background())
 		return s.db.Close()
 	}
 	return nil
