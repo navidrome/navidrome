@@ -18,7 +18,7 @@ type MockPluginManager struct {
 	// UpdatePluginUsersFn is called when UpdatePluginUsers is invoked. If nil, returns UsersError.
 	UpdatePluginUsersFn func(ctx context.Context, id, usersJSON string, allUsers bool) error
 	// UpdatePluginLibrariesFn is called when UpdatePluginLibraries is invoked. If nil, returns LibrariesError.
-	UpdatePluginLibrariesFn func(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	UpdatePluginLibrariesFn func(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
 	// RescanPluginsFn is called when RescanPlugins is invoked. If nil, returns RescanError.
 	RescanPluginsFn func(ctx context.Context) error
 
@@ -48,9 +48,10 @@ type MockPluginManager struct {
 		AllUsers  bool
 	}
 	UpdatePluginLibrariesCalls []struct {
-		ID            string
-		LibrariesJSON string
-		AllLibraries  bool
+		ID               string
+		LibrariesJSON    string
+		AllLibraries     bool
+		AllowWriteAccess bool
 	}
 	RescanPluginsCalls int
 }
@@ -105,14 +106,15 @@ func (m *MockPluginManager) UpdatePluginUsers(ctx context.Context, id, usersJSON
 	return m.UsersError
 }
 
-func (m *MockPluginManager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error {
+func (m *MockPluginManager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error {
 	m.UpdatePluginLibrariesCalls = append(m.UpdatePluginLibrariesCalls, struct {
-		ID            string
-		LibrariesJSON string
-		AllLibraries  bool
-	}{ID: id, LibrariesJSON: librariesJSON, AllLibraries: allLibraries})
+		ID               string
+		LibrariesJSON    string
+		AllLibraries     bool
+		AllowWriteAccess bool
+	}{ID: id, LibrariesJSON: librariesJSON, AllLibraries: allLibraries, AllowWriteAccess: allowWriteAccess})
 	if m.UpdatePluginLibrariesFn != nil {
-		return m.UpdatePluginLibrariesFn(ctx, id, librariesJSON, allLibraries)
+		return m.UpdatePluginLibrariesFn(ctx, id, librariesJSON, allLibraries, allowWriteAccess)
 	}
 	return m.LibrariesError
 }

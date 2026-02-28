@@ -11,6 +11,7 @@ readme = "README.md"
 crate-type = ["rlib"]
 
 [dependencies]
+base64 = "0.22"
 extism-pdk = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

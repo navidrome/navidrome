@@ -353,7 +353,8 @@
         "allUsers": "Permitir todos os usuários",
         "selectedUsers": "Usuários selecionados",
         "allLibraries": "Permitir todas as bibliotecas",
-        "selectedLibraries": "Bibliotecas selecionadas"
+        "selectedLibraries": "Bibliotecas selecionadas",
+        "allowWriteAccess": "Permitir acesso de escrita"
       },
       "sections": {
         "status": "Status",
@@ -396,6 +397,7 @@
         "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
         "noLibraries": "Nenhuma biblioteca selecionada",
         "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
         "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido."

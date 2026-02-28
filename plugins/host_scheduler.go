@@ -188,12 +188,6 @@ func (s *schedulerServiceImpl) invokeCallback(ctx context.Context, scheduleID st
 		return
 	}
 
-	// Check if plugin has the scheduler capability
-	if !hasCapability(instance.capabilities, CapabilityScheduler) {
-		log.Warn(ctx, "Plugin does not have scheduler capability", "plugin", s.pluginName, "scheduleID", scheduleID)
-		return
-	}
-
 	// Prepare callback input
 	input := capabilities.SchedulerCallbackRequest{
 		ScheduleID:  scheduleID,

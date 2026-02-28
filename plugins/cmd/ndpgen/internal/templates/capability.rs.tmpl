@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 {{- if hasHashMap .Capability}}
 use std::collections::HashMap;
 {{- end}}
+{{- if .Capability.HasByteFields}}{{template "base64_bytes_module" .}}{{- end}}
 
 // Helper functions for skip_serializing_if with numeric types
 #[allow(dead_code)]
@@ -70,6 +71,9 @@ pub struct {{.Name}} {
     #[serde(default, skip_serializing_if = "{{skipSerializingFunc .Type}}")]
 {{- else}}
     #[serde(default)]
+{{- end}}
+{{- if .IsByteSlice}}
+    #[serde(with = "base64_bytes")]
 {{- end}}
     pub {{rustFieldName .Name}}: {{fieldRustType .}},
 {{- end}}

@@ -64,6 +64,14 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 			return fmt.Errorf("scrobbler capability requires 'users' permission to be declared in manifest")
 		}
 	}
+
+	// Scheduler permission requires SchedulerCallback capability
+	if m.Permissions != nil && m.Permissions.Scheduler != nil {
+		if !hasCapability(capabilities, CapabilityScheduler) {
+			return fmt.Errorf("'scheduler' permission requires plugin to export '%s' function", FuncSchedulerCallback)
+		}
+	}
+
 	return nil
 }
 
