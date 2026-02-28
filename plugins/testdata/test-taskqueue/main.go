@@ -41,6 +41,7 @@ type TestOutput struct {
 	Status  string  `json:"status,omitempty"`
 	Message string  `json:"message,omitempty"`
 	Attempt int32   `json:"attempt,omitempty"`
+	Cleared int64   `json:"cleared,omitempty"`
 	Error   *string `json:"error,omitempty"`
 }
 
@@ -93,6 +94,15 @@ func ndTestTaskQueue() int32 {
 			return 0
 		}
 		pdk.OutputJSON(TestOutput{})
+
+	case "clear_queue":
+		cleared, err := host.TaskClearQueue(input.QueueName)
+		if err != nil {
+			errStr := err.Error()
+			pdk.OutputJSON(TestOutput{Error: &errStr})
+			return 0
+		}
+		pdk.OutputJSON(TestOutput{Cleared: cleared})
 
 	default:
 		errStr := "unknown operation: " + input.Operation

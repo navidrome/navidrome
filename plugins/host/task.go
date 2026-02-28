@@ -65,4 +65,9 @@ type TaskService interface {
 	// running, completed, or failed.
 	//nd:hostfunc
 	Cancel(ctx context.Context, taskID string) error
+
+	// ClearQueue removes all pending tasks from the named queue.
+	// Running tasks are not affected. Returns the number of tasks removed.
+	//nd:hostfunc
+	ClearQueue(ctx context.Context, queueName string) (int64, error)
 }

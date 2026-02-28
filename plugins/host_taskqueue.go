@@ -336,6 +336,36 @@ func (s *taskQueueServiceImpl) Cancel(ctx context.Context, taskID string) error 
 	return nil
 }
 
+// ClearQueue removes all pending tasks from the named queue.
+// Running tasks are not affected. Returns the number of tasks removed.
+func (s *taskQueueServiceImpl) ClearQueue(ctx context.Context, queueName string) (int64, error) {
+	s.mu.Lock()
+	_, exists := s.queues[queueName]
+	s.mu.Unlock()
+
+	if !exists {
+		return 0, fmt.Errorf("queue %q does not exist", queueName)
+	}
+
+	now := time.Now().UnixMilli()
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tasks SET status = ?, updated_at = ? WHERE queue_name = ? AND status = ?
+	`, taskStatusCancelled, now, queueName, taskStatusPending)
+	if err != nil {
+		return 0, fmt.Errorf("clearing queue: %w", err)
+	}
+
+	cleared, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("checking clear result: %w", err)
+	}
+
+	if cleared > 0 {
+		log.Debug(ctx, "Cleared pending tasks from queue", "plugin", s.pluginName, "queue", queueName, "cleared", cleared)
+	}
+	return cleared, nil
+}
+
 // worker is the main loop for a single worker goroutine.
 func (s *taskQueueServiceImpl) worker(queueName string, qs *queueState) {
 	// Process any existing pending tasks immediately on startup

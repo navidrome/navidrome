@@ -343,6 +343,103 @@ var _ = Describe("TaskQueueService", func() {
 		})
 	})
 
+	Describe("ClearQueue", func() {
+		It("clears all pending tasks from a queue", func() {
+			// Block the callback so the first task occupies the worker
+			started := make(chan struct{})
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				close(started)
+				<-ctx.Done()
+				return "", ctx.Err()
+			}
+
+			err := service.CreateQueue(ctx, "clear-test", host.QueueConfig{
+				Concurrency: 1,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue a blocker task to occupy the single worker
+			_, err = service.Enqueue(ctx, "clear-test", []byte("blocker"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for the blocker task to start running
+			Eventually(started).WithTimeout(5 * time.Second).Should(BeClosed())
+
+			// Enqueue several more tasks — they stay pending since the worker is busy
+			var pendingIDs []string
+			for i := 0; i < 3; i++ {
+				taskID, err := service.Enqueue(ctx, "clear-test", []byte(fmt.Sprintf("task-%d", i)))
+				Expect(err).ToNot(HaveOccurred())
+				pendingIDs = append(pendingIDs, taskID)
+			}
+
+			// Clear the queue
+			cleared, err := service.ClearQueue(ctx, "clear-test")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleared).To(Equal(int64(3)))
+
+			// Verify all pending tasks are now cancelled
+			for _, id := range pendingIDs {
+				info, err := service.Get(ctx, id)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(info.Status).To(Equal("cancelled"))
+			}
+		})
+
+		It("returns zero when queue has no pending tasks", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
+			}
+			err := service.CreateQueue(ctx, "empty-clear", host.QueueConfig{})
+			Expect(err).ToNot(HaveOccurred())
+
+			cleared, err := service.ClearQueue(ctx, "empty-clear")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleared).To(Equal(int64(0)))
+		})
+
+		It("returns error for non-existent queue", func() {
+			_, err := service.ClearQueue(ctx, "no-such-queue")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
+		})
+
+		It("does not affect running tasks", func() {
+			// Block the callback so tasks stay running
+			started := make(chan struct{}, 1)
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				select {
+				case started <- struct{}{}:
+				default:
+				}
+				<-ctx.Done()
+				return "", ctx.Err()
+			}
+
+			err := service.CreateQueue(ctx, "clear-running", host.QueueConfig{
+				Concurrency: 1,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue a task that will start running
+			runningID, err := service.Enqueue(ctx, "clear-running", []byte("running-task"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for it to start running
+			Eventually(started).WithTimeout(5 * time.Second).Should(Receive())
+
+			// Clear the queue — should not affect the running task
+			cleared, err := service.ClearQueue(ctx, "clear-running")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleared).To(Equal(int64(0)))
+
+			// Verify the running task is still running
+			info, err := service.Get(ctx, runningID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Status).To(Equal("running"))
+		})
+	})
+
 	Describe("Worker execution", func() {
 		It("invokes callback and completes task", func() {
 			var callCount atomic.Int32
@@ -810,6 +907,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 		Status  string  `json:"status,omitempty"`
 		Message string  `json:"message,omitempty"`
 		Attempt int32   `json:"attempt,omitempty"`
+		Cleared int64   `json:"cleared,omitempty"`
 		Error   *string `json:"error,omitempty"`
 	}
 
@@ -1066,6 +1164,55 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 				Operation: "enqueue",
 				QueueName: "nonexistent-queue",
 				Payload:   []byte("payload"),
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
+		})
+	})
+
+	Describe("Clear Queue", func() {
+		It("should clear pending tasks and return the count", func() {
+			ctx := GinkgoT().Context()
+
+			// Create queue with large delay so tasks stay pending after the first completes
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "create_queue",
+				QueueName: "test-clear",
+				Config: &testQueueConfig{
+					Concurrency: 1,
+					DelayMs:     60000,
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Enqueue several tasks
+			for i := 0; i < 4; i++ {
+				_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+					Operation: "enqueue",
+					QueueName: "test-clear",
+					Payload:   []byte(fmt.Sprintf("task-%d", i)),
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Wait for the first task to complete (burst token)
+			time.Sleep(200 * time.Millisecond)
+
+			// Clear the queue — should cancel remaining pending tasks
+			output, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "clear_queue",
+				QueueName: "test-clear",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Cleared).To(BeNumerically(">=", int64(1)))
+		})
+
+		It("should return error for non-existent queue", func() {
+			ctx := GinkgoT().Context()
+
+			_, err := callTestTaskQueue(ctx, testTaskQueueInput{
+				Operation: "clear_queue",
+				QueueName: "nonexistent-clear",
 			})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
