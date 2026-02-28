@@ -165,7 +165,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
+			conf.Server.NowPlaying.Enabled = false
 			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(eventBroker.getEvents()).To(BeEmpty())
@@ -221,7 +221,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
+			conf.Server.NowPlaying.Enabled = false
 			tracker = newPlayTracker(ds, eventBroker, nil)
 			info := NowPlayingInfo{MediaFile: track, Start: time.Now(), Username: "user"}
 			_ = tracker.(*playTracker).playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
