@@ -161,6 +161,13 @@ const Player = () => {
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
+  // ReactJKMusicPlayer doesn't set playbackState, so we do it manually
+  const updateMediaSessionPlaybackState = useCallback((state) => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = state
+    }
+  }, [])
+
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
     [dispatch],
@@ -220,6 +227,7 @@ const Player = () => {
         context.resume()
       }
 
+      updateMediaSessionPlaybackState('playing')
       dispatch(currentPlaying(info))
       if (startTime === null) {
         setStartTime(Date.now())
@@ -248,7 +256,13 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, startTime],
+    [
+      context,
+      dispatch,
+      showNotifications,
+      startTime,
+      updateMediaSessionPlaybackState,
+    ],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
@@ -261,12 +275,16 @@ const Player = () => {
   }, [scrobbled, startTime])
 
   const onAudioPause = useCallback(
-    (info) => dispatch(currentPlaying(info)),
-    [dispatch],
+    (info) => {
+      updateMediaSessionPlaybackState('paused')
+      dispatch(currentPlaying(info))
+    },
+    [dispatch, updateMediaSessionPlaybackState],
   )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      updateMediaSessionPlaybackState('none')
       setScrobbled(false)
       setStartTime(null)
       dispatch(currentPlaying(info))
@@ -275,7 +293,7 @@ const Player = () => {
         // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider],
+    [dispatch, dataProvider, updateMediaSessionPlaybackState],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
