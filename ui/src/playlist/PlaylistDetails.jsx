@@ -22,7 +22,7 @@ import {
 } from '../common'
 import subsonic from '../subsonic'
 import { REST_URL } from '../consts'
-import { baseUrl } from '../utils'
+import { httpClient } from '../dataProvider'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -179,20 +179,11 @@ const PlaylistDetails = (props) => {
       formData.append('image', file)
 
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(
-          baseUrl(`${REST_URL}/playlist/${record.id}/image`),
-          {
-            method: 'POST',
-            headers: {
-              'X-ND-Authorization': `Bearer ${token}`,
-            },
-            body: formData,
-          },
-        )
-        if (!response.ok) {
-          throw new Error(await response.text())
-        }
+        await httpClient(`${REST_URL}/playlist/${record.id}/image`, {
+          method: 'POST',
+          headers: new Headers({}),
+          body: formData,
+        })
         notify('resources.playlist.actions.coverUploaded', 'success')
         refresh()
       } catch (err) {
@@ -211,19 +202,9 @@ const PlaylistDetails = (props) => {
       if (!record.id) return
 
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(
-          baseUrl(`${REST_URL}/playlist/${record.id}/image`),
-          {
-            method: 'DELETE',
-            headers: {
-              'X-ND-Authorization': `Bearer ${token}`,
-            },
-          },
-        )
-        if (!response.ok) {
-          throw new Error(await response.text())
-        }
+        await httpClient(`${REST_URL}/playlist/${record.id}/image`, {
+          method: 'DELETE',
+        })
         notify('resources.playlist.actions.coverRemoved', 'success')
         refresh()
       } catch (err) {

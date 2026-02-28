@@ -300,15 +300,11 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 		return fmt.Errorf("creating playlist images directory: %w", err)
 	}
 
-	// Remove any old image(s) for this playlist to avoid orphans from previous uploads with different extensions.
-	matches, err := filepath.Glob(filepath.Join(dir, playlistID+".*"))
-	if err != nil {
-		log.Warn(ctx, "Error while searching for old playlist images to clean up", "playlistID", playlistID, err)
-	} else {
-		for _, match := range matches {
-			if err := os.Remove(match); err != nil && !os.IsNotExist(err) {
-				log.Warn(ctx, "Failed to remove old playlist image", "path", match, err)
-			}
+	// Remove old image if it exists
+	if pls.ImagePath != "" {
+		oldPath := filepath.Join(conf.Server.DataFolder, pls.ImagePath)
+		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
+			log.Warn(ctx, "Failed to remove old playlist image", "path", oldPath, err)
 		}
 	}
 

@@ -277,16 +277,19 @@ func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 			ext = strings.ToLower(filepath.Ext(header.Filename))
 		}
 		if ext == "" || ext == "." {
+			log.Error(ctx, "Could not determine image type", "playlistId", playlistId, "filename", header.Filename)
 			http.Error(w, "could not determine image type", http.StatusBadRequest)
 			return
 		}
 
 		err = pls.SetImage(ctx, playlistId, file, ext)
 		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to upload playlist image", "playlistId", playlistId, err)
 			http.Error(w, "not authorized", http.StatusForbidden)
 			return
 		}
 		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image upload", "playlistId", playlistId, err)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -308,10 +311,12 @@ func deletePlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 
 		err := pls.RemoveImage(ctx, playlistId)
 		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to remove playlist image", "playlistId", playlistId, err)
 			http.Error(w, "not authorized", http.StatusForbidden)
 			return
 		}
 		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image removal", "playlistId", playlistId, err)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
