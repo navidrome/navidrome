@@ -90,10 +90,27 @@ func createKVStoreSchema(db *sql.DB) error {
 			value BLOB NOT NULL,
 			size INTEGER NOT NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at DATETIME DEFAULT NULL
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Migrate existing databases: add expires_at column if missing
+	row := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('kvstore') WHERE name = 'expires_at'`)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		_, err = db.Exec(`ALTER TABLE kvstore ADD COLUMN expires_at DATETIME DEFAULT NULL`)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Set stores a byte value with the given key.
