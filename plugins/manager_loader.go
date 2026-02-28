@@ -411,20 +411,23 @@ func buildAllowedPaths(ctx context.Context, libraries model.Libraries, allowedLi
 	for _, id := range allowedLibraryIDs {
 		allowedLibrarySet[id] = struct{}{}
 	}
-
 	allowedPaths := make(map[string]string)
 	for _, lib := range libraries {
 		_, allowed := allowedLibrarySet[lib.ID]
 		if allLibraries || allowed {
 			mountPoint := toPluginMountPoint(int32(lib.ID))
-			if allowWriteAccess {
-				log.Info(ctx, "Granting read-write filesystem access to library", "libraryID", lib.ID, "mountPoint", mountPoint)
-				allowedPaths[lib.Path] = mountPoint
-			} else {
-				log.Debug(ctx, "Granting read-only filesystem access to library", "libraryID", lib.ID, "mountPoint", mountPoint)
-				allowedPaths["ro:"+lib.Path] = mountPoint
+			hostPath := lib.Path
+			if !allowWriteAccess {
+				hostPath = "ro:" + hostPath
 			}
+			allowedPaths[hostPath] = mountPoint
+			log.Trace(ctx, "Added library to allowed paths", "libraryID", lib.ID, "mountPoint", mountPoint, "writeAccess", allowWriteAccess, "hostPath", hostPath)
 		}
+	}
+	if allowWriteAccess {
+		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
+	} else {
+		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
 	}
 	return allowedPaths
 }
