@@ -163,7 +163,7 @@ func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) 
 // Get retrieves a byte value from storage.
 func (s *kvstoreServiceImpl) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	var value []byte
-	err := s.db.QueryRowContext(ctx, `SELECT value FROM kvstore WHERE key = ?`, key).Scan(&value)
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM kvstore WHERE key = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`, key).Scan(&value)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
@@ -203,7 +203,7 @@ func (s *kvstoreServiceImpl) Delete(ctx context.Context, key string) error {
 // Has checks if a key exists in storage.
 func (s *kvstoreServiceImpl) Has(ctx context.Context, key string) (bool, error) {
 	var count int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kvstore WHERE key = ?`, key).Scan(&count)
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kvstore WHERE key = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`, key).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("checking key: %w", err)
 	}
@@ -216,13 +216,14 @@ func (s *kvstoreServiceImpl) List(ctx context.Context, prefix string) ([]string,
 	var rows *sql.Rows
 	var err error
 
+	notExpired := "(expires_at IS NULL OR expires_at > datetime('now'))"
 	if prefix == "" {
-		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore ORDER BY key`)
+		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE `+notExpired+` ORDER BY key`)
 	} else {
 		// Escape special LIKE characters in prefix
 		escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
 		escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
-		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE key LIKE ? ESCAPE '\' ORDER BY key`, escapedPrefix+"%")
+		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE key LIKE ? ESCAPE '\' AND `+notExpired+` ORDER BY key`, escapedPrefix+"%")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("listing keys: %w", err)

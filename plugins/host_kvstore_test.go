@@ -389,6 +389,53 @@ var _ = Describe("KVStoreService", func() {
 			Expect(expiresAt.Valid).To(BeFalse())
 		})
 	})
+
+	Describe("TTL Expiration", func() {
+		It("Get returns not-exists for expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_key', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			value, exists, err := service.Get(ctx, "expired_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+			Expect(value).To(BeNil())
+		})
+		It("Has returns false for expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_has', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			exists, err := service.Has(ctx, "expired_has")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+		It("List excludes expired keys", func() {
+			Expect(service.Set(ctx, "live:1", []byte("alive"))).To(Succeed())
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('live:expired', 'dead', 4, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			keys, err := service.List(ctx, "live:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(keys).To(HaveLen(1))
+			Expect(keys).To(ContainElement("live:1"))
+		})
+		It("Get returns value for non-expired keys with TTL", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('future_key', 'still alive', 11, datetime('now', '+3600 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			value, exists, err := service.Get(ctx, "future_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("still alive")))
+		})
+	})
 })
 
 var _ = Describe("KVStoreService Integration", Ordered, func() {
