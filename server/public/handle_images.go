@@ -47,11 +47,11 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, model.ErrNotFound):
 		log.Warn(r, "Couldn't find coverArt", "id", id, err)
-		http.Error(w, "Artwork not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	case errors.Is(err, artwork.ErrUnavailable):
 		log.Debug(r, "Item does not have artwork", "id", id, err)
-		http.Error(w, "Artwork not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
