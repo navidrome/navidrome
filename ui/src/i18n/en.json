@@ -209,6 +209,7 @@
         "sync": "Auto-import",
         "path": "Import from"
       },
+      "byOwner": "by %{name}",
       "actions": {
         "selectPlaylist": "Select a playlist:",
         "addNewPlaylist": "Create \"%{name}\"",

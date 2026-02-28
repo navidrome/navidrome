@@ -6,7 +6,7 @@ import {
   useMediaQuery,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { useTranslate } from 'react-admin'
+import { useTranslate, usePermissions } from 'react-admin'
 import { useCallback, useState, useEffect } from 'react'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
@@ -86,6 +86,7 @@ const useStyles = makeStyles(
 const PlaylistDetails = (props) => {
   const { record = {} } = props
   const translate = useTranslate()
+  const { permissions } = usePermissions()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const [isLightboxOpen, setLightboxOpen] = useState(false)
@@ -163,6 +164,14 @@ const PlaylistDetails = (props) => {
                 <span>&nbsp;</span>
               )}
             </Typography>
+            {(record.public || permissions === 'admin') && (
+              <Typography component="p">
+                {translate('resources.playlist.byOwner', {
+                  name: record.ownerName,
+                  _: `by ${record.ownerName}`,
+                })}
+              </Typography>
+            )}
             <CollapsibleComment record={record} />
           </CardContent>
         </div>
