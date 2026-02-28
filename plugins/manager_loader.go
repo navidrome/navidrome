@@ -298,10 +298,16 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allowedPaths := make(map[string]string)
 		for _, lib := range libraries {
 			// Only mount if allLibraries is true or library is in the allowed list
-			if p.AllLibraries {
-				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
-			} else if _, ok := allowedLibrarySet[lib.ID]; ok {
-				allowedPaths[lib.Path] = toPluginMountPoint(int32(lib.ID))
+			_, allowed := allowedLibrarySet[lib.ID]
+			if p.AllLibraries || allowed {
+				mountPoint := toPluginMountPoint(int32(lib.ID))
+				if p.AllowWriteAccess {
+					log.Info(m.ctx, "Granting read-write filesystem access to library", "plugin", p.ID, "libraryID", lib.ID, "mountPoint", mountPoint)
+					allowedPaths[lib.Path] = mountPoint // read-write
+				} else {
+					log.Debug(m.ctx, "Granting read-only filesystem access to library", "plugin", p.ID, "libraryID", lib.ID, "mountPoint", mountPoint)
+					allowedPaths["ro:"+lib.Path] = mountPoint // read-only (default)
+				}
 			}
 		}
 		pluginManifest.AllowedPaths = allowedPaths

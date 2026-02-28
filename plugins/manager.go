@@ -428,10 +428,11 @@ func (m *Manager) UpdatePluginUsers(ctx context.Context, id, usersJSON string, a
 // If the plugin is enabled, it will be reloaded with the new settings.
 // If the plugin requires library permission and no libraries are configured (and allLibraries is false),
 // the plugin will be automatically disabled.
-func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error {
+func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error {
 	return m.updatePluginSettings(ctx, id, func(p *model.Plugin) {
 		p.Libraries = librariesJSON
 		p.AllLibraries = allLibraries
+		p.AllowWriteAccess = allowWriteAccess
 	})
 }
 

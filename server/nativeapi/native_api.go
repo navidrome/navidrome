@@ -29,7 +29,7 @@ type PluginManager interface {
 	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
-	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
 	RescanPlugins(ctx context.Context) error
 	UnloadDisabledPlugins(ctx context.Context)
 }

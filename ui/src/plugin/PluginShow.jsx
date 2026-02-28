@@ -48,8 +48,11 @@ const PluginShowLayout = () => {
   // Libraries permission state
   const [selectedLibraries, setSelectedLibraries] = useState([])
   const [allLibraries, setAllLibraries] = useState(false)
+  const [allowWriteAccess, setAllowWriteAccess] = useState(false)
   const [lastRecordLibraries, setLastRecordLibraries] = useState(null)
   const [lastRecordAllLibraries, setLastRecordAllLibraries] = useState(null)
+  const [lastRecordAllowWriteAccess, setLastRecordAllowWriteAccess] =
+    useState(null)
 
   // Parse JSON config to object
   const jsonToObject = useCallback((jsonString) => {
@@ -99,10 +102,12 @@ const PluginShowLayout = () => {
     if (record && !isDirty) {
       const recordLibraries = record.libraries || ''
       const recordAllLibraries = record.allLibraries || false
+      const recordAllowWriteAccess = record.allowWriteAccess || false
 
       if (
         recordLibraries !== lastRecordLibraries ||
-        recordAllLibraries !== lastRecordAllLibraries
+        recordAllLibraries !== lastRecordAllLibraries ||
+        recordAllowWriteAccess !== lastRecordAllowWriteAccess
       ) {
         try {
           setSelectedLibraries(
@@ -112,11 +117,19 @@ const PluginShowLayout = () => {
           setSelectedLibraries([])
         }
         setAllLibraries(recordAllLibraries)
+        setAllowWriteAccess(recordAllowWriteAccess)
         setLastRecordLibraries(recordLibraries)
         setLastRecordAllLibraries(recordAllLibraries)
+        setLastRecordAllowWriteAccess(recordAllowWriteAccess)
       }
     }
-  }, [record, lastRecordLibraries, lastRecordAllLibraries, isDirty])
+  }, [
+    record,
+    lastRecordLibraries,
+    lastRecordAllLibraries,
+    lastRecordAllowWriteAccess,
+    isDirty,
+  ])
 
   const handleConfigDataChange = useCallback(
     (newData, errors) => {
@@ -152,6 +165,11 @@ const PluginShowLayout = () => {
     setIsDirty(true)
   }, [])
 
+  const handleAllowWriteAccessChange = useCallback((newAllowWriteAccess) => {
+    setAllowWriteAccess(newAllowWriteAccess)
+    setIsDirty(true)
+  }, [])
+
   const [updatePlugin, { loading }] = useUpdate(
     'plugin',
     record?.id,
@@ -167,6 +185,7 @@ const PluginShowLayout = () => {
         setLastRecordAllUsers(null)
         setLastRecordLibraries(null)
         setLastRecordAllLibraries(null)
+        setLastRecordAllowWriteAccess(null)
         notify('resources.plugin.notifications.updated', 'info')
       },
       onFailure: (err) => {
@@ -199,6 +218,7 @@ const PluginShowLayout = () => {
     if (parsedManifest?.permissions?.library) {
       data.libraries = JSON.stringify(selectedLibraries)
       data.allLibraries = allLibraries
+      data.allowWriteAccess = allowWriteAccess
     }
 
     updatePlugin('plugin', record.id, data, record)
@@ -210,6 +230,7 @@ const PluginShowLayout = () => {
     allUsers,
     selectedLibraries,
     allLibraries,
+    allowWriteAccess,
   ])
 
   // Parse manifest
@@ -294,8 +315,10 @@ const PluginShowLayout = () => {
           classes={classes}
           selectedLibraries={selectedLibraries}
           allLibraries={allLibraries}
+          allowWriteAccess={allowWriteAccess}
           onSelectedLibrariesChange={handleSelectedLibrariesChange}
           onAllLibrariesChange={handleAllLibrariesChange}
+          onAllowWriteAccessChange={handleAllowWriteAccessChange}
         />
 
         <Box display="flex" justifyContent="flex-end">
