@@ -106,7 +106,13 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	}
 	pls.UpdatedAt = time.Now()
 
-	id, err := r.put(pls.ID, pls)
+	var id string
+	err := RetryWithBackoff(r.ctx, "playlist_put", func() error {
+		var putErr error
+		id, putErr = r.put(pls.ID, pls)
+		return putErr
+	}, 3, 100*time.Millisecond, 2*time.Second)
+
 	if err != nil {
 		return err
 	}

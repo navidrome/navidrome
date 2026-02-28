@@ -101,6 +101,7 @@ type configOptions struct {
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
+	SQLite                          sqliteOptions       `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`

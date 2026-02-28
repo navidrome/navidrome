@@ -41,7 +41,32 @@ func Db() *sql.DB {
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
-		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
+
+		maxConns := max(4, runtime.NumCPU())
+		if conf.Server.SQLite.MaxConnections > 0 {
+			maxConns = conf.Server.SQLite.MaxConnections
+		}
+		db.SetMaxOpenConns(maxConns)
+
+		// Configure SQLite PRAGMAs to improve concurrency and reduce "database is locked" errors
+		// WAL allows concurrent readers while a writer is active
+		// busy_timeout tells SQLite how long to wait for a lock before error
+		// Note: some network filesystems (NFS/CIFS) may not fully support WAL
+		if conf.Server.SQLite.JournalMode != "" {
+			if _, err := db.Exec("PRAGMA journal_mode=" + conf.Server.SQLite.JournalMode + ";"); err != nil {
+				log.Error("Error setting PRAGMA journal_mode", "mode", conf.Server.SQLite.JournalMode, err)
+			}
+		}
+		if conf.Server.SQLite.BusyTimeout > 0 {
+			if _, err := db.Exec(fmt.Sprintf("PRAGMA busy_timeout=%d;", conf.Server.SQLite.BusyTimeout)); err != nil {
+				log.Error("Error setting PRAGMA busy_timeout", "timeout", conf.Server.SQLite.BusyTimeout, err)
+			}
+		}
+		if conf.Server.SQLite.SyncMode != "" {
+			if _, err := db.Exec("PRAGMA synchronous=" + conf.Server.SQLite.SyncMode + ";"); err != nil {
+				log.Error("Error setting PRAGMA synchronous", "mode", conf.Server.SQLite.SyncMode, err)
+			}
+		}
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
