@@ -106,8 +106,8 @@ var _ = Describe("TaskQueueService", func() {
 		})
 
 		It("accepts queue name at maximum length", func() {
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
-				return nil
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
 			}
 			exactName := strings.Repeat("a", maxQueueNameLength)
 			err := service.CreateQueue(ctx, exactName, host.QueueConfig{})
@@ -131,8 +131,8 @@ var _ = Describe("TaskQueueService", func() {
 
 	Describe("CreateQueue defaults with negative values", func() {
 		It("applies default RetentionMs for negative value", func() {
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
-				return nil
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
 			}
 			err := service.CreateQueue(ctx, "neg-retention", host.QueueConfig{
 				RetentionMs: -500,
@@ -203,8 +203,8 @@ var _ = Describe("TaskQueueService", func() {
 	Describe("Enqueue", func() {
 		BeforeEach(func() {
 			// Use a no-op callback to prevent actual execution attempts
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
-				return nil
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
 			}
 			err := service.CreateQueue(ctx, "enqueue-test", host.QueueConfig{})
 			Expect(err).ToNot(HaveOccurred())
@@ -240,9 +240,9 @@ var _ = Describe("TaskQueueService", func() {
 	Describe("GetTaskStatus", func() {
 		BeforeEach(func() {
 			// Use a callback that blocks until context is cancelled so tasks stay pending
-			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				<-ctx.Done()
-				return ctx.Err()
+				return "", ctx.Err()
 			}
 		})
 
@@ -255,13 +255,14 @@ var _ = Describe("TaskQueueService", func() {
 
 			// The task may get picked up quickly; check initial status
 			// Since the callback blocks, it should be either pending or running
-			status, err := service.GetTaskStatus(ctx, taskID)
+			info, err := service.Get(ctx, taskID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(status).To(BeElementOf("pending", "running"))
+			Expect(info).ToNot(BeNil())
+			Expect(info.Status).To(BeElementOf("pending", "running"))
 		})
 
 		It("returns error for unknown task ID", func() {
-			_, err := service.GetTaskStatus(ctx, "nonexistent-id")
+			_, err := service.Get(ctx, "nonexistent-id")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})
@@ -270,19 +271,19 @@ var _ = Describe("TaskQueueService", func() {
 	Describe("CancelTask", func() {
 		BeforeEach(func() {
 			// Block callback so tasks stay in pending/running
-			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				<-ctx.Done()
-				return ctx.Err()
+				return "", ctx.Err()
 			}
 		})
 
 		It("cancels a pending task", func() {
 			// Block the callback so the first task occupies the worker
 			started := make(chan struct{})
-			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				close(started)
 				<-ctx.Done()
-				return ctx.Err()
+				return "", ctx.Err()
 			}
 
 			err := service.CreateQueue(ctx, "cancel-test", host.QueueConfig{
@@ -301,24 +302,24 @@ var _ = Describe("TaskQueueService", func() {
 			taskID, err := service.Enqueue(ctx, "cancel-test", []byte("cancel-me"))
 			Expect(err).ToNot(HaveOccurred())
 
-			err = service.CancelTask(ctx, taskID)
+			err = service.Cancel(ctx, taskID)
 			Expect(err).ToNot(HaveOccurred())
 
-			status, err := service.GetTaskStatus(ctx, taskID)
+			info, err := service.Get(ctx, taskID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(status).To(Equal("cancelled"))
+			Expect(info.Status).To(Equal("cancelled"))
 		})
 
 		It("returns error for unknown task ID", func() {
-			err := service.CancelTask(ctx, "nonexistent-id")
+			err := service.Cancel(ctx, "nonexistent-id")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})
 
 		It("returns error for non-pending task", func() {
 			// Create a queue where tasks complete immediately
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
-				return nil
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
 			}
 			err := service.CreateQueue(ctx, "completed-test", host.QueueConfig{})
 			Expect(err).ToNot(HaveOccurred())
@@ -328,12 +329,15 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Wait for task to complete
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 
 			// Try to cancel completed task
-			err = service.CancelTask(ctx, taskID)
+			err = service.Cancel(ctx, taskID)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot be cancelled"))
 		})
@@ -346,13 +350,13 @@ var _ = Describe("TaskQueueService", func() {
 			var receivedPayload []byte
 			var receivedAttempt int32
 
-			service.invokeCallbackFn = func(_ context.Context, queueName, taskID string, payload []byte, attempt int32) error {
+			service.invokeCallbackFn = func(_ context.Context, queueName, taskID string, payload []byte, attempt int32) (string, error) {
 				callCount.Add(1)
 				receivedQueueName = queueName
 				receivedTaskID = taskID
 				receivedPayload = payload
 				receivedAttempt = attempt
-				return nil
+				return "", nil
 			}
 
 			err := service.CreateQueue(ctx, "worker-test", host.QueueConfig{})
@@ -362,8 +366,11 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 
 			Expect(callCount.Load()).To(Equal(int32(1)))
@@ -374,13 +381,92 @@ var _ = Describe("TaskQueueService", func() {
 		})
 	})
 
+	Describe("Message storage", func() {
+		It("stores message on successful completion", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "task completed successfully", nil
+			}
+
+			err := service.CreateQueue(ctx, "msg-success", host.QueueConfig{})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID, err := service.Enqueue(ctx, "msg-success", []byte("data"))
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() string {
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
+
+			info, err := service.Get(ctx, taskID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Message).To(Equal("task completed successfully"))
+			Expect(info.Attempt).To(Equal(int32(1)))
+		})
+
+		It("stores error message on failure", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", fmt.Errorf("something went wrong")
+			}
+
+			err := service.CreateQueue(ctx, "msg-fail", host.QueueConfig{
+				MaxRetries: 0,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID, err := service.Enqueue(ctx, "msg-fail", []byte("data"))
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() string {
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("failed"))
+
+			info, err := service.Get(ctx, taskID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Message).To(Equal("something went wrong"))
+		})
+
+		It("uses explicit message over error message on failure", func() {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "partial progress made", fmt.Errorf("timeout exceeded")
+			}
+
+			err := service.CreateQueue(ctx, "msg-fail-with-msg", host.QueueConfig{
+				MaxRetries: 0,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			taskID, err := service.Enqueue(ctx, "msg-fail-with-msg", []byte("data"))
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() string {
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("failed"))
+
+			info, err := service.Get(ctx, taskID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Message).To(Equal("partial progress made"))
+		})
+	})
+
 	Describe("Retry on failure", func() {
 		It("retries and eventually fails after exhausting retries", func() {
 			var callCount atomic.Int32
 
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return fmt.Errorf("task failed")
+				return "", fmt.Errorf("task failed")
 			}
 
 			err := service.CreateQueue(ctx, "retry-test", host.QueueConfig{
@@ -393,8 +479,11 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(10 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("failed"))
 
 			// 1 initial attempt + 2 retries = 3 total calls
@@ -406,12 +495,12 @@ var _ = Describe("TaskQueueService", func() {
 		It("retries and succeeds on second attempt", func() {
 			var callCount atomic.Int32
 
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, attempt int32) error {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, attempt int32) (string, error) {
 				callCount.Add(1)
 				if attempt == 1 {
-					return fmt.Errorf("temporary error")
+					return "", fmt.Errorf("temporary error")
 				}
-				return nil
+				return "success", nil
 			}
 
 			err := service.CreateQueue(ctx, "retry-succeed", host.QueueConfig{
@@ -424,8 +513,11 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(10 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 
 			Expect(callCount.Load()).To(Equal(int32(2)))
@@ -436,9 +528,9 @@ var _ = Describe("TaskQueueService", func() {
 		It("caps backoff at maxRetentionMs to prevent overflow", func() {
 			var callCount atomic.Int32
 
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return fmt.Errorf("always fail")
+				return "", fmt.Errorf("always fail")
 			}
 
 			err := service.CreateQueue(ctx, "backoff-overflow", host.QueueConfig{
@@ -471,11 +563,11 @@ var _ = Describe("TaskQueueService", func() {
 			var mu sync.Mutex
 			var dispatchTimes []time.Time
 
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				mu.Lock()
 				dispatchTimes = append(dispatchTimes, time.Now())
 				mu.Unlock()
-				return nil
+				return "", nil
 			}
 
 			err := service.CreateQueue(ctx, "delay-concurrent", host.QueueConfig{
@@ -518,9 +610,9 @@ var _ = Describe("TaskQueueService", func() {
 	Describe("Shutdown recovery", func() {
 		It("resets stale running tasks on CreateQueue", func() {
 			// Create a first service and queue, enqueue a task
-			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) error {
+			service.invokeCallbackFn = func(ctx context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				<-ctx.Done()
-				return ctx.Err()
+				return "", ctx.Err()
 			}
 			err := service.CreateQueue(ctx, "recovery-queue", host.QueueConfig{})
 			Expect(err).ToNot(HaveOccurred())
@@ -530,8 +622,11 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Wait for the task to start running
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("running"))
 
 			// Close the service (simulates crash - tasks left in running state)
@@ -549,8 +644,8 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Override callback to succeed
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error {
-				return nil
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
+				return "", nil
 			}
 
 			// Re-create the queue - the upsert handles the existing row from the old service
@@ -559,8 +654,11 @@ var _ = Describe("TaskQueueService", func() {
 
 			// The stale running task should now be reset to pending and eventually completed
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID)
-				return status
+				info, err := service.Get(ctx, taskID)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(10 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 		})
 	})
@@ -598,8 +696,8 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Both services should be able to create queues with the same name independently
-			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error { return nil }
-			service2.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) error { return nil }
+			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) { return "", nil }
+			service2.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) { return "", nil }
 
 			err = service.CreateQueue(ctx, "shared-name", host.QueueConfig{})
 			Expect(err).ToNot(HaveOccurred())
@@ -616,13 +714,19 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Both should complete
 			Eventually(func() string {
-				status, _ := service.GetTaskStatus(ctx, taskID1)
-				return status
+				info, err := service.Get(ctx, taskID1)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 
 			Eventually(func() string {
-				status, _ := service2.GetTaskStatus(ctx, taskID2)
-				return status
+				info, err := service2.Get(ctx, taskID2)
+				if err != nil || info == nil {
+					return ""
+				}
+				return info.Status
 			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Equal("completed"))
 		})
 	})
@@ -702,9 +806,11 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 	}
 
 	type testTaskQueueOutput struct {
-		TaskID string  `json:"taskId,omitempty"`
-		Status string  `json:"status,omitempty"`
-		Error  *string `json:"error,omitempty"`
+		TaskID  string  `json:"taskId,omitempty"`
+		Status  string  `json:"status,omitempty"`
+		Message string  `json:"message,omitempty"`
+		Attempt int32   `json:"attempt,omitempty"`
+		Error   *string `json:"error,omitempty"`
 	}
 
 	callTestTaskQueue := func(ctx context.Context, input testTaskQueueInput) (*testTaskQueueOutput, error) {

@@ -4,6 +4,29 @@
 // It is intended for use in Navidrome plugins built with extism-pdk.
 
 use serde::{Deserialize, Serialize};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 // Helper functions for skip_serializing_if with numeric types
 #[allow(dead_code)]
@@ -30,19 +53,11 @@ pub struct TaskExecuteRequest {
     pub task_id: String,
     /// Payload is the opaque data provided when the task was enqueued.
     #[serde(default)]
+    #[serde(with = "base64_bytes")]
     pub payload: Vec<u8>,
     /// Attempt is the current attempt number (1-based: first attempt = 1).
     #[serde(default)]
     pub attempt: i32,
-}
-/// TaskExecuteResponse is the response from task execution.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TaskExecuteResponse {
-    /// Error, if non-empty, indicates the task failed. The task will be retried
-    /// if retries are configured and attempts remain.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub error: String,
 }
 
 /// Error represents an error from a capability method.
@@ -67,7 +82,7 @@ impl Error {
 
 /// TaskExecuteProvider provides the OnTaskExecute function.
 pub trait TaskExecuteProvider {
-    fn on_task_execute(&self, req: TaskExecuteRequest) -> Result<TaskExecuteResponse, Error>;
+    fn on_task_execute(&self, req: TaskExecuteRequest) -> Result<String, Error>;
 }
 
 /// Register the on_task_execute export.
@@ -78,7 +93,7 @@ macro_rules! register_taskworker_task_execute {
         #[extism_pdk::plugin_fn]
         pub fn nd_task_execute(
             req: extism_pdk::Json<$crate::taskworker::TaskExecuteRequest>
-        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::taskworker::TaskExecuteResponse>> {
+        ) -> extism_pdk::FnResult<extism_pdk::Json<String>> {
             let plugin = <$plugin_type>::default();
             let result = $crate::taskworker::TaskExecuteProvider::on_task_execute(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))

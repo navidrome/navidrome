@@ -72,7 +72,7 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 		}
 	}
 
-	// TaskQueue permission requires TaskWorker capability
+	// Task (taskqueue) permission requires TaskWorker capability
 	if m.Permissions != nil && m.Permissions.Taskqueue != nil {
 		if !hasCapability(capabilities, CapabilityTaskWorker) {
 			return fmt.Errorf("'taskqueue' permission requires plugin to export '%s' function", FuncTaskWorkerCallback)

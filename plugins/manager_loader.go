@@ -129,7 +129,7 @@ var hostServices = []hostServiceEntry{
 		},
 	},
 	{
-		name:          "TaskQueue",
+		name:          "Task",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Taskqueue != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Taskqueue
@@ -139,10 +139,10 @@ var hostServices = []hostServiceEntry{
 			}
 			service, err := newTaskQueueService(ctx.pluginName, ctx.manager, maxConcurrency)
 			if err != nil {
-				log.Error("Failed to create TaskQueue service", "plugin", ctx.pluginName, err)
+				log.Error("Failed to create Task service", "plugin", ctx.pluginName, err)
 				return nil, nil
 			}
-			return host.RegisterTaskQueueHostFunctions(service), service
+			return host.RegisterTaskHostFunctions(service), service
 		},
 	},
 }
