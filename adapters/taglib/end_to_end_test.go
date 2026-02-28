@@ -271,4 +271,30 @@ var _ = Describe("Extractor", func() {
 			}
 		})
 	})
+
+	Describe("tags", func() {
+		DescribeTable("test metadata tags across files, and special cases", func(file string, tags ...string) {
+			mf := parseTestFile("tests/fixtures/" + file)
+			Expect(mf.Tags[model.TagMetadataTag]).To(ConsistOf(tags))
+		},
+			// weirder cases
+			Entry("file with multiple tags", "ape-v1-v2.mp3", "ape", "id3v1", "id3v2"),
+			Entry("wavpak with both ape and id3v1", "ape-id3v1.wv", "ape", "id3v1"),
+			Entry("flac with vorbis, id3v1 and id3v2", "vorbis-id3v1-id3v2.flac", "vorbis", "id3v1", "id3v2"),
+
+			// No Metadata at all
+			Entry("mp3 with no tags", "empty.mp3"),
+			Entry("wav with no tags", "empty.wav"),
+
+			// More standard cases
+			Entry("normal flac", "test.flac", "vorbis"),
+			Entry("normal m4a", "test.m4a", "mp4"),
+			Entry("mp3 with id3v2", "no_replaygain.mp3", "id3v2"),
+			Entry("normal wma", "test.wma", "asf"),
+			Entry("normal opus", "test.ogg", "vorbis"),
+			Entry("wavpak with ape", "test.wv", "ape"),
+			Entry("nonempty wav", "test.wav", "id3v2"),
+			Entry("nonempty aiff", "test.aiff", "id3v2"),
+		)
+	})
 })

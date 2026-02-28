@@ -202,6 +202,9 @@ main:
 # Additional tags. You can add new tags without the need to modify the code. They will be available as fields
 # for smart playlists
 additional:
+  # Internal tag type, represents metadata tag(s) found in the file
+  tags:
+    aliases: [ __tags ]
   asin:
     aliases: [ txxx:asin, asin, ----:com.apple.itunes:asin ]
   barcode:

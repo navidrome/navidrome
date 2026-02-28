@@ -27,6 +27,13 @@ char has_cover(const TagLib::FileRef f);
 
 static char TAGLIB_VERSION[16];
 
+static char APE_TAG[] = "ape";
+static char ASF_TAG[] = "asf";
+static char ID3V1_TAG[] = "id3v1";
+static char ID3V2_TAG[] = "id3v2";
+static char MP4_TAG[] = "mp4";
+static char VORBIS_TAG[] = "vorbis";
+
 char* taglib_version() {
     snprintf((char *)TAGLIB_VERSION, 16, "%d.%d.%d", TAGLIB_MAJOR_VERSION, TAGLIB_MINOR_VERSION, TAGLIB_PATCH_VERSION);
     return (char *)TAGLIB_VERSION;
@@ -103,11 +110,24 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   }
 
   TagLib::ID3v2::Tag *id3Tags = NULL;
+  bool has_tag = false;
 
   // Get some extended/non-standard ID3-only tags (ex: iTunes extended frames)
   TagLib::MPEG::File *mp3File(dynamic_cast<TagLib::MPEG::File *>(f.file()));
   if (mp3File != NULL) {
-    id3Tags = mp3File->ID3v2Tag();
+    if (mp3File->hasID3v2Tag()) {
+      id3Tags = mp3File->ID3v2Tag();
+    }
+
+    if (mp3File->hasID3v1Tag()) {
+      goPutTagType(id, ID3V1_TAG);
+      has_tag = true;
+    }
+
+    if (mp3File->hasAPETag()) {
+      goPutTagType(id, APE_TAG);
+      has_tag = true;
+    }
   }
 
   if (id3Tags == NULL) {
@@ -124,11 +144,20 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
+  if (id3Tags == NULL) {
+    if (TagLib::DSF::File * dsffile{ dynamic_cast<TagLib::DSF::File *>(f.file())}) {
+      id3Tags = dsffile->tag();
+    }
+  }
+
   // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems
   // with many players, so they will not be parsed
 
   if (id3Tags != NULL) {
     const auto &frames = id3Tags->frameListMap();
+
+    goPutTagType(id, ID3V2_TAG);
+    has_tag = true;
 
     for (const auto &kv: frames) {
       if (kv.first == "USLT") {
@@ -189,12 +218,17 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // M4A may have some iTunes specific tags not captured by the PropertyMap interface
   TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
   if (m4afile != NULL) {
-    const auto itemListMap = m4afile->tag()->itemMap();
-    for (const auto item: itemListMap) {
-      char *key = const_cast<char*>(item.first.toCString(true));
-      for (const auto value: item.second.toStringList()) {
-        char *val = const_cast<char*>(value.toCString(true));
-        goPutM4AStr(id, key, val);
+    if (m4afile->hasMP4Tag()) {
+      goPutTagType(id, MP4_TAG);
+      has_tag = true;
+
+      const auto itemListMap = m4afile->tag()->itemMap();
+      for (const auto item: itemListMap) {
+        char *key = const_cast<char*>(item.first.toCString(true));
+        for (const auto value: item.second.toStringList()) {
+          char *val = const_cast<char*>(value.toCString(true));
+          goPutM4AStr(id, key, val);
+        }
       }
     }
   }
@@ -203,15 +237,21 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
   if (asfFile != NULL) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
-    const auto itemListMap = asfTags->attributeListMap();
-    for (const auto item : itemListMap) {
-      char *key = const_cast<char*>(item.first.toCString(true));
 
-      for (auto j = item.second.begin();
-           j != item.second.end(); ++j) {
+    if (asfTags != NULL) {
+      goPutTagType(id, ASF_TAG);
+      has_tag = true;
 
-        char *val = const_cast<char*>(j->toString().toCString(true));
-        goPutStr(id, key, val);
+      const auto itemListMap = asfTags->attributeListMap();
+      for (const auto item : itemListMap) {
+        char *key = const_cast<char*>(item.first.toCString(true));
+
+        for (auto j = item.second.begin();
+            j != item.second.end(); ++j) {
+
+          char *val = const_cast<char*>(j->toString().toCString(true));
+          goPutStr(id, key, val);
+        }
       }
     }
   }
@@ -230,6 +270,34 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // Cover art has to be handled separately
   if (has_cover(f)) {
     goPutStr(id, (char *)"has_picture", (char *)"true");
+  }
+
+  if (!has_tag) {
+    if (TagLib::FLAC::File * flacFile{dynamic_cast<TagLib::FLAC::File *>(f.file())}) {
+      if (flacFile->hasXiphComment()) {
+        goPutTagType(id, VORBIS_TAG);
+      }
+
+      if (flacFile->hasID3v2Tag()) {
+        goPutTagType(id, ID3V2_TAG);
+      }
+
+      if (flacFile->hasID3v1Tag()) {
+        goPutTagType(id, ID3V1_TAG);
+      }
+    } else if (TagLib::Ogg::Vorbis::File * vorbisFile{dynamic_cast<TagLib::Ogg::Vorbis::File *>(f.file())}) {
+      goPutTagType(id, VORBIS_TAG);
+    } else if (TagLib::Ogg::Opus::File * opusFile{dynamic_cast<TagLib::Ogg::Opus::File *>(f.file())}) {
+      goPutTagType(id, VORBIS_TAG);
+    } else if (TagLib::WavPack::File * wvFile{dynamic_cast<TagLib::WavPack::File *>(f.file())}) {
+      if (wvFile->hasAPETag()) {
+        goPutTagType(id, APE_TAG);
+      }
+
+      if (wvFile->hasID3v1Tag()) {
+        goPutTagType(id, ID3V1_TAG);
+      }
+    }
   }
 
   return 0;
@@ -270,7 +338,7 @@ char has_cover(const TagLib::FileRef f) {
       hasCover = !frameListMap["APIC"].isEmpty();
     }
   }
-  // ----- AIFF 
+  // ----- AIFF
   else if (TagLib::RIFF::AIFF::File * aiffFile{ dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file())}) {
     if (aiffFile->hasID3v2Tag()) {
       const auto& frameListMap{ aiffFile->tag()->frameListMap() };
