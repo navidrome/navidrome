@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const (
@@ -283,37 +285,42 @@ func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) 
 	return count, nil
 }
 
-// GetMany retrieves multiple values in a single call.
+// GetMany retrieves multiple values in a single call, processing keys in batches.
 func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[string][]byte, error) {
 	if len(keys) == 0 {
 		return map[string][]byte{}, nil
 	}
 
-	placeholders := make([]string, len(keys))
-	args := make([]any, len(keys))
-	for i, key := range keys {
-		placeholders[i] = "?"
-		args[i] = key
-	}
-
-	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND ` + notExpiredFilter //nolint:gosec // placeholders are always "?"
-	rows, err := s.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("querying values: %w", err)
-	}
-	defer rows.Close()
-
+	const batchSize = 200
 	result := make(map[string][]byte)
-	for rows.Next() {
-		var key string
-		var value []byte
-		if err := rows.Scan(&key, &value); err != nil {
-			return nil, fmt.Errorf("scanning value: %w", err)
+	for chunk := range slice.CollectChunks(slices.Values(keys), batchSize) {
+		placeholders := make([]string, len(chunk))
+		args := make([]any, len(chunk))
+		for i, key := range chunk {
+			placeholders[i] = "?"
+			args[i] = key
 		}
-		result[key] = value
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterating values: %w", err)
+
+		query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND ` + notExpiredFilter //nolint:gosec // placeholders are always "?"
+		rows, err := s.db.QueryContext(ctx, query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("querying values: %w", err)
+		}
+
+		for rows.Next() {
+			var key string
+			var value []byte
+			if err := rows.Scan(&key, &value); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scanning value: %w", err)
+			}
+			result[key] = value
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("iterating values: %w", err)
+		}
+		rows.Close()
 	}
 
 	log.Trace(ctx, "KVStore.GetMany", "plugin", s.pluginName, "requested", len(keys), "found", len(result))
