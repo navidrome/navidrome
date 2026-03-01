@@ -181,6 +181,9 @@ type Permissions struct {
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
 
+	// Taskqueue corresponds to the JSON schema field "taskqueue".
+	Taskqueue *TaskQueuePermission `json:"taskqueue,omitempty" yaml:"taskqueue,omitempty" mapstructure:"taskqueue,omitempty"`
+
 	// Users corresponds to the JSON schema field "users".
 	Users *UsersPermission `json:"users,omitempty" yaml:"users,omitempty" mapstructure:"users,omitempty"`
 
@@ -198,6 +201,36 @@ type SchedulerPermission struct {
 type SubsonicAPIPermission struct {
 	// Explanation for why SubsonicAPI access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Task queue permissions for background task processing
+type TaskQueuePermission struct {
+	// Maximum total concurrent workers across all queues. Default: 1
+	MaxConcurrency int `json:"maxConcurrency,omitempty" yaml:"maxConcurrency,omitempty" mapstructure:"maxConcurrency,omitempty"`
+
+	// Explanation for why task queue access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TaskQueuePermission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	type Plain TaskQueuePermission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if v, ok := raw["maxConcurrency"]; !ok || v == nil {
+		plain.MaxConcurrency = 1.0
+	}
+	if 1 > plain.MaxConcurrency {
+		return fmt.Errorf("field %s: must be >= %v", "maxConcurrency", 1)
+	}
+	*j = TaskQueuePermission(plain)
+	return nil
 }
 
 // Enable experimental WebAssembly threads support
