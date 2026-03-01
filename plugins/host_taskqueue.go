@@ -21,17 +21,17 @@ import (
 )
 
 const (
-	defaultConcurrency int32 = 1
-	defaultBackoffMs   int64 = 1000
-	defaultRetentionMs int64 = 3_600_000   // 1 hour
-	minRetentionMs     int64 = 60_000      // 1 minute
-	maxRetentionMs     int64 = 604_800_000 // 1 week
-	maxQueueNameLength       = 128
-	maxPayloadSize           = 1 * 1024 * 1024 // 1MB
-	maxBackoffMs       int64 = 3_600_000       // 1 hour
-	cleanupInterval          = 5 * time.Minute
-	pollInterval             = 5 * time.Second
-	shutdownTimeout          = 10 * time.Second
+	defaultConcurrency  int32 = 1
+	defaultBackoffMs    int64 = 1000
+	defaultRetentionMs  int64 = 3_600_000   // 1 hour
+	minRetentionMs      int64 = 60_000      // 1 minute
+	maxRetentionMs      int64 = 604_800_000 // 1 week
+	maxQueueNameLength        = 128
+	maxPayloadSize            = 1 * 1024 * 1024 // 1MB
+	maxBackoffMs        int64 = 3_600_000       // 1 hour
+	taskCleanupInterval       = 5 * time.Minute
+	pollInterval              = 5 * time.Second
+	shutdownTimeout           = 10 * time.Second
 
 	taskStatusPending   = "pending"
 	taskStatusRunning   = "running"
@@ -120,18 +120,19 @@ func newTaskQueueService(pluginName string, manager *Manager, maxConcurrency int
 	return s, nil
 }
 
+// createTaskQueueSchema applies schema migrations to the taskqueue database.
+// New migrations must be appended at the end of the slice.
 func createTaskQueueSchema(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS queues (
+	return migrateDB(db, []string{
+		`CREATE TABLE IF NOT EXISTS queues (
 			name TEXT PRIMARY KEY,
 			concurrency INTEGER NOT NULL DEFAULT 1,
 			max_retries INTEGER NOT NULL DEFAULT 0,
 			backoff_ms INTEGER NOT NULL DEFAULT 1000,
 			delay_ms INTEGER NOT NULL DEFAULT 0,
 			retention_ms INTEGER NOT NULL DEFAULT 3600000
-		);
-
-		CREATE TABLE IF NOT EXISTS tasks (
+		)`,
+		`CREATE TABLE IF NOT EXISTS tasks (
 			id TEXT PRIMARY KEY,
 			queue_name TEXT NOT NULL REFERENCES queues(name),
 			payload BLOB NOT NULL,
@@ -142,11 +143,9 @@ func createTaskQueueSchema(db *sql.DB) error {
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			message TEXT NOT NULL DEFAULT ''
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_tasks_dequeue ON tasks(queue_name, status, next_run_at);
-	`)
-	return err
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_dequeue ON tasks(queue_name, status, next_run_at)`,
+	})
 }
 
 // applyConfigDefaults fills zero-value config fields with sensible defaults
@@ -524,7 +523,7 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 
 // cleanupLoop periodically removes terminal tasks past their retention period.
 func (s *taskQueueServiceImpl) cleanupLoop() {
-	ticker := time.NewTicker(cleanupInterval)
+	ticker := time.NewTicker(taskCleanupInterval)
 	defer ticker.Stop()
 
 	for {
