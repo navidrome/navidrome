@@ -1,10 +1,13 @@
 package model
 
 import (
+	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -105,6 +108,13 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 
 func (pls Playlist) CoverArtID() ArtworkID {
 	return artworkIDFromPlaylist(pls)
+}
+
+func (pls Playlist) ArtworkPath() string {
+	if pls.ImagePath == "" {
+		return ""
+	}
+	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "playlist", pls.ImagePath)
 }
 
 type Playlists []Playlist

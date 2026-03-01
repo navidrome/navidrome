@@ -303,6 +303,12 @@ func Load(noConfigDump bool) {
 		os.Exit(1)
 	}
 
+	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating artwork path:", err)
+		os.Exit(1)
+	}
+
 	if Server.Plugins.Enabled {
 		if Server.Plugins.Folder == "" {
 			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")

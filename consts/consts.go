@@ -65,6 +65,7 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	ArtworkFolder  = "artwork"
 
 	PlaceholderArtistArt      = "artist-placeholder.webp"
 	PlaceholderAlbumArt       = "album-placeholder.webp"
