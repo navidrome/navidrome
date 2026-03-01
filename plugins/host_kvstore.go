@@ -60,10 +60,10 @@ func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServ
 	db.SetMaxOpenConns(3)
 	db.SetMaxIdleConns(1)
 
-	// Create schema
+	// Apply schema migrations
 	if err := createKVStoreSchema(db); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("creating kvstore schema: %w", err)
+		return nil, fmt.Errorf("migrating kvstore schema: %w", err)
 	}
 
 	log.Debug("Initialized plugin kvstore", "plugin", pluginName, "path", dbPath, "maxSize", humanize.Bytes(uint64(maxSize)))
@@ -75,37 +75,20 @@ func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServ
 	}, nil
 }
 
+// createKVStoreSchema applies schema migrations to the kvstore database.
+// New migrations must be appended at the end of the slice.
 func createKVStoreSchema(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS kvstore (
+	return migrateDB(db, []string{
+		`CREATE TABLE IF NOT EXISTS kvstore (
 			key TEXT PRIMARY KEY NOT NULL,
 			value BLOB NOT NULL,
 			size INTEGER NOT NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			expires_at DATETIME DEFAULT NULL
-		)
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Migrate existing databases: add expires_at column if missing
-	row := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('kvstore') WHERE name = 'expires_at'`)
-	var count int
-	if err := row.Scan(&count); err != nil {
-		return err
-	}
-	if count == 0 {
-		_, err = db.Exec(`ALTER TABLE kvstore ADD COLUMN expires_at DATETIME DEFAULT NULL`)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Create index on expires_at for efficient filtering of expired keys
-	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_kvstore_expires_at ON kvstore(expires_at)`)
-	return err
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`ALTER TABLE kvstore ADD COLUMN expires_at DATETIME DEFAULT NULL`,
+		`CREATE INDEX idx_kvstore_expires_at ON kvstore(expires_at)`,
+	})
 }
 
 // storageUsed returns the current total storage used by non-expired keys.

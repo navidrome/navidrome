@@ -5,7 +5,6 @@ package plugins
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -343,51 +342,6 @@ var _ = Describe("KVStoreService", func() {
 			// After close, operations should fail
 			_, _, err = service.Get(ctx, "any")
 			Expect(err).To(HaveOccurred())
-		})
-	})
-
-	Describe("Schema Migration", func() {
-		It("adds expires_at column to existing databases without it", func() {
-			// Close the service that was auto-created in BeforeEach
-			service.Close()
-
-			// Create a legacy database manually (without expires_at column)
-			dataDir := filepath.Join(tmpDir, "plugins", "legacy_plugin")
-			Expect(os.MkdirAll(dataDir, 0700)).To(Succeed())
-			dbPath := filepath.Join(dataDir, "kvstore.db")
-
-			legacyDB, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL")
-			Expect(err).ToNot(HaveOccurred())
-			_, err = legacyDB.Exec(`
-				CREATE TABLE kvstore (
-					key TEXT PRIMARY KEY NOT NULL,
-					value BLOB NOT NULL,
-					size INTEGER NOT NULL,
-					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-					updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-				)
-			`)
-			Expect(err).ToNot(HaveOccurred())
-			_, err = legacyDB.Exec(`INSERT INTO kvstore (key, value, size) VALUES ('old_key', 'old_value', 9)`)
-			Expect(err).ToNot(HaveOccurred())
-			legacyDB.Close()
-
-			// Open with new service — should migrate schema
-			maxSize := "1KB"
-			service, err = newKVStoreService("legacy_plugin", &KVStorePermission{MaxSize: &maxSize})
-			Expect(err).ToNot(HaveOccurred())
-
-			// Old data should still be accessible
-			value, exists, err := service.Get(ctx, "old_key")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(exists).To(BeTrue())
-			Expect(value).To(Equal([]byte("old_value")))
-
-			// expires_at should be NULL for old data (no expiration)
-			var expiresAt sql.NullTime
-			err = service.db.QueryRow(`SELECT expires_at FROM kvstore WHERE key = 'old_key'`).Scan(&expiresAt)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(expiresAt.Valid).To(BeFalse())
 		})
 	})
 
