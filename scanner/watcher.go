@@ -145,6 +145,12 @@ func (w *watcher) Watch(ctx context.Context, lib *model.Library) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	// If Run() hasn't been called yet, mainCtx will be nil - skip watching
+	if w.mainCtx == nil {
+		log.Debug(ctx, "Watcher not started yet, skipping watch for library", "libraryID", lib.ID, "name", lib.Name)
+		return nil
+	}
+
 	// Stop existing watcher if any
 	if existingInstance, exists := w.libraryWatchers[lib.ID]; exists {
 		log.Debug(ctx, "Stopping existing watcher before starting new one", "libraryID", lib.ID, "name", lib.Name)
