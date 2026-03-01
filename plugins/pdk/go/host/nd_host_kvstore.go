@@ -44,6 +44,21 @@ func kvstore_list(uint64) uint64
 //go:wasmimport extism:host/user kvstore_getstorageused
 func kvstore_getstorageused(uint64) uint64
 
+// kvstore_setwithttl is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user kvstore_setwithttl
+func kvstore_setwithttl(uint64) uint64
+
+// kvstore_deletebyprefix is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user kvstore_deletebyprefix
+func kvstore_deletebyprefix(uint64) uint64
+
+// kvstore_getmany is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user kvstore_getmany
+func kvstore_getmany(uint64) uint64
+
 type kVStoreSetRequest struct {
 	Key   string `json:"key"`
 	Value []byte `json:"value"`
@@ -84,6 +99,30 @@ type kVStoreListResponse struct {
 type kVStoreGetStorageUsedResponse struct {
 	Bytes int64  `json:"bytes,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+type kVStoreSetWithTTLRequest struct {
+	Key        string `json:"key"`
+	Value      []byte `json:"value"`
+	TtlSeconds int64  `json:"ttlSeconds"`
+}
+
+type kVStoreDeleteByPrefixRequest struct {
+	Prefix string `json:"prefix"`
+}
+
+type kVStoreDeleteByPrefixResponse struct {
+	DeletedCount int64  `json:"deletedCount,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
+type kVStoreGetManyRequest struct {
+	Keys []string `json:"keys"`
+}
+
+type kVStoreGetManyResponse struct {
+	Values map[string][]byte `json:"values,omitempty"`
+	Error  string            `json:"error,omitempty"`
 }
 
 // KVStoreSet calls the kvstore_set host function.
@@ -312,4 +351,131 @@ func KVStoreGetStorageUsed() (int64, error) {
 	}
 
 	return response.Bytes, nil
+}
+
+// KVStoreSetWithTTL calls the kvstore_setwithttl host function.
+// SetWithTTL stores a byte value with the given key and a time-to-live.
+//
+// After ttlSeconds, the key is treated as non-existent and will be
+// cleaned up lazily. ttlSeconds must be greater than 0.
+//
+// Parameters:
+//   - key: The storage key (max 256 bytes, UTF-8)
+//   - value: The byte slice to store
+//   - ttlSeconds: Time-to-live in seconds (must be > 0)
+//
+// Returns an error if the storage limit would be exceeded or the operation fails.
+func KVStoreSetWithTTL(key string, value []byte, ttlSeconds int64) error {
+	// Marshal request to JSON
+	req := kVStoreSetWithTTLRequest{
+		Key:        key,
+		Value:      value,
+		TtlSeconds: ttlSeconds,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := kvstore_setwithttl(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse error-only response
+	var response struct {
+		Error string `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return err
+	}
+	if response.Error != "" {
+		return errors.New(response.Error)
+	}
+	return nil
+}
+
+// KVStoreDeleteByPrefix calls the kvstore_deletebyprefix host function.
+// DeleteByPrefix removes all keys matching the given prefix.
+//
+// Parameters:
+//   - prefix: Key prefix to match (empty string deletes ALL keys)
+//
+// Returns the number of keys deleted. Includes expired keys.
+func KVStoreDeleteByPrefix(prefix string) (int64, error) {
+	// Marshal request to JSON
+	req := kVStoreDeleteByPrefixRequest{
+		Prefix: prefix,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := kvstore_deletebyprefix(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response kVStoreDeleteByPrefixResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return 0, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return 0, errors.New(response.Error)
+	}
+
+	return response.DeletedCount, nil
+}
+
+// KVStoreGetMany calls the kvstore_getmany host function.
+// GetMany retrieves multiple values in a single call.
+//
+// Parameters:
+//   - keys: The storage keys to retrieve
+//
+// Returns a map of key to value for keys that exist and have not expired.
+// Missing or expired keys are omitted from the result.
+func KVStoreGetMany(keys []string) (map[string][]byte, error) {
+	// Marshal request to JSON
+	req := kVStoreGetManyRequest{
+		Keys: keys,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := kvstore_getmany(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response kVStoreGetManyResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return response.Values, nil
 }

@@ -114,6 +114,52 @@ struct KVStoreGetStorageUsedResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreSetWithTTLRequest {
+    key: String,
+    #[serde(with = "base64_bytes")]
+    value: Vec<u8>,
+    ttl_seconds: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreSetWithTTLResponse {
+    #[serde(default)]
+    error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreDeleteByPrefixRequest {
+    prefix: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreDeleteByPrefixResponse {
+    #[serde(default)]
+    deleted_count: i64,
+    #[serde(default)]
+    error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreGetManyRequest {
+    keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct KVStoreGetManyResponse {
+    #[serde(default)]
+    values: std::collections::HashMap<String, Vec<u8>>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[host_fn]
 extern "ExtismHost" {
     fn kvstore_set(input: Json<KVStoreSetRequest>) -> Json<KVStoreSetResponse>;
@@ -122,6 +168,9 @@ extern "ExtismHost" {
     fn kvstore_has(input: Json<KVStoreHasRequest>) -> Json<KVStoreHasResponse>;
     fn kvstore_list(input: Json<KVStoreListRequest>) -> Json<KVStoreListResponse>;
     fn kvstore_getstorageused(input: Json<serde_json::Value>) -> Json<KVStoreGetStorageUsedResponse>;
+    fn kvstore_setwithttl(input: Json<KVStoreSetWithTTLRequest>) -> Json<KVStoreSetWithTTLResponse>;
+    fn kvstore_deletebyprefix(input: Json<KVStoreDeleteByPrefixRequest>) -> Json<KVStoreDeleteByPrefixResponse>;
+    fn kvstore_getmany(input: Json<KVStoreGetManyRequest>) -> Json<KVStoreGetManyResponse>;
 }
 
 /// Set stores a byte value with the given key.
@@ -287,4 +336,98 @@ pub fn get_storage_used() -> Result<i64, Error> {
     }
 
     Ok(response.0.bytes)
+}
+
+/// SetWithTTL stores a byte value with the given key and a time-to-live.
+/// 
+/// After ttlSeconds, the key is treated as non-existent and will be
+/// cleaned up lazily. ttlSeconds must be greater than 0.
+/// 
+/// Parameters:
+///   - key: The storage key (max 256 bytes, UTF-8)
+///   - value: The byte slice to store
+///   - ttlSeconds: Time-to-live in seconds (must be > 0)
+/// 
+/// Returns an error if the storage limit would be exceeded or the operation fails.
+///
+/// # Arguments
+/// * `key` - String parameter.
+/// * `value` - Vec<u8> parameter.
+/// * `ttl_seconds` - i64 parameter.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn set_with_ttl(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), Error> {
+    let response = unsafe {
+        kvstore_setwithttl(Json(KVStoreSetWithTTLRequest {
+            key: key.to_owned(),
+            value: value,
+            ttl_seconds: ttl_seconds,
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(())
+}
+
+/// DeleteByPrefix removes all keys matching the given prefix.
+/// 
+/// Parameters:
+///   - prefix: Key prefix to match (empty string deletes ALL keys)
+/// 
+/// Returns the number of keys deleted. Includes expired keys.
+///
+/// # Arguments
+/// * `prefix` - String parameter.
+///
+/// # Returns
+/// The deleted_count value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn delete_by_prefix(prefix: &str) -> Result<i64, Error> {
+    let response = unsafe {
+        kvstore_deletebyprefix(Json(KVStoreDeleteByPrefixRequest {
+            prefix: prefix.to_owned(),
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.deleted_count)
+}
+
+/// GetMany retrieves multiple values in a single call.
+/// 
+/// Parameters:
+///   - keys: The storage keys to retrieve
+/// 
+/// Returns a map of key to value for keys that exist and have not expired.
+/// Missing or expired keys are omitted from the result.
+///
+/// # Arguments
+/// * `keys` - Vec<String> parameter.
+///
+/// # Returns
+/// The values value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn get_many(keys: Vec<String>) -> Result<std::collections::HashMap<String, Vec<u8>>, Error> {
+    let response = unsafe {
+        kvstore_getmany(Json(KVStoreGetManyRequest {
+            keys: keys,
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.values)
 }

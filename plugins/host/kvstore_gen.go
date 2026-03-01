@@ -70,6 +70,40 @@ type KVStoreGetStorageUsedResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
+// KVStoreSetWithTTLRequest is the request type for KVStore.SetWithTTL.
+type KVStoreSetWithTTLRequest struct {
+	Key        string `json:"key"`
+	Value      []byte `json:"value"`
+	TtlSeconds int64  `json:"ttlSeconds"`
+}
+
+// KVStoreSetWithTTLResponse is the response type for KVStore.SetWithTTL.
+type KVStoreSetWithTTLResponse struct {
+	Error string `json:"error,omitempty"`
+}
+
+// KVStoreDeleteByPrefixRequest is the request type for KVStore.DeleteByPrefix.
+type KVStoreDeleteByPrefixRequest struct {
+	Prefix string `json:"prefix"`
+}
+
+// KVStoreDeleteByPrefixResponse is the response type for KVStore.DeleteByPrefix.
+type KVStoreDeleteByPrefixResponse struct {
+	DeletedCount int64  `json:"deletedCount,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
+// KVStoreGetManyRequest is the request type for KVStore.GetMany.
+type KVStoreGetManyRequest struct {
+	Keys []string `json:"keys"`
+}
+
+// KVStoreGetManyResponse is the response type for KVStore.GetMany.
+type KVStoreGetManyResponse struct {
+	Values map[string][]byte `json:"values,omitempty"`
+	Error  string            `json:"error,omitempty"`
+}
+
 // RegisterKVStoreHostFunctions registers KVStore service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterKVStoreHostFunctions(service KVStoreService) []extism.HostFunction {
@@ -80,6 +114,9 @@ func RegisterKVStoreHostFunctions(service KVStoreService) []extism.HostFunction 
 		newKVStoreHasHostFunction(service),
 		newKVStoreListHostFunction(service),
 		newKVStoreGetStorageUsedHostFunction(service),
+		newKVStoreSetWithTTLHostFunction(service),
+		newKVStoreDeleteByPrefixHostFunction(service),
+		newKVStoreGetManyHostFunction(service),
 	}
 }
 
@@ -263,6 +300,105 @@ func newKVStoreGetStorageUsedHostFunction(service KVStoreService) extism.HostFun
 			// Write JSON response to plugin memory
 			resp := KVStoreGetStorageUsedResponse{
 				Bytes: bytes,
+			}
+			kvstoreWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newKVStoreSetWithTTLHostFunction(service KVStoreService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"kvstore_setwithttl",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+			var req KVStoreSetWithTTLRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			if svcErr := service.SetWithTTL(ctx, req.Key, req.Value, req.TtlSeconds); svcErr != nil {
+				kvstoreWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := KVStoreSetWithTTLResponse{}
+			kvstoreWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newKVStoreDeleteByPrefixHostFunction(service KVStoreService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"kvstore_deletebyprefix",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+			var req KVStoreDeleteByPrefixRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			deletedcount, svcErr := service.DeleteByPrefix(ctx, req.Prefix)
+			if svcErr != nil {
+				kvstoreWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := KVStoreDeleteByPrefixResponse{
+				DeletedCount: deletedcount,
+			}
+			kvstoreWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newKVStoreGetManyHostFunction(service KVStoreService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"kvstore_getmany",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+			var req KVStoreGetManyRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				kvstoreWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			values, svcErr := service.GetMany(ctx, req.Keys)
+			if svcErr != nil {
+				kvstoreWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := KVStoreGetManyResponse{
+				Values: values,
 			}
 			kvstoreWriteResponse(p, stack, resp)
 		},

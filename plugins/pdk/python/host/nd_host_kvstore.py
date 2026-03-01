@@ -56,6 +56,24 @@ def _kvstore_getstorageused(offset: int) -> int:
     ...
 
 
+@extism.import_fn("extism:host/user", "kvstore_setwithttl")
+def _kvstore_setwithttl(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
+@extism.import_fn("extism:host/user", "kvstore_deletebyprefix")
+def _kvstore_deletebyprefix(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
+@extism.import_fn("extism:host/user", "kvstore_getmany")
+def _kvstore_getmany(offset: int) -> int:
+    """Raw host function - do not call directly."""
+    ...
+
+
 @dataclass
 class KVStoreGetResult:
     """Result type for kvstore_get."""
@@ -240,3 +258,105 @@ def kvstore_get_storage_used() -> int:
         raise HostFunctionError(response["error"])
 
     return response.get("bytes", 0)
+
+
+def kvstore_set_with_ttl(key: str, value: bytes, ttl_seconds: int) -> None:
+    """SetWithTTL stores a byte value with the given key and a time-to-live.
+
+After ttlSeconds, the key is treated as non-existent and will be
+cleaned up lazily. ttlSeconds must be greater than 0.
+
+Parameters:
+  - key: The storage key (max 256 bytes, UTF-8)
+  - value: The byte slice to store
+  - ttlSeconds: Time-to-live in seconds (must be > 0)
+
+Returns an error if the storage limit would be exceeded or the operation fails.
+
+    Args:
+        key: str parameter.
+        value: bytes parameter.
+        ttl_seconds: int parameter.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request = {
+        "key": key,
+        "value": base64.b64encode(value).decode("ascii"),
+        "ttlSeconds": ttl_seconds,
+    }
+    request_bytes = json.dumps(request).encode("utf-8")
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _kvstore_setwithttl(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response = json.loads(extism.memory.string(response_mem))
+
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+
+
+def kvstore_delete_by_prefix(prefix: str) -> int:
+    """DeleteByPrefix removes all keys matching the given prefix.
+
+Parameters:
+  - prefix: Key prefix to match (empty string deletes ALL keys)
+
+Returns the number of keys deleted. Includes expired keys.
+
+    Args:
+        prefix: str parameter.
+
+    Returns:
+        int: The result value.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request = {
+        "prefix": prefix,
+    }
+    request_bytes = json.dumps(request).encode("utf-8")
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _kvstore_deletebyprefix(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response = json.loads(extism.memory.string(response_mem))
+
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+    return response.get("deletedCount", 0)
+
+
+def kvstore_get_many(keys: Any) -> Any:
+    """GetMany retrieves multiple values in a single call.
+
+Parameters:
+  - keys: The storage keys to retrieve
+
+Returns a map of key to value for keys that exist and have not expired.
+Missing or expired keys are omitted from the result.
+
+    Args:
+        keys: Any parameter.
+
+    Returns:
+        Any: The result value.
+
+    Raises:
+        HostFunctionError: If the host function returns an error.
+    """
+    request = {
+        "keys": keys,
+    }
+    request_bytes = json.dumps(request).encode("utf-8")
+    request_mem = extism.memory.alloc(request_bytes)
+    response_offset = _kvstore_getmany(request_mem.offset)
+    response_mem = extism.memory.find(response_offset)
+    response = json.loads(extism.memory.string(response_mem))
+
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+    return response.get("values", None)
