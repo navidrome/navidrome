@@ -48,7 +48,7 @@
         "playNext": "Naslednji",
         "info": "Več informacij",
         "showInPlaylist": "Prikaži na seznamu predvajanja",
-        "instantMix": ""
+        "instantMix": "Instant Mix"
       }
     },
     "album": {
@@ -353,7 +353,8 @@
         "allUsers": "Dovoli vsem uporabnikom",
         "selectedUsers": "Izbrani uporabniki",
         "allLibraries": "Dovoli vse knjižnice",
-        "selectedLibraries": "Izbrane knjižnice"
+        "selectedLibraries": "Izbrane knjižnice",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Status",
@@ -397,8 +398,9 @@
         "noLibraries": "Ni izbranih knjižnic",
         "librariesRequired": "Vtičnik zahteva dostop do knjižnih informacij. Izberi do katerih knjižnic lahko dostopa, ali vključi dostop do vseh knjižnic.",
         "requiredHosts": "Zahtevani gostitelji",
-        "configValidationError": "",
-        "schemaRenderError": ""
+        "configValidationError": "Validacija konfiguracije neuspešna:",
+        "schemaRenderError": "Konfiguracijskega obrazca ni mogoče upodobiti. Shema vtičnika je morda neveljavna.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "ključ",
@@ -588,7 +590,7 @@
     "remove_all_missing_content": "Ste prepričani, da želite odstraniti vse manjkajoče datoteke iz baze? Trajno boste odstranili vse reference nanje, vključno s številom predvajanj in ocenami.",
     "noSimilarSongsFound": "Ni najdenih podobnih pesmi",
     "noTopSongsFound": "Ni najdenih najboljših pesmi",
-    "startingInstantMix": ""
+    "startingInstantMix": "Nalaganje Instant Mix..."
   },
   "menu": {
     "library": "Knjižnica",
@@ -674,7 +676,8 @@
       "exportSuccess": "Konfiguracija izvožena v odložišče v formatu TOML",
       "exportFailed": "Kopiranje konfiguracije ni uspelo",
       "devFlagsHeader": "Razvojne zastavice (lahko se spremenijo/odstranijo)",
-      "devFlagsComment": "To so eksperimentalne nastavitve in bodo morda odstranjene v prihodnjih različicah"
+      "devFlagsComment": "To so eksperimentalne nastavitve in bodo morda odstranjene v prihodnjih različicah",
+      "downloadToml": "Naloži konfiguracijo (TOML)"
     }
   },
   "activity": {

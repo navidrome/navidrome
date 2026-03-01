@@ -353,7 +353,8 @@
         "allUsers": "Permitir todos los usuarios",
         "selectedUsers": "Usuarios seleccionados",
         "allLibraries": "Permitir todas las bibliotecas",
-        "selectedLibraries": "Bibliotecas seleccionadas"
+        "selectedLibraries": "Bibliotecas seleccionadas",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Estado",
@@ -398,7 +399,8 @@
         "librariesRequired": "Este plugin requiere acceso a la información de las bibliotecas. Selecciona a qué bibliotecas puede acceder el plugin, o activa 'Permitir todas las bibliotecas'.",
         "requiredHosts": "Hosts requeridos",
         "configValidationError": "La validación de la configuración falló:",
-        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido."
+        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clave",
@@ -674,7 +676,8 @@
       "exportSuccess": "Configuración exportada al portapapeles en formato TOML",
       "exportFailed": "Error al copiar la configuración",
       "devFlagsHeader": "Indicadores de desarrollo (sujetos a cambios o eliminación)",
-      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras"
+      "devFlagsComment": "Estas son configuraciones experimentales y pueden eliminarse en versiones futuras",
+      "downloadToml": "Descargar la configuración (TOML)"
     }
   },
   "activity": {

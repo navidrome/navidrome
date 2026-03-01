@@ -353,7 +353,8 @@
         "allUsers": "Permet tots els usuaris",
         "selectedUsers": "Usuaris seleccionats",
         "allLibraries": "Permet totes les llibreries",
-        "selectedLibraries": "Biblioteques seleccionades"
+        "selectedLibraries": "Biblioteques seleccionades",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Estat",
@@ -398,7 +399,8 @@
         "librariesRequired": "Aquest controlador necessita accedir a la informació de la biblioteca. Selecciona a quines biblioteques pot accedir o activa «Permet totes les biblioteques».",
         "requiredHosts": "Hosts requerits",
         "configValidationError": "Ha fallat la validació de la configuració:",
-        "schemaRenderError": "No s'ha pogut renderitzar el formulari de configuració. És possible que l'esquema del controlador sigui invàlid."
+        "schemaRenderError": "No s'ha pogut renderitzar el formulari de configuració. És possible que l'esquema del controlador sigui invàlid.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clau",
@@ -674,7 +676,8 @@
       "exportSuccess": "Configuració exportada al porta-retalls en format TOML",
       "exportFailed": "La còpia de la configuració ha fallat",
       "devFlagsHeader": "Indicadors de desenvolupament (subjecte a canvis o eliminació)",
-      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures"
+      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures",
+      "downloadToml": "Descarrega la configuració (TOML)"
     }
   },
   "activity": {
