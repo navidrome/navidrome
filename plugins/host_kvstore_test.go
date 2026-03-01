@@ -728,17 +728,21 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 
 	Describe("KVStore Operations via Plugin", func() {
 		type testKVStoreInput struct {
-			Operation string `json:"operation"`
-			Key       string `json:"key"`
-			Value     []byte `json:"value,omitempty"`
-			Prefix    string `json:"prefix,omitempty"`
+			Operation  string   `json:"operation"`
+			Key        string   `json:"key"`
+			Value      []byte   `json:"value,omitempty"`
+			Prefix     string   `json:"prefix,omitempty"`
+			TTLSeconds int64    `json:"ttl_seconds,omitempty"`
+			Keys       []string `json:"keys,omitempty"`
 		}
 		type testKVStoreOutput struct {
-			Value       []byte   `json:"value,omitempty"`
-			Exists      bool     `json:"exists,omitempty"`
-			Keys        []string `json:"keys,omitempty"`
-			StorageUsed int64    `json:"storage_used,omitempty"`
-			Error       *string  `json:"error,omitempty"`
+			Value        []byte            `json:"value,omitempty"`
+			Values       map[string][]byte `json:"values,omitempty"`
+			Exists       bool              `json:"exists,omitempty"`
+			Keys         []string          `json:"keys,omitempty"`
+			StorageUsed  int64             `json:"storage_used,omitempty"`
+			DeletedCount int64             `json:"deleted_count,omitempty"`
+			Error        *string           `json:"error,omitempty"`
 		}
 
 		callTestKVStore := func(ctx context.Context, input testKVStoreInput) (*testKVStoreOutput, error) {
@@ -905,6 +909,107 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Exists).To(BeTrue())
 			Expect(output.Value).To(Equal(binaryData))
+		})
+
+		It("should set value with TTL and expire it", func() {
+			ctx := GinkgoT().Context()
+
+			// Set value with 1 second TTL
+			_, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation:  "set_with_ttl",
+				Key:        "ttl_key",
+				Value:      []byte("temporary"),
+				TTLSeconds: 1,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Immediately should exist
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get",
+				Key:       "ttl_key",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeTrue())
+			Expect(output.Value).To(Equal([]byte("temporary")))
+
+			// Wait for expiration
+			time.Sleep(2 * time.Second)
+
+			// Should no longer exist
+			output, err = callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get",
+				Key:       "ttl_key",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeFalse())
+		})
+
+		It("should delete keys by prefix", func() {
+			ctx := GinkgoT().Context()
+
+			// Set multiple keys with shared prefix
+			for _, key := range []string{"del_prefix:a", "del_prefix:b", "keep:c"} {
+				_, err := callTestKVStore(ctx, testKVStoreInput{
+					Operation: "set",
+					Key:       key,
+					Value:     []byte("value"),
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Delete by prefix
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "delete_by_prefix",
+				Prefix:    "del_prefix:",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.DeletedCount).To(Equal(int64(2)))
+
+			// Verify remaining key
+			getOutput, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "has",
+				Key:       "keep:c",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(getOutput.Exists).To(BeTrue())
+
+			// Verify deleted keys are gone
+			getOutput, err = callTestKVStore(ctx, testKVStoreInput{
+				Operation: "has",
+				Key:       "del_prefix:a",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(getOutput.Exists).To(BeFalse())
+		})
+
+		It("should get many values at once", func() {
+			ctx := GinkgoT().Context()
+
+			// Set multiple keys
+			for _, kv := range []struct{ k, v string }{
+				{"many:1", "val1"},
+				{"many:2", "val2"},
+				{"many:3", "val3"},
+			} {
+				_, err := callTestKVStore(ctx, testKVStoreInput{
+					Operation: "set",
+					Key:       kv.k,
+					Value:     []byte(kv.v),
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Get many, including a missing key
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get_many",
+				Keys:      []string{"many:1", "many:3", "many:missing"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Values).To(HaveLen(2))
+			Expect(output.Values["many:1"]).To(Equal([]byte("val1")))
+			Expect(output.Values["many:3"]).To(Equal([]byte("val3")))
+			_, hasMissing := output.Values["many:missing"]
+			Expect(hasMissing).To(BeFalse())
 		})
 	})
 
