@@ -109,8 +109,8 @@ func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...
 	}
 
 	// Process paths in batches to avoid SQLite's expression tree depth limit (max 1000).
-	// Each path generates ~3 conditions, so batch size of 100 keeps us well under the limit.
-	const batchSize = 100
+	// Each path generates ~3 conditions, so batch size of 200 keeps us well under the limit while supporting large nested folder structures
+	const batchSize = 200
 	result := make(map[string]model.FolderUpdateInfo)
 
 	for batch := range slices.Chunk(targetPaths, batchSize) {
