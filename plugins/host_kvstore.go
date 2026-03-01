@@ -347,7 +347,7 @@ func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) 
 	if err != nil {
 		return 0, fmt.Errorf("starting transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var totalSize int64
 	var count int64
@@ -401,7 +401,7 @@ func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[st
 		args[i] = key
 	}
 
-	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND (expires_at IS NULL OR expires_at > datetime('now'))`
+	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND (expires_at IS NULL OR expires_at > datetime('now'))` //nolint:gosec // placeholders are always "?"
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("querying values: %w", err)
