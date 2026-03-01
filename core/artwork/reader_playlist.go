@@ -44,19 +44,19 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff []sourceFunc
-	if path := a.pl.ArtworkPath(); path != "" {
-		ff = append(ff, fromPlaylistImage(path))
-	}
-	ff = append(ff,
+	return selectImageReader(ctx, a.artID,
+		a.fromPlaylistImage(),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	)
-	return selectImageReader(ctx, a.artID, ff...)
 }
 
-func fromPlaylistImage(absPath string) sourceFunc {
+func (a *playlistArtworkReader) fromPlaylistImage() sourceFunc {
 	return func() (io.ReadCloser, string, error) {
+		absPath := a.pl.ArtworkPath()
+		if absPath == "" {
+			return nil, "", nil
+		}
 		f, err := os.Open(absPath)
 		if err != nil {
 			return nil, "", err
