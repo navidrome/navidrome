@@ -86,7 +86,7 @@ type KVStoreService interface {
 	// DeleteByPrefix removes all keys matching the given prefix.
 	//
 	// Parameters:
-	//   - prefix: Key prefix to match (empty string deletes ALL keys)
+	//   - prefix: Key prefix to match (must not be empty)
 	//
 	// Returns the number of keys deleted. Includes expired keys.
 	//nd:hostfunc

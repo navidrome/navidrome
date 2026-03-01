@@ -313,7 +313,7 @@ def kvstore_delete_by_prefix(prefix: str) -> int:
     """DeleteByPrefix removes all keys matching the given prefix.
 
 Parameters:
-  - prefix: Key prefix to match (empty string deletes ALL keys)
+  - prefix: Key prefix to match (must not be empty)
 
 Returns the number of keys deleted. Includes expired keys.
 

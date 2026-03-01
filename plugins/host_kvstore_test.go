@@ -391,20 +391,27 @@ var _ = Describe("KVStoreService", func() {
 			Expect(value).To(Equal([]byte("still alive")))
 		})
 		It("Set clears expires_at from a key previously set with TTL", func() {
-			err := service.SetWithTTL(ctx, "ttl_then_set", []byte("temp"), 1)
+			// Insert a key with a TTL that has already expired
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('ttl_then_set', 'temp', 4, datetime('now', '-1 seconds'))
+			`)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Overwrite with Set (no TTL) — should become permanent
 			err = service.Set(ctx, "ttl_then_set", []byte("permanent"))
 			Expect(err).ToNot(HaveOccurred())
 
-			time.Sleep(2 * time.Second)
-
-			// Should still exist since Set cleared expires_at
+			// Should exist because Set cleared expires_at
 			value, exists, err := service.Get(ctx, "ttl_then_set")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 			Expect(value).To(Equal([]byte("permanent")))
+
+			// Verify expires_at is actually NULL
+			var expiresAt *string
+			Expect(service.db.QueryRow(`SELECT expires_at FROM kvstore WHERE key = 'ttl_then_set'`).Scan(&expiresAt)).To(Succeed())
+			Expect(expiresAt).To(BeNil())
 		})
 		It("expired keys are not counted in storage used", func() {
 			_, err := service.db.Exec(`
@@ -450,10 +457,12 @@ var _ = Describe("KVStoreService", func() {
 		})
 
 		It("value is not retrievable after expiry", func() {
-			err := service.SetWithTTL(ctx, "short_ttl", []byte("gone_soon"), 1)
+			// Insert a key with an already-expired TTL
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('short_ttl', 'gone_soon', 9, datetime('now', '-1 seconds'))
+			`)
 			Expect(err).ToNot(HaveOccurred())
-
-			time.Sleep(2 * time.Second)
 
 			_, exists, err := service.Get(ctx, "short_ttl")
 			Expect(err).ToNot(HaveOccurred())
@@ -484,13 +493,16 @@ var _ = Describe("KVStoreService", func() {
 		})
 
 		It("overwrites existing key and updates TTL", func() {
-			err := service.SetWithTTL(ctx, "overwrite_ttl", []byte("first"), 1)
+			// Insert a key with an already-expired TTL
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('overwrite_ttl', 'first', 5, datetime('now', '-1 seconds'))
+			`)
 			Expect(err).ToNot(HaveOccurred())
 
+			// Overwrite with a long TTL — should be retrievable
 			err = service.SetWithTTL(ctx, "overwrite_ttl", []byte("second"), 3600)
 			Expect(err).ToNot(HaveOccurred())
-
-			time.Sleep(2 * time.Second)
 
 			value, exists, err := service.Get(ctx, "overwrite_ttl")
 			Expect(err).ToNot(HaveOccurred())
@@ -527,14 +539,10 @@ var _ = Describe("KVStoreService", func() {
 			Expect(keys).To(ContainElements("cache:item:1", "data:important"))
 		})
 
-		It("deletes all keys when prefix is empty", func() {
-			deleted, err := service.DeleteByPrefix(ctx, "")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(deleted).To(Equal(int64(4)))
-
-			keys, err := service.List(ctx, "")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(keys).To(BeEmpty())
+		It("rejects empty prefix", func() {
+			_, err := service.DeleteByPrefix(ctx, "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("prefix cannot be empty"))
 		})
 
 		It("returns 0 when no keys match", func() {

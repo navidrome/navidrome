@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	_ "github.com/mattn/go-sqlite3"
@@ -141,10 +142,11 @@ func (s *kvstoreServiceImpl) setValue(ctx context.Context, key string, value []b
 		return err
 	}
 
-	// NULL means no expiration; otherwise compute the expiration timestamp
-	var expiresAt string
+	// Compute expires_at: sql.NullString{Valid:false} sends NULL (no expiration),
+	// otherwise we send a concrete timestamp.
+	var expiresAt sql.NullString
 	if ttlSeconds > 0 {
-		expiresAt = fmt.Sprintf("+%d seconds", ttlSeconds)
+		expiresAt = sql.NullString{String: fmt.Sprintf("+%d seconds", ttlSeconds), Valid: true}
 	}
 
 	_, err = s.db.ExecContext(ctx, `
@@ -181,7 +183,7 @@ func (s *kvstoreServiceImpl) SetWithTTL(ctx context.Context, key string, value [
 func (s *kvstoreServiceImpl) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	var value []byte
 	err := s.db.QueryRowContext(ctx, `SELECT value FROM kvstore WHERE key = ? AND `+notExpiredFilter, key).Scan(&value)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
@@ -261,16 +263,13 @@ func (s *kvstoreServiceImpl) GetStorageUsed(ctx context.Context) (int64, error) 
 
 // DeleteByPrefix removes all keys matching the given prefix.
 func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) (int64, error) {
-	var result sql.Result
-	var err error
-
 	if prefix == "" {
-		result, err = s.db.ExecContext(ctx, `DELETE FROM kvstore`)
-	} else {
-		escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
-		escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
-		result, err = s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE key LIKE ? ESCAPE '\'`, escapedPrefix+"%")
+		return 0, fmt.Errorf("prefix cannot be empty")
 	}
+
+	escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
+	escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
+	result, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE key LIKE ? ESCAPE '\'`, escapedPrefix+"%")
 	if err != nil {
 		return 0, fmt.Errorf("deleting keys: %w", err)
 	}
@@ -338,7 +337,9 @@ func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
 func (s *kvstoreServiceImpl) Close() error {
 	if s.db != nil {
 		log.Debug("Closing plugin kvstore", "plugin", s.pluginName)
-		s.cleanupExpired(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.cleanupExpired(ctx)
 		return s.db.Close()
 	}
 	return nil
