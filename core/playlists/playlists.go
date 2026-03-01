@@ -290,7 +290,7 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 
 	filename := playlistID + ext
 	oldPath := pls.ArtworkPath()
-	pls.ImagePath = filename
+	pls.ImageFile = filename
 	absPath := pls.ArtworkPath()
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
@@ -330,6 +330,6 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 		}
 	}
 
-	pls.ImagePath = ""
+	pls.ImageFile = ""
 	return s.ds.Playlist(ctx).Put(pls)
 }
