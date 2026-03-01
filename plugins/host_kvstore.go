@@ -8,9 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,18 +19,17 @@ import (
 const (
 	defaultMaxKVStoreSize = 1 * 1024 * 1024 // 1MB default
 	maxKeyLength          = 256             // Max key length in bytes
-	cleanupInterval       = 60 * time.Second
 )
+
+// notExpiredFilter is the SQL condition to exclude expired keys.
+const notExpiredFilter = "(expires_at IS NULL OR expires_at > datetime('now'))"
 
 // kvstoreServiceImpl implements the host.KVStoreService interface.
 // Each plugin gets its own SQLite database for isolation.
 type kvstoreServiceImpl struct {
-	pluginName  string
-	db          *sql.DB
-	maxSize     int64
-	currentSize atomic.Int64 // cached total size, updated on Set/Delete
-	lastCleanup time.Time
-	mu          sync.Mutex
+	pluginName string
+	db         *sql.DB
+	maxSize    int64
 }
 
 // newKVStoreService creates a new kvstoreServiceImpl instance with its own SQLite database.
@@ -70,22 +66,13 @@ func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServ
 		return nil, fmt.Errorf("creating kvstore schema: %w", err)
 	}
 
-	// Load current storage size from database
-	var currentSize int64
-	if err := db.QueryRow(`SELECT COALESCE(SUM(size), 0) FROM kvstore WHERE expires_at IS NULL OR expires_at > datetime('now')`).Scan(&currentSize); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("loading storage size: %w", err)
-	}
+	log.Debug("Initialized plugin kvstore", "plugin", pluginName, "path", dbPath, "maxSize", humanize.Bytes(uint64(maxSize)))
 
-	log.Debug("Initialized plugin kvstore", "plugin", pluginName, "path", dbPath, "maxSize", humanize.Bytes(uint64(maxSize)), "currentSize", humanize.Bytes(uint64(currentSize)))
-
-	svc := &kvstoreServiceImpl{
+	return &kvstoreServiceImpl{
 		pluginName: pluginName,
 		db:         db,
 		maxSize:    maxSize,
-	}
-	svc.currentSize.Store(currentSize)
-	return svc, nil
+	}, nil
 }
 
 func createKVStoreSchema(db *sql.DB) error {
@@ -115,12 +102,42 @@ func createKVStoreSchema(db *sql.DB) error {
 			return err
 		}
 	}
+
+	// Create index on expires_at for efficient filtering of expired keys
+	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_kvstore_expires_at ON kvstore(expires_at)`)
+	return err
+}
+
+// storageUsed returns the current total storage used by non-expired keys.
+func (s *kvstoreServiceImpl) storageUsed(ctx context.Context) (int64, error) {
+	var used int64
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM kvstore WHERE `+notExpiredFilter).Scan(&used)
+	if err != nil {
+		return 0, fmt.Errorf("calculating storage used: %w", err)
+	}
+	return used, nil
+}
+
+// checkStorageLimit verifies that adding delta bytes would not exceed the storage limit.
+func (s *kvstoreServiceImpl) checkStorageLimit(ctx context.Context, delta int64) error {
+	if delta <= 0 {
+		return nil
+	}
+	used, err := s.storageUsed(ctx)
+	if err != nil {
+		return err
+	}
+	newTotal := used + delta
+	if newTotal > s.maxSize {
+		return fmt.Errorf("storage limit exceeded: would use %s of %s allowed",
+			humanize.Bytes(uint64(newTotal)), humanize.Bytes(uint64(s.maxSize)))
+	}
 	return nil
 }
 
-// Set stores a byte value with the given key.
-func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) error {
-	// Validate key
+// setValue is the shared implementation for Set and SetWithTTL.
+// A ttlSeconds of 0 means no expiration.
+func (s *kvstoreServiceImpl) setValue(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
 	if len(key) == 0 {
 		return fmt.Errorf("key cannot be empty")
 	}
@@ -128,50 +145,59 @@ func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) 
 		return fmt.Errorf("key exceeds maximum length of %d bytes", maxKeyLength)
 	}
 
-	s.maybeCleanup(ctx)
-
 	newValueSize := int64(len(value))
 
-	// Get current size of this key (if it exists) to calculate delta
+	// Get current size of this key (if it exists and not expired) to calculate delta
 	var oldSize int64
-	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(size, 0) FROM kvstore WHERE key = ?`, key).Scan(&oldSize)
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(size, 0) FROM kvstore WHERE key = ? AND `+notExpiredFilter, key).Scan(&oldSize)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("checking existing key: %w", err)
 	}
 
-	// Check size limits using cached total
-	delta := newValueSize - oldSize
-	newTotal := s.currentSize.Load() + delta
-	if newTotal > s.maxSize {
-		return fmt.Errorf("storage limit exceeded: would use %s of %s allowed",
-			humanize.Bytes(uint64(newTotal)), humanize.Bytes(uint64(s.maxSize)))
+	if err := s.checkStorageLimit(ctx, newValueSize-oldSize); err != nil {
+		return err
 	}
 
-	// Upsert the value (clear expires_at so a TTL'd key becomes permanent)
+	// NULL means no expiration; otherwise compute the expiration timestamp
+	var expiresAt string
+	if ttlSeconds > 0 {
+		expiresAt = fmt.Sprintf("+%d seconds", ttlSeconds)
+	}
+
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO kvstore (key, value, size, created_at, updated_at)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		INSERT INTO kvstore (key, value, size, created_at, updated_at, expires_at)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, datetime('now', ?))
 		ON CONFLICT(key) DO UPDATE SET
 			value = excluded.value,
 			size = excluded.size,
 			updated_at = CURRENT_TIMESTAMP,
-			expires_at = NULL
-	`, key, value, newValueSize)
+			expires_at = excluded.expires_at
+	`, key, value, newValueSize, expiresAt)
 	if err != nil {
 		return fmt.Errorf("storing value: %w", err)
 	}
 
-	// Update cached size
-	s.currentSize.Add(delta)
-
-	log.Trace(ctx, "KVStore.Set", "plugin", s.pluginName, "key", key, "size", newValueSize)
+	log.Trace(ctx, "KVStore.Set", "plugin", s.pluginName, "key", key, "size", newValueSize, "ttlSeconds", ttlSeconds)
 	return nil
+}
+
+// Set stores a byte value with the given key.
+func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) error {
+	return s.setValue(ctx, key, value, 0)
+}
+
+// SetWithTTL stores a byte value with the given key and a time-to-live.
+func (s *kvstoreServiceImpl) SetWithTTL(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
+	if ttlSeconds <= 0 {
+		return fmt.Errorf("ttlSeconds must be greater than 0")
+	}
+	return s.setValue(ctx, key, value, ttlSeconds)
 }
 
 // Get retrieves a byte value from storage.
 func (s *kvstoreServiceImpl) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	var value []byte
-	err := s.db.QueryRowContext(ctx, `SELECT value FROM kvstore WHERE key = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`, key).Scan(&value)
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM kvstore WHERE key = ? AND `+notExpiredFilter, key).Scan(&value)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
@@ -185,24 +211,10 @@ func (s *kvstoreServiceImpl) Get(ctx context.Context, key string) ([]byte, bool,
 
 // Delete removes a value from storage.
 func (s *kvstoreServiceImpl) Delete(ctx context.Context, key string) error {
-	// Get size of the key being deleted to update cache
-	var oldSize int64
-	err := s.db.QueryRowContext(ctx, `SELECT size FROM kvstore WHERE key = ?`, key).Scan(&oldSize)
-	if errors.Is(err, sql.ErrNoRows) {
-		// Key doesn't exist, nothing to delete
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("checking key size: %w", err)
-	}
-
-	_, err = s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE key = ?`, key)
+	_, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE key = ?`, key)
 	if err != nil {
 		return fmt.Errorf("deleting value: %w", err)
 	}
-
-	// Update cached size
-	s.currentSize.Add(-oldSize)
 
 	log.Trace(ctx, "KVStore.Delete", "plugin", s.pluginName, "key", key)
 	return nil
@@ -211,7 +223,7 @@ func (s *kvstoreServiceImpl) Delete(ctx context.Context, key string) error {
 // Has checks if a key exists in storage.
 func (s *kvstoreServiceImpl) Has(ctx context.Context, key string) (bool, error) {
 	var count int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kvstore WHERE key = ? AND (expires_at IS NULL OR expires_at > datetime('now'))`, key).Scan(&count)
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kvstore WHERE key = ? AND `+notExpiredFilter, key).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("checking key: %w", err)
 	}
@@ -224,14 +236,13 @@ func (s *kvstoreServiceImpl) List(ctx context.Context, prefix string) ([]string,
 	var rows *sql.Rows
 	var err error
 
-	notExpired := "(expires_at IS NULL OR expires_at > datetime('now'))"
 	if prefix == "" {
-		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE `+notExpired+` ORDER BY key`)
+		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE `+notExpiredFilter+` ORDER BY key`)
 	} else {
 		// Escape special LIKE characters in prefix
 		escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
 		escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
-		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE key LIKE ? ESCAPE '\' AND `+notExpired+` ORDER BY key`, escapedPrefix+"%")
+		rows, err = s.db.QueryContext(ctx, `SELECT key FROM kvstore WHERE key LIKE ? ESCAPE '\' AND `+notExpiredFilter+` ORDER BY key`, escapedPrefix+"%")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("listing keys: %w", err)
@@ -257,132 +268,33 @@ func (s *kvstoreServiceImpl) List(ctx context.Context, prefix string) ([]string,
 
 // GetStorageUsed returns the total storage used by this plugin in bytes.
 func (s *kvstoreServiceImpl) GetStorageUsed(ctx context.Context) (int64, error) {
-	used := s.currentSize.Load()
+	used, err := s.storageUsed(ctx)
+	if err != nil {
+		return 0, err
+	}
 	log.Trace(ctx, "KVStore.GetStorageUsed", "plugin", s.pluginName, "bytes", used)
 	return used, nil
 }
 
-// cleanupExpired deletes all expired keys from the database and updates the cached size.
-func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
-	var totalSize int64
-	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`).Scan(&totalSize)
-	if err != nil {
-		log.Error(ctx, "KVStore cleanup: failed to calculate expired size", "plugin", s.pluginName, err)
-		return
-	}
-	if totalSize == 0 {
-		return
-	}
-
-	_, err = s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`)
-	if err != nil {
-		log.Error(ctx, "KVStore cleanup: failed to delete expired keys", "plugin", s.pluginName, err)
-		return
-	}
-
-	s.currentSize.Add(-totalSize)
-	log.Debug("KVStore cleanup completed", "plugin", s.pluginName, "reclaimedBytes", totalSize)
-}
-
-// maybeCleanup runs cleanupExpired if enough time has passed since the last cleanup.
-func (s *kvstoreServiceImpl) maybeCleanup(ctx context.Context) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if time.Since(s.lastCleanup) < cleanupInterval {
-		return
-	}
-	s.lastCleanup = time.Now()
-	s.cleanupExpired(ctx)
-}
-
-// SetWithTTL stores a byte value with the given key and a time-to-live.
-func (s *kvstoreServiceImpl) SetWithTTL(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
-	if ttlSeconds <= 0 {
-		return fmt.Errorf("ttlSeconds must be greater than 0")
-	}
-	if len(key) == 0 {
-		return fmt.Errorf("key cannot be empty")
-	}
-	if len(key) > maxKeyLength {
-		return fmt.Errorf("key exceeds maximum length of %d bytes", maxKeyLength)
-	}
-
-	s.maybeCleanup(ctx)
-
-	newValueSize := int64(len(value))
-	var oldSize int64
-	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(size, 0) FROM kvstore WHERE key = ?`, key).Scan(&oldSize)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("checking existing key: %w", err)
-	}
-
-	delta := newValueSize - oldSize
-	newTotal := s.currentSize.Load() + delta
-	if newTotal > s.maxSize {
-		return fmt.Errorf("storage limit exceeded: would use %s of %s allowed",
-			humanize.Bytes(uint64(newTotal)), humanize.Bytes(uint64(s.maxSize)))
-	}
-
-	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO kvstore (key, value, size, created_at, updated_at, expires_at)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, datetime('now', '+' || ? || ' seconds'))
-		ON CONFLICT(key) DO UPDATE SET
-			value = excluded.value,
-			size = excluded.size,
-			updated_at = CURRENT_TIMESTAMP,
-			expires_at = excluded.expires_at
-	`, key, value, newValueSize, ttlSeconds)
-	if err != nil {
-		return fmt.Errorf("storing value with TTL: %w", err)
-	}
-
-	s.currentSize.Add(delta)
-	log.Trace(ctx, "KVStore.SetWithTTL", "plugin", s.pluginName, "key", key, "size", newValueSize, "ttlSeconds", ttlSeconds)
-	return nil
-}
-
 // DeleteByPrefix removes all keys matching the given prefix.
 func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) (int64, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("starting transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var totalSize int64
-	var count int64
+	var result sql.Result
+	var err error
 
 	if prefix == "" {
-		err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0), COUNT(*) FROM kvstore`).Scan(&totalSize, &count)
-		if err != nil {
-			return 0, fmt.Errorf("calculating delete size: %w", err)
-		}
-		if count > 0 {
-			_, err = tx.ExecContext(ctx, `DELETE FROM kvstore`)
-		}
+		result, err = s.db.ExecContext(ctx, `DELETE FROM kvstore`)
 	} else {
 		escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
 		escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
-		likePattern := escapedPrefix + "%"
-		err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0), COUNT(*) FROM kvstore WHERE key LIKE ? ESCAPE '\'`, likePattern).Scan(&totalSize, &count)
-		if err != nil {
-			return 0, fmt.Errorf("calculating delete size: %w", err)
-		}
-		if count > 0 {
-			_, err = tx.ExecContext(ctx, `DELETE FROM kvstore WHERE key LIKE ? ESCAPE '\'`, likePattern)
-		}
+		result, err = s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE key LIKE ? ESCAPE '\'`, escapedPrefix+"%")
 	}
 	if err != nil {
 		return 0, fmt.Errorf("deleting keys: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("committing transaction: %w", err)
-	}
-
-	if totalSize > 0 {
-		s.currentSize.Add(-totalSize)
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting deleted count: %w", err)
 	}
 
 	log.Trace(ctx, "KVStore.DeleteByPrefix", "plugin", s.pluginName, "prefix", prefix, "deletedCount", count)
@@ -402,7 +314,7 @@ func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[st
 		args[i] = key
 	}
 
-	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND (expires_at IS NULL OR expires_at > datetime('now'))` //nolint:gosec // placeholders are always "?"
+	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND ` + notExpiredFilter //nolint:gosec // placeholders are always "?"
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("querying values: %w", err)
@@ -424,6 +336,18 @@ func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[st
 
 	log.Trace(ctx, "KVStore.GetMany", "plugin", s.pluginName, "requested", len(keys), "found", len(result))
 	return result, nil
+}
+
+// cleanupExpired removes all expired keys from the database to reclaim disk space.
+func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`)
+	if err != nil {
+		log.Error(ctx, "KVStore cleanup: failed to delete expired keys", "plugin", s.pluginName, err)
+		return
+	}
+	if count, err := result.RowsAffected(); err == nil && count > 0 {
+		log.Debug("KVStore cleanup completed", "plugin", s.pluginName, "deletedKeys", count)
+	}
 }
 
 // Close closes the SQLite database connection.

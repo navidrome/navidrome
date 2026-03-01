@@ -452,20 +452,35 @@ var _ = Describe("KVStoreService", func() {
 			Expect(exists).To(BeTrue())
 			Expect(value).To(Equal([]byte("permanent")))
 		})
-		It("cleanup reclaims storage from expired keys", func() {
+		It("expired keys are not counted in storage used", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_key', '12345', 5, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Expired keys should not be counted
+			used, err := service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(0)))
+		})
+		It("cleanup removes expired rows from disk", func() {
 			_, err := service.db.Exec(`
 				INSERT INTO kvstore (key, value, size, expires_at)
 				VALUES ('cleanup_me', '12345', 5, datetime('now', '-1 seconds'))
 			`)
 			Expect(err).ToNot(HaveOccurred())
-			service.currentSize.Add(5)
-			used, err := service.GetStorageUsed(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(used).To(Equal(int64(5)))
+
+			// Row exists in DB but is logically expired
+			var count int
+			Expect(service.db.QueryRow(`SELECT COUNT(*) FROM kvstore`).Scan(&count)).To(Succeed())
+			Expect(count).To(Equal(1))
+
 			service.cleanupExpired(ctx)
-			used, err = service.GetStorageUsed(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(used).To(Equal(int64(0)))
+
+			// Row should be physically deleted
+			Expect(service.db.QueryRow(`SELECT COUNT(*) FROM kvstore`).Scan(&count)).To(Succeed())
+			Expect(count).To(Equal(0))
 		})
 	})
 
@@ -606,7 +621,6 @@ var _ = Describe("KVStoreService", func() {
 				VALUES ('cache:expired', 'old', 3, datetime('now', '-1 seconds'))
 			`)
 			Expect(err).ToNot(HaveOccurred())
-			service.currentSize.Add(3)
 
 			deleted, err := service.DeleteByPrefix(ctx, "cache:")
 			Expect(err).ToNot(HaveOccurred())
