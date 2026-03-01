@@ -295,6 +295,136 @@ func (s *kvstoreServiceImpl) maybeCleanup(ctx context.Context) {
 	s.cleanupExpired(ctx)
 }
 
+// SetWithTTL stores a byte value with the given key and a time-to-live.
+func (s *kvstoreServiceImpl) SetWithTTL(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
+	if ttlSeconds <= 0 {
+		return fmt.Errorf("ttlSeconds must be greater than 0")
+	}
+	if len(key) == 0 {
+		return fmt.Errorf("key cannot be empty")
+	}
+	if len(key) > maxKeyLength {
+		return fmt.Errorf("key exceeds maximum length of %d bytes", maxKeyLength)
+	}
+
+	s.maybeCleanup(ctx)
+
+	newValueSize := int64(len(value))
+	var oldSize int64
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(size, 0) FROM kvstore WHERE key = ?`, key).Scan(&oldSize)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("checking existing key: %w", err)
+	}
+
+	delta := newValueSize - oldSize
+	newTotal := s.currentSize.Load() + delta
+	if newTotal > s.maxSize {
+		return fmt.Errorf("storage limit exceeded: would use %s of %s allowed",
+			humanize.Bytes(uint64(newTotal)), humanize.Bytes(uint64(s.maxSize)))
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO kvstore (key, value, size, created_at, updated_at, expires_at)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, datetime('now', '+' || ? || ' seconds'))
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			size = excluded.size,
+			updated_at = CURRENT_TIMESTAMP,
+			expires_at = excluded.expires_at
+	`, key, value, newValueSize, ttlSeconds)
+	if err != nil {
+		return fmt.Errorf("storing value with TTL: %w", err)
+	}
+
+	s.currentSize.Add(delta)
+	log.Trace(ctx, "KVStore.SetWithTTL", "plugin", s.pluginName, "key", key, "size", newValueSize, "ttlSeconds", ttlSeconds)
+	return nil
+}
+
+// DeleteByPrefix removes all keys matching the given prefix.
+func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var totalSize int64
+	var count int64
+
+	if prefix == "" {
+		err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0), COUNT(*) FROM kvstore`).Scan(&totalSize, &count)
+		if err != nil {
+			return 0, fmt.Errorf("calculating delete size: %w", err)
+		}
+		if count > 0 {
+			_, err = tx.ExecContext(ctx, `DELETE FROM kvstore`)
+		}
+	} else {
+		escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")
+		escapedPrefix = strings.ReplaceAll(escapedPrefix, "_", "\\_")
+		likePattern := escapedPrefix + "%"
+		err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0), COUNT(*) FROM kvstore WHERE key LIKE ? ESCAPE '\'`, likePattern).Scan(&totalSize, &count)
+		if err != nil {
+			return 0, fmt.Errorf("calculating delete size: %w", err)
+		}
+		if count > 0 {
+			_, err = tx.ExecContext(ctx, `DELETE FROM kvstore WHERE key LIKE ? ESCAPE '\'`, likePattern)
+		}
+	}
+	if err != nil {
+		return 0, fmt.Errorf("deleting keys: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("committing transaction: %w", err)
+	}
+
+	if totalSize > 0 {
+		s.currentSize.Add(-totalSize)
+	}
+
+	log.Trace(ctx, "KVStore.DeleteByPrefix", "plugin", s.pluginName, "prefix", prefix, "deletedCount", count)
+	return count, nil
+}
+
+// GetMany retrieves multiple values in a single call.
+func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[string][]byte, error) {
+	if len(keys) == 0 {
+		return map[string][]byte{}, nil
+	}
+
+	placeholders := make([]string, len(keys))
+	args := make([]any, len(keys))
+	for i, key := range keys {
+		placeholders[i] = "?"
+		args[i] = key
+	}
+
+	query := `SELECT key, value FROM kvstore WHERE key IN (` + strings.Join(placeholders, ",") + `) AND (expires_at IS NULL OR expires_at > datetime('now'))`
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying values: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string][]byte)
+	for rows.Next() {
+		var key string
+		var value []byte
+		if err := rows.Scan(&key, &value); err != nil {
+			return nil, fmt.Errorf("scanning value: %w", err)
+		}
+		result[key] = value
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating values: %w", err)
+	}
+
+	log.Trace(ctx, "KVStore.GetMany", "plugin", s.pluginName, "requested", len(keys), "found", len(result))
+	return result, nil
+}
+
 // Close closes the SQLite database connection.
 // This is called when the plugin is unloaded.
 func (s *kvstoreServiceImpl) Close() error {

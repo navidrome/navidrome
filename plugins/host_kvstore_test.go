@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -449,6 +450,209 @@ var _ = Describe("KVStoreService", func() {
 			used, err = service.GetStorageUsed(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(used).To(Equal(int64(0)))
+		})
+	})
+
+	Describe("SetWithTTL", func() {
+		It("stores value that is retrievable before expiry", func() {
+			err := service.SetWithTTL(ctx, "ttl_key", []byte("ttl_value"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			value, exists, err := service.Get(ctx, "ttl_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("ttl_value")))
+		})
+
+		It("value is not retrievable after expiry", func() {
+			err := service.SetWithTTL(ctx, "short_ttl", []byte("gone_soon"), 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			time.Sleep(2 * time.Second)
+
+			_, exists, err := service.Get(ctx, "short_ttl")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("rejects ttlSeconds <= 0", func() {
+			err := service.SetWithTTL(ctx, "bad_ttl", []byte("value"), 0)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ttlSeconds must be greater than 0"))
+
+			err = service.SetWithTTL(ctx, "bad_ttl", []byte("value"), -5)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ttlSeconds must be greater than 0"))
+		})
+
+		It("validates key same as Set", func() {
+			err := service.SetWithTTL(ctx, "", []byte("value"), 60)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("key cannot be empty"))
+		})
+
+		It("enforces size limits same as Set", func() {
+			bigValue := make([]byte, 2048)
+			err := service.SetWithTTL(ctx, "big_ttl", bigValue, 60)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("storage limit exceeded"))
+		})
+
+		It("overwrites existing key and updates TTL", func() {
+			err := service.SetWithTTL(ctx, "overwrite_ttl", []byte("first"), 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = service.SetWithTTL(ctx, "overwrite_ttl", []byte("second"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			time.Sleep(2 * time.Second)
+
+			value, exists, err := service.Get(ctx, "overwrite_ttl")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("second")))
+		})
+
+		It("tracks storage correctly", func() {
+			err := service.SetWithTTL(ctx, "sized_ttl", []byte("12345"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			used, err := service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(5)))
+		})
+	})
+
+	Describe("DeleteByPrefix", func() {
+		BeforeEach(func() {
+			Expect(service.Set(ctx, "cache:user:1", []byte("Alice"))).To(Succeed())
+			Expect(service.Set(ctx, "cache:user:2", []byte("Bob"))).To(Succeed())
+			Expect(service.Set(ctx, "cache:item:1", []byte("Widget"))).To(Succeed())
+			Expect(service.Set(ctx, "data:important", []byte("keep"))).To(Succeed())
+		})
+
+		It("deletes all keys with the given prefix", func() {
+			deleted, err := service.DeleteByPrefix(ctx, "cache:user:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(2)))
+
+			keys, err := service.List(ctx, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(keys).To(HaveLen(2))
+			Expect(keys).To(ContainElements("cache:item:1", "data:important"))
+		})
+
+		It("deletes all keys when prefix is empty", func() {
+			deleted, err := service.DeleteByPrefix(ctx, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(4)))
+
+			keys, err := service.List(ctx, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(keys).To(BeEmpty())
+		})
+
+		It("returns 0 when no keys match", func() {
+			deleted, err := service.DeleteByPrefix(ctx, "nonexistent:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(0)))
+		})
+
+		It("updates storage size correctly", func() {
+			usedBefore, _ := service.GetStorageUsed(ctx)
+			Expect(usedBefore).To(BeNumerically(">", 0))
+
+			_, err := service.DeleteByPrefix(ctx, "cache:")
+			Expect(err).ToNot(HaveOccurred())
+
+			usedAfter, _ := service.GetStorageUsed(ctx)
+			Expect(usedAfter).To(Equal(int64(4)))
+		})
+
+		It("handles special LIKE characters in prefix", func() {
+			Expect(service.Set(ctx, "test%special", []byte("v1"))).To(Succeed())
+			Expect(service.Set(ctx, "test_special", []byte("v2"))).To(Succeed())
+			Expect(service.Set(ctx, "testXspecial", []byte("v3"))).To(Succeed())
+
+			deleted, err := service.DeleteByPrefix(ctx, "test%")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(1)))
+
+			exists, _ := service.Has(ctx, "test_special")
+			Expect(exists).To(BeTrue())
+			exists, _ = service.Has(ctx, "testXspecial")
+			Expect(exists).To(BeTrue())
+		})
+
+		It("also deletes expired keys matching prefix", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('cache:expired', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			service.currentSize.Add(3)
+
+			deleted, err := service.DeleteByPrefix(ctx, "cache:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(4)))
+		})
+	})
+
+	Describe("GetMany", func() {
+		BeforeEach(func() {
+			Expect(service.Set(ctx, "key1", []byte("value1"))).To(Succeed())
+			Expect(service.Set(ctx, "key2", []byte("value2"))).To(Succeed())
+			Expect(service.Set(ctx, "key3", []byte("value3"))).To(Succeed())
+		})
+
+		It("retrieves multiple values at once", func() {
+			values, err := service.GetMany(ctx, []string{"key1", "key2", "key3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(3))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+			Expect(values["key2"]).To(Equal([]byte("value2")))
+			Expect(values["key3"]).To(Equal([]byte("value3")))
+		})
+
+		It("omits missing keys from result", func() {
+			values, err := service.GetMany(ctx, []string{"key1", "missing", "key3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(2))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+			Expect(values["key3"]).To(Equal([]byte("value3")))
+			_, hasMissing := values["missing"]
+			Expect(hasMissing).To(BeFalse())
+		})
+
+		It("returns empty map for empty keys slice", func() {
+			values, err := service.GetMany(ctx, []string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
+		})
+
+		It("returns empty map for nil keys slice", func() {
+			values, err := service.GetMany(ctx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
+		})
+
+		It("excludes expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_many', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			values, err := service.GetMany(ctx, []string{"key1", "expired_many"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(1))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+		})
+
+		It("handles all keys missing", func() {
+			values, err := service.GetMany(ctx, []string{"nope1", "nope2"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
 		})
 	})
 })
