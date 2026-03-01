@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -37,7 +38,7 @@ var _ = Describe("KVStoreService", func() {
 
 		// Create service with 1KB limit for testing
 		maxSize := "1KB"
-		service, err = newKVStoreService("test_plugin", &KVStorePermission{MaxSize: &maxSize})
+		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -253,7 +254,7 @@ var _ = Describe("KVStoreService", func() {
 			Expect(service.Close()).To(Succeed())
 
 			maxSize := "1KB"
-			service2, err := newKVStoreService("test_plugin", &KVStorePermission{MaxSize: &maxSize})
+			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -302,7 +303,7 @@ var _ = Describe("KVStoreService", func() {
 
 	Describe("Plugin Isolation", func() {
 		It("isolates data between plugins", func() {
-			service2, err := newKVStoreService("other_plugin", &KVStorePermission{})
+			service2, err := newKVStoreService(ctx, "other_plugin", &KVStorePermission{})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -321,7 +322,7 @@ var _ = Describe("KVStoreService", func() {
 		})
 
 		It("creates separate database files per plugin", func() {
-			service2, err := newKVStoreService("other_plugin", &KVStorePermission{})
+			service2, err := newKVStoreService(ctx, "other_plugin", &KVStorePermission{})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -341,6 +342,309 @@ var _ = Describe("KVStoreService", func() {
 			// After close, operations should fail
 			_, _, err = service.Get(ctx, "any")
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("TTL Expiration", func() {
+		It("Get returns not-exists for expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_key', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			value, exists, err := service.Get(ctx, "expired_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+			Expect(value).To(BeNil())
+		})
+		It("Has returns false for expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_has', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			exists, err := service.Has(ctx, "expired_has")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+		It("List excludes expired keys", func() {
+			Expect(service.Set(ctx, "live:1", []byte("alive"))).To(Succeed())
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('live:expired', 'dead', 4, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			keys, err := service.List(ctx, "live:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(keys).To(HaveLen(1))
+			Expect(keys).To(ContainElement("live:1"))
+		})
+		It("Get returns value for non-expired keys with TTL", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('future_key', 'still alive', 11, datetime('now', '+3600 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+			value, exists, err := service.Get(ctx, "future_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("still alive")))
+		})
+		It("Set clears expires_at from a key previously set with TTL", func() {
+			// Insert a key with a TTL that has already expired
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('ttl_then_set', 'temp', 4, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Overwrite with Set (no TTL) — should become permanent
+			err = service.Set(ctx, "ttl_then_set", []byte("permanent"))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Should exist because Set cleared expires_at
+			value, exists, err := service.Get(ctx, "ttl_then_set")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("permanent")))
+
+			// Verify expires_at is actually NULL
+			var expiresAt *string
+			Expect(service.db.QueryRow(`SELECT expires_at FROM kvstore WHERE key = 'ttl_then_set'`).Scan(&expiresAt)).To(Succeed())
+			Expect(expiresAt).To(BeNil())
+		})
+		It("expired keys are not counted in storage used", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_key', '12345', 5, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Expired keys should not be counted
+			used, err := service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(0)))
+		})
+		It("cleanup removes expired rows from disk", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('cleanup_me', '12345', 5, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Row exists in DB but is logically expired
+			var count int
+			Expect(service.db.QueryRow(`SELECT COUNT(*) FROM kvstore`).Scan(&count)).To(Succeed())
+			Expect(count).To(Equal(1))
+
+			service.cleanupExpired(ctx)
+
+			// Row should be physically deleted
+			Expect(service.db.QueryRow(`SELECT COUNT(*) FROM kvstore`).Scan(&count)).To(Succeed())
+			Expect(count).To(Equal(0))
+		})
+	})
+
+	Describe("SetWithTTL", func() {
+		It("stores value that is retrievable before expiry", func() {
+			err := service.SetWithTTL(ctx, "ttl_key", []byte("ttl_value"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			value, exists, err := service.Get(ctx, "ttl_key")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("ttl_value")))
+		})
+
+		It("value is not retrievable after expiry", func() {
+			// Insert a key with an already-expired TTL
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('short_ttl', 'gone_soon', 9, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, exists, err := service.Get(ctx, "short_ttl")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("rejects ttlSeconds <= 0", func() {
+			err := service.SetWithTTL(ctx, "bad_ttl", []byte("value"), 0)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ttlSeconds must be greater than 0"))
+
+			err = service.SetWithTTL(ctx, "bad_ttl", []byte("value"), -5)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("ttlSeconds must be greater than 0"))
+		})
+
+		It("validates key same as Set", func() {
+			err := service.SetWithTTL(ctx, "", []byte("value"), 60)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("key cannot be empty"))
+		})
+
+		It("enforces size limits same as Set", func() {
+			bigValue := make([]byte, 2048)
+			err := service.SetWithTTL(ctx, "big_ttl", bigValue, 60)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("storage limit exceeded"))
+		})
+
+		It("overwrites existing key and updates TTL", func() {
+			// Insert a key with an already-expired TTL
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('overwrite_ttl', 'first', 5, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Overwrite with a long TTL — should be retrievable
+			err = service.SetWithTTL(ctx, "overwrite_ttl", []byte("second"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			value, exists, err := service.Get(ctx, "overwrite_ttl")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("second")))
+		})
+
+		It("tracks storage correctly", func() {
+			err := service.SetWithTTL(ctx, "sized_ttl", []byte("12345"), 3600)
+			Expect(err).ToNot(HaveOccurred())
+
+			used, err := service.GetStorageUsed(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(used).To(Equal(int64(5)))
+		})
+	})
+
+	Describe("DeleteByPrefix", func() {
+		BeforeEach(func() {
+			Expect(service.Set(ctx, "cache:user:1", []byte("Alice"))).To(Succeed())
+			Expect(service.Set(ctx, "cache:user:2", []byte("Bob"))).To(Succeed())
+			Expect(service.Set(ctx, "cache:item:1", []byte("Widget"))).To(Succeed())
+			Expect(service.Set(ctx, "data:important", []byte("keep"))).To(Succeed())
+		})
+
+		It("deletes all keys with the given prefix", func() {
+			deleted, err := service.DeleteByPrefix(ctx, "cache:user:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(2)))
+
+			keys, err := service.List(ctx, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(keys).To(HaveLen(2))
+			Expect(keys).To(ContainElements("cache:item:1", "data:important"))
+		})
+
+		It("rejects empty prefix", func() {
+			_, err := service.DeleteByPrefix(ctx, "")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("prefix cannot be empty"))
+		})
+
+		It("returns 0 when no keys match", func() {
+			deleted, err := service.DeleteByPrefix(ctx, "nonexistent:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(0)))
+		})
+
+		It("updates storage size correctly", func() {
+			usedBefore, _ := service.GetStorageUsed(ctx)
+			Expect(usedBefore).To(BeNumerically(">", 0))
+
+			_, err := service.DeleteByPrefix(ctx, "cache:")
+			Expect(err).ToNot(HaveOccurred())
+
+			usedAfter, _ := service.GetStorageUsed(ctx)
+			Expect(usedAfter).To(Equal(int64(4)))
+		})
+
+		It("handles special LIKE characters in prefix", func() {
+			Expect(service.Set(ctx, "test%special", []byte("v1"))).To(Succeed())
+			Expect(service.Set(ctx, "test_special", []byte("v2"))).To(Succeed())
+			Expect(service.Set(ctx, "testXspecial", []byte("v3"))).To(Succeed())
+
+			deleted, err := service.DeleteByPrefix(ctx, "test%")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(1)))
+
+			exists, _ := service.Has(ctx, "test_special")
+			Expect(exists).To(BeTrue())
+			exists, _ = service.Has(ctx, "testXspecial")
+			Expect(exists).To(BeTrue())
+		})
+
+		It("also deletes expired keys matching prefix", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('cache:expired', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			deleted, err := service.DeleteByPrefix(ctx, "cache:")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(deleted).To(Equal(int64(4)))
+		})
+	})
+
+	Describe("GetMany", func() {
+		BeforeEach(func() {
+			Expect(service.Set(ctx, "key1", []byte("value1"))).To(Succeed())
+			Expect(service.Set(ctx, "key2", []byte("value2"))).To(Succeed())
+			Expect(service.Set(ctx, "key3", []byte("value3"))).To(Succeed())
+		})
+
+		It("retrieves multiple values at once", func() {
+			values, err := service.GetMany(ctx, []string{"key1", "key2", "key3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(3))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+			Expect(values["key2"]).To(Equal([]byte("value2")))
+			Expect(values["key3"]).To(Equal([]byte("value3")))
+		})
+
+		It("omits missing keys from result", func() {
+			values, err := service.GetMany(ctx, []string{"key1", "missing", "key3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(2))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+			Expect(values["key3"]).To(Equal([]byte("value3")))
+			_, hasMissing := values["missing"]
+			Expect(hasMissing).To(BeFalse())
+		})
+
+		It("returns empty map for empty keys slice", func() {
+			values, err := service.GetMany(ctx, []string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
+		})
+
+		It("returns empty map for nil keys slice", func() {
+			values, err := service.GetMany(ctx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
+		})
+
+		It("excludes expired keys", func() {
+			_, err := service.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('expired_many', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			values, err := service.GetMany(ctx, []string{"key1", "expired_many"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(HaveLen(1))
+			Expect(values["key1"]).To(Equal([]byte("value1")))
+		})
+
+		It("handles all keys missing", func() {
+			values, err := service.GetMany(ctx, []string{"nope1", "nope2"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(values).To(BeEmpty())
 		})
 	})
 })
@@ -416,17 +720,21 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 
 	Describe("KVStore Operations via Plugin", func() {
 		type testKVStoreInput struct {
-			Operation string `json:"operation"`
-			Key       string `json:"key"`
-			Value     []byte `json:"value,omitempty"`
-			Prefix    string `json:"prefix,omitempty"`
+			Operation  string   `json:"operation"`
+			Key        string   `json:"key"`
+			Value      []byte   `json:"value,omitempty"`
+			Prefix     string   `json:"prefix,omitempty"`
+			TTLSeconds int64    `json:"ttl_seconds,omitempty"`
+			Keys       []string `json:"keys,omitempty"`
 		}
 		type testKVStoreOutput struct {
-			Value       []byte   `json:"value,omitempty"`
-			Exists      bool     `json:"exists,omitempty"`
-			Keys        []string `json:"keys,omitempty"`
-			StorageUsed int64    `json:"storage_used,omitempty"`
-			Error       *string  `json:"error,omitempty"`
+			Value        []byte            `json:"value,omitempty"`
+			Values       map[string][]byte `json:"values,omitempty"`
+			Exists       bool              `json:"exists,omitempty"`
+			Keys         []string          `json:"keys,omitempty"`
+			StorageUsed  int64             `json:"storage_used,omitempty"`
+			DeletedCount int64             `json:"deleted_count,omitempty"`
+			Error        *string           `json:"error,omitempty"`
 		}
 
 		callTestKVStore := func(ctx context.Context, input testKVStoreInput) (*testKVStoreOutput, error) {
@@ -593,6 +901,107 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Exists).To(BeTrue())
 			Expect(output.Value).To(Equal(binaryData))
+		})
+
+		It("should set value with TTL and expire it", func() {
+			ctx := GinkgoT().Context()
+
+			// Set value with 1 second TTL
+			_, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation:  "set_with_ttl",
+				Key:        "ttl_key",
+				Value:      []byte("temporary"),
+				TTLSeconds: 1,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Immediately should exist
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get",
+				Key:       "ttl_key",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeTrue())
+			Expect(output.Value).To(Equal([]byte("temporary")))
+
+			// Wait for expiration
+			time.Sleep(2 * time.Second)
+
+			// Should no longer exist
+			output, err = callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get",
+				Key:       "ttl_key",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Exists).To(BeFalse())
+		})
+
+		It("should delete keys by prefix", func() {
+			ctx := GinkgoT().Context()
+
+			// Set multiple keys with shared prefix
+			for _, key := range []string{"del_prefix:a", "del_prefix:b", "keep:c"} {
+				_, err := callTestKVStore(ctx, testKVStoreInput{
+					Operation: "set",
+					Key:       key,
+					Value:     []byte("value"),
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Delete by prefix
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "delete_by_prefix",
+				Prefix:    "del_prefix:",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.DeletedCount).To(Equal(int64(2)))
+
+			// Verify remaining key
+			getOutput, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "has",
+				Key:       "keep:c",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(getOutput.Exists).To(BeTrue())
+
+			// Verify deleted keys are gone
+			getOutput, err = callTestKVStore(ctx, testKVStoreInput{
+				Operation: "has",
+				Key:       "del_prefix:a",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(getOutput.Exists).To(BeFalse())
+		})
+
+		It("should get many values at once", func() {
+			ctx := GinkgoT().Context()
+
+			// Set multiple keys
+			for _, kv := range []struct{ k, v string }{
+				{"many:1", "val1"},
+				{"many:2", "val2"},
+				{"many:3", "val3"},
+			} {
+				_, err := callTestKVStore(ctx, testKVStoreInput{
+					Operation: "set",
+					Key:       kv.k,
+					Value:     []byte(kv.v),
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Get many, including a missing key
+			output, err := callTestKVStore(ctx, testKVStoreInput{
+				Operation: "get_many",
+				Keys:      []string{"many:1", "many:3", "many:missing"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output.Values).To(HaveLen(2))
+			Expect(output.Values["many:1"]).To(Equal([]byte("val1")))
+			Expect(output.Values["many:3"]).To(Equal([]byte("val3")))
+			_, hasMissing := output.Values["many:missing"]
+			Expect(hasMissing).To(BeFalse())
 		})
 	})
 
