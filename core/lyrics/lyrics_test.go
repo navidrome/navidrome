@@ -3,6 +3,7 @@ package lyrics_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/navidrome/navidrome/conf"
@@ -72,7 +73,8 @@ var _ = Describe("sources", func() {
 
 	DescribeTable("Lyrics Priority", func(priority string, expected model.LyricList) {
 		conf.Server.LyricsPriority = priority
-		list, err := lyrics.GetLyrics(ctx, &mf)
+		svc := lyrics.NewLyrics(nil)
+		list, err := svc.GetLyrics(ctx, &mf)
 		Expect(err).To(BeNil())
 		Expect(list).To(Equal(expected))
 	},
@@ -107,7 +109,8 @@ var _ = Describe("sources", func() {
 			It("should fallback to embedded if an error happens when parsing file", func() {
 				conf.Server.LyricsPriority = ".mp3,embedded"
 
-				list, err := lyrics.GetLyrics(ctx, &mf)
+				svc := lyrics.NewLyrics(nil)
+				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).To(BeNil())
 				Expect(list).To(Equal(embeddedLyrics))
 			})
@@ -115,10 +118,94 @@ var _ = Describe("sources", func() {
 			It("should return nothing if error happens when trying to parse file", func() {
 				conf.Server.LyricsPriority = ".mp3"
 
-				list, err := lyrics.GetLyrics(ctx, &mf)
+				svc := lyrics.NewLyrics(nil)
+				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).To(BeNil())
 				Expect(list).To(BeEmpty())
 			})
 		})
 	})
+
+	Context("plugin sources", func() {
+		var mockLoader *mockPluginLoader
+
+		BeforeEach(func() {
+			mockLoader = &mockPluginLoader{}
+		})
+
+		It("should return lyrics from a plugin", func() {
+			conf.Server.LyricsPriority = "test-lyrics-plugin"
+			mockLoader.lyrics = unsyncedLyrics
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(unsyncedLyrics))
+		})
+
+		It("should try plugin after embedded returns nothing", func() {
+			conf.Server.LyricsPriority = "embedded,test-lyrics-plugin"
+			mf.Lyrics = "" // No embedded lyrics
+			mockLoader.lyrics = unsyncedLyrics
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(unsyncedLyrics))
+		})
+
+		It("should skip plugin if embedded has lyrics", func() {
+			conf.Server.LyricsPriority = "embedded,test-lyrics-plugin"
+			mockLoader.lyrics = unsyncedLyrics
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(embeddedLyrics)) // embedded wins
+		})
+
+		It("should skip unknown plugin names gracefully", func() {
+			conf.Server.LyricsPriority = "nonexistent-plugin,embedded"
+			mockLoader.notFound = true
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
+		})
+
+		It("should handle plugin error gracefully", func() {
+			conf.Server.LyricsPriority = "test-lyrics-plugin,embedded"
+			mockLoader.err = fmt.Errorf("plugin error")
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
+		})
+	})
 })
+
+type mockPluginLoader struct {
+	lyrics   model.LyricList
+	err      error
+	notFound bool
+}
+
+func (m *mockPluginLoader) PluginNames(_ string) []string {
+	if m.notFound {
+		return nil
+	}
+	return []string{"test-lyrics-plugin"}
+}
+
+func (m *mockPluginLoader) LoadLyricsProvider(_ string) (lyrics.Lyrics, bool) {
+	if m.notFound {
+		return nil, false
+	}
+	return &mockLyricsProvider{lyrics: m.lyrics, err: m.err}, true
+}
+
+type mockLyricsProvider struct {
+	lyrics model.LyricList
+	err    error
+}
+
+func (m *mockLyricsProvider) GetLyrics(_ context.Context, _ *model.MediaFile) (model.LyricList, error) {
+	return m.lyrics, m.err
+}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -109,7 +108,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[0])
+	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[0])
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +141,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	structuredLyrics, err := lyrics.GetLyrics(r.Context(), mediaFile)
+	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), mediaFile)
 	if err != nil {
 		return nil, err
 	}

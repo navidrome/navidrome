@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
@@ -33,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil))
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
