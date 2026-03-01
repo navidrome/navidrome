@@ -21,6 +21,7 @@ type Playlist struct {
 	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
 	Path      string         `structs:"path" json:"path"`
 	Sync      bool           `structs:"sync" json:"sync"`
+	ImagePath string         `structs:"image_path" json:"imagePath"`
 	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 

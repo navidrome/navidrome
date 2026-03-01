@@ -16,6 +16,7 @@ import {
   usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
+import { Avatar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
@@ -28,10 +29,16 @@ import {
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+  coverArt: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '4px',
   },
 }))
 
@@ -119,6 +126,25 @@ const ToggleAutoImport = ({ resource, source }) => {
   ) : null
 }
 
+const CoverArtField = () => {
+  const classes = useStyles()
+  const record = useRecordContext()
+  if (!record) return null
+  return (
+    <Avatar
+      src={subsonic.getCoverArtUrl(record, 80, true)}
+      variant="square"
+      className={classes.coverArt}
+      alt={record.name}
+    />
+  )
+}
+
+CoverArtField.defaultProps = {
+  label: '',
+  sortable: false,
+}
+
 const PlaylistListBulkActions = (props) => {
   const classes = useStyles()
   return (
@@ -176,6 +202,7 @@ const PlaylistList = (props) => {
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
+        <CoverArtField source="id" />
         <TextField source="name" />
         {columns}
         <Writable>

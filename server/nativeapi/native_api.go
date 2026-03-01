@@ -140,6 +140,8 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 			r.Get("/", rest.Get(constructor))
 			r.Put("/", rest.Put(constructor))
 			r.Delete("/", rest.Delete(constructor))
+			r.Post("/image", uploadPlaylistImage(api.playlists))
+			r.Delete("/image", deletePlaylistImage(api.playlists))
 		})
 	})
 }

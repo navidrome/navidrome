@@ -5,7 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
+	_ "golang.org/x/image/webp"
 )
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
@@ -222,5 +229,103 @@ func getSongPlaylists(svc playlists.Playlists) http.HandlerFunc {
 			return
 		}
 		_, _ = w.Write(data) //nolint:gosec
+	}
+}
+
+const maxImageSize = 10 << 20 // 10MB
+
+func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		p := req.Params(r)
+		playlistId, _ := p.String(":id")
+
+		if err := r.ParseMultipartForm(maxImageSize); err != nil {
+			log.Error(ctx, "Error parsing multipart form", err)
+			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
+			return
+		}
+
+		file, header, err := r.FormFile("image")
+		if err != nil {
+			log.Error(ctx, "Error reading uploaded file", err)
+			http.Error(w, "missing image file", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		// Validate the uploaded file is a valid image
+		_, format, err := image.DecodeConfig(file)
+		if err != nil {
+			log.Error(ctx, "Uploaded file is not a valid image", err)
+			http.Error(w, "invalid image file", http.StatusBadRequest)
+			return
+		}
+
+		// Reset reader after DecodeConfig consumed some bytes
+		if seeker, ok := file.(io.Seeker); ok {
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				log.Error(ctx, "Error seeking file", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Determine file extension from decoded format or original filename
+		ext := "." + format
+		if ext == "." {
+			ext = strings.ToLower(filepath.Ext(header.Filename))
+		}
+		if ext == "" || ext == "." {
+			log.Error(ctx, "Could not determine image type", "playlistId", playlistId, "filename", header.Filename)
+			http.Error(w, "could not determine image type", http.StatusBadRequest)
+			return
+		}
+
+		err = pls.SetImage(ctx, playlistId, file, ext)
+		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to upload playlist image", "playlistId", playlistId, err)
+			http.Error(w, "not authorized", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image upload", "playlistId", playlistId, err)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error(ctx, "Error saving playlist image", "playlistId", playlistId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = fmt.Fprintf(w, `{"status":"ok"}`) //nolint:gosec
+	}
+}
+
+func deletePlaylistImage(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		p := req.Params(r)
+		playlistId, _ := p.String(":id")
+
+		err := pls.RemoveImage(ctx, playlistId)
+		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to remove playlist image", "playlistId", playlistId, err)
+			http.Error(w, "not authorized", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image removal", "playlistId", playlistId, err)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error(ctx, "Error removing playlist image", "playlistId", playlistId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = fmt.Fprintf(w, `{"status":"ok"}`) //nolint:gosec
 	}
 }

@@ -2,16 +2,27 @@ import {
   Card,
   CardContent,
   CardMedia,
+  IconButton,
+  Tooltip,
   Typography,
   useMediaQuery,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { useTranslate } from 'react-admin'
-import { useCallback, useState, useEffect } from 'react'
+import PhotoCameraIcon from '@material-ui/icons/PhotoCamera'
+import DeleteIcon from '@material-ui/icons/Delete'
+import { useTranslate, useNotify, useRefresh } from 'react-admin'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
-import { CollapsibleComment, DurationField, SizeField } from '../common'
+import {
+  CollapsibleComment,
+  DurationField,
+  SizeField,
+  isWritable,
+} from '../common'
 import subsonic from '../subsonic'
+import { REST_URL } from '../consts'
+import { httpClient } from '../dataProvider'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -55,6 +66,7 @@ const useStyles = makeStyles(
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      position: 'relative',
     },
     cover: {
       objectFit: 'contain',
@@ -67,6 +79,31 @@ const useStyles = makeStyles(
     },
     coverLoading: {
       opacity: 0.5,
+    },
+    coverOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      display: 'flex',
+      gap: '2px',
+      padding: '2px',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: '4px 0 0 0',
+      opacity: 0,
+      transition: 'opacity 0.2s ease-in-out',
+      '$coverParent:hover &': {
+        opacity: 1,
+      },
+    },
+    overlayButton: {
+      color: '#fff',
+      padding: '4px',
+      '&:hover': {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+      },
+    },
+    overlayIcon: {
+      fontSize: '1.2rem',
     },
     title: {
       overflow: 'hidden',
@@ -86,14 +123,18 @@ const useStyles = makeStyles(
 const PlaylistDetails = (props) => {
   const { record = {} } = props
   const translate = useTranslate()
+  const notify = useNotify()
+  const refresh = useRefresh()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const fileInputRef = useRef(null)
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300, true)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
+  const canEdit = isWritable(record.ownerId)
 
   // Reset image state when playlist changes
   useEffect(() => {
@@ -119,6 +160,60 @@ const PlaylistDetails = (props) => {
 
   const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
 
+  const handleUploadClick = useCallback(
+    (e) => {
+      e.stopPropagation()
+      if (fileInputRef.current) {
+        fileInputRef.current.click()
+      }
+    },
+    [fileInputRef],
+  )
+
+  const handleFileChange = useCallback(
+    async (e) => {
+      const file = e.target.files[0]
+      if (!file || !record.id) return
+
+      const formData = new FormData()
+      formData.append('image', file)
+
+      try {
+        await httpClient(`${REST_URL}/playlist/${record.id}/image`, {
+          method: 'POST',
+          headers: new Headers({}),
+          body: formData,
+        })
+        notify('resources.playlist.actions.coverUploaded', 'success')
+        refresh()
+      } catch (err) {
+        notify('resources.playlist.actions.coverUploadError', 'warning')
+      }
+
+      // Reset file input so the same file can be re-selected
+      e.target.value = ''
+    },
+    [record.id, notify, refresh],
+  )
+
+  const handleRemoveCover = useCallback(
+    async (e) => {
+      e.stopPropagation()
+      if (!record.id) return
+
+      try {
+        await httpClient(`${REST_URL}/playlist/${record.id}/image`, {
+          method: 'DELETE',
+        })
+        notify('resources.playlist.actions.coverRemoved', 'success')
+        refresh()
+      } catch (err) {
+        notify('resources.playlist.actions.coverRemoveError', 'warning')
+      }
+    },
+    [record.id, notify, refresh],
+  )
+
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
@@ -138,6 +233,41 @@ const PlaylistDetails = (props) => {
               cursor: imageError ? 'default' : 'pointer',
             }}
           />
+          {canEdit && (
+            <div className={classes.coverOverlay}>
+              <Tooltip
+                title={translate('resources.playlist.actions.uploadCover')}
+              >
+                <IconButton
+                  className={classes.overlayButton}
+                  onClick={handleUploadClick}
+                  size="small"
+                >
+                  <PhotoCameraIcon className={classes.overlayIcon} />
+                </IconButton>
+              </Tooltip>
+              {record.imagePath && (
+                <Tooltip
+                  title={translate('resources.playlist.actions.removeCover')}
+                >
+                  <IconButton
+                    className={classes.overlayButton}
+                    onClick={handleRemoveCover}
+                    size="small"
+                  >
+                    <DeleteIcon className={classes.overlayIcon} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
