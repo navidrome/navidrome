@@ -185,6 +185,36 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
 			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
 		})
+
+		It("should continue searching candidates for sidecar lyrics", func() {
+			conf.Server.LyricsPriority = ".ttml,embedded"
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			baseTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:        "1",
+					Path:      "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
+					UpdatedAt: baseTime.Add(2 * time.Hour), // Newer, but no TTML sidecar
+				},
+				{
+					ID:        "2",
+					Path:      "tests/fixtures/test.mp3",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
+					UpdatedAt: baseTime.Add(1 * time.Hour), // Older, but has TTML sidecar
+				},
+			})
+
+			response, err := router.GetLyrics(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
+			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
+			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
+		})
 	})
 
 	Describe("GetLyricsBySongId", func() {
@@ -201,6 +231,11 @@ var _ = Describe("MediaRetrievalController", func() {
 
 				Expect(realLyric.DisplayArtist).To(Equal(expectedLyric.DisplayArtist))
 				Expect(realLyric.DisplayTitle).To(Equal(expectedLyric.DisplayTitle))
+				expectedKind := expectedLyric.Kind
+				if expectedKind == "" {
+					expectedKind = "main"
+				}
+				Expect(realLyric.Kind).To(Equal(expectedKind))
 				Expect(realLyric.Lang).To(Equal(expectedLyric.Lang))
 				Expect(realLyric.Synced).To(Equal(expectedLyric.Synced))
 
@@ -219,6 +254,36 @@ var _ = Describe("MediaRetrievalController", func() {
 						Expect(realLine.Start).To(BeNil())
 					} else {
 						Expect(*realLine.Start).To(Equal(*expectedLine.Start))
+					}
+				}
+
+				Expect(realLyric.CueLine).To(HaveLen(len(expectedLyric.CueLine)))
+				for j, realCueLine := range realLyric.CueLine {
+					expectedCueLine := expectedLyric.CueLine[j]
+					Expect(realCueLine.Index).To(Equal(expectedCueLine.Index))
+					Expect(realCueLine.Value).To(Equal(expectedCueLine.Value))
+					Expect(realCueLine.Role).To(Equal(expectedCueLine.Role))
+					if expectedCueLine.Start == nil {
+						Expect(realCueLine.Start).To(BeNil())
+					} else {
+						Expect(*realCueLine.Start).To(Equal(*expectedCueLine.Start))
+					}
+					if expectedCueLine.End == nil {
+						Expect(realCueLine.End).To(BeNil())
+					} else {
+						Expect(*realCueLine.End).To(Equal(*expectedCueLine.End))
+					}
+
+					Expect(realCueLine.Cue).To(HaveLen(len(expectedCueLine.Cue)))
+					for k, realCue := range realCueLine.Cue {
+						expectedCue := expectedCueLine.Cue[k]
+						Expect(realCue.Value).To(Equal(expectedCue.Value))
+						Expect(realCue.Start).To(Equal(expectedCue.Start))
+						if expectedCue.End == nil {
+							Expect(realCue.End).To(BeNil())
+						} else {
+							Expect(*realCue.End).To(Equal(*expectedCue.End))
+						}
 					}
 				}
 			}
@@ -318,6 +383,246 @@ var _ = Describe("MediaRetrievalController", func() {
 							},
 						},
 						Offset: &offset,
+					},
+				},
+			})
+		})
+
+		It("should return multilingual TTML sidecar lyrics", func() {
+			conf.Server.LyricsPriority = ".ttml,embedded"
+			r := newGetRequest("id=1")
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Path:   "tests/fixtures/test.mp3",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+
+			porTime := int64(18800)
+			ttmlTime := int64(22800)
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &times[0],
+								Value: "We're no strangers to love",
+							},
+							{
+								Start: &ttmlTime,
+								Value: "You know the rules and so do I",
+							},
+						},
+					},
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Lang:          "por",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &porTime,
+								Value: "Nao somos estranhos ao amor",
+							},
+						},
+					},
+				},
+			})
+		})
+
+		It("should return metadata-linked translation and pronunciation tracks from TTML", func() {
+			conf.Server.LyricsPriority = ".ttml,embedded"
+			r := newGetRequest("id=1&enhanced=true")
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Path:   "tests/fixtures/test-metadata.mp3",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+
+			mainStartA := int64(1000)
+			mainStartB := int64(2000)
+			tokenStartA := int64(2000)
+			tokenEndA := int64(2300)
+			tokenStartB := int64(2300)
+			tokenEndB := int64(2600)
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
+						Lang:          "ja",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &mainStartA,
+								Value: "こんにちは",
+							},
+							{
+								Start: &mainStartB,
+								Value: "こんばんは",
+							},
+						},
+					},
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "translation",
+						Lang:          "es",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &mainStartA,
+								Value: "Hola",
+							},
+						},
+					},
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "pronunciation",
+						Lang:          "ja-latn",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &mainStartB,
+								Value: "konni",
+							},
+						},
+						CueLine: []responses.CueLine{
+							{
+								Index: 0,
+								Start: &mainStartB,
+								End:   &tokenEndB,
+								Value: "konni",
+								Cue: []responses.LyricCue{
+									{
+										Start: tokenStartA,
+										End:   &tokenEndA,
+										Value: "ko",
+									},
+									{
+										Start: tokenStartB,
+										End:   &tokenEndB,
+										Value: "nni",
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+		})
+
+		It("should return cue lines for songLyrics v2 clients with enhanced=true", func() {
+			r := newGetRequest("id=1&enhanced=true")
+
+			lineStart := int64(1000)
+			lineEnd := int64(3000)
+			tokenStartA := int64(1000)
+			tokenEndA := int64(1400)
+			tokenStartB := int64(2000)
+			tokenEndB := int64(2500)
+			lyricsJson, err := json.Marshal(model.LyricList{
+				{
+					Lang:   "eng",
+					Synced: true,
+					Line: []model.Line{
+						{
+							Start: &lineStart,
+							End:   &lineEnd,
+							Value: "Hello echo",
+							Cue: []model.Cue{
+								{
+									Start: &tokenStartA,
+									End:   &tokenEndA,
+									Value: "Hello",
+								},
+								{
+									Start: &tokenStartB,
+									End:   &tokenEndB,
+									Value: "echo",
+									Role:  "x-bg",
+								},
+							},
+						},
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJson),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &lineStart,
+								Value: "Hello echo",
+							},
+						},
+						CueLine: []responses.CueLine{
+							{
+								Index: 0,
+								Start: &lineStart,
+								End:   &lineEnd,
+								Value: "Hello echo",
+								Cue: []responses.LyricCue{
+									{
+										Start: tokenStartA,
+										End:   &tokenEndA,
+										Value: "Hello",
+									},
+								},
+							},
+							{
+								Index: 0,
+								Start: &lineStart,
+								End:   &lineEnd,
+								Value: "Hello echo",
+								Role:  "bg",
+								Cue: []responses.LyricCue{
+									{
+										Start: tokenStartB,
+										End:   &tokenEndB,
+										Value: "echo",
+									},
+								},
+							},
+						},
 					},
 				},
 			})

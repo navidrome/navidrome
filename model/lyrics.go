@@ -11,14 +11,24 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+type Cue struct {
+	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
+	Value string `structs:"value"           json:"value"`
+	Role  string `structs:"role,omitempty"  json:"role,omitempty"`
+}
+
 type Line struct {
 	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
 	Value string `structs:"value"           json:"value"`
+	Cue   []Cue  `structs:"cue,omitempty"   json:"cue,omitempty"`
 }
 
 type Lyrics struct {
 	DisplayArtist string `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
 	DisplayTitle  string `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string `structs:"kind,omitempty"          json:"kind,omitempty"`
 	Lang          string `structs:"lang"                    json:"lang"`
 	Line          []Line `structs:"line"                    json:"line"`
 	Offset        *int64 `structs:"offset,omitempty"        json:"offset,omitempty"`
