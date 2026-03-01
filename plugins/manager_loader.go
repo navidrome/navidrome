@@ -103,7 +103,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			perm := ctx.permissions.Kvstore
-			service, err := newKVStoreService(ctx.pluginName, perm)
+			service, err := newKVStoreService(ctx.manager.ctx, ctx.pluginName, perm)
 			if err != nil {
 				log.Error("Failed to create KVStore service", "plugin", ctx.pluginName, err)
 				return nil, nil
