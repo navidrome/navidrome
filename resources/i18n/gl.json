@@ -353,7 +353,8 @@
         "allUsers": "Para todas as usuarias",
         "selectedUsers": "Usuarias seleccionadas",
         "allLibraries": "Permitir todas as bibliotecas",
-        "selectedLibraries": "Selecciona bibliotecas"
+        "selectedLibraries": "Selecciona bibliotecas",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Estado",
@@ -398,7 +399,8 @@
         "librariesRequired": "O complemento precisa acceso á información sobre a biblioteca. Selecciona as bibliotecas ás que pode acceder, ou activa 'Todas as bibliotecas'.",
         "requiredHosts": "Servidores requeridos",
         "configValidationError": "Fallou a comprobación da configuración:",
-        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido."
+        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clave",
@@ -674,7 +676,8 @@
       "exportSuccess": "Configuración exportada ao portapapeis no formato TOML",
       "exportFailed": "Fallou a copia da configuración",
       "devFlagsHeader": "Configuracións de Desenvolvemento (suxeitas a cambio/retirada)",
-      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións"
+      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións",
+      "downloadToml": "Descargar configuración (TOML)"
     }
   },
   "activity": {

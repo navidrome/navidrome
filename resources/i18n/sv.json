@@ -353,7 +353,8 @@
         "allUsers": "Tillåt alla användare",
         "selectedUsers": "Valda användare",
         "allLibraries": "Tillåt alla bibliotek",
-        "selectedLibraries": "Valda bibliotek"
+        "selectedLibraries": "Valda bibliotek",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Status",
@@ -398,7 +399,8 @@
         "librariesRequired": "Detta tillägg kräver tillgång till biblioteksinformation. Välj vilka bibliotek tillägget kan komma åt eller aktivera 'Tillåt alla bibliotek'.",
         "requiredHosts": "Krävda värdar",
         "configValidationError": "Validering av konfigurationen misslyckades:",
-        "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt."
+        "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "nyckel",
@@ -674,7 +676,8 @@
       "exportSuccess": "Inställningarna kopierade till urklippet i TOML-format",
       "exportFailed": "Kopiering av inställningarna misslyckades",
       "devFlagsHeader": "Utvecklingsflaggor (kan ändras eller tas bort)",
-      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner"
+      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner",
+      "downloadToml": "Ladda ner konfiguration (TOML)"
     }
   },
   "activity": {

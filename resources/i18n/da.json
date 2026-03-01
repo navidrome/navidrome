@@ -353,7 +353,8 @@
         "allUsers": "Tillad alle brugere",
         "selectedUsers": "Valgte brugere",
         "allLibraries": "Tillad alle biblioteker",
-        "selectedLibraries": "Valgte biblioteker"
+        "selectedLibraries": "Valgte biblioteker",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Status",
@@ -398,7 +399,8 @@
         "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
         "requiredHosts": "Påkrævede hosts",
         "configValidationError": "Konfigurationsvalidering mislykkedes:",
-        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt."
+        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "nøgle",
@@ -675,7 +677,7 @@
       "exportFailed": "Kunne ikke kopiere konfigurationen",
       "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
       "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver",
-      "downloadToml": ""
+      "downloadToml": "Download konfigurationen (TOML)"
     }
   },
   "activity": {

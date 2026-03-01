@@ -353,7 +353,8 @@
         "allUsers": "Autoriser tous les utilisateur·rices",
         "selectedUsers": "Utilisateur·rices sélectionné.e.s",
         "allLibraries": "Autoriser toutes les bibliothèques",
-        "selectedLibraries": "Bibliothèques sélectionnées"
+        "selectedLibraries": "Bibliothèques sélectionnées",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Statut",
@@ -398,7 +399,8 @@
         "librariesRequired": "Cette extension nécessite l'accès aux information de la bibliothèque. Sélectionnez à quelles bibliothèque cette extension a accès, ou sélectionnez 'Autoriser toutes les bibliothèques'.",
         "requiredHosts": "Hôtes requis",
         "configValidationError": "Erreur lors de la validation de la configuration",
-        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide."
+        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clef",
@@ -674,7 +676,8 @@
       "exportSuccess": "La configuration a été copiée vers le presse-papier au format TOML",
       "exportFailed": "Une erreur est survenue en copiant la configuration",
       "devFlagsHeader": "Options de développement (peuvent être amenés à changer / être supprimés)",
-      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur"
+      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur",
+      "downloadToml": "Télécharger la configuration (TOML)"
     }
   },
   "activity": {

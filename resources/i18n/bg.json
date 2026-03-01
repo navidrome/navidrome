@@ -31,13 +31,13 @@
         "mood": "Настроение",
         "participants": "Допълнителни участници",
         "tags": "Допълнителни етикети",
-        "mappedTags": "",
-        "rawTags": "",
+        "mappedTags": "Картирани тагове",
+        "rawTags": "Сурови тагове",
         "bitDepth": "Битова дълбочина",
-        "sampleRate": "",
+        "sampleRate": "Честота на семплиране",
         "missing": "Липсва",
-        "libraryName": "",
-        "composer": ""
+        "libraryName": "Библиотека",
+        "composer": "Композитор"
       },
       "actions": {
         "addToQueue": "Пусни по-късно",
@@ -47,8 +47,8 @@
         "download": "Свали",
         "playNext": "Следваща",
         "info": "Информация",
-        "showInPlaylist": "",
-        "instantMix": ""
+        "showInPlaylist": "Показване в плейлиста",
+        "instantMix": "Незабавен микс"
       }
     },
     "album": {
@@ -80,7 +80,7 @@
         "mood": "Настроение",
         "date": "Дата на запис",
         "missing": "Липсва",
-        "libraryName": ""
+        "libraryName": "Библиотека"
       },
       "actions": {
         "playAll": "Пусни",
@@ -129,12 +129,12 @@
         "remixer": "Ремиксер |||| Ремиксери",
         "djmixer": "DJ миксер |||| DJ миксери",
         "performer": "Изпълнител |||| Изпълнители",
-        "maincredit": ""
+        "maincredit": "Изпълнител на албума или изпълнител |||| Изпълнители на албума или изпълнители"
       },
       "actions": {
-        "shuffle": "",
-        "radio": "",
-        "topSongs": ""
+        "shuffle": "Разбъркване",
+        "radio": "Радио",
+        "topSongs": "Топ песни"
       }
     },
     "user": {
@@ -152,11 +152,11 @@
         "newPassword": "Нова парола",
         "token": "Токен",
         "lastAccessAt": "Последен достъп",
-        "libraries": ""
+        "libraries": "Библиотеки"
       },
       "helperTexts": {
         "name": "Промените в името ще бъдат отразени при следващото влизане",
-        "libraries": ""
+        "libraries": "Изберете конкретни библиотеки за този потребител или оставете празно, за да използвате библиотеки по подразбиране"
       },
       "notifications": {
         "created": "Потребителят е създаден",
@@ -166,11 +166,11 @@
       "message": {
         "listenBrainzToken": "Въведете Вашия токен за ListenBrainz.",
         "clickHereForToken": "Кликнете тук, за да получите Вашия токен",
-        "selectAllLibraries": "",
-        "adminAutoLibraries": ""
+        "selectAllLibraries": "Изберете всички библиотеки",
+        "adminAutoLibraries": "Администраторите автоматично получават достъп до всички библиотеки"
       },
       "validation": {
-        "librariesRequired": ""
+        "librariesRequired": "Трябва да бъде избрана поне една библиотека за потребители без администраторски права"
       }
     },
     "player": {
@@ -215,16 +215,16 @@
         "export": "Експорт",
         "makePublic": "Направи публичен",
         "makePrivate": "Направи личен",
-        "saveQueue": "",
-        "searchOrCreate": "",
-        "pressEnterToCreate": "",
-        "removeFromSelection": ""
+        "saveQueue": "Запазване на опашката в плейлист",
+        "searchOrCreate": "Търсете в плейлисти или пишете, за да създадете нови...",
+        "pressEnterToCreate": "Натиснете Enter, за да създадете нов плейлист",
+        "removeFromSelection": "Премахване от селекцията"
       },
       "message": {
         "duplicate_song": "Добави дублирани песни",
         "song_exist": "Към плейлиста се добавят дублиращи. Желаете ли да ги добавите или предпочитате да ги пропуснете?",
-        "noPlaylistsFound": "",
-        "noPlaylists": ""
+        "noPlaylistsFound": "Няма намерени плейлисти",
+        "noPlaylists": "Няма налични плейлисти"
       }
     },
     "radio": {
@@ -263,7 +263,7 @@
         "path": "Път",
         "size": "Размер",
         "updatedAt": "Изчезнал на",
-        "libraryName": ""
+        "libraryName": "Библиотека"
       },
       "actions": {
         "remove": "Премахни",
@@ -275,134 +275,136 @@
       "empty": "Няма липсващи файлове"
     },
     "library": {
-      "name": "",
+      "name": "Библиотека |||| Библиотеки",
       "fields": {
-        "name": "",
-        "path": "",
-        "remotePath": "",
-        "lastScanAt": "",
-        "songCount": "",
-        "albumCount": "",
-        "artistCount": "",
-        "totalSongs": "",
-        "totalAlbums": "",
-        "totalArtists": "",
-        "totalFolders": "",
-        "totalFiles": "",
-        "totalMissingFiles": "",
-        "totalSize": "",
-        "totalDuration": "",
-        "defaultNewUsers": "",
-        "createdAt": "",
-        "updatedAt": ""
+        "name": "Име",
+        "path": "Път",
+        "remotePath": "Отдалечен път",
+        "lastScanAt": "Последно сканиране",
+        "songCount": "Песни",
+        "albumCount": "Албуми",
+        "artistCount": "Изпълнители",
+        "totalSongs": "Песни",
+        "totalAlbums": "Албуми",
+        "totalArtists": "Изпълнители",
+        "totalFolders": "Папки",
+        "totalFiles": "Файлове",
+        "totalMissingFiles": "Липсващи файлове",
+        "totalSize": "Общ размер",
+        "totalDuration": "Продължителност",
+        "defaultNewUsers": "По подразбиране за нови потребители",
+        "createdAt": "Създаден",
+        "updatedAt": "Актуализиран"
       },
       "sections": {
-        "basic": "",
-        "statistics": ""
+        "basic": "Основна информация",
+        "statistics": "Статистика"
       },
       "actions": {
-        "scan": "",
-        "manageUsers": "",
-        "viewDetails": "",
+        "scan": "Сканирай библиотеката",
+        "manageUsers": "Управление на потребителския достъп",
+        "viewDetails": "Преглед на подробности",
         "quickScan": "Quick Scan",
-        "fullScan": ""
+        "fullScan": "Пълно сканиране"
       },
       "notifications": {
-        "created": "",
-        "updated": "",
-        "deleted": "",
-        "scanStarted": "",
-        "scanCompleted": "",
-        "quickScanStarted": "",
-        "fullScanStarted": "",
-        "scanError": ""
+        "created": "Библиотеката е създадена успешно",
+        "updated": "Библиотеката е актуализирана успешно",
+        "deleted": "Библиотеката е изтрита успешно",
+        "scanStarted": "Сканирането на библиотеката започна",
+        "scanCompleted": "Сканирането на библиотеката е завършено",
+        "quickScanStarted": "Бързото сканиране започна",
+        "fullScanStarted": "Пълното сканиране започна",
+        "scanError": "Грешка при стартиране на сканирането. Проверете лог файловете"
       },
       "validation": {
-        "nameRequired": "",
-        "pathRequired": "",
-        "pathNotDirectory": "",
-        "pathNotFound": "",
-        "pathNotAccessible": "",
-        "pathInvalid": ""
+        "nameRequired": "Името на библиотеката е задължително",
+        "pathRequired": "Пътят към библиотеката е задължителен",
+        "pathNotDirectory": "Пътят до библиотеката трябва да е директория",
+        "pathNotFound": "Пътят към библиотеката не е намерен",
+        "pathNotAccessible": "Пътят до библиотеката не е достъпен",
+        "pathInvalid": "Невалиден път към библиотеката"
       },
       "messages": {
-        "deleteConfirm": "",
-        "scanInProgress": "",
-        "noLibrariesAssigned": ""
+        "deleteConfirm": "Сигурни ли сте, че желаете да изтриете тази библиотека? Това ще премахне всички свързани данни и потребителски достъп.",
+        "scanInProgress": "Сканирането е в ход...",
+        "noLibrariesAssigned": "Няма библиотеки, присвоени на този потребител"
       }
     },
     "plugin": {
-      "name": "",
+      "name": "Плъгин |||| Плъгини",
       "fields": {
-        "id": "",
-        "name": "",
-        "description": "",
-        "version": "",
-        "author": "",
-        "website": "",
-        "permissions": "",
-        "enabled": "",
-        "status": "",
-        "path": "",
-        "lastError": "",
-        "hasError": "",
-        "updatedAt": "",
-        "createdAt": "",
-        "configKey": "",
-        "configValue": "",
-        "allUsers": "",
-        "selectedUsers": "",
-        "allLibraries": "",
-        "selectedLibraries": ""
+        "id": "ID номер",
+        "name": "Име",
+        "description": "Описание",
+        "version": "Версия",
+        "author": "Автор",
+        "website": "Уебсайт",
+        "permissions": "Разрешения",
+        "enabled": "Активирано",
+        "status": "Статус",
+        "path": "Път",
+        "lastError": "Грешка",
+        "hasError": "Грешка",
+        "updatedAt": "Актуализирано",
+        "createdAt": "Инсталирано",
+        "configKey": "Ключ",
+        "configValue": "Стойност",
+        "allUsers": "Разрешаване на всички потребители",
+        "selectedUsers": "Избрани потребители",
+        "allLibraries": "Разрешаване на всички библиотеки",
+        "selectedLibraries": "Избрани библиотеки",
+        "allowWriteAccess": ""
       },
       "sections": {
-        "status": "",
-        "info": "",
-        "configuration": "",
-        "manifest": "",
-        "usersPermission": "",
-        "libraryPermission": ""
+        "status": "Статус",
+        "info": "Информация за плъгина",
+        "configuration": "Конфигурация",
+        "manifest": "Манифест",
+        "usersPermission": "Права за потребители",
+        "libraryPermission": "Права за библиотека"
       },
       "status": {
-        "enabled": "",
-        "disabled": ""
+        "enabled": "Активирано",
+        "disabled": "Деактивирано"
       },
       "actions": {
-        "enable": "",
-        "disable": "",
-        "disabledDueToError": "",
-        "disabledUsersRequired": "",
-        "disabledLibrariesRequired": "",
-        "addConfig": "",
-        "rescan": ""
+        "enable": "Активирай",
+        "disable": "Деактивирай",
+        "disabledDueToError": "Поправете грешката преди активиране",
+        "disabledUsersRequired": "Изберете потребители преди активиране",
+        "disabledLibrariesRequired": "Изберете библиотеки преди активиране",
+        "addConfig": "Добавяне на конфигурация",
+        "rescan": "Повторно сканиране"
       },
       "notifications": {
-        "enabled": "",
-        "disabled": "",
-        "updated": "",
-        "error": ""
+        "enabled": "Плъгинът е активиран",
+        "disabled": "Плъгинът е деактивиран",
+        "updated": "Плъгинът е актуализиран",
+        "error": "Грешка при актуализиране на плъгина"
       },
       "validation": {
-        "invalidJson": ""
+        "invalidJson": "Конфигурацията трябва да е валиден JSON"
       },
       "messages": {
-        "configHelp": "",
-        "clickPermissions": "",
-        "noConfig": "",
-        "allUsersHelp": "",
-        "noUsers": "",
-        "permissionReason": "",
-        "usersRequired": "",
-        "allLibrariesHelp": "",
-        "noLibraries": "",
-        "librariesRequired": "",
-        "requiredHosts": "",
-        "configValidationError": "",
-        "schemaRenderError": ""
+        "configHelp": "Конфигурирайте плъгина, използвайки двойки ключ-стойност. Оставете празно, ако плъгинът не изисква конфигурация.",
+        "clickPermissions": "Кликнете върху разрешение за подробности",
+        "noConfig": "Няма зададена конфигурация",
+        "allUsersHelp": "Когато е активиран, плъгинът ще има достъп до всички потребители, включително тези, създадени в бъдеще.",
+        "noUsers": "Няма избрани потребители",
+        "permissionReason": "Причина",
+        "usersRequired": "Този плъгин изисква достъп до потребителска информация. Изберете до кои потребители плъгинът може да има достъп или активирайте „Разрешаване на всички потребители“.",
+        "allLibrariesHelp": "Когато е активиран, плъгинът ще има достъп до всички библиотеки, включително тези, създадени в бъдеще.",
+        "noLibraries": "Няма избрани библиотеки",
+        "librariesRequired": "Този плъгин изисква достъп до информация за библиотеката. Изберете до кои библиотеки плъгинът може да има достъп или активирайте „Разрешаване на всички библиотеки“.",
+        "requiredHosts": "Необходими хостове",
+        "configValidationError": "Валидирането на конфигурацията не бе успешно:",
+        "schemaRenderError": "Не може да се изобрази формята за конфигурация. Схемата на плъгина може да е невалидна.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
-        "configKey": "",
-        "configValue": ""
+        "configKey": "ключ",
+        "configValue": "стойност"
       }
     }
   },
@@ -586,9 +588,9 @@
     "remove_missing_content": "Сигурни ли сте, че желаете да премахнете избраните липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
     "remove_all_missing_title": "Премахни всички липсващи файлове",
     "remove_all_missing_content": "Сигурни ли сте, че желаете да премахнете всички липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
-    "noSimilarSongsFound": "",
-    "noTopSongsFound": "",
-    "startingInstantMix": ""
+    "noSimilarSongsFound": "Не са намерени подобни песни",
+    "noTopSongsFound": "Няма намерени топ песни",
+    "startingInstantMix": "Зареждане на незабавен микс..."
   },
   "menu": {
     "library": "Библиотека",
@@ -619,10 +621,10 @@
     "playlists": "Плейлисти",
     "sharedPlaylists": "Споделени плейлисти",
     "librarySelector": {
-      "allLibraries": "",
-      "multipleLibraries": "",
-      "selectLibraries": "",
-      "none": ""
+      "allLibraries": "Всички библиотеки (%{count})",
+      "multipleLibraries": "%{selected} от %{total} библиотеки",
+      "selectLibraries": "Изберете библиотеки",
+      "none": "Няма"
     }
   },
   "player": {
@@ -655,7 +657,7 @@
       "homepage": "Начална страница",
       "source": "Програмен код",
       "featureRequests": "Заявете функционалност",
-      "lastInsightsCollection": "",
+      "lastInsightsCollection": "Последна колекция от анализи",
       "insights": {
         "disabled": "Деактивиран",
         "waiting": "Изчакване"
@@ -669,12 +671,13 @@
       "configName": "Име на конфигурация",
       "environmentVariable": "Променлива на средата",
       "currentValue": "Текуща стойност",
-      "configurationFile": "",
+      "configurationFile": "Конфигурационен файл",
       "exportToml": "Експортиране на конфигурация (TOML)",
       "exportSuccess": "Конфигурация, експортирана в клипборда във формат TOML",
       "exportFailed": "Неуспешно копиране на конфигурация",
-      "devFlagsHeader": "",
-      "devFlagsComment": ""
+      "devFlagsHeader": "Флагове за разработка (подлежащи на промяна/премахване)",
+      "devFlagsComment": "Това са експериментални настройки и е възможно да бъдат премахнати в бъдещи версии.",
+      "downloadToml": "Изтегляне на конфигурация (TOML)"
     }
   },
   "activity": {
@@ -687,7 +690,7 @@
     "scanType": "Последно сканиране",
     "status": "Грешка при сканиране",
     "elapsedTime": "Изминало време",
-    "selectiveScan": ""
+    "selectiveScan": "Селективен"
   },
   "help": {
     "title": "Бързи клавиши на Navidrome",
@@ -704,8 +707,8 @@
     }
   },
   "nowPlaying": {
-    "title": "",
-    "empty": "",
-    "minutesAgo": ""
+    "title": "Сега свири",
+    "empty": "Нищо не се възпроизвежда",
+    "minutesAgo": "преди %{smart_count} минута |||| преди %{smart_count} минути"
   }
 }

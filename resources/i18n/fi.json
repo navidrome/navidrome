@@ -353,7 +353,8 @@
         "allUsers": "Salli kaikki käyttäjät",
         "selectedUsers": "Valitut käyttäjät",
         "allLibraries": "Salli kaikki kirjastot",
-        "selectedLibraries": "Valitut kirjastot"
+        "selectedLibraries": "Valitut kirjastot",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Tila",
@@ -398,7 +399,8 @@
         "librariesRequired": "Tämä laajennus vaatii pääsyn kirjastotietoihin. Valitse, mihin kirjastoihin laajennus voi käyttää, tai ota käyttöön 'Salli kaikki kirjastot'.",
         "requiredHosts": "Vaaditut palvelimet",
         "configValidationError": "Määrityksen validointi epäonnistui:",
-        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen."
+        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "avain",
@@ -674,7 +676,8 @@
       "exportSuccess": "Määritykset viety leikepöydälle TOML-muodossa",
       "exportFailed": "Määritysten kopiointi epäonnistui",
       "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
-      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
+      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa",
+      "downloadToml": "Lataa määritykset (TOML)"
     }
   },
   "activity": {

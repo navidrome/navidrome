@@ -10,19 +10,14 @@
         "playCount": "播放次數",
         "title": "標題",
         "artist": "藝人",
-        "composer": "作曲者",
         "album": "專輯",
         "path": "檔案路徑",
-        "libraryName": "媒體庫",
         "genre": "曲風",
         "compilation": "合輯",
         "year": "發行年份",
         "size": "檔案大小",
         "updatedAt": "更新於",
         "bitRate": "位元率",
-        "bitDepth": "位元深度",
-        "sampleRate": "取樣率",
-        "channels": "聲道",
         "discSubtitle": "光碟副標題",
         "starred": "收藏",
         "comment": "註解",
@@ -30,6 +25,7 @@
         "quality": "品質",
         "bpm": "BPM",
         "playDate": "上次播放",
+        "channels": "聲道",
         "createdAt": "建立於",
         "grouping": "分組",
         "mood": "情緒",
@@ -37,17 +33,21 @@
         "tags": "額外標籤",
         "mappedTags": "分類後標籤",
         "rawTags": "原始標籤",
-        "missing": "遺失"
+        "bitDepth": "位元深度",
+        "sampleRate": "取樣率",
+        "missing": "遺失",
+        "libraryName": "媒體庫",
+        "composer": "作曲者"
       },
       "actions": {
         "addToQueue": "加入至播放佇列",
         "playNow": "立即播放",
         "addToPlaylist": "加入至播放清單",
-        "showInPlaylist": "在播放清單中顯示",
         "shuffleAll": "全部隨機播放",
         "download": "下載",
         "playNext": "下一首播放",
         "info": "取得資訊",
+        "showInPlaylist": "在播放清單中顯示",
         "instantMix": "即時混音"
       }
     },
@@ -59,38 +59,38 @@
         "duration": "長度",
         "songCount": "歌曲數",
         "playCount": "播放次數",
-        "size": "檔案大小",
         "name": "名稱",
-        "libraryName": "媒體庫",
         "genre": "曲風",
         "compilation": "合輯",
         "year": "發行年份",
-        "date": "錄製日期",
-        "originalDate": "原始日期",
-        "releaseDate": "發行日期",
-        "releases": "發行",
-        "released": "已發行",
         "updatedAt": "更新於",
         "comment": "註解",
         "rating": "評分",
         "createdAt": "建立於",
+        "size": "檔案大小",
+        "originalDate": "原始日期",
+        "releaseDate": "發行日期",
+        "releases": "發行",
+        "released": "已發行",
         "recordLabel": "唱片公司",
         "catalogNum": "目錄編號",
         "releaseType": "發行類型",
         "grouping": "分組",
         "media": "媒體類型",
         "mood": "情緒",
-        "missing": "遺失"
+        "date": "錄製日期",
+        "missing": "遺失",
+        "libraryName": "媒體庫"
       },
       "actions": {
         "playAll": "播放全部",
         "playNext": "下一首播放",
         "addToQueue": "加入至播放佇列",
-        "share": "分享",
         "shuffle": "隨機播放",
         "addToPlaylist": "加入至播放清單",
         "download": "下載",
-        "info": "取得資訊"
+        "info": "取得資訊",
+        "share": "分享"
       },
       "lists": {
         "all": "所有",
@@ -108,10 +108,10 @@
         "name": "名稱",
         "albumCount": "專輯數",
         "songCount": "歌曲數",
-        "size": "檔案大小",
         "playCount": "播放次數",
         "rating": "評分",
         "genre": "曲風",
+        "size": "檔案大小",
         "role": "參與角色",
         "missing": "遺失"
       },
@@ -132,9 +132,9 @@
         "maincredit": "專輯藝人或藝人 |||| 專輯藝人或藝人"
       },
       "actions": {
-        "topSongs": "熱門歌曲",
         "shuffle": "隨機播放",
-        "radio": "電台"
+        "radio": "電台",
+        "topSongs": "熱門歌曲"
       }
     },
     "user": {
@@ -143,7 +143,6 @@
         "userName": "使用者名稱",
         "isAdmin": "管理員",
         "lastLoginAt": "上次登入",
-        "lastAccessAt": "上次存取",
         "updatedAt": "更新於",
         "name": "名稱",
         "password": "密碼",
@@ -152,6 +151,7 @@
         "currentPassword": "目前密碼",
         "newPassword": "新密碼",
         "token": "權杖",
+        "lastAccessAt": "上次存取",
         "libraries": "媒體庫"
       },
       "helperTexts": {
@@ -163,14 +163,14 @@
         "updated": "使用者已更新",
         "deleted": "使用者已刪除"
       },
-      "validation": {
-        "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫"
-      },
       "message": {
         "listenBrainzToken": "輸入您的 ListenBrainz 使用者權杖",
         "clickHereForToken": "點擊此處來獲得您的 ListenBrainz 權杖",
         "selectAllLibraries": "選取全部媒體庫",
         "adminAutoLibraries": "管理員預設可存取所有媒體庫"
+      },
+      "validation": {
+        "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫"
       }
     },
     "player": {
@@ -213,9 +213,9 @@
         "selectPlaylist": "選取播放清單：",
         "addNewPlaylist": "建立「%{name}」",
         "export": "匯出",
-        "saveQueue": "將播放佇列儲存到播放清單",
         "makePublic": "設為公開",
         "makePrivate": "設為私人",
+        "saveQueue": "將播放佇列儲存到播放清單",
         "searchOrCreate": "搜尋播放清單，或輸入名稱來新建…",
         "pressEnterToCreate": "按 Enter 鍵建立新的播放清單",
         "removeFromSelection": "移除選取項目"
@@ -246,7 +246,6 @@
         "username": "分享者",
         "url": "網址",
         "description": "描述",
-        "downloadable": "允許下載？",
         "contents": "內容",
         "expiresAt": "過期時間",
         "lastVisitedAt": "上次造訪時間",
@@ -254,19 +253,17 @@
         "format": "格式",
         "maxBitRate": "最大位元率",
         "updatedAt": "更新於",
-        "createdAt": "建立於"
-      },
-      "notifications": {},
-      "actions": {}
+        "createdAt": "建立於",
+        "downloadable": "允許下載？"
+      }
     },
     "missing": {
       "name": "遺失檔案 |||| 遺失檔案",
-      "empty": "無遺失檔案",
       "fields": {
         "path": "路徑",
         "size": "檔案大小",
-        "libraryName": "媒體庫",
-        "updatedAt": "遺失於"
+        "updatedAt": "遺失於",
+        "libraryName": "媒體庫"
       },
       "actions": {
         "remove": "刪除",
@@ -274,7 +271,8 @@
       },
       "notifications": {
         "removed": "遺失檔案已刪除"
-      }
+      },
+      "empty": "無遺失檔案"
     },
     "library": {
       "name": "媒體庫 |||| 媒體庫",
@@ -304,20 +302,20 @@
       },
       "actions": {
         "scan": "掃描媒體庫",
-        "quickScan": "快速掃描",
-        "fullScan": "完整掃描",
         "manageUsers": "管理使用者權限",
-        "viewDetails": "查看詳細資料"
+        "viewDetails": "查看詳細資料",
+        "quickScan": "快速掃描",
+        "fullScan": "完整掃描"
       },
       "notifications": {
         "created": "成功建立媒體庫",
         "updated": "成功更新媒體庫",
         "deleted": "成功刪除媒體庫",
         "scanStarted": "開始掃描媒體庫",
+        "scanCompleted": "媒體庫掃描完成",
         "quickScanStarted": "快速掃描已開始",
         "fullScanStarted": "完整掃描已開始",
-        "scanError": "掃描啟動失敗，請檢查日誌",
-        "scanCompleted": "媒體庫掃描完成"
+        "scanError": "掃描啟動失敗，請檢查日誌"
       },
       "validation": {
         "nameRequired": "請輸入媒體庫名稱",
@@ -355,7 +353,8 @@
         "allUsers": "允許所有使用者",
         "selectedUsers": "選定的使用者",
         "allLibraries": "允許所有媒體庫",
-        "selectedLibraries": "選定的媒體庫"
+        "selectedLibraries": "選定的媒體庫",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "狀態",
@@ -389,8 +388,6 @@
       },
       "messages": {
         "configHelp": "使用鍵值對設定插件。若插件無需設定則留空。",
-        "configValidationError": "設定驗證失敗：",
-        "schemaRenderError": "無法顯示設定表單。插件的 schema 可能無效。",
         "clickPermissions": "點擊權限以查看詳細資訊",
         "noConfig": "無設定",
         "allUsersHelp": "啟用後，插件將可存取所有使用者，包含未來建立的使用者。",
@@ -400,7 +397,10 @@
         "allLibrariesHelp": "啟用後，插件將可存取所有媒體庫，包含未來建立的媒體庫。",
         "noLibraries": "未選擇媒體庫",
         "librariesRequired": "此插件需要存取媒體庫資訊。請選擇插件可存取的媒體庫，或啟用「允許所有媒體庫」。",
-        "requiredHosts": "必要的 Hosts"
+        "requiredHosts": "必要的 Hosts",
+        "configValidationError": "設定驗證失敗：",
+        "schemaRenderError": "無法顯示設定表單。插件的 schema 可能無效。",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "鍵",
@@ -443,7 +443,6 @@
       "add": "加入",
       "back": "返回",
       "bulk_actions": "選中 1 項 |||| 選中 %{smart_count} 項",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "取消",
       "clear_input_value": "清除",
       "clone": "複製",
@@ -467,6 +466,7 @@
       "close_menu": "關閉選單",
       "unselect": "取消選取",
       "skip": "略過",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "分享",
       "download": "下載"
     },
@@ -558,48 +558,42 @@
     "transcodingDisabled": "出於安全原因，已禁用了從 Web 介面更改參數。要更改（編輯或新增）轉碼選項，請在啟用 %{config} 設定選項的情況下重新啟動伺服器。",
     "transcodingEnabled": "Navidrome 目前與 %{config} 一起使用，因此可以透過 Web 介面從轉碼設定中執行系統命令。出於安全考慮，我們建議停用此功能，並僅在設定轉碼選項時啟用。",
     "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已新增 %{smart_count} 首歌到播放清單",
-    "noSimilarSongsFound": "找不到相似歌曲",
-    "startingInstantMix": "正在載入即時混音...",
-    "noTopSongsFound": "找不到熱門歌曲",
     "noPlaylistsAvailable": "沒有可用的播放清單",
     "delete_user_title": "刪除使用者「%{name}」",
     "delete_user_content": "您確定要刪除此使用者及其所有資料（包括播放清單和偏好設定）嗎？",
-    "remove_missing_title": "刪除遺失檔案",
-    "remove_missing_content": "您確定要從媒體庫中刪除所選的遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括其播放次數和評分。",
-    "remove_all_missing_title": "刪除所有遺失檔案",
-    "remove_all_missing_content": "您確定要從媒體庫中刪除所有遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括它們的播放次數和評分。",
     "notifications_blocked": "您已在瀏覽器設定中封鎖了此網站的通知",
     "notifications_not_available": "此瀏覽器不支援桌面通知，或您並非透過 HTTPS 存取 Navidrome",
     "lastfmLinkSuccess": "已成功連接 Last.fm 並開啟音樂記錄",
     "lastfmLinkFailure": "無法連接 Last.fm",
     "lastfmUnlinkSuccess": "已取消與 Last.fm 的連接並停用音樂記錄",
     "lastfmUnlinkFailure": "無法取消與 Last.fm 的連接",
-    "listenBrainzLinkSuccess": "已成功以 %{user} 的身份連接 ListenBrainz 並開啟音樂記錄",
-    "listenBrainzLinkFailure": "無法連接 ListenBrainz：%{error}",
-    "listenBrainzUnlinkSuccess": "已取消與 ListenBrainz 的連接並停用音樂記錄",
-    "listenBrainzUnlinkFailure": "無法取消與 ListenBrainz 的連接",
     "openIn": {
       "lastfm": "在 Last.fm 中開啟",
       "musicbrainz": "在 MusicBrainz 中開啟"
     },
     "lastfmLink": "查看更多…",
+    "listenBrainzLinkSuccess": "已成功以 %{user} 的身份連接 ListenBrainz 並開啟音樂記錄",
+    "listenBrainzLinkFailure": "無法連接 ListenBrainz：%{error}",
+    "listenBrainzUnlinkSuccess": "已取消與 ListenBrainz 的連接並停用音樂記錄",
+    "listenBrainzUnlinkFailure": "無法取消與 ListenBrainz 的連接",
+    "downloadOriginalFormat": "下載原始格式",
     "shareOriginalFormat": "分享原始格式",
     "shareDialogTitle": "分享 %{resource} '%{name}'",
     "shareBatchDialogTitle": "分享 1 個%{resource} |||| 分享 %{smart_count} 個%{resource}",
-    "shareCopyToClipboard": "複製到剪貼簿：Ctrl+C, Enter",
     "shareSuccess": "分享成功，連結已複製到剪貼簿：%{url}",
     "shareFailure": "分享連結複製失敗：%{url}",
     "downloadDialogTitle": "下載 %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "下載原始格式"
+    "shareCopyToClipboard": "複製到剪貼簿：Ctrl+C, Enter",
+    "remove_missing_title": "刪除遺失檔案",
+    "remove_missing_content": "您確定要從媒體庫中刪除所選的遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括其播放次數和評分。",
+    "remove_all_missing_title": "刪除所有遺失檔案",
+    "remove_all_missing_content": "您確定要從媒體庫中刪除所有遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括它們的播放次數和評分。",
+    "noSimilarSongsFound": "找不到相似歌曲",
+    "noTopSongsFound": "找不到熱門歌曲",
+    "startingInstantMix": "正在載入即時混音..."
   },
   "menu": {
     "library": "媒體庫",
-    "librarySelector": {
-      "allLibraries": "所有媒體庫 (%{count})",
-      "multipleLibraries": "已選 %{selected} 共 %{total} 媒體庫",
-      "selectLibraries": "選取媒體庫",
-      "none": "無"
-    },
     "settings": "設定",
     "version": "版本",
     "theme": "主題",
@@ -610,7 +604,6 @@
         "language": "語言",
         "defaultView": "預設畫面",
         "desktop_notifications": "桌面通知",
-        "lastfmNotConfigured": "Last.fm API 金鑰未設定",
         "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
         "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
         "replaygain": "重播增益模式",
@@ -619,13 +612,20 @@
           "none": "無",
           "album": "專輯增益",
           "track": "曲目增益"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API 金鑰未設定"
       }
     },
     "albumList": "專輯",
+    "about": "關於",
     "playlists": "播放清單",
     "sharedPlaylists": "分享的播放清單",
-    "about": "關於"
+    "librarySelector": {
+      "allLibraries": "所有媒體庫 (%{count})",
+      "multipleLibraries": "已選 %{selected} 共 %{total} 媒體庫",
+      "selectLibraries": "選取媒體庫",
+      "none": "無"
+    }
   },
   "player": {
     "playListsText": "播放佇列",
@@ -676,7 +676,8 @@
       "exportSuccess": "設定已以 TOML 格式匯出至剪貼簿",
       "exportFailed": "設定複製失敗",
       "devFlagsHeader": "開發旗標（可能會更改/刪除）",
-      "devFlagsComment": "這些是實驗性設定，可能會在未來版本中刪除"
+      "devFlagsComment": "這些是實驗性設定，可能會在未來版本中刪除",
+      "downloadToml": "下載設定檔 (TOML)"
     }
   },
   "activity": {
@@ -684,17 +685,12 @@
     "totalScanned": "已掃描的資料夾總數",
     "quickScan": "快速掃描",
     "fullScan": "完全掃描",
-    "selectiveScan": "選擇性掃描",
     "serverUptime": "伺服器運作時間",
     "serverDown": "伺服器已離線",
     "scanType": "掃描類型",
     "status": "掃描錯誤",
-    "elapsedTime": "經過時間"
-  },
-  "nowPlaying": {
-    "title": "正在播放",
-    "empty": "無播放內容",
-    "minutesAgo": "1 分鐘前 |||| %{smart_count} 分鐘前"
+    "elapsedTime": "經過時間",
+    "selectiveScan": "選擇性掃描"
   },
   "help": {
     "title": "Navidrome 快捷鍵",
@@ -704,10 +700,15 @@
       "toggle_play": "播放/暫停",
       "prev_song": "上一首歌",
       "next_song": "下一首歌",
-      "current_song": "前往目前歌曲",
       "vol_up": "提高音量",
       "vol_down": "降低音量",
-      "toggle_love": "新增此歌曲至收藏"
+      "toggle_love": "新增此歌曲至收藏",
+      "current_song": "前往目前歌曲"
     }
+  },
+  "nowPlaying": {
+    "title": "正在播放",
+    "empty": "無播放內容",
+    "minutesAgo": "1 分鐘前 |||| %{smart_count} 分鐘前"
   }
 }
