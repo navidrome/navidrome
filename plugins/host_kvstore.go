@@ -27,6 +27,8 @@ const (
 // notExpiredFilter is the SQL condition to exclude expired keys.
 const notExpiredFilter = "(expires_at IS NULL OR expires_at > datetime('now'))"
 
+const cleanupInterval = 1 * time.Hour
+
 // kvstoreServiceImpl implements the host.KVStoreService interface.
 // Each plugin gets its own SQLite database for isolation.
 type kvstoreServiceImpl struct {
@@ -36,7 +38,8 @@ type kvstoreServiceImpl struct {
 }
 
 // newKVStoreService creates a new kvstoreServiceImpl instance with its own SQLite database.
-func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServiceImpl, error) {
+// The provided context controls the lifetime of the background cleanup goroutine.
+func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePermission) (*kvstoreServiceImpl, error) {
 	// Parse max size from permission, default to 1MB
 	maxSize := int64(defaultMaxKVStoreSize)
 	if perm != nil && perm.MaxSize != nil && *perm.MaxSize != "" {
@@ -71,11 +74,13 @@ func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServ
 
 	log.Debug("Initialized plugin kvstore", "plugin", pluginName, "path", dbPath, "maxSize", humanize.Bytes(uint64(maxSize)))
 
-	return &kvstoreServiceImpl{
+	svc := &kvstoreServiceImpl{
 		pluginName: pluginName,
 		db:         db,
 		maxSize:    maxSize,
-	}, nil
+	}
+	go svc.cleanupLoop(ctx)
+	return svc, nil
 }
 
 // createKVStoreSchema applies schema migrations to the kvstore database.
@@ -327,6 +332,21 @@ func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[st
 	return result, nil
 }
 
+// cleanupLoop periodically removes expired keys from the database.
+// It stops when the provided context is cancelled.
+func (s *kvstoreServiceImpl) cleanupLoop(ctx context.Context) {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.cleanupExpired(ctx)
+		}
+	}
+}
+
 // cleanupExpired removes all expired keys from the database to reclaim disk space.
 func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
 	result, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`)
@@ -339,8 +359,8 @@ func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
 	}
 }
 
-// Close closes the SQLite database connection.
-// This is called when the plugin is unloaded.
+// Close runs a final cleanup and closes the SQLite database connection.
+// The cleanup goroutine is stopped by the context passed to newKVStoreService.
 func (s *kvstoreServiceImpl) Close() error {
 	if s.db != nil {
 		log.Debug("Closing plugin kvstore", "plugin", s.pluginName)

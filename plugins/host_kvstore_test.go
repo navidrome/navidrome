@@ -38,7 +38,7 @@ var _ = Describe("KVStoreService", func() {
 
 		// Create service with 1KB limit for testing
 		maxSize := "1KB"
-		service, err = newKVStoreService("test_plugin", &KVStorePermission{MaxSize: &maxSize})
+		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -254,7 +254,7 @@ var _ = Describe("KVStoreService", func() {
 			Expect(service.Close()).To(Succeed())
 
 			maxSize := "1KB"
-			service2, err := newKVStoreService("test_plugin", &KVStorePermission{MaxSize: &maxSize})
+			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -303,7 +303,7 @@ var _ = Describe("KVStoreService", func() {
 
 	Describe("Plugin Isolation", func() {
 		It("isolates data between plugins", func() {
-			service2, err := newKVStoreService("other_plugin", &KVStorePermission{})
+			service2, err := newKVStoreService(ctx, "other_plugin", &KVStorePermission{})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -322,7 +322,7 @@ var _ = Describe("KVStoreService", func() {
 		})
 
 		It("creates separate database files per plugin", func() {
-			service2, err := newKVStoreService("other_plugin", &KVStorePermission{})
+			service2, err := newKVStoreService(ctx, "other_plugin", &KVStorePermission{})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
