@@ -184,10 +184,10 @@ const PlaylistDetails = (props) => {
           headers: new Headers({}),
           body: formData,
         })
-        notify('resources.playlist.actions.coverUploaded', 'success')
+        notify('resources.playlist.message.coverUploaded', 'success')
         refresh()
       } catch (err) {
-        notify('resources.playlist.actions.coverUploadError', 'warning')
+        notify('resources.playlist.message.coverUploadError', 'warning')
       }
 
       // Reset file input so the same file can be re-selected
@@ -205,10 +205,10 @@ const PlaylistDetails = (props) => {
         await httpClient(`${REST_URL}/playlist/${record.id}/image`, {
           method: 'DELETE',
         })
-        notify('resources.playlist.actions.coverRemoved', 'success')
+        notify('resources.playlist.message.coverRemoved', 'success')
         refresh()
       } catch (err) {
-        notify('resources.playlist.actions.coverRemoveError', 'warning')
+        notify('resources.playlist.message.coverRemoveError', 'warning')
       }
     },
     [record.id, notify, refresh],

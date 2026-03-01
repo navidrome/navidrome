@@ -218,9 +218,15 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção"
+        "removeFromSelection": "Remover da seleção",
+        "uploadCover": "Enviar Capa",
+        "removeCover": "Remover Capa"
       },
       "message": {
+        "coverUploaded": "Capa atualizada",
+        "coverRemoved": "Capa removida",
+        "coverUploadError": "Erro ao enviar capa",
+        "coverRemoveError": "Erro ao remover capa",
         "duplicate_song": "Adicionar músicas duplicadas",
         "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
         "noPlaylistsFound": "Nenhuma playlist encontrada",

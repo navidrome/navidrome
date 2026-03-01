@@ -220,13 +220,13 @@
         "pressEnterToCreate": "Press Enter to create new playlist",
         "removeFromSelection": "Remove from selection",
         "uploadCover": "Upload Cover",
-        "removeCover": "Remove Cover",
+        "removeCover": "Remove Cover"
+      },
+      "message": {
         "coverUploaded": "Cover art updated",
         "coverRemoved": "Cover art removed",
         "coverUploadError": "Error uploading cover art",
-        "coverRemoveError": "Error removing cover art"
-      },
-      "message": {
+        "coverRemoveError": "Error removing cover art",
         "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
         "noPlaylistsFound": "No playlists found",
