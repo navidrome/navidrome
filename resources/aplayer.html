@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.ShareDescription}} - Navidrome</title>
+    <meta name="description" content="Shared music player - {{.ShareDescription}}">
+
+    <!-- APlayer CSS (vendored locally) -->
+    <link rel="stylesheet" href="{{.BaseURL}}/share/aplayer/APlayer.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #ffffff;
+            color: #333;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .player-wrapper {
+            padding: 30px;
+            background: #ffffff;
+        }
+
+        #aplayer {
+            margin: 0 auto;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Make APlayer responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 0;
+                background: #ffffff;
+            }
+
+            .container {
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .player-wrapper {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{.ShareDescription}}</h1>
+            <p>Shared Music Player</p>
+        </div>
+
+        <div class="player-wrapper">
+            <div id="aplayer"></div>
+        </div>
+
+        <div class="footer">
+            Powered by <a href="https://github.com/navidrome/navidrome" target="_blank" rel="noopener noreferrer">Navidrome</a>
+            &amp; <a href="https://github.com/DIYgod/APlayer" target="_blank" rel="noopener noreferrer">APlayer</a>
+        </div>
+    </div>
+
+    <!-- Share info (injected by server) -->
+    <script id="share-info" type="application/json">{{.ShareInfo}}</script>
+
+    <!-- Navidrome config (for baseURL) -->
+    <script>
+        window.NavidromeConfig = {
+            baseURL: "{{.BaseURL}}"
+        };
+    </script>
+
+    <!-- APlayer library (vendored locally) -->
+    <script src="{{.BaseURL}}/share/aplayer/APlayer.min.js"></script>
+
+    <!-- APlayer Share integration script -->
+    <script>{{.APlayerScript}}</script>
+</body>
+</html>
