@@ -436,6 +436,22 @@ var _ = Describe("KVStoreService", func() {
 			Expect(exists).To(BeTrue())
 			Expect(value).To(Equal([]byte("still alive")))
 		})
+		It("Set clears expires_at from a key previously set with TTL", func() {
+			err := service.SetWithTTL(ctx, "ttl_then_set", []byte("temp"), 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Overwrite with Set (no TTL) — should become permanent
+			err = service.Set(ctx, "ttl_then_set", []byte("permanent"))
+			Expect(err).ToNot(HaveOccurred())
+
+			time.Sleep(2 * time.Second)
+
+			// Should still exist since Set cleared expires_at
+			value, exists, err := service.Get(ctx, "ttl_then_set")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+			Expect(value).To(Equal([]byte("permanent")))
+		})
 		It("cleanup reclaims storage from expired keys", func() {
 			_, err := service.db.Exec(`
 				INSERT INTO kvstore (key, value, size, expires_at)

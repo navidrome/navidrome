@@ -72,7 +72,7 @@ func newKVStoreService(pluginName string, perm *KVStorePermission) (*kvstoreServ
 
 	// Load current storage size from database
 	var currentSize int64
-	if err := db.QueryRow(`SELECT COALESCE(SUM(size), 0) FROM kvstore`).Scan(&currentSize); err != nil {
+	if err := db.QueryRow(`SELECT COALESCE(SUM(size), 0) FROM kvstore WHERE expires_at IS NULL OR expires_at > datetime('now')`).Scan(&currentSize); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("loading storage size: %w", err)
 	}
@@ -147,14 +147,15 @@ func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) 
 			humanize.Bytes(uint64(newTotal)), humanize.Bytes(uint64(s.maxSize)))
 	}
 
-	// Upsert the value
+	// Upsert the value (clear expires_at so a TTL'd key becomes permanent)
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO kvstore (key, value, size, created_at, updated_at) 
+		INSERT INTO kvstore (key, value, size, created_at, updated_at)
 		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		ON CONFLICT(key) DO UPDATE SET 
-			value = excluded.value, 
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
 			size = excluded.size,
-			updated_at = CURRENT_TIMESTAMP
+			updated_at = CURRENT_TIMESTAMP,
+			expires_at = NULL
 	`, key, value, newValueSize)
 	if err != nil {
 		return fmt.Errorf("storing value: %w", err)
