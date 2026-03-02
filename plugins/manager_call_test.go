@@ -81,48 +81,66 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 		Expect(calls[0].elapsed).To(BeNumerically(">=", 0))
 	})
 
-	It("records metrics for failed plugin calls (error returned)", func() {
-		// Create a manager with error config to force plugin errors
-		errorRecorder := &mockMetricsRecorder{}
-		errorManager, _ := createTestManagerWithPluginsAndMetrics(
-			map[string]map[string]string{
-				"test-metadata-agent": {"error": "simulated error"},
-			},
-			errorRecorder,
-			"test-metadata-agent"+PackageExtension,
+	Context("with error config", Ordered, func() {
+		var (
+			errorRecorder *mockMetricsRecorder
+			errorAgent    agents.Interface
 		)
 
-		errorAgent, ok := errorManager.LoadMediaAgent("test-metadata-agent")
-		Expect(ok).To(BeTrue())
+		BeforeAll(func() {
+			errorRecorder = &mockMetricsRecorder{}
+			errorManager, _ := createTestManagerWithPluginsAndMetrics(
+				map[string]map[string]string{
+					"test-metadata-agent": {"error": "simulated error"},
+				},
+				errorRecorder,
+				"test-metadata-agent"+PackageExtension,
+			)
 
-		retriever := errorAgent.(agents.ArtistBiographyRetriever)
-		_, err := retriever.GetArtistBiography(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
-		Expect(err).To(HaveOccurred())
+			var ok bool
+			errorAgent, ok = errorManager.LoadMediaAgent("test-metadata-agent")
+			Expect(ok).To(BeTrue())
+		})
 
-		calls := errorRecorder.getCalls()
-		Expect(calls).To(HaveLen(1))
-		Expect(calls[0].plugin).To(Equal("test-metadata-agent"))
-		Expect(calls[0].method).To(Equal(FuncGetArtistBiography))
-		Expect(calls[0].ok).To(BeFalse())
+		It("records metrics for failed plugin calls (error returned)", func() {
+			retriever := errorAgent.(agents.ArtistBiographyRetriever)
+			_, err := retriever.GetArtistBiography(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
+			Expect(err).To(HaveOccurred())
+
+			calls := errorRecorder.getCalls()
+			Expect(calls).To(HaveLen(1))
+			Expect(calls[0].plugin).To(Equal("test-metadata-agent"))
+			Expect(calls[0].method).To(Equal(FuncGetArtistBiography))
+			Expect(calls[0].ok).To(BeFalse())
+		})
 	})
 
-	It("does not record metrics for not-implemented functions", func() {
-		// Use partial metadata agent that doesn't implement GetArtistMBID
-		partialRecorder := &mockMetricsRecorder{}
-		partialManager, _ := createTestManagerWithPluginsAndMetrics(
-			nil,
-			partialRecorder,
-			"partial-metadata-agent"+PackageExtension,
+	Context("with partial metadata agent", Ordered, func() {
+		var (
+			partialRecorder *mockMetricsRecorder
+			partialAgent    agents.Interface
 		)
 
-		partialAgent, ok := partialManager.LoadMediaAgent("partial-metadata-agent")
-		Expect(ok).To(BeTrue())
+		BeforeAll(func() {
+			partialRecorder = &mockMetricsRecorder{}
+			partialManager, _ := createTestManagerWithPluginsAndMetrics(
+				nil,
+				partialRecorder,
+				"partial-metadata-agent"+PackageExtension,
+			)
 
-		retriever := partialAgent.(agents.ArtistMBIDRetriever)
-		_, err := retriever.GetArtistMBID(GinkgoT().Context(), "artist-1", "Test Artist")
-		Expect(err).To(MatchError(errNotImplemented))
+			var ok bool
+			partialAgent, ok = partialManager.LoadMediaAgent("partial-metadata-agent")
+			Expect(ok).To(BeTrue())
+		})
 
-		calls := partialRecorder.getCalls()
-		Expect(calls).To(HaveLen(0))
+		It("does not record metrics for not-implemented functions", func() {
+			retriever := partialAgent.(agents.ArtistMBIDRetriever)
+			_, err := retriever.GetArtistMBID(GinkgoT().Context(), "artist-1", "Test Artist")
+			Expect(err).To(MatchError(errNotImplemented))
+
+			calls := partialRecorder.getCalls()
+			Expect(calls).To(HaveLen(0))
+		})
 	})
 })

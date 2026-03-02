@@ -54,7 +54,6 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()
@@ -358,7 +357,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			// The plugin should have received the callback
 			// We can verify by checking the plugin's stored messages via vars
 			// For now we just verify no errors occurred
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			_ = connID
 		})
 
@@ -383,7 +382,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Give time for callback to execute
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			_ = connID
 		})
 
