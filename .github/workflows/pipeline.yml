@@ -288,7 +288,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -322,7 +322,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -374,7 +374,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: ./binaries
           pattern: navidrome-windows*
@@ -411,7 +411,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: ./binaries
           pattern: navidrome-*
@@ -460,7 +460,7 @@ jobs:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
     steps:
       - name: Download all-packages artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: packages
           path: ./dist
