@@ -158,6 +158,58 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal(imgPath))
 			})
+
+			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				m3u := "#EXTALBUMARTURL:https://example.com/new-cover.jpg\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID:               "existing-id",
+					Name:             "Existing Playlist",
+					Path:             plsFile,
+					Sync:             true,
+					UploadedImage:    "existing-id.jpg",
+					ExternalImageURL: "https://example.com/old-cover.jpg",
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.UploadedImage).To(Equal("existing-id.jpg"))
+				Expect(pls.ExternalImageURL).To(Equal("https://example.com/new-cover.jpg"))
+			})
+
+			It("clears ExternalImageURL on re-scan when directive is removed", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				m3u := "test.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID:               "existing-id",
+					Name:             "Existing Playlist",
+					Path:             plsFile,
+					Sync:             true,
+					ExternalImageURL: "https://example.com/old-cover.jpg",
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
 		})
 
 		Describe("NSP", func() {
