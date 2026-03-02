@@ -34,6 +34,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 				pls.Name = line[len("#PLAYLIST:"):]
 				continue
 			}
+			if after, ok := strings.CutPrefix(line, "#EXTALBUMARTURL:"); ok {
+				pls.ExternalImageURL = resolveImageURL(after, folder)
+				continue
+			}
 			// Skip empty lines and extended info
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
@@ -266,4 +270,41 @@ func (r *pathResolver) resolvePaths(ctx context.Context, folder *model.Folder, l
 	}
 
 	return results, nil
+}
+
+// resolveImageURL resolves an #EXTALBUMARTURL value to a storable string.
+// HTTP(S) URLs are stored as-is. file:// URLs are decoded to absolute paths.
+// Absolute paths are stored as-is. Relative paths are resolved against the
+// playlist's folder. If folder is nil (API import), relative paths cannot be
+// resolved and an empty string is returned.
+func resolveImageURL(value string, folder *model.Folder) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	// HTTP(S) URLs — store as-is
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		return value
+	}
+
+	// file:// URL — decode to local path
+	if after, ok := strings.CutPrefix(value, "file://"); ok {
+		decoded, err := url.QueryUnescape(after)
+		if err != nil {
+			return ""
+		}
+		return filepath.Clean(decoded)
+	}
+
+	// Absolute path — store as-is
+	if filepath.IsAbs(value) {
+		return filepath.Clean(value)
+	}
+
+	// Relative path — resolve against folder
+	if folder == nil {
+		return ""
+	}
+	return filepath.Clean(filepath.Join(folder.AbsolutePath(), value))
 }
