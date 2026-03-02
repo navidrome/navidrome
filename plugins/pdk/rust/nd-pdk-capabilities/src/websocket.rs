@@ -4,6 +4,29 @@
 // It is intended for use in Navidrome plugins built with extism-pdk.
 
 use serde::{Deserialize, Serialize};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 // Helper functions for skip_serializing_if with numeric types
 #[allow(dead_code)]
@@ -27,7 +50,8 @@ pub struct OnBinaryMessageRequest {
     pub connection_id: String,
     /// Data is the binary data received from the WebSocket, encoded as base64.
     #[serde(default)]
-    pub data: String,
+    #[serde(with = "base64_bytes")]
+    pub data: Vec<u8>,
 }
 /// OnCloseRequest is the request provided when a WebSocket connection is closed.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

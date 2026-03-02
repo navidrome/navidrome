@@ -5,7 +5,7 @@ package plugins
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
+
 	"encoding/hex"
 	"maps"
 	"net/http"
@@ -294,11 +294,13 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		var wsServer *httptest.Server
 		var serverConn *websocket.Conn
 		var serverMessages []string
+		var serverBinaryMessages [][]byte
 		var serverMu sync.Mutex
 
 		BeforeEach(func() {
 			serverConn = nil
 			serverMessages = nil
+			serverBinaryMessages = nil
 
 			upgrader := websocket.Upgrader{
 				CheckOrigin: func(r *http.Request) bool { return true },
@@ -314,12 +316,16 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 				// Read and store messages
 				for {
-					_, msg, err := conn.ReadMessage()
+					msgType, msg, err := conn.ReadMessage()
 					if err != nil {
 						break
 					}
 					serverMu.Lock()
-					serverMessages = append(serverMessages, string(msg))
+					if msgType == websocket.BinaryMessage {
+						serverBinaryMessages = append(serverBinaryMessages, msg)
+					} else {
+						serverMessages = append(serverMessages, string(msg))
+					}
 					serverMu.Unlock()
 				}
 			}))
@@ -359,13 +365,12 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			serverMu.Unlock()
 			Expect(err).ToNot(HaveOccurred())
 
-			// Plugin echoes binary data back as text prefixed with "binary_echo:"
-			expectedEcho := "binary_echo:" + base64.StdEncoding.EncodeToString(binaryData)
-			Eventually(func() []string {
+			// Plugin echoes binary data back as a binary message
+			Eventually(func() [][]byte {
 				serverMu.Lock()
 				defer serverMu.Unlock()
-				return serverMessages
-			}).Should(ContainElement(expectedEcho))
+				return serverBinaryMessages
+			}).Should(ContainElement(binaryData))
 		})
 
 		It("should invoke OnClose callback when server closes connection", func() {
@@ -609,6 +614,3 @@ func findWebSocketService(m *Manager, pluginName string) *webSocketServiceImpl {
 	}
 	return nil
 }
-
-// Ensure base64 import is used
-var _ = base64.StdEncoding

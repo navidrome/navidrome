@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
@@ -45,11 +46,11 @@ func (t *testWebSocket) OnTextMessage(input websocket.OnTextMessageRequest) erro
 }
 
 // OnBinaryMessage is called when a binary message is received.
-// Echoes the data back as a text message prefixed with "binary_echo:" so tests
-// can observe the callback fired.
+// Echoes the data back as a binary message so tests can observe the callback fired.
 func (t *testWebSocket) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
-	storeReceivedMessage("binary:" + input.Data)
-	return host.WebSocketSendText(input.ConnectionID, "binary_echo:"+input.Data)
+	encoded := base64.StdEncoding.EncodeToString(input.Data)
+	storeReceivedMessage("binary:" + encoded)
+	return host.WebSocketSendBinary(input.ConnectionID, input.Data)
 }
 
 // OnError is called when an error occurs on a WebSocket connection.
