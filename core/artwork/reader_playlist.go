@@ -75,16 +75,42 @@ func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, stri
 }
 
 func (a *playlistArtworkReader) fromPlaylistUploadedImage() sourceFunc {
+	return fromLocalFile(a.pl.UploadedImagePath())
+}
+
+func (a *playlistArtworkReader) fromPlaylistSidecar() sourceFunc {
+	return fromLocalFile(findPlaylistSidecarPath(a.pl.Path))
+}
+
+func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		absPath := a.pl.UploadedImagePath()
-		if absPath == "" {
+		imgURL := a.pl.ExternalImageURL
+		if imgURL == "" {
 			return nil, "", nil
 		}
-		f, err := os.Open(absPath)
+		parsed, err := url.Parse(imgURL)
 		if err != nil {
 			return nil, "", err
 		}
-		return f, absPath, nil
+		if parsed.Scheme == "http" || parsed.Scheme == "https" {
+			return fromURL(ctx, parsed)
+		}
+		return fromLocalFile(imgURL)()
+	}
+}
+
+// fromLocalFile returns a sourceFunc that opens the given local path.
+// Returns (nil, "", nil) if path is empty — signalling "not found, try next source".
+func fromLocalFile(path string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		if path == "" {
+			return nil, "", nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, path, nil
 	}
 }
 
@@ -103,54 +129,13 @@ func findPlaylistSidecarPath(plsPath string) string {
 		return ""
 	}
 	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
 		name := entry.Name()
 		nameBase := strings.TrimSuffix(name, filepath.Ext(name))
-		if !strings.EqualFold(nameBase, base) {
-			continue
+		if !entry.IsDir() && strings.EqualFold(nameBase, base) && model.IsImageFile(name) {
+			return filepath.Join(dir, name)
 		}
-		if !model.IsImageFile(name) {
-			continue
-		}
-		return filepath.Join(dir, name)
 	}
 	return ""
-}
-
-func (a *playlistArtworkReader) fromPlaylistSidecar() sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imgPath := findPlaylistSidecarPath(a.pl.Path)
-		if imgPath == "" {
-			return nil, "", nil
-		}
-		f, err := os.Open(imgPath)
-		if err != nil {
-			return nil, "", err
-		}
-		return f, imgPath, nil
-	}
-}
-
-func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		if a.pl.ExternalImageURL == "" {
-			return nil, "", nil
-		}
-		if strings.HasPrefix(a.pl.ExternalImageURL, "http://") || strings.HasPrefix(a.pl.ExternalImageURL, "https://") {
-			parsed, err := url.Parse(a.pl.ExternalImageURL)
-			if err != nil {
-				return nil, "", err
-			}
-			return fromURL(ctx, parsed)
-		}
-		f, err := os.Open(a.pl.ExternalImageURL)
-		if err != nil {
-			return nil, "", err
-		}
-		return f, a.pl.ExternalImageURL, nil
-	}
 }
 
 func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {
