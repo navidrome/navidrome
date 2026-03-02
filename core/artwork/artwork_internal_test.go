@@ -318,6 +318,44 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(BeEmpty())
 			})
 		})
+
+		Describe("fromPlaylistExternalImage", func() {
+			It("opens local path from ExternalImageURL", func() {
+				tmpDir := GinkgoT().TempDir()
+				imgPath := filepath.Join(tmpDir, "cover.jpg")
+				Expect(os.WriteFile(imgPath, []byte("external image data"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: imgPath},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				data, _ := io.ReadAll(r)
+				Expect(string(data)).To(Equal("external image data"))
+				r.Close()
+			})
+
+			It("returns nil when ExternalImageURL is empty", func() {
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: ""},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+
+			It("returns error when local file does not exist", func() {
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: "/non/existent/path/cover.jpg"},
+				}
+				r, _, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).To(HaveOccurred())
+				Expect(r).To(BeNil())
+			})
+		})
 	})
 
 	Describe("resizedArtworkReader", func() {

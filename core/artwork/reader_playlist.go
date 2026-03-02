@@ -8,6 +8,7 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,6 +68,7 @@ func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, stri
 	return selectImageReader(ctx, a.artID,
 		a.fromPlaylistUploadedImage(),
 		a.fromPlaylistSidecar(),
+		a.fromPlaylistExternalImage(ctx),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	)
@@ -128,6 +130,26 @@ func (a *playlistArtworkReader) fromPlaylistSidecar() sourceFunc {
 			return nil, "", err
 		}
 		return f, imgPath, nil
+	}
+}
+
+func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		if a.pl.ExternalImageURL == "" {
+			return nil, "", nil
+		}
+		if strings.HasPrefix(a.pl.ExternalImageURL, "http://") || strings.HasPrefix(a.pl.ExternalImageURL, "https://") {
+			parsed, err := url.Parse(a.pl.ExternalImageURL)
+			if err != nil {
+				return nil, "", err
+			}
+			return fromURL(ctx, parsed)
+		}
+		f, err := os.Open(a.pl.ExternalImageURL)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, a.pl.ExternalImageURL, nil
 	}
 }
 
