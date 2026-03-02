@@ -25,7 +25,7 @@ const (
 )
 
 // notExpiredFilter is the SQL condition to exclude expired keys.
-const notExpiredFilter = "(expires_at IS NULL OR expires_at > datetime('now'))"
+const notExpiredFilter = "(expires_at IS NULL OR expires_at >= datetime('now'))"
 
 const cleanupInterval = 1 * time.Hour
 
@@ -349,7 +349,7 @@ func (s *kvstoreServiceImpl) cleanupLoop(ctx context.Context) {
 
 // cleanupExpired removes all expired keys from the database to reclaim disk space.
 func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')`)
+	result, err := s.db.ExecContext(ctx, `DELETE FROM kvstore WHERE expires_at IS NOT NULL AND expires_at < datetime('now')`)
 	if err != nil {
 		log.Error(ctx, "KVStore cleanup: failed to delete expired keys", "plugin", s.pluginName, err)
 		return
