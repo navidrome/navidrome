@@ -159,6 +159,7 @@ running, completed, or failed.
         raise HostFunctionError(response["error"])
 
 
+
 def task_clear_queue(queue_name: str) -> int:
     """ClearQueue removes all pending tasks from the named queue.
 Running tasks are not affected. Returns the number of tasks removed.
@@ -167,7 +168,7 @@ Running tasks are not affected. Returns the number of tasks removed.
         queue_name: str parameter.
 
     Returns:
-        int: The number of tasks removed.
+        int: The result value.
 
     Raises:
         HostFunctionError: If the host function returns an error.

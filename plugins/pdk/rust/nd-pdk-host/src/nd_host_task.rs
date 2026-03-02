@@ -239,7 +239,7 @@ pub fn cancel(task_id: &str) -> Result<(), Error> {
 /// * `queue_name` - String parameter.
 ///
 /// # Returns
-/// The number of tasks removed.
+/// The result value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.

@@ -90,3 +90,16 @@ func (m *mockTaskService) Cancel(taskID string) error {
 func TaskCancel(taskID string) error {
 	return TaskMock.Cancel(taskID)
 }
+
+// ClearQueue is the mock method for TaskClearQueue.
+func (m *mockTaskService) ClearQueue(queueName string) (int64, error) {
+	args := m.Called(queueName)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+// TaskClearQueue delegates to the mock instance.
+// ClearQueue removes all pending tasks from the named queue.
+// Running tasks are not affected. Returns the number of tasks removed.
+func TaskClearQueue(queueName string) (int64, error) {
+	return TaskMock.ClearQueue(queueName)
+}
