@@ -315,14 +315,14 @@ var _ = Describe("Playlists", func() {
 			ps = playlists.NewPlaylists(ds)
 		})
 
-		It("saves image file and updates ImageFile", func() {
+		It("saves image file and updates UploadedImage", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			reader := strings.NewReader("fake image data")
 			err := ps.SetImage(ctx, "pls-1", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(mockPlsRepo.Last.ImageFile).To(Equal("pls-1.jpg"))
-			absPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.jpg")
+			Expect(mockPlsRepo.Last.UploadedImage).To(Equal("pls-1_my_playlist.jpg"))
+			absPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.jpg")
 			data, err := os.ReadFile(absPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(data)).To(Equal("fake image data"))
@@ -334,14 +334,14 @@ var _ = Describe("Playlists", func() {
 			// Upload first image
 			err := ps.SetImage(ctx, "pls-1", strings.NewReader("first"), ".png")
 			Expect(err).ToNot(HaveOccurred())
-			oldPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.png")
+			oldPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.png")
 			Expect(oldPath).To(BeAnExistingFile())
 
 			// Upload replacement image
 			err = ps.SetImage(ctx, "pls-1", strings.NewReader("second"), ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(oldPath).ToNot(BeAnExistingFile())
-			newPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.jpg")
+			newPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.jpg")
 			Expect(newPath).To(BeAnExistingFile())
 		})
 
@@ -378,19 +378,19 @@ var _ = Describe("Playlists", func() {
 			Expect(os.WriteFile(filepath.Join(imgDir, "pls-1.jpg"), []byte("img data"), 0600)).To(Succeed())
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
-				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1", ImageFile: "pls-1.jpg"},
+				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1", UploadedImage: "pls-1.jpg"},
 				"pls-empty": {ID: "pls-empty", Name: "No Cover", OwnerID: "user-1"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
 			ps = playlists.NewPlaylists(ds)
 		})
 
-		It("removes file and clears ImageFile", func() {
+		It("removes file and clears UploadedImage", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveImage(ctx, "pls-1")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(mockPlsRepo.Last.ImageFile).To(BeEmpty())
+			Expect(mockPlsRepo.Last.UploadedImage).To(BeEmpty())
 			absPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.jpg")
 			Expect(absPath).ToNot(BeAnExistingFile())
 		})
@@ -399,7 +399,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveImage(ctx, "pls-empty")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mockPlsRepo.Last.ImageFile).To(BeEmpty())
+			Expect(mockPlsRepo.Last.UploadedImage).To(BeEmpty())
 		})
 
 		It("denies non-owner", func() {

@@ -131,7 +131,7 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 	}
 
 	// Clean up custom cover image file if one exists
-	if path := pls.ArtworkPath(); path != "" {
+	if path := pls.UploadedImagePath(); path != "" {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			log.Warn(ctx, "Failed to remove playlist image on delete", "path", path, err)
 		}
@@ -288,10 +288,10 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 		return err
 	}
 
-	filename := playlistID + ext
-	oldPath := pls.ArtworkPath()
-	pls.ImageFile = filename
-	absPath := pls.ArtworkPath()
+	filename := pls.ImageFilename(ext)
+	oldPath := pls.UploadedImagePath()
+	pls.UploadedImage = filename
+	absPath := pls.UploadedImagePath()
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
 		return fmt.Errorf("creating playlist images directory: %w", err)
@@ -324,12 +324,12 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 		return err
 	}
 
-	if path := pls.ArtworkPath(); path != "" {
+	if path := pls.UploadedImagePath(); path != "" {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			log.Warn(ctx, "Failed to remove playlist image", "path", path, err)
 		}
 	}
 
-	pls.ImageFile = ""
+	pls.UploadedImage = ""
 	return s.ds.Playlist(ctx).Put(pls)
 }

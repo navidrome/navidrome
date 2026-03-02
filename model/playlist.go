@@ -9,24 +9,26 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Playlist struct {
-	ID        string         `structs:"id" json:"id"`
-	Name      string         `structs:"name" json:"name"`
-	Comment   string         `structs:"comment" json:"comment"`
-	Duration  float32        `structs:"duration" json:"duration"`
-	Size      int64          `structs:"size" json:"size"`
-	SongCount int            `structs:"song_count" json:"songCount"`
-	OwnerName string         `structs:"-" json:"ownerName"`
-	OwnerID   string         `structs:"owner_id" json:"ownerId"`
-	Public    bool           `structs:"public" json:"public"`
-	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
-	Path      string         `structs:"path" json:"path"`
-	Sync      bool           `structs:"sync" json:"sync"`
-	ImageFile string         `structs:"image_file" json:"imageFile"`
-	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
-	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
+	ID               string         `structs:"id" json:"id"`
+	Name             string         `structs:"name" json:"name"`
+	Comment          string         `structs:"comment" json:"comment"`
+	Duration         float32        `structs:"duration" json:"duration"`
+	Size             int64          `structs:"size" json:"size"`
+	SongCount        int            `structs:"song_count" json:"songCount"`
+	OwnerName        string         `structs:"-" json:"ownerName"`
+	OwnerID          string         `structs:"owner_id" json:"ownerId"`
+	Public           bool           `structs:"public" json:"public"`
+	Tracks           PlaylistTracks `structs:"-" json:"tracks,omitempty"`
+	Path             string         `structs:"path" json:"path"`
+	Sync             bool           `structs:"sync" json:"sync"`
+	UploadedImage    string         `structs:"uploaded_image" json:"uploadedImage"`
+	ExternalImageURL string         `structs:"external_image_url" json:"externalImageUrl,omitempty"`
+	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
+	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
@@ -106,15 +108,29 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 	pls.refreshStats()
 }
 
+// ImageFilename returns a human-friendly filename for an uploaded playlist cover image.
+// Format: <ID>_<clean_name><ext>, falling back to <ID><ext> if the name cleans to empty.
+func (pls Playlist) ImageFilename(ext string) string {
+	clean := utils.CleanFileName(pls.Name)
+	if clean == "" {
+		return pls.ID + ext
+	}
+	return pls.ID + "_" + clean + ext
+}
+
 func (pls Playlist) CoverArtID() ArtworkID {
 	return artworkIDFromPlaylist(pls)
 }
 
-func (pls Playlist) ArtworkPath() string {
-	if pls.ImageFile == "" {
+// UploadedImagePath returns the absolute filesystem path for a manually uploaded
+// playlist cover image. Returns empty string if no image has been uploaded.
+// This does NOT cover sidecar images or external URLs — those are resolved
+// by the artwork reader's fallback chain.
+func (pls Playlist) UploadedImagePath() string {
+	if pls.UploadedImage == "" {
 		return ""
 	}
-	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "playlist", pls.ImageFile)
+	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "playlist", pls.UploadedImage)
 }
 
 type Playlists []Playlist
