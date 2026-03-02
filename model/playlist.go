@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Playlist struct {
@@ -105,6 +106,16 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 		pls.Tracks = append(pls.Tracks, t)
 	}
 	pls.refreshStats()
+}
+
+// ImageFilename returns a human-friendly filename for an uploaded playlist cover image.
+// Format: <ID>_<clean_name><ext>, falling back to <ID><ext> if the name cleans to empty.
+func (pls Playlist) ImageFilename(ext string) string {
+	clean := utils.CleanFileName(pls.Name)
+	if clean == "" {
+		return pls.ID + ext
+	}
+	return pls.ID + "_" + clean + ext
 }
 
 func (pls Playlist) CoverArtID() ArtworkID {

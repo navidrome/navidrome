@@ -288,7 +288,7 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 		return err
 	}
 
-	filename := playlistID + ext
+	filename := pls.ImageFilename(ext)
 	oldPath := pls.UploadedImagePath()
 	pls.UploadedImage = filename
 	absPath := pls.UploadedImagePath()

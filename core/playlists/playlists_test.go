@@ -321,8 +321,8 @@ var _ = Describe("Playlists", func() {
 			err := ps.SetImage(ctx, "pls-1", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(mockPlsRepo.Last.UploadedImage).To(Equal("pls-1.jpg"))
-			absPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.jpg")
+			Expect(mockPlsRepo.Last.UploadedImage).To(Equal("pls-1_my_playlist.jpg"))
+			absPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.jpg")
 			data, err := os.ReadFile(absPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(data)).To(Equal("fake image data"))
@@ -334,14 +334,14 @@ var _ = Describe("Playlists", func() {
 			// Upload first image
 			err := ps.SetImage(ctx, "pls-1", strings.NewReader("first"), ".png")
 			Expect(err).ToNot(HaveOccurred())
-			oldPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.png")
+			oldPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.png")
 			Expect(oldPath).To(BeAnExistingFile())
 
 			// Upload replacement image
 			err = ps.SetImage(ctx, "pls-1", strings.NewReader("second"), ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(oldPath).ToNot(BeAnExistingFile())
-			newPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1.jpg")
+			newPath := filepath.Join(tmpDir, "artwork", "playlist", "pls-1_my_playlist.jpg")
 			Expect(newPath).To(BeAnExistingFile())
 		})
 

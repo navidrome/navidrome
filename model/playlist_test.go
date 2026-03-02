@@ -7,6 +7,28 @@ import (
 )
 
 var _ = Describe("Playlist", func() {
+	Describe("ImageFilename", func() {
+		It("returns ID_cleanname.ext for a normal name", func() {
+			pls := model.Playlist{ID: "abc123", Name: "My Cool Playlist"}
+			Expect(pls.ImageFilename(".jpg")).To(Equal("abc123_my_cool_playlist.jpg"))
+		})
+
+		It("falls back to ID.ext when name cleans to empty", func() {
+			pls := model.Playlist{ID: "abc123", Name: "!!!"}
+			Expect(pls.ImageFilename(".png")).To(Equal("abc123.png"))
+		})
+
+		It("falls back to ID.ext for empty name", func() {
+			pls := model.Playlist{ID: "abc123", Name: ""}
+			Expect(pls.ImageFilename(".jpg")).To(Equal("abc123.jpg"))
+		})
+
+		It("handles names with special characters", func() {
+			pls := model.Playlist{ID: "x1", Name: "Rock & Roll! (2024)"}
+			Expect(pls.ImageFilename(".webp")).To(Equal("x1_rock__roll_2024.webp"))
+		})
+	})
+
 	Describe("ToM3U8()", func() {
 		var pls model.Playlist
 		BeforeEach(func() {
