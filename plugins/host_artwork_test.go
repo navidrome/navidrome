@@ -229,11 +229,10 @@ func decodeArtworkURL(artworkURL string) model.ArtworkID {
 	token, err := auth.TokenAuth.Decode(tokenPart)
 	Expect(err).ToNot(HaveOccurred(), "Failed to decode JWT token")
 
-	claims, err := token.AsMap(context.Background())
-	Expect(err).ToNot(HaveOccurred(), "Failed to get claims from token")
+	c := auth.ClaimsFromToken(token)
 
-	id, ok := claims["id"].(string)
-	Expect(ok).To(BeTrue(), "Token should contain 'id' claim")
+	id := c.ID
+	Expect(id).ToNot(BeEmpty(), "Token should contain 'id' claim")
 
 	artID, err := model.ParseArtworkID(id)
 	Expect(err).ToNot(HaveOccurred(), "Failed to parse artwork ID from token")
