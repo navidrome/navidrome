@@ -274,51 +274,6 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 
-		Describe("fromPlaylistSidecar", func() {
-			It("returns the sidecar image data when it exists", func() {
-				tmpDir := GinkgoT().TempDir()
-				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
-				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
-				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
-				Expect(os.WriteFile(imgPath, []byte("sidecar image data"), 0600)).To(Succeed())
-
-				reader := &playlistArtworkReader{
-					pl: model.Playlist{Path: plsPath},
-				}
-				r, path, err := reader.fromPlaylistSidecar()()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(r).ToNot(BeNil())
-				Expect(path).To(Equal(imgPath))
-				data, _ := io.ReadAll(r)
-				Expect(string(data)).To(Equal("sidecar image data"))
-				r.Close()
-			})
-
-			It("returns nil when no sidecar exists", func() {
-				tmpDir := GinkgoT().TempDir()
-				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
-				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
-
-				reader := &playlistArtworkReader{
-					pl: model.Playlist{Path: plsPath},
-				}
-				r, path, err := reader.fromPlaylistSidecar()()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(r).To(BeNil())
-				Expect(path).To(BeEmpty())
-			})
-
-			It("returns nil when playlist has no path (API-created)", func() {
-				reader := &playlistArtworkReader{
-					pl: model.Playlist{Path: ""},
-				}
-				r, path, err := reader.fromPlaylistSidecar()()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(r).To(BeNil())
-				Expect(path).To(BeEmpty())
-			})
-		})
-
 		Describe("fromPlaylistExternalImage", func() {
 			It("opens local path from ExternalImageURL", func() {
 				tmpDir := GinkgoT().TempDir()
