@@ -235,6 +235,91 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 	})
+	Describe("playlistArtworkReader", func() {
+		Describe("findPlaylistSidecarPath", func() {
+			It("discovers sidecar image next to playlist file", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(plsPath)
+				Expect(result).To(Equal(imgPath))
+			})
+
+			It("returns empty string when no sidecar image exists", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(plsPath)
+				Expect(result).To(BeEmpty())
+			})
+
+			It("returns empty string when playlist has no path", func() {
+				result := findPlaylistSidecarPath("")
+				Expect(result).To(BeEmpty())
+			})
+
+			It("finds sidecar with different case base name", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "myplaylist.m3u")
+				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(plsPath)
+				Expect(result).To(Equal(imgPath))
+			})
+		})
+
+		Describe("fromPlaylistSidecar", func() {
+			It("returns the sidecar image data when it exists", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+				Expect(os.WriteFile(imgPath, []byte("sidecar image data"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{Path: plsPath},
+				}
+				r, path, err := reader.fromPlaylistSidecar()()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				data, _ := io.ReadAll(r)
+				Expect(string(data)).To(Equal("sidecar image data"))
+				r.Close()
+			})
+
+			It("returns nil when no sidecar exists", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{Path: plsPath},
+				}
+				r, path, err := reader.fromPlaylistSidecar()()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+
+			It("returns nil when playlist has no path (API-created)", func() {
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{Path: ""},
+				}
+				r, path, err := reader.fromPlaylistSidecar()()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+		})
+	})
+
 	Describe("resizedArtworkReader", func() {
 		BeforeEach(func() {
 			folderRepo.result = []model.Folder{{

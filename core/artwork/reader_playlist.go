@@ -9,6 +9,8 @@ import (
 	"image/png"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/disintegration/imaging"
@@ -36,6 +38,24 @@ func newPlaylistArtworkReader(ctx context.Context, artwork *artwork, artID model
 	}
 	a.cacheKey.artID = artID
 	a.cacheKey.lastUpdate = pl.UpdatedAt
+
+	// Check sidecar and ExternalImageURL local file ModTimes for cache invalidation.
+	// If either is newer than the playlist's UpdatedAt, use that instead so the
+	// cache is busted when a user replaces a sidecar image or local file reference.
+	for _, path := range []string{
+		findPlaylistSidecarPath(pl.Path),
+		pl.ExternalImageURL,
+	} {
+		if path == "" || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+			continue
+		}
+		if info, err := os.Stat(path); err == nil {
+			if info.ModTime().After(a.cacheKey.lastUpdate) {
+				a.cacheKey.lastUpdate = info.ModTime()
+			}
+		}
+	}
+
 	return a, nil
 }
 
@@ -46,6 +66,7 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
 		a.fromPlaylistUploadedImage(),
+		a.fromPlaylistSidecar(),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	)
@@ -62,6 +83,51 @@ func (a *playlistArtworkReader) fromPlaylistUploadedImage() sourceFunc {
 			return nil, "", err
 		}
 		return f, absPath, nil
+	}
+}
+
+// findPlaylistSidecarPath scans the directory of the playlist file for a sidecar
+// image file with the same base name (case-insensitive). Returns empty string if
+// no matching image is found or if plsPath is empty.
+func findPlaylistSidecarPath(plsPath string) string {
+	if plsPath == "" {
+		return ""
+	}
+	dir := filepath.Dir(plsPath)
+	base := strings.TrimSuffix(filepath.Base(plsPath), filepath.Ext(plsPath))
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		nameBase := strings.TrimSuffix(name, filepath.Ext(name))
+		if !strings.EqualFold(nameBase, base) {
+			continue
+		}
+		if !model.IsImageFile(name) {
+			continue
+		}
+		return filepath.Join(dir, name)
+	}
+	return ""
+}
+
+func (a *playlistArtworkReader) fromPlaylistSidecar() sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		imgPath := findPlaylistSidecarPath(a.pl.Path)
+		if imgPath == "" {
+			return nil, "", nil
+		}
+		f, err := os.Open(imgPath)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, imgPath, nil
 	}
 }
 
