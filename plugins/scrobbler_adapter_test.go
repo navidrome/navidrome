@@ -58,16 +58,23 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(result).To(BeTrue())
 		})
 
-		It("returns false when plugin is configured to not authorize", func() {
-			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"authorized": "false"},
-			}, "test-scrobbler"+PackageExtension)
+		Context("when plugin is configured to not authorize", Ordered, func() {
+			var notAuthScrobbler scrobbler.Scrobbler
 
-			sc, ok := manager.LoadScrobbler("test-scrobbler")
-			Expect(ok).To(BeTrue())
+			BeforeAll(func() {
+				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
+					"test-scrobbler": {"authorized": "false"},
+				}, "test-scrobbler"+PackageExtension)
 
-			result := sc.IsAuthorized(ctxWithUser(), "user-1")
-			Expect(result).To(BeFalse())
+				var ok bool
+				notAuthScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
+				Expect(ok).To(BeTrue())
+			})
+
+			It("returns false", func() {
+				result := notAuthScrobbler.IsAuthorized(ctxWithUser(), "user-1")
+				Expect(result).To(BeFalse())
+			})
 		})
 	})
 
@@ -127,18 +134,25 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("returns error when plugin returns error", func() {
-			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "service unavailable", "error_type": "scrobbler(retry_later)"},
-			}, "test-scrobbler"+PackageExtension)
+		Context("when plugin returns error", Ordered, func() {
+			var retryScrobbler scrobbler.Scrobbler
 
-			sc, ok := manager.LoadScrobbler("test-scrobbler")
-			Expect(ok).To(BeTrue())
+			BeforeAll(func() {
+				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
+					"test-scrobbler": {"error": "service unavailable", "error_type": "scrobbler(retry_later)"},
+				}, "test-scrobbler"+PackageExtension)
 
-			track := &model.MediaFile{ID: "track-1", Title: "Test Song"}
-			err := sc.NowPlaying(ctxWithUser(), "user-1", track, 30)
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+				var ok bool
+				retryScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
+				Expect(ok).To(BeTrue())
+			})
+
+			It("returns ErrRetryLater", func() {
+				track := &model.MediaFile{ID: "track-1", Title: "Test Song"}
+				err := retryScrobbler.NowPlaying(ctxWithUser(), "user-1", track, 30)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
 		})
 	})
 
@@ -166,38 +180,52 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("returns error when plugin returns not_authorized error", func() {
-			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "user not linked", "error_type": "scrobbler(not_authorized)"},
-			}, "test-scrobbler"+PackageExtension)
+		Context("when plugin returns not_authorized error", Ordered, func() {
+			var notAuthScrobbler scrobbler.Scrobbler
 
-			sc, ok := manager.LoadScrobbler("test-scrobbler")
-			Expect(ok).To(BeTrue())
+			BeforeAll(func() {
+				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
+					"test-scrobbler": {"error": "user not linked", "error_type": "scrobbler(not_authorized)"},
+				}, "test-scrobbler"+PackageExtension)
 
-			scrobble := scrobbler.Scrobble{
-				MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
-				TimeStamp: time.Now(),
-			}
-			err := sc.Scrobble(ctxWithUser(), "user-1", scrobble)
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+				var ok bool
+				notAuthScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
+				Expect(ok).To(BeTrue())
+			})
+
+			It("returns ErrNotAuthorized", func() {
+				scrobble := scrobbler.Scrobble{
+					MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
+					TimeStamp: time.Now(),
+				}
+				err := notAuthScrobbler.Scrobble(ctxWithUser(), "user-1", scrobble)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+			})
 		})
 
-		It("returns error when plugin returns unrecoverable error", func() {
-			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-scrobbler": {"error": "track rejected", "error_type": "scrobbler(unrecoverable)"},
-			}, "test-scrobbler"+PackageExtension)
+		Context("when plugin returns unrecoverable error", Ordered, func() {
+			var unrecoverableScrobbler scrobbler.Scrobbler
 
-			sc, ok := manager.LoadScrobbler("test-scrobbler")
-			Expect(ok).To(BeTrue())
+			BeforeAll(func() {
+				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
+					"test-scrobbler": {"error": "track rejected", "error_type": "scrobbler(unrecoverable)"},
+				}, "test-scrobbler"+PackageExtension)
 
-			scrobble := scrobbler.Scrobble{
-				MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
-				TimeStamp: time.Now(),
-			}
-			err := sc.Scrobble(ctxWithUser(), "user-1", scrobble)
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+				var ok bool
+				unrecoverableScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
+				Expect(ok).To(BeTrue())
+			})
+
+			It("returns ErrUnrecoverable", func() {
+				scrobble := scrobbler.Scrobble{
+					MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
+					TimeStamp: time.Now(),
+				}
+				err := unrecoverableScrobbler.Scrobble(ctxWithUser(), "user-1", scrobble)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+			})
 		})
 	})
 

@@ -677,7 +677,6 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 		conf.Server.DataFolder = tmpDir
 
 		// Setup mock DataStore with pre-enabled plugin
@@ -924,16 +923,15 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 			Expect(output.Exists).To(BeTrue())
 			Expect(output.Value).To(Equal([]byte("temporary")))
 
-			// Wait for expiration
-			time.Sleep(2 * time.Second)
-
-			// Should no longer exist
-			output, err = callTestKVStore(ctx, testKVStoreInput{
-				Operation: "get",
-				Key:       "ttl_key",
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(output.Exists).To(BeFalse())
+			// Poll until the key expires (1s TTL)
+			Eventually(func(g Gomega) {
+				output, err := callTestKVStore(ctx, testKVStoreInput{
+					Operation: "get",
+					Key:       "ttl_key",
+				})
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(output.Exists).To(BeFalse())
+			}).WithTimeout(3 * time.Second).WithPolling(200 * time.Millisecond).Should(Succeed())
 		})
 
 		It("should delete keys by prefix", func() {

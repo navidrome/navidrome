@@ -49,7 +49,6 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Initialize auth (required for token generation)
 		ds := &tests.MockDataStore{MockedProperty: &tests.MockedPropertyRepo{}}
