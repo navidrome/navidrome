@@ -21,11 +21,18 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		return lyrics.GetLyricsResponse{}, fmt.Errorf("%s", errMsg)
 	}
 
+	// Check if we should omit language (to test default language handling)
+	noLang, hasNoLang := pdk.GetConfig("no_lang")
+	lang := "eng"
+	if hasNoLang && noLang == "true" {
+		lang = ""
+	}
+
 	// Return test lyrics based on track info
 	return lyrics.GetLyricsResponse{
 		Lyrics: []lyrics.LyricsText{
 			{
-				Lang: "eng",
+				Lang: lang,
 				Text: "Test lyrics for " + input.Track.Title + "\nBy " + input.Track.Artist,
 			},
 		},

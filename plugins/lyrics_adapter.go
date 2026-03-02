@@ -42,7 +42,11 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 
 	var result model.LyricList
 	for _, lt := range resp.Lyrics {
-		parsed, err := model.ToLyrics(lt.Lang, lt.Text)
+		lang := lt.Lang
+		if lang == "" {
+			lang = "xxx"
+		}
+		parsed, err := model.ToLyrics(lang, lt.Text)
 		if err != nil {
 			log.Warn(ctx, "Error parsing plugin lyrics", "plugin", l.name, err)
 			continue
