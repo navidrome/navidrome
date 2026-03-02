@@ -45,10 +45,11 @@ func (t *testWebSocket) OnTextMessage(input websocket.OnTextMessageRequest) erro
 }
 
 // OnBinaryMessage is called when a binary message is received.
+// Echoes the data back as a text message prefixed with "binary_echo:" so tests
+// can observe the callback fired.
 func (t *testWebSocket) OnBinaryMessage(input websocket.OnBinaryMessageRequest) error {
-	// Store received binary data for test verification
 	storeReceivedMessage("binary:" + input.Data)
-	return nil
+	return host.WebSocketSendText(input.ConnectionID, "binary_echo:"+input.Data)
 }
 
 // OnError is called when an error occurs on a WebSocket connection.
