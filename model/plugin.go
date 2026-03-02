@@ -23,6 +23,7 @@ type Plugins []Plugin
 
 type PluginRepository interface {
 	ResourceRepository
+	ClearErrors() error
 	CountAll(options ...QueryOptions) (int64, error)
 	Delete(id string) error
 	Get(id string) (*Plugin, error)

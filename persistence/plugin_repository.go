@@ -31,6 +31,14 @@ func (r *pluginRepository) isPermitted() bool {
 	return user.IsAdmin
 }
 
+func (r *pluginRepository) ClearErrors() error {
+	if !r.isPermitted() {
+		return rest.ErrPermissionDenied
+	}
+	_, err := r.db.NewQuery("UPDATE plugin SET last_error = '' WHERE last_error != ''").Execute()
+	return err
+}
+
 func (r *pluginRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	if !r.isPermitted() {
 		return 0, rest.ErrPermissionDenied

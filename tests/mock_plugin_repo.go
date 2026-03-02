@@ -29,6 +29,20 @@ func (m *MockPluginRepo) SetError(err bool) {
 	m.Err = err
 }
 
+func (m *MockPluginRepo) ClearErrors() error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	for i := range m.All {
+		m.All[i].LastError = ""
+	}
+	for k, p := range m.Data {
+		p.LastError = ""
+		m.Data[k] = p
+	}
+	return nil
+}
+
 func (m *MockPluginRepo) SetData(plugins model.Plugins) {
 	m.Data = make(map[string]*model.Plugin, len(plugins))
 	m.All = plugins

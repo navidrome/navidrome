@@ -146,6 +146,12 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
+	// Clear previous error states so plugins can be retried on restart
+	adminCtx := adminContext(ctx)
+	if err := m.ds.Plugin(adminCtx).ClearErrors(); err != nil {
+		log.Error(ctx, "Error clearing plugin errors", err)
+	}
+
 	// Sync plugins folder with DB
 	if err := m.syncPlugins(ctx, folder); err != nil {
 		log.Error(ctx, "Error syncing plugins with DB", err)

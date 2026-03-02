@@ -175,6 +175,30 @@ var _ = Describe("PluginRepository", func() {
 				Expect(err.Error()).To(ContainSubstring("ID cannot be empty"))
 			})
 		})
+
+		Describe("ClearErrors", func() {
+			It("clears last_error on all plugins with errors", func() {
+				_ = repo.Put(&model.Plugin{ID: "ok-plugin", Path: "/plugins/ok.wasm", Manifest: "{}", SHA256: "h1"})
+				_ = repo.Put(&model.Plugin{ID: "err-plugin-1", Path: "/plugins/e1.wasm", Manifest: "{}", SHA256: "h2", LastError: "incompatible version"})
+				_ = repo.Put(&model.Plugin{ID: "err-plugin-2", Path: "/plugins/e2.wasm", Manifest: "{}", SHA256: "h3", LastError: "missing export"})
+
+				err := repo.ClearErrors()
+				Expect(err).To(BeNil())
+
+				all, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				for _, p := range all {
+					Expect(p.LastError).To(BeEmpty(), "plugin %s should have no error", p.ID)
+				}
+			})
+
+			It("succeeds when no plugins have errors", func() {
+				_ = repo.Put(&model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
+
+				err := repo.ClearErrors()
+				Expect(err).To(BeNil())
+			})
+		})
 	})
 
 	Describe("Regular User", func() {
