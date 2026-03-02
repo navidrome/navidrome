@@ -244,7 +244,7 @@ var _ = Describe("Artwork", func() {
 				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
 				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
 
-				result := findPlaylistSidecarPath(plsPath)
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
 				Expect(result).To(Equal(imgPath))
 			})
 
@@ -253,12 +253,12 @@ var _ = Describe("Artwork", func() {
 				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
 				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
 
-				result := findPlaylistSidecarPath(plsPath)
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
 				Expect(result).To(BeEmpty())
 			})
 
 			It("returns empty string when playlist has no path", func() {
-				result := findPlaylistSidecarPath("")
+				result := findPlaylistSidecarPath(GinkgoT().Context(), "")
 				Expect(result).To(BeEmpty())
 			})
 
@@ -269,7 +269,7 @@ var _ = Describe("Artwork", func() {
 				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
 				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
 
-				result := findPlaylistSidecarPath(plsPath)
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
 				Expect(result).To(Equal(imgPath))
 			})
 		})
@@ -309,6 +309,35 @@ var _ = Describe("Artwork", func() {
 				r, _, err := reader.fromPlaylistExternalImage(ctx)()
 				Expect(err).To(HaveOccurred())
 				Expect(r).To(BeNil())
+			})
+
+			It("skips HTTP URL when EnableM3UExternalAlbumArt is false", func() {
+				conf.Server.EnableM3UExternalAlbumArt = false
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: "https://example.com/cover.jpg"},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+
+			It("still opens local path when EnableM3UExternalAlbumArt is false", func() {
+				conf.Server.EnableM3UExternalAlbumArt = false
+
+				tmpDir := GinkgoT().TempDir()
+				imgPath := filepath.Join(tmpDir, "cover.jpg")
+				Expect(os.WriteFile(imgPath, []byte("local image"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: imgPath},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				r.Close()
 			})
 		})
 	})

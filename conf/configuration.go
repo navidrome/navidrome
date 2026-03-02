@@ -46,6 +46,7 @@ type configOptions struct {
 	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
+	EnableM3UExternalAlbumArt       bool
 	EnableInsightsCollector         bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
@@ -474,6 +475,7 @@ func parseIniFileConfiguration() {
 func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
 	Server.EnableInsightsCollector = false
+	Server.EnableM3UExternalAlbumArt = false
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
 	Server.Deezer.Enabled = false
@@ -638,6 +640,7 @@ func setViperDefaults() {
 	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
+	viper.SetDefault("enablem3uexternalalbumart", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)

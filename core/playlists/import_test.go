@@ -41,6 +41,7 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFile", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
 			ps = playlists.NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
@@ -97,6 +98,8 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
+				conf.Server.EnableM3UExternalAlbumArt = true
+
 				pls, err := ps.ImportFile(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal("https://example.com/cover.jpg"))
@@ -159,7 +162,97 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.ExternalImageURL).To(Equal(imgPath))
 			})
 
+			It("preserves + in file:// URLs (PathUnescape, not QueryUnescape)", func() {
+				tmpDir := GinkgoT().TempDir()
+				imgPath := filepath.Join(tmpDir, "A+B.jpg")
+				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
+
+				m3u := fmt.Sprintf("#EXTALBUMARTURL:file://%s\ntest.mp3\n", imgPath)
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(Equal(imgPath))
+			})
+
+			It("rejects #EXTALBUMARTURL with absolute path outside library boundaries", func() {
+				tmpDir := GinkgoT().TempDir()
+
+				m3u := "#EXTALBUMARTURL:/etc/passwd\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
+			It("rejects #EXTALBUMARTURL with file:// URL outside library boundaries", func() {
+				tmpDir := GinkgoT().TempDir()
+
+				m3u := "#EXTALBUMARTURL:file:///etc/passwd\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
+			It("rejects #EXTALBUMARTURL with relative path escaping library", func() {
+				tmpDir := GinkgoT().TempDir()
+
+				m3u := "#EXTALBUMARTURL:../../etc/passwd\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
+			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
+				conf.Server.EnableM3UExternalAlbumArt = false
+
+				tmpDir := GinkgoT().TempDir()
+				m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds)
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
 			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
+				conf.Server.EnableM3UExternalAlbumArt = true
+
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
@@ -242,7 +335,6 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Public).To(BeFalse())
 			})
 			It("uses server default when public field is absent", func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Server.DefaultPlaylistPublicVisibility = true
 
 				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
@@ -613,6 +705,8 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("parses #EXTALBUMARTURL with HTTP URL via ImportM3U", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+
 			repo.data = []string{"tests/test.mp3"}
 			m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\n/music/tests/test.mp3\n"
 			pls, err := ps.ImportM3U(ctx, strings.NewReader(m3u))

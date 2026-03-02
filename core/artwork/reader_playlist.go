@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -44,7 +45,7 @@ func newPlaylistArtworkReader(ctx context.Context, artwork *artwork, artID model
 	// If either is newer than the playlist's UpdatedAt, use that instead so the
 	// cache is busted when a user replaces a sidecar image or local file reference.
 	for _, path := range []string{
-		findPlaylistSidecarPath(pl.Path),
+		findPlaylistSidecarPath(ctx, pl.Path),
 		pl.ExternalImageURL,
 	} {
 		if path == "" || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
@@ -67,7 +68,7 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
 		a.fromPlaylistUploadedImage(),
-		a.fromPlaylistSidecar(),
+		a.fromPlaylistSidecar(ctx),
 		a.fromPlaylistExternalImage(ctx),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
@@ -78,8 +79,8 @@ func (a *playlistArtworkReader) fromPlaylistUploadedImage() sourceFunc {
 	return fromLocalFile(a.pl.UploadedImagePath())
 }
 
-func (a *playlistArtworkReader) fromPlaylistSidecar() sourceFunc {
-	return fromLocalFile(findPlaylistSidecarPath(a.pl.Path))
+func (a *playlistArtworkReader) fromPlaylistSidecar(ctx context.Context) sourceFunc {
+	return fromLocalFile(findPlaylistSidecarPath(ctx, a.pl.Path))
 }
 
 func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) sourceFunc {
@@ -93,6 +94,9 @@ func (a *playlistArtworkReader) fromPlaylistExternalImage(ctx context.Context) s
 			return nil, "", err
 		}
 		if parsed.Scheme == "http" || parsed.Scheme == "https" {
+			if !conf.Server.EnableM3UExternalAlbumArt {
+				return nil, "", nil
+			}
 			return fromURL(ctx, parsed)
 		}
 		return fromLocalFile(imgURL)()
@@ -117,7 +121,7 @@ func fromLocalFile(path string) sourceFunc {
 // findPlaylistSidecarPath scans the directory of the playlist file for a sidecar
 // image file with the same base name (case-insensitive). Returns empty string if
 // no matching image is found or if plsPath is empty.
-func findPlaylistSidecarPath(plsPath string) string {
+func findPlaylistSidecarPath(ctx context.Context, plsPath string) string {
 	if plsPath == "" {
 		return ""
 	}
@@ -126,6 +130,7 @@ func findPlaylistSidecarPath(plsPath string) string {
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		log.Warn(ctx, "Could not read directory for playlist sidecar", "dir", dir, err)
 		return ""
 	}
 	for _, entry := range entries {
