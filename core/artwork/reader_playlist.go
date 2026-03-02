@@ -45,15 +45,15 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
-		a.fromPlaylistImage(),
+		a.fromPlaylistUploadedImage(),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	)
 }
 
-func (a *playlistArtworkReader) fromPlaylistImage() sourceFunc {
+func (a *playlistArtworkReader) fromPlaylistUploadedImage() sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		absPath := a.pl.ArtworkPath()
+		absPath := a.pl.UploadedImagePath()
 		if absPath == "" {
 			return nil, "", nil
 		}

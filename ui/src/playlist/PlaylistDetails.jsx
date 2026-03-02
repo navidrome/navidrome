@@ -246,7 +246,7 @@ const PlaylistDetails = (props) => {
                   <PhotoCameraIcon className={classes.overlayIcon} />
                 </IconButton>
               </Tooltip>
-              {record.imageFile && (
+              {record.uploadedImage && (
                 <Tooltip
                   title={translate('resources.playlist.actions.removeCover')}
                 >
