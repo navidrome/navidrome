@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -717,9 +718,10 @@ var _ = Describe("MediaRepository", func() {
 		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbMediaFile (where MediaFile is nil) with an error.
+			dbErr := fmt.Errorf("database is locked")
 			cursor := func(yield func(dbMediaFile, error) bool) {
 				var empty dbMediaFile // MediaFile pointer is nil
-				yield(empty, fmt.Errorf("database is locked"))
+				yield(empty, dbErr)
 			}
 
 			// wrapMediaFileCursor should handle the nil MediaFile without panicking
@@ -732,6 +734,7 @@ var _ = Describe("MediaRepository", func() {
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
 			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 
 		It("yields mediafiles from a valid cursor", func() {

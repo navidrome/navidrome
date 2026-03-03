@@ -225,7 +225,7 @@ func wrapFolderCursor(cursor func(func(dbFolder, error) bool)) model.FolderCurso
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {
 			if f.Folder == nil {
-				yield(model.Folder{}, fmt.Errorf("unexpected nil folder: %v", f))
+				yield(model.Folder{}, fmt.Errorf("unexpected nil folder (%v): %w", f, err))
 				return
 			}
 			if !yield(*f.Folder, err) || err != nil {

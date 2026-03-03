@@ -368,7 +368,7 @@ func wrapMediaFileCursor(cursor func(func(dbMediaFile, error) bool)) model.Media
 	return func(yield func(model.MediaFile, error) bool) {
 		for m, err := range cursor {
 			if m.MediaFile == nil {
-				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile: %v", m))
+				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile (%v): %w", m, err))
 				return
 			}
 			if !yield(*m.MediaFile, err) || err != nil {

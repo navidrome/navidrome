@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/navidrome/navidrome/log"
@@ -215,9 +216,10 @@ var _ = Describe("FolderRepository", func() {
 		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbFolder (where Folder is nil) with an error.
+			dbErr := fmt.Errorf("database is locked")
 			cursor := func(yield func(dbFolder, error) bool) {
 				var empty dbFolder // Folder pointer is nil
-				yield(empty, fmt.Errorf("database is locked"))
+				yield(empty, dbErr)
 			}
 
 			// wrapFolderCursor should handle the nil Folder without panicking
@@ -230,6 +232,7 @@ var _ = Describe("FolderRepository", func() {
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
 			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil folder"))
+			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 
 		It("yields folders from a valid cursor", func() {
