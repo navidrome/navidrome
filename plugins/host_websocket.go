@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"maps"
@@ -355,7 +354,7 @@ func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connecti
 func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connectionID string, data []byte) {
 	invokeWebSocketCallback(ctx, s, FuncWebSocketOnBinaryMessage, capabilities.OnBinaryMessageRequest{
 		ConnectionID: connectionID,
-		Data:         base64.StdEncoding.EncodeToString(data),
+		Data:         data,
 	}, "binary message", connectionID)
 }
 

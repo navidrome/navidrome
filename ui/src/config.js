@@ -22,6 +22,7 @@ const defaultConfig = {
   defaultUIVolume: 100,
   uiSearchDebounceMs: 200,
   enableUserEditing: true,
+  enableCoverArtUpload: true,
   enableSharing: true,
   shareURL: '',
   defaultDownloadableShare: true,
