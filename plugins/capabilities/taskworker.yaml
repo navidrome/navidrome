@@ -23,10 +23,9 @@ components:
                     type: string
                     description: TaskID is the unique identifier for this task.
                 payload:
-                    type: array
+                    type: string
+                    format: byte
                     description: Payload is the opaque data provided when the task was enqueued.
-                    items:
-                        type: object
                 attempt:
                     type: integer
                     format: int32
