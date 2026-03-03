@@ -210,4 +210,42 @@ var _ = Describe("FolderRepository", func() {
 			})
 		})
 	})
+
+	Describe("wrapFolderCursor", func() {
+		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
+			// Simulate what queryWithStableResults does on the rows.Err() path:
+			// it yields a zero-value dbFolder (where Folder is nil) with an error.
+			cursor := func(yield func(dbFolder, error) bool) {
+				var empty dbFolder // Folder pointer is nil
+				yield(empty, fmt.Errorf("database is locked"))
+			}
+
+			// wrapFolderCursor should handle the nil Folder without panicking
+			wrappedCursor := wrapFolderCursor(cursor)
+			var gotErr error
+			Expect(func() {
+				for _, err := range wrappedCursor {
+					gotErr = err
+				}
+			}).ToNot(Panic())
+			Expect(gotErr).To(HaveOccurred())
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil folder"))
+		})
+
+		It("yields folders from a valid cursor", func() {
+			folder := &model.Folder{ID: "f1", Name: "Test"}
+			cursor := func(yield func(dbFolder, error) bool) {
+				yield(dbFolder{Folder: folder}, nil)
+			}
+
+			wrappedCursor := wrapFolderCursor(cursor)
+			var folders []model.Folder
+			for f, err := range wrappedCursor {
+				Expect(err).ToNot(HaveOccurred())
+				folders = append(folders, f)
+			}
+			Expect(folders).To(HaveLen(1))
+			Expect(folders[0].ID).To(Equal("f1"))
+		})
+	})
 })
