@@ -128,6 +128,23 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterHTTPHostFunctions(service), nil
 		},
 	},
+	{
+		name:          "Task",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Taskqueue != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			perm := ctx.permissions.Taskqueue
+			maxConcurrency := int32(1)
+			if perm.MaxConcurrency > 0 {
+				maxConcurrency = int32(perm.MaxConcurrency)
+			}
+			service, err := newTaskQueueService(ctx.pluginName, ctx.manager, maxConcurrency)
+			if err != nil {
+				log.Error("Failed to create Task service", "plugin", ctx.pluginName, err)
+				return nil, nil
+			}
+			return host.RegisterTaskHostFunctions(service), service
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
