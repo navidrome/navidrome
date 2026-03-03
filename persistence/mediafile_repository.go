@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -364,7 +365,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	return wrapMediaFileCursor(cursor), nil
 }
 
-func wrapMediaFileCursor(cursor func(func(dbMediaFile, error) bool)) model.MediaFileCursor {
+func wrapMediaFileCursor(cursor iter.Seq2[dbMediaFile, error]) model.MediaFileCursor {
 	return func(yield func(model.MediaFile, error) bool) {
 		for m, err := range cursor {
 			if m.MediaFile == nil {

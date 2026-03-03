@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"maps"
 	"os"
 	"path/filepath"
@@ -221,7 +222,7 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	return wrapFolderCursor(cursor), nil
 }
 
-func wrapFolderCursor(cursor func(func(dbFolder, error) bool)) model.FolderCursor {
+func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {
 			if f.Folder == nil {
