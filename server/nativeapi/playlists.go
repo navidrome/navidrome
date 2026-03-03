@@ -17,9 +17,11 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 	_ "golang.org/x/image/webp"
 )
@@ -237,6 +239,11 @@ const maxImageSize = 10 << 20 // 10MB
 func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		user, _ := request.UserFrom(ctx)
+		if !conf.Server.EnableCoverArtUpload && !user.IsAdmin {
+			http.Error(w, "cover art upload is disabled", http.StatusForbidden)
+			return
+		}
 		p := req.Params(r)
 		playlistId, _ := p.String(":id")
 
@@ -306,6 +313,11 @@ func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 func deletePlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		user, _ := request.UserFrom(ctx)
+		if !conf.Server.EnableCoverArtUpload && !user.IsAdmin {
+			http.Error(w, "cover art upload is disabled", http.StatusForbidden)
+			return
+		}
 		p := req.Params(r)
 		playlistId, _ := p.String(":id")
 

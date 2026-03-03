@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -14,50 +15,56 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-type mockPlaylistTrackRepo struct {
-	model.PlaylistTrackRepository
-	tracks model.PlaylistTracks
-}
+var _ = Describe("Playlist Image Endpoints", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
 
-func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
-	return int64(len(m.tracks)), nil
-}
+	DescribeTable("uploadPlaylistImage guard",
+		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
-	return m.tracks, nil
-}
+			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
+			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
+			req = req.WithContext(ctx)
 
-func (m *mockPlaylistTrackRepo) EntityName() string {
-	return "playlist_track"
-}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(expectedStatus))
+		},
+		Entry("enabled, regular user passes guard", true, false, http.StatusBadRequest),
+		Entry("enabled, admin passes guard", true, true, http.StatusBadRequest),
+		Entry("disabled, admin passes guard", false, true, http.StatusBadRequest),
+		Entry("disabled, regular user is forbidden", false, false, http.StatusForbidden),
+	)
 
-func (m *mockPlaylistTrackRepo) NewInstance() any {
-	return &model.PlaylistTrack{}
-}
+	DescribeTable("deletePlaylistImage guard",
+		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
-	for _, t := range m.tracks {
-		if t.ID == id {
-			return &t, nil
-		}
-	}
-	return nil, rest.ErrNotFound
-}
+			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
+			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
+			req = req.WithContext(ctx)
 
-type mockPlaylistsService struct {
-	playlists.Playlists
-	tracksRepo rest.Repository
-}
-
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
-	return m.tracksRepo
-}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(expectedStatus))
+		},
+		Entry("enabled, regular user passes guard", true, false, http.StatusNotFound),
+		Entry("enabled, admin passes guard", true, true, http.StatusNotFound),
+		Entry("disabled, admin passes guard", false, true, http.StatusNotFound),
+		Entry("disabled, regular user is forbidden", false, false, http.StatusForbidden),
+	)
+})
 
 var _ = Describe("Playlist Tracks Endpoint", func() {
 	var (
@@ -174,3 +181,58 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 	})
 })
+
+type mockPlaylistTrackRepo struct {
+	model.PlaylistTrackRepository
+	tracks model.PlaylistTracks
+}
+
+func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
+	return int64(len(m.tracks)), nil
+}
+
+func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
+	return m.tracks, nil
+}
+
+func (m *mockPlaylistTrackRepo) EntityName() string {
+	return "playlist_track"
+}
+
+func (m *mockPlaylistTrackRepo) NewInstance() any {
+	return &model.PlaylistTrack{}
+}
+
+func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
+	for _, t := range m.tracks {
+		if t.ID == id {
+			return &t, nil
+		}
+	}
+	return nil, rest.ErrNotFound
+}
+
+type mockPlaylistsService struct {
+	playlists.Playlists
+	tracksRepo    rest.Repository
+	removeImageFn func(ctx context.Context, id string) error
+	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
+}
+
+func (m *mockPlaylistsService) RemoveImage(ctx context.Context, id string) error {
+	if m.removeImageFn != nil {
+		return m.removeImageFn(ctx, id)
+	}
+	return model.ErrNotFound
+}
+
+func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader io.Reader, ext string) error {
+	if m.setImageFn != nil {
+		return m.setImageFn(ctx, id, reader, ext)
+	}
+	return model.ErrNotFound
+}
+
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+	return m.tracksRepo
+}

@@ -30,6 +30,7 @@ components:
                     description: ConnectionID is the unique identifier for the WebSocket connection that received the message.
                 data:
                     type: string
+                    format: byte
                     description: Data is the binary data received from the WebSocket, encoded as base64.
             required:
                 - connectionId

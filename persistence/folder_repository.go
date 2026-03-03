@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"maps"
 	"os"
 	"path/filepath"
@@ -218,13 +219,21 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	if err != nil {
 		return nil, err
 	}
+	return wrapFolderCursor(cursor), nil
+}
+
+func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {
+			if f.Folder == nil {
+				yield(model.Folder{}, fmt.Errorf("unexpected nil folder (%v): %w", f, err))
+				return
+			}
 			if !yield(*f.Folder, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
 func (r folderRepository) purgeEmpty(libraryIDs ...int) error {

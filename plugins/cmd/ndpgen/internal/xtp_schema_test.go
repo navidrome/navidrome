@@ -303,6 +303,45 @@ var _ = Describe("XTP Schema Generation", func() {
 			})
 		})
 
+		Context("capability with []byte field", func() {
+			It("should map []byte to string with byte format, not array", func() {
+				capability := Capability{
+					Name:       "byte_test",
+					SourceFile: "byte_test",
+					Methods: []Export{
+						{ExportName: "test", Input: NewParam("input", "Input"), Output: NewParam("output", "Output")},
+					},
+					Structs: []StructDef{
+						{
+							Name: "Input",
+							Fields: []FieldDef{
+								{Name: "Data", Type: "[]byte", JSONTag: "data"},
+							},
+						},
+						{
+							Name: "Output",
+							Fields: []FieldDef{
+								{Name: "Value", Type: "string", JSONTag: "value"},
+							},
+						},
+					},
+				}
+				schema, err := GenerateSchema(capability)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ValidateXTPSchema(schema)).To(Succeed())
+
+				doc := parseSchema(schema)
+				components := doc["components"].(map[string]any)
+				schemas := components["schemas"].(map[string]any)
+				input := schemas["Input"].(map[string]any)
+				props := input["properties"].(map[string]any)
+				data := props["data"].(map[string]any)
+				Expect(data["type"]).To(Equal("string"))
+				Expect(data["format"]).To(Equal("byte"))
+				Expect(data).NotTo(HaveKey("items"))
+			})
+		})
+
 		Context("capability with nullable ref", func() {
 			It("should mark pointer to enum as nullable with $ref", func() {
 				capability := Capability{
