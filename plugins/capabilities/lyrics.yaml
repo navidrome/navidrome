@@ -51,7 +51,7 @@ components:
             required:
                 - text
         TrackInfo:
-            description: TrackInfo contains track metadata for scrobbling.
+            description: TrackInfo contains track metadata.
             properties:
                 id:
                     type: string

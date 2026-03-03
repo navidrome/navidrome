@@ -35,7 +35,7 @@ type LyricsText struct {
 	Text string `json:"text"`
 }
 
-// TrackInfo contains track metadata for scrobbling.
+// TrackInfo contains track metadata.
 type TrackInfo struct {
 	// ID is the internal Navidrome track ID.
 	ID string `json:"id"`

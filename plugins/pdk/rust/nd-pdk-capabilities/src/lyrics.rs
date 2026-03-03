@@ -56,7 +56,7 @@ pub struct LyricsText {
     #[serde(default)]
     pub text: String,
 }
-/// TrackInfo contains track metadata for scrobbling.
+/// TrackInfo contains track metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackInfo {
