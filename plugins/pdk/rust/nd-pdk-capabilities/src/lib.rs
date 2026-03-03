@@ -6,6 +6,7 @@
 //! for implementing Navidrome plugin capabilities in Rust.
 
 pub mod lifecycle;
+pub mod lyrics;
 pub mod metadata;
 pub mod scheduler;
 pub mod scrobbler;

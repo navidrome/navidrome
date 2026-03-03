@@ -1,22 +1,11 @@
 version: v1-draft
 exports:
-    nd_scrobbler_is_authorized:
-        description: IsAuthorized checks if a user is authorized to scrobble to this service.
+    nd_lyrics_get_lyrics:
         input:
-            $ref: '#/components/schemas/IsAuthorizedRequest'
+            $ref: '#/components/schemas/GetLyricsRequest'
             contentType: application/json
         output:
-            type: boolean
-            contentType: application/json
-    nd_scrobbler_now_playing:
-        description: NowPlaying sends a now playing notification to the scrobbling service.
-        input:
-            $ref: '#/components/schemas/NowPlayingRequest'
-            contentType: application/json
-    nd_scrobbler_scrobble:
-        description: Scrobble submits a completed scrobble to the scrobbling service.
-        input:
-            $ref: '#/components/schemas/ScrobbleRequest'
+            $ref: '#/components/schemas/GetLyricsResponse'
             contentType: application/json
 components:
     schemas:
@@ -34,48 +23,33 @@ components:
                     description: MBID is the MusicBrainz ID for the artist.
             required:
                 - name
-        IsAuthorizedRequest:
-            description: IsAuthorizedRequest is the request for authorization check.
+        GetLyricsRequest:
+            description: GetLyricsRequest contains the track information for lyrics lookup.
             properties:
-                username:
-                    type: string
-                    description: Username is the username of the user.
-            required:
-                - username
-        NowPlayingRequest:
-            description: NowPlayingRequest is the request for now playing notification.
-            properties:
-                username:
-                    type: string
-                    description: Username is the username of the user.
                 track:
                     $ref: '#/components/schemas/TrackInfo'
-                    description: Track is the track currently playing.
-                position:
-                    type: integer
-                    format: int32
-                    description: Position is the current playback position in seconds.
             required:
-                - username
                 - track
-                - position
-        ScrobbleRequest:
-            description: ScrobbleRequest is the request for submitting a scrobble.
+        GetLyricsResponse:
+            description: GetLyricsResponse contains the lyrics returned by the plugin.
             properties:
-                username:
-                    type: string
-                    description: Username is the username of the user.
-                track:
-                    $ref: '#/components/schemas/TrackInfo'
-                    description: Track is the track that was played.
-                timestamp:
-                    type: integer
-                    format: int64
-                    description: Timestamp is the Unix timestamp when the track started playing.
+                lyrics:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsText'
             required:
-                - username
-                - track
-                - timestamp
+                - lyrics
+        LyricsText:
+            description: |-
+                LyricsText represents a single set of lyrics in raw text format.
+                Text can be plain text or LRC format — Navidrome will parse it.
+            properties:
+                lang:
+                    type: string
+                text:
+                    type: string
+            required:
+                - text
         TrackInfo:
             description: TrackInfo contains track metadata.
             properties:
