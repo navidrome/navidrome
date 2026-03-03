@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -302,17 +303,21 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 	if err != nil {
 		return nil, err
 	}
+	return wrapAlbumCursor(cursor), nil
+}
+
+func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
 	return func(yield func(model.Album, error) bool) {
 		for a, err := range cursor {
 			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album: %v", a))
+				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
 				return
 			}
 			if !yield(*a.Album, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based
