@@ -1,0 +1,38 @@
+version: v1-draft
+exports:
+    nd_task_execute:
+        description: |-
+            OnTaskExecute is called when a queued task is ready to run.
+            The returned string is a status/result message stored in the tasks table.
+            Return an error to trigger retry (if retries are configured).
+        input:
+            $ref: '#/components/schemas/TaskExecuteRequest'
+            contentType: application/json
+        output:
+            type: string
+            contentType: application/json
+components:
+    schemas:
+        TaskExecuteRequest:
+            description: TaskExecuteRequest is the request provided when a task is ready to execute.
+            properties:
+                queueName:
+                    type: string
+                    description: QueueName is the name of the queue this task belongs to.
+                taskId:
+                    type: string
+                    description: TaskID is the unique identifier for this task.
+                payload:
+                    type: array
+                    description: Payload is the opaque data provided when the task was enqueued.
+                    items:
+                        type: object
+                attempt:
+                    type: integer
+                    format: int32
+                    description: 'Attempt is the current attempt number (1-based: first attempt = 1).'
+            required:
+                - queueName
+                - taskId
+                - payload
+                - attempt
