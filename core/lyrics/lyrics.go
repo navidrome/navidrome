@@ -35,13 +35,13 @@ func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (mod
 	var lyricsList model.LyricList
 	var err error
 
-	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.LyricsPriority), ",") {
+	for pattern := range strings.SplitSeq(conf.Server.LyricsPriority, ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
-		case pattern == "embedded":
+		case strings.EqualFold(pattern, "embedded"):
 			lyricsList, err = fromEmbedded(ctx, mf)
 		case strings.HasPrefix(pattern, "."):
-			lyricsList, err = fromExternalFile(ctx, mf, pattern)
+			lyricsList, err = fromExternalFile(ctx, mf, strings.ToLower(pattern))
 		default:
 			lyricsList, err = l.fromPlugin(ctx, mf, pattern)
 		}

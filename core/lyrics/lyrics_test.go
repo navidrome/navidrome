@@ -170,6 +170,16 @@ var _ = Describe("sources", func() {
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
 
+		It("should preserve plugin name case from config", func() {
+			conf.Server.LyricsPriority = "MyLyricsPlugin"
+			mockLoader.pluginName = "MyLyricsPlugin"
+			mockLoader.lyrics = unsyncedLyrics
+			svc := lyrics.NewLyrics(mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(Equal(unsyncedLyrics))
+		})
+
 		It("should handle plugin error gracefully", func() {
 			conf.Server.LyricsPriority = "test-lyrics-plugin,embedded"
 			mockLoader.err = fmt.Errorf("plugin error")
@@ -182,9 +192,10 @@ var _ = Describe("sources", func() {
 })
 
 type mockPluginLoader struct {
-	lyrics   model.LyricList
-	err      error
-	notFound bool
+	lyrics     model.LyricList
+	err        error
+	notFound   bool
+	pluginName string // expected plugin name (exact match, like real manager)
 }
 
 func (m *mockPluginLoader) PluginNames(_ string) []string {
@@ -194,8 +205,12 @@ func (m *mockPluginLoader) PluginNames(_ string) []string {
 	return []string{"test-lyrics-plugin"}
 }
 
-func (m *mockPluginLoader) LoadLyricsProvider(_ string) (lyrics.Lyrics, bool) {
+func (m *mockPluginLoader) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
 	if m.notFound {
+		return nil, false
+	}
+	// If pluginName is set, require exact match (like the real plugin manager)
+	if m.pluginName != "" && name != m.pluginName {
 		return nil, false
 	}
 	return &mockLyricsProvider{lyrics: m.lyrics, err: m.err}, true
