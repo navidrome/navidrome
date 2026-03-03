@@ -203,12 +203,11 @@ func (r *albumRepository) Put(al *model.Album) error {
 	}
 	al.ID = id
 	if len(al.Participants) > 0 {
-		err = r.updateParticipants(al.ID, al.Participants)
-		if err != nil {
+		if err = r.updateParticipants(al.ID, al.Participants); err != nil {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 // TODO Move external metadata to a separated table
@@ -242,7 +241,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), err
+	return res.toModels(), nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
