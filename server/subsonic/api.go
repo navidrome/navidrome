@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/lyrics"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
@@ -49,13 +49,13 @@ type Router struct {
 	share     core.Share
 	playback  playback.PlaybackServer
 	metrics   metrics.Metrics
-	lyrics    lyrics.Lyrics
+	lyrics    lyricssvc.Lyrics
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics, lyrics lyrics.Lyrics,
+	metrics metrics.Metrics, lyrics lyricssvc.Lyrics,
 ) *Router {
 	r := &Router{
 		ds:        ds,
