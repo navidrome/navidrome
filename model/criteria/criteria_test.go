@@ -397,6 +397,11 @@ var _ = Describe("Criteria", func() {
 				c := Criteria{}
 				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
 			})
+
+			It("returns false when LimitPercent is out of range", func() {
+				c := Criteria{LimitPercent: 150}
+				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
+			})
 		})
 	})
 

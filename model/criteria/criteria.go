@@ -43,10 +43,10 @@ func (c Criteria) EffectiveLimit(totalCount int64) int {
 	return 0
 }
 
-// IsPercentageLimit returns true when the criteria uses a percentage-based limit
-// (i.e. LimitPercent is set and no fixed Limit overrides it).
+// IsPercentageLimit returns true when the criteria uses a valid percentage-based
+// limit (i.e. LimitPercent is in [1, 100] and no fixed Limit overrides it).
 func (c Criteria) IsPercentageLimit() bool {
-	return c.Limit == 0 && c.LimitPercent > 0
+	return c.Limit == 0 && c.LimitPercent > 0 && c.LimitPercent <= 100
 }
 
 func (c Criteria) OrderBy() string {
