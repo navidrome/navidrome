@@ -267,7 +267,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		countSq = countSq.Where(rules)
 
 		var res struct{ Count int64 }
-		err := r.queryOne(countSq, &res)
+		err = r.queryOne(countSq, &res)
 		if err != nil {
 			log.Error(r.ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
 			return false
