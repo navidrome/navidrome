@@ -8,6 +8,33 @@
 
 package playlistgenerator
 
+// PlaylistGeneratorError represents an error type for playlist generator operations.
+type PlaylistGeneratorError string
+
+const (
+	// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
+	PlaylistGeneratorErrorNotFound PlaylistGeneratorError = "playlist_generator(not_found)"
+)
+
+// Error implements the error interface for PlaylistGeneratorError.
+func (e PlaylistGeneratorError) Error() string { return string(e) }
+
+// GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
+type GetAvailablePlaylistsRequest struct {
+}
+
+// GetAvailablePlaylistsResponse is the response for GetAvailablePlaylists.
+type GetAvailablePlaylistsResponse struct {
+	// Playlists is the list of playlists provided by this plugin.
+	Playlists []PlaylistInfo `json:"playlists"`
+	// RefreshInterval is the number of seconds until the next GetAvailablePlaylists call.
+	// 0 means never re-discover.
+	RefreshInterval int64 `json:"refreshInterval"`
+	// RetryInterval is the number of seconds before retrying a failed GetPlaylist call.
+	// 0 means no automatic retry for transient errors.
+	RetryInterval int64 `json:"retryInterval"`
+}
+
 // GetPlaylistRequest is the request for GetPlaylist.
 type GetPlaylistRequest struct {
 	// ID is the plugin-scoped playlist ID.
@@ -27,19 +54,6 @@ type GetPlaylistResponse struct {
 	// ValidUntil is a unix timestamp indicating when this playlist data expires.
 	// 0 means static (never refresh).
 	ValidUntil int64 `json:"validUntil"`
-}
-
-// GetPlaylistsRequest is the request for GetPlaylists.
-type GetPlaylistsRequest struct {
-}
-
-// GetPlaylistsResponse is the response for GetPlaylists.
-type GetPlaylistsResponse struct {
-	// Playlists is the list of playlists provided by this plugin.
-	Playlists []PlaylistInfo `json:"playlists"`
-	// RefreshInterval is the number of seconds until the next GetPlaylists call.
-	// 0 means never re-discover.
-	RefreshInterval int64 `json:"refreshInterval"`
 }
 
 // PlaylistInfo identifies a plugin playlist and its target user.
@@ -75,11 +89,11 @@ type SongRef struct {
 // PlaylistGenerator requires all methods to be implemented.
 // PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
 // personalized recommendations). Plugins implementing this capability expose two
-// functions: GetPlaylists for lightweight discovery and GetPlaylist for fetching
-// the heavy payload (tracks, metadata).
+// functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
+// fetching the heavy payload (tracks, metadata).
 type PlaylistGenerator interface {
-	// GetPlaylists - GetPlaylists returns the list of playlists this plugin provides.
-	GetPlaylists(GetPlaylistsRequest) (GetPlaylistsResponse, error)
+	// GetAvailablePlaylists - GetAvailablePlaylists returns the list of playlists this plugin provides.
+	GetAvailablePlaylists(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
 	// GetPlaylist - GetPlaylist returns the full data for a single playlist (tracks, metadata).
 	GetPlaylist(GetPlaylistRequest) (GetPlaylistResponse, error)
 }

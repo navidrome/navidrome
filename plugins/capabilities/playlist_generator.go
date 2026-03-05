@@ -2,30 +2,33 @@ package capabilities
 
 // PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
 // personalized recommendations). Plugins implementing this capability expose two
-// functions: GetPlaylists for lightweight discovery and GetPlaylist for fetching
-// the heavy payload (tracks, metadata).
+// functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
+// fetching the heavy payload (tracks, metadata).
 //
 //nd:capability name=playlistgenerator required=true
 type PlaylistGenerator interface {
-	// GetPlaylists returns the list of playlists this plugin provides.
-	//nd:export name=nd_playlist_generator_get_playlists
-	GetPlaylists(GetPlaylistsRequest) (GetPlaylistsResponse, error)
+	// GetAvailablePlaylists returns the list of playlists this plugin provides.
+	//nd:export name=nd_playlist_generator_get_available_playlists
+	GetAvailablePlaylists(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
 
 	// GetPlaylist returns the full data for a single playlist (tracks, metadata).
 	//nd:export name=nd_playlist_generator_get_playlist
 	GetPlaylist(GetPlaylistRequest) (GetPlaylistResponse, error)
 }
 
-// GetPlaylistsRequest is the request for GetPlaylists.
-type GetPlaylistsRequest struct{}
+// GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
+type GetAvailablePlaylistsRequest struct{}
 
-// GetPlaylistsResponse is the response for GetPlaylists.
-type GetPlaylistsResponse struct {
+// GetAvailablePlaylistsResponse is the response for GetAvailablePlaylists.
+type GetAvailablePlaylistsResponse struct {
 	// Playlists is the list of playlists provided by this plugin.
 	Playlists []PlaylistInfo `json:"playlists"`
-	// RefreshInterval is the number of seconds until the next GetPlaylists call.
+	// RefreshInterval is the number of seconds until the next GetAvailablePlaylists call.
 	// 0 means never re-discover.
 	RefreshInterval int64 `json:"refreshInterval"`
+	// RetryInterval is the number of seconds before retrying a failed GetPlaylist call.
+	// 0 means no automatic retry for transient errors.
+	RetryInterval int64 `json:"retryInterval"`
 }
 
 // PlaylistInfo identifies a plugin playlist and its target user.
@@ -56,3 +59,14 @@ type GetPlaylistResponse struct {
 	// 0 means static (never refresh).
 	ValidUntil int64 `json:"validUntil"`
 }
+
+// PlaylistGeneratorError represents an error type for playlist generator operations.
+type PlaylistGeneratorError string
+
+const (
+	// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
+	PlaylistGeneratorErrorNotFound PlaylistGeneratorError = "playlist_generator(not_found)"
+)
+
+// Error implements the error interface for PlaylistGeneratorError.
+func (e PlaylistGeneratorError) Error() string { return string(e) }
