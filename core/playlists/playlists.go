@@ -112,7 +112,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			if err != nil {
 				return err
 			}
-			if pls.IsSmartPlaylist() {
+			if pls.IsSmartPlaylist() || pls.IsPluginPlaylist() {
 				return model.ErrNotAuthorized
 			}
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
@@ -218,7 +218,7 @@ func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) 
 	if err != nil {
 		return nil, err
 	}
-	if pls.IsSmartPlaylist() {
+	if pls.IsSmartPlaylist() || pls.IsPluginPlaylist() {
 		return nil, model.ErrNotAuthorized
 	}
 	return pls, nil
