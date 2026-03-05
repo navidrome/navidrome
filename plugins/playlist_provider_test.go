@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// findOrchestrator finds the playlistGeneratorOrchestrator in a plugin's closers.
-func findOrchestrator(m *Manager, pluginName string) *playlistGeneratorOrchestrator {
+// findSyncer finds the playlistSyncer in a plugin's closers.
+func findSyncer(m *Manager, pluginName string) *playlistSyncer {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	p, ok := m.plugins[pluginName]
@@ -21,14 +21,14 @@ func findOrchestrator(m *Manager, pluginName string) *playlistGeneratorOrchestra
 		return nil
 	}
 	for _, c := range p.closers {
-		if orch, ok := c.(*playlistGeneratorOrchestrator); ok {
-			return orch
+		if syncer, ok := c.(*playlistSyncer); ok {
+			return syncer
 		}
 	}
 	return nil
 }
 
-var _ = Describe("PlaylistGenerator", Ordered, func() {
+var _ = Describe("PlaylistProvider", Ordered, func() {
 	var (
 		pgManager   *Manager
 		mockPlsRepo *tests.MockPlaylistRepo
@@ -36,26 +36,26 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 
 	BeforeAll(func() {
 		pgManager, _ = createTestManagerWithPlugins(nil,
-			"test-playlist-generator"+PackageExtension,
+			"test-playlist-provider"+PackageExtension,
 		)
 
 		mockPlsRepo = pgManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
 	})
 
 	Describe("capability detection", func() {
-		It("detects the PlaylistGenerator capability", func() {
-			names := pgManager.PluginNames(string(CapabilityPlaylistGenerator))
-			Expect(names).To(ContainElement("test-playlist-generator"))
+		It("detects the PlaylistProvider capability", func() {
+			names := pgManager.PluginNames(string(CapabilityPlaylistProvider))
+			Expect(names).To(ContainElement("test-playlist-provider"))
 		})
 	})
 
-	Describe("orchestrator lifecycle", func() {
-		It("creates an orchestrator for the plugin", func() {
-			Expect(findOrchestrator(pgManager, "test-playlist-generator")).ToNot(BeNil())
+	Describe("syncer lifecycle", func() {
+		It("creates a syncer for the plugin", func() {
+			Expect(findSyncer(pgManager, "test-playlist-provider")).ToNot(BeNil())
 		})
 
 		It("discovers and syncs playlists from the plugin", func() {
-			// The orchestrator runs discoverAndSync in a goroutine on Start().
+			// The syncer runs discoverAndSync in a goroutine on Start().
 			// Give it a moment to complete.
 			Eventually(func() int {
 				return mockPlsRepo.Len()
@@ -72,13 +72,13 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			Expect(dailyMix1.Comment).To(Equal("Your personalized daily mix"))
 			Expect(dailyMix1.ExternalImageURL).To(Equal("https://example.com/cover1.jpg"))
 			Expect(dailyMix1.OwnerID).To(Equal("user-1"))
-			Expect(dailyMix1.PluginID).To(Equal("test-playlist-generator"))
+			Expect(dailyMix1.PluginID).To(Equal("test-playlist-provider"))
 			Expect(dailyMix1.PluginPlaylistID).To(Equal("daily-mix-1"))
 			Expect(dailyMix1.Public).To(BeFalse())
 		})
 
 		It("generates deterministic playlist IDs", func() {
-			expectedID := id.NewHash("test-playlist-generator", "daily-mix-1", "user-1")
+			expectedID := id.NewHash("test-playlist-provider", "daily-mix-1", "user-1")
 			Eventually(func() bool {
 				_, exists := mockPlsRepo.GetData(expectedID)
 				return exists
@@ -86,8 +86,8 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 		})
 
 		It("creates distinct IDs for different playlists", func() {
-			id1 := id.NewHash("test-playlist-generator", "daily-mix-1", "user-1")
-			id2 := id.NewHash("test-playlist-generator", "daily-mix-2", "user-1")
+			id1 := id.NewHash("test-playlist-provider", "daily-mix-1", "user-1")
+			id2 := id.NewHash("test-playlist-provider", "daily-mix-2", "user-1")
 			Expect(id1).ToNot(Equal(id2))
 
 			Eventually(func() bool {
@@ -101,15 +101,15 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 	Describe("GetAvailablePlaylists error handling", func() {
 		It("handles plugin errors gracefully", func() {
 			errManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-playlist-generator": {"error": "service unavailable"},
-			}, "test-playlist-generator"+PackageExtension)
+				"test-playlist-provider": {"error": "service unavailable"},
+			}, "test-playlist-provider"+PackageExtension)
 
-			// Should still have the orchestrator (error is logged, not fatal)
-			Expect(findOrchestrator(errManager, "test-playlist-generator")).ToNot(BeNil())
+			// Should still have the syncer (error is logged, not fatal)
+			Expect(findSyncer(errManager, "test-playlist-provider")).ToNot(BeNil())
 
 			// But no playlists created
 			errPlsRepo := errManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
-			// The orchestrator was started but GetAvailablePlaylists returned error,
+			// The syncer was started but GetAvailablePlaylists returned error,
 			// so no playlists should be created
 			Consistently(func() int {
 				return errPlsRepo.Len()
@@ -120,14 +120,14 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 	Describe("GetPlaylist NotFound error", func() {
 		It("skips playlists when plugin returns NotFound", func() {
 			notFoundManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-playlist-generator": {
+				"test-playlist-provider": {
 					"get_playlist_error":      "playlist temporarily unavailable",
-					"get_playlist_error_type": string(capabilities.PlaylistGeneratorErrorNotFound),
+					"get_playlist_error_type": string(capabilities.PlaylistProviderErrorNotFound),
 				},
-			}, "test-playlist-generator"+PackageExtension)
+			}, "test-playlist-provider"+PackageExtension)
 
-			// Should still have the orchestrator
-			Expect(findOrchestrator(notFoundManager, "test-playlist-generator")).ToNot(BeNil())
+			// Should still have the syncer
+			Expect(findSyncer(notFoundManager, "test-playlist-provider")).ToNot(BeNil())
 
 			// No playlists should be created (all returned NotFound)
 			notFoundPlsRepo := notFoundManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
@@ -136,9 +136,9 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			}, "500ms").Should(Equal(0))
 
 			// No refresh timers should be scheduled for NotFound playlists
-			orch := findOrchestrator(notFoundManager, "test-playlist-generator")
+			syncer := findSyncer(notFoundManager, "test-playlist-provider")
 			Eventually(func() int32 {
-				return orch.refreshTimerCount.Load()
+				return syncer.refreshTimerCount.Load()
 			}).Should(Equal(int32(0)))
 		})
 	})
@@ -146,18 +146,18 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 	Describe("GetPlaylist transient error with RetryInterval", func() {
 		It("stores retryInterval and schedules retry on transient errors", func() {
 			retryManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
-				"test-playlist-generator": {
+				"test-playlist-provider": {
 					"get_playlist_error": "temporary failure",
 					"retry_interval":     "60",
 				},
-			}, "test-playlist-generator"+PackageExtension)
+			}, "test-playlist-provider"+PackageExtension)
 
-			orch := findOrchestrator(retryManager, "test-playlist-generator")
-			Expect(orch).ToNot(BeNil())
+			syncer := findSyncer(retryManager, "test-playlist-provider")
+			Expect(syncer).ToNot(BeNil())
 
 			// retryInterval should be stored from the response
 			Eventually(func() time.Duration {
-				return time.Duration(orch.retryInterval.Load())
+				return time.Duration(syncer.retryInterval.Load())
 			}).Should(Equal(60 * time.Second))
 
 			// No playlists should be created (GetPlaylist failed)
@@ -168,22 +168,22 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 
 			// Refresh timers should be scheduled for transient errors
 			Eventually(func() int32 {
-				return orch.refreshTimerCount.Load()
+				return syncer.refreshTimerCount.Load()
 			}).Should(BeNumerically(">=", int32(1)))
 		})
 	})
 
 	Describe("stop", func() {
-		It("stops the orchestrator when the manager stops", func() {
+		It("stops the syncer when the manager stops", func() {
 			stopManager, _ := createTestManagerWithPlugins(nil,
-				"test-playlist-generator"+PackageExtension,
+				"test-playlist-provider"+PackageExtension,
 			)
-			Expect(findOrchestrator(stopManager, "test-playlist-generator")).ToNot(BeNil())
+			Expect(findSyncer(stopManager, "test-playlist-provider")).ToNot(BeNil())
 
 			err := stopManager.Stop()
 			Expect(err).ToNot(HaveOccurred())
-			// After Stop(), the plugin is unloaded so findOrchestrator returns nil
-			Expect(findOrchestrator(stopManager, "test-playlist-generator")).To(BeNil())
+			// After Stop(), the plugin is unloaded so findSyncer returns nil
+			Expect(findSyncer(stopManager, "test-playlist-provider")).To(BeNil())
 		})
 	})
 })

@@ -391,12 +391,12 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	// Call plugin init function
 	callPluginInit(ctx, m.plugins[p.ID])
 
-	// Start PlaylistGenerator orchestrator if capability is detected
+	// Start PlaylistProvider syncer if capability is detected
 	loadedPlugin := m.plugins[p.ID]
-	if hasCapability(loadedPlugin.capabilities, CapabilityPlaylistGenerator) {
-		orch := newPlaylistGeneratorOrchestrator(m.ctx, p.ID, loadedPlugin, m.ds, m.matcher)
-		loadedPlugin.closers = append(loadedPlugin.closers, orch)
-		go orch.run()
+	if hasCapability(loadedPlugin.capabilities, CapabilityPlaylistProvider) {
+		syncer := newPlaylistSyncer(m.ctx, p.ID, loadedPlugin, m.ds, m.matcher)
+		loadedPlugin.closers = append(loadedPlugin.closers, syncer)
+		go syncer.run()
 	}
 
 	return nil

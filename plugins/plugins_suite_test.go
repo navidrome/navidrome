@@ -136,7 +136,7 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	mockPluginRepo.SetData(enabledPlugins)
 
 	// Pre-seed a mock user repo with a default user so that
-	// PlaylistGenerator's discoverAndSync can resolve usernames.
+	// PlaylistProvider's discoverAndSync can resolve usernames.
 	mockUserRepo := tests.CreateMockUserRepo()
 	_ = mockUserRepo.Put(&model.User{ID: "user-1", UserName: "admin"})
 

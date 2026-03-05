@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	CapabilityPlaylistGenerator Capability = "PlaylistGenerator"
+	CapabilityPlaylistProvider Capability = "PlaylistProvider"
 
-	FuncPlaylistGeneratorGetAvailablePlaylists = "nd_playlist_generator_get_available_playlists"
-	FuncPlaylistGeneratorGetPlaylist           = "nd_playlist_generator_get_playlist"
+	FuncPlaylistProviderGetAvailablePlaylists = "nd_playlist_provider_get_available_playlists"
+	FuncPlaylistProviderGetPlaylist           = "nd_playlist_provider_get_playlist"
 
 	// workChCapacity is the buffer size for the work channel.
 	workChCapacity = 16
@@ -29,9 +29,9 @@ const (
 
 func init() {
 	registerCapability(
-		CapabilityPlaylistGenerator,
-		FuncPlaylistGeneratorGetAvailablePlaylists,
-		FuncPlaylistGeneratorGetPlaylist,
+		CapabilityPlaylistProvider,
+		FuncPlaylistProviderGetAvailablePlaylists,
+		FuncPlaylistProviderGetPlaylist,
 	)
 }
 
@@ -49,11 +49,11 @@ type workItem struct {
 	ownerID string                    // only for workSync
 }
 
-// playlistGeneratorOrchestrator manages playlist generation for a single plugin.
+// playlistSyncer manages playlist synchronization for a single plugin.
 // All mutable state (refreshTimers, discoveryTimer) is owned exclusively by the
 // worker goroutine — no synchronization needed. The retryInterval and
 // refreshTimerCount fields use atomics so tests can observe them race-free.
-type playlistGeneratorOrchestrator struct {
+type playlistSyncer struct {
 	pluginName        string
 	plugin            *plugin
 	ds                model.DataStore
@@ -68,9 +68,9 @@ type playlistGeneratorOrchestrator struct {
 	done              chan struct{}          // closed when worker exits
 }
 
-func newPlaylistGeneratorOrchestrator(parentCtx context.Context, pluginName string, p *plugin, ds model.DataStore, m *matcher.Matcher) *playlistGeneratorOrchestrator {
+func newPlaylistSyncer(parentCtx context.Context, pluginName string, p *plugin, ds model.DataStore, m *matcher.Matcher) *playlistSyncer {
 	ctx, cancel := context.WithCancel(parentCtx)
-	return &playlistGeneratorOrchestrator{
+	return &playlistSyncer{
 		pluginName:    pluginName,
 		plugin:        p,
 		ds:            ds,
@@ -85,7 +85,7 @@ func newPlaylistGeneratorOrchestrator(parentCtx context.Context, pluginName stri
 
 // run is the single worker goroutine that processes all work items sequentially.
 // It performs an initial discovery before entering the main loop.
-func (o *playlistGeneratorOrchestrator) run() {
+func (o *playlistSyncer) run() {
 	defer close(o.done)
 
 	// Run initial discovery before entering the loop
@@ -108,10 +108,10 @@ func (o *playlistGeneratorOrchestrator) run() {
 }
 
 // discoverAndSync calls GetAvailablePlaylists, then GetPlaylist for each, matches tracks, and upserts.
-func (o *playlistGeneratorOrchestrator) discoverAndSync() {
+func (o *playlistSyncer) discoverAndSync() {
 	ctx := o.ctx
 	resp, err := callPluginFunction[capabilities.GetAvailablePlaylistsRequest, capabilities.GetAvailablePlaylistsResponse](
-		ctx, o.plugin, FuncPlaylistGeneratorGetAvailablePlaylists, capabilities.GetAvailablePlaylistsRequest{},
+		ctx, o.plugin, FuncPlaylistProviderGetAvailablePlaylists, capabilities.GetAvailablePlaylistsRequest{},
 	)
 	if err != nil {
 		log.Error(ctx, "Failed to call GetAvailablePlaylists, retrying later", "plugin", o.pluginName, err)
@@ -144,10 +144,10 @@ func (o *playlistGeneratorOrchestrator) discoverAndSync() {
 }
 
 // syncPlaylist calls GetPlaylist, matches tracks, and upserts the playlist in the DB.
-func (o *playlistGeneratorOrchestrator) syncPlaylist(info capabilities.PlaylistInfo, dbID string, ownerID string) {
+func (o *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID string, ownerID string) {
 	ctx := o.ctx
 	resp, err := callPluginFunction[capabilities.GetPlaylistRequest, capabilities.GetPlaylistResponse](
-		ctx, o.plugin, FuncPlaylistGeneratorGetPlaylist, capabilities.GetPlaylistRequest{ID: info.ID},
+		ctx, o.plugin, FuncPlaylistProviderGetPlaylist, capabilities.GetPlaylistRequest{ID: info.ID},
 	)
 	if err != nil {
 		if isPlaylistNotFoundError(err) {
@@ -221,7 +221,7 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(info capabilities.PlaylistI
 	}
 }
 
-func (o *playlistGeneratorOrchestrator) schedulePlaylistRefresh(info capabilities.PlaylistInfo, dbID string, ownerID string, delay time.Duration) {
+func (o *playlistSyncer) schedulePlaylistRefresh(info capabilities.PlaylistInfo, dbID string, ownerID string, delay time.Duration) {
 	// Cancel existing timer if any
 	if timer, ok := o.refreshTimers[dbID]; ok {
 		timer.Stop()
@@ -235,7 +235,7 @@ func (o *playlistGeneratorOrchestrator) schedulePlaylistRefresh(info capabilitie
 	o.refreshTimerCount.Store(int32(len(o.refreshTimers)))
 }
 
-func (o *playlistGeneratorOrchestrator) scheduleDiscovery(delay time.Duration) {
+func (o *playlistSyncer) scheduleDiscovery(delay time.Duration) {
 	if o.discoveryTimer != nil {
 		o.discoveryTimer.Stop()
 	}
@@ -249,11 +249,11 @@ func (o *playlistGeneratorOrchestrator) scheduleDiscovery(delay time.Duration) {
 
 // isPlaylistNotFoundError checks if the error contains a NotFound sentinel from the plugin.
 func isPlaylistNotFoundError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), capabilities.PlaylistGeneratorErrorNotFound.Error())
+	return err != nil && strings.Contains(err.Error(), capabilities.PlaylistProviderErrorNotFound.Error())
 }
 
 // stopAllTimers stops the discovery timer and all refresh timers.
-func (o *playlistGeneratorOrchestrator) stopAllTimers() {
+func (o *playlistSyncer) stopAllTimers() {
 	if o.discoveryTimer != nil {
 		o.discoveryTimer.Stop()
 	}
@@ -263,7 +263,7 @@ func (o *playlistGeneratorOrchestrator) stopAllTimers() {
 }
 
 // Close cancels the context and waits for the worker goroutine to finish.
-func (o *playlistGeneratorOrchestrator) Close() error {
+func (o *playlistSyncer) Close() error {
 	o.cancel()
 	<-o.done
 	return nil

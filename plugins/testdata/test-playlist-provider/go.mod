@@ -1,4 +1,4 @@
-module test-playlist-generator
+module test-playlist-provider
 
 go 1.25
 

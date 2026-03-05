@@ -6,18 +6,18 @@
 //
 //go:build !wasip1
 
-package playlistgenerator
+package playlistprovider
 
-// PlaylistGeneratorError represents an error type for playlist generator operations.
-type PlaylistGeneratorError string
+// PlaylistProviderError represents an error type for playlist provider operations.
+type PlaylistProviderError string
 
 const (
-	// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
-	PlaylistGeneratorErrorNotFound PlaylistGeneratorError = "playlist_generator(not_found)"
+	// PlaylistProviderErrorNotFound indicates a playlist is currently unavailable.
+	PlaylistProviderErrorNotFound PlaylistProviderError = "playlist_provider(not_found)"
 )
 
-// Error implements the error interface for PlaylistGeneratorError.
-func (e PlaylistGeneratorError) Error() string { return string(e) }
+// Error implements the error interface for PlaylistProviderError.
+func (e PlaylistProviderError) Error() string { return string(e) }
 
 // GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
 type GetAvailablePlaylistsRequest struct {
@@ -86,12 +86,12 @@ type SongRef struct {
 	Duration float32 `json:"duration,omitempty"`
 }
 
-// PlaylistGenerator requires all methods to be implemented.
-// PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
+// PlaylistProvider requires all methods to be implemented.
+// PlaylistProvider provides dynamically-generated playlists (e.g., "Daily Mix",
 // personalized recommendations). Plugins implementing this capability expose two
 // functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
 // fetching the heavy payload (tracks, metadata).
-type PlaylistGenerator interface {
+type PlaylistProvider interface {
 	// GetAvailablePlaylists - GetAvailablePlaylists returns the list of playlists this plugin provides.
 	GetAvailablePlaylists(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
 	// GetPlaylist - GetPlaylist returns the full data for a single playlist (tracks, metadata).
@@ -103,4 +103,4 @@ const NotImplementedCode int32 = -2
 
 // Register is a no-op on non-WASM platforms.
 // This stub allows code to compile outside of WASM.
-func Register(_ PlaylistGenerator) {}
+func Register(_ PlaylistProvider) {}
