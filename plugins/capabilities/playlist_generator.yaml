@@ -1,0 +1,120 @@
+version: v1-draft
+exports:
+    nd_playlist_generator_get_playlists:
+        description: GetPlaylists returns the list of playlists this plugin provides.
+        input:
+            $ref: '#/components/schemas/GetPlaylistsRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetPlaylistsResponse'
+            contentType: application/json
+    nd_playlist_generator_get_playlist:
+        description: GetPlaylist returns the full data for a single playlist (tracks, metadata).
+        input:
+            $ref: '#/components/schemas/GetPlaylistRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetPlaylistResponse'
+            contentType: application/json
+components:
+    schemas:
+        GetPlaylistRequest:
+            description: GetPlaylistRequest is the request for GetPlaylist.
+            properties:
+                id:
+                    type: string
+                    description: ID is the plugin-scoped playlist ID.
+            required:
+                - id
+        GetPlaylistResponse:
+            description: GetPlaylistResponse is the response for GetPlaylist.
+            properties:
+                name:
+                    type: string
+                    description: Name is the display name of the playlist.
+                description:
+                    type: string
+                    description: Description is an optional description for the playlist.
+                coverArtUrl:
+                    type: string
+                    description: CoverArtURL is an optional external URL for the playlist cover art.
+                tracks:
+                    type: array
+                    description: Tracks is the list of songs in the playlist, using SongRef for matching.
+                    items:
+                        $ref: '#/components/schemas/SongRef'
+                validUntil:
+                    type: integer
+                    format: int64
+                    description: |-
+                        ValidUntil is a unix timestamp indicating when this playlist data expires.
+                        0 means static (never refresh).
+            required:
+                - name
+                - tracks
+                - validUntil
+        GetPlaylistsRequest:
+            description: GetPlaylistsRequest is the request for GetPlaylists.
+            properties: {}
+        GetPlaylistsResponse:
+            description: GetPlaylistsResponse is the response for GetPlaylists.
+            properties:
+                playlists:
+                    type: array
+                    description: Playlists is the list of playlists provided by this plugin.
+                    items:
+                        $ref: '#/components/schemas/PlaylistInfo'
+                refreshInterval:
+                    type: integer
+                    format: int64
+                    description: |-
+                        RefreshInterval is the number of seconds until the next GetPlaylists call.
+                        0 means never re-discover.
+            required:
+                - playlists
+                - refreshInterval
+        PlaylistInfo:
+            description: PlaylistInfo identifies a plugin playlist and its target user.
+            properties:
+                id:
+                    type: string
+                    description: ID is the plugin-scoped unique identifier for this playlist.
+                ownerUserId:
+                    type: string
+                    description: OwnerUserID is the Navidrome user ID that owns this playlist.
+            required:
+                - id
+                - ownerUserId
+        SongRef:
+            description: SongRef is a reference to a song with metadata for matching.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome mediafile ID (if known).
+                name:
+                    type: string
+                    description: Name is the song name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the song.
+                isrc:
+                    type: string
+                    description: ISRC is the International Standard Recording Code for the song.
+                artist:
+                    type: string
+                    description: Artist is the artist name.
+                artistMbid:
+                    type: string
+                    description: ArtistMBID is the MusicBrainz artist ID.
+                album:
+                    type: string
+                    description: Album is the album name.
+                albumMbid:
+                    type: string
+                    description: AlbumMBID is the MusicBrainz release ID.
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the song duration in seconds.
+            required:
+                - name

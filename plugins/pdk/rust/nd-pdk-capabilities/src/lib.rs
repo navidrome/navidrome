@@ -8,6 +8,7 @@
 pub mod lifecycle;
 pub mod lyrics;
 pub mod metadata;
+pub mod playlistgenerator;
 pub mod scheduler;
 pub mod scrobbler;
 pub mod taskworker;
