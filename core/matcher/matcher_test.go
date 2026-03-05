@@ -1,6 +1,7 @@
 package matcher_test
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Masterminds/squirrel"
@@ -18,10 +19,11 @@ import (
 var _ = Describe("Matcher", func() {
 	var ds model.DataStore
 	var mediaFileRepo *mockMediaFileRepo
-	var ctx = GinkgoT().Context()
+	var ctx context.Context
 	var m *matcher.Matcher
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		mediaFileRepo = newMockMediaFileRepo()
 		ds = &tests.MockDataStore{
