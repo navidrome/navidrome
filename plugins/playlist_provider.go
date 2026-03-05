@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -133,6 +134,14 @@ func (o *playlistSyncer) discoverAndSync() {
 			continue
 		}
 		ownerID := user.ID
+
+		// Validate that the plugin is permitted to create playlists for this user
+		if !o.plugin.allUsers && !slices.Contains(o.plugin.allowedUserIDs, ownerID) {
+			log.Error(ctx, "Plugin not permitted to create playlists for user", "plugin", o.pluginName,
+				"playlistID", info.ID, "username", info.OwnerUsername)
+			continue
+		}
+
 		dbID := id.NewHash(o.pluginName, info.ID, ownerID)
 		o.syncPlaylist(info, dbID, ownerID)
 	}
