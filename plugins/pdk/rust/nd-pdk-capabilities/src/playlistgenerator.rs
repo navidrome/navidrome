@@ -71,9 +71,9 @@ pub struct PlaylistInfo {
     /// ID is the plugin-scoped unique identifier for this playlist.
     #[serde(default)]
     pub id: String,
-    /// OwnerUserID is the Navidrome user ID that owns this playlist.
+    /// OwnerUsername is the Navidrome username that owns this playlist.
     #[serde(default)]
-    pub owner_user_id: String,
+    pub owner_username: String,
 }
 /// SongRef is a reference to a song with metadata for matching.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

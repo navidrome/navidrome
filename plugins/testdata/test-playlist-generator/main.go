@@ -21,16 +21,16 @@ func (t *testPlaylistGenerator) GetPlaylists(_ pg.GetPlaylistsRequest) (pg.GetPl
 		return pg.GetPlaylistsResponse{}, fmt.Errorf("%s", errMsg)
 	}
 
-	// Get the owner user ID from config (defaults to "user-1")
-	ownerID := "user-1"
-	if id, ok := pdk.GetConfig("owner_id"); ok && id != "" {
-		ownerID = id
+	// Get the owner username from config (defaults to "admin")
+	ownerUsername := "admin"
+	if u, ok := pdk.GetConfig("owner_username"); ok && u != "" {
+		ownerUsername = u
 	}
 
 	return pg.GetPlaylistsResponse{
 		Playlists: []pg.PlaylistInfo{
-			{ID: "daily-mix-1", OwnerUserID: ownerID},
-			{ID: "daily-mix-2", OwnerUserID: ownerID},
+			{ID: "daily-mix-1", OwnerUsername: ownerUsername},
+			{ID: "daily-mix-2", OwnerUsername: ownerUsername},
 		},
 		RefreshInterval: 0, // No re-discovery in tests
 	}, nil

@@ -185,16 +185,16 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // startPlaylistGenerators starts orchestrators for all plugins with the PlaylistGenerator capability.
 func (m *Manager) startPlaylistGenerators(ctx context.Context) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	for name, p := range m.plugins {
 		if !hasCapability(p.capabilities, CapabilityPlaylistGenerator) {
 			continue
 		}
-		orch := newPlaylistGeneratorOrchestrator(name, p, m.ds)
+		orch := newPlaylistGeneratorOrchestrator(name, p, m.ds, ctx)
 		m.playlistGenerators[name] = orch
-		go orch.discoverAndSync(ctx)
+		orch.wg.Go(func() { orch.discoverAndSync(orch.ctx) })
 	}
 }
 
@@ -209,9 +209,12 @@ func (m *Manager) Stop() error {
 	}
 
 	// Stop all playlist generator orchestrators
-	for name, orch := range m.playlistGenerators {
+	m.mu.Lock()
+	orchestrators := m.playlistGenerators
+	m.playlistGenerators = make(map[string]*playlistGeneratorOrchestrator)
+	m.mu.Unlock()
+	for _, orch := range orchestrators {
 		orch.stop()
-		delete(m.playlistGenerators, name)
 	}
 
 	// Stop file watcher
@@ -585,12 +588,15 @@ func (m *Manager) unloadPlugin(name string) error {
 		return fmt.Errorf("plugin %q not found", name)
 	}
 	delete(m.plugins, name)
+
+	// Extract playlist generator orchestrator under lock
+	orch := m.playlistGenerators[name]
+	delete(m.playlistGenerators, name)
 	m.mu.Unlock()
 
-	// Stop playlist generator orchestrator if any
-	if orch, ok := m.playlistGenerators[name]; ok {
+	// Stop playlist generator orchestrator outside lock
+	if orch != nil {
 		orch.stop()
-		delete(m.playlistGenerators, name)
 	}
 
 	// Run cleanup functions

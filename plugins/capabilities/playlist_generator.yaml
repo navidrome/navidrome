@@ -79,12 +79,12 @@ components:
                 id:
                     type: string
                     description: ID is the plugin-scoped unique identifier for this playlist.
-                ownerUserId:
+                ownerUsername:
                     type: string
-                    description: OwnerUserID is the Navidrome user ID that owns this playlist.
+                    description: OwnerUsername is the Navidrome username that owns this playlist.
             required:
                 - id
-                - ownerUserId
+                - ownerUsername
         SongRef:
             description: SongRef is a reference to a song with metadata for matching.
             properties:
