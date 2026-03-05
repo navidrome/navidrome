@@ -122,27 +122,24 @@ func mapExpr(expr squirrel.Sqlizer, negate bool, exprFunc func(string, squirrel.
 		log.Fatal(fmt.Sprintf("expr is not a map-based operator: %T", expr))
 	}
 
-	// Extract into a generic map
+	// Extract the field name and value, then build a new map keyed by "value"
+	// for the inner condition. The original map is left untouched so that
+	// ToSql can be called multiple times without corruption.
 	var k string
-	m := make(map[string]any, rv.Len())
+	var v any
 	for _, key := range rv.MapKeys() {
-		// Save the key to build the expression, and use the provided keyName as the key
 		k = key.String()
-		m["value"] = rv.MapIndex(key).Interface()
+		v = rv.MapIndex(key).Interface()
 		break // only one key is expected (and supported)
 	}
 
-	// Clear the original map
-	for _, key := range rv.MapKeys() {
-		rv.SetMapIndex(key, reflect.Value{})
-	}
+	// Create a new map-based expression with "value" as the key, matching the
+	// column name inside json_tree subqueries.
+	newMap := reflect.MakeMap(rv.Type())
+	newMap.SetMapIndex(reflect.ValueOf("value"), reflect.ValueOf(v))
+	newExpr := newMap.Interface().(squirrel.Sqlizer)
 
-	// Write the updated map back into the original variable
-	for key, val := range m {
-		rv.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(val))
-	}
-
-	return exprFunc(k, expr, negate)
+	return exprFunc(k, newExpr, negate)
 }
 
 // mapTagExpr maps a normal field expression to a tag expression.
