@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/core/matcher"
@@ -33,16 +34,22 @@ type playlistGeneratorOrchestrator struct {
 	plugin         *plugin
 	ds             model.DataStore
 	matcher        *matcher.Matcher
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
 	refreshTimers  map[string]*time.Timer // keyed by playlist DB ID
 	discoveryTimer *time.Timer
 }
 
-func newPlaylistGeneratorOrchestrator(pluginName string, p *plugin, ds model.DataStore) *playlistGeneratorOrchestrator {
+func newPlaylistGeneratorOrchestrator(pluginName string, p *plugin, ds model.DataStore, parentCtx context.Context) *playlistGeneratorOrchestrator {
+	ctx, cancel := context.WithCancel(parentCtx)
 	return &playlistGeneratorOrchestrator{
 		pluginName:    pluginName,
 		plugin:        p,
 		ds:            ds,
 		matcher:       matcher.New(ds),
+		ctx:           ctx,
+		cancel:        cancel,
 		refreshTimers: make(map[string]*time.Timer),
 	}
 }
@@ -58,8 +65,16 @@ func (o *playlistGeneratorOrchestrator) discoverAndSync(ctx context.Context) {
 	}
 
 	for _, info := range resp.Playlists {
-		dbID := id.NewHash(o.pluginName, info.ID, info.OwnerUserID)
-		o.syncPlaylist(ctx, info, dbID)
+		// Resolve username to user ID
+		user, err := o.ds.User(adminContext(ctx)).FindByUsername(info.OwnerUsername)
+		if err != nil {
+			log.Error(ctx, "Failed to resolve playlist owner", "plugin", o.pluginName,
+				"playlistID", info.ID, "username", info.OwnerUsername, err)
+			continue
+		}
+		ownerID := user.ID
+		dbID := id.NewHash(o.pluginName, info.ID, ownerID)
+		o.syncPlaylist(ctx, info, dbID, ownerID)
 	}
 
 	// Schedule re-discovery if RefreshInterval > 0
@@ -69,7 +84,7 @@ func (o *playlistGeneratorOrchestrator) discoverAndSync(ctx context.Context) {
 }
 
 // syncPlaylist calls GetPlaylist, matches tracks, and upserts the playlist in the DB.
-func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info capabilities.PlaylistInfo, dbID string) {
+func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info capabilities.PlaylistInfo, dbID string, ownerID string) {
 	resp, err := callPluginFunction[capabilities.GetPlaylistRequest, capabilities.GetPlaylistResponse](
 		ctx, o.plugin, FuncPlaylistGeneratorGetPlaylist, capabilities.GetPlaylistRequest{ID: info.ID},
 	)
@@ -91,7 +106,7 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info c
 		ID:               dbID,
 		Name:             resp.Name,
 		Comment:          resp.Description,
-		OwnerID:          info.OwnerUserID,
+		OwnerID:          ownerID,
 		Public:           false,
 		ExternalImageURL: resp.CoverArtURL,
 		PluginID:         o.pluginName,
@@ -108,7 +123,7 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info c
 			MediaFile:   mf,
 		}
 	}
-	pls.Tracks = tracks
+	pls.SetTracks(tracks)
 
 	// Upsert via repository
 	plsRepo := o.ds.Playlist(ctx)
@@ -118,7 +133,7 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info c
 	}
 
 	log.Info(ctx, "Synced plugin playlist", "plugin", o.pluginName, "playlistID", info.ID,
-		"name", resp.Name, "tracks", len(matched), "owner", info.OwnerUserID)
+		"name", resp.Name, "tracks", len(matched), "owner", ownerID)
 
 	// Schedule refresh if ValidUntil > 0
 	if resp.ValidUntil > 0 {
@@ -127,17 +142,17 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info c
 		if delay <= 0 {
 			delay = 1 * time.Second // Already expired, refresh soon
 		}
-		o.schedulePlaylistRefresh(ctx, info, dbID, delay)
+		o.schedulePlaylistRefresh(ctx, info, dbID, ownerID, delay)
 	}
 }
 
-func (o *playlistGeneratorOrchestrator) schedulePlaylistRefresh(_ context.Context, info capabilities.PlaylistInfo, dbID string, delay time.Duration) {
+func (o *playlistGeneratorOrchestrator) schedulePlaylistRefresh(_ context.Context, info capabilities.PlaylistInfo, dbID string, ownerID string, delay time.Duration) {
 	// Cancel existing timer if any
 	if timer, ok := o.refreshTimers[dbID]; ok {
 		timer.Stop()
 	}
 	o.refreshTimers[dbID] = time.AfterFunc(delay, func() {
-		o.syncPlaylist(context.Background(), info, dbID)
+		o.wg.Go(func() { o.syncPlaylist(o.ctx, info, dbID, ownerID) })
 	})
 }
 
@@ -146,16 +161,18 @@ func (o *playlistGeneratorOrchestrator) scheduleDiscovery(_ context.Context, del
 		o.discoveryTimer.Stop()
 	}
 	o.discoveryTimer = time.AfterFunc(delay, func() {
-		o.discoverAndSync(context.Background())
+		o.wg.Go(func() { o.discoverAndSync(o.ctx) })
 	})
 }
 
-// stop cancels all timers.
+// stop cancels the context, stops all timers, and waits for in-flight goroutines.
 func (o *playlistGeneratorOrchestrator) stop() {
+	o.cancel()
 	if o.discoveryTimer != nil {
 		o.discoveryTimer.Stop()
 	}
 	for _, timer := range o.refreshTimers {
 		timer.Stop()
 	}
+	o.wg.Wait()
 }

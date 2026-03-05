@@ -133,7 +133,13 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	mockPluginRepo := tests.CreateMockPluginRepo()
 	mockPluginRepo.Permitted = true
 	mockPluginRepo.SetData(enabledPlugins)
-	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+
+	// Pre-seed a mock user repo with a default user so that
+	// PlaylistGenerator's discoverAndSync can resolve usernames.
+	mockUserRepo := tests.CreateMockUserRepo()
+	_ = mockUserRepo.Put(&model.User{ID: "user-1", UserName: "admin"})
+
+	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo, MockedUser: mockUserRepo}
 
 	// Create and start manager
 	manager := &Manager{
