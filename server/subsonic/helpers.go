@@ -498,16 +498,15 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 		roleOrder := make([]string, 0, 2)
 		cuesByRole := make(map[string][]responses.LyricCue)
 		for _, cue := range line.Cue {
+			if cue.Start == nil {
+				continue
+			}
 			role := sanitizeRole(cue.Role)
 			if _, exists := cuesByRole[role]; !exists {
 				roleOrder = append(roleOrder, role)
 			}
-			var start int64
-			if cue.Start != nil {
-				start = *cue.Start
-			}
 			cuesByRole[role] = append(cuesByRole[role], responses.LyricCue{
-				Start: start,
+				Start: *cue.Start,
 				End:   cue.End,
 				Value: cue.Value,
 			})
@@ -535,20 +534,22 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 		}
 	}
 
-	kind := strings.TrimSpace(lyrics.Kind)
-	if kind == "" {
-		kind = "main"
-	}
-
 	structured := responses.StructuredLyric{
 		DisplayArtist: lyrics.DisplayArtist,
 		DisplayTitle:  lyrics.DisplayTitle,
-		Kind:          kind,
 		Lang:          lyrics.Lang,
 		Line:          lines,
 		CueLine:       cueLines,
 		Offset:        lyrics.Offset,
 		Synced:        lyrics.Synced,
+	}
+
+	if enhanced {
+		kind := strings.TrimSpace(lyrics.Kind)
+		if kind == "" {
+			kind = "main"
+		}
+		structured.Kind = kind
 	}
 
 	if structured.DisplayArtist == "" {
