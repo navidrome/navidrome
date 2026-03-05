@@ -212,7 +212,7 @@ func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playli
 	return pls, nil
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+// checkTracksEditable verifies the user can modify tracks (ownership + not smart/plugin playlist).
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
 	pls, err := s.checkWritable(ctx, playlistID)
 	if err != nil {
