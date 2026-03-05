@@ -1,18 +1,18 @@
 package capabilities
 
-// PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
+// PlaylistProvider provides dynamically-generated playlists (e.g., "Daily Mix",
 // personalized recommendations). Plugins implementing this capability expose two
 // functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
 // fetching the heavy payload (tracks, metadata).
 //
-//nd:capability name=playlistgenerator required=true
-type PlaylistGenerator interface {
+//nd:capability name=playlistprovider required=true
+type PlaylistProvider interface {
 	// GetAvailablePlaylists returns the list of playlists this plugin provides.
-	//nd:export name=nd_playlist_generator_get_available_playlists
+	//nd:export name=nd_playlist_provider_get_available_playlists
 	GetAvailablePlaylists(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
 
 	// GetPlaylist returns the full data for a single playlist (tracks, metadata).
-	//nd:export name=nd_playlist_generator_get_playlist
+	//nd:export name=nd_playlist_provider_get_playlist
 	GetPlaylist(GetPlaylistRequest) (GetPlaylistResponse, error)
 }
 
@@ -60,13 +60,13 @@ type GetPlaylistResponse struct {
 	ValidUntil int64 `json:"validUntil"`
 }
 
-// PlaylistGeneratorError represents an error type for playlist generator operations.
-type PlaylistGeneratorError string
+// PlaylistProviderError represents an error type for playlist provider operations.
+type PlaylistProviderError string
 
 const (
-	// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
-	PlaylistGeneratorErrorNotFound PlaylistGeneratorError = "playlist_generator(not_found)"
+	// PlaylistProviderErrorNotFound indicates a playlist is currently unavailable.
+	PlaylistProviderErrorNotFound PlaylistProviderError = "playlist_provider(not_found)"
 )
 
-// Error implements the error interface for PlaylistGeneratorError.
-func (e PlaylistGeneratorError) Error() string { return string(e) }
+// Error implements the error interface for PlaylistProviderError.
+func (e PlaylistProviderError) Error() string { return string(e) }

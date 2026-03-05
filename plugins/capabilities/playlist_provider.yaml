@@ -1,6 +1,6 @@
 version: v1-draft
 exports:
-    nd_playlist_generator_get_available_playlists:
+    nd_playlist_provider_get_available_playlists:
         description: GetAvailablePlaylists returns the list of playlists this plugin provides.
         input:
             $ref: '#/components/schemas/GetAvailablePlaylistsRequest'
@@ -8,7 +8,7 @@ exports:
         output:
             $ref: '#/components/schemas/GetAvailablePlaylistsResponse'
             contentType: application/json
-    nd_playlist_generator_get_playlist:
+    nd_playlist_provider_get_playlist:
         description: GetPlaylist returns the full data for a single playlist (tracks, metadata).
         input:
             $ref: '#/components/schemas/GetPlaylistRequest'
