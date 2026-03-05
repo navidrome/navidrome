@@ -68,13 +68,13 @@ type playlistGeneratorOrchestrator struct {
 	done              chan struct{}          // closed when worker exits
 }
 
-func newPlaylistGeneratorOrchestrator(parentCtx context.Context, pluginName string, p *plugin, ds model.DataStore) *playlistGeneratorOrchestrator {
+func newPlaylistGeneratorOrchestrator(parentCtx context.Context, pluginName string, p *plugin, ds model.DataStore, m *matcher.Matcher) *playlistGeneratorOrchestrator {
 	ctx, cancel := context.WithCancel(parentCtx)
 	return &playlistGeneratorOrchestrator{
 		pluginName:    pluginName,
 		plugin:        p,
 		ds:            ds,
-		matcher:       matcher.New(ds),
+		matcher:       m,
 		ctx:           ctx,
 		cancel:        cancel,
 		workCh:        make(chan workItem, workChCapacity),

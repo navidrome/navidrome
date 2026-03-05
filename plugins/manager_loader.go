@@ -394,7 +394,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	// Start PlaylistGenerator orchestrator if capability is detected
 	loadedPlugin := m.plugins[p.ID]
 	if hasCapability(loadedPlugin.capabilities, CapabilityPlaylistGenerator) {
-		orch := newPlaylistGeneratorOrchestrator(m.ctx, p.ID, loadedPlugin, m.ds)
+		orch := newPlaylistGeneratorOrchestrator(m.ctx, p.ID, loadedPlugin, m.ds, m.matcher)
 		loadedPlugin.closers = append(loadedPlugin.closers, orch)
 		go orch.run()
 	}
