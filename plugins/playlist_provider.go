@@ -21,7 +21,7 @@ const (
 	FuncPlaylistProviderGetPlaylist           = "nd_playlist_provider_get_playlist"
 
 	// workChCapacity is the buffer size for the work channel.
-	workChCapacity = 16
+	workChCapacity = 64
 
 	// discoveryRetryDelay is how long to wait before retrying a failed GetAvailablePlaylists call.
 	discoveryRetryDelay = 5 * time.Minute
