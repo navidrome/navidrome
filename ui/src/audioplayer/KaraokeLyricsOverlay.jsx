@@ -1,3 +1,12 @@
+import Button from '@material-ui/core/Button'
+import IconButton from '@material-ui/core/IconButton'
+import Popover from '@material-ui/core/Popover'
+import Slider from '@material-ui/core/Slider'
+import { makeStyles } from '@material-ui/core/styles'
+import Typography from '@material-ui/core/Typography'
+import CloseIcon from '@material-ui/icons/Close'
+import TuneIcon from '@material-ui/icons/Tune'
+import clsx from 'clsx'
 import React, {
   memo,
   useCallback,
@@ -6,21 +15,12 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import clsx from 'clsx'
-import Button from '@material-ui/core/Button'
-import IconButton from '@material-ui/core/IconButton'
-import Popover from '@material-ui/core/Popover'
-import Slider from '@material-ui/core/Slider'
-import Typography from '@material-ui/core/Typography'
-import CloseIcon from '@material-ui/icons/Close'
-import TuneIcon from '@material-ui/icons/Tune'
-import { makeStyles } from '@material-ui/core/styles'
 import {
   buildKaraokeLines,
   getActiveKaraokeState,
   hasStructuredLyricContent,
-  resolveLayerLineForMain,
   resolveKaraokeTokenWindow,
+  resolveLayerLineForMain,
 } from './lyrics'
 
 const KARAOKE_RENDER_LEAD_MS = 24
@@ -421,9 +421,7 @@ const LyricsSettingsPopover = ({ settings, onChange }) => {
 
 const easeInOut = (v) => {
   const clamped = clamp(v, 0, 1)
-  return clamped < 0.5
-    ? 2 * clamped * clamped
-    : 1 - Math.pow(-2 * clamped + 2, 2) / 2
+  return clamped < 0.5 ? 2 * clamped * clamped : 1 - (-2 * clamped + 2) ** 2 / 2
 }
 
 const getMaxHeightPx = () => {
@@ -716,17 +714,23 @@ const KaraokeLineRow = memo(
           }
           alpha = clamp(alpha, TOKEN_FUTURE_ALPHA, TOKEN_ACTIVE_ALPHA)
           const fillProgress = isDone ? 1 : isActive ? progress : 0
+          const isBgRole = segment.token?.role === 'bg'
 
           return (
             <span
               key={`token-${idx}-${tokenStart ?? 'na'}`}
               className={tokenClassName}
-              style={buildTokenWipeStyle({
-                fillProgress,
-                highlightAlpha: alpha,
-                futureAlpha: TOKEN_FUTURE_ALPHA,
-                rgb: tokenRGB,
-              })}
+              style={{
+                ...buildTokenWipeStyle({
+                  fillProgress,
+                  highlightAlpha: isBgRole ? alpha * 0.72 : alpha,
+                  futureAlpha: isBgRole
+                    ? TOKEN_FUTURE_ALPHA * 0.72
+                    : TOKEN_FUTURE_ALPHA,
+                  rgb: tokenRGB,
+                }),
+                ...(isBgRole ? { fontStyle: 'italic' } : undefined),
+              }}
             >
               {segment.text}
             </span>
@@ -1066,7 +1070,7 @@ const KaraokeLyricsOverlay = ({
     const isActive = delta === 0
     let opacity = isActive ? 1 : delta < 0 ? 0.6 : 0.72
     const [r, g, b] = parseColorRGB(getColorValue(lyricsSettings.main.colorKey))
-    let color = isActive
+    const color = isActive
       ? `rgba(${r}, ${g}, ${b}, 0.98)`
       : delta < 0
         ? `rgba(${r}, ${g}, ${b}, 0.4)`

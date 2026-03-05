@@ -232,11 +232,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 				Expect(realLyric.DisplayArtist).To(Equal(expectedLyric.DisplayArtist))
 				Expect(realLyric.DisplayTitle).To(Equal(expectedLyric.DisplayTitle))
-				expectedKind := expectedLyric.Kind
-				if expectedKind == "" {
-					expectedKind = "main"
-				}
-				Expect(realLyric.Kind).To(Equal(expectedKind))
+				Expect(realLyric.Kind).To(Equal(expectedLyric.Kind))
 				Expect(realLyric.Lang).To(Equal(expectedLyric.Lang))
 				Expect(realLyric.Synced).To(Equal(expectedLyric.Synced))
 
@@ -587,6 +583,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					{
 						DisplayArtist: "Rick Astley",
 						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
 						Lang:          "eng",
 						Synced:        true,
 						Line: []responses.Line{
