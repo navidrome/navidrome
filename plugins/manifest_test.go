@@ -463,5 +463,48 @@ var _ = Describe("Manifest", func() {
 			err := ValidateWithCapabilities(m, []Capability{})
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("validates playlist provider capability with users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Users: &UsersPermission{},
+				},
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityPlaylistProvider})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when playlist provider capability without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityPlaylistProvider})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("playlist provider"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
+
+		It("returns error when playlist provider has permissions but no users", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Http: &HTTPPermission{},
+				},
+			}
+
+			err := ValidateWithCapabilities(m, []Capability{CapabilityPlaylistProvider})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("playlist provider"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
 	})
 })

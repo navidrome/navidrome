@@ -173,6 +173,42 @@ var _ = Describe("PlaylistProvider", Ordered, func() {
 		})
 	})
 
+	Describe("user permission validation", func() {
+		It("skips playlists for unauthorized users when AllUsers is false", func() {
+			// Create manager with restricted users — only "other-user" is allowed,
+			// but the plugin returns playlists for "admin" which resolves to "user-1"
+			restrictedManager, _ := createTestManagerWithPluginOverrides(nil,
+				map[string]pluginOverride{
+					"test-playlist-provider": {AllUsers: false, Users: `["other-user"]`},
+				},
+				"test-playlist-provider"+PackageExtension,
+			)
+
+			// No playlists should be created because "user-1" is not in allowed users
+			restrictedPlsRepo := restrictedManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
+			Consistently(func() int {
+				return restrictedPlsRepo.Len()
+			}, "500ms").Should(Equal(0))
+		})
+
+		It("creates playlists for authorized users when AllUsers is false", func() {
+			// Create manager with restricted users — "user-1" is allowed,
+			// and the plugin returns playlists for "admin" which resolves to "user-1"
+			allowedManager, _ := createTestManagerWithPluginOverrides(nil,
+				map[string]pluginOverride{
+					"test-playlist-provider": {AllUsers: false, Users: `["user-1"]`},
+				},
+				"test-playlist-provider"+PackageExtension,
+			)
+
+			// Playlists should be created because "user-1" is in allowed users
+			allowedPlsRepo := allowedManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
+			Eventually(func() int {
+				return allowedPlsRepo.Len()
+			}).Should(BeNumerically(">=", 2))
+		})
+	})
+
 	Describe("stop", func() {
 		It("stops the syncer when the manager stops", func() {
 			stopManager, _ := createTestManagerWithPlugins(nil,

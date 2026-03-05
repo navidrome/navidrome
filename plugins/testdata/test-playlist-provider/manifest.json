@@ -2,5 +2,10 @@
   "name": "Test Playlist Provider",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "A test playlist provider plugin for integration testing"
+  "description": "A test playlist provider plugin for integration testing",
+  "permissions": {
+    "users": {
+      "reason": "Required for playlist ownership"
+    }
+  }
 }

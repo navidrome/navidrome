@@ -82,10 +82,26 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	return createTestManagerWithPluginsAndMetrics(pluginConfig, noopMetricsRecorder{}, plugins...)
 }
 
+// pluginOverride allows tests to override model.Plugin fields for specific plugins.
+type pluginOverride struct {
+	AllUsers bool
+	Users    string // JSON array of user IDs, e.g. `["user-1"]`
+}
+
+// createTestManagerWithPluginOverrides creates a new plugin Manager with the given plugin config,
+// per-plugin overrides, and specified plugins.
+func createTestManagerWithPluginOverrides(pluginConfig map[string]map[string]string, overrides map[string]pluginOverride, plugins ...string) (*Manager, string) {
+	return createTestManagerFull(pluginConfig, overrides, noopMetricsRecorder{}, plugins...)
+}
+
 // createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
 // metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
 // Returns the manager and temp directory path.
 func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]string, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
+	return createTestManagerFull(pluginConfig, nil, metrics, plugins...)
+}
+
+func createTestManagerFull(pluginConfig map[string]map[string]string, overrides map[string]pluginOverride, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
@@ -114,14 +130,21 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 			configJSON = string(configBytes)
 		}
 
-		enabledPlugins = append(enabledPlugins, model.Plugin{
+		p := model.Plugin{
 			ID:       pluginName,
 			Path:     destPath,
 			SHA256:   hashHex,
 			Enabled:  true,
 			Config:   configJSON,
 			AllUsers: true, // Allow all users by default in tests
-		})
+		}
+		if overrides != nil {
+			if o, ok := overrides[pluginName]; ok {
+				p.AllUsers = o.AllUsers
+				p.Users = o.Users
+			}
+		}
+		enabledPlugins = append(enabledPlugins, p)
 	}
 
 	// Setup config
