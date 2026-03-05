@@ -17,6 +17,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -145,6 +146,7 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	manager := &Manager{
 		plugins:        make(map[string]*plugin),
 		ds:             dataStore,
+		matcher:        matcher.New(dataStore),
 		metrics:        metrics,
 		subsonicRouter: http.NotFoundHandler(), // Stub router for tests
 	}

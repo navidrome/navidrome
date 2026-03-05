@@ -15,38 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// mockMediaFileRepo mocks model.MediaFileRepository for matcher tests
-type mockMediaFileRepo struct {
-	mock.Mock
-	model.MediaFileRepository
-}
-
-func newMockMediaFileRepo() *mockMediaFileRepo {
-	return &mockMediaFileRepo{}
-}
-
-func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.MediaFiles), args.Error(1)
-}
-
-func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	return m.GetAll(options...)
-}
-
-func (m *mockMediaFileRepo) SetError(hasError bool) {
-	if hasError {
-		m.On("GetAll", mock.Anything).Return(nil, errors.New("mock repo error"))
-	}
-}
-
 var _ = Describe("Matcher", func() {
 	var ds model.DataStore
 	var mediaFileRepo *mockMediaFileRepo
@@ -380,3 +348,35 @@ var _ = Describe("Matcher", func() {
 		})
 	})
 })
+
+// mockMediaFileRepo mocks model.MediaFileRepository for matcher tests
+type mockMediaFileRepo struct {
+	mock.Mock
+	model.MediaFileRepository
+}
+
+func newMockMediaFileRepo() *mockMediaFileRepo {
+	return &mockMediaFileRepo{}
+}
+
+func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	argsSlice := make([]any, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(model.MediaFiles), args.Error(1)
+}
+
+func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(options...)
+}
+
+func (m *mockMediaFileRepo) SetError(hasError bool) {
+	if hasError {
+		m.On("GetAll", mock.Anything).Return(nil, errors.New("mock repo error"))
+	}
+}
