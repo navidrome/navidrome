@@ -66,6 +66,9 @@ type Manager struct {
 	ds             model.DataStore
 	broker         events.Broker
 	metrics        PluginMetricsRecorder
+
+	// Playlist generator orchestrators (keyed by plugin name)
+	playlistGenerators map[string]*playlistGeneratorOrchestrator
 }
 
 // GetManager returns a singleton instance of the plugin manager.
@@ -73,10 +76,11 @@ type Manager struct {
 func GetManager(ds model.DataStore, broker events.Broker, m PluginMetricsRecorder) *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
-			ds:      ds,
-			broker:  broker,
-			metrics: m,
-			plugins: make(map[string]*plugin),
+			ds:                 ds,
+			broker:             broker,
+			metrics:            m,
+			plugins:            make(map[string]*plugin),
+			playlistGenerators: make(map[string]*playlistGeneratorOrchestrator),
 		}
 	})
 }
@@ -165,6 +169,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("loading enabled plugins: %w", err)
 	}
 
+	// Start playlist generators for plugins with the PlaylistGenerator capability
+	m.startPlaylistGenerators(ctx)
+
 	// Start file watcher if auto-reload is enabled
 	if conf.Server.Plugins.AutoReload {
 		if err := m.startWatcher(); err != nil {
@@ -176,6 +183,21 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
+// startPlaylistGenerators starts orchestrators for all plugins with the PlaylistGenerator capability.
+func (m *Manager) startPlaylistGenerators(ctx context.Context) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for name, p := range m.plugins {
+		if !hasCapability(p.capabilities, CapabilityPlaylistGenerator) {
+			continue
+		}
+		orch := newPlaylistGeneratorOrchestrator(name, p, m.ds)
+		m.playlistGenerators[name] = orch
+		go orch.discoverAndSync(ctx)
+	}
+}
+
 // Stop shuts down the plugin manager and releases all resources.
 func (m *Manager) Stop() error {
 	// Mark as stopped first to prevent new operations
@@ -184,6 +206,12 @@ func (m *Manager) Stop() error {
 	// Cancel context to signal all goroutines to stop
 	if m.cancel != nil {
 		m.cancel()
+	}
+
+	// Stop all playlist generator orchestrators
+	for name, orch := range m.playlistGenerators {
+		orch.stop()
+		delete(m.playlistGenerators, name)
 	}
 
 	// Stop file watcher
@@ -558,6 +586,12 @@ func (m *Manager) unloadPlugin(name string) error {
 	}
 	delete(m.plugins, name)
 	m.mu.Unlock()
+
+	// Stop playlist generator orchestrator if any
+	if orch, ok := m.playlistGenerators[name]; ok {
+		orch.stop()
+		delete(m.playlistGenerators, name)
+	}
 
 	// Run cleanup functions
 	err := plugin.Close()
