@@ -210,6 +210,27 @@ var _ = Describe("Playlists", func() {
 			err := ps.Update(ctx, "pls-smart", &newName, nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("denies name update on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newName := "New Name"
+			err := ps.Update(ctx, "pls-plugin", &newName, nil, nil, nil, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies comment update on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newComment := "New Comment"
+			err := ps.Update(ctx, "pls-plugin", nil, &newComment, nil, nil, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("allows public toggle on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			public := true
+			err := ps.Update(ctx, "pls-plugin", nil, nil, &public, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Describe("AddTracks", func() {

@@ -2,6 +2,7 @@ import {
   isWritable,
   isReadOnly,
   isSmartPlaylist,
+  isPluginPlaylist,
   canChangeTracks,
 } from './playlistUtils'
 
@@ -56,6 +57,18 @@ describe('playlistUtils', () => {
     })
   })
 
+  describe('isPluginPlaylist', () => {
+    it('returns true if playlist has pluginId', () => {
+      const playlist = { pluginId: 'test-plugin' }
+      expect(isPluginPlaylist(playlist)).toBe(true)
+    })
+
+    it('returns false if playlist does not have pluginId', () => {
+      const playlist = {}
+      expect(isPluginPlaylist(playlist)).toBe(false)
+    })
+  })
+
   describe('canChangeTracks', () => {
     it('returns true if user is the owner and playlist is not smart', () => {
       localStorage.setItem('userId', 'user1')
@@ -72,6 +85,12 @@ describe('playlistUtils', () => {
     it('returns false if playlist is smart', () => {
       localStorage.setItem('userId', 'user1')
       const playlist = { ownerId: 'user1', rules: [] }
+      expect(canChangeTracks(playlist)).toBe(false)
+    })
+
+    it('returns false if playlist is a plugin playlist', () => {
+      localStorage.setItem('userId', 'user1')
+      const playlist = { ownerId: 'user1', pluginId: 'test-plugin' }
       expect(canChangeTracks(playlist)).toBe(false)
     })
   })

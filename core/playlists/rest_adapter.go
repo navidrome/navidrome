@@ -93,6 +93,10 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
 		return rest.ErrPermissionDenied
 	}
+	// Plugin playlists allow public and ownership changes, but block name/comment
+	if current.IsPluginPlaylist() && (entity.Name != current.Name || entity.Comment != current.Comment) {
+		return rest.ErrPermissionDenied
+	}
 	// Apply ownership change (admin only)
 	if entity.OwnerID != "" {
 		current.OwnerID = entity.OwnerID

@@ -102,6 +102,42 @@ var _ = Describe("REST Adapter", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
+			It("denies name change on plugin playlist", func() {
+				mockPlsRepo.Data["pls-plugin"] = &model.Playlist{
+					ID: "pls-plugin", Name: "Plugin PL", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix",
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Changed Name", Comment: ""}
+				err := repo.Update("pls-plugin", pls)
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("denies comment change on plugin playlist", func() {
+				mockPlsRepo.Data["pls-plugin"] = &model.Playlist{
+					ID: "pls-plugin", Name: "Plugin PL", Comment: "", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix",
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Plugin PL", Comment: "new comment"}
+				err := repo.Update("pls-plugin", pls)
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("allows public toggle on plugin playlist", func() {
+				mockPlsRepo.Data["pls-plugin"] = &model.Playlist{
+					ID: "pls-plugin", Name: "Plugin PL", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix",
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Plugin PL", Public: true}
+				err := repo.Update("pls-plugin", pls)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
 			It("allows admin to update any playlist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
 				repo = ps.NewRepository(ctx).(rest.Persistable)

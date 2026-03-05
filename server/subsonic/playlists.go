@@ -165,10 +165,11 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 	}
 	pls := responses.OpenSubsonicPlaylist{}
 
-	if p.IsSmartPlaylist() {
+	if p.IsReadOnly() {
 		pls.Readonly = true
 
-		if p.EvaluatedAt != nil {
+		// ValidUntil only applies to smart playlists
+		if p.IsSmartPlaylist() && p.EvaluatedAt != nil {
 			pls.ValidUntil = P(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
 		}
 	} else {

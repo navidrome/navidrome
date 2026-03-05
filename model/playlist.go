@@ -36,6 +36,10 @@ type Playlist struct {
 	PluginPlaylistID string `structs:"plugin_playlist_id" json:"pluginPlaylistId,omitempty"`
 }
 
+func (pls Playlist) IsReadOnly() bool {
+	return pls.IsSmartPlaylist() || pls.IsPluginPlaylist()
+}
+
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
 }
