@@ -1,12 +1,12 @@
 version: v1-draft
 exports:
-    nd_playlist_generator_get_playlists:
-        description: GetPlaylists returns the list of playlists this plugin provides.
+    nd_playlist_generator_get_available_playlists:
+        description: GetAvailablePlaylists returns the list of playlists this plugin provides.
         input:
-            $ref: '#/components/schemas/GetPlaylistsRequest'
+            $ref: '#/components/schemas/GetAvailablePlaylistsRequest'
             contentType: application/json
         output:
-            $ref: '#/components/schemas/GetPlaylistsResponse'
+            $ref: '#/components/schemas/GetAvailablePlaylistsResponse'
             contentType: application/json
     nd_playlist_generator_get_playlist:
         description: GetPlaylist returns the full data for a single playlist (tracks, metadata).
@@ -18,6 +18,33 @@ exports:
             contentType: application/json
 components:
     schemas:
+        GetAvailablePlaylistsRequest:
+            description: GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
+            properties: {}
+        GetAvailablePlaylistsResponse:
+            description: GetAvailablePlaylistsResponse is the response for GetAvailablePlaylists.
+            properties:
+                playlists:
+                    type: array
+                    description: Playlists is the list of playlists provided by this plugin.
+                    items:
+                        $ref: '#/components/schemas/PlaylistInfo'
+                refreshInterval:
+                    type: integer
+                    format: int64
+                    description: |-
+                        RefreshInterval is the number of seconds until the next GetAvailablePlaylists call.
+                        0 means never re-discover.
+                retryInterval:
+                    type: integer
+                    format: int64
+                    description: |-
+                        RetryInterval is the number of seconds before retrying a failed GetPlaylist call.
+                        0 means no automatic retry for transient errors.
+            required:
+                - playlists
+                - refreshInterval
+                - retryInterval
         GetPlaylistRequest:
             description: GetPlaylistRequest is the request for GetPlaylist.
             properties:
@@ -53,26 +80,6 @@ components:
                 - name
                 - tracks
                 - validUntil
-        GetPlaylistsRequest:
-            description: GetPlaylistsRequest is the request for GetPlaylists.
-            properties: {}
-        GetPlaylistsResponse:
-            description: GetPlaylistsResponse is the response for GetPlaylists.
-            properties:
-                playlists:
-                    type: array
-                    description: Playlists is the list of playlists provided by this plugin.
-                    items:
-                        $ref: '#/components/schemas/PlaylistInfo'
-                refreshInterval:
-                    type: integer
-                    format: int64
-                    description: |-
-                        RefreshInterval is the number of seconds until the next GetPlaylists call.
-                        0 means never re-discover.
-            required:
-                - playlists
-                - refreshInterval
         PlaylistInfo:
             description: PlaylistInfo identifies a plugin playlist and its target user.
             properties:

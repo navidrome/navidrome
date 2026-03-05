@@ -11,6 +11,33 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
+// PlaylistGeneratorError represents an error type for playlist generator operations.
+type PlaylistGeneratorError string
+
+const (
+	// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
+	PlaylistGeneratorErrorNotFound PlaylistGeneratorError = "playlist_generator(not_found)"
+)
+
+// Error implements the error interface for PlaylistGeneratorError.
+func (e PlaylistGeneratorError) Error() string { return string(e) }
+
+// GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
+type GetAvailablePlaylistsRequest struct {
+}
+
+// GetAvailablePlaylistsResponse is the response for GetAvailablePlaylists.
+type GetAvailablePlaylistsResponse struct {
+	// Playlists is the list of playlists provided by this plugin.
+	Playlists []PlaylistInfo `json:"playlists"`
+	// RefreshInterval is the number of seconds until the next GetAvailablePlaylists call.
+	// 0 means never re-discover.
+	RefreshInterval int64 `json:"refreshInterval"`
+	// RetryInterval is the number of seconds before retrying a failed GetPlaylist call.
+	// 0 means no automatic retry for transient errors.
+	RetryInterval int64 `json:"retryInterval"`
+}
+
 // GetPlaylistRequest is the request for GetPlaylist.
 type GetPlaylistRequest struct {
 	// ID is the plugin-scoped playlist ID.
@@ -30,19 +57,6 @@ type GetPlaylistResponse struct {
 	// ValidUntil is a unix timestamp indicating when this playlist data expires.
 	// 0 means static (never refresh).
 	ValidUntil int64 `json:"validUntil"`
-}
-
-// GetPlaylistsRequest is the request for GetPlaylists.
-type GetPlaylistsRequest struct {
-}
-
-// GetPlaylistsResponse is the response for GetPlaylists.
-type GetPlaylistsResponse struct {
-	// Playlists is the list of playlists provided by this plugin.
-	Playlists []PlaylistInfo `json:"playlists"`
-	// RefreshInterval is the number of seconds until the next GetPlaylists call.
-	// 0 means never re-discover.
-	RefreshInterval int64 `json:"refreshInterval"`
 }
 
 // PlaylistInfo identifies a plugin playlist and its target user.
@@ -78,23 +92,23 @@ type SongRef struct {
 // PlaylistGenerator requires all methods to be implemented.
 // PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
 // personalized recommendations). Plugins implementing this capability expose two
-// functions: GetPlaylists for lightweight discovery and GetPlaylist for fetching
-// the heavy payload (tracks, metadata).
+// functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
+// fetching the heavy payload (tracks, metadata).
 type PlaylistGenerator interface {
-	// GetPlaylists - GetPlaylists returns the list of playlists this plugin provides.
-	GetPlaylists(GetPlaylistsRequest) (GetPlaylistsResponse, error)
+	// GetAvailablePlaylists - GetAvailablePlaylists returns the list of playlists this plugin provides.
+	GetAvailablePlaylists(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
 	// GetPlaylist - GetPlaylist returns the full data for a single playlist (tracks, metadata).
 	GetPlaylist(GetPlaylistRequest) (GetPlaylistResponse, error)
 } // Internal implementation holders
 var (
-	playlistsImpl func(GetPlaylistsRequest) (GetPlaylistsResponse, error)
-	playlistImpl  func(GetPlaylistRequest) (GetPlaylistResponse, error)
+	availablePlaylistsImpl func(GetAvailablePlaylistsRequest) (GetAvailablePlaylistsResponse, error)
+	playlistImpl           func(GetPlaylistRequest) (GetPlaylistResponse, error)
 )
 
 // Register registers a playlistgenerator implementation.
 // All methods are required.
 func Register(impl PlaylistGenerator) {
-	playlistsImpl = impl.GetPlaylists
+	availablePlaylistsImpl = impl.GetAvailablePlaylists
 	playlistImpl = impl.GetPlaylist
 }
 
@@ -102,20 +116,20 @@ func Register(impl PlaylistGenerator) {
 // The host recognizes this and skips the plugin gracefully.
 const NotImplementedCode int32 = -2
 
-//go:wasmexport nd_playlist_generator_get_playlists
-func _NdPlaylistGeneratorGetPlaylists() int32 {
-	if playlistsImpl == nil {
+//go:wasmexport nd_playlist_generator_get_available_playlists
+func _NdPlaylistGeneratorGetAvailablePlaylists() int32 {
+	if availablePlaylistsImpl == nil {
 		// Return standard code - host will skip this plugin gracefully
 		return NotImplementedCode
 	}
 
-	var input GetPlaylistsRequest
+	var input GetAvailablePlaylistsRequest
 	if err := pdk.InputJSON(&input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
 
-	output, err := playlistsImpl(input)
+	output, err := availablePlaylistsImpl(input)
 	if err != nil {
 		pdk.SetError(err)
 		return -1

@@ -18,6 +18,31 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
+/// PlaylistGeneratorError represents an error type for playlist generator operations.
+pub type PlaylistGeneratorError = &'static str;
+/// PlaylistGeneratorErrorNotFound indicates a playlist is currently unavailable.
+pub const PLAYLIST_GENERATOR_ERROR_NOT_FOUND: PlaylistGeneratorError = "playlist_generator(not_found)";
+/// GetAvailablePlaylistsRequest is the request for GetAvailablePlaylists.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAvailablePlaylistsRequest {
+}
+/// GetAvailablePlaylistsResponse is the response for GetAvailablePlaylists.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAvailablePlaylistsResponse {
+    /// Playlists is the list of playlists provided by this plugin.
+    #[serde(default)]
+    pub playlists: Vec<PlaylistInfo>,
+    /// RefreshInterval is the number of seconds until the next GetAvailablePlaylists call.
+    /// 0 means never re-discover.
+    #[serde(default)]
+    pub refresh_interval: i64,
+    /// RetryInterval is the number of seconds before retrying a failed GetPlaylist call.
+    /// 0 means no automatic retry for transient errors.
+    #[serde(default)]
+    pub retry_interval: i64,
+}
 /// GetPlaylistRequest is the request for GetPlaylist.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,23 +71,6 @@ pub struct GetPlaylistResponse {
     /// 0 means static (never refresh).
     #[serde(default)]
     pub valid_until: i64,
-}
-/// GetPlaylistsRequest is the request for GetPlaylists.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPlaylistsRequest {
-}
-/// GetPlaylistsResponse is the response for GetPlaylists.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPlaylistsResponse {
-    /// Playlists is the list of playlists provided by this plugin.
-    #[serde(default)]
-    pub playlists: Vec<PlaylistInfo>,
-    /// RefreshInterval is the number of seconds until the next GetPlaylists call.
-    /// 0 means never re-discover.
-    #[serde(default)]
-    pub refresh_interval: i64,
 }
 /// PlaylistInfo identifies a plugin playlist and its target user.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -131,11 +139,11 @@ impl Error {
 /// PlaylistGenerator requires all methods to be implemented.
 /// PlaylistGenerator provides dynamically-generated playlists (e.g., "Daily Mix",
 /// personalized recommendations). Plugins implementing this capability expose two
-/// functions: GetPlaylists for lightweight discovery and GetPlaylist for fetching
-/// the heavy payload (tracks, metadata).
+/// functions: GetAvailablePlaylists for lightweight discovery and GetPlaylist for
+/// fetching the heavy payload (tracks, metadata).
 pub trait PlaylistGenerator {
-    /// GetPlaylists - GetPlaylists returns the list of playlists this plugin provides.
-    fn get_playlists(&self, req: GetPlaylistsRequest) -> Result<GetPlaylistsResponse, Error>;
+    /// GetAvailablePlaylists - GetAvailablePlaylists returns the list of playlists this plugin provides.
+    fn get_available_playlists(&self, req: GetAvailablePlaylistsRequest) -> Result<GetAvailablePlaylistsResponse, Error>;
     /// GetPlaylist - GetPlaylist returns the full data for a single playlist (tracks, metadata).
     fn get_playlist(&self, req: GetPlaylistRequest) -> Result<GetPlaylistResponse, Error>;
 }
@@ -146,11 +154,11 @@ pub trait PlaylistGenerator {
 macro_rules! register_playlistgenerator {
     ($plugin_type:ty) => {
         #[extism_pdk::plugin_fn]
-        pub fn nd_playlist_generator_get_playlists(
-            req: extism_pdk::Json<$crate::playlistgenerator::GetPlaylistsRequest>
-        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::playlistgenerator::GetPlaylistsResponse>> {
+        pub fn nd_playlist_generator_get_available_playlists(
+            req: extism_pdk::Json<$crate::playlistgenerator::GetAvailablePlaylistsRequest>
+        ) -> extism_pdk::FnResult<extism_pdk::Json<$crate::playlistgenerator::GetAvailablePlaylistsResponse>> {
             let plugin = <$plugin_type>::default();
-            let result = $crate::playlistgenerator::PlaylistGenerator::get_playlists(&plugin, req.into_inner())?;
+            let result = $crate::playlistgenerator::PlaylistGenerator::get_available_playlists(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))
         }
         #[extism_pdk::plugin_fn]

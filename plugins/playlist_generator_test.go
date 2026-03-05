@@ -3,8 +3,11 @@
 package plugins
 
 import (
+	"time"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -100,7 +103,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 		})
 	})
 
-	Describe("GetPlaylists error handling", func() {
+	Describe("GetAvailablePlaylists error handling", func() {
 		It("handles plugin errors gracefully", func() {
 			errManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-playlist-generator": {"error": "service unavailable"},
@@ -115,11 +118,75 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 				errDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
 			}
 			errPlsRepo := errDS.MockedPlaylist.(*tests.MockPlaylistRepo)
-			// The orchestrator was started but GetPlaylists returned error,
+			// The orchestrator was started but GetAvailablePlaylists returned error,
 			// so no playlists should be created
 			Consistently(func() int {
 				return len(errPlsRepo.Data)
 			}, "500ms").Should(Equal(0))
+		})
+	})
+
+	Describe("GetPlaylist NotFound error", func() {
+		It("skips playlists when plugin returns NotFound", func() {
+			notFoundManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-playlist-generator": {
+					"get_playlist_error":      "playlist temporarily unavailable",
+					"get_playlist_error_type": string(capabilities.PlaylistGeneratorErrorNotFound),
+				},
+			}, "test-playlist-generator"+PackageExtension)
+
+			// Should still have the orchestrator
+			Expect(notFoundManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+
+			// No playlists should be created (all returned NotFound)
+			notFoundDS := notFoundManager.ds.(*tests.MockDataStore)
+			if notFoundDS.MockedPlaylist == nil {
+				notFoundDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
+			}
+			notFoundPlsRepo := notFoundDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+			Consistently(func() int {
+				return len(notFoundPlsRepo.Data)
+			}, "500ms").Should(Equal(0))
+
+			// No refresh timers should be scheduled for NotFound playlists
+			orch := notFoundManager.playlistGenerators["test-playlist-generator"]
+			Eventually(func() int {
+				return len(orch.refreshTimers)
+			}).Should(Equal(0))
+		})
+	})
+
+	Describe("GetPlaylist transient error with RetryInterval", func() {
+		It("stores retryInterval and schedules retry on transient errors", func() {
+			retryManager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-playlist-generator": {
+					"get_playlist_error": "temporary failure",
+					"retry_interval":     "60",
+				},
+			}, "test-playlist-generator"+PackageExtension)
+
+			Expect(retryManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+			orch := retryManager.playlistGenerators["test-playlist-generator"]
+
+			// retryInterval should be stored from the response
+			Eventually(func() time.Duration {
+				return orch.retryInterval
+			}).Should(Equal(60 * time.Second))
+
+			// No playlists should be created (GetPlaylist failed)
+			retryDS := retryManager.ds.(*tests.MockDataStore)
+			if retryDS.MockedPlaylist == nil {
+				retryDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
+			}
+			retryPlsRepo := retryDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+			Consistently(func() int {
+				return len(retryPlsRepo.Data)
+			}, "500ms").Should(Equal(0))
+
+			// Refresh timers should be scheduled for transient errors
+			Eventually(func() int {
+				return len(orch.refreshTimers)
+			}).Should(BeNumerically(">=", 1))
 		})
 	})
 

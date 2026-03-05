@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,14 +17,14 @@ import (
 const (
 	CapabilityPlaylistGenerator Capability = "PlaylistGenerator"
 
-	FuncPlaylistGeneratorGetPlaylists = "nd_playlist_generator_get_playlists"
-	FuncPlaylistGeneratorGetPlaylist  = "nd_playlist_generator_get_playlist"
+	FuncPlaylistGeneratorGetAvailablePlaylists = "nd_playlist_generator_get_available_playlists"
+	FuncPlaylistGeneratorGetPlaylist           = "nd_playlist_generator_get_playlist"
 )
 
 func init() {
 	registerCapability(
 		CapabilityPlaylistGenerator,
-		FuncPlaylistGeneratorGetPlaylists,
+		FuncPlaylistGeneratorGetAvailablePlaylists,
 		FuncPlaylistGeneratorGetPlaylist,
 	)
 }
@@ -39,6 +40,7 @@ type playlistGeneratorOrchestrator struct {
 	wg             sync.WaitGroup
 	refreshTimers  map[string]*time.Timer // keyed by playlist DB ID
 	discoveryTimer *time.Timer
+	retryInterval  time.Duration // from last GetAvailablePlaylists response
 }
 
 func newPlaylistGeneratorOrchestrator(pluginName string, p *plugin, ds model.DataStore, parentCtx context.Context) *playlistGeneratorOrchestrator {
@@ -54,14 +56,19 @@ func newPlaylistGeneratorOrchestrator(pluginName string, p *plugin, ds model.Dat
 	}
 }
 
-// discoverAndSync calls GetPlaylists, then GetPlaylist for each, matches tracks, and upserts.
+// discoverAndSync calls GetAvailablePlaylists, then GetPlaylist for each, matches tracks, and upserts.
 func (o *playlistGeneratorOrchestrator) discoverAndSync(ctx context.Context) {
-	resp, err := callPluginFunction[capabilities.GetPlaylistsRequest, capabilities.GetPlaylistsResponse](
-		ctx, o.plugin, FuncPlaylistGeneratorGetPlaylists, capabilities.GetPlaylistsRequest{},
+	resp, err := callPluginFunction[capabilities.GetAvailablePlaylistsRequest, capabilities.GetAvailablePlaylistsResponse](
+		ctx, o.plugin, FuncPlaylistGeneratorGetAvailablePlaylists, capabilities.GetAvailablePlaylistsRequest{},
 	)
 	if err != nil {
-		log.Error(ctx, "Failed to call GetPlaylists", "plugin", o.pluginName, err)
+		log.Error(ctx, "Failed to call GetAvailablePlaylists", "plugin", o.pluginName, err)
 		return
+	}
+
+	// Store retry interval from response
+	if resp.RetryInterval > 0 {
+		o.retryInterval = time.Duration(resp.RetryInterval) * time.Second
 	}
 
 	for _, info := range resp.Playlists {
@@ -89,7 +96,20 @@ func (o *playlistGeneratorOrchestrator) syncPlaylist(ctx context.Context, info c
 		ctx, o.plugin, FuncPlaylistGeneratorGetPlaylist, capabilities.GetPlaylistRequest{ID: info.ID},
 	)
 	if err != nil {
-		log.Error(ctx, "Failed to call GetPlaylist", "plugin", o.pluginName, "playlistID", info.ID, err)
+		if isPlaylistNotFoundError(err) {
+			log.Info(ctx, "Playlist not found, skipping", "plugin", o.pluginName, "playlistID", info.ID)
+			// Stop any existing refresh timer for this playlist
+			if timer, ok := o.refreshTimers[dbID]; ok {
+				timer.Stop()
+				delete(o.refreshTimers, dbID)
+			}
+			return
+		}
+		log.Warn(ctx, "Failed to call GetPlaylist", "plugin", o.pluginName, "playlistID", info.ID, err)
+		// Schedule retry for transient errors if retryInterval is configured
+		if o.retryInterval > 0 {
+			o.schedulePlaylistRefresh(ctx, info, dbID, ownerID, o.retryInterval)
+		}
 		return
 	}
 
@@ -163,6 +183,11 @@ func (o *playlistGeneratorOrchestrator) scheduleDiscovery(_ context.Context, del
 	o.discoveryTimer = time.AfterFunc(delay, func() {
 		o.wg.Go(func() { o.discoverAndSync(o.ctx) })
 	})
+}
+
+// isPlaylistNotFoundError checks if the error contains a NotFound sentinel from the plugin.
+func isPlaylistNotFoundError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), capabilities.PlaylistGeneratorErrorNotFound.Error())
 }
 
 // stop cancels the context, stops all timers, and waits for in-flight goroutines.
