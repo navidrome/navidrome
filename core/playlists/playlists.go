@@ -154,6 +154,10 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	if err != nil {
 		return err
 	}
+	// Plugin playlists allow public toggle and cover art, but block name/comment changes
+	if pls.IsPluginPlaylist() && (name != nil || comment != nil) {
+		return model.ErrNotAuthorized
+	}
 	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		repo := tx.Playlist(ctx)
 

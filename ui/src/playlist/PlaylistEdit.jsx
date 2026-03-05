@@ -11,7 +11,7 @@ import {
   ReferenceInput,
   SelectInput,
 } from 'react-admin'
-import { isWritable, Title } from '../common'
+import { isWritable, isPluginPlaylist, Title } from '../common'
 
 const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
@@ -33,12 +33,17 @@ const PlaylistEditForm = (props) => {
   const { permissions } = usePermissions()
   return (
     <SimpleForm redirect="list" variant={'outlined'} {...props}>
-      <TextInput source="name" validate={required()} />
+      <TextInput
+        source="name"
+        validate={required()}
+        disabled={isPluginPlaylist(record)}
+      />
       <TextInput
         multiline
         minRows={3}
         source="comment"
         fullWidth
+        disabled={isPluginPlaylist(record)}
         inputProps={{
           style: { resize: 'vertical' },
         }}

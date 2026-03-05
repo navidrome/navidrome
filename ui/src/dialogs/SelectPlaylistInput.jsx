@@ -264,7 +264,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
     'playlist',
     { page: 1, perPage: -1 },
     { field: 'name', order: 'ASC' },
-    { smart: false },
+    { readonly: false },
   )
 
   const options =
