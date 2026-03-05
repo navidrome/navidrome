@@ -31,6 +31,12 @@ var _ = Describe("MediaAnnotationController", func() {
 	})
 
 	Describe("Scrobble", func() {
+		BeforeEach(func() {
+			// Populate mock with valid media files
+			_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "12"})
+			_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "34"})
+		})
+
 		It("submit all scrobbles with only the id", func() {
 			submissionTime := time.Now()
 			r := newGetRequest("id=12", "id=34")
@@ -71,10 +77,27 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(playTracker.Submissions).To(BeEmpty())
 		})
 
+		It("returns error when any id is invalid", func() {
+			r := newGetRequest("id=invalid")
+
+			_, err := router.Scrobble(r)
+
+			Expect(err).To(MatchError(ContainSubstring("not found")))
+			Expect(playTracker.Submissions).To(BeEmpty())
+		})
+
+		It("returns error and does not scrobble when mix of valid and invalid ids", func() {
+			r := newGetRequest("id=12", "id=invalid")
+
+			_, err := router.Scrobble(r)
+
+			Expect(err).To(MatchError(ContainSubstring("not found")))
+			Expect(playTracker.Submissions).To(BeEmpty())
+		})
+
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "12"})
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=12", "submission=false")
 				req = req.WithContext(ctx)
@@ -93,6 +116,16 @@ var _ = Describe("MediaAnnotationController", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(playTracker.Playing).To(HaveLen(1))
 				Expect(playTracker.Playing).To(HaveKey("player-1"))
+			})
+
+			It("returns error when id is invalid", func() {
+				req = newGetRequest("id=invalid", "submission=false")
+				req = req.WithContext(ctx)
+
+				_, err := router.Scrobble(req)
+
+				Expect(err).To(MatchError(ContainSubstring("not found")))
+				Expect(playTracker.Playing).To(BeEmpty())
 			})
 		})
 	})
