@@ -139,7 +139,7 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	mockUserRepo := tests.CreateMockUserRepo()
 	_ = mockUserRepo.Put(&model.User{ID: "user-1", UserName: "admin"})
 
-	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo, MockedUser: mockUserRepo}
+	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo, MockedUser: mockUserRepo, MockedPlaylist: tests.CreateMockPlaylistRepo()}
 
 	// Create and start manager
 	manager := &Manager{

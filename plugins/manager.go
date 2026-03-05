@@ -192,9 +192,9 @@ func (m *Manager) startPlaylistGenerators(ctx context.Context) {
 		if !hasCapability(p.capabilities, CapabilityPlaylistGenerator) {
 			continue
 		}
-		orch := newPlaylistGeneratorOrchestrator(name, p, m.ds, ctx)
+		orch := newPlaylistGeneratorOrchestrator(ctx, name, p, m.ds)
 		m.playlistGenerators[name] = orch
-		orch.wg.Go(func() { orch.discoverAndSync(orch.ctx) })
+		go orch.run()
 	}
 }
 

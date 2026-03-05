@@ -5,7 +5,6 @@ package plugins
 import (
 	"time"
 
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/tests"
@@ -24,13 +23,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			"test-playlist-generator"+PackageExtension,
 		)
 
-		// Pre-initialize the mock playlist repo to avoid a race with the
-		// discoverAndSync goroutine that is launched during Start().
-		mockDS := pgManager.ds.(*tests.MockDataStore)
-		if mockDS.MockedPlaylist == nil {
-			mockDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
-		}
-		mockPlsRepo = mockDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+		mockPlsRepo = pgManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
 	})
 
 	Describe("capability detection", func() {
@@ -49,30 +42,16 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			// The orchestrator runs discoverAndSync in a goroutine on Start().
 			// Give it a moment to complete.
 			Eventually(func() int {
-				return len(mockPlsRepo.Data)
+				return mockPlsRepo.Len()
 			}).Should(BeNumerically(">=", 2))
 		})
 
 		It("creates playlists with correct fields", func() {
-			// Check that playlists have the correct plugin fields
 			Eventually(func() bool {
-				for _, pls := range mockPlsRepo.Data {
-					if pls.PluginID == "test-playlist-generator" && pls.PluginPlaylistID == "daily-mix-1" {
-						return true
-					}
-				}
-				return false
+				return mockPlsRepo.FindByPluginPlaylistID("daily-mix-1") != nil
 			}).Should(BeTrue())
 
-			// Find the daily-mix-1 playlist and verify its fields
-			var dailyMix1 *model.Playlist
-			for _, pls := range mockPlsRepo.Data {
-				if pls.PluginPlaylistID == "daily-mix-1" {
-					dailyMix1 = pls
-					break
-				}
-			}
-			Expect(dailyMix1).ToNot(BeNil())
+			dailyMix1 := mockPlsRepo.FindByPluginPlaylistID("daily-mix-1")
 			Expect(dailyMix1.Name).To(Equal("Daily Mix 1"))
 			Expect(dailyMix1.Comment).To(Equal("Your personalized daily mix"))
 			Expect(dailyMix1.ExternalImageURL).To(Equal("https://example.com/cover1.jpg"))
@@ -85,7 +64,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 		It("generates deterministic playlist IDs", func() {
 			expectedID := id.NewHash("test-playlist-generator", "daily-mix-1", "user-1")
 			Eventually(func() bool {
-				_, exists := mockPlsRepo.Data[expectedID]
+				_, exists := mockPlsRepo.GetData(expectedID)
 				return exists
 			}).Should(BeTrue())
 		})
@@ -96,8 +75,8 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			Expect(id1).ToNot(Equal(id2))
 
 			Eventually(func() bool {
-				_, exists1 := mockPlsRepo.Data[id1]
-				_, exists2 := mockPlsRepo.Data[id2]
+				_, exists1 := mockPlsRepo.GetData(id1)
+				_, exists2 := mockPlsRepo.GetData(id2)
 				return exists1 && exists2
 			}).Should(BeTrue())
 		})
@@ -113,15 +92,11 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			Expect(errManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
 
 			// But no playlists created
-			errDS := errManager.ds.(*tests.MockDataStore)
-			if errDS.MockedPlaylist == nil {
-				errDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
-			}
-			errPlsRepo := errDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+			errPlsRepo := errManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
 			// The orchestrator was started but GetAvailablePlaylists returned error,
 			// so no playlists should be created
 			Consistently(func() int {
-				return len(errPlsRepo.Data)
+				return errPlsRepo.Len()
 			}, "500ms").Should(Equal(0))
 		})
 	})
@@ -139,20 +114,16 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			Expect(notFoundManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
 
 			// No playlists should be created (all returned NotFound)
-			notFoundDS := notFoundManager.ds.(*tests.MockDataStore)
-			if notFoundDS.MockedPlaylist == nil {
-				notFoundDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
-			}
-			notFoundPlsRepo := notFoundDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+			notFoundPlsRepo := notFoundManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
 			Consistently(func() int {
-				return len(notFoundPlsRepo.Data)
+				return notFoundPlsRepo.Len()
 			}, "500ms").Should(Equal(0))
 
 			// No refresh timers should be scheduled for NotFound playlists
 			orch := notFoundManager.playlistGenerators["test-playlist-generator"]
-			Eventually(func() int {
-				return len(orch.refreshTimers)
-			}).Should(Equal(0))
+			Eventually(func() int32 {
+				return orch.refreshTimerCount.Load()
+			}).Should(Equal(int32(0)))
 		})
 	})
 
@@ -170,23 +141,19 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 
 			// retryInterval should be stored from the response
 			Eventually(func() time.Duration {
-				return orch.retryInterval
+				return time.Duration(orch.retryInterval.Load())
 			}).Should(Equal(60 * time.Second))
 
 			// No playlists should be created (GetPlaylist failed)
-			retryDS := retryManager.ds.(*tests.MockDataStore)
-			if retryDS.MockedPlaylist == nil {
-				retryDS.MockedPlaylist = tests.CreateMockPlaylistRepo()
-			}
-			retryPlsRepo := retryDS.MockedPlaylist.(*tests.MockPlaylistRepo)
+			retryPlsRepo := retryManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
 			Consistently(func() int {
-				return len(retryPlsRepo.Data)
+				return retryPlsRepo.Len()
 			}, "500ms").Should(Equal(0))
 
 			// Refresh timers should be scheduled for transient errors
-			Eventually(func() int {
-				return len(orch.refreshTimers)
-			}).Should(BeNumerically(">=", 1))
+			Eventually(func() int32 {
+				return orch.refreshTimerCount.Load()
+			}).Should(BeNumerically(">=", int32(1)))
 		})
 	})
 
