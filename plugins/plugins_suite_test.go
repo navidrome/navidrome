@@ -137,10 +137,11 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 
 	// Create and start manager
 	manager := &Manager{
-		plugins:        make(map[string]*plugin),
-		ds:             dataStore,
-		metrics:        metrics,
-		subsonicRouter: http.NotFoundHandler(), // Stub router for tests
+		plugins:            make(map[string]*plugin),
+		playlistGenerators: make(map[string]*playlistGeneratorOrchestrator),
+		ds:                 dataStore,
+		metrics:            metrics,
+		subsonicRouter:     http.NotFoundHandler(), // Stub router for tests
 	}
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
