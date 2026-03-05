@@ -389,7 +389,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	m.mu.Unlock()
 
 	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	callPluginInit(ctx, loadedPlugin)
 
 	// Start PlaylistProvider syncer if capability is detected
 	if hasCapability(loadedPlugin.capabilities, CapabilityPlaylistProvider) {

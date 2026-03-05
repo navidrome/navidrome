@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -125,15 +124,20 @@ func (o *playlistSyncer) discoverAndSync() {
 		o.retryInterval.Store(int64(time.Duration(resp.RetryInterval) * time.Second))
 	}
 
+	resolvedUsers := map[string]string{} // username -> userID cache
 	for _, info := range resp.Playlists {
-		// Resolve username to user ID
-		user, err := o.ds.User(adminContext(ctx)).FindByUsername(info.OwnerUsername)
-		if err != nil {
-			log.Error(ctx, "Failed to resolve playlist owner", "plugin", o.pluginName,
-				"playlistID", info.ID, "username", info.OwnerUsername, err)
-			continue
+		// Resolve username to user ID (cached)
+		ownerID, ok := resolvedUsers[info.OwnerUsername]
+		if !ok {
+			user, err := o.ds.User(adminContext(ctx)).FindByUsername(info.OwnerUsername)
+			if err != nil {
+				log.Error(ctx, "Failed to resolve playlist owner", "plugin", o.pluginName,
+					"playlistID", info.ID, "username", info.OwnerUsername, err)
+				continue
+			}
+			ownerID = user.ID
+			resolvedUsers[info.OwnerUsername] = ownerID
 		}
-		ownerID := user.ID
 
 		// Validate that the plugin is permitted to create playlists for this user
 		if !o.plugin.allUsers && !slices.Contains(o.plugin.allowedUserIDs, ownerID) {
@@ -198,16 +202,7 @@ func (o *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID strin
 	}
 
 	// Set tracks from matched media files
-	tracks := make(model.PlaylistTracks, len(matched))
-	for i, mf := range matched {
-		tracks[i] = model.PlaylistTrack{
-			ID:          fmt.Sprintf("%d", i+1),
-			MediaFileID: mf.ID,
-			PlaylistID:  dbID,
-			MediaFile:   mf,
-		}
-	}
-	pls.SetTracks(tracks)
+	pls.AddMediaFiles(matched)
 
 	// Upsert via repository
 	plsRepo := o.ds.Playlist(ctx)

@@ -281,40 +281,55 @@ func (s matchScore) betterThan(other matchScore) bool {
 	return s.albumSimilarity > other.albumSimilarity
 }
 
+// sanitizedTrack holds pre-sanitized fields for a media file, avoiding redundant sanitization
+// when the same track is scored against multiple queries in the inner loop.
+type sanitizedTrack struct {
+	mf     model.MediaFile
+	title  string
+	artist string
+	album  string
+}
+
+func newSanitizedTrack(mf model.MediaFile) sanitizedTrack {
+	return sanitizedTrack{
+		mf:     mf,
+		title:  str.SanitizeFieldForSorting(mf.Title),
+		artist: str.SanitizeFieldForSortingNoArticle(mf.Artist),
+		album:  str.SanitizeFieldForSorting(mf.Album),
+	}
+}
+
 // computeSpecificityLevel determines how well query metadata matches a track (0-5).
 // Higher values indicate more specific matches (MBIDs > names > title only).
 // Uses fuzzy matching for album names with the same threshold as title matching.
-func computeSpecificityLevel(q songQuery, mf model.MediaFile, albumThreshold float64) int {
-	title := str.SanitizeFieldForSorting(mf.Title)
-	artist := str.SanitizeFieldForSortingNoArticle(mf.Artist)
-	album := str.SanitizeFieldForSorting(mf.Album)
-
+// The track's title, artist, and album fields must be pre-sanitized.
+func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	// Level 5: Title + Artist MBID + Album MBID (most specific)
 	if q.artistMBID != "" && q.albumMBID != "" &&
-		mf.MbzArtistID == q.artistMBID && mf.MbzAlbumID == q.albumMBID {
+		t.mf.MbzArtistID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
 		return 5
 	}
 	// Level 4: Title + Artist MBID + Album name (fuzzy)
 	if q.artistMBID != "" && q.album != "" &&
-		mf.MbzArtistID == q.artistMBID && similarityRatio(album, q.album) >= albumThreshold {
+		t.mf.MbzArtistID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 4
 	}
 	// Level 3: Title + Artist name + Album name (fuzzy)
 	if q.artist != "" && q.album != "" &&
-		artist == q.artist && similarityRatio(album, q.album) >= albumThreshold {
+		t.artist == q.artist && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 3
 	}
 	// Level 2: Title + Artist MBID
-	if q.artistMBID != "" && mf.MbzArtistID == q.artistMBID {
+	if q.artistMBID != "" && t.mf.MbzArtistID == q.artistMBID {
 		return 2
 	}
 	// Level 1: Title + Artist name
-	if q.artist != "" && artist == q.artist {
+	if q.artist != "" && t.artist == q.artist {
 		return 1
 	}
 	// Level 0: Title only match (but for fuzzy, title matched via similarity)
 	// Check if at least the title matches exactly
-	if title == q.title {
+	if t.title == q.title {
 		return 0
 	}
 	return -1 // No exact title match, but could still be a fuzzy match
@@ -354,9 +369,15 @@ func (m *Matcher) loadTracksByTitleAndArtist(ctx context.Context, songs []agents
 			continue
 		}
 
+		// Pre-sanitize tracks once for all queries against this artist
+		sanitized := make([]sanitizedTrack, len(tracks))
+		for i, mf := range tracks {
+			sanitized[i] = newSanitizedTrack(mf)
+		}
+
 		// Find best match for each query using unified scoring
 		for _, q := range artistQueries {
-			if mf, found := m.findBestMatch(q, tracks, threshold); found {
+			if mf, found := m.findBestMatch(q, sanitized, threshold); found {
 				key := q.title + "|" + q.artist
 				if _, exists := matches[key]; !exists {
 					matches[key] = mf
@@ -372,7 +393,7 @@ func (m *Matcher) loadTracksByTitleAndArtist(ctx context.Context, songs []agents
 // score decreases as the difference grows (using 1 / (1 + diff)). Returns 1.0
 // if durationMs is 0 (unknown), so duration does not influence scoring.
 func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 {
-	if durationMs <= 0 {
+	if durationMs == 0 {
 		return 1.0 // Unknown duration -- don't penalise
 	}
 	durationSec := float64(durationMs) / 1000.0
@@ -386,14 +407,13 @@ func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 
 // 2. Duration proximity (closer duration = higher score, 1.0 if unknown)
 // 3. Highest specificity level
 // 4. Highest album similarity (as final tiebreaker)
-func (m *Matcher) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
+func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
 
-	for _, mf := range tracks {
-		trackTitle := str.SanitizeFieldForSorting(mf.Title)
-		titleSim := similarityRatio(q.title, trackTitle)
+	for _, t := range sanitizedTracks {
+		titleSim := similarityRatio(q.title, t.title)
 
 		if titleSim < threshold {
 			continue
@@ -402,20 +422,19 @@ func (m *Matcher) findBestMatch(q songQuery, tracks model.MediaFiles, threshold 
 		// Compute album similarity for tiebreaking (0.0 if no album in query)
 		var albumSim float64
 		if q.album != "" {
-			trackAlbum := str.SanitizeFieldForSorting(mf.Album)
-			albumSim = similarityRatio(q.album, trackAlbum)
+			albumSim = similarityRatio(q.album, t.album)
 		}
 
 		score := matchScore{
 			titleSimilarity:   titleSim,
-			durationProximity: durationProximity(q.durationMs, mf.Duration),
+			durationProximity: durationProximity(q.durationMs, t.mf.Duration),
 			albumSimilarity:   albumSim,
-			specificityLevel:  computeSpecificityLevel(q, mf, threshold),
+			specificityLevel:  computeSpecificityLevel(q, t, threshold),
 		}
 
 		if score.betterThan(bestScore) {
 			bestScore = score
-			bestMatch = mf
+			bestMatch = t.mf
 			found = true
 		}
 	}
