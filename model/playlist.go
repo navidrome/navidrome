@@ -30,10 +30,18 @@ type Playlist struct {
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
+
+	// Plugin playlist attributes
+	PluginID         string `structs:"plugin_id" json:"pluginId,omitempty"`
+	PluginPlaylistID string `structs:"plugin_playlist_id" json:"pluginPlaylistId,omitempty"`
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
+}
+
+func (pls Playlist) IsPluginPlaylist() bool {
+	return pls.PluginID != ""
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {
