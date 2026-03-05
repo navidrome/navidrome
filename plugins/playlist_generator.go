@@ -262,8 +262,9 @@ func (o *playlistGeneratorOrchestrator) stopAllTimers() {
 	}
 }
 
-// stop cancels the context and waits for the worker goroutine to finish.
-func (o *playlistGeneratorOrchestrator) stop() {
+// Close cancels the context and waits for the worker goroutine to finish.
+func (o *playlistGeneratorOrchestrator) Close() error {
 	o.cancel()
 	<-o.done
+	return nil
 }

@@ -12,6 +12,22 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// findOrchestrator finds the playlistGeneratorOrchestrator in a plugin's closers.
+func findOrchestrator(m *Manager, pluginName string) *playlistGeneratorOrchestrator {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[pluginName]
+	if !ok {
+		return nil
+	}
+	for _, c := range p.closers {
+		if orch, ok := c.(*playlistGeneratorOrchestrator); ok {
+			return orch
+		}
+	}
+	return nil
+}
+
 var _ = Describe("PlaylistGenerator", Ordered, func() {
 	var (
 		pgManager   *Manager
@@ -33,9 +49,9 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 		})
 	})
 
-	Describe("startPlaylistGenerators", func() {
+	Describe("orchestrator lifecycle", func() {
 		It("creates an orchestrator for the plugin", func() {
-			Expect(pgManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+			Expect(findOrchestrator(pgManager, "test-playlist-generator")).ToNot(BeNil())
 		})
 
 		It("discovers and syncs playlists from the plugin", func() {
@@ -89,7 +105,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			}, "test-playlist-generator"+PackageExtension)
 
 			// Should still have the orchestrator (error is logged, not fatal)
-			Expect(errManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+			Expect(findOrchestrator(errManager, "test-playlist-generator")).ToNot(BeNil())
 
 			// But no playlists created
 			errPlsRepo := errManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
@@ -111,7 +127,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			}, "test-playlist-generator"+PackageExtension)
 
 			// Should still have the orchestrator
-			Expect(notFoundManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+			Expect(findOrchestrator(notFoundManager, "test-playlist-generator")).ToNot(BeNil())
 
 			// No playlists should be created (all returned NotFound)
 			notFoundPlsRepo := notFoundManager.ds.(*tests.MockDataStore).MockedPlaylist.(*tests.MockPlaylistRepo)
@@ -120,7 +136,7 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			}, "500ms").Should(Equal(0))
 
 			// No refresh timers should be scheduled for NotFound playlists
-			orch := notFoundManager.playlistGenerators["test-playlist-generator"]
+			orch := findOrchestrator(notFoundManager, "test-playlist-generator")
 			Eventually(func() int32 {
 				return orch.refreshTimerCount.Load()
 			}).Should(Equal(int32(0)))
@@ -136,8 +152,8 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 				},
 			}, "test-playlist-generator"+PackageExtension)
 
-			Expect(retryManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
-			orch := retryManager.playlistGenerators["test-playlist-generator"]
+			orch := findOrchestrator(retryManager, "test-playlist-generator")
+			Expect(orch).ToNot(BeNil())
 
 			// retryInterval should be stored from the response
 			Eventually(func() time.Duration {
@@ -162,11 +178,12 @@ var _ = Describe("PlaylistGenerator", Ordered, func() {
 			stopManager, _ := createTestManagerWithPlugins(nil,
 				"test-playlist-generator"+PackageExtension,
 			)
-			Expect(stopManager.playlistGenerators).To(HaveKey("test-playlist-generator"))
+			Expect(findOrchestrator(stopManager, "test-playlist-generator")).ToNot(BeNil())
 
 			err := stopManager.Stop()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stopManager.playlistGenerators).To(BeEmpty())
+			// After Stop(), the plugin is unloaded so findOrchestrator returns nil
+			Expect(findOrchestrator(stopManager, "test-playlist-generator")).To(BeNil())
 		})
 	})
 })
