@@ -10,6 +10,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
+	_ "github.com/navidrome/navidrome/db/spellfix"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
