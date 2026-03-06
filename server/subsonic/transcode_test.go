@@ -28,7 +28,7 @@ var _ = Describe("Transcode endpoints", func() {
 		mockMFRepo = &tests.MockMediaFileRepo{}
 		ds = &tests.MockDataStore{MockedMediaFile: mockMFRepo}
 		mockTD = &mockTranscodeDecision{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
 		w = httptest.NewRecorder()
 	})
 
@@ -260,7 +260,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
 			mockTD.validateParams = &transcode.Params{MediaID: "song-1", DirectPlay: true}
 			mockTD.validateMF = &model.MediaFile{ID: "song-1"}
 
@@ -278,7 +278,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
 			mockTD.validateParams = &transcode.Params{
 				MediaID:          "song-2",
 				DirectPlay:       false,
