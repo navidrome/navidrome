@@ -63,7 +63,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-trixie AS base
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
