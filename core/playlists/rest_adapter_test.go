@@ -74,6 +74,9 @@ var _ = Describe("REST Adapter", func() {
 					UploadedImage:    "injected-image-path",
 					ExternalImageURL: "http://evil.example.com/ssrf",
 					EvaluatedAt:      &now,
+					PluginID:         "fake-plugin",
+					PluginPlaylistID: "fake-playlist-id",
+					ValidUntil:       &now,
 				}
 				_, err := repo.Save(pls)
 				Expect(err).ToNot(HaveOccurred())
@@ -90,6 +93,9 @@ var _ = Describe("REST Adapter", func() {
 				Expect(saved.UploadedImage).To(BeEmpty())
 				Expect(saved.ExternalImageURL).To(BeEmpty())
 				Expect(saved.EvaluatedAt).To(BeNil())
+				Expect(saved.PluginID).To(BeEmpty())
+				Expect(saved.PluginPlaylistID).To(BeEmpty())
+				Expect(saved.ValidUntil).To(BeNil())
 			})
 		})
 

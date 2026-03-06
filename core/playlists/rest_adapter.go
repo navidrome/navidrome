@@ -69,6 +69,9 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 	pls.UploadedImage = ""    // Managed by image upload endpoint
 	pls.ExternalImageURL = "" // Managed by M3U import / plugins only
 	pls.EvaluatedAt = nil     // Server-managed
+	pls.PluginID = ""         // Server-managed (plugin system)
+	pls.PluginPlaylistID = "" // Server-managed (plugin system)
+	pls.ValidUntil = nil      // Server-managed (plugin system)
 	err := s.ds.Playlist(ctx).Put(pls)
 	if err != nil {
 		return "", err
