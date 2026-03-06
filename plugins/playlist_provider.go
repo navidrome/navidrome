@@ -200,6 +200,10 @@ func (p *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID strin
 		PluginID:         p.pluginName,
 		PluginPlaylistID: info.ID,
 	}
+	if resp.ValidUntil > 0 {
+		t := time.Unix(resp.ValidUntil, 0)
+		pls.ValidUntil = &t
+	}
 
 	// Set tracks from matched media files
 	pls.AddMediaFiles(matched)

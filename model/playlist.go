@@ -32,8 +32,9 @@ type Playlist struct {
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
 
 	// Plugin playlist attributes
-	PluginID         string `structs:"plugin_id" json:"pluginId,omitempty"`
-	PluginPlaylistID string `structs:"plugin_playlist_id" json:"pluginPlaylistId,omitempty"`
+	PluginID         string     `structs:"plugin_id" json:"pluginId,omitempty"`
+	PluginPlaylistID string     `structs:"plugin_playlist_id" json:"pluginPlaylistId,omitempty"`
+	ValidUntil       *time.Time `structs:"valid_until" json:"validUntil,omitempty"`
 }
 
 func (pls Playlist) IsReadOnly() bool {
