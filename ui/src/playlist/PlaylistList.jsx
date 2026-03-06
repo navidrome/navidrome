@@ -181,7 +181,9 @@ const PlaylistList = (props) => {
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
       comment: <TextField source="comment" />,
-      sync: <ToggleAutoImport source="sync" sortByOrder={'DESC'} />,
+      sync: !isXsmall && (
+        <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
+      ),
     }),
     [isDesktop, isXsmall],
   )
