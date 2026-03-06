@@ -2,13 +2,8 @@ module github.com/navidrome/navidrome
 
 go 1.25.0
 
-replace (
-	// Fork to fix https://github.com/navidrome/navidrome/issues/3254
-	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
-
-	// Fork to implement raw tags support
-	go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260225021432-1699562530f1
-)
+// Fork to implement raw tags support
+replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260225021432-1699562530f1
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -19,7 +14,6 @@ require (
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
-	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20231127215153-442a07e326c4
