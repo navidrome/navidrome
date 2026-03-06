@@ -119,10 +119,8 @@ func (p *playlistSyncer) discoverAndSync() {
 		return
 	}
 
-	// Store retry interval from response
-	if resp.RetryInterval > 0 {
-		p.retryInterval.Store(int64(time.Duration(resp.RetryInterval) * time.Second))
-	}
+	// Store retry interval from response (including 0, which disables retries)
+	p.retryInterval.Store(int64(time.Duration(resp.RetryInterval) * time.Second))
 
 	resolvedUsers := map[string]string{} // username -> userID cache
 	for _, info := range resp.Playlists {
@@ -150,9 +148,12 @@ func (p *playlistSyncer) discoverAndSync() {
 		p.syncPlaylist(info, dbID, ownerID)
 	}
 
-	// Schedule re-discovery if RefreshInterval > 0
+	// Schedule re-discovery if RefreshInterval > 0, otherwise cancel any existing timer
 	if resp.RefreshInterval > 0 {
 		p.scheduleDiscovery(time.Duration(resp.RefreshInterval) * time.Second)
+	} else if p.discoveryTimer != nil {
+		p.discoveryTimer.Stop()
+		p.discoveryTimer = nil
 	}
 }
 
@@ -165,12 +166,7 @@ func (p *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID strin
 	if err != nil {
 		if isPlaylistNotFoundError(err) {
 			log.Info(ctx, "Playlist not found, skipping", "plugin", p.pluginName, "playlistID", info.ID)
-			// Stop any existing refresh timer for this playlist
-			if timer, ok := p.refreshTimers[dbID]; ok {
-				timer.Stop()
-				delete(p.refreshTimers, dbID)
-				p.refreshTimerCount.Store(int32(len(p.refreshTimers)))
-			}
+			p.cancelRefreshTimer(dbID)
 			return
 		}
 		log.Warn(ctx, "Failed to call GetPlaylist", "plugin", p.pluginName, "playlistID", info.ID, err)
@@ -218,7 +214,7 @@ func (p *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID strin
 	log.Info(ctx, "Synced plugin playlist", "plugin", p.pluginName, "playlistID", info.ID,
 		"name", resp.Name, "tracks", len(matched), "owner", ownerID)
 
-	// Schedule refresh if ValidUntil > 0
+	// Schedule refresh if ValidUntil > 0, otherwise cancel any stale timer
 	if resp.ValidUntil > 0 {
 		validUntil := time.Unix(resp.ValidUntil, 0)
 		delay := time.Until(validUntil)
@@ -226,6 +222,17 @@ func (p *playlistSyncer) syncPlaylist(info capabilities.PlaylistInfo, dbID strin
 			delay = 1 * time.Second // Already expired, refresh soon
 		}
 		p.schedulePlaylistRefresh(info, dbID, ownerID, delay)
+	} else {
+		p.cancelRefreshTimer(dbID)
+	}
+}
+
+// cancelRefreshTimer stops and removes the refresh timer for the given playlist DB ID, if any.
+func (p *playlistSyncer) cancelRefreshTimer(dbID string) {
+	if timer, ok := p.refreshTimers[dbID]; ok {
+		timer.Stop()
+		delete(p.refreshTimers, dbID)
+		p.refreshTimerCount.Store(int32(len(p.refreshTimers)))
 	}
 }
 

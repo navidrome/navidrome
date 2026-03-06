@@ -109,7 +109,7 @@ var _ = Describe("REST Adapter", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
 				pls := &model.Playlist{Name: "Changed Name", Comment: ""}
-				err := repo.Update("pls-plugin", pls)
+				err := repo.Update("pls-plugin", pls, "name", "comment")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
@@ -121,7 +121,7 @@ var _ = Describe("REST Adapter", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
 				pls := &model.Playlist{Name: "Plugin PL", Comment: "new comment"}
-				err := repo.Update("pls-plugin", pls)
+				err := repo.Update("pls-plugin", pls, "name", "comment")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
@@ -133,7 +133,7 @@ var _ = Describe("REST Adapter", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
 				pls := &model.Playlist{Name: "Plugin PL", Public: true}
-				err := repo.Update("pls-plugin", pls)
+				err := repo.Update("pls-plugin", pls, "public")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
