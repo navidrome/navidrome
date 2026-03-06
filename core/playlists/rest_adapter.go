@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -94,7 +95,16 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 		return rest.ErrPermissionDenied
 	}
 	// Plugin playlists allow public and ownership changes, but block name/comment
-	if current.IsPluginPlaylist() && (entity.Name != current.Name || entity.Comment != current.Comment) {
+	if current.IsPluginPlaylist() && slices.ContainsFunc(cols, func(c string) bool {
+		switch c {
+		case "name":
+			return entity.Name != current.Name
+		case "comment":
+			return entity.Comment != current.Comment
+		default:
+			return false
+		}
+	}) {
 		return rest.ErrPermissionDenied
 	}
 	// Apply ownership change (admin only)
