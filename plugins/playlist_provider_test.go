@@ -75,6 +75,7 @@ var _ = Describe("PlaylistProvider", Ordered, func() {
 			Expect(dailyMix1.PluginID).To(Equal("test-playlist-provider"))
 			Expect(dailyMix1.PluginPlaylistID).To(Equal("daily-mix-1"))
 			Expect(dailyMix1.Public).To(BeFalse())
+			Expect(dailyMix1.ValidUntil).To(BeNil())
 		})
 
 		It("generates deterministic playlist IDs", func() {

@@ -160,11 +160,21 @@ var _ = Describe("buildPlaylist", func() {
 			}
 		})
 
-		It("marks plugin playlist as readonly", func() {
+		It("marks plugin playlist as readonly with no ValidUntil when not set", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
 			result := router.buildPlaylist(ctx, playlist)
 			Expect(result.Readonly).To(BeTrue())
 			Expect(result.ValidUntil).To(BeNil())
+		})
+
+		It("exposes ValidUntil when set on the model", func() {
+			validUntil := time.Date(2023, 3, 1, 12, 0, 0, 0, time.UTC)
+			playlist.ValidUntil = &validUntil
+
+			ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
+			result := router.buildPlaylist(ctx, playlist)
+			Expect(result.Readonly).To(BeTrue())
+			Expect(result.ValidUntil).To(Equal(&validUntil))
 		})
 
 		It("marks plugin playlist as readonly even for non-owner", func() {
