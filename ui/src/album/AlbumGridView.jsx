@@ -13,7 +13,12 @@ import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
-import { AlbumContextMenu, PlayButton, ArtistLinkField } from '../common'
+import {
+  AlbumContextMenu,
+  PlayButton,
+  ArtistLinkField,
+  OverflowTooltip,
+} from '../common'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
@@ -198,7 +203,9 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         to={linkToRecord(basePath, record.id, 'show')}
       >
         <span>
-          <Typography className={classes.albumName}>{record.name}</Typography>
+          <OverflowTooltip title={record.name}>
+            <Typography className={classes.albumName}>{record.name}</Typography>
+          </OverflowTooltip>
           {record.tags && record.tags['albumversion'] && (
             <Typography className={classes.albumVersion}>
               {record.tags['albumversion']}
