@@ -247,7 +247,7 @@ func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 		p := req.Params(r)
 		playlistId, _ := p.String(":id")
 
-		if err := r.ParseMultipartForm(maxImageSize); err != nil {
+		if err := r.ParseMultipartForm(maxImageSize); err != nil { //nolint:gosec // size is limited by maxImageSize parameter
 			log.Error(ctx, "Error parsing multipart form", err)
 			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
 			return
