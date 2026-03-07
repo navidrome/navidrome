@@ -218,13 +218,19 @@
         "saveQueue": "Tallenna jono soittolistaan",
         "searchOrCreate": "Etsi soittolistoja tai kirjoita luodaksesi uuden...",
         "pressEnterToCreate": "Paina Enter luodaksesi uuden soittolistan",
-        "removeFromSelection": "Poista valinnasta"
+        "removeFromSelection": "Poista valinnasta",
+        "uploadCover": "",
+        "removeCover": ""
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
         "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?",
         "noPlaylistsFound": "Soittolistoja ei löytynyt",
-        "noPlaylists": "Soittolistoja ei ole saatavilla"
+        "noPlaylists": "Soittolistoja ei ole saatavilla",
+        "coverUploaded": "",
+        "coverRemoved": "",
+        "coverUploadError": "",
+        "coverRemoveError": ""
       }
     },
     "radio": {
@@ -353,7 +359,8 @@
         "allUsers": "Salli kaikki käyttäjät",
         "selectedUsers": "Valitut käyttäjät",
         "allLibraries": "Salli kaikki kirjastot",
-        "selectedLibraries": "Valitut kirjastot"
+        "selectedLibraries": "Valitut kirjastot",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Tila",
@@ -398,7 +405,8 @@
         "librariesRequired": "Tämä laajennus vaatii pääsyn kirjastotietoihin. Valitse, mihin kirjastoihin laajennus voi käyttää, tai ota käyttöön 'Salli kaikki kirjastot'.",
         "requiredHosts": "Vaaditut palvelimet",
         "configValidationError": "Määrityksen validointi epäonnistui:",
-        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen."
+        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "avain",
@@ -674,7 +682,8 @@
       "exportSuccess": "Määritykset viety leikepöydälle TOML-muodossa",
       "exportFailed": "Määritysten kopiointi epäonnistui",
       "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
-      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
+      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa",
+      "downloadToml": "Lataa määritykset (TOML)"
     }
   },
   "activity": {

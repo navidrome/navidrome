@@ -218,13 +218,19 @@
         "saveQueue": "Salvar a Cola como Lista de reprodución",
         "searchOrCreate": "Buscar listas ou escribe para crear nova…",
         "pressEnterToCreate": "Preme Enter para crear nova lista",
-        "removeFromSelection": "Retirar da selección"
+        "removeFromSelection": "Retirar da selección",
+        "uploadCover": "",
+        "removeCover": ""
       },
       "message": {
         "duplicate_song": "Engadir cancións duplicadas",
         "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?",
         "noPlaylistsFound": "Sen listas de reprodución",
-        "noPlaylists": "Sen listas dispoñibles"
+        "noPlaylists": "Sen listas dispoñibles",
+        "coverUploaded": "",
+        "coverRemoved": "",
+        "coverUploadError": "",
+        "coverRemoveError": ""
       }
     },
     "radio": {
@@ -353,7 +359,8 @@
         "allUsers": "Para todas as usuarias",
         "selectedUsers": "Usuarias seleccionadas",
         "allLibraries": "Permitir todas as bibliotecas",
-        "selectedLibraries": "Selecciona bibliotecas"
+        "selectedLibraries": "Selecciona bibliotecas",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Estado",
@@ -398,7 +405,8 @@
         "librariesRequired": "O complemento precisa acceso á información sobre a biblioteca. Selecciona as bibliotecas ás que pode acceder, ou activa 'Todas as bibliotecas'.",
         "requiredHosts": "Servidores requeridos",
         "configValidationError": "Fallou a comprobación da configuración:",
-        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido."
+        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clave",
@@ -674,7 +682,8 @@
       "exportSuccess": "Configuración exportada ao portapapeis no formato TOML",
       "exportFailed": "Fallou a copia da configuración",
       "devFlagsHeader": "Configuracións de Desenvolvemento (suxeitas a cambio/retirada)",
-      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións"
+      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións",
+      "downloadToml": "Descargar configuración (TOML)"
     }
   },
   "activity": {
