@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -68,6 +69,9 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 	pls.UploadedImage = ""    // Managed by image upload endpoint
 	pls.ExternalImageURL = "" // Managed by M3U import / plugins only
 	pls.EvaluatedAt = nil     // Server-managed
+	pls.PluginID = ""         // Server-managed (plugin system)
+	pls.PluginPlaylistID = "" // Server-managed (plugin system)
+	pls.ValidUntil = nil      // Server-managed (plugin system)
 	err := s.ds.Playlist(ctx).Put(pls)
 	if err != nil {
 		return "", err
@@ -91,6 +95,19 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 	}
 	usr, _ := request.UserFrom(ctx)
 	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
+		return rest.ErrPermissionDenied
+	}
+	// Plugin playlists allow public and ownership changes, but block name/comment
+	if current.IsPluginPlaylist() && slices.ContainsFunc(cols, func(c string) bool {
+		switch c {
+		case "name":
+			return entity.Name != current.Name
+		case "comment":
+			return entity.Comment != current.Comment
+		default:
+			return false
+		}
+	}) {
 		return rest.ErrPermissionDenied
 	}
 	// Apply ownership change (admin only)

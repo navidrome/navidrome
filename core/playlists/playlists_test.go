@@ -79,6 +79,8 @@ var _ = Describe("Playlists", func() {
 				"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-plugin": {ID: "pls-plugin", Name: "Plugin Playlist", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix"},
 			}
 			ps = playlists.NewPlaylists(ds)
 		})
@@ -124,6 +126,12 @@ var _ = Describe("Playlists", func() {
 			_, err := ps.Create(ctx, "pls-smart", "", []string{"song-1"})
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
+
+		It("denies replacing tracks on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "pls-plugin", "", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
 	})
 
 	Describe("Update", func() {
@@ -136,6 +144,8 @@ var _ = Describe("Playlists", func() {
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-plugin": {ID: "pls-plugin", Name: "Plugin Playlist", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
@@ -181,10 +191,43 @@ var _ = Describe("Playlists", func() {
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
+		It("denies adding tracks to a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-plugin", nil, nil, nil, []string{"song-1"}, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies removing tracks from a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-plugin", nil, nil, nil, nil, []int{0})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
 		It("allows metadata updates on a smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			newName := "Updated Smart"
 			err := ps.Update(ctx, "pls-smart", &newName, nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("denies name update on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newName := "New Name"
+			err := ps.Update(ctx, "pls-plugin", &newName, nil, nil, nil, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies comment update on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			newComment := "New Comment"
+			err := ps.Update(ctx, "pls-plugin", nil, &newComment, nil, nil, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("allows public toggle on a plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			public := true
+			err := ps.Update(ctx, "pls-plugin", nil, nil, &public, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -198,6 +241,8 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-plugin": {ID: "pls-plugin", Name: "Plugin Playlist", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
@@ -231,6 +276,12 @@ var _ = Describe("Playlists", func() {
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
+		It("denies editing plugin playlists", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.AddTracks(ctx, "pls-plugin", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "nonexistent", []string{"song-1"})
@@ -247,6 +298,8 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-plugin": {ID: "pls-plugin", Name: "Plugin Playlist", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
@@ -262,6 +315,12 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveTracks(ctx, "pls-smart", []string{"track-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies on plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.RemoveTracks(ctx, "pls-plugin", []string{"track-1"})
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
@@ -281,6 +340,8 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-plugin": {ID: "pls-plugin", Name: "Plugin Playlist", OwnerID: "user-1",
+					PluginID: "test-plugin", PluginPlaylistID: "daily-mix"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds)
@@ -296,6 +357,12 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.ReorderTrack(ctx, "pls-smart", 1, 3)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies on plugin playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.ReorderTrack(ctx, "pls-plugin", 1, 3)
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 	})

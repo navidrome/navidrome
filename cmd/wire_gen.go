@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -69,9 +70,10 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	provider := external.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
@@ -90,9 +92,10 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	provider := external.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
@@ -116,9 +119,10 @@ func CreatePublicRouter() *public.Router {
 	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	provider := external.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
@@ -163,9 +167,10 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	provider := external.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore)
@@ -180,9 +185,10 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	provider := external.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore)
@@ -203,7 +209,8 @@ func getPluginManager() *plugins.Manager {
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	matcherMatcher := matcher.New(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics, matcherMatcher)
 	return manager
 }
 

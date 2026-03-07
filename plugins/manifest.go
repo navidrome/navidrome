@@ -65,6 +65,13 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 		}
 	}
 
+	// PlaylistProvider capability requires users permission
+	if hasCapability(capabilities, CapabilityPlaylistProvider) {
+		if m.Permissions == nil || m.Permissions.Users == nil {
+			return fmt.Errorf("playlist provider capability requires 'users' permission to be declared in manifest")
+		}
+	}
+
 	// Scheduler permission requires SchedulerCallback capability
 	if m.Permissions != nil && m.Permissions.Scheduler != nil {
 		if !hasCapability(capabilities, CapabilityScheduler) {

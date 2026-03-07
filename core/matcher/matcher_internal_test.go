@@ -1,4 +1,4 @@
-package external
+package matcher
 
 import (
 	. "github.com/onsi/ginkgo/v2"
