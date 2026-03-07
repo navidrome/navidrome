@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,8 +55,9 @@ func New() FFmpeg {
 }
 
 const (
-	extractImageCmd = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
-	probeCmd        = "ffmpeg %s -f ffmetadata"
+	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
+	probeCmd            = "ffmpeg %s -f ffmetadata"
+	probeAudioStreamCmd = "ffprobe -v quiet -select_streams a:0 -print_format json -show_streams %s"
 )
 
 type ffmpeg struct{}
@@ -110,15 +112,13 @@ func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
 }
 
 func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error) {
-	cmdPath, err := ffmpegCmd()
-	if err != nil {
+	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
 	if err := fileExists(filePath); err != nil {
 		return nil, err
 	}
-	probePath := strings.Replace(cmdPath, "ffmpeg", "ffprobe", 1)
-	args := []string{probePath, "-v", "quiet", "-print_format", "json", "-show_streams", filePath}
+	args := createFFmpegCommand(probeAudioStreamCmd, filePath, 0, 0)
 	log.Trace(ctx, "Executing ffprobe command", "args", args)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, err := cmd.Output()
@@ -433,8 +433,18 @@ func fixCmd(cmd string) []string {
 		if s == "ffmpeg" || s == "ffmpeg.exe" {
 			split[i] = cmdPath
 		}
+		if s == "ffprobe" || s == "ffprobe.exe" {
+			split[i] = ffprobePath(cmdPath)
+		}
 	}
 	return split
+}
+
+// ffprobePath derives the ffprobe binary path from the resolved ffmpeg path.
+func ffprobePath(ffmpegCmd string) string {
+	dir := filepath.Dir(ffmpegCmd)
+	base := filepath.Base(ffmpegCmd)
+	return filepath.Join(dir, strings.Replace(base, "ffmpeg", "ffprobe", 1))
 }
 
 func ffmpegCmd() (string, error) {
