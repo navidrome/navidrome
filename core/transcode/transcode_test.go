@@ -896,21 +896,18 @@ var _ = Describe("Decider", func() {
 			}
 
 			svc := NewDecider(ds, ff).(*deciderService)
-			err := svc.ensureProbed(ctx, mf)
+			probe, err := svc.ensureProbed(ctx, mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.ProbeData).ToNot(BeEmpty())
+			Expect(probe).ToNot(BeNil())
+			Expect(probe.Codec).To(Equal("mp3"))
+			Expect(probe.BitRate).To(Equal(320))
+			Expect(probe.SampleRate).To(Equal(44100))
+			Expect(probe.Channels).To(Equal(2))
 
 			// Verify persisted to DB
 			stored := mockMFRepo.Data["probe-1"]
 			Expect(stored.ProbeData).To(Equal(mf.ProbeData))
-
-			// Verify correct JSON content
-			var result ffmpeg.AudioProbeResult
-			Expect(json.Unmarshal([]byte(mf.ProbeData), &result)).To(Succeed())
-			Expect(result.Codec).To(Equal("mp3"))
-			Expect(result.BitRate).To(Equal(320))
-			Expect(result.SampleRate).To(Equal(44100))
-			Expect(result.Channels).To(Equal(2))
 		})
 
 		It("skips ffprobe when ProbeData is already set", func() {
@@ -920,8 +917,9 @@ var _ = Describe("Decider", func() {
 			ff.Error = fmt.Errorf("should not be called")
 
 			svc := NewDecider(ds, ff).(*deciderService)
-			err := svc.ensureProbed(ctx, mf)
+			probe, err := svc.ensureProbed(ctx, mf)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(probe).To(BeNil())
 		})
 
 		It("returns error when ffprobe fails", func() {
@@ -929,7 +927,7 @@ var _ = Describe("Decider", func() {
 			ff.Error = fmt.Errorf("ffprobe not found")
 
 			svc := NewDecider(ds, ff).(*deciderService)
-			err := svc.ensureProbed(ctx, mf)
+			_, err := svc.ensureProbed(ctx, mf)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("probing media file"))
 			Expect(mf.ProbeData).To(BeEmpty())
@@ -944,8 +942,9 @@ var _ = Describe("Decider", func() {
 			ff.ProbeAudioResult = &ffmpeg.AudioProbeResult{Codec: "mp3"}
 
 			svc := NewDecider(ds, ff).(*deciderService)
-			err := svc.ensureProbed(ctx, mf)
+			probe, err := svc.ensureProbed(ctx, mf)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(probe).To(BeNil())
 			Expect(mf.ProbeData).To(BeEmpty())
 		})
 	})

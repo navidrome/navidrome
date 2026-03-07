@@ -187,14 +187,9 @@ func paramsFromToken(token jwt.Token) (*Params, error) {
 		p.DirectPlay = dp
 	}
 
-	var ua int64
-	if err := token.Get("ua", &ua); err == nil {
-		p.SourceUpdatedAt = time.Unix(ua, 0)
-	} else {
-		var uaf float64
-		if err := token.Get("ua", &uaf); err == nil {
-			p.SourceUpdatedAt = time.Unix(int64(uaf), 0)
-		}
+	ua := getIntClaim(token, "ua")
+	if ua != 0 {
+		p.SourceUpdatedAt = time.Unix(int64(ua), 0)
 	}
 	if p.SourceUpdatedAt.IsZero() {
 		return nil, fmt.Errorf("%w: missing source timestamp", ErrTokenInvalid)
@@ -204,29 +199,27 @@ func paramsFromToken(token jwt.Token) (*Params, error) {
 	if err := token.Get("f", &f); err == nil {
 		p.TargetFormat = f
 	}
-	if err := token.Get("b", &p.TargetBitrate); err != nil {
-		var bf float64
-		if err := token.Get("b", &bf); err == nil {
-			p.TargetBitrate = int(bf)
-		}
-	}
-	if err := token.Get("ch", &p.TargetChannels); err != nil {
-		var chf float64
-		if err := token.Get("ch", &chf); err == nil {
-			p.TargetChannels = int(chf)
-		}
-	}
-	if err := token.Get("sr", &p.TargetSampleRate); err != nil {
-		var srf float64
-		if err := token.Get("sr", &srf); err == nil {
-			p.TargetSampleRate = int(srf)
-		}
-	}
-	if err := token.Get("bd", &p.TargetBitDepth); err != nil {
-		var bdf float64
-		if err := token.Get("bd", &bdf); err == nil {
-			p.TargetBitDepth = int(bdf)
-		}
-	}
+	p.TargetBitrate = getIntClaim(token, "b")
+	p.TargetChannels = getIntClaim(token, "ch")
+	p.TargetSampleRate = getIntClaim(token, "sr")
+	p.TargetBitDepth = getIntClaim(token, "bd")
 	return &p, nil
+}
+
+// getIntClaim extracts an int claim from a JWT token, handling the case where
+// the value may be stored as int64 or float64 (common in JSON-based JWT libraries).
+func getIntClaim(token jwt.Token, key string) int {
+	var v int
+	if err := token.Get(key, &v); err == nil {
+		return v
+	}
+	var v64 int64
+	if err := token.Get(key, &v64); err == nil {
+		return int(v64)
+	}
+	var f float64
+	if err := token.Get(key, &f); err == nil {
+		return int(f)
+	}
+	return 0
 }

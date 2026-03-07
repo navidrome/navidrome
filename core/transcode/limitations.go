@@ -136,39 +136,7 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 }
 
 func checkIntLimitation(value int, comparison string, values []string) bool {
-	if len(values) == 0 {
-		return true
-	}
-
-	switch comparison {
-	case ComparisonLessThanEqual:
-		limit, ok := parseInt(values[0])
-		if !ok {
-			return true
-		}
-		return value <= limit
-	case ComparisonGreaterThanEqual:
-		limit, ok := parseInt(values[0])
-		if !ok {
-			return true
-		}
-		return value >= limit
-	case ComparisonEquals:
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && value == limit {
-				return true
-			}
-		}
-		return false
-	case ComparisonNotEquals:
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && value == limit {
-				return false
-			}
-		}
-		return true
-	}
-	return true
+	return applyIntLimitation(comparison, values, value, func(int) {}) == adjustNone
 }
 
 // checkStringLimitation checks a string value against a limitation.

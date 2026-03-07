@@ -166,6 +166,15 @@ func (r *clientInfoRequest) validate() error {
 	return nil
 }
 
+// Only support songs for now
+var validMediaTypes = []string{
+	"song",
+}
+
+func isValidMediaType(mediaType string) bool {
+	return slices.Contains(validMediaTypes, mediaType)
+}
+
 var validProtocols = []string{
 	transcode.ProtocolHTTP,
 	transcode.ProtocolHLS,
@@ -206,6 +215,20 @@ func isValidComparison(c string) bool {
 	return slices.Contains(validComparisons, c)
 }
 
+// toResponseStreamDetails converts a core StreamDetails to the API response type.
+func toResponseStreamDetails(sd *transcode.StreamDetails) *responses.StreamDetails {
+	return &responses.StreamDetails{
+		Protocol:        transcode.ProtocolHTTP,
+		Container:       sd.Container,
+		Codec:           sd.Codec,
+		AudioBitrate:    int32(kbpsToBps(sd.Bitrate)),
+		AudioProfile:    sd.Profile,
+		AudioSamplerate: int32(sd.SampleRate),
+		AudioBitdepth:   int32(sd.BitDepth),
+		AudioChannels:   int32(sd.Channels),
+	}
+}
+
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
 // It receives client capabilities and returns a decision on whether to direct play or transcode.
 func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -228,8 +251,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return nil, newError(responses.ErrorMissingParameter, "missing required parameter: mediaType")
 	}
 
-	// Only support songs for now
-	if mediaType != "song" {
+	if !isValidMediaType(mediaType) {
 		return nil, newError(responses.ErrorGeneric, "mediaType '%s' is not yet supported", mediaType)
 	}
 
@@ -276,29 +298,11 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		TranscodeReasons: decision.TranscodeReasons,
 		ErrorReason:      decision.ErrorReason,
 		TranscodeParams:  transcodeParams,
-		SourceStream: &responses.StreamDetails{
-			Protocol:        "http",
-			Container:       decision.SourceStream.Container,
-			Codec:           decision.SourceStream.Codec,
-			AudioBitrate:    int32(kbpsToBps(decision.SourceStream.Bitrate)),
-			AudioProfile:    decision.SourceStream.Profile,
-			AudioSamplerate: int32(decision.SourceStream.SampleRate),
-			AudioBitdepth:   int32(decision.SourceStream.BitDepth),
-			AudioChannels:   int32(decision.SourceStream.Channels),
-		},
+		SourceStream:     toResponseStreamDetails(&decision.SourceStream),
 	}
 
 	if decision.TranscodeStream != nil {
-		response.TranscodeDecision.TranscodeStream = &responses.StreamDetails{
-			Protocol:        "http",
-			Container:       decision.TranscodeStream.Container,
-			Codec:           decision.TranscodeStream.Codec,
-			AudioBitrate:    int32(kbpsToBps(decision.TranscodeStream.Bitrate)),
-			AudioProfile:    decision.TranscodeStream.Profile,
-			AudioSamplerate: int32(decision.TranscodeStream.SampleRate),
-			AudioBitdepth:   int32(decision.TranscodeStream.BitDepth),
-			AudioChannels:   int32(decision.TranscodeStream.Channels),
-		}
+		response.TranscodeDecision.TranscodeStream = toResponseStreamDetails(decision.TranscodeStream)
 	}
 
 	return response, nil
@@ -329,8 +333,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
-	// Only support songs for now
-	if mediaType != "song" {
+	if !isValidMediaType(mediaType) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return nil, nil
 	}

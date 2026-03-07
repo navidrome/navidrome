@@ -39,12 +39,13 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 		SourceUpdatedAt: mf.UpdatedAt,
 	}
 
-	if err := s.ensureProbed(ctx, mf); err != nil {
+	probe, err := s.ensureProbed(ctx, mf)
+	if err != nil {
 		return nil, err
 	}
 
 	// Build source stream details (uses probe data if available)
-	decision.SourceStream = buildSourceStream(mf)
+	decision.SourceStream = buildSourceStream(mf, probe)
 	src := &decision.SourceStream
 
 	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
@@ -106,15 +107,20 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	return decision, nil
 }
 
-func buildSourceStream(mf *model.MediaFile) StreamDetails {
+func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) StreamDetails {
 	sd := StreamDetails{
 		Container: mf.Suffix,
 		Duration:  mf.Duration,
 		Size:      mf.Size,
 	}
 
+	// Use pre-parsed probe result, or fall back to parsing stored probe data
+	if probe == nil {
+		probe, _ = parseProbeData(mf.ProbeData)
+	}
+
 	// Use probe data if available for authoritative values
-	if probe, err := parseProbeData(mf.ProbeData); err == nil && probe != nil {
+	if probe != nil {
 		sd.Codec = normalizeProbeCodec(probe.Codec)
 		sd.Profile = probe.Profile
 		sd.Bitrate = probe.BitRate
@@ -327,22 +333,25 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 	return true
 }
 
-func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) error {
+// ensureProbed runs ffprobe if probe data is missing, persists it, and returns
+// the parsed result. Returns (nil, nil) when probing is skipped or data already exists
+// (in which case the caller should parse mf.ProbeData).
+func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) (*ffmpeg.AudioProbeResult, error) {
 	if mf.ProbeData != "" {
-		return nil
+		return nil, nil
 	}
 	if !conf.Server.DevEnableMediaFileProbe {
-		return nil
+		return nil, nil
 	}
 
 	result, err := s.ff.ProbeAudioStream(ctx, mf.AbsolutePath())
 	if err != nil {
-		return fmt.Errorf("probing media file %s: %w", mf.ID, err)
+		return nil, fmt.Errorf("probing media file %s: %w", mf.ID, err)
 	}
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return fmt.Errorf("marshaling probe result for %s: %w", mf.ID, err)
+		return nil, fmt.Errorf("marshaling probe result for %s: %w", mf.ID, err)
 	}
 	mf.ProbeData = string(data)
 
@@ -354,7 +363,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	log.Debug(ctx, "Probed media file", "mediaID", mf.ID, "codec", result.Codec,
 		"profile", result.Profile, "bitRate", result.BitRate,
 		"sampleRate", result.SampleRate, "bitDepth", result.BitDepth, "channels", result.Channels)
-	return nil
+	return result, nil
 }
 
 func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
