@@ -11,14 +11,24 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+type Cue struct {
+	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
+	Value string `structs:"value"           json:"value"`
+	Role  string `structs:"role,omitempty"  json:"role,omitempty"`
+}
+
 type Line struct {
 	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
 	Value string `structs:"value"           json:"value"`
+	Cue   []Cue  `structs:"cue,omitempty"   json:"cue,omitempty"`
 }
 
 type Lyrics struct {
 	DisplayArtist string `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
 	DisplayTitle  string `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string `structs:"kind,omitempty"          json:"kind,omitempty"`
 	Lang          string `structs:"lang"                    json:"lang"`
 	Line          []Line `structs:"line"                    json:"line"`
 	Offset        *int64 `structs:"offset,omitempty"        json:"offset,omitempty"`
@@ -33,6 +43,10 @@ var (
 	syncRegex  = regexp.MustCompile(`(^|\n)\s*` + timeRegexString)
 	timeRegex  = regexp.MustCompile(timeRegexString)
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset|lang):([^]]+)]`)
+
+	// Enhanced LRC: inline word-level timing markers like <00:12.34>
+	enhancedLRCTimeString = `<([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(.[0-9]{1,3})?>`
+	enhancedLRCRegex      = regexp.MustCompile(enhancedLRCTimeString)
 )
 
 func (l Lyrics) IsEmpty() bool {
@@ -106,9 +120,15 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 			if validLine {
 				for idx := range timestamps {
+					cues := parseEnhancedCues(priorLine)
+					value := priorLine
+					if cues != nil {
+						value = stripEnhancedMarkers(value)
+					}
 					structuredLines = append(structuredLines, Line{
 						Start: &timestamps[idx],
-						Value: strings.TrimSpace(priorLine),
+						Value: strings.TrimSpace(value),
+						Cue:   cues,
 					})
 				}
 				timestamps = nil
@@ -154,9 +174,15 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 	if validLine {
 		for idx := range timestamps {
+			cues := parseEnhancedCues(priorLine)
+			value := priorLine
+			if cues != nil {
+				value = stripEnhancedMarkers(value)
+			}
 			structuredLines = append(structuredLines, Line{
 				Start: &timestamps[idx],
-				Value: strings.TrimSpace(priorLine),
+				Value: strings.TrimSpace(value),
+				Cue:   cues,
 			})
 		}
 	}
@@ -178,6 +204,91 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 		Synced:        synced,
 	}
 	return &lyrics, nil
+}
+
+// parseEnhancedCues extracts word-level timing cues from Enhanced LRC inline markers.
+// Format: <mm:ss.mm>word <mm:ss.mm>word ...
+// Returns nil if no inline markers are found.
+func parseEnhancedCues(text string) []Cue {
+	matches := enhancedLRCRegex.FindAllStringSubmatchIndex(text, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	type segment struct {
+		start int64
+		text  string
+	}
+
+	segments := make([]segment, 0, len(matches))
+	for i, match := range matches {
+		timeMs, err := parseTime(
+			// Rewrite <...> as [...] so parseTime can handle it with the same logic
+			"["+text[match[0]+1:match[1]-1]+"]",
+			// Adjust match indices to point into our rewritten string (need start/end pairs for each group)
+			[]int{
+				0, match[1] - match[0],
+				adjustGroup(match, 2), adjustGroup(match, 3),
+				adjustGroup(match, 4), adjustGroup(match, 5),
+				adjustGroup(match, 6), adjustGroup(match, 7),
+				adjustGroup(match, 8), adjustGroup(match, 9),
+			},
+		)
+		if err != nil {
+			continue
+		}
+
+		// Text runs from after this marker to the start of the next marker (or end of string)
+		textStart := match[1]
+		var textEnd int
+		if i+1 < len(matches) {
+			textEnd = matches[i+1][0]
+		} else {
+			textEnd = len(text)
+		}
+
+		word := text[textStart:textEnd]
+		if word == "" {
+			continue
+		}
+		segments = append(segments, segment{start: timeMs, text: word})
+	}
+
+	if len(segments) == 0 {
+		return nil
+	}
+
+	cues := make([]Cue, len(segments))
+	for i, seg := range segments {
+		start := seg.start
+		cues[i] = Cue{
+			Start: &start,
+			Value: seg.text,
+		}
+		// Derive End from the next cue's Start
+		if i+1 < len(segments) {
+			end := segments[i+1].start
+			cues[i].End = &end
+		}
+	}
+	return cues
+}
+
+// adjustGroup remaps a capture group index from the original match to our rewritten "[...]" string.
+// The rewrite shifts by -1 (removed '<', added '[') so positions within the brackets stay the same.
+func adjustGroup(match []int, groupIdx int) int {
+	orig := match[groupIdx]
+	if orig == -1 {
+		return -1
+	}
+	// Offset is: original position minus the position of '<' in the original, plus 1 for '['
+	return orig - match[0]
+}
+
+// stripEnhancedMarkers removes all <mm:ss.mm> inline markers from text,
+// returning the plain lyric text.
+func stripEnhancedMarkers(text string) string {
+	return enhancedLRCRegex.ReplaceAllString(text, "")
 }
 
 func parseTime(line string, match []int) (int64, error) {
