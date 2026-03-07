@@ -120,6 +120,19 @@ func createNewSecret(ctx context.Context, ds model.DataStore) string {
 	return secret
 }
 
+// EncodeToken creates a signed JWT from an arbitrary claims map.
+// It sets the issuer claim automatically.
+func EncodeToken(claims map[string]any) (string, error) {
+	claims[jwt.IssuerKey] = consts.JWTIssuer
+	_, token, err := TokenAuth.Encode(claims)
+	return token, err
+}
+
+// DecodeAndVerifyToken verifies a JWT string and returns the parsed token.
+func DecodeAndVerifyToken(tokenStr string) (jwt.Token, error) {
+	return jwtauth.VerifyToken(TokenAuth, tokenStr)
+}
+
 func getEncKey() []byte {
 	key := cmp.Or(
 		conf.Server.PasswordEncryptionKey,

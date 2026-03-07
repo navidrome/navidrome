@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
@@ -40,7 +41,7 @@ var _ = Describe("Decider", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{
 			MockedProperty:    &tests.MockedPropertyRepo{},
 			MockedTranscoding: &tests.MockTranscodingRepo{},
@@ -1193,6 +1194,115 @@ var _ = Describe("Decider", func() {
 			Expect(normalizeProbeCodec("MP3")).To(Equal("mp3"))
 			Expect(normalizeProbeCodec("AAC")).To(Equal("aac"))
 			Expect(normalizeProbeCodec("DSD_LSBF_PLANAR")).To(Equal("dsd"))
+		})
+	})
+
+	Describe("Decision.toClaimsMap", func() {
+		It("includes required fields and omits zero transcode fields for direct play", func() {
+			d := &Decision{
+				MediaID:         "song-1",
+				CanDirectPlay:   true,
+				SourceUpdatedAt: time.Unix(1700000000, 0),
+			}
+			m := d.toClaimsMap()
+			Expect(m).To(HaveKeyWithValue("mid", "song-1"))
+			Expect(m).To(HaveKeyWithValue("dp", true))
+			Expect(m).To(HaveKeyWithValue("ua", int64(1700000000)))
+			Expect(m).NotTo(HaveKey("f"))
+			Expect(m).NotTo(HaveKey("b"))
+			Expect(m).NotTo(HaveKey("ch"))
+			Expect(m).NotTo(HaveKey("sr"))
+			Expect(m).NotTo(HaveKey("bd"))
+		})
+
+		It("includes transcode fields when CanTranscode is true", func() {
+			d := &Decision{
+				MediaID:          "song-2",
+				CanTranscode:     true,
+				TargetFormat:     "opus",
+				TargetBitrate:    128,
+				TargetChannels:   2,
+				TargetSampleRate: 48000,
+				TargetBitDepth:   16,
+				SourceUpdatedAt:  time.Unix(1700000000, 0),
+			}
+			m := d.toClaimsMap()
+			Expect(m).To(HaveKeyWithValue("mid", "song-2"))
+			Expect(m).NotTo(HaveKey("dp"))
+			Expect(m).To(HaveKeyWithValue("f", "opus"))
+			Expect(m).To(HaveKeyWithValue("b", 128))
+			Expect(m).To(HaveKeyWithValue("ch", 2))
+			Expect(m).To(HaveKeyWithValue("sr", 48000))
+			Expect(m).To(HaveKeyWithValue("bd", 16))
+		})
+	})
+
+	Describe("paramsFromToken", func() {
+		It("round-trips all fields through encode/decode", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			d := &Decision{
+				MediaID:          "song-3",
+				CanTranscode:     true,
+				TargetFormat:     "mp3",
+				TargetBitrate:    320,
+				TargetChannels:   2,
+				TargetSampleRate: 44100,
+				TargetBitDepth:   16,
+				SourceUpdatedAt:  time.Unix(1700000000, 0),
+			}
+			token, _, err := tokenAuth.Encode(d.toClaimsMap())
+			Expect(err).NotTo(HaveOccurred())
+
+			p, err := paramsFromToken(token)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(p.MediaID).To(Equal("song-3"))
+			Expect(p.DirectPlay).To(BeFalse())
+			Expect(p.TargetFormat).To(Equal("mp3"))
+			Expect(p.TargetBitrate).To(Equal(320))
+			Expect(p.TargetChannels).To(Equal(2))
+			Expect(p.TargetSampleRate).To(Equal(44100))
+			Expect(p.TargetBitDepth).To(Equal(16))
+			Expect(p.SourceUpdatedAt).To(Equal(time.Unix(1700000000, 0)))
+		})
+
+		It("round-trips direct-play-only claims", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			d := &Decision{
+				MediaID:         "song-4",
+				CanDirectPlay:   true,
+				SourceUpdatedAt: time.Unix(1700000000, 0),
+			}
+			token, _, err := tokenAuth.Encode(d.toClaimsMap())
+			Expect(err).NotTo(HaveOccurred())
+
+			p, err := paramsFromToken(token)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(p.MediaID).To(Equal("song-4"))
+			Expect(p.DirectPlay).To(BeTrue())
+			Expect(p.TargetFormat).To(BeEmpty())
+			Expect(p.TargetBitrate).To(BeZero())
+			Expect(p.TargetChannels).To(BeZero())
+			Expect(p.TargetSampleRate).To(BeZero())
+			Expect(p.TargetBitDepth).To(BeZero())
+			Expect(p.SourceUpdatedAt).To(Equal(time.Unix(1700000000, 0)))
+		})
+
+		It("returns error when media ID is missing", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			token, _, err := tokenAuth.Encode(map[string]any{"ua": int64(1700000000)})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = paramsFromToken(token)
+			Expect(err).To(MatchError(ContainSubstring("missing media ID")))
+		})
+
+		It("returns error when source timestamp is missing", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			token, _, err := tokenAuth.Encode(map[string]any{"mid": "song-5"})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = paramsFromToken(token)
+			Expect(err).To(MatchError(ContainSubstring("missing source timestamp")))
 		})
 	})
 })

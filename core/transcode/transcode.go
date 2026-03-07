@@ -358,55 +358,15 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 }
 
 func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
-	exp := time.Now().Add(tokenTTL)
-	claims := auth.Claims{
-		MediaID:    decision.MediaID,
-		DirectPlay: decision.CanDirectPlay,
-		UpdatedAt:  decision.SourceUpdatedAt.Truncate(time.Second).Unix(),
-	}
-	if decision.CanTranscode && decision.TargetFormat != "" {
-		claims.Format = decision.TargetFormat
-		claims.BitRate = decision.TargetBitrate
-		if decision.TargetChannels > 0 {
-			claims.Channels = decision.TargetChannels
-		}
-		if decision.TargetSampleRate > 0 {
-			claims.SampleRate = decision.TargetSampleRate
-		}
-		if decision.TargetBitDepth > 0 {
-			claims.BitDepth = decision.TargetBitDepth
-		}
-	}
-	return auth.CreateExpiringPublicToken(exp, claims)
+	return auth.EncodeToken(decision.toClaimsMap())
 }
 
-func (s *deciderService) ParseTranscodeParams(token string) (*Params, error) {
-	claims, err := auth.Validate(token)
+func (s *deciderService) ParseTranscodeParams(tokenStr string) (*Params, error) {
+	token, err := auth.DecodeAndVerifyToken(tokenStr)
 	if err != nil {
 		return nil, err
 	}
-
-	// Required claims
-	if claims.MediaID == "" {
-		return nil, fmt.Errorf("%w: invalid transcode token: missing media ID", ErrTokenInvalid)
-	}
-
-	if claims.UpdatedAt == 0 {
-		return nil, fmt.Errorf("%w: invalid transcode token: missing source timestamp", ErrTokenInvalid)
-	}
-
-	params := &Params{
-		MediaID:          claims.MediaID,
-		DirectPlay:       claims.DirectPlay,
-		TargetFormat:     claims.Format,
-		TargetBitrate:    claims.BitRate,
-		TargetChannels:   claims.Channels,
-		TargetSampleRate: claims.SampleRate,
-		TargetBitDepth:   claims.BitDepth,
-		SourceUpdatedAt:  time.Unix(claims.UpdatedAt, 0),
-	}
-
-	return params, nil
+	return paramsFromToken(token)
 }
 
 func (s *deciderService) ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error) {
