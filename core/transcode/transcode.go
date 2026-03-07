@@ -9,6 +9,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
@@ -328,6 +329,9 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 
 func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) error {
 	if mf.ProbeData != "" {
+		return nil
+	}
+	if !conf.Server.DevEnableMediaFileProbe {
 		return nil
 	}
 
