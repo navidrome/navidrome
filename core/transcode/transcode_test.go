@@ -3,8 +3,11 @@ package transcode
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
@@ -872,6 +875,77 @@ var _ = Describe("Decider", func() {
 				Expect(decision.SourceStream.BitDepth).To(Equal(24))
 				Expect(decision.SourceStream.Channels).To(Equal(2))
 			})
+		})
+	})
+
+	Describe("ensureProbed", func() {
+		var mockMFRepo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			mockMFRepo = tests.CreateMockMediaFileRepo()
+			ds.MockedMediaFile = mockMFRepo
+		})
+
+		It("calls ffprobe and populates ProbeData when empty", func() {
+			mf := &model.MediaFile{ID: "probe-1", Suffix: "mp3", BitRate: 320, Channels: 2}
+			mockMFRepo.SetData(model.MediaFiles{*mf})
+
+			ff.ProbeAudioResult = &ffmpeg.AudioProbeResult{
+				Codec: "mp3", BitRate: 320, SampleRate: 44100, Channels: 2,
+			}
+
+			svc := NewDecider(ds, ff).(*deciderService)
+			err := svc.ensureProbed(ctx, mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.ProbeData).ToNot(BeEmpty())
+
+			// Verify persisted to DB
+			stored := mockMFRepo.Data["probe-1"]
+			Expect(stored.ProbeData).To(Equal(mf.ProbeData))
+
+			// Verify correct JSON content
+			var result ffmpeg.AudioProbeResult
+			Expect(json.Unmarshal([]byte(mf.ProbeData), &result)).To(Succeed())
+			Expect(result.Codec).To(Equal("mp3"))
+			Expect(result.BitRate).To(Equal(320))
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.Channels).To(Equal(2))
+		})
+
+		It("skips ffprobe when ProbeData is already set", func() {
+			mf := withProbe(&model.MediaFile{ID: "probe-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
+
+			// Set error on mock — if ffprobe were called, this would fail
+			ff.Error = fmt.Errorf("should not be called")
+
+			svc := NewDecider(ds, ff).(*deciderService)
+			err := svc.ensureProbed(ctx, mf)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when ffprobe fails", func() {
+			mf := &model.MediaFile{ID: "probe-3", Suffix: "mp3"}
+			ff.Error = fmt.Errorf("ffprobe not found")
+
+			svc := NewDecider(ds, ff).(*deciderService)
+			err := svc.ensureProbed(ctx, mf)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("probing media file"))
+			Expect(mf.ProbeData).To(BeEmpty())
+		})
+
+		It("skips ffprobe when DevEnableMediaFileProbe is false", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DevEnableMediaFileProbe = false
+
+			mf := &model.MediaFile{ID: "probe-4", Suffix: "mp3"}
+			// Set a result — if ffprobe were called, ProbeData would be populated
+			ff.ProbeAudioResult = &ffmpeg.AudioProbeResult{Codec: "mp3"}
+
+			svc := NewDecider(ds, ff).(*deciderService)
+			err := svc.ensureProbed(ctx, mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.ProbeData).To(BeEmpty())
 		})
 	})
 
