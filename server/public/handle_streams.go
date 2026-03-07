@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/req"
@@ -22,10 +23,13 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0)
+	stream, err := pub.streamer.NewStream(ctx, core.StreamRequest{
+		ID: info.id, Format: info.format, BitRate: info.bitrate,
+	})
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
 	}
 
 	// Make sure the stream will be closed at the end, to avoid leakage
