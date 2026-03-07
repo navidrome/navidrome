@@ -58,6 +58,7 @@ type MediaFile struct {
 	BitDepth             int      `structs:"bit_depth" json:"bitDepth"`
 	Channels             int      `structs:"channels" json:"channels"`
 	Codec                string   `structs:"codec" json:"codec"`
+	ProbeData            string   `structs:"probe_data" json:"-" hash:"ignore"`
 	Genre                string   `structs:"genre" json:"genre"`
 	Genres               Genres   `structs:"-" json:"genres,omitempty"`
 	SortTitle            string   `structs:"sort_title" json:"sortTitle,omitempty"`
@@ -440,6 +441,7 @@ type MediaFileRepository interface {
 	CountBySuffix(options ...QueryOptions) (map[string]int64, error)
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
+	UpdateProbeData(id string, data string) error
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)

@@ -50,11 +50,21 @@ func upAddCodecAndUpdateTranscodings(_ context.Context, tx *sql.Tx) error {
 			return err
 		}
 	}
+
+	// Add probe_data column for caching ffprobe results.
+	_, err = tx.Exec(`ALTER TABLE media_file ADD COLUMN probe_data TEXT DEFAULT NULL`)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func downAddCodecAndUpdateTranscodings(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`DROP INDEX IF EXISTS media_file_codec`)
+	_, err := tx.Exec(`ALTER TABLE media_file DROP COLUMN probe_data`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`DROP INDEX IF EXISTS media_file_codec`)
 	if err != nil {
 		return err
 	}
