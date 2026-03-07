@@ -2,6 +2,22 @@ package transcode
 
 import "strings"
 
+// normalizeProbeCodec maps ffprobe codec_name values to the simplified internal
+// codec names used throughout Navidrome (matching inferCodecFromSuffix output).
+// Most ffprobe names match directly; this handles the exceptions.
+func normalizeProbeCodec(codec string) string {
+	c := strings.ToLower(codec)
+	// DSD variants: dsd_lsbf_planar, dsd_msbf_planar, dsd_lsbf, dsd_msbf
+	if strings.HasPrefix(c, "dsd") {
+		return "dsd"
+	}
+	// PCM variants: pcm_s16le, pcm_s24le, pcm_s32be, pcm_f32le, etc.
+	if strings.HasPrefix(c, "pcm_") {
+		return "pcm"
+	}
+	return c
+}
+
 // isLosslessFormat returns true if the format is a lossless audio codec/format.
 // Note: core/ffmpeg has a separate isLosslessOutputFormat that covers only formats
 // ffmpeg can produce as output (a smaller set). This function covers all known lossless formats

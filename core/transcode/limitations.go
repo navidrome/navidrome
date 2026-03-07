@@ -3,8 +3,6 @@ package transcode
 import (
 	"strconv"
 	"strings"
-
-	"github.com/navidrome/navidrome/model"
 )
 
 // adjustResult represents the outcome of applying a limitation to a transcoded stream value
@@ -16,29 +14,28 @@ const (
 	adjustCannotFit                     // Cannot satisfy the limitation (reject this profile)
 )
 
-// checkLimitations checks codec profile limitations against source media.
+// checkLimitations checks codec profile limitations against source stream details.
 // Returns "" if all limitations pass, or a typed reason string for the first failure.
-func checkLimitations(mf *model.MediaFile, sourceBitrate int, limitations []Limitation) string {
+func checkLimitations(src *StreamDetails, limitations []Limitation) string {
 	for _, lim := range limitations {
 		var ok bool
 		var reason string
 
 		switch lim.Name {
 		case LimitationAudioChannels:
-			ok = checkIntLimitation(mf.Channels, lim.Comparison, lim.Values)
+			ok = checkIntLimitation(src.Channels, lim.Comparison, lim.Values)
 			reason = "audio channels not supported"
 		case LimitationAudioSamplerate:
-			ok = checkIntLimitation(mf.SampleRate, lim.Comparison, lim.Values)
+			ok = checkIntLimitation(src.SampleRate, lim.Comparison, lim.Values)
 			reason = "audio samplerate not supported"
 		case LimitationAudioBitrate:
-			ok = checkIntLimitation(sourceBitrate, lim.Comparison, lim.Values)
+			ok = checkIntLimitation(src.Bitrate, lim.Comparison, lim.Values)
 			reason = "audio bitrate not supported"
 		case LimitationAudioBitdepth:
-			ok = checkIntLimitation(mf.BitDepth, lim.Comparison, lim.Values)
+			ok = checkIntLimitation(src.BitDepth, lim.Comparison, lim.Values)
 			reason = "audio bitdepth not supported"
 		case LimitationAudioProfile:
-			// TODO: populate source profile when MediaFile has audio profile info
-			ok = checkStringLimitation("", lim.Comparison, lim.Values)
+			ok = checkStringLimitation(src.Profile, lim.Comparison, lim.Values)
 			reason = "audio profile not supported"
 		default:
 			continue

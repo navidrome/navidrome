@@ -116,7 +116,7 @@ type Decision struct {
 type StreamDetails struct {
 	Container  string
 	Codec      string
-	Profile    string // Audio profile (e.g., "LC", "HE-AAC"). Empty until scanner support is added.
+	Profile    string // Audio profile (e.g., "LC", "HE-AACv2"). Populated from ffprobe data.
 	Bitrate    int
 	SampleRate int
 	BitDepth   int

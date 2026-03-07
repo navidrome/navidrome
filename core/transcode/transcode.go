@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -17,14 +20,16 @@ const (
 	defaultBitrate = 256 // kbps
 )
 
-func NewDecider(ds model.DataStore) Decider {
+func NewDecider(ds model.DataStore, ff ffmpeg.FFmpeg) Decider {
 	return &deciderService{
 		ds: ds,
+		ff: ff,
 	}
 }
 
 type deciderService struct {
 	ds model.DataStore
+	ff ffmpeg.FFmpeg
 }
 
 func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error) {
@@ -33,25 +38,28 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 		SourceUpdatedAt: mf.UpdatedAt,
 	}
 
-	sourceBitrate := mf.BitRate // kbps
+	if err := s.ensureProbed(ctx, mf); err != nil {
+		return nil, err
+	}
 
-	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", mf.Suffix,
-		"codec", mf.AudioCodec(), "bitrate", sourceBitrate, "channels", mf.Channels,
-		"sampleRate", mf.SampleRate, "lossless", mf.IsLossless(), "client", clientInfo.Name)
-
-	// Build source stream details
+	// Build source stream details (uses probe data if available)
 	decision.SourceStream = buildSourceStream(mf)
+	src := &decision.SourceStream
+
+	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
+		"codec", src.Codec, "bitrate", src.Bitrate, "channels", src.Channels,
+		"sampleRate", src.SampleRate, "lossless", src.IsLossless, "client", clientInfo.Name)
 
 	// Check global bitrate constraint first.
-	if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
+	if clientInfo.MaxAudioBitrate > 0 && src.Bitrate > clientInfo.MaxAudioBitrate {
 		log.Trace(ctx, "Global bitrate constraint exceeded, skipping direct play",
-			"sourceBitrate", sourceBitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
+			"sourceBitrate", src.Bitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		decision.TranscodeReasons = append(decision.TranscodeReasons, "audio bitrate not supported")
 		// Skip direct play profiles entirely — global constraint fails
 	} else {
 		// Try direct play profiles, collecting reasons for each failure
 		for _, profile := range clientInfo.DirectPlayProfiles {
-			if reason := s.checkDirectPlayProfile(mf, sourceBitrate, &profile, clientInfo); reason == "" {
+			if reason := s.checkDirectPlayProfile(src, &profile, clientInfo); reason == "" {
 				decision.CanDirectPlay = true
 				decision.TranscodeReasons = nil // Clear any previously collected reasons
 				break
@@ -63,13 +71,13 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	// If direct play is possible, we're done
 	if decision.CanDirectPlay {
-		log.Debug(ctx, "Transcode decision: direct play", "mediaID", mf.ID, "container", mf.Suffix, "codec", mf.AudioCodec())
+		log.Debug(ctx, "Transcode decision: direct play", "mediaID", mf.ID, "container", src.Container, "codec", src.Codec)
 		return decision, nil
 	}
 
 	// Try transcoding profiles (in order of preference)
 	for _, profile := range clientInfo.TranscodingProfiles {
-		if ts, transcodeFormat := s.computeTranscodedStream(ctx, mf, sourceBitrate, &profile, clientInfo); ts != nil {
+		if ts, transcodeFormat := s.computeTranscodedStream(ctx, src, &profile, clientInfo); ts != nil {
 			decision.CanTranscode = true
 			decision.TargetFormat = transcodeFormat
 			decision.TargetBitrate = ts.Bitrate
@@ -91,53 +99,75 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	if !decision.CanDirectPlay && !decision.CanTranscode {
 		decision.ErrorReason = "no compatible playback profile found"
 		log.Warn(ctx, "Transcode decision: no compatible profile", "mediaID", mf.ID,
-			"container", mf.Suffix, "codec", mf.AudioCodec(), "reasons", decision.TranscodeReasons)
+			"container", src.Container, "codec", src.Codec, "reasons", decision.TranscodeReasons)
 	}
 
 	return decision, nil
 }
 
 func buildSourceStream(mf *model.MediaFile) StreamDetails {
-	return StreamDetails{
-		Container:  mf.Suffix,
-		Codec:      mf.AudioCodec(),
-		Bitrate:    mf.BitRate,
-		SampleRate: mf.SampleRate,
-		BitDepth:   mf.BitDepth,
-		Channels:   mf.Channels,
-		Duration:   mf.Duration,
-		Size:       mf.Size,
-		IsLossless: mf.IsLossless(),
+	sd := StreamDetails{
+		Container: mf.Suffix,
+		Duration:  mf.Duration,
+		Size:      mf.Size,
 	}
+
+	// Use probe data if available for authoritative values
+	if probe, err := parseProbeData(mf.ProbeData); err == nil && probe != nil {
+		sd.Codec = normalizeProbeCodec(probe.Codec)
+		sd.Profile = probe.Profile
+		sd.Bitrate = probe.BitRate
+		sd.SampleRate = probe.SampleRate
+		sd.BitDepth = probe.BitDepth
+		sd.Channels = probe.Channels
+	} else {
+		sd.Codec = mf.AudioCodec()
+		sd.Bitrate = mf.BitRate
+		sd.SampleRate = mf.SampleRate
+		sd.BitDepth = mf.BitDepth
+		sd.Channels = mf.Channels
+	}
+
+	sd.IsLossless = mf.IsLossless()
+	return sd
+}
+
+func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
+	if data == "" {
+		return nil, nil
+	}
+	var result ffmpeg.AudioProbeResult
+	err := json.Unmarshal([]byte(data), &result)
+	return &result, err
 }
 
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
-func (s *deciderService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitrate int, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
+func (s *deciderService) checkDirectPlayProfile(src *StreamDetails, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
 	// Check protocol (only http for now)
 	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, ProtocolHTTP) {
 		return "protocol not supported"
 	}
 
 	// Check container
-	if len(profile.Containers) > 0 && !matchesContainer(mf.Suffix, profile.Containers) {
+	if len(profile.Containers) > 0 && !matchesContainer(src.Container, profile.Containers) {
 		return "container not supported"
 	}
 
 	// Check codec
-	if len(profile.AudioCodecs) > 0 && !matchesCodec(mf.AudioCodec(), profile.AudioCodecs) {
+	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) {
 		return "audio codec not supported"
 	}
 
 	// Check channels
-	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
+	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
 		return "audio channels not supported"
 	}
 
 	// Check codec-specific limitations
 	for _, codecProfile := range clientInfo.CodecProfiles {
-		if strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) && matchesCodec(mf.AudioCodec(), []string{codecProfile.Name}) {
-			if reason := checkLimitations(mf, sourceBitrate, codecProfile.Limitations); reason != "" {
+		if strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) && matchesCodec(src.Codec, []string{codecProfile.Name}) {
+			if reason := checkLimitations(src, codecProfile.Limitations); reason != "" {
 				return reason
 			}
 		}
@@ -150,7 +180,7 @@ func (s *deciderService) checkDirectPlayProfile(mf *model.MediaFile, sourceBitra
 // Returns the stream details and the internal transcoding format (which may differ from the
 // response container when a codec fallback occurs, e.g., "mp4"→"aac").
 // Returns nil, "" if the profile cannot produce a valid output.
-func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.MediaFile, sourceBitrate int, profile *Profile, clientInfo *ClientInfo) (*StreamDetails, string) {
+func (s *deciderService) computeTranscodedStream(ctx context.Context, src *StreamDetails, profile *Profile, clientInfo *ClientInfo) (*StreamDetails, string) {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
 		log.Trace(ctx, "Skipping transcoding profile: unsupported protocol", "protocol", profile.Protocol)
@@ -165,7 +195,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 	targetIsLossless := isLosslessFormat(targetFormat)
 
 	// Reject lossy to lossless conversion
-	if !mf.IsLossless() && targetIsLossless {
+	if !src.IsLossless && targetIsLossless {
 		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
 		return nil, ""
 	}
@@ -173,9 +203,9 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 	ts := &StreamDetails{
 		Container:  responseContainer,
 		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: normalizeSourceSampleRate(mf.SampleRate, mf.AudioCodec()),
-		Channels:   mf.Channels,
-		BitDepth:   normalizeSourceBitDepth(mf.BitDepth, mf.AudioCodec()),
+		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
+		Channels:   src.Channels,
+		BitDepth:   normalizeSourceBitDepth(src.BitDepth, src.Codec),
 		IsLossless: targetIsLossless,
 	}
 	if ts.Codec == "" {
@@ -191,17 +221,17 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, mf *model.
 	}
 
 	// Determine target bitrate (all in kbps)
-	if ok := s.computeBitrate(ctx, mf, sourceBitrate, targetFormat, targetIsLossless, clientInfo, ts); !ok {
+	if ok := s.computeBitrate(ctx, src, targetFormat, targetIsLossless, clientInfo, ts); !ok {
 		return nil, ""
 	}
 
 	// Apply MaxAudioChannels from the transcoding profile
-	if profile.MaxAudioChannels > 0 && mf.Channels > profile.MaxAudioChannels {
+	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
 		ts.Channels = profile.MaxAudioChannels
 	}
 
 	// Apply codec profile limitations to the TARGET codec
-	if ok := s.applyCodecLimitations(ctx, sourceBitrate, targetFormat, targetIsLossless, clientInfo, ts); !ok {
+	if ok := s.applyCodecLimitations(ctx, src.Bitrate, targetFormat, targetIsLossless, clientInfo, ts); !ok {
 		return nil, ""
 	}
 
@@ -241,8 +271,8 @@ func (s *deciderService) resolveTargetFormat(ctx context.Context, profile *Profi
 
 // computeBitrate determines the target bitrate for the transcoded stream.
 // Returns false if the profile should be rejected.
-func (s *deciderService) computeBitrate(ctx context.Context, mf *model.MediaFile, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
-	if mf.IsLossless() {
+func (s *deciderService) computeBitrate(ctx context.Context, src *StreamDetails, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
+	if src.IsLossless {
 		if !targetIsLossless {
 			if clientInfo.MaxTranscodingAudioBitrate > 0 {
 				ts.Bitrate = clientInfo.MaxTranscodingAudioBitrate
@@ -250,14 +280,14 @@ func (s *deciderService) computeBitrate(ctx context.Context, mf *model.MediaFile
 				ts.Bitrate = defaultBitrate
 			}
 		} else {
-			if clientInfo.MaxAudioBitrate > 0 && sourceBitrate > clientInfo.MaxAudioBitrate {
+			if clientInfo.MaxAudioBitrate > 0 && src.Bitrate > clientInfo.MaxAudioBitrate {
 				log.Trace(ctx, "Skipping transcoding profile: lossless target exceeds bitrate limit",
-					"targetFormat", targetFormat, "sourceBitrate", sourceBitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
+					"targetFormat", targetFormat, "sourceBitrate", src.Bitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 				return false
 			}
 		}
 	} else {
-		ts.Bitrate = sourceBitrate
+		ts.Bitrate = src.Bitrate
 	}
 
 	// Apply maxAudioBitrate as final cap
@@ -294,6 +324,33 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 		}
 	}
 	return true
+}
+
+func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) error {
+	if mf.ProbeData != "" {
+		return nil
+	}
+
+	result, err := s.ff.ProbeAudioStream(ctx, mf.AbsolutePath())
+	if err != nil {
+		return fmt.Errorf("probing media file %s: %w", mf.ID, err)
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("marshaling probe result for %s: %w", mf.ID, err)
+	}
+	mf.ProbeData = string(data)
+
+	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
+		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
+		// Don't fail the decision — we have the data in memory
+	}
+
+	log.Debug(ctx, "Probed media file", "mediaID", mf.ID, "codec", result.Codec,
+		"profile", result.Profile, "bitRate", result.BitRate,
+		"sampleRate", result.SampleRate, "bitDepth", result.BitDepth, "channels", result.Channels)
+	return nil
 }
 
 func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
