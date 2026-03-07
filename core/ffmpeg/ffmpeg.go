@@ -57,7 +57,7 @@ func New() FFmpeg {
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd            = "ffmpeg %s -f ffmetadata"
-	probeAudioStreamCmd = "ffprobe -v quiet -select_streams a:0 -print_format json -show_streams %s"
+	probeAudioStreamCmd = "ffprobe -v quiet -select_streams a:0 -print_format json -show_streams -show_format %s"
 )
 
 type ffmpeg struct{}
@@ -130,6 +130,11 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 
 type probeOutput struct {
 	Streams []probeStream `json:"streams"`
+	Format  probeFormat   `json:"format"`
+}
+
+type probeFormat struct {
+	BitRate string `json:"bit_rate"`
 }
 
 type probeStream struct {
@@ -176,6 +181,12 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 		// Bit rate: bps string → kbps int
 		if s.BitRate != "" {
 			bps, _ := strconv.Atoi(s.BitRate)
+			result.BitRate = bps / 1000
+		}
+
+		// Fallback to format-level bit_rate (needed for FLAC, Opus, etc.)
+		if result.BitRate == 0 && output.Format.BitRate != "" {
+			bps, _ := strconv.Atoi(output.Format.BitRate)
 			result.BitRate = bps / 1000
 		}
 

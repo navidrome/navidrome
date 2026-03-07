@@ -409,34 +409,37 @@ var _ = Describe("ffmpeg", func() {
 			Expect(result.BitRate).To(Equal(55)) // 55999 bps -> 55 kbps
 		})
 
-		It("parses FLAC using bits_per_raw_sample (real ffprobe output)", func() {
-			// Real: FLAC reports bit depth in bits_per_raw_sample, not bits_per_sample
+		It("parses FLAC using bits_per_raw_sample and format-level bit_rate (real ffprobe output)", func() {
+			// Real: FLAC reports bit depth in bits_per_raw_sample, not bits_per_sample.
+			// Stream-level bit_rate is absent; format-level bit_rate is used as fallback.
 			data := []byte(`{"streams":[` +
 				`{"index":0,"codec_name":"flac","codec_long_name":"FLAC (Free Lossless Audio Codec)",` +
 				`"codec_type":"audio","sample_fmt":"s16","sample_rate":"44100","channels":2,` +
 				`"channel_layout":"stereo","bits_per_sample":0,"bits_per_raw_sample":"16"},` +
-				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}],` +
+				`"format":{"bit_rate":"906900"}}`)
 			result, err := parseProbeOutput(data)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.Codec).To(Equal("flac"))
 			Expect(result.SampleRate).To(Equal(44100))
 			Expect(result.BitDepth).To(Equal(16)) // from bits_per_raw_sample
-			Expect(result.BitRate).To(Equal(0))   // FLAC has no bit_rate
+			Expect(result.BitRate).To(Equal(906)) // format-level: 906900 bps -> 906 kbps
 			Expect(result.Profile).To(BeEmpty())  // no profile field in real output
 		})
 
-		It("parses Opus without bit_rate (real ffprobe output)", func() {
-			// Real: Opus files often have no bit_rate field
+		It("parses Opus with format-level bit_rate fallback (real ffprobe output)", func() {
+			// Real: Opus stream-level bit_rate is absent; format-level is used as fallback.
 			data := []byte(`{"streams":[` +
 				`{"index":0,"codec_name":"opus","codec_long_name":"Opus (Opus Interactive Audio Codec)",` +
 				`"codec_type":"audio","sample_fmt":"fltp","sample_rate":"48000","channels":2,` +
-				`"channel_layout":"stereo","bits_per_sample":0}]}`)
+				`"channel_layout":"stereo","bits_per_sample":0}],` +
+				`"format":{"bit_rate":"128000"}}`)
 			result, err := parseProbeOutput(data)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.Codec).To(Equal("opus"))
 			Expect(result.SampleRate).To(Equal(48000))
 			Expect(result.Channels).To(Equal(2))
-			Expect(result.BitRate).To(Equal(0))
+			Expect(result.BitRate).To(Equal(128)) // format-level: 128000 bps -> 128 kbps
 			Expect(result.BitDepth).To(Equal(0))
 		})
 
@@ -491,20 +494,21 @@ var _ = Describe("ffmpeg", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("parses HiRes multichannel FLAC (real ffprobe output)", func() {
+		It("parses HiRes multichannel FLAC with format-level bit_rate (real ffprobe output)", func() {
 			// Real: Pink Floyd - 192kHz/24-bit/7.1 surround FLAC
 			data := []byte(`{"streams":[` +
 				`{"index":0,"codec_name":"flac","codec_long_name":"FLAC (Free Lossless Audio Codec)",` +
 				`"codec_type":"audio","sample_fmt":"s32","sample_rate":"192000","channels":8,` +
 				`"channel_layout":"7.1","bits_per_sample":0,"bits_per_raw_sample":"24"},` +
-				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Progressive"}]}`)
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Progressive"}],` +
+				`"format":{"bit_rate":"18432000"}}`)
 			result, err := parseProbeOutput(data)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.Codec).To(Equal("flac"))
 			Expect(result.SampleRate).To(Equal(192000))
 			Expect(result.BitDepth).To(Equal(24))
 			Expect(result.Channels).To(Equal(8))
-			Expect(result.BitRate).To(Equal(0))
+			Expect(result.BitRate).To(Equal(18432)) // format-level: 18432000 bps -> 18432 kbps
 		})
 
 		It("parses DSD/DSF file (real ffprobe output)", func() {
@@ -522,6 +526,28 @@ var _ = Describe("ffmpeg", func() {
 			Expect(result.SampleRate).To(Equal(352800)) // DSD64 sample rate
 			Expect(result.Channels).To(Equal(2))
 			Expect(result.BitRate).To(Equal(5644)) // 5644800 bps -> 5644 kbps
+		})
+
+		It("prefers stream-level bit_rate over format-level when both are present", func() {
+			// ALAC/DSD: stream has bit_rate, format also has bit_rate — stream wins
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"alac","codec_type":"audio","sample_fmt":"s16p",` +
+				`"sample_rate":"44100","channels":2,"bits_per_sample":0,` +
+				`"bit_rate":"1011003","bits_per_raw_sample":"16"}],` +
+				`"format":{"bit_rate":"1050000"}}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.BitRate).To(Equal(1011)) // stream-level: 1011003 bps -> 1011 kbps (not format's 1050)
+		})
+
+		It("returns BitRate 0 when neither stream nor format has bit_rate", func() {
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"flac","codec_type":"audio","sample_fmt":"s16",` +
+				`"sample_rate":"44100","channels":2,"bits_per_sample":0,"bits_per_raw_sample":"16"}],` +
+				`"format":{}}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.BitRate).To(Equal(0))
 		})
 
 		It("clears 'unknown' profile to empty string", func() {
