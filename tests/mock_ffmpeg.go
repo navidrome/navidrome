@@ -16,9 +16,10 @@ func NewMockFFmpeg(data string) *MockFFmpeg {
 
 type MockFFmpeg struct {
 	io.Reader
-	lock   sync.Mutex
-	closed atomic.Bool
-	Error  error
+	lock             sync.Mutex
+	closed           atomic.Bool
+	Error            error
+	ProbeAudioResult *ffmpeg.AudioProbeResult
 }
 
 func (ff *MockFFmpeg) IsAvailable() bool {
@@ -45,6 +46,13 @@ func (ff *MockFFmpeg) Probe(context.Context, []string) (string, error) {
 	}
 	return "", nil
 }
+func (ff *MockFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
+	if ff.Error != nil {
+		return nil, ff.Error
+	}
+	return ff.ProbeAudioResult, nil
+}
+
 func (ff *MockFFmpeg) CmdPath() (string, error) {
 	if ff.Error != nil {
 		return "", ff.Error

@@ -358,6 +358,182 @@ var _ = Describe("ffmpeg", func() {
 		})
 	})
 
+	Describe("parseProbeOutput", func() {
+		It("parses MP3 with embedded artwork (real ffprobe output)", func() {
+			// Real: MP3 file with mjpeg artwork stream after audio
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"mp3","codec_long_name":"MP3 (MPEG audio layer 3)","codec_type":"audio",` +
+				`"sample_fmt":"fltp","sample_rate":"44100","channels":2,"channel_layout":"stereo",` +
+				`"bits_per_sample":0,"bit_rate":"198314","tags":{"encoder":"LAME3.99r"}},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline","width":400,"height":400}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("mp3"))
+			Expect(result.Profile).To(BeEmpty()) // MP3 has no profile field
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(198)) // 198314 bps -> 198 kbps
+			Expect(result.BitDepth).To(Equal(0))  // lossy codec
+		})
+
+		It("parses AAC-LC in m4a container (real ffprobe output)", func() {
+			// Real: AAC LC file with profile and artwork
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"aac","codec_long_name":"AAC (Advanced Audio Coding)",` +
+				`"profile":"LC","codec_type":"audio","sample_fmt":"fltp","sample_rate":"44100",` +
+				`"channels":2,"channel_layout":"stereo","bits_per_sample":0,"bit_rate":"279958"},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("aac"))
+			Expect(result.Profile).To(Equal("LC"))
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(279)) // 279958 bps -> 279 kbps
+		})
+
+		It("parses HE-AACv2 in mp4 container with video stream (real ffprobe output)", func() {
+			// Real: Fraunhofer HE-AACv2 sample (LFE-SBRstereo.mp4), video stream before audio
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"h264","codec_type":"video","profile":"Main"},` +
+				`{"index":1,"codec_name":"aac","codec_long_name":"AAC (Advanced Audio Coding)",` +
+				`"profile":"HE-AACv2","codec_type":"audio","sample_fmt":"fltp",` +
+				`"sample_rate":"48000","channels":2,"channel_layout":"stereo",` +
+				`"bits_per_sample":0,"bit_rate":"55999"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("aac"))
+			Expect(result.Profile).To(Equal("HE-AACv2"))
+			Expect(result.SampleRate).To(Equal(48000))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(55)) // 55999 bps -> 55 kbps
+		})
+
+		It("parses FLAC using bits_per_raw_sample (real ffprobe output)", func() {
+			// Real: FLAC reports bit depth in bits_per_raw_sample, not bits_per_sample
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"flac","codec_long_name":"FLAC (Free Lossless Audio Codec)",` +
+				`"codec_type":"audio","sample_fmt":"s16","sample_rate":"44100","channels":2,` +
+				`"channel_layout":"stereo","bits_per_sample":0,"bits_per_raw_sample":"16"},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("flac"))
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.BitDepth).To(Equal(16)) // from bits_per_raw_sample
+			Expect(result.BitRate).To(Equal(0))   // FLAC has no bit_rate
+			Expect(result.Profile).To(BeEmpty())  // no profile field in real output
+		})
+
+		It("parses Opus without bit_rate (real ffprobe output)", func() {
+			// Real: Opus files often have no bit_rate field
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"opus","codec_long_name":"Opus (Opus Interactive Audio Codec)",` +
+				`"codec_type":"audio","sample_fmt":"fltp","sample_rate":"48000","channels":2,` +
+				`"channel_layout":"stereo","bits_per_sample":0}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("opus"))
+			Expect(result.SampleRate).To(Equal(48000))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(0))
+			Expect(result.BitDepth).To(Equal(0))
+		})
+
+		It("parses WAV/PCM with bits_per_sample (real ffprobe output)", func() {
+			// Real: WAV uses bits_per_sample directly
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"pcm_s16le","codec_long_name":"PCM signed 16-bit little-endian",` +
+				`"codec_type":"audio","sample_fmt":"s16","sample_rate":"44100","channels":2,` +
+				`"bits_per_sample":16,"bit_rate":"1411200"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("pcm_s16le"))
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitDepth).To(Equal(16))
+			Expect(result.BitRate).To(Equal(1411))
+		})
+
+		It("parses ALAC in m4a container (real ffprobe output)", func() {
+			// Real: Beatles - You Can't Do That (2023 Mix), ALAC 16-bit
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"alac","codec_long_name":"ALAC (Apple Lossless Audio Codec)",` +
+				`"codec_type":"audio","sample_fmt":"s16p","sample_rate":"44100","channels":2,` +
+				`"channel_layout":"stereo","bits_per_sample":0,"bit_rate":"1011003",` +
+				`"bits_per_raw_sample":"16"},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("alac"))
+			Expect(result.BitDepth).To(Equal(16)) // from bits_per_raw_sample
+			Expect(result.SampleRate).To(Equal(44100))
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(1011)) // 1011003 bps -> 1011 kbps
+		})
+
+		It("skips video-only streams", func() {
+			data := []byte(`{"streams":[{"index":0,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+			_, err := parseProbeOutput(data)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no audio stream"))
+		})
+
+		It("returns error for empty streams array", func() {
+			data := []byte(`{"streams":[]}`)
+			_, err := parseProbeOutput(data)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for invalid JSON", func() {
+			data := []byte(`not json`)
+			_, err := parseProbeOutput(data)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("parses HiRes multichannel FLAC (real ffprobe output)", func() {
+			// Real: Pink Floyd - 192kHz/24-bit/7.1 surround FLAC
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"flac","codec_long_name":"FLAC (Free Lossless Audio Codec)",` +
+				`"codec_type":"audio","sample_fmt":"s32","sample_rate":"192000","channels":8,` +
+				`"channel_layout":"7.1","bits_per_sample":0,"bits_per_raw_sample":"24"},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Progressive"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("flac"))
+			Expect(result.SampleRate).To(Equal(192000))
+			Expect(result.BitDepth).To(Equal(24))
+			Expect(result.Channels).To(Equal(8))
+			Expect(result.BitRate).To(Equal(0))
+		})
+
+		It("parses DSD/DSF file (real ffprobe output)", func() {
+			// Real: Yes - Owner of a Lonely Heart, DSD64 DSF
+			data := []byte(`{"streams":[` +
+				`{"index":0,"codec_name":"dsd_lsbf_planar",` +
+				`"codec_long_name":"DSD (Direct Stream Digital), least significant bit first, planar",` +
+				`"codec_type":"audio","sample_fmt":"fltp","sample_rate":"352800","channels":2,` +
+				`"channel_layout":"stereo","bits_per_sample":8,"bit_rate":"5644800"},` +
+				`{"index":1,"codec_name":"mjpeg","codec_type":"video","profile":"Baseline"}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Codec).To(Equal("dsd_lsbf_planar"))
+			Expect(result.BitDepth).To(Equal(8))        // DSD reports 8 bits_per_sample
+			Expect(result.SampleRate).To(Equal(352800)) // DSD64 sample rate
+			Expect(result.Channels).To(Equal(2))
+			Expect(result.BitRate).To(Equal(5644)) // 5644800 bps -> 5644 kbps
+		})
+
+		It("clears 'unknown' profile to empty string", func() {
+			data := []byte(`{"streams":[{"index":0,"codec_name":"flac",` +
+				`"codec_type":"audio","profile":"unknown","sample_rate":"44100",` +
+				`"channels":2,"bits_per_sample":0}]}`)
+			result, err := parseProbeOutput(data)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Profile).To(BeEmpty())
+		})
+	})
+
 	Describe("FFmpeg", func() {
 		Context("when FFmpeg is available", func() {
 			var ff FFmpeg

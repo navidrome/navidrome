@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,10 +29,21 @@ type TranscodeOptions struct {
 	Offset     int // seconds
 }
 
+// AudioProbeResult contains authoritative audio stream properties from ffprobe.
+type AudioProbeResult struct {
+	Codec      string `json:"codec"`
+	Profile    string `json:"profile,omitempty"`
+	BitRate    int    `json:"bitRate"`
+	SampleRate int    `json:"sampleRate"`
+	BitDepth   int    `json:"bitDepth"`
+	Channels   int    `json:"channels"`
+}
+
 type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
+	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
 	Version() string
@@ -95,6 +107,82 @@ func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, _ := cmd.CombinedOutput()
 	return string(output), nil
+}
+
+func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error) {
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return nil, err
+	}
+	if err := fileExists(filePath); err != nil {
+		return nil, err
+	}
+	probePath := strings.Replace(cmdPath, "ffmpeg", "ffprobe", 1)
+	args := []string{probePath, "-v", "quiet", "-print_format", "json", "-show_streams", filePath}
+	log.Trace(ctx, "Executing ffprobe command", "args", args)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("running ffprobe on %q: %w", filePath, err)
+	}
+	return parseProbeOutput(output)
+}
+
+type probeOutput struct {
+	Streams []probeStream `json:"streams"`
+}
+
+type probeStream struct {
+	CodecName        string `json:"codec_name"`
+	CodecType        string `json:"codec_type"`
+	Profile          string `json:"profile"`
+	SampleRate       string `json:"sample_rate"`
+	BitRate          string `json:"bit_rate"`
+	Channels         int    `json:"channels"`
+	BitsPerSample    int    `json:"bits_per_sample"`
+	BitsPerRawSample string `json:"bits_per_raw_sample"`
+}
+
+func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
+	var output probeOutput
+	if err := json.Unmarshal(data, &output); err != nil {
+		return nil, fmt.Errorf("parsing ffprobe output: %w", err)
+	}
+
+	for _, s := range output.Streams {
+		if s.CodecType != "audio" {
+			continue
+		}
+		bitDepth := s.BitsPerSample
+		if bitDepth == 0 && s.BitsPerRawSample != "" {
+			bitDepth, _ = strconv.Atoi(s.BitsPerRawSample)
+		}
+		result := &AudioProbeResult{
+			Codec:    s.CodecName,
+			Channels: s.Channels,
+			BitDepth: bitDepth,
+		}
+
+		// Profile: "unknown" → empty
+		if s.Profile != "" && !strings.EqualFold(s.Profile, "unknown") {
+			result.Profile = s.Profile
+		}
+
+		// Sample rate: string → int
+		if s.SampleRate != "" {
+			result.SampleRate, _ = strconv.Atoi(s.SampleRate)
+		}
+
+		// Bit rate: bps string → kbps int
+		if s.BitRate != "" {
+			bps, _ := strconv.Atoi(s.BitRate)
+			result.BitRate = bps / 1000
+		}
+
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("no audio stream found in ffprobe output")
 }
 
 func (e *ffmpeg) CmdPath() (string, error) {
