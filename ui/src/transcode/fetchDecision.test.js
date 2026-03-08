@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+
+// Mock httpClient before importing module under test
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn(),
+}))
+
 import { fetchTranscodeDecision } from './fetchDecision'
+import { httpClient } from '../dataProvider'
 
 describe('fetchTranscodeDecision', () => {
   const fakeProfile = {
@@ -12,7 +19,7 @@ describe('fetchTranscodeDecision', () => {
     codecProfiles: [],
   }
 
-  const fakeResponse = {
+  const fakeJson = {
     'subsonic-response': {
       status: 'ok',
       transcodeDecision: {
@@ -29,13 +36,7 @@ describe('fetchTranscodeDecision', () => {
     localStorage.setItem('subsonic-token', 'testtoken')
     localStorage.setItem('subsonic-salt', 'testsalt')
 
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(fakeResponse),
-      }),
-    )
+    httpClient.mockResolvedValue({ json: fakeJson })
   })
 
   afterEach(() => {
@@ -46,8 +47,8 @@ describe('fetchTranscodeDecision', () => {
   it('makes a POST request to getTranscodeDecision with correct URL', async () => {
     await fetchTranscodeDecision('song-1', fakeProfile)
 
-    expect(fetch).toHaveBeenCalledTimes(1)
-    const [url, options] = fetch.mock.calls[0]
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    const [url, options] = httpClient.mock.calls[0]
     expect(url).toContain('getTranscodeDecision')
     expect(url).toContain('mediaId=song-1')
     expect(url).toContain('mediaType=song')
@@ -57,22 +58,17 @@ describe('fetchTranscodeDecision', () => {
   it('sends the browser profile as JSON body', async () => {
     await fetchTranscodeDecision('song-1', fakeProfile)
 
-    const [, options] = fetch.mock.calls[0]
-    expect(options.headers['Content-Type']).toBe('application/json')
+    const [, options] = httpClient.mock.calls[0]
     expect(JSON.parse(options.body)).toEqual(fakeProfile)
   })
 
   it('returns the transcodeDecision from response', async () => {
     const result = await fetchTranscodeDecision('song-1', fakeProfile)
-    expect(result).toEqual(fakeResponse['subsonic-response'].transcodeDecision)
+    expect(result).toEqual(fakeJson['subsonic-response'].transcodeDecision)
   })
 
-  it('throws on non-ok HTTP response', async () => {
-    fetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Server Error',
-    })
+  it('throws on HTTP error (httpClient rejects)', async () => {
+    httpClient.mockRejectedValue(new Error('Server Error'))
 
     await expect(
       fetchTranscodeDecision('song-1', fakeProfile),
@@ -80,15 +76,13 @@ describe('fetchTranscodeDecision', () => {
   })
 
   it('throws on Subsonic error response', async () => {
-    fetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          'subsonic-response': {
-            status: 'failed',
-            error: { code: 70, message: 'not found' },
-          },
-        }),
+    httpClient.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'failed',
+          error: { code: 70, message: 'not found' },
+        },
+      },
     })
 
     await expect(

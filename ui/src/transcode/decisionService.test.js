@@ -205,6 +205,16 @@ describe('decisionService', () => {
     })
   })
 
+  describe('resolveStreamUrl', () => {
+    it('fetches decision and returns built URL', async () => {
+      service.setProfile(fakeProfile)
+      const url = await service.resolveStreamUrl('song-1')
+      expect(url).toContain('getTranscodeStream')
+      expect(url).toContain('mediaId=song-1')
+      expect(mockFetchFn).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('buildStreamUrl', () => {
     it('builds URL with required parameters', () => {
       const url = service.buildStreamUrl('song-1', 'jwt-token-123')

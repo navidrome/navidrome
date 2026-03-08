@@ -80,6 +80,11 @@ export function createDecisionService(fetchFn) {
     return baseUrl(subsonic.url('getTranscodeStream', null, params))
   }
 
+  async function resolveStreamUrl(songId) {
+    const decision = await getDecision(songId)
+    return buildStreamUrl(songId, decision?.transcodeParams)
+  }
+
   function getCachedDecision(songId) {
     const entry = cache.get(songId)
     if (entry && isFresh(entry)) {
@@ -92,6 +97,7 @@ export function createDecisionService(fetchFn) {
     getDecision,
     getCachedDecision,
     prefetchDecisions,
+    resolveStreamUrl,
     invalidateAll,
     buildStreamUrl,
     setProfile,

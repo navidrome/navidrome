@@ -19,6 +19,7 @@ import AudioTitle from './AudioTitle'
 import {
   clearQueue,
   currentPlaying,
+  refreshQueue,
   setPlayMode,
   setTranscodingProfile,
   setVolume,
@@ -52,11 +53,38 @@ const Player = () => {
 
   const { authenticated } = useAuthState()
 
-  // Detect browser codec profile once on mount
+  // Detect browser codec profile once on mount, then resolve transcode
+  // decisions for the current and upcoming tracks so musicSrc is a string URL
   useEffect(() => {
     const profile = detectBrowserProfile()
     decisionService.setProfile(profile)
     dispatch(setTranscodingProfile(profile))
+
+    const currentIdx = playerState.savedPlayIndex || 0
+    const trackIds = playerState.queue
+      .slice(currentIdx, currentIdx + 4)
+      .filter((item) => !item.isRadio && item.trackId)
+      .map((item) => item.trackId)
+
+    if (trackIds.length === 0) {
+      dispatch(refreshQueue())
+      return
+    }
+
+    Promise.allSettled(
+      trackIds.map((id) =>
+        decisionService.resolveStreamUrl(id).then((url) => [id, url]),
+      ),
+    ).then((results) => {
+      const resolvedUrls = {}
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') {
+          resolvedUrls[r.value[0]] = r.value[1]
+        }
+      })
+      dispatch(refreshQueue(resolvedUrls))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch])
 
   // Pre-fetch transcode decisions for next 2-3 songs when queue or position changes
@@ -176,7 +204,7 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
-      autoPlay: playerState.clear || playerState.playIndex === 0,
+      autoPlay: playerState.autoPlay !== false && (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
