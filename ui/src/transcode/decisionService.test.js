@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import {
-  createDecisionService,
-  CACHE_TTL_MS,
-} from './decisionService'
+import { createDecisionService, CACHE_TTL_MS } from './decisionService'
 
 describe('decisionService', () => {
   let service

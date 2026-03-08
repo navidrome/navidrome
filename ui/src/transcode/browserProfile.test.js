@@ -6,7 +6,12 @@ describe('detectBrowserProfile', () => {
 
   beforeEach(() => {
     mockCanPlayType = vi.fn()
-    vi.stubGlobal('Audio', class { canPlayType = mockCanPlayType })
+    vi.stubGlobal(
+      'Audio',
+      class {
+        canPlayType = mockCanPlayType
+      },
+    )
   })
 
   it('includes codecs that return "probably"', () => {

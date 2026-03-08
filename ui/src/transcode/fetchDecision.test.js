@@ -68,7 +68,11 @@ describe('fetchTranscodeDecision', () => {
   })
 
   it('throws on non-ok HTTP response', async () => {
-    fetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' })
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Server Error',
+    })
 
     await expect(
       fetchTranscodeDecision('song-1', fakeProfile),

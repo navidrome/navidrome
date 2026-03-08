@@ -20,7 +20,15 @@ const useStyle = makeStyles(
   },
 )
 
-export const QualityInfo = ({ record, size, gainMode, preAmp, className, transcodeStream, isDirectPlay }) => {
+export const QualityInfo = ({
+  record,
+  size,
+  gainMode,
+  preAmp,
+  className,
+  transcodeStream,
+  isDirectPlay,
+}) => {
   const classes = useStyle()
   let { suffix, bitRate, rgAlbumGain, rgAlbumPeak, rgTrackGain, rgTrackPeak } =
     record

@@ -26,9 +26,7 @@ export async function fetchTranscodeDecision(songId, browserProfile) {
 
   if (subsonicResponse.status !== 'ok') {
     const err = subsonicResponse.error || {}
-    throw new Error(
-      `getTranscodeDecision error: ${err.code} ${err.message}`,
-    )
+    throw new Error(`getTranscodeDecision error: ${err.code} ${err.message}`)
   }
 
   return subsonicResponse.transcodeDecision
