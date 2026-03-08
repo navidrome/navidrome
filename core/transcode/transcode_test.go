@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -912,6 +913,119 @@ var _ = Describe("Decider", func() {
 				Expect(decision.SourceStream.SampleRate).To(Equal(96000))
 				Expect(decision.SourceStream.BitDepth).To(Equal(24))
 				Expect(decision.SourceStream.Channels).To(Equal(2))
+			})
+		})
+
+		Context("Server-side player transcoding override", func() {
+			It("forces transcoding when override targets a different format", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+					},
+				}
+				// Set server override in context
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
+
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TargetBitrate).To(Equal(192))
+			})
+
+			It("allows direct play when source matches forced format and bitrate is within cap", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 128, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+					},
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 256})
+
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+				Expect(decision.CanTranscode).To(BeFalse())
+			})
+
+			It("transcodes when source bitrate exceeds the forced cap", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TargetBitrate).To(Equal(192))
+			})
+
+			It("uses player MaxBitRate over transcoding DefaultBitRate", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 320})
+
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TargetBitrate).To(Equal(320))
+			})
+
+			It("applies no bitrate cap when both MaxBitRate and DefaultBitRate are 0", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 0})
+				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
+
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				// With no cap, lossless→lossy uses defaultBitrate (256)
+				Expect(decision.TargetBitrate).To(Equal(defaultBitrate))
+			})
+
+			It("does not apply override when no transcoding is in context", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+					},
+				}
+				// No override in context — client profiles used as-is
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
+			It("preserves client Name and Platform in overridden ClientInfo", func() {
+				ci := &ClientInfo{
+					Name:     "MyApp",
+					Platform: "iOS",
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+
+				// Verify via applyServerOverride directly (package-level function)
+				trc := model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192}
+				overridden := applyServerOverride(ci, &trc, overrideCtx)
+				Expect(overridden.Name).To(Equal("MyApp"))
+				Expect(overridden.Platform).To(Equal("iOS"))
+				Expect(overridden.CodecProfiles).To(BeEmpty())
 			})
 		})
 	})

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 const (
@@ -48,6 +49,11 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	// Build source stream details (uses probe data if available)
 	decision.SourceStream = buildSourceStream(mf, probe)
 	src := &decision.SourceStream
+
+	// Check for server-side player transcoding override
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+		clientInfo = applyServerOverride(clientInfo, &trc, ctx)
+	}
 
 	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
 		"codec", src.Codec, "bitrate", src.Bitrate, "channels", src.Channels,
@@ -138,6 +144,32 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Stre
 	sd.IsLossless = isLosslessFormat(sd.Codec)
 
 	return sd
+}
+
+// applyServerOverride replaces the client-provided profiles with synthetic ones
+// matching the server-forced transcoding format and bitrate.
+func applyServerOverride(original *ClientInfo, trc *model.Transcoding, ctx context.Context) *ClientInfo {
+	maxBitRate := trc.DefaultBitRate
+	if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
+		maxBitRate = player.MaxBitRate
+	}
+
+	log.Debug(ctx, "Applying server-side transcoding override",
+		"targetFormat", trc.TargetFormat, "maxBitRate", maxBitRate,
+		"client", original.Name)
+
+	return &ClientInfo{
+		Name:                       original.Name,
+		Platform:                   original.Platform,
+		MaxAudioBitrate:            maxBitRate,
+		MaxTranscodingAudioBitrate: maxBitRate,
+		DirectPlayProfiles: []DirectPlayProfile{
+			{Containers: []string{trc.TargetFormat}, AudioCodecs: []string{trc.TargetFormat}, Protocols: []string{ProtocolHTTP}},
+		},
+		TranscodingProfiles: []Profile{
+			{Container: trc.TargetFormat, AudioCodec: trc.TargetFormat, Protocol: ProtocolHTTP},
+		},
+	}
 }
 
 func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
