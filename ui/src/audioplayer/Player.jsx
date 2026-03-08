@@ -20,6 +20,7 @@ import {
   clearQueue,
   currentPlaying,
   setPlayMode,
+  setTranscodingProfile,
   setVolume,
   syncQueue,
 } from '../actions'
@@ -30,6 +31,7 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
+import { detectBrowserProfile, decisionService } from '../transcode'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -49,6 +51,29 @@ const Player = () => {
     )
 
   const { authenticated } = useAuthState()
+
+  // Detect browser codec profile once on mount
+  useEffect(() => {
+    const profile = detectBrowserProfile()
+    decisionService.setProfile(profile)
+    dispatch(setTranscodingProfile(profile))
+  }, [dispatch])
+
+  // Pre-fetch transcode decisions for next 2-3 songs when queue or position changes
+  useEffect(() => {
+    if (!playerState.queue.length) return
+
+    const currentIdx = playerState.savedPlayIndex || 0
+    const nextSongIds = playerState.queue
+      .slice(currentIdx + 1, currentIdx + 4)
+      .filter((item) => !item.isRadio)
+      .map((item) => item.trackId)
+
+    if (nextSongIds.length > 0) {
+      decisionService.prefetchDecisions(nextSongIds)
+    }
+  }, [playerState.queue, playerState.savedPlayIndex])
+
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
