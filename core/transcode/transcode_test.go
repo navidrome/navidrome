@@ -247,7 +247,7 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TargetBitrate).To(Equal(192)) // source bitrate in kbps
 			})
 
-			It("rejects unsupported transcoding format", func() {
+			It("rejects format with no transcoding command available", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
@@ -294,8 +294,6 @@ var _ = Describe("Decider", func() {
 
 		Context("Lossless to lossless transcoding", func() {
 			It("allows lossless to lossless when samplerate needs downsampling", func() {
-				// MockTranscodingRepo doesn't support "flac" format, so this would fail to find a config.
-				// This test documents the behavior: lossless→lossless requires server transcoding config.
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 176400, BitDepth: 1})
 				ci := &ClientInfo{
 					MaxAudioBitrate: 1000,
@@ -313,13 +311,7 @@ var _ = Describe("Decider", func() {
 			})
 
 			It("sets IsLossless=true on transcoded stream when target is lossless", func() {
-				// Simulate DSD→FLAC transcoding by using a mock that supports "flac"
-				mockTranscoding := &tests.MockTranscodingRepo{}
-				ds.MockedTranscoding = mockTranscoding
-				svc = NewDecider(ds, ff)
-
 				// Transcoding to mp3 (lossy) should result in IsLossless=false.
-				// Use mp3 profile to test that lossy output is correctly identified.
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24})
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
@@ -811,7 +803,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				// TargetFormat is the internal format used for DB lookup ("aac")
+				// TargetFormat is the internal format used for transcoding ("aac")
 				Expect(decision.TargetFormat).To(Equal("aac"))
 				// Container in the response preserves what the client asked ("mp4")
 				Expect(decision.TranscodeStream.Container).To(Equal("mp4"))

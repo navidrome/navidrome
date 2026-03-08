@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -218,9 +219,9 @@ func NewTranscodingCache() TranscodingCache {
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
-			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
-			if err != nil {
-				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
+			command := transcode.LookupTranscodeCommand(ctx, job.ms.ds, job.format)
+			if command == "" {
+				log.Error(ctx, "No transcoding command available", "format", job.format)
 				return nil, os.ErrInvalid
 			}
 
@@ -237,7 +238,7 @@ func NewTranscodingCache() TranscodingCache {
 			}
 
 			out, err := job.ms.transcoder.Transcode(transcodingCtx, ffmpeg.TranscodeOptions{
-				Command:    t.Command,
+				Command:    command,
 				Format:     job.format,
 				FilePath:   job.filePath,
 				BitRate:    job.bitRate,

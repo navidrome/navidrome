@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
@@ -196,8 +197,14 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Strea
 		return nil, ""
 	}
 
-	responseContainer, targetFormat := s.resolveTargetFormat(ctx, profile)
+	responseContainer, targetFormat := resolveTargetFormat(profile)
 	if targetFormat == "" {
+		return nil, ""
+	}
+
+	// Verify we have a transcoding command available (DB custom or built-in default)
+	if LookupTranscodeCommand(ctx, s.ds, targetFormat) == "" {
+		log.Trace(ctx, "Skipping transcoding profile: no transcoding command available", "targetFormat", targetFormat)
 		return nil, ""
 	}
 
@@ -247,34 +254,46 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Strea
 	return ts, targetFormat
 }
 
+// LookupTranscodeCommand returns the ffmpeg command for the given format.
+// It checks the DB first (for user-customized commands), then falls back to
+// the built-in default command. Returns "" if the format is unknown.
+func LookupTranscodeCommand(ctx context.Context, ds model.DataStore, format string) string {
+	t, err := ds.Transcoding(ctx).FindByFormat(format)
+	if err == nil && t.Command != "" {
+		return t.Command
+	}
+	// Fall back to built-in defaults
+	for _, dt := range consts.DefaultTranscodings {
+		if dt.TargetFormat == format {
+			return dt.Command
+		}
+	}
+	return ""
+}
+
 // resolveTargetFormat determines the response container and internal target format
-// by looking up transcoding configs. Returns ("", "") if no config found.
-func (s *deciderService) resolveTargetFormat(ctx context.Context, profile *Profile) (responseContainer, targetFormat string) {
+// from the profile's Container and AudioCodec fields. When an AudioCodec is specified
+// it is preferred as targetFormat (e.g. container "mp4" with audioCodec "aac" → targetFormat "aac").
+func resolveTargetFormat(profile *Profile) (responseContainer, targetFormat string) {
 	responseContainer = strings.ToLower(profile.Container)
 	targetFormat = responseContainer
-	if targetFormat == "" {
+
+	// Prefer the audioCodec as targetFormat when provided (handles container-to-codec
+	// mapping like "mp4" → "aac", "ogg" → "opus").
+	if profile.AudioCodec != "" {
 		targetFormat = strings.ToLower(profile.AudioCodec)
+	}
+
+	// If neither container nor audioCodec is set, we can't resolve a format.
+	if targetFormat == "" {
+		return "", ""
+	}
+
+	// When no container was specified, use the targetFormat as container too.
+	if responseContainer == "" {
 		responseContainer = targetFormat
 	}
 
-	// Try the container first, then fall back to the audioCodec (e.g. "ogg" → "opus", "mp4" → "aac").
-	_, err := s.ds.Transcoding(ctx).FindByFormat(targetFormat)
-	if errors.Is(err, model.ErrNotFound) && profile.AudioCodec != "" && !strings.EqualFold(targetFormat, profile.AudioCodec) {
-		codec := strings.ToLower(profile.AudioCodec)
-		log.Trace(ctx, "No transcoding config for container, trying audioCodec", "container", targetFormat, "audioCodec", codec)
-		_, err = s.ds.Transcoding(ctx).FindByFormat(codec)
-		if err == nil {
-			targetFormat = codec
-		}
-	}
-	if err != nil {
-		if !errors.Is(err, model.ErrNotFound) {
-			log.Error(ctx, "Error looking up transcoding config", "format", targetFormat, err)
-		} else {
-			log.Trace(ctx, "Skipping transcoding profile: no transcoding config", "targetFormat", targetFormat)
-		}
-		return "", ""
-	}
 	return responseContainer, targetFormat
 }
 
