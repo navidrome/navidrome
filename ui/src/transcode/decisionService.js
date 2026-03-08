@@ -1,15 +1,28 @@
 import subsonic from '../subsonic'
 import { baseUrl } from '../utils'
 
-// Cache entries expire after 11 hours (tokens last 12h, this gives 1h buffer)
-export const CACHE_TTL_MS = 11 * 60 * 60 * 1000
+// Decode the exp claim from a JWT token (no signature verification needed client-side)
+export function decodeJwtExp(token) {
+  try {
+    if (!token) return null
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1]))
+    return typeof payload.exp === 'number' ? payload.exp : null
+  } catch {
+    return null
+  }
+}
 
 export function createDecisionService(fetchFn) {
   const cache = new Map()
   let currentProfile = null
 
   function isFresh(entry) {
-    return Date.now() - entry.fetchedAt < CACHE_TTL_MS
+    const exp = decodeJwtExp(entry.decision?.transcodeParams)
+    if (exp == null) return false
+    // exp is in seconds, Date.now() in milliseconds; 60s buffer avoids mid-request expiry
+    return Date.now() < (exp - 60) * 1000
   }
 
   function setProfile(profile) {
@@ -30,7 +43,7 @@ export function createDecisionService(fetchFn) {
     }
 
     const decision = await fetchFn(songId, profile)
-    cache.set(songId, { decision, fetchedAt: Date.now() })
+    cache.set(songId, { decision })
     return decision
   }
 
@@ -46,7 +59,7 @@ export function createDecisionService(fetchFn) {
     await Promise.allSettled(
       uncached.map(async (id) => {
         const decision = await fetchFn(id, profile)
-        cache.set(id, { decision, fetchedAt: Date.now() })
+        cache.set(id, { decision })
       }),
     )
   }

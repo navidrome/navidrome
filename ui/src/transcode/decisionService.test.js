@@ -1,5 +1,43 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { createDecisionService, CACHE_TTL_MS } from './decisionService'
+import { createDecisionService, decodeJwtExp } from './decisionService'
+
+// Helper: create a fake JWT with a given exp (seconds since epoch)
+function fakeJwt(expSeconds) {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({ exp: expSeconds }))
+  return `${header}.${payload}.fake-signature`
+}
+
+// Helper: create a fake JWT with no exp claim
+function fakeJwtNoExp() {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({ sub: 'test' }))
+  return `${header}.${payload}.fake-signature`
+}
+
+describe('decodeJwtExp', () => {
+  it('extracts exp from a valid JWT', () => {
+    const exp = 1700000000
+    expect(decodeJwtExp(fakeJwt(exp))).toBe(exp)
+  })
+
+  it('returns null for JWT without exp claim', () => {
+    expect(decodeJwtExp(fakeJwtNoExp())).toBeNull()
+  })
+
+  it('returns null for non-JWT string', () => {
+    expect(decodeJwtExp('not-a-jwt')).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(decodeJwtExp('')).toBeNull()
+  })
+
+  it('returns null for null/undefined', () => {
+    expect(decodeJwtExp(null)).toBeNull()
+    expect(decodeJwtExp(undefined)).toBeNull()
+  })
+})
 
 describe('decisionService', () => {
   let service
@@ -13,18 +51,24 @@ describe('decisionService', () => {
     codecProfiles: [],
   }
 
-  const fakeDecision = {
-    canDirectPlay: true,
-    canTranscode: false,
-    transcodeParams: 'jwt-token-123',
-    sourceStream: { codec: 'mp3', container: 'mp3' },
+  // Token that expires 1 hour from "now" (will be relative to fake timers)
+  function makeFakeDecision(expiresInMs = 3600 * 1000) {
+    const expSeconds = Math.floor((Date.now() + expiresInMs) / 1000)
+    return {
+      canDirectPlay: true,
+      canTranscode: false,
+      transcodeParams: fakeJwt(expSeconds),
+      sourceStream: { codec: 'mp3', container: 'mp3' },
+    }
   }
 
   beforeEach(() => {
     localStorage.setItem('username', 'testuser')
     localStorage.setItem('subsonic-token', 'testtoken')
     localStorage.setItem('subsonic-salt', 'testsalt')
-    mockFetchFn = vi.fn().mockResolvedValue(fakeDecision)
+    mockFetchFn = vi.fn().mockImplementation(() => {
+      return Promise.resolve(makeFakeDecision())
+    })
     service = createDecisionService(mockFetchFn)
   })
 
@@ -36,35 +80,58 @@ describe('decisionService', () => {
   describe('getDecision', () => {
     it('fetches and caches a decision', async () => {
       const result = await service.getDecision('song-1', fakeProfile)
-      expect(result).toEqual(fakeDecision)
+      expect(result.canDirectPlay).toBe(true)
       expect(mockFetchFn).toHaveBeenCalledTimes(1)
       expect(mockFetchFn).toHaveBeenCalledWith('song-1', fakeProfile)
 
       // Second call uses cache
       const result2 = await service.getDecision('song-1', fakeProfile)
-      expect(result2).toEqual(fakeDecision)
+      expect(result2).toEqual(result)
       expect(mockFetchFn).toHaveBeenCalledTimes(1)
     })
 
-    it('re-fetches after TTL expires', async () => {
+    it('re-fetches after token expires', async () => {
       vi.useFakeTimers()
+
+      // Token expires in 1 hour
+      mockFetchFn.mockResolvedValue(makeFakeDecision(3600 * 1000))
       await service.getDecision('song-1', fakeProfile)
       expect(mockFetchFn).toHaveBeenCalledTimes(1)
 
-      vi.advanceTimersByTime(CACHE_TTL_MS + 1)
+      // Advance past expiration
+      vi.advanceTimersByTime(3600 * 1000 + 1000)
       await service.getDecision('song-1', fakeProfile)
       expect(mockFetchFn).toHaveBeenCalledTimes(2)
       vi.useRealTimers()
     })
 
-    it('does not re-fetch before TTL expires', async () => {
+    it('does not re-fetch before token expires', async () => {
       vi.useFakeTimers()
+
+      // Token expires in 1 hour
+      mockFetchFn.mockResolvedValue(makeFakeDecision(3600 * 1000))
       await service.getDecision('song-1', fakeProfile)
 
-      vi.advanceTimersByTime(CACHE_TTL_MS - 1000)
+      // 30 minutes later — still fresh
+      vi.advanceTimersByTime(1800 * 1000)
       await service.getDecision('song-1', fakeProfile)
       expect(mockFetchFn).toHaveBeenCalledTimes(1)
       vi.useRealTimers()
+    })
+
+    it('re-fetches immediately when token has no exp claim', async () => {
+      const noExpDecision = {
+        canDirectPlay: true,
+        canTranscode: false,
+        transcodeParams: fakeJwtNoExp(),
+        sourceStream: { codec: 'mp3', container: 'mp3' },
+      }
+      mockFetchFn.mockResolvedValue(noExpDecision)
+      await service.getDecision('song-1', fakeProfile)
+
+      // Should re-fetch because token has no exp
+      await service.getDecision('song-1', fakeProfile)
+      expect(mockFetchFn).toHaveBeenCalledTimes(2)
     })
 
     it('caches different songs independently', async () => {
@@ -81,7 +148,9 @@ describe('decisionService', () => {
 
     it('returns cached decision after getDecision', async () => {
       await service.getDecision('song-1', fakeProfile)
-      expect(service.getCachedDecision('song-1')).toEqual(fakeDecision)
+      const cached = service.getCachedDecision('song-1')
+      expect(cached).not.toBeNull()
+      expect(cached.canDirectPlay).toBe(true)
     })
 
     it('returns null after cache is invalidated', async () => {
@@ -90,10 +159,12 @@ describe('decisionService', () => {
       expect(service.getCachedDecision('song-1')).toBeNull()
     })
 
-    it('returns null after TTL expires', async () => {
+    it('returns null after token expires', async () => {
       vi.useFakeTimers()
+      mockFetchFn.mockResolvedValue(makeFakeDecision(3600 * 1000))
       await service.getDecision('song-1', fakeProfile)
-      vi.advanceTimersByTime(CACHE_TTL_MS + 1)
+
+      vi.advanceTimersByTime(3600 * 1000 + 1000)
       expect(service.getCachedDecision('song-1')).toBeNull()
       vi.useRealTimers()
     })
