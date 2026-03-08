@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
+import { decisionService } from '../transcode'
 import {
   PLAYER_ADD_TRACKS,
   PLAYER_CLEAR_QUEUE,
@@ -76,7 +77,15 @@ const mapToAudioLists = (item) => {
     lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
-    musicSrc: subsonic.streamUrl(trackId),
+    musicSrc: decisionService.getProfile()
+      ? () =>
+          decisionService
+            .getDecision(trackId)
+            .then((decision) =>
+              decisionService.buildStreamUrl(trackId, decision.transcodeParams),
+            )
+            .catch(() => subsonic.streamUrl(trackId))
+      : subsonic.streamUrl(trackId),
     cover: subsonic.getCoverArtUrl(
       {
         id: trackId,
