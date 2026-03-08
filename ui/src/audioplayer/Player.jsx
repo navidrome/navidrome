@@ -215,9 +215,9 @@ const Player = () => {
 
       if (!preloaded) {
         const next = nextSong()
-        if (next != null) {
-          const audio = new Audio()
-          audio.src = next.musicSrc
+        if (next != null && !next.isRadio) {
+          // Trigger decision pre-fetch (this also warms the cache)
+          decisionService.prefetchDecisions([next.trackId])
         }
         setPreload(true)
         return
@@ -309,6 +309,28 @@ const Player = () => {
     }
   }, [])
 
+  const onAudioError = useCallback(
+    (error, currentPlayId, audioLists, audioInfo) => {
+      // Invalidate all cached decisions — token may be stale
+      decisionService.invalidateAll()
+
+      // Pre-fetch decisions for upcoming songs with fresh tokens
+      const currentIdx = playerState.queue.findIndex(
+        (item) => item.uuid === currentPlayId,
+      )
+      if (currentIdx >= 0) {
+        const nextSongIds = playerState.queue
+          .slice(currentIdx + 1, currentIdx + 4)
+          .filter((item) => !item.isRadio)
+          .map((item) => item.trackId)
+        if (nextSongIds.length > 0) {
+          decisionService.prefetchDecisions(nextSongIds)
+        }
+      }
+    },
+    [playerState.queue],
+  )
+
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
       dispatch(clearQueue())
@@ -345,6 +367,7 @@ const Player = () => {
         onPlayModeChange={(mode) => dispatch(setPlayMode(mode))}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}
+        onAudioError={onAudioError}
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
