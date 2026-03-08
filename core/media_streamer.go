@@ -83,7 +83,7 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req 
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
-	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, req.Format, req.BitRate, req.SampleRate)
+	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, req.Format, req.BitRate, req.SampleRate, req.BitDepth, req.Channels)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 	filePath := mf.AbsolutePath()
 
@@ -150,13 +150,15 @@ func (s *Stream) EstimatedContentLength() int {
 }
 
 // TODO This function deserves some love (refactoring)
-func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int) (format string, bitRate int) {
+func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int) (format string, bitRate int) {
 	format = "raw"
 	if reqFormat == "raw" {
 		return format, 0
 	}
-	needsResample := reqSampleRate > 0 && reqSampleRate < mf.SampleRate
-	if reqFormat == mf.Suffix && reqBitRate == 0 && !needsResample {
+	needsTranscode := (reqSampleRate > 0 && reqSampleRate < mf.SampleRate) ||
+		(reqBitDepth > 0 && reqBitDepth < mf.BitDepth) ||
+		(reqChannels > 0 && reqChannels < mf.Channels)
+	if reqFormat == mf.Suffix && reqBitRate == 0 && !needsTranscode {
 		bitRate = mf.BitRate
 		return format, bitRate
 	}
@@ -195,7 +197,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 			bitRate = t.DefaultBitRate
 		}
 	}
-	if format == mf.Suffix && bitRate >= mf.BitRate && !needsResample {
+	if format == mf.Suffix && bitRate >= mf.BitRate && !needsTranscode {
 		format = "raw"
 		bitRate = 0
 	}
