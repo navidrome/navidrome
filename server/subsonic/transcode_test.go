@@ -376,7 +376,7 @@ type mockTranscodeDecision struct {
 	validateErr    error
 }
 
-func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *transcode.ClientInfo) (*transcode.Decision, error) {
+func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *transcode.ClientInfo, _ transcode.DecisionOptions) (*transcode.Decision, error) {
 	if m.decision != nil {
 		return m.decision, nil
 	}

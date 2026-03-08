@@ -83,7 +83,12 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req 
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
-	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, req.Format, req.BitRate, req.SampleRate, req.BitDepth, req.Channels)
+	format = req.Format
+	bitRate = req.BitRate
+	if format == "" || format == "raw" {
+		format = "raw"
+		bitRate = 0
+	}
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 	filePath := mf.AbsolutePath()
 
@@ -147,61 +152,6 @@ func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
-}
-
-// TODO This function deserves some love (refactoring)
-func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int, reqSampleRate int, reqBitDepth int, reqChannels int) (format string, bitRate int) {
-	format = "raw"
-	if reqFormat == "raw" {
-		return format, 0
-	}
-	needsTranscode := (reqSampleRate > 0 && reqSampleRate < mf.SampleRate) ||
-		(reqBitDepth > 0 && reqBitDepth < mf.BitDepth) ||
-		(reqChannels > 0 && reqChannels < mf.Channels)
-	if reqFormat == mf.Suffix && reqBitRate == 0 && !needsTranscode {
-		bitRate = mf.BitRate
-		return format, bitRate
-	}
-	trc, hasDefault := request.TranscodingFrom(ctx)
-	var cFormat string
-	var cBitRate int
-	if reqFormat != "" {
-		cFormat = reqFormat
-	} else {
-		if hasDefault {
-			cFormat = trc.TargetFormat
-			cBitRate = trc.DefaultBitRate
-			if p, ok := request.PlayerFrom(ctx); ok {
-				cBitRate = p.MaxBitRate
-			}
-		} else if reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "" {
-			// If no format is specified and no transcoding associated to the player, but a bitrate is specified,
-			// and there is no transcoding set for the player, we use the default downsampling format.
-			// But only if the requested bitRate is lower than the original bitRate.
-			log.Debug("Default Downsampling", "Using default downsampling format", conf.Server.DefaultDownsamplingFormat)
-			cFormat = conf.Server.DefaultDownsamplingFormat
-		}
-	}
-	if reqBitRate > 0 {
-		cBitRate = reqBitRate
-	}
-	if cBitRate == 0 && cFormat == "" {
-		return format, bitRate
-	}
-	t, err := ds.Transcoding(ctx).FindByFormat(cFormat)
-	if err == nil {
-		format = t.TargetFormat
-		if cBitRate != 0 {
-			bitRate = cBitRate
-		} else {
-			bitRate = t.DefaultBitRate
-		}
-	}
-	if format == mf.Suffix && bitRate >= mf.BitRate && !needsTranscode {
-		format = "raw"
-		bitRate = 0
-	}
-	return format, bitRate
 }
 
 var (

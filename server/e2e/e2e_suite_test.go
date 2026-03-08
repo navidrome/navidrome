@@ -239,7 +239,7 @@ func (n noopStreamer) DoStream(context.Context, *model.MediaFile, core.StreamReq
 // noopDecider implements transcode.Decider
 type noopDecider struct{}
 
-func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.ClientInfo) (*transcode.Decision, error) {
+func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.ClientInfo, transcode.DecisionOptions) (*transcode.Decision, error) {
 	return nil, nil
 }
 

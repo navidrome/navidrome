@@ -16,9 +16,16 @@ var (
 	ErrTokenStale    = errors.New("transcode token is stale: media file has changed")
 )
 
+// DecisionOptions controls optional behavior of MakeDecision.
+type DecisionOptions struct {
+	// SkipProbe prevents MakeDecision from running ffprobe on the media file.
+	// When true, source stream details are derived from tag metadata only.
+	SkipProbe bool
+}
+
 // Decider is the core service interface for making transcoding decisions
 type Decider interface {
-	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error)
+	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
 	CreateTranscodeParams(decision *Decision) (string, error)
 	ParseTranscodeParams(token string) (*Params, error)
 	ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error)

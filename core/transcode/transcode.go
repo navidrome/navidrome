@@ -35,15 +35,19 @@ type deciderService struct {
 	ff ffmpeg.FFmpeg
 }
 
-func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo) (*Decision, error) {
+func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error) {
 	decision := &Decision{
 		MediaID:         mf.ID,
 		SourceUpdatedAt: mf.UpdatedAt,
 	}
 
-	probe, err := s.ensureProbed(ctx, mf)
-	if err != nil {
-		return nil, err
+	var probe *ffmpeg.AudioProbeResult
+	if !opts.SkipProbe {
+		var err error
+		probe, err = s.ensureProbed(ctx, mf)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Build source stream details (uses probe data if available)

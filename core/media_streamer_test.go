@@ -43,13 +43,8 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
-		It("returns a seekable stream if maxBitRate is 0", func() {
-			s, err := streamer.NewStream(ctx, core.StreamRequest{ID: "123", Format: "mp3"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s.Seekable()).To(BeTrue())
-		})
-		It("returns a seekable stream if maxBitRate is higher than file bitRate", func() {
-			s, err := streamer.NewStream(ctx, core.StreamRequest{ID: "123", Format: "mp3", BitRate: 320})
+		It("returns a seekable stream if no format is specified (direct play)", func() {
+			s, err := streamer.NewStream(ctx, core.StreamRequest{ID: "123"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
