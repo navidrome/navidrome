@@ -61,11 +61,20 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(err.Error()).To(ContainSubstring("not yet supported"))
 		})
 
-		It("returns error when media file not found", func() {
-			mockMFRepo.SetError(true)
-			r := newJSONPostRequest("mediaId=notfound&mediaType=song", "{}")
+		It("returns ErrorDataNotFound when media file does not exist", func() {
+			// mockMFRepo has no data set, so Get() returns model.ErrNotFound
+			r := newJSONPostRequest("mediaId=nonexistent&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("media file not found"))
+		})
+
+		It("returns error when media file retrieval fails", func() {
+			mockMFRepo.SetError(true)
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("error retrieving media file"))
 		})
 
 		It("returns error when body is empty", func() {
@@ -317,6 +326,11 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(bpsToKbps(999)).To(Equal(1))
 			Expect(bpsToKbps(500)).To(Equal(1))
 			Expect(bpsToKbps(499)).To(Equal(0))
+		})
+		It("returns 0 for negative values", func() {
+			Expect(bpsToKbps(-1)).To(Equal(0))
+			Expect(bpsToKbps(-1000)).To(Equal(0))
+			Expect(bpsToKbps(-1000000)).To(Equal(0))
 		})
 	})
 

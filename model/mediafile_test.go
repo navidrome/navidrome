@@ -570,42 +570,6 @@ var _ = Describe("MediaFile", func() {
 		})
 	})
 
-	Describe("IsLossless", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
-
-		DescribeTable("detects lossless codecs",
-			func(codec string, suffix string, bitDepth int, expected bool) {
-				mf := MediaFile{Codec: codec, Suffix: suffix, BitDepth: bitDepth}
-				Expect(mf.IsLossless()).To(Equal(expected))
-			},
-			Entry("flac", "FLAC", "flac", 16, true),
-			Entry("alac", "ALAC", "m4a", 24, true),
-			Entry("pcm via wav", "", "wav", 16, true),
-			Entry("pcm via aiff", "", "aiff", 24, true),
-			Entry("ape", "", "ape", 16, true),
-			Entry("wv", "", "wv", 0, true),
-			Entry("tta", "", "tta", 0, true),
-			Entry("tak", "", "tak", 0, true),
-			Entry("shn", "", "shn", 0, true),
-			Entry("dsd", "", "dsf", 0, true),
-			Entry("mp3 is lossy", "MP3", "mp3", 0, false),
-			Entry("aac is lossy", "AAC", "m4a", 0, false),
-			Entry("vorbis is lossy", "", "ogg", 0, false),
-			Entry("opus is lossy", "", "opus", 0, false),
-		)
-
-		It("detects lossless via BitDepth fallback when codec is unknown", func() {
-			mf := MediaFile{Suffix: "xyz", BitDepth: 24}
-			Expect(mf.IsLossless()).To(BeTrue())
-		})
-
-		It("returns false for unknown with no BitDepth", func() {
-			mf := MediaFile{Suffix: "xyz", BitDepth: 0}
-			Expect(mf.IsLossless()).To(BeFalse())
-		})
-	})
 })
 
 func t(v string) time.Time {

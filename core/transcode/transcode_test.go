@@ -721,6 +721,51 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
+		Context("Probe-based lossless detection", func() {
+			It("uses probe codec name for lossless detection", func() {
+				// WavPack files: ffprobe reports codec as "wavpack", suffix is ".wv"
+				mf := &model.MediaFile{ID: "1", Suffix: "wv", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16}
+				probe := ffmpeg.AudioProbeResult{
+					Codec: "wavpack", BitRate: 1000, SampleRate: 44100, BitDepth: 16, Channels: 2,
+				}
+				data, _ := json.Marshal(probe)
+				mf.ProbeData = string(data)
+
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+					},
+					MaxTranscodingAudioBitrate: 256,
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.SourceStream.IsLossless).To(BeTrue())
+				Expect(decision.SourceStream.Codec).To(Equal("wavpack"))
+				// Lossless source transcoding to MP3 should use MaxTranscodingAudioBitrate
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.Bitrate).To(Equal(256))
+			})
+
+			It("detects lossy from probe codec name", func() {
+				mf := &model.MediaFile{ID: "1", Suffix: "ogg", BitRate: 192, Channels: 2, SampleRate: 48000}
+				probe := ffmpeg.AudioProbeResult{
+					Codec: "vorbis", BitRate: 192, SampleRate: 48000, BitDepth: 0, Channels: 2,
+				}
+				data, _ := json.Marshal(probe)
+				mf.ProbeData = string(data)
+
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"ogg"}, AudioCodecs: []string{"vorbis"}, Protocols: []string{"http"}},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.SourceStream.IsLossless).To(BeFalse())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+		})
+
 		Context("Opus fixed sample rate", func() {
 			It("sets Opus output to 48000Hz regardless of input", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
@@ -1161,6 +1206,35 @@ var _ = Describe("Decider", func() {
 
 			_, _, err := svc.ValidateTranscodeParams(ctx, token, "song-1")
 			Expect(err).To(MatchError(ErrTokenStale))
+		})
+	})
+
+	Describe("isLosslessFormat", func() {
+		It("returns true for known lossless codecs", func() {
+			Expect(isLosslessFormat("flac")).To(BeTrue())
+			Expect(isLosslessFormat("alac")).To(BeTrue())
+			Expect(isLosslessFormat("pcm")).To(BeTrue())
+			Expect(isLosslessFormat("wav")).To(BeTrue())
+			Expect(isLosslessFormat("dsd")).To(BeTrue())
+			Expect(isLosslessFormat("ape")).To(BeTrue())
+			Expect(isLosslessFormat("wv")).To(BeTrue())
+			Expect(isLosslessFormat("wavpack")).To(BeTrue()) // ffprobe codec_name for WavPack
+		})
+
+		It("returns false for lossy codecs", func() {
+			Expect(isLosslessFormat("mp3")).To(BeFalse())
+			Expect(isLosslessFormat("aac")).To(BeFalse())
+			Expect(isLosslessFormat("opus")).To(BeFalse())
+			Expect(isLosslessFormat("vorbis")).To(BeFalse())
+		})
+
+		It("returns false for unknown codecs", func() {
+			Expect(isLosslessFormat("unknown_codec")).To(BeFalse())
+		})
+
+		It("is case-insensitive", func() {
+			Expect(isLosslessFormat("FLAC")).To(BeTrue())
+			Expect(isLosslessFormat("Alac")).To(BeTrue())
 		})
 	})
 

@@ -14,7 +14,6 @@ import (
 
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
-	confmime "github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -226,24 +225,6 @@ func (mf MediaFile) inferCodecFromSuffix() string {
 	default:
 		return ""
 	}
-}
-
-// IsLossless returns true if this file uses a lossless codec.
-func (mf MediaFile) IsLossless() bool {
-	codec := mf.AudioCodec()
-	// Primary: codec-based check (most accurate for containers like M4A)
-	switch codec {
-	case "flac", "alac", "pcm", "ape", "wv", "tta", "tak", "shn", "dsd":
-		return true
-	}
-	// Secondary: suffix-based check using configurable list from YAML
-	if slices.Contains(confmime.LosslessFormats, mf.Suffix) {
-		return true
-	}
-	// Fallback heuristic: if BitDepth is set, it's likely lossless.
-	// This may produce false positives for lossy formats that report bit depth,
-	// but it becomes irrelevant once the Codec column is populated after a full rescan.
-	return mf.BitDepth > 0
 }
 
 type MediaFiles []MediaFile

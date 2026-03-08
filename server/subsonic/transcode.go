@@ -114,6 +114,9 @@ func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
 
 // bpsToKbps converts bits per second to kilobits per second (rounded).
 func bpsToKbps(bps int) int {
+	if bps < 0 {
+		return 0
+	}
 	return (bps + 500) / 1000
 }
 
@@ -218,7 +221,7 @@ func isValidComparison(c string) bool {
 // toResponseStreamDetails converts a core StreamDetails to the API response type.
 func toResponseStreamDetails(sd *transcode.StreamDetails) *responses.StreamDetails {
 	return &responses.StreamDetails{
-		Protocol:        transcode.ProtocolHTTP,
+		Protocol:        transcode.ProtocolHTTP, // TODO: derive from decision when HLS support is added
 		Container:       sd.Container,
 		Codec:           sd.Codec,
 		AudioBitrate:    int32(kbpsToBps(sd.Bitrate)),
@@ -272,13 +275,15 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, newError(responses.ErrorDataNotFound, "media file not found: %s", mediaID)
 		}
-		return nil, newError(responses.ErrorGeneric, "error retrieving media file: %v", err)
+		log.Error(ctx, "Error retrieving media file", "mediaID", mediaID, err)
+		return nil, newError(responses.ErrorGeneric, "error retrieving media file")
 	}
 
 	// Make the decision
 	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo)
 	if err != nil {
-		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision: %v", err)
+		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
+		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision")
 	}
 
 	// Only create a token when there is a valid playback path
@@ -286,7 +291,8 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	if decision.CanDirectPlay || decision.CanTranscode {
 		transcodeParams, err = api.transcodeDecision.CreateTranscodeParams(decision)
 		if err != nil {
-			return nil, newError(responses.ErrorGeneric, "failed to create transcode token: %v", err)
+			log.Error(ctx, "Failed to create transcode token", "mediaID", mediaID, err)
+			return nil, newError(responses.ErrorGeneric, "failed to create transcode token")
 		}
 	}
 

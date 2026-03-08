@@ -18,13 +18,15 @@ func normalizeProbeCodec(codec string) string {
 	return c
 }
 
-// isLosslessFormat returns true if the format is a lossless audio codec/format.
+// isLosslessFormat returns true if the format is a known lossless audio codec/format.
+// Detection is based on codec name only, not bit depth — some lossy codecs (e.g. ADPCM)
+// report non-zero bits_per_sample in ffprobe, so bit depth alone is not a reliable signal.
+//
 // Note: core/ffmpeg has a separate isLosslessOutputFormat that covers only formats
-// ffmpeg can produce as output (a smaller set). This function covers all known lossless formats
-// for transcoding decision purposes.
+// ffmpeg can produce as output (a smaller set).
 func isLosslessFormat(format string) bool {
 	switch strings.ToLower(format) {
-	case "flac", "alac", "wav", "aiff", "ape", "wv", "tta", "tak", "shn", "dsd", "pcm":
+	case "flac", "alac", "wav", "aiff", "ape", "wv", "wavpack", "tta", "tak", "shn", "dsd", "pcm":
 		return true
 	}
 	return false

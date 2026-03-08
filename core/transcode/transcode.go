@@ -134,8 +134,8 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Stre
 		sd.BitDepth = mf.BitDepth
 		sd.Channels = mf.Channels
 	}
+	sd.IsLossless = isLosslessFormat(sd.Codec)
 
-	sd.IsLossless = mf.IsLossless()
 	return sd
 }
 
@@ -144,8 +144,10 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 		return nil, nil
 	}
 	var result ffmpeg.AudioProbeResult
-	err := json.Unmarshal([]byte(data), &result)
-	return &result, err
+	if err := json.Unmarshal([]byte(data), &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),

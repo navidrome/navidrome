@@ -349,11 +349,13 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 }
 
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
-// of sample rate and channels when the template doesn't already include them.
+// of sample rate, channels, and bit depth when requested by the transcode decision.
+// Note: these flags are injected unconditionally when non-zero, even if the template
+// already includes them. FFmpeg uses the last occurrence of duplicate flags.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
 
-	// Dynamically inject -ar, -ac, and -sample_fmt for custom templates that don't include them
+	// Dynamically inject -ar, -ac, and -sample_fmt before the output target
 	if opts.SampleRate > 0 {
 		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
 	}
