@@ -9,32 +9,44 @@ export const CODEC_PROBES = [
   { codec: 'alac', container: 'mp4', mime: 'audio/mp4; codecs="alac"' },
 ]
 
-// Default transcoding targets — ordered by preference.
-// These are attempted if direct play is not possible.
-const DEFAULT_TRANSCODING_PROFILES = [
-  { container: 'ogg', audioCodec: 'opus', protocol: 'http' },
-  { container: 'mp3', audioCodec: 'mp3', protocol: 'http' },
-]
+// Transcoding targets in preference order (lossless first, then lossy).
+// Derived from CODEC_PROBES to avoid duplicating MIME strings.
+// MP3 is always included as a universal fallback.
+const TRANSCODE_CODECS = ['flac', 'opus', 'mp3']
+
+function probeSupported(audio, probes) {
+  return probes.filter(({ mime }) => audio.canPlayType(mime) === 'probably')
+}
 
 export function detectBrowserProfile() {
   const audio = new Audio()
-  const directPlayProfiles = []
 
-  for (const { codec, container, mime } of CODEC_PROBES) {
-    if (audio.canPlayType(mime) === 'probably') {
-      directPlayProfiles.push({
-        containers: [container],
-        audioCodecs: [codec],
-        protocols: ['http'],
+  const directPlayProfiles = probeSupported(audio, CODEC_PROBES).map(
+    ({ codec, container }) => ({
+      containers: [container],
+      audioCodecs: [codec],
+      protocols: ['http'],
+    }),
+  )
+
+  // Build transcoding profiles from supported codecs, always keeping mp3 as fallback
+  const transcodingProfiles = TRANSCODE_CODECS.reduce((profiles, codec) => {
+    const probe = CODEC_PROBES.find((p) => p.codec === codec)
+    if (audio.canPlayType(probe.mime) === 'probably' || codec === 'mp3') {
+      profiles.push({
+        container: probe.container,
+        audioCodec: codec,
+        protocol: 'http',
       })
     }
-  }
+    return profiles
+  }, [])
 
   return {
     name: 'NavidromeUI',
     platform: navigator.userAgent,
     directPlayProfiles,
-    transcodingProfiles: DEFAULT_TRANSCODING_PROFILES,
+    transcodingProfiles,
     codecProfiles: [],
   }
 }
