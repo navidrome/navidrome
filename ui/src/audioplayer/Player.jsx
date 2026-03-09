@@ -204,7 +204,9 @@ const Player = () => {
       ...defaultOptions,
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
-      autoPlay: playerState.autoPlay !== false && (playerState.clear || playerState.playIndex === 0),
+      autoPlay:
+        playerState.autoPlay !== false &&
+        (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
