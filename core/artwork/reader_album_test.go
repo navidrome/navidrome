@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"time"
 
@@ -234,6 +235,33 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
 			// Get should not have been called (single folder, no parent lookup)
 			Expect(repo.getCallCount).To(Equal(0))
+		})
+
+		It("propagates non-ErrNotFound errors from parent folder lookup", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist/Album",
+					Name:            "CD1",
+					ParentID:        "parentFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.jpg"},
+				},
+				{
+					ID:              "folder2",
+					Path:            "Artist/Album",
+					Name:            "CD2",
+					ParentID:        "parentFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.getErr = errors.New("db connection failed")
+
+			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).To(MatchError("db connection failed"))
+			Expect(repo.getCallCount).To(Equal(1))
 		})
 
 		It("continues gracefully when parent folder is not found", func() {
