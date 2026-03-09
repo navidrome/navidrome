@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
+import { decisionService } from '../transcode'
 import {
   PLAYER_ADD_TRACKS,
   PLAYER_CLEAR_QUEUE,
@@ -10,6 +11,7 @@ import {
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
+  PLAYER_REFRESH_QUEUE,
 } from '../actions'
 import config from '../config'
 
@@ -29,6 +31,14 @@ const pad = (value) => {
     return str
   }
 }
+
+const makeMusicSrc = (trackId) =>
+  decisionService.getProfile()
+    ? () =>
+        decisionService
+          .resolveStreamUrl(trackId)
+          .catch(() => subsonic.streamUrl(trackId))
+    : subsonic.streamUrl(trackId)
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -76,7 +86,7 @@ const mapToAudioLists = (item) => {
     lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
-    musicSrc: subsonic.streamUrl(trackId),
+    musicSrc: makeMusicSrc(trackId),
     cover: subsonic.getCoverArtUrl(
       {
         id: trackId,
@@ -210,6 +220,22 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
+    case PLAYER_REFRESH_QUEUE: {
+      const resolvedUrls = payload.data || {}
+      return {
+        ...previousState,
+        queue: previousState.queue.map((item) => ({
+          ...item,
+          musicSrc: item.isRadio
+            ? item.musicSrc
+            : resolvedUrls[item.trackId] || subsonic.streamUrl(item.trackId),
+        })),
+        clear: true,
+        autoPlay: false,
+        playIndex:
+          previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
+      }
+    }
     default:
       return previousState
   }

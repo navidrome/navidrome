@@ -77,4 +77,30 @@ describe('<QualityInfo />', () => {
     )
     expect(screen.getByText('FLAC (0.00 dB)')).toBeInTheDocument()
   })
+
+  it('shows transcode arrow when transcodeStream is provided', () => {
+    const info = { suffix: 'FLAC', bitRate: 1008 }
+    const transcodeStream = { codec: 'opus', audioBitrate: 128000 }
+    render(<QualityInfo record={info} transcodeStream={transcodeStream} />)
+    expect(screen.getByText('FLAC → OPUS 128')).toBeInTheDocument()
+  })
+
+  it('shows transcode with lossy source including bitrate', () => {
+    const info = { suffix: 'FLAC', bitRate: 1008 }
+    const transcodeStream = { codec: 'mp3', audioBitrate: 320000 }
+    render(<QualityInfo record={info} transcodeStream={transcodeStream} />)
+    expect(screen.getByText('FLAC → MP3 320')).toBeInTheDocument()
+  })
+
+  it('does not show arrow when isDirectPlay is true', () => {
+    const info = { suffix: 'MP3', bitRate: 320 }
+    render(<QualityInfo record={info} isDirectPlay={true} />)
+    expect(screen.getByText('MP3 320')).toBeInTheDocument()
+  })
+
+  it('behaves normally when no transcode props are passed', () => {
+    const info = { suffix: 'MP3', bitRate: 320 }
+    render(<QualityInfo record={info} />)
+    expect(screen.getByText('MP3 320')).toBeInTheDocument()
+  })
 })
