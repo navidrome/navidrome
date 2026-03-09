@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -103,6 +105,28 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	folderIDSet := make(map[string]bool, len(folderIDs))
+	for _, id := range folderIDs {
+		folderIDSet[id] = true
+	}
+
+	// For multi-disc albums (2+ folders), check if all folders share a common parent
+	// that is not already included. This finds cover art in the album root folder
+	// (e.g., "Artist/Album/cover.jpg" when tracks are in "Artist/Album/CD1/" and "Artist/Album/CD2/").
+	// We skip single-folder albums to avoid pulling images from the artist folder.
+	if commonParentID := commonParentFolder(folders, folderIDSet); commonParentID != "" {
+		parentFolder, err := ds.Folder(ctx).Get(commonParentID)
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
+		} else if err != nil {
+			return nil, nil, nil, err
+		}
+		if parentFolder != nil {
+			folders = append(folders, *parentFolder)
+		}
+	}
+
 	var paths []string
 	var imgFiles []string
 	var updatedAt time.Time
@@ -123,6 +147,24 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	slices.SortFunc(imgFiles, compareImageFiles)
 
 	return paths, imgFiles, &updatedAt, nil
+}
+
+// commonParentFolder returns the shared parent folder ID when all folders have the
+// same parent and that parent is not already in folderIDSet. Returns "" otherwise.
+func commonParentFolder(folders []model.Folder, folderIDSet map[string]bool) string {
+	if len(folders) < 2 {
+		return ""
+	}
+	parentID := folders[0].ParentID
+	if parentID == "" || folderIDSet[parentID] {
+		return ""
+	}
+	for _, f := range folders[1:] {
+		if f.ParentID != parentID {
+			return ""
+		}
+	}
+	return parentID
 }
 
 // compareImageFiles compares two image file paths for sorting.
