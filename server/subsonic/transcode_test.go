@@ -230,18 +230,9 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		It("returns 410 for invalid token", func() {
+		It("returns 410 for invalid or mismatched token", func() {
 			mockTD.resolveErr = transcode.ErrTokenInvalid
 			r := newGetRequest("mediaId=123", "mediaType=song", "transcodeParams=bad-token")
-			resp, err := router.GetTranscodeStream(w, r)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(resp).To(BeNil())
-			Expect(w.Code).To(Equal(http.StatusGone))
-		})
-
-		It("returns 410 when mediaId doesn't match token", func() {
-			mockTD.resolveErr = transcode.ErrTokenInvalid
-			r := newGetRequest("mediaId=wrong-id", "mediaType=song", "transcodeParams=valid-token")
 			resp, err := router.GetTranscodeStream(w, r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp).To(BeNil())

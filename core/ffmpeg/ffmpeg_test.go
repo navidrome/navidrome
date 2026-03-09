@@ -227,35 +227,20 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).ToNot(ContainElement("-sample_fmt"))
 		})
 
-		It("omits -sample_fmt for mp3 even when bit depth >= 16", func() {
-			args := buildDynamicArgs(TranscodeOptions{
-				Format:   "mp3",
-				FilePath: "/music/file.flac",
-				BitRate:  256,
-				BitDepth: 16,
-			})
-			Expect(args).ToNot(ContainElement("-sample_fmt"))
-		})
-
-		It("omits -sample_fmt for aac even when bit depth >= 16", func() {
-			args := buildDynamicArgs(TranscodeOptions{
-				Format:   "aac",
-				FilePath: "/music/file.flac",
-				BitRate:  256,
-				BitDepth: 16,
-			})
-			Expect(args).ToNot(ContainElement("-sample_fmt"))
-		})
-
-		It("omits -sample_fmt for opus even when bit depth >= 16", func() {
-			args := buildDynamicArgs(TranscodeOptions{
-				Format:   "opus",
-				FilePath: "/music/file.flac",
-				BitRate:  128,
-				BitDepth: 16,
-			})
-			Expect(args).ToNot(ContainElement("-sample_fmt"))
-		})
+		DescribeTable("omits -sample_fmt for lossy formats even when bit depth >= 16",
+			func(format string, bitRate int) {
+				args := buildDynamicArgs(TranscodeOptions{
+					Format:   format,
+					FilePath: "/music/file.flac",
+					BitRate:  bitRate,
+					BitDepth: 16,
+				})
+				Expect(args).ToNot(ContainElement("-sample_fmt"))
+			},
+			Entry("mp3", "mp3", 256),
+			Entry("aac", "aac", 256),
+			Entry("opus", "opus", 128),
+		)
 	})
 
 	Describe("bitDepthToSampleFmt", func() {

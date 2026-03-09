@@ -58,7 +58,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{"http"}, MaxAudioChannels: 2},
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}, MaxAudioChannels: 2},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -72,7 +72,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -85,7 +85,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "ALAC", BitRate: 1000, Channels: 2})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -98,7 +98,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}, MaxAudioChannels: 2},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}, MaxAudioChannels: 2},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -111,7 +111,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"aac"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"aac"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -123,7 +123,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp4"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp4"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -135,7 +135,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"m4a"}, AudioCodecs: []string{"adts"}, Protocols: []string{"http"}},
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"adts"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -174,10 +174,10 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxAudioBitrate: 500, // kbps
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -194,10 +194,10 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 256, // kbps
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
 					},
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http", MaxAudioChannels: 2},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 2},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -213,7 +213,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", Protocol: "http"},
+						{Container: "flac", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -225,7 +225,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, BitDepth: 16})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", Protocol: "http"},
+						{Container: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -239,7 +239,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 256, // kbps
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", Protocol: "http"},
+						{Container: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -252,7 +252,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "wav", Protocol: "http"},
+						{Container: "wav", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -265,7 +265,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxAudioBitrate: 96, // kbps
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -279,11 +279,11 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
 					},
 					TranscodingProfiles: []Profile{
-						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http", MaxAudioChannels: 2},
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 2},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -299,10 +299,10 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxAudioBitrate: 1000,
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -317,7 +317,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -344,7 +344,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 512, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -366,7 +366,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 512, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{"http"}},
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -387,7 +387,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -408,7 +408,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -429,7 +429,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -452,7 +452,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -473,7 +473,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -498,7 +498,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxAudioBitrate: 96, // force transcode
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -521,7 +521,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -544,7 +544,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -566,7 +566,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -589,7 +589,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 24})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -604,7 +604,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -628,7 +628,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -647,7 +647,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -666,7 +666,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -693,7 +693,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: 1})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "flac", AudioCodec: "flac", Protocol: "http"},
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
 					},
 					CodecProfiles: []CodecProfile{
 						{
@@ -726,7 +726,7 @@ var _ = Describe("Decider", func() {
 
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 					MaxTranscodingAudioBitrate: 256,
 				}
@@ -749,7 +749,7 @@ var _ = Describe("Decider", func() {
 
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"ogg"}, AudioCodecs: []string{"vorbis"}, Protocols: []string{"http"}},
+						{Containers: []string{"ogg"}, AudioCodecs: []string{"vorbis"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -765,7 +765,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 128,
 					TranscodingProfiles: []Profile{
-						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -782,7 +782,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 128,
 					TranscodingProfiles: []Profile{
-						{Container: "opus", AudioCodec: "opus", Protocol: "http"},
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -798,7 +798,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 256,
 					TranscodingProfiles: []Profile{
-						{Container: "mp4", AudioCodec: "aac", Protocol: "http"},
+						{Container: "mp4", AudioCodec: "aac", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -816,7 +816,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 256,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -833,7 +833,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -847,7 +847,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -863,7 +863,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
 					TranscodingProfiles: []Profile{
-						{Container: "aac", AudioCodec: "aac", Protocol: "http"},
+						{Container: "aac", AudioCodec: "aac", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -879,12 +879,12 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 128, Channels: 2, SampleRate: 48000})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
-						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{"http"}},
-						{Containers: []string{"m4a", "mp4"}, AudioCodecs: []string{"aac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
+						{Containers: []string{"m4a", "mp4"}, AudioCodecs: []string{"aac"}, Protocols: []string{ProtocolHTTP}},
 					},
 					TranscodingProfiles: []Profile{
-						{Container: "mp3", AudioCodec: "mp3", Protocol: "http"},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -902,7 +902,7 @@ var _ = Describe("Decider", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24, Duration: 300.5, Size: 50000000})
 				ci := &ClientInfo{
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
@@ -922,7 +922,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					Name: "TestClient",
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				// Set server override in context
@@ -942,7 +942,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					Name: "TestClient",
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 256})
@@ -1004,7 +1004,7 @@ var _ = Describe("Decider", func() {
 				ci := &ClientInfo{
 					Name: "TestClient",
 					DirectPlayProfiles: []DirectPlayProfile{
-						{Containers: []string{"flac"}, Protocols: []string{"http"}},
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
 					},
 				}
 				// No override in context — client profiles used as-is
@@ -1013,20 +1013,6 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 
-			It("preserves client Name and Platform in overridden ClientInfo", func() {
-				ci := &ClientInfo{
-					Name:     "MyApp",
-					Platform: "iOS",
-				}
-				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
-
-				// Verify via applyServerOverride directly (package-level function)
-				trc := model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192}
-				overridden := applyServerOverride(ci, &trc, overrideCtx)
-				Expect(overridden.Name).To(Equal("MyApp"))
-				Expect(overridden.Platform).To(Equal("iOS"))
-				Expect(overridden.CodecProfiles).To(BeEmpty())
-			})
 		})
 	})
 
@@ -1380,96 +1366,7 @@ var _ = Describe("Decider", func() {
 		})
 	})
 
-	Describe("Decision.toClaimsMap", func() {
-		It("includes required fields and omits zero transcode fields for direct play", func() {
-			d := &Decision{
-				MediaID:         "song-1",
-				CanDirectPlay:   true,
-				SourceUpdatedAt: time.Unix(1700000000, 0),
-			}
-			m := d.toClaimsMap()
-			Expect(m).To(HaveKeyWithValue("mid", "song-1"))
-			Expect(m).To(HaveKeyWithValue("dp", true))
-			Expect(m).To(HaveKeyWithValue("ua", int64(1700000000)))
-			Expect(m).NotTo(HaveKey("f"))
-			Expect(m).NotTo(HaveKey("b"))
-			Expect(m).NotTo(HaveKey("ch"))
-			Expect(m).NotTo(HaveKey("sr"))
-			Expect(m).NotTo(HaveKey("bd"))
-		})
-
-		It("includes transcode fields when CanTranscode is true", func() {
-			d := &Decision{
-				MediaID:          "song-2",
-				CanTranscode:     true,
-				TargetFormat:     "opus",
-				TargetBitrate:    128,
-				TargetChannels:   2,
-				TargetSampleRate: 48000,
-				TargetBitDepth:   16,
-				SourceUpdatedAt:  time.Unix(1700000000, 0),
-			}
-			m := d.toClaimsMap()
-			Expect(m).To(HaveKeyWithValue("mid", "song-2"))
-			Expect(m).NotTo(HaveKey("dp"))
-			Expect(m).To(HaveKeyWithValue("f", "opus"))
-			Expect(m).To(HaveKeyWithValue("b", 128))
-			Expect(m).To(HaveKeyWithValue("ch", 2))
-			Expect(m).To(HaveKeyWithValue("sr", 48000))
-			Expect(m).To(HaveKeyWithValue("bd", 16))
-		})
-	})
-
 	Describe("paramsFromToken", func() {
-		It("round-trips all fields through encode/decode", func() {
-			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
-			d := &Decision{
-				MediaID:          "song-3",
-				CanTranscode:     true,
-				TargetFormat:     "mp3",
-				TargetBitrate:    320,
-				TargetChannels:   2,
-				TargetSampleRate: 44100,
-				TargetBitDepth:   16,
-				SourceUpdatedAt:  time.Unix(1700000000, 0),
-			}
-			token, _, err := tokenAuth.Encode(d.toClaimsMap())
-			Expect(err).NotTo(HaveOccurred())
-
-			p, err := paramsFromToken(token)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(p.MediaID).To(Equal("song-3"))
-			Expect(p.DirectPlay).To(BeFalse())
-			Expect(p.TargetFormat).To(Equal("mp3"))
-			Expect(p.TargetBitrate).To(Equal(320))
-			Expect(p.TargetChannels).To(Equal(2))
-			Expect(p.TargetSampleRate).To(Equal(44100))
-			Expect(p.TargetBitDepth).To(Equal(16))
-			Expect(p.SourceUpdatedAt).To(Equal(time.Unix(1700000000, 0)))
-		})
-
-		It("round-trips direct-play-only claims", func() {
-			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
-			d := &Decision{
-				MediaID:         "song-4",
-				CanDirectPlay:   true,
-				SourceUpdatedAt: time.Unix(1700000000, 0),
-			}
-			token, _, err := tokenAuth.Encode(d.toClaimsMap())
-			Expect(err).NotTo(HaveOccurred())
-
-			p, err := paramsFromToken(token)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(p.MediaID).To(Equal("song-4"))
-			Expect(p.DirectPlay).To(BeTrue())
-			Expect(p.TargetFormat).To(BeEmpty())
-			Expect(p.TargetBitrate).To(BeZero())
-			Expect(p.TargetChannels).To(BeZero())
-			Expect(p.TargetSampleRate).To(BeZero())
-			Expect(p.TargetBitDepth).To(BeZero())
-			Expect(p.SourceUpdatedAt).To(Equal(time.Unix(1700000000, 0)))
-		})
-
 		It("returns error when media ID is missing", func() {
 			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
 			token, _, err := tokenAuth.Encode(map[string]any{"ua": int64(1700000000)})
