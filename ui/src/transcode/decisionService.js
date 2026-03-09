@@ -2,7 +2,10 @@ import { jwtDecode } from 'jwt-decode'
 import subsonic from '../subsonic'
 import { baseUrl } from '../utils'
 
-// Decode the exp claim from a JWT token (no signature verification needed client-side)
+// Decode the exp claim from a JWT token (no signature verification needed client-side).
+// The JWT token is meant to be opaque to the client, we are only allowing ourselves to do
+// this here because the UI is tightly integrated with the server; normally we would
+// need to rely on the getTranscodeStream returning an error on stale tokens.
 export function decodeJwtExp(token) {
   try {
     if (!token) return null
