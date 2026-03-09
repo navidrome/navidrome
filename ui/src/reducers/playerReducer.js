@@ -173,8 +173,11 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
   return {
     ...state,
     queue: audioLists,
-    clear: false,
-    playIndex: undefined,
+    // Keep clear and playIndex alive so the music player can still
+    // pick up a pending track selection set by PLAYER_PLAY_TRACKS.
+    // They will be consumed by the next PLAYER_CURRENT dispatch.
+    clear: state.playIndex != null ? state.clear : false,
+    playIndex: state.playIndex != null ? state.playIndex : undefined,
   }
 }
 
@@ -183,11 +186,17 @@ const reduceCurrent = (state, { data }) => {
   const savedPlayIndex = state.queue.findIndex(
     (item) => item.uuid === current.uuid,
   )
+  // When a track selection is pending (playIndex is set), keep it alive
+  // until the music player confirms it actually switched to the requested
+  // track. Without this, a premature onAudioPlay callback for the
+  // still-playing old track would overwrite the pending selection.
+  const pending = state.playIndex != null && savedPlayIndex !== state.playIndex
   return {
     ...state,
     current,
-    playIndex: undefined,
-    savedPlayIndex,
+    playIndex: pending ? state.playIndex : undefined,
+    clear: pending ? state.clear : false,
+    savedPlayIndex: pending ? state.savedPlayIndex : savedPlayIndex,
     volume: data.volume,
   }
 }
