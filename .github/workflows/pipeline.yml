@@ -221,7 +221,7 @@ jobs:
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build Binaries
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -244,7 +244,7 @@ jobs:
       - name: Build and push image by digest
         id: push-image
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
