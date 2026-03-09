@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -70,6 +72,7 @@ var (
 	ctx    context.Context
 	ds     *tests.MockDataStore
 	router *subsonic.Router
+	spy    *spyStreamer
 	lib    model.Library
 
 	// Snapshot paths for fast DB restore
@@ -225,35 +228,49 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
-// noopStreamer implements transcode.MediaStreamer
-type noopStreamer struct{}
+// spyStreamer captures the StreamRequest passed to DoStream for test assertions,
+// then returns a minimal fake Stream so the handler completes without error.
+type spyStreamer struct {
+	LastRequest   transcode.StreamRequest
+	LastMediaFile *model.MediaFile
+}
 
-func (n noopStreamer) NewStream(context.Context, transcode.StreamRequest) (*transcode.Stream, error) {
+func (s *spyStreamer) NewStream(ctx context.Context, req transcode.StreamRequest) (*transcode.Stream, error) {
 	return nil, model.ErrNotFound
 }
 
-func (n noopStreamer) DoStream(context.Context, *model.MediaFile, transcode.StreamRequest) (*transcode.Stream, error) {
-	return nil, model.ErrNotFound
+func (s *spyStreamer) DoStream(_ context.Context, mf *model.MediaFile, req transcode.StreamRequest) (*transcode.Stream, error) {
+	s.LastRequest = req
+	s.LastMediaFile = mf
+	format := req.Format
+	if format == "" || format == "raw" {
+		format = mf.Suffix
+	}
+	return transcode.NewTestStream(mf, format, req.BitRate), nil
 }
 
-// noopDecider implements transcode.Decider
-type noopDecider struct{}
+// noopFFmpeg implements ffmpeg.FFmpeg with no-op methods.
+type noopFFmpeg struct{}
 
-func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.ClientInfo, transcode.DecisionOptions) (*transcode.Decision, error) {
-	return nil, nil
+func (n noopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCloser, error) {
+	return nil, errors.New("noop ffmpeg: transcode not supported")
 }
 
-func (n noopDecider) ResolveRequest(context.Context, *model.MediaFile, string, int, int) transcode.StreamRequest {
-	return transcode.StreamRequest{Format: "raw"}
+func (n noopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
+	return nil, errors.New("noop ffmpeg: extract image not supported")
 }
 
-func (n noopDecider) CreateTranscodeParams(*transcode.Decision) (string, error) {
+func (n noopFFmpeg) Probe(context.Context, []string) (string, error) {
 	return "", nil
 }
 
-func (n noopDecider) ResolveRequestFromToken(context.Context, string, string, int) (transcode.StreamRequest, *model.MediaFile, error) {
-	return transcode.StreamRequest{}, nil, nil
+func (n noopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
+	return nil, errors.New("noop ffmpeg: probe not supported")
 }
+
+func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
+func (n noopFFmpeg) IsAvailable() bool        { return false }
+func (n noopFFmpeg) Version() string          { return "noop" }
 
 // noopArchiver implements core.Archiver
 type noopArchiver struct{}
@@ -319,11 +336,11 @@ func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
 // Compile-time interface checks
 var (
 	_ artwork.Artwork         = noopArtwork{}
-	_ transcode.MediaStreamer = noopStreamer{}
+	_ transcode.MediaStreamer = &spyStreamer{}
 	_ core.Archiver           = noopArchiver{}
 	_ external.Provider       = noopProvider{}
 	_ scrobbler.PlayTracker   = noopPlayTracker{}
-	_ transcode.Decider       = noopDecider{}
+	_ ffmpeg.FFmpeg           = noopFFmpeg{}
 )
 
 var _ = BeforeSuite(func() {
@@ -401,13 +418,15 @@ func setupTestDB() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	// Create the Subsonic Router with real DS + noop stubs
+	// Create the Subsonic Router with real DS, spy streamer, and real Decider
+	spy = &spyStreamer{}
+	decider := transcode.NewDecider(ds, noopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
-		noopStreamer{},
+		spy,
 		noopArchiver{},
 		core.NewPlayers(ds),
 		noopProvider{},
@@ -419,7 +438,7 @@ func setupTestDB() {
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(nil),
-		noopDecider{},
+		decider,
 	)
 }
 

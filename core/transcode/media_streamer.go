@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -140,6 +141,17 @@ func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+}
+
+// NewTestStream creates a Stream for testing purposes.
+func NewTestStream(mf *model.MediaFile, format string, bitRate int) *Stream {
+	return &Stream{
+		ctx:        context.Background(),
+		mf:         mf,
+		format:     format,
+		bitRate:    bitRate,
+		ReadCloser: io.NopCloser(strings.NewReader("")),
+	}
 }
 
 var (
