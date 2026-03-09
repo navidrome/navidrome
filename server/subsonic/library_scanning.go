@@ -80,7 +80,9 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		}
 	}
 
+	fastScanCompleted := make(chan struct{})
 	go func() {
+		defer close(fastScanCompleted)
 		start := time.Now()
 		var err error
 
@@ -117,6 +119,9 @@ loop:
 			break
 		}
 		select {
+		case <-fastScanCompleted:
+			log.Info(ctx, "Fast scan completed", "user", loggedUser.UserName)
+			break loop
 		case <-timer.C:
 			log.Warn(ctx, "Timed out waiting for scanner to start; response may be stale")
 			break loop
