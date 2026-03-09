@@ -146,6 +146,25 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 	})
 
 	Describe("getTranscodeDecision", func() {
+		// setPlayerMaxBitRate ensures a player exists for the test-client and sets its MaxBitRate.
+		// It makes a dummy request to register the player, then updates it via the repository.
+		setPlayerMaxBitRate := func(maxBitRate int) {
+			doReq("ping")
+			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			Expect(err).ToNot(HaveOccurred())
+			player.MaxBitRate = maxBitRate
+			Expect(ds.Player(ctx).Put(player)).To(Succeed())
+		}
+
+		AfterEach(func() {
+			// Reset player MaxBitRate to 0 after each test
+			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			if err == nil {
+				player.MaxBitRate = 0
+				_ = ds.Player(ctx).Put(player)
+			}
+		})
+
 		Describe("error cases", func() {
 			It("returns 405 for GET request", func() {
 				w := doRawReq("getTranscodeDecision", "mediaId", mp3TrackID, "mediaType", "song")
@@ -362,28 +381,6 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		})
 
 		Describe("player MaxBitRate cap", func() {
-			// setPlayerMaxBitRate ensures a player exists for the test-client and sets its MaxBitRate.
-			// It makes a dummy request to register the player, then updates it via the repository.
-			setPlayerMaxBitRate := func(maxBitRate int) {
-				// Make a request to ensure the player is registered
-				doReq("ping")
-
-				// Find and update the player's MaxBitRate
-				player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
-				Expect(err).ToNot(HaveOccurred())
-				player.MaxBitRate = maxBitRate
-				Expect(ds.Player(ctx).Put(player)).To(Succeed())
-			}
-
-			AfterEach(func() {
-				// Reset player MaxBitRate to 0 after each test
-				player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
-				if err == nil {
-					player.MaxBitRate = 0
-					_ = ds.Player(ctx).Put(player)
-				}
-			})
-
 			It("forces transcode when source bitrate exceeds player MaxBitRate", func() {
 				setPlayerMaxBitRate(320) // 320 kbps cap
 
@@ -501,22 +498,6 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		})
 
 		Describe("player MaxBitRate + client limits combined", func() {
-			setPlayerMaxBitRate := func(maxBitRate int) {
-				doReq("ping")
-				player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
-				Expect(err).ToNot(HaveOccurred())
-				player.MaxBitRate = maxBitRate
-				Expect(ds.Player(ctx).Put(player)).To(Succeed())
-			}
-
-			AfterEach(func() {
-				player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
-				if err == nil {
-					player.MaxBitRate = 0
-					_ = ds.Player(ctx).Put(player)
-				}
-			})
-
 			It("player MaxBitRate injects maxAudioBitrate, format default used for transcode target", func() {
 				setPlayerMaxBitRate(320)
 
