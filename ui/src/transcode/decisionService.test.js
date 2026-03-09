@@ -213,6 +213,25 @@ describe('decisionService', () => {
       expect(url).toContain('mediaId=song-1')
       expect(mockFetchFn).toHaveBeenCalledTimes(1)
     })
+
+    it('falls back to stream URL when decision has no transcodeParams', async () => {
+      service.setProfile(fakeProfile)
+      mockFetchFn.mockResolvedValue({
+        canDirectPlay: true,
+        canTranscode: false,
+      })
+      const url = await service.resolveStreamUrl('song-1')
+      expect(url).toContain('stream')
+      expect(url).not.toContain('getTranscodeStream')
+    })
+
+    it('falls back to stream URL when decision is null', async () => {
+      service.setProfile(fakeProfile)
+      mockFetchFn.mockResolvedValue(null)
+      const url = await service.resolveStreamUrl('song-1')
+      expect(url).toContain('stream')
+      expect(url).not.toContain('getTranscodeStream')
+    })
   })
 
   describe('buildStreamUrl', () => {

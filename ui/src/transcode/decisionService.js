@@ -1,3 +1,4 @@
+import { jwtDecode } from 'jwt-decode'
 import subsonic from '../subsonic'
 import { baseUrl } from '../utils'
 
@@ -5,9 +6,7 @@ import { baseUrl } from '../utils'
 export function decodeJwtExp(token) {
   try {
     if (!token) return null
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    const payload = JSON.parse(atob(parts[1]))
+    const payload = jwtDecode(token)
     return typeof payload.exp === 'number' ? payload.exp : null
   } catch {
     return null
@@ -82,7 +81,10 @@ export function createDecisionService(fetchFn) {
 
   async function resolveStreamUrl(songId) {
     const decision = await getDecision(songId)
-    return buildStreamUrl(songId, decision?.transcodeParams)
+    if (!decision?.transcodeParams) {
+      return baseUrl(subsonic.streamUrl(songId))
+    }
+    return buildStreamUrl(songId, decision.transcodeParams)
   }
 
   function getCachedDecision(songId) {

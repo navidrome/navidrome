@@ -232,7 +232,8 @@ export const playerReducer = (previousState = initialState, payload) => {
         })),
         clear: true,
         autoPlay: false,
-        playIndex: previousState.savedPlayIndex || 0,
+        playIndex:
+          previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
       }
     }
     default:
