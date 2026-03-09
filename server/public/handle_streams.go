@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -23,7 +23,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, transcode.StreamRequest{
+	stream, err := pub.streamer.NewStream(ctx, stream.StreamRequest{
 		ID: info.id, Format: info.format, BitRate: info.bitrate,
 	})
 	if err != nil {
