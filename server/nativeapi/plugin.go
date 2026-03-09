@@ -56,12 +56,13 @@ func pluginsEnabledMiddleware(next http.Handler) http.Handler {
 
 // PluginUpdateRequest represents the fields that can be updated via the API
 type PluginUpdateRequest struct {
-	Enabled      *bool   `json:"enabled,omitempty"`
-	Config       *string `json:"config,omitempty"`
-	Users        *string `json:"users,omitempty"`
-	AllUsers     *bool   `json:"allUsers,omitempty"`
-	Libraries    *string `json:"libraries,omitempty"`
-	AllLibraries *bool   `json:"allLibraries,omitempty"`
+	Enabled          *bool   `json:"enabled,omitempty"`
+	Config           *string `json:"config,omitempty"`
+	Users            *string `json:"users,omitempty"`
+	AllUsers         *bool   `json:"allUsers,omitempty"`
+	Libraries        *string `json:"libraries,omitempty"`
+	AllLibraries     *bool   `json:"allLibraries,omitempty"`
+	AllowWriteAccess *bool   `json:"allowWriteAccess,omitempty"`
 }
 
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +110,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle libraries permission update (if provided)
-	if req.Libraries != nil || req.AllLibraries != nil {
+	if req.Libraries != nil || req.AllLibraries != nil || req.AllowWriteAccess != nil {
 		if err := validateAndUpdateLibraries(ctx, api.pluginManager, repo, id, req, w); err != nil {
 			log.Error(ctx, "Error updating plugin libraries", err)
 			return
@@ -245,6 +246,7 @@ func validateAndUpdateLibraries(ctx context.Context, pm PluginManager, repo mode
 
 	librariesJSON := plugin.Libraries
 	allLibraries := plugin.AllLibraries
+	allowWriteAccess := plugin.AllowWriteAccess
 
 	if req.Libraries != nil {
 		if *req.Libraries != "" && !isValidJSON(*req.Libraries) {
@@ -256,8 +258,11 @@ func validateAndUpdateLibraries(ctx context.Context, pm PluginManager, repo mode
 	if req.AllLibraries != nil {
 		allLibraries = *req.AllLibraries
 	}
+	if req.AllowWriteAccess != nil {
+		allowWriteAccess = *req.AllowWriteAccess
+	}
 
-	if err := pm.UpdatePluginLibraries(ctx, id, librariesJSON, allLibraries); err != nil {
+	if err := pm.UpdatePluginLibraries(ctx, id, librariesJSON, allLibraries, allowWriteAccess); err != nil {
 		log.Error(ctx, "Error updating plugin libraries", "id", id, err)
 		http.Error(w, "Error updating plugin libraries: "+err.Error(), http.StatusInternalServerError)
 		return err

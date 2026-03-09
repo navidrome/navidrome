@@ -134,6 +134,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"id":         idFilter(r.tableName),
 		"name":       fullTextFilter(r.tableName, "mbz_artist_id"),
 		"starred":    annotationBoolFilter("starred"),
+		"has_rating": annotationBoolFilter("rating"),
 		"role":       roleFilter,
 		"missing":    booleanFilter,
 		"library_id": artistLibraryIdFilter,

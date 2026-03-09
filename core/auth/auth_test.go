@@ -54,7 +54,7 @@ var _ = Describe("Auth", func() {
 
 			decodedClaims, err := auth.Validate(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(decodedClaims["iss"]).To(Equal("issuer"))
+			Expect(decodedClaims.Issuer).To(Equal("issuer"))
 		})
 
 		It("returns ErrExpired if the `exp` field is in the past", func() {
@@ -82,11 +82,11 @@ var _ = Describe("Auth", func() {
 			claims, err := auth.Validate(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(claims["iss"]).To(Equal(consts.JWTIssuer))
-			Expect(claims["sub"]).To(Equal("johndoe"))
-			Expect(claims["uid"]).To(Equal("123"))
-			Expect(claims["adm"]).To(Equal(true))
-			Expect(claims["exp"]).To(BeTemporally(">", time.Now()))
+			Expect(claims.Issuer).To(Equal(consts.JWTIssuer))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.UserID).To(Equal("123"))
+			Expect(claims.IsAdmin).To(Equal(true))
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})
 
@@ -104,8 +104,7 @@ var _ = Describe("Auth", func() {
 
 			decodedClaims, err := auth.Validate(touched)
 			Expect(err).NotTo(HaveOccurred())
-			exp := decodedClaims["exp"].(time.Time)
-			Expect(exp.Sub(yesterday)).To(BeNumerically(">=", oneDay))
+			Expect(decodedClaims.ExpiresAt.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
 	})
 })

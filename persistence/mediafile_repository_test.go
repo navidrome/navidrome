@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -709,6 +711,46 @@ var _ = Describe("MediaRepository", func() {
 			results, err = mr.FindByPaths([]string{"2:artist/Album/track.mp3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
+		})
+	})
+
+	Describe("wrapMediaFileCursor", func() {
+		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
+			// Simulate what queryWithStableResults does on the rows.Err() path:
+			// it yields a zero-value dbMediaFile (where MediaFile is nil) with an error.
+			dbErr := fmt.Errorf("database is locked")
+			cursor := func(yield func(dbMediaFile, error) bool) {
+				var empty dbMediaFile // MediaFile pointer is nil
+				yield(empty, dbErr)
+			}
+
+			// wrapMediaFileCursor should handle the nil MediaFile without panicking
+			wrappedCursor := wrapMediaFileCursor(cursor)
+			var gotErr error
+			Expect(func() {
+				for _, err := range wrappedCursor {
+					gotErr = err
+				}
+			}).ToNot(Panic())
+			Expect(gotErr).To(HaveOccurred())
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
+		})
+
+		It("yields mediafiles from a valid cursor", func() {
+			mf := &model.MediaFile{ID: "mf1", Title: "Test"}
+			cursor := func(yield func(dbMediaFile, error) bool) {
+				yield(dbMediaFile{MediaFile: mf}, nil)
+			}
+
+			wrappedCursor := wrapMediaFileCursor(cursor)
+			var mediafiles []model.MediaFile
+			for m, err := range wrappedCursor {
+				Expect(err).ToNot(HaveOccurred())
+				mediafiles = append(mediafiles, m)
+			}
+			Expect(mediafiles).To(HaveLen(1))
+			Expect(mediafiles[0].ID).To(Equal("mf1"))
 		})
 	})
 })

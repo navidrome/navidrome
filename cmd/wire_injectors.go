@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -44,6 +45,7 @@ var allProviders = wire.NewSet(
 	plugins.GetManager,
 	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),

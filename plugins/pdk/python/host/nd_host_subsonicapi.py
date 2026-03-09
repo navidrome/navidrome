@@ -8,11 +8,11 @@
 # main __init__.py file. Copy the needed functions from this file into your plugin.
 
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 
 import extism
 import json
-import struct
+import base64
 
 
 class HostFunctionError(Exception):
@@ -30,6 +30,13 @@ def _subsonicapi_call(offset: int) -> int:
 def _subsonicapi_callraw(offset: int) -> int:
     """Raw host function - do not call directly."""
     ...
+
+
+@dataclass
+class SubsonicAPICallRawResult:
+    """Result type for subsonicapi_call_raw."""
+    content_type: str
+    data: bytes
 
 
 def subsonicapi_call(uri: str) -> str:
@@ -62,16 +69,16 @@ e.g., "getAlbumList2?type=random&size=10". The response is returned as raw JSON.
     return response.get("responseJson", "")
 
 
-def subsonicapi_call_raw(uri: str) -> Tuple[str, bytes]:
+def subsonicapi_call_raw(uri: str) -> SubsonicAPICallRawResult:
     """CallRaw executes a Subsonic API request and returns the raw binary response.
-Optimized for binary endpoints like getCoverArt and stream that return
-non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+Designed for binary endpoints like getCoverArt and stream that return
+non-JSON data. The data is base64-encoded over JSON on the wire.
 
     Args:
         uri: str parameter.
 
     Returns:
-        Tuple of (content_type, data) with the raw binary response.
+        SubsonicAPICallRawResult containing content_type, data,.
 
     Raises:
         HostFunctionError: If the host function returns an error.
@@ -83,19 +90,12 @@ non-JSON data. The response is returned as raw bytes without JSON encoding overh
     request_mem = extism.memory.alloc(request_bytes)
     response_offset = _subsonicapi_callraw(request_mem.offset)
     response_mem = extism.memory.find(response_offset)
-    response_bytes = response_mem.bytes()
+    response = json.loads(extism.memory.string(response_mem))
 
-    if len(response_bytes) == 0:
-        raise HostFunctionError("empty response from host")
-    if response_bytes[0] == 0x01:
-        raise HostFunctionError(response_bytes[1:].decode("utf-8"))
-    if response_bytes[0] != 0x00:
-        raise HostFunctionError("unknown response status")
-    if len(response_bytes) < 5:
-        raise HostFunctionError("malformed raw response: incomplete header")
-    ct_len = struct.unpack(">I", response_bytes[1:5])[0]
-    if len(response_bytes) < 5 + ct_len:
-        raise HostFunctionError("malformed raw response: content-type overflow")
-    content_type = response_bytes[5:5 + ct_len].decode("utf-8")
-    data = response_bytes[5 + ct_len:]
-    return content_type, data
+    if response.get("error"):
+        raise HostFunctionError(response["error"])
+
+    return SubsonicAPICallRawResult(
+        content_type=response.get("contentType", ""),
+        data=base64.b64decode(response.get("data", "")),
+    )

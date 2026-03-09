@@ -1,4 +1,4 @@
-package core_test
+package transcode_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("MediaStreamer", func() {
-	var streamer core.MediaStreamer
+	var streamer transcode.MediaStreamer
 	var ds model.DataStore
 	ffmpeg := tests.NewMockFFmpeg("fake data")
 	ctx := log.NewContext(context.TODO())
@@ -29,9 +29,9 @@ var _ = Describe("MediaStreamer", func() {
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
-		testCache := core.NewTranscodingCache()
+		testCache := transcode.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-		streamer = core.NewMediaStreamer(ds, ffmpeg, testCache)
+		streamer = transcode.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(conf.Server.CacheFolder)
@@ -39,34 +39,29 @@ var _ = Describe("MediaStreamer", func() {
 
 	Context("NewStream", func() {
 		It("returns a seekable stream if format is 'raw'", func() {
-			s, err := streamer.NewStream(ctx, "123", "raw", 0, 0)
+			s, err := streamer.NewStream(ctx, transcode.StreamRequest{ID: "123", Format: "raw"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
-		It("returns a seekable stream if maxBitRate is 0", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 0, 0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s.Seekable()).To(BeTrue())
-		})
-		It("returns a seekable stream if maxBitRate is higher than file bitRate", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 320, 0)
+		It("returns a seekable stream if no format is specified (direct play)", func() {
+			s, err := streamer.NewStream(ctx, transcode.StreamRequest{ID: "123"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
 		It("returns a NON seekable stream if transcode is required", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 64, 0)
+			s, err := streamer.NewStream(ctx, transcode.StreamRequest{ID: "123", Format: "mp3", BitRate: 64})
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeFalse())
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
 		It("returns a seekable stream if the file is complete in the cache", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 32, 0)
+			s, err := streamer.NewStream(ctx, transcode.StreamRequest{ID: "123", Format: "mp3", BitRate: 32})
 			Expect(err).To(BeNil())
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
 
-			s, err = streamer.NewStream(ctx, "123", "mp3", 32, 0)
+			s, err = streamer.NewStream(ctx, transcode.StreamRequest{ID: "123", Format: "mp3", BitRate: 32})
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
 		})

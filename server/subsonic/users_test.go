@@ -63,6 +63,7 @@ var _ = Describe("Users", func() {
 			Expect(userResponse.User.ScrobblingEnabled).To(BeTrue())
 			Expect(userResponse.User.DownloadRole).To(BeTrue())
 			Expect(userResponse.User.ShareRole).To(BeTrue())
+			Expect(userResponse.User.CoverArtRole).To(BeTrue())
 			Expect(userResponse.User.Folder).To(ContainElements(int32(10), int32(20)))
 
 			// Verify GetUsers response structure
@@ -81,6 +82,7 @@ var _ = Describe("Users", func() {
 			Expect(singleUser.ScrobblingEnabled).To(Equal(userFromList.ScrobblingEnabled))
 			Expect(singleUser.DownloadRole).To(Equal(userFromList.DownloadRole))
 			Expect(singleUser.ShareRole).To(Equal(userFromList.ShareRole))
+			Expect(singleUser.CoverArtRole).To(Equal(userFromList.CoverArtRole))
 			Expect(singleUser.JukeboxRole).To(Equal(userFromList.JukeboxRole))
 			Expect(singleUser.Folder).To(Equal(userFromList.Folder))
 		})
@@ -100,6 +102,20 @@ var _ = Describe("Users", func() {
 		Entry("jukebox enabled, not admin-only, admin user", true, false, true, true),
 		Entry("jukebox enabled, admin-only, regular user", true, true, false, false),
 		Entry("jukebox enabled, admin-only, admin user", true, true, true, true),
+	)
+
+	DescribeTable("CoverArt role permissions",
+		func(enableCoverArtUpload, isAdmin, expectedCoverArtRole bool) {
+			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+			testUser.IsAdmin = isAdmin
+
+			response := buildUserResponse(testUser)
+			Expect(response.CoverArtRole).To(Equal(expectedCoverArtRole))
+		},
+		Entry("enabled, regular user", true, false, true),
+		Entry("enabled, admin user", true, true, true),
+		Entry("disabled, regular user", false, false, false),
+		Entry("disabled, admin user", false, true, true),
 	)
 
 	Describe("Folder list population", func() {

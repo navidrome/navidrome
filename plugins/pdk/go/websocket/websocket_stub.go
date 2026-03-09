@@ -13,7 +13,7 @@ type OnBinaryMessageRequest struct {
 	// ConnectionID is the unique identifier for the WebSocket connection that received the message.
 	ConnectionID string `json:"connectionId"`
 	// Data is the binary data received from the WebSocket, encoded as base64.
-	Data string `json:"data"`
+	Data []byte `json:"data"`
 }
 
 // OnCloseRequest is the request provided when a WebSocket connection is closed.

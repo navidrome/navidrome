@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
+import { decisionService } from '../transcode'
 import {
   PLAYER_ADD_TRACKS,
   PLAYER_CLEAR_QUEUE,
@@ -10,6 +11,7 @@ import {
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
+  PLAYER_REFRESH_QUEUE,
 } from '../actions'
 import config from '../config'
 
@@ -29,6 +31,14 @@ const pad = (value) => {
     return str
   }
 }
+
+const makeMusicSrc = (trackId) =>
+  decisionService.getProfile()
+    ? () =>
+        decisionService
+          .resolveStreamUrl(trackId)
+          .catch(() => subsonic.streamUrl(trackId))
+    : subsonic.streamUrl(trackId)
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -76,7 +86,7 @@ const mapToAudioLists = (item) => {
     lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
-    musicSrc: subsonic.streamUrl(trackId),
+    musicSrc: makeMusicSrc(trackId),
     cover: subsonic.getCoverArtUrl(
       {
         id: trackId,
@@ -163,8 +173,11 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
   return {
     ...state,
     queue: audioLists,
-    clear: false,
-    playIndex: undefined,
+    // Keep clear and playIndex alive so the music player can still
+    // pick up a pending track selection set by PLAYER_PLAY_TRACKS.
+    // They will be consumed by the next PLAYER_CURRENT dispatch.
+    clear: state.playIndex != null ? state.clear : false,
+    playIndex: state.playIndex != null ? state.playIndex : undefined,
   }
 }
 
@@ -173,11 +186,17 @@ const reduceCurrent = (state, { data }) => {
   const savedPlayIndex = state.queue.findIndex(
     (item) => item.uuid === current.uuid,
   )
+  // When a track selection is pending (playIndex is set), keep it alive
+  // until the music player confirms it actually switched to the requested
+  // track. Without this, a premature onAudioPlay callback for the
+  // still-playing old track would overwrite the pending selection.
+  const pending = state.playIndex != null && savedPlayIndex !== state.playIndex
   return {
     ...state,
     current,
-    playIndex: undefined,
-    savedPlayIndex,
+    playIndex: pending ? state.playIndex : undefined,
+    clear: pending ? state.clear : false,
+    savedPlayIndex: pending ? state.savedPlayIndex : savedPlayIndex,
     volume: data.volume,
   }
 }
@@ -210,6 +229,22 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
+    case PLAYER_REFRESH_QUEUE: {
+      const resolvedUrls = payload.data || {}
+      return {
+        ...previousState,
+        queue: previousState.queue.map((item) => ({
+          ...item,
+          musicSrc: item.isRadio
+            ? item.musicSrc
+            : resolvedUrls[item.trackId] || subsonic.streamUrl(item.trackId),
+        })),
+        clear: true,
+        autoPlay: false,
+        playIndex:
+          previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
+      }
+    }
     default:
       return previousState
   }

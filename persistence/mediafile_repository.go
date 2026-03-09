@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -98,6 +99,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"id":         idFilter("media_file"),
 		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
 		"starred":    annotationBoolFilter("starred"),
+		"has_rating": annotationBoolFilter("rating"),
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
@@ -159,6 +161,11 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	}
 	m.ID = id
 	return r.updateParticipants(m.ID, m.Participants)
+}
+
+func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
+	_, err := r.executeSQL(Update(r.tableName).Set("probe_data", data).Where(Eq{"id": id}))
+	return err
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -230,17 +237,7 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(model.MediaFile, error) bool) {
-		for m, err := range cursor {
-			if m.MediaFile == nil {
-				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile: %v", m))
-				return
-			}
-			if !yield(*m.MediaFile, err) || err != nil {
-				return
-			}
-		}
-	}, nil
+	return wrapMediaFileCursor(cursor), nil
 }
 
 // FindByPaths finds media files by their paths.
@@ -370,13 +367,21 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
+	return wrapMediaFileCursor(cursor), nil
+}
+
+func wrapMediaFileCursor(cursor iter.Seq2[dbMediaFile, error]) model.MediaFileCursor {
 	return func(yield func(model.MediaFile, error) bool) {
 		for m, err := range cursor {
+			if m.MediaFile == nil {
+				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile (%v): %w", m, err))
+				return
+			}
 			if !yield(*m.MediaFile, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
 // FindRecentFilesByMBZTrackID finds recently added files by MusicBrainz Track ID in other libraries

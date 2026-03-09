@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -76,22 +75,14 @@ func decodeArtworkID(tokenString string) (model.ArtworkID, error) {
 	if token == nil {
 		return model.ArtworkID{}, errors.New("unauthorized")
 	}
-	err = jwt.Validate(token, jwt.WithRequiredClaim("id"))
-	if err != nil {
-		return model.ArtworkID{}, err
+	c := auth.ClaimsFromToken(token)
+	if c.ID == "" {
+		return model.ArtworkID{}, errors.New("required claim \"id\" not found")
 	}
-	claims, err := token.AsMap(context.Background())
-	if err != nil {
-		return model.ArtworkID{}, err
-	}
-	id, ok := claims["id"].(string)
-	if !ok {
-		return model.ArtworkID{}, errors.New("invalid id type")
-	}
-	artID, err := model.ParseArtworkID(id)
+	artID, err := model.ParseArtworkID(c.ID)
 	if err == nil {
 		return artID, nil
 	}
 	// Try to default to mediafile artworkId (if used with a mediafileShare token)
-	return model.ParseArtworkID("mf-" + id)
+	return model.ParseArtworkID("mf-" + c.ID)
 }

@@ -122,6 +122,21 @@ var _ = Describe("parseNSP", func() {
 		Expect(pls.Name).To(Equal("Original"))
 	})
 
+	It("parses limitPercent from NSP", func() {
+		nsp := `{
+			"all": [{"is": {"loved": true}}],
+			"sort": "playCount",
+			"order": "desc",
+			"limitPercent": 25
+		}`
+		pls := &model.Playlist{}
+		err := s.parseNSP(ctx, pls, strings.NewReader(nsp))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pls.Rules).ToNot(BeNil())
+		Expect(pls.Rules.LimitPercent).To(Equal(25))
+		Expect(pls.Rules.Limit).To(Equal(0))
+	})
+
 	It("parses criteria with multiple rules", func() {
 		nsp := `{
 			"all": [

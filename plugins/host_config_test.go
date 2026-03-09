@@ -59,7 +59,6 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	conf.Server.Plugins.Enabled = true
 	conf.Server.Plugins.Folder = tmpDir
 	conf.Server.Plugins.AutoReload = false
-	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 	// Setup mock DataStore
 	mockPluginRepo := tests.CreateMockPluginRepo()
