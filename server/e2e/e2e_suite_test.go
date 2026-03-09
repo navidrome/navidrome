@@ -284,18 +284,14 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
-// spyStreamer captures the StreamRequest passed to DoStream for test assertions,
+// spyStreamer captures the Request passed to NewStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {
 	LastRequest   stream.Request
 	LastMediaFile *model.MediaFile
 }
 
-func (s *spyStreamer) NewStream(ctx context.Context, req stream.Request) (*stream.Stream, error) {
-	return nil, model.ErrNotFound
-}
-
-func (s *spyStreamer) DoStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
+func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	s.LastRequest = req
 	s.LastMediaFile = mf
 	format := req.Format

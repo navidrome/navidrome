@@ -395,12 +395,7 @@ type fakeMediaStreamer struct {
 	captured *stream.Request
 }
 
-func (f *fakeMediaStreamer) NewStream(_ context.Context, req stream.Request) (*stream.Stream, error) {
-	f.captured = &req
-	return nil, errStreamCaptured
-}
-
-func (f *fakeMediaStreamer) DoStream(_ context.Context, _ *model.MediaFile, req stream.Request) (*stream.Stream, error) {
+func (f *fakeMediaStreamer) NewStream(_ context.Context, _ *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	f.captured = &req
 	return nil, errStreamCaptured
 }

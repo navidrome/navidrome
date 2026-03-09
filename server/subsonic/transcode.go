@@ -358,8 +358,8 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
-	// Create stream (use DoStream to avoid duplicate DB fetch)
-	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
+	// Create stream
+	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		log.Error(ctx, "Error creating stream", "mediaID", mediaID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
