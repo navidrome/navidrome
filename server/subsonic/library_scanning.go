@@ -105,13 +105,25 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		pollInterval = 50 * time.Millisecond
 		pollTimeout  = 3 * time.Second
 	)
-	deadline := time.Now().Add(pollTimeout)
-	for time.Now().Before(deadline) {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	timer := time.NewTimer(pollTimeout)
+	defer timer.Stop()
+
+loop:
+	for {
 		status, err := api.scanner.Status(ctx)
 		if err == nil && status.Scanning {
 			break
 		}
-		time.Sleep(pollInterval)
+		select {
+		case <-timer.C:
+			log.Warn(ctx, "Timed out waiting for scanner to start; response may be stale")
+			break loop
+		case <-ctx.Done():
+			return nil, newError(responses.ErrorGeneric, "Request cancelled while waiting for scanner to start")
+		case <-ticker.C:
+		}
 	}
 
 	return api.GetScanStatus(r)
