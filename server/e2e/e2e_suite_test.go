@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -55,6 +56,7 @@ type _t = map[string]any
 
 var template = storagetest.Template
 var track = storagetest.Track
+var file = storagetest.File
 
 // MusicBrainz ID constants for test data (valid UUID v4 values)
 const (
@@ -122,6 +124,9 @@ func buildTestFS() storagetest.FakeFS {
 	popTrack := template(_t{"albumartist": "Various", "artist": "Various", "album": "Pop", "year": 2020, "genre": "Pop"})
 	cowboyBebop := template(_t{"albumartist": "シートベルツ", "artist": "シートベルツ", "album": "COWBOY BEBOP", "year": 1998, "genre": "Jazz"})
 
+	// Template for diverse-format transcode test tracks
+	tcBase := _t{"albumartist": "Test Artist", "artist": "Test Artist", "album": "Transcode Formats", "year": 2024, "genre": "Test"}
+
 	return createFS(fstest.MapFS{
 		// Rock / The Beatles / Abbey Road (with MBIDs)
 		// Note: "musicbrainz_trackid" is an alias for the musicbrainz_recordingid tag (populates MbzRecordingID),
@@ -140,6 +145,33 @@ func buildTestFS() storagetest.FakeFS {
 		"Pop/01 - Standalone Track.mp3": popTrack(track(1, "Standalone Track")),
 		// CJK / シートベルツ / COWBOY BEBOP (Japanese artist, for CJK search tests)
 		"CJK/シートベルツ/COWBOY BEBOP/01 - プラチナ・ジェット.mp3": cowboyBebop(track(1, "プラチナ・ジェット")),
+
+		// Diverse audio format tracks for transcode e2e tests
+		"Test/Transcode Formats/01 - TC FLAC Standard.flac": file(tcBase, _t{
+			"title": "TC FLAC Standard", "track": 1, "suffix": "flac",
+			"bitrate": 900, "samplerate": 44100, "bitdepth": 16, "channels": 2, "duration": int64(240),
+		}),
+		"Test/Transcode Formats/02 - TC FLAC HiRes.flac": file(tcBase, _t{
+			"title": "TC FLAC HiRes", "track": 2, "suffix": "flac",
+			"bitrate": 3000, "samplerate": 96000, "bitdepth": 24, "channels": 2, "duration": int64(180),
+		}),
+		"Test/Transcode Formats/03 - TC ALAC Track.m4a": file(tcBase, _t{
+			"title": "TC ALAC Track", "track": 3, "suffix": "m4a",
+			"bitrate": 900, "samplerate": 44100, "bitdepth": 16, "channels": 2, "duration": int64(200),
+		}),
+		"Test/Transcode Formats/04 - TC DSD Track.dsf": file(tcBase, _t{
+			"title": "TC DSD Track", "track": 4, "suffix": "dsf",
+			"bitrate": 5645, "samplerate": 2822400, "bitdepth": 1, "channels": 2, "duration": int64(300),
+		}),
+		"Test/Transcode Formats/05 - TC Opus Track.opus": file(tcBase, _t{
+			"title": "TC Opus Track", "track": 5, "suffix": "opus",
+			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(210),
+		}),
+		"Test/Transcode Formats/06 - TC MKA Opus.mka": file(tcBase, _t{
+			"title": "TC MKA Opus", "track": 6, "suffix": "mka", "codec": "opus",
+			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(220),
+		}),
+
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
 	})
@@ -205,6 +237,30 @@ func buildReq(user model.User, endpoint string, params ...string) *http.Request 
 		q.Add(params[i], params[i+1])
 	}
 	return httptest.NewRequest("GET", "/"+endpoint+"?"+q.Encode(), nil)
+}
+
+// buildPostReq creates a POST request with a JSON body and Subsonic auth params in the query string.
+func buildPostReq(user model.User, endpoint string, body string, params ...string) *http.Request {
+	getReq := buildReq(user, endpoint, params...)
+	r := httptest.NewRequest("POST", getReq.URL.RequestURI(), bytes.NewReader([]byte(body)))
+	r.Header.Set("Content-Type", "application/json")
+	return r
+}
+
+// doPostReq makes a POST round-trip as admin and returns the parsed Subsonic response.
+func doPostReq(endpoint string, body string, params ...string) *responses.Subsonic {
+	w := httptest.NewRecorder()
+	r := buildPostReq(adminUser, endpoint, body, params...)
+	router.ServeHTTP(w, r)
+	return parseJSONResponse(w)
+}
+
+// doRawPostReq makes a POST round-trip as admin and returns the raw recorder.
+func doRawPostReq(endpoint string, body string, params ...string) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	r := buildPostReq(adminUser, endpoint, body, params...)
+	router.ServeHTTP(w, r)
+	return w
 }
 
 // parseJSONResponse parses the JSON response body into a Subsonic response struct.
@@ -411,6 +467,7 @@ func setupTestDB() {
 	})
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.DevExternalScanner = false
+	conf.Server.DevEnableMediaFileProbe = false
 
 	// Restore DB to golden state (no scan needed)
 	restoreDB()

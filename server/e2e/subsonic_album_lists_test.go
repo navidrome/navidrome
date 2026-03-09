@@ -19,7 +19,7 @@ var _ = Describe("Album List Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumList).ToNot(BeNil())
-			Expect(resp.AlbumList.Album).To(HaveLen(6))
+			Expect(resp.AlbumList.Album).To(HaveLen(7))
 		})
 
 		It("type=alphabeticalByName sorts albums by name", func() {
@@ -27,14 +27,15 @@ var _ = Describe("Album List Endpoints", func() {
 
 			Expect(resp.AlbumList).ToNot(BeNil())
 			albums := resp.AlbumList.Album
-			Expect(albums).To(HaveLen(6))
-			// Verify alphabetical order: Abbey Road, COWBOY BEBOP, Help!, IV, Kind of Blue, Pop
+			Expect(albums).To(HaveLen(7))
+			// Verify alphabetical order: Abbey Road, COWBOY BEBOP, Help!, IV, Kind of Blue, Pop, Transcode Formats
 			Expect(albums[0].Title).To(Equal("Abbey Road"))
 			Expect(albums[1].Title).To(Equal("COWBOY BEBOP"))
 			Expect(albums[2].Title).To(Equal("Help!"))
 			Expect(albums[3].Title).To(Equal("IV"))
 			Expect(albums[4].Title).To(Equal("Kind of Blue"))
 			Expect(albums[5].Title).To(Equal("Pop"))
+			Expect(albums[6].Title).To(Equal("Transcode Formats"))
 		})
 
 		It("type=alphabeticalByArtist sorts albums by artist name", func() {
@@ -42,22 +43,23 @@ var _ = Describe("Album List Endpoints", func() {
 
 			Expect(resp.AlbumList).ToNot(BeNil())
 			albums := resp.AlbumList.Album
-			Expect(albums).To(HaveLen(6))
+			Expect(albums).To(HaveLen(7))
 			// Articles like "The" are stripped for sorting, so "The Beatles" sorts as "Beatles"
-			// Non-compilations first: Beatles (x2), Led Zeppelin, Miles Davis, then compilations: Various, then CJK: シートベルツ
+			// Non-compilations first: Beatles (x2), Led Zeppelin, Miles Davis, Test Artist, then compilations: Various, then CJK: シートベルツ
 			Expect(albums[0].Artist).To(Equal("The Beatles"))
 			Expect(albums[1].Artist).To(Equal("The Beatles"))
 			Expect(albums[2].Artist).To(Equal("Led Zeppelin"))
 			Expect(albums[3].Artist).To(Equal("Miles Davis"))
-			Expect(albums[4].Artist).To(Equal("Various"))
-			Expect(albums[5].Artist).To(Equal("シートベルツ"))
+			Expect(albums[4].Artist).To(Equal("Test Artist"))
+			Expect(albums[5].Artist).To(Equal("Various"))
+			Expect(albums[6].Artist).To(Equal("シートベルツ"))
 		})
 
 		It("type=random returns albums", func() {
 			resp := doReq("getAlbumList", "type", "random")
 
 			Expect(resp.AlbumList).ToNot(BeNil())
-			Expect(resp.AlbumList.Album).To(HaveLen(6))
+			Expect(resp.AlbumList.Album).To(HaveLen(7))
 		})
 
 		It("type=byGenre filters by genre parameter", func() {
@@ -188,7 +190,7 @@ var _ = Describe("Album List Endpoints", func() {
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.AlbumList2).ToNot(BeNil())
 			albums := resp.AlbumList2.Album
-			Expect(albums).To(HaveLen(6))
+			Expect(albums).To(HaveLen(7))
 			// Verify AlbumID3 format fields
 			Expect(albums[0].Name).To(Equal("Abbey Road"))
 			Expect(albums[0].Id).ToNot(BeEmpty())
@@ -199,7 +201,7 @@ var _ = Describe("Album List Endpoints", func() {
 			resp := doReq("getAlbumList2", "type", "newest")
 
 			Expect(resp.AlbumList2).ToNot(BeNil())
-			Expect(resp.AlbumList2.Album).To(HaveLen(6))
+			Expect(resp.AlbumList2.Album).To(HaveLen(7))
 		})
 	})
 
@@ -244,7 +246,7 @@ var _ = Describe("Album List Endpoints", func() {
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.RandomSongs).ToNot(BeNil())
 			Expect(resp.RandomSongs.Songs).ToNot(BeEmpty())
-			Expect(resp.RandomSongs.Songs).To(HaveLen(7))
+			Expect(resp.RandomSongs.Songs).To(HaveLen(10))
 		})
 
 		It("respects size parameter", func() {

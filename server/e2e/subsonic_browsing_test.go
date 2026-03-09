@@ -288,7 +288,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Genres).ToNot(BeNil())
-			Expect(resp.Genres.Genre).To(HaveLen(3))
+			Expect(resp.Genres.Genre).To(HaveLen(4))
 		})
 
 		It("includes correct genre names", func() {
