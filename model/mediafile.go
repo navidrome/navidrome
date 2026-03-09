@@ -56,6 +56,8 @@ type MediaFile struct {
 	SampleRate           int      `structs:"sample_rate" json:"sampleRate"`
 	BitDepth             int      `structs:"bit_depth" json:"bitDepth"`
 	Channels             int      `structs:"channels" json:"channels"`
+	Codec                string   `structs:"codec" json:"codec"`
+	ProbeData            string   `structs:"probe_data" json:"-" hash:"ignore"`
 	Genre                string   `structs:"genre" json:"genre"`
 	Genres               Genres   `structs:"-" json:"genres,omitempty"`
 	SortTitle            string   `structs:"sort_title" json:"sortTitle,omitempty"`
@@ -166,6 +168,63 @@ func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 
 func (mf MediaFile) AbsolutePath() string {
 	return filepath.Join(mf.LibraryPath, mf.Path)
+}
+
+// AudioCodec returns the audio codec for this file.
+// Uses the stored Codec field if available, otherwise infers from Suffix and audio properties.
+func (mf MediaFile) AudioCodec() string {
+	// If we have a stored codec from scanning, normalize and return it
+	if mf.Codec != "" {
+		return strings.ToLower(mf.Codec)
+	}
+	// Fallback: infer from Suffix + BitDepth
+	return mf.inferCodecFromSuffix()
+}
+
+// inferCodecFromSuffix infers the codec from the file extension when Codec field is empty.
+func (mf MediaFile) inferCodecFromSuffix() string {
+	switch strings.ToLower(mf.Suffix) {
+	case "mp3", "mpga":
+		return "mp3"
+	case "mp2":
+		return "mp2"
+	case "ogg", "oga":
+		return "vorbis"
+	case "opus":
+		return "opus"
+	case "mpc":
+		return "mpc"
+	case "wma":
+		return "wma"
+	case "flac":
+		return "flac"
+	case "wav":
+		return "pcm"
+	case "aif", "aiff", "aifc":
+		return "pcm"
+	case "ape":
+		return "ape"
+	case "wv", "wvp":
+		return "wv"
+	case "tta":
+		return "tta"
+	case "tak":
+		return "tak"
+	case "shn":
+		return "shn"
+	case "dsf", "dff":
+		return "dsd"
+	case "m4a":
+		// AAC if BitDepth==0, ALAC if BitDepth>0
+		if mf.BitDepth > 0 {
+			return "alac"
+		}
+		return "aac"
+	case "m4b", "m4p", "m4r":
+		return "aac"
+	default:
+		return ""
+	}
 }
 
 type MediaFiles []MediaFile
@@ -363,6 +422,7 @@ type MediaFileRepository interface {
 	CountBySuffix(options ...QueryOptions) (map[string]int64, error)
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
+	UpdateProbeData(id string, data string) error
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)

@@ -10,11 +10,12 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/transcode"
 )
 
 var Set = wire.NewSet(
-	NewMediaStreamer,
-	GetTranscodingCache,
+	transcode.NewMediaStreamer,
+	transcode.GetTranscodingCache,
 	NewArchiver,
 	NewPlayers,
 	NewShare,
@@ -22,6 +23,7 @@ var Set = wire.NewSet(
 	NewLibrary,
 	NewUser,
 	NewMaintenance,
+	transcode.NewDecider,
 	agents.GetAgents,
 	external.NewProvider,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),

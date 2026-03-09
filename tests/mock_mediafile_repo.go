@@ -109,6 +109,17 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	return nil
 }
 
+func (m *MockMediaFileRepo) UpdateProbeData(id string, data string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if d, ok := m.Data[id]; ok {
+		d.ProbeData = data
+		return nil
+	}
+	return model.ErrNotFound
+}
+
 func (m *MockMediaFileRepo) Delete(id string) error {
 	if m.Err {
 		return errors.New("error")

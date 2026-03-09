@@ -497,7 +497,7 @@ var _ = Describe("MediaFile", func() {
 		Entry("returns just album name when tag is absent", true, Tags{}, "Album"),
 		Entry("returns just album name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
 	)
-	Describe("CoverArtId()", func() {
+	Describe("CoverArtId", func() {
 		It("returns its own id if it HasCoverArt", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
@@ -518,6 +518,58 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
 	})
+
+	Describe("AudioCodec", func() {
+		It("returns normalized stored codec when available", func() {
+			mf := MediaFile{Codec: "AAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("aac"))
+		})
+
+		It("returns stored codec lowercased", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+
+		DescribeTable("infers codec from suffix when Codec field is empty",
+			func(suffix string, bitDepth int, expected string) {
+				mf := MediaFile{Suffix: suffix, BitDepth: bitDepth}
+				Expect(mf.AudioCodec()).To(Equal(expected))
+			},
+			Entry("mp3", "mp3", 0, "mp3"),
+			Entry("mpga", "mpga", 0, "mp3"),
+			Entry("mp2", "mp2", 0, "mp2"),
+			Entry("ogg", "ogg", 0, "vorbis"),
+			Entry("oga", "oga", 0, "vorbis"),
+			Entry("opus", "opus", 0, "opus"),
+			Entry("mpc", "mpc", 0, "mpc"),
+			Entry("wma", "wma", 0, "wma"),
+			Entry("flac", "flac", 0, "flac"),
+			Entry("wav", "wav", 0, "pcm"),
+			Entry("aif", "aif", 0, "pcm"),
+			Entry("aiff", "aiff", 0, "pcm"),
+			Entry("aifc", "aifc", 0, "pcm"),
+			Entry("ape", "ape", 0, "ape"),
+			Entry("wv", "wv", 0, "wv"),
+			Entry("wvp", "wvp", 0, "wv"),
+			Entry("tta", "tta", 0, "tta"),
+			Entry("tak", "tak", 0, "tak"),
+			Entry("shn", "shn", 0, "shn"),
+			Entry("dsf", "dsf", 0, "dsd"),
+			Entry("dff", "dff", 0, "dsd"),
+			Entry("m4a with BitDepth=0 (AAC)", "m4a", 0, "aac"),
+			Entry("m4a with BitDepth>0 (ALAC)", "m4a", 16, "alac"),
+			Entry("m4b", "m4b", 0, "aac"),
+			Entry("m4p", "m4p", 0, "aac"),
+			Entry("m4r", "m4r", 0, "aac"),
+			Entry("unknown suffix", "xyz", 0, ""),
+		)
+
+		It("prefers stored codec over suffix inference", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a", BitDepth: 0}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+	})
+
 })
 
 func t(v string) time.Time {

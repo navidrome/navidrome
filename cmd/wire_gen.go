@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -94,8 +95,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
-	transcodingCache := core.GetTranscodingCache()
-	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodingCache := transcode.GetTranscodingCache()
+	mediaStreamer := transcode.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
@@ -105,7 +106,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(manager)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics)
+	decider := transcode.NewDecider(dataStore, fFmpeg)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, decider)
 	return router
 }
 
@@ -120,8 +122,8 @@ func CreatePublicRouter() *public.Router {
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
-	transcodingCache := core.GetTranscodingCache()
-	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodingCache := transcode.GetTranscodingCache()
+	mediaStreamer := transcode.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
