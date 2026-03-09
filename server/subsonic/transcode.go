@@ -343,8 +343,8 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
-	// Validate the token, mediaID match, file existence, and freshness
-	params, mf, err := api.transcodeDecision.ValidateTranscodeParams(ctx, transcodeParamsToken, mediaID)
+	// Validate the token and resolve streaming parameters
+	streamReq, mf, err := api.transcodeDecision.ResolveRequestFromToken(ctx, transcodeParamsToken, mediaID, p.IntOr("offset", 0))
 	if err != nil {
 		switch {
 		case errors.Is(err, transcode.ErrMediaNotFound):
@@ -356,16 +356,6 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return nil, nil
-	}
-
-	// Build streaming parameters from the token
-	streamReq := transcode.StreamRequest{ID: mediaID, Offset: p.IntOr("offset", 0)}
-	if !params.DirectPlay && params.TargetFormat != "" {
-		streamReq.Format = params.TargetFormat
-		streamReq.BitRate = params.TargetBitrate // Already in kbps, matching the streamer
-		streamReq.SampleRate = params.TargetSampleRate
-		streamReq.BitDepth = params.TargetBitDepth
-		streamReq.Channels = params.TargetChannels
 	}
 
 	// Create stream (use DoStream to avoid duplicate DB fetch)

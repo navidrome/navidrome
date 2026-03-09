@@ -1252,7 +1252,7 @@ var _ = Describe("Decider", func() {
 		})
 	})
 
-	Describe("ValidateTranscodeParams", func() {
+	Describe("ResolveRequestFromToken", func() {
 		var (
 			mockMFRepo *tests.MockMediaFileRepo
 			sourceTime time.Time
@@ -1275,35 +1275,35 @@ var _ = Describe("Decider", func() {
 			return token
 		}
 
-		It("returns params and media file for valid token", func() {
+		It("returns stream request and media file for valid token", func() {
 			mockMFRepo.SetData(model.MediaFiles{
 				{ID: "song-1", UpdatedAt: sourceTime},
 			})
 			token := createTokenForMedia("song-1", sourceTime)
 
-			params, mf, err := svc.ValidateTranscodeParams(ctx, token, "song-1")
+			req, mf, err := svc.ResolveRequestFromToken(ctx, token, "song-1", 0)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(params.MediaID).To(Equal("song-1"))
-			Expect(params.DirectPlay).To(BeTrue())
+			Expect(req.ID).To(Equal("song-1"))
+			Expect(req.Format).To(BeEmpty()) // direct play has no target format
 			Expect(mf.ID).To(Equal("song-1"))
 		})
 
 		It("returns ErrTokenInvalid for invalid token", func() {
-			_, _, err := svc.ValidateTranscodeParams(ctx, "bad-token", "song-1")
+			_, _, err := svc.ResolveRequestFromToken(ctx, "bad-token", "song-1", 0)
 			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
 		})
 
 		It("returns ErrTokenInvalid when mediaID does not match token", func() {
 			token := createTokenForMedia("song-1", sourceTime)
 
-			_, _, err := svc.ValidateTranscodeParams(ctx, token, "song-2")
+			_, _, err := svc.ResolveRequestFromToken(ctx, token, "song-2", 0)
 			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
 		})
 
 		It("returns ErrMediaNotFound when media file does not exist", func() {
 			token := createTokenForMedia("gone-id", sourceTime)
 
-			_, _, err := svc.ValidateTranscodeParams(ctx, token, "gone-id")
+			_, _, err := svc.ResolveRequestFromToken(ctx, token, "gone-id", 0)
 			Expect(err).To(MatchError(ErrMediaNotFound))
 		})
 
@@ -1314,7 +1314,7 @@ var _ = Describe("Decider", func() {
 			})
 			token := createTokenForMedia("song-1", sourceTime)
 
-			_, _, err := svc.ValidateTranscodeParams(ctx, token, "song-1")
+			_, _, err := svc.ResolveRequestFromToken(ctx, token, "song-1", 0)
 			Expect(err).To(MatchError(ErrTokenStale))
 		})
 	})

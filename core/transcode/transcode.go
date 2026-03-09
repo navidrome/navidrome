@@ -460,9 +460,9 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	return ci
 }
 
-// ResolveStream uses MakeDecision to resolve legacy Subsonic stream parameters
+// ResolveRequest uses MakeDecision to resolve legacy Subsonic stream parameters
 // into a fully specified StreamRequest.
-func (s *deciderService) ResolveStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest {
+func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest {
 	var req StreamRequest
 	req.ID = mf.ID
 	req.Offset = offset
@@ -503,7 +503,7 @@ func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, erro
 	return auth.EncodeToken(decision.toClaimsMap())
 }
 
-func (s *deciderService) parseTranscodeParams(tokenStr string) (*Params, error) {
+func (s *deciderService) parseTranscodeParams(tokenStr string) (*params, error) {
 	token, err := auth.DecodeAndVerifyToken(tokenStr)
 	if err != nil {
 		return nil, err
@@ -511,25 +511,34 @@ func (s *deciderService) parseTranscodeParams(tokenStr string) (*Params, error) 
 	return paramsFromToken(token)
 }
 
-func (s *deciderService) ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error) {
-	params, err := s.parseTranscodeParams(token)
+func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error) {
+	p, err := s.parseTranscodeParams(token)
 	if err != nil {
-		return nil, nil, errors.Join(ErrTokenInvalid, err)
+		return StreamRequest{}, nil, errors.Join(ErrTokenInvalid, err)
 	}
-	if params.MediaID != mediaID {
-		return nil, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, params.MediaID, mediaID)
+	if p.MediaID != mediaID {
+		return StreamRequest{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
 	}
 	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
-			return nil, nil, ErrMediaNotFound
+			return StreamRequest{}, nil, ErrMediaNotFound
 		}
-		return nil, nil, err
+		return StreamRequest{}, nil, err
 	}
-	if !mf.UpdatedAt.Truncate(time.Second).Equal(params.SourceUpdatedAt) {
+	if !mf.UpdatedAt.Truncate(time.Second).Equal(p.SourceUpdatedAt) {
 		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
-			"tokenUpdatedAt", params.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
-		return nil, nil, ErrTokenStale
+			"tokenUpdatedAt", p.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
+		return StreamRequest{}, nil, ErrTokenStale
 	}
-	return params, mf, nil
+
+	req := StreamRequest{ID: mediaID, Offset: offset}
+	if !p.DirectPlay && p.TargetFormat != "" {
+		req.Format = p.TargetFormat
+		req.BitRate = p.TargetBitrate
+		req.SampleRate = p.TargetSampleRate
+		req.BitDepth = p.TargetBitDepth
+		req.Channels = p.TargetChannels
+	}
+	return req, mf, nil
 }

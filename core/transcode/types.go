@@ -37,9 +37,9 @@ type StreamRequest struct {
 // Decider is the core service interface for making transcoding decisions
 type Decider interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
-	ResolveStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
 	CreateTranscodeParams(decision *Decision) (string, error)
-	ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error)
+	ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error)
+	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
 }
 
 // ClientInfo represents client playback capabilities.
@@ -175,9 +175,9 @@ type StreamDetails struct {
 	IsLossless bool
 }
 
-// Params contains the parameters extracted from a transcode token.
+// params contains the parameters extracted from a transcode token.
 // TargetBitrate is in kilobits per second (kbps).
-type Params struct {
+type params struct {
 	MediaID          string
 	DirectPlay       bool
 	TargetFormat     string
@@ -190,8 +190,8 @@ type Params struct {
 
 // paramsFromToken extracts and validates Params from a parsed JWT token.
 // Returns an error if required claims (media ID, source timestamp) are missing.
-func paramsFromToken(token jwt.Token) (*Params, error) {
-	var p Params
+func paramsFromToken(token jwt.Token) (*params, error) {
+	var p params
 	var mid string
 	if err := token.Get("mid", &mid); err == nil {
 		p.MediaID = mid

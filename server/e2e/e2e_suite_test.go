@@ -243,7 +243,7 @@ func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.
 	return nil, nil
 }
 
-func (n noopDecider) ResolveStream(context.Context, *model.MediaFile, string, int, int) transcode.StreamRequest {
+func (n noopDecider) ResolveRequest(context.Context, *model.MediaFile, string, int, int) transcode.StreamRequest {
 	return transcode.StreamRequest{Format: "raw"}
 }
 
@@ -251,8 +251,8 @@ func (n noopDecider) CreateTranscodeParams(*transcode.Decision) (string, error) 
 	return "", nil
 }
 
-func (n noopDecider) ValidateTranscodeParams(context.Context, string, string) (*transcode.Params, *model.MediaFile, error) {
-	return nil, nil, nil
+func (n noopDecider) ResolveRequestFromToken(context.Context, string, string, int) (transcode.StreamRequest, *model.MediaFile, error) {
+	return transcode.StreamRequest{}, nil, nil
 }
 
 // noopArchiver implements core.Archiver

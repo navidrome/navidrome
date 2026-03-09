@@ -65,7 +65,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 		return nil, err
 	}
 
-	streamReq := api.transcodeDecision.ResolveStream(ctx, mf, format, maxBitRate, timeOffset)
+	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
 	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		streamReq := api.transcodeDecision.ResolveStream(ctx, v, format, maxBitRate, 0)
+		streamReq := api.transcodeDecision.ResolveRequest(ctx, v, format, maxBitRate, 0)
 		stream, err := api.streamer.DoStream(ctx, v, streamReq)
 		if err != nil {
 			return nil, err
