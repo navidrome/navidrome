@@ -52,6 +52,62 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("ValidateURL", func() {
+		It("accepts a valid http URL", func() {
+			fn := conf.ValidateURL("TestOption", "http://example.com/path")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("accepts a valid https URL", func() {
+			fn := conf.ValidateURL("TestOption", "https://example.com/path")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("rejects a URL with no scheme", func() {
+			fn := conf.ValidateURL("TestOption", "example.com/path")
+			Expect(fn()).To(MatchError(ContainSubstring("invalid scheme")))
+		})
+
+		It("rejects a URL with an unsupported scheme", func() {
+			fn := conf.ValidateURL("TestOption", "javascript://example.com/path")
+			Expect(fn()).To(MatchError(ContainSubstring("invalid scheme")))
+		})
+
+		It("accepts an empty URL (optional config)", func() {
+			fn := conf.ValidateURL("TestOption", "")
+			Expect(fn()).To(Succeed())
+		})
+
+		It("includes the option name in the error message", func() {
+			fn := conf.ValidateURL("MyOption", "ftp://example.com")
+			Expect(fn()).To(MatchError(ContainSubstring("MyOption")))
+		})
+
+		It("rejects a URL that cannot be parsed", func() {
+			fn := conf.ValidateURL("TestOption", "://invalid")
+			Expect(fn()).To(HaveOccurred())
+		})
+
+		It("rejects a URL without a host", func() {
+			fn := conf.ValidateURL("TestOption", "http:///path")
+			Expect(fn()).To(MatchError(ContainSubstring("non-empty host is required")))
+		})
+	})
+
+	DescribeTable("NormalizeSearchBackend",
+		func(input, expected string) {
+			Expect(conf.NormalizeSearchBackend(input)).To(Equal(expected))
+		},
+		Entry("accepts 'fts'", "fts", "fts"),
+		Entry("accepts 'legacy'", "legacy", "legacy"),
+		Entry("normalizes 'FTS' to lowercase", "FTS", "fts"),
+		Entry("normalizes 'Legacy' to lowercase", "Legacy", "legacy"),
+		Entry("trims whitespace", "  fts  ", "fts"),
+		Entry("falls back to 'fts' for 'fts5'", "fts5", "fts"),
+		Entry("falls back to 'fts' for unrecognized values", "invalid", "fts"),
+		Entry("falls back to 'fts' for empty string", "", "fts"),
+	)
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

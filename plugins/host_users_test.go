@@ -486,7 +486,6 @@ func setupTestUsersConfig(tmpDir string) {
 	conf.Server.Plugins.Enabled = true
 	conf.Server.Plugins.Folder = tmpDir
 	conf.Server.Plugins.AutoReload = false
-	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 }
 
 // testUsersInput represents input for test-users plugin calls

@@ -2,6 +2,7 @@ version: "2"
 run:
   build-tags:
     - netgo
+    - sqlite_fts5
 linters:
   enable:
     - asasalint
@@ -39,6 +40,11 @@ linters:
       enable:
         - nilness
   exclusions:
+    rules:
+      - linters:
+          - gosec
+        path: _test\.go
+        text: "G703"
     generated: lax
     presets:
       - comments

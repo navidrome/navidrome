@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dhowden/tag"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -86,58 +84,6 @@ var picTypeRegexes = []*regexp.Regexp{
 }
 
 func fromTag(ctx context.Context, path string) sourceFunc {
-	if conf.Server.DevLegacyEmbedImage {
-		return fromTagLegacy(ctx, path)
-	}
-	return fromTagGoTaglib(ctx, path)
-}
-
-func fromTagLegacy(ctx context.Context, path string) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		if path == "" {
-			return nil, "", nil
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, "", err
-		}
-		defer f.Close()
-
-		m, err := tag.ReadFrom(f)
-		if err != nil {
-			return nil, "", err
-		}
-
-		types := m.PictureTypes()
-		if len(types) == 0 {
-			return nil, "", fmt.Errorf("no embedded image found in %s", path)
-		}
-
-		var picture *tag.Picture
-		for _, regex := range picTypeRegexes {
-			for _, t := range types {
-				if regex.MatchString(t) {
-					log.Trace(ctx, "Found embedded image", "type", t, "path", path)
-					picture = m.Pictures(t)
-					break
-				}
-			}
-			if picture != nil {
-				break
-			}
-		}
-		if picture == nil {
-			log.Trace(ctx, "Could not find a front image. Getting the first one", "type", types[0], "path", path)
-			picture = m.Picture()
-		}
-		if picture == nil {
-			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
-		}
-		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
-	}
-}
-
-func fromTagGoTaglib(ctx context.Context, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
 			return nil, "", nil

@@ -97,12 +97,10 @@ func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 }
 
 func encodeMediafileShare(s model.Share, id string) string {
-	claims := map[string]any{"id": id}
-	if s.Format != "" {
-		claims["f"] = s.Format
-	}
-	if s.MaxBitRate != 0 {
-		claims["b"] = s.MaxBitRate
+	claims := auth.Claims{
+		ID:      id,
+		Format:  s.Format,
+		BitRate: s.MaxBitRate,
 	}
 	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
 	return token

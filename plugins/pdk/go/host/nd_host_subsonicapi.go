@@ -8,7 +8,6 @@
 package host
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 
@@ -36,6 +35,12 @@ type subsonicAPICallResponse struct {
 
 type subsonicAPICallRawRequest struct {
 	Uri string `json:"uri"`
+}
+
+type subsonicAPICallRawResponse struct {
+	ContentType string `json:"contentType,omitempty"`
+	Data        []byte `json:"data,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // SubsonicAPICall calls the subsonicapi_call host function.
@@ -78,8 +83,8 @@ func SubsonicAPICall(uri string) (string, error) {
 
 // SubsonicAPICallRaw calls the subsonicapi_callraw host function.
 // CallRaw executes a Subsonic API request and returns the raw binary response.
-// Optimized for binary endpoints like getCoverArt and stream that return
-// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+// Designed for binary endpoints like getCoverArt and stream that return
+// non-JSON data. The data is base64-encoded over JSON on the wire.
 func SubsonicAPICallRaw(uri string) (string, []byte, error) {
 	// Marshal request to JSON
 	req := subsonicAPICallRawRequest{
@@ -99,22 +104,16 @@ func SubsonicAPICallRaw(uri string) (string, []byte, error) {
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
 
-	// Parse binary-framed response
-	if len(responseBytes) == 0 {
-		return "", nil, errors.New("empty response from host")
+	// Parse the response
+	var response subsonicAPICallRawResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return "", nil, err
 	}
-	if responseBytes[0] == 0x01 { // error
-		return "", nil, errors.New(string(responseBytes[1:]))
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return "", nil, errors.New(response.Error)
 	}
-	if responseBytes[0] != 0x00 {
-		return "", nil, errors.New("unknown response status")
-	}
-	if len(responseBytes) < 5 {
-		return "", nil, errors.New("malformed raw response: incomplete header")
-	}
-	ctLen := binary.BigEndian.Uint32(responseBytes[1:5])
-	if uint32(len(responseBytes)) < 5+ctLen {
-		return "", nil, errors.New("malformed raw response: content-type overflow")
-	}
-	return string(responseBytes[5 : 5+ctLen]), responseBytes[5+ctLen:], nil
+
+	return response.ContentType, response.Data, nil
 }

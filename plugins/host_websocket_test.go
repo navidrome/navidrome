@@ -5,7 +5,7 @@ package plugins
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
+
 	"encoding/hex"
 	"maps"
 	"net/http"
@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/navidrome/navidrome/conf"
@@ -54,7 +53,6 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()
@@ -295,10 +293,14 @@ var _ = Describe("WebSocketService", Ordered, func() {
 	Describe("Plugin Callbacks", func() {
 		var wsServer *httptest.Server
 		var serverConn *websocket.Conn
+		var serverMessages []string
+		var serverBinaryMessages [][]byte
 		var serverMu sync.Mutex
 
 		BeforeEach(func() {
 			serverConn = nil
+			serverMessages = nil
+			serverBinaryMessages = nil
 
 			upgrader := websocket.Upgrader{
 				CheckOrigin: func(r *http.Request) bool { return true },
@@ -312,12 +314,19 @@ var _ = Describe("WebSocketService", Ordered, func() {
 				serverConn = conn
 				serverMu.Unlock()
 
-				// Keep connection open
+				// Read and store messages
 				for {
-					_, _, err := conn.ReadMessage()
+					msgType, msg, err := conn.ReadMessage()
 					if err != nil {
 						break
 					}
+					serverMu.Lock()
+					if msgType == websocket.BinaryMessage {
+						serverBinaryMessages = append(serverBinaryMessages, msg)
+					} else {
+						serverMessages = append(serverMessages, string(msg))
+					}
+					serverMu.Unlock()
 				}
 			}))
 
@@ -336,36 +345,10 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			}
 		})
 
-		It("should invoke OnTextMessage callback when receiving text", func() {
-			ctx := GinkgoT().Context()
-			wsURL := "ws://" + strings.TrimPrefix(wsServer.URL, "http://")
-			connID, err := testService.Connect(ctx, wsURL, nil, "text-cb-conn")
-			Expect(err).ToNot(HaveOccurred())
-
-			// Wait for server to have the connection
-			Eventually(func() *websocket.Conn {
-				serverMu.Lock()
-				defer serverMu.Unlock()
-				return serverConn
-			}).ShouldNot(BeNil())
-
-			// Send message from server to plugin
-			serverMu.Lock()
-			err = serverConn.WriteMessage(websocket.TextMessage, []byte("test message"))
-			serverMu.Unlock()
-			Expect(err).ToNot(HaveOccurred())
-
-			// The plugin should have received the callback
-			// We can verify by checking the plugin's stored messages via vars
-			// For now we just verify no errors occurred
-			time.Sleep(100 * time.Millisecond)
-			_ = connID
-		})
-
 		It("should invoke OnBinaryMessage callback when receiving binary", func() {
 			ctx := GinkgoT().Context()
 			wsURL := "ws://" + strings.TrimPrefix(wsServer.URL, "http://")
-			connID, err := testService.Connect(ctx, wsURL, nil, "binary-cb-conn")
+			_, err := testService.Connect(ctx, wsURL, nil, "binary-cb-conn")
 			Expect(err).ToNot(HaveOccurred())
 
 			// Wait for server to have the connection
@@ -382,9 +365,12 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			serverMu.Unlock()
 			Expect(err).ToNot(HaveOccurred())
 
-			// Give time for callback to execute
-			time.Sleep(100 * time.Millisecond)
-			_ = connID
+			// Plugin echoes binary data back as a binary message
+			Eventually(func() [][]byte {
+				serverMu.Lock()
+				defer serverMu.Unlock()
+				return serverBinaryMessages
+			}).Should(ContainElement(binaryData))
 		})
 
 		It("should invoke OnClose callback when server closes connection", func() {
@@ -466,7 +452,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		It("should allow plugin to send messages via host function", func() {
 			ctx := GinkgoT().Context()
 			wsURL := "ws://" + strings.TrimPrefix(wsServer.URL, "http://")
-			connID, err := testService.Connect(ctx, wsURL, nil, "host-send-conn")
+			_, err := testService.Connect(ctx, wsURL, nil, "host-send-conn")
 			Expect(err).ToNot(HaveOccurred())
 
 			// Wait for server to have the connection
@@ -488,7 +474,6 @@ var _ = Describe("WebSocketService", Ordered, func() {
 				defer serverMu.Unlock()
 				return serverMessages
 			}).Should(ContainElement("echo:echo"))
-			_ = connID
 		})
 
 		It("should allow plugin to close connection via host function", func() {
@@ -575,6 +560,12 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			Expect(matchHostPattern("*.example.com", "deep.api.example.com")).To(BeTrue())
 		})
 
+		It("should match bare '*' as allow-all", func() {
+			Expect(matchHostPattern("*", "anything.example.com")).To(BeTrue())
+			Expect(matchHostPattern("*", "127.0.0.1")).To(BeTrue())
+			Expect(matchHostPattern("*", "::1")).To(BeTrue())
+		})
+
 		It("should not match partial patterns", func() {
 			Expect(matchHostPattern("*.example.com", "example.com.evil.org")).To(BeFalse())
 		})
@@ -623,6 +614,3 @@ func findWebSocketService(m *Manager, pluginName string) *webSocketServiceImpl {
 	}
 	return nil
 }
-
-// Ensure base64 import is used
-var _ = base64.StdEncoding

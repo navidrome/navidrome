@@ -99,6 +99,49 @@ var _ = Describe("BaseName", func() {
 	})
 })
 
+var _ = Describe("CleanFileName", func() {
+	It("lowercases and replaces spaces with underscores", func() {
+		Expect(utils.CleanFileName("My Cool Playlist")).To(Equal("my_cool_playlist"))
+	})
+
+	It("strips special characters", func() {
+		Expect(utils.CleanFileName("Rock & Roll! (2024)")).To(Equal("rock__roll_2024"))
+	})
+
+	It("handles unicode characters", func() {
+		Expect(utils.CleanFileName("Música Favorita")).To(Equal("msica_favorita"))
+	})
+
+	It("preserves hyphens", func() {
+		Expect(utils.CleanFileName("lo-fi beats")).To(Equal("lo-fi_beats"))
+	})
+
+	It("returns empty string for empty input", func() {
+		Expect(utils.CleanFileName("")).To(BeEmpty())
+	})
+
+	It("returns empty string for whitespace-only input", func() {
+		Expect(utils.CleanFileName("   ")).To(BeEmpty())
+	})
+
+	It("returns empty string when all characters are stripped", func() {
+		Expect(utils.CleanFileName("!!!@@@###")).To(BeEmpty())
+	})
+
+	It("truncates to 50 characters", func() {
+		long := strings.Repeat("abcdefghij", 10) // 100 chars
+		result := utils.CleanFileName(long)
+		Expect(len(result)).To(Equal(50))
+	})
+
+	It("trims trailing underscores and hyphens after truncation", func() {
+		// 49 a's + space + "b" = after clean: 49 a's + "_b" = 51 chars, truncated to 50 = 49 a's + "_"
+		name := strings.Repeat("a", 49) + " b"
+		result := utils.CleanFileName(name)
+		Expect(result).To(Equal(strings.Repeat("a", 49)))
+	})
+})
+
 var _ = Describe("FileExists", func() {
 	var tempFile *os.File
 	var tempDir string

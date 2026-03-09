@@ -185,12 +185,16 @@ func tokenFromHeader(r *http.Request) string {
 }
 
 func UsernameFromToken(r *http.Request) string {
-	token, claims, err := jwtauth.FromContext(r.Context())
-	if err != nil || claims["sub"] == nil || token == nil {
+	token, _, err := jwtauth.FromContext(r.Context())
+	if err != nil || token == nil {
 		return ""
 	}
-	log.Trace(r, "Found username in JWT token", "username", token.Subject())
-	return token.Subject()
+	sub, _ := token.Subject()
+	if sub == "" {
+		return ""
+	}
+	log.Trace(r, "Found username in JWT token", "username", sub)
+	return sub
 }
 
 func UsernameFromExtAuthHeader(r *http.Request) string {

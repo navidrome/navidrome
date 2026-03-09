@@ -14,9 +14,12 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -34,40 +37,44 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 
 type Router struct {
 	http.Handler
-	ds        model.DataStore
-	artwork   artwork.Artwork
-	streamer  core.MediaStreamer
-	archiver  core.Archiver
-	players   core.Players
-	provider  external.Provider
-	playlists core.Playlists
-	scanner   model.Scanner
-	broker    events.Broker
-	scrobbler scrobbler.PlayTracker
-	share     core.Share
-	playback  playback.PlaybackServer
-	metrics   metrics.Metrics
+	ds                model.DataStore
+	artwork           artwork.Artwork
+	streamer          transcode.MediaStreamer
+	archiver          core.Archiver
+	players           core.Players
+	provider          external.Provider
+	playlists         playlistsvc.Playlists
+	scanner           model.Scanner
+	broker            events.Broker
+	scrobbler         scrobbler.PlayTracker
+	share             core.Share
+	playback          playback.PlaybackServer
+	metrics           metrics.Metrics
+	lyrics            lyricssvc.Lyrics
+	transcodeDecision transcode.Decider
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer transcode.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
-	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics,
+	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
+	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision transcode.Decider,
 ) *Router {
 	r := &Router{
-		ds:        ds,
-		artwork:   artwork,
-		streamer:  streamer,
-		archiver:  archiver,
-		players:   players,
-		provider:  provider,
-		playlists: playlists,
-		scanner:   scanner,
-		broker:    broker,
-		scrobbler: scrobbler,
-		share:     share,
-		playback:  playback,
-		metrics:   metrics,
+		ds:                ds,
+		artwork:           artwork,
+		streamer:          streamer,
+		archiver:          archiver,
+		players:           players,
+		provider:          provider,
+		playlists:         playlists,
+		scanner:           scanner,
+		broker:            broker,
+		scrobbler:         scrobbler,
+		share:             share,
+		playback:          playback,
+		metrics:           metrics,
+		lyrics:            lyrics,
+		transcodeDecision: transcodeDecision,
 	}
 	r.Handler = r.routes()
 	return r
@@ -172,6 +179,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
+			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
+			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
 			// configure request throttling
@@ -290,6 +299,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorGeneric, err.Error())
 	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
+	case errors.Is(err, model.ErrNotAuthorized):
+		err = newError(responses.ErrorAuthorizationFail)
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}

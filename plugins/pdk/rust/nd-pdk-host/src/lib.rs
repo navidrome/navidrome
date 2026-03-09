@@ -35,10 +35,12 @@
 //! - [`artwork`] - provides artwork public URL generation capabilities for plugins.
 //! - [`cache`] - provides in-memory TTL-based caching capabilities for plugins.
 //! - [`config`] - provides access to plugin configuration values.
+//! - [`http`] - provides outbound HTTP request capabilities for plugins.
 //! - [`kvstore`] - provides persistent key-value storage for plugins.
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
+//! - [`task`] - provides persistent task queues for plugins.
 //! - [`users`] - provides access to user information for plugins.
 //! - [`websocket`] - provides WebSocket communication capabilities for plugins.
 
@@ -61,6 +63,13 @@ mod nd_host_config;
 /// provides access to plugin configuration values.
 pub mod config {
     pub use super::nd_host_config::*;
+}
+
+#[doc(hidden)]
+mod nd_host_http;
+/// provides outbound HTTP request capabilities for plugins.
+pub mod http {
+    pub use super::nd_host_http::*;
 }
 
 #[doc(hidden)]
@@ -89,6 +98,13 @@ mod nd_host_subsonicapi;
 /// provides access to Navidrome's Subsonic API from plugins.
 pub mod subsonicapi {
     pub use super::nd_host_subsonicapi::*;
+}
+
+#[doc(hidden)]
+mod nd_host_task;
+/// provides persistent task queues for plugins.
+pub mod task {
+    pub use super::nd_host_task::*;
 }
 
 #[doc(hidden)]

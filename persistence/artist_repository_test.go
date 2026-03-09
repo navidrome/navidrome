@@ -193,7 +193,7 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("Basic Operations", func() {
 			Describe("Count", func() {
 				It("returns the number of artists in the DB", func() {
-					Expect(repo.CountAll()).To(Equal(int64(2)))
+					Expect(repo.CountAll()).To(Equal(int64(4)))
 				})
 			})
 
@@ -228,13 +228,19 @@ var _ = Describe("ArtistRepository", func() {
 
 					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(2))
+					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("F"))
 					Expect(idx[0].Artists).To(HaveLen(1))
 					Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
 					Expect(idx[1].ID).To(Equal("K"))
 					Expect(idx[1].Artists).To(HaveLen(1))
 					Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
+					Expect(idx[2].ID).To(Equal("R"))
+					Expect(idx[2].Artists).To(HaveLen(1))
+					Expect(idx[2].Artists[0].Name).To(Equal(artistPunctuation.Name))
+					Expect(idx[3].ID).To(Equal("S"))
+					Expect(idx[3].Artists).To(HaveLen(1))
+					Expect(idx[3].Artists[0].Name).To(Equal(artistCJK.Name))
 
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
@@ -246,13 +252,19 @@ var _ = Describe("ArtistRepository", func() {
 				XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
 					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(2))
+					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
 					Expect(idx[0].Artists).To(HaveLen(1))
 					Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
 					Expect(idx[1].ID).To(Equal("K"))
 					Expect(idx[1].Artists).To(HaveLen(1))
 					Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
+					Expect(idx[2].ID).To(Equal("R"))
+					Expect(idx[2].Artists).To(HaveLen(1))
+					Expect(idx[2].Artists[0].Name).To(Equal(artistPunctuation.Name))
+					Expect(idx[3].ID).To(Equal("S"))
+					Expect(idx[3].Artists).To(HaveLen(1))
+					Expect(idx[3].Artists[0].Name).To(Equal(artistCJK.Name))
 				})
 			})
 
@@ -268,13 +280,19 @@ var _ = Describe("ArtistRepository", func() {
 
 					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(2))
+					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
 					Expect(idx[0].Artists).To(HaveLen(1))
 					Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
 					Expect(idx[1].ID).To(Equal("K"))
 					Expect(idx[1].Artists).To(HaveLen(1))
 					Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
+					Expect(idx[2].ID).To(Equal("R"))
+					Expect(idx[2].Artists).To(HaveLen(1))
+					Expect(idx[2].Artists[0].Name).To(Equal(artistPunctuation.Name))
+					Expect(idx[3].ID).To(Equal("S"))
+					Expect(idx[3].Artists).To(HaveLen(1))
+					Expect(idx[3].Artists[0].Name).To(Equal(artistCJK.Name))
 
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
@@ -285,13 +303,19 @@ var _ = Describe("ArtistRepository", func() {
 				It("returns the index when SortArtistName is empty", func() {
 					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(2))
+					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
 					Expect(idx[0].Artists).To(HaveLen(1))
 					Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
 					Expect(idx[1].ID).To(Equal("K"))
 					Expect(idx[1].Artists).To(HaveLen(1))
 					Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
+					Expect(idx[2].ID).To(Equal("R"))
+					Expect(idx[2].Artists).To(HaveLen(1))
+					Expect(idx[2].Artists[0].Name).To(Equal(artistPunctuation.Name))
+					Expect(idx[3].ID).To(Equal("S"))
+					Expect(idx[3].Artists).To(HaveLen(1))
+					Expect(idx[3].Artists[0].Name).To(Equal(artistCJK.Name))
 				})
 			})
 
@@ -377,7 +401,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Admin users can see all content when valid library IDs are provided
 					idx, err := repo.GetIndex(false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(2))
+					Expect(idx).To(HaveLen(4))
 
 					// With non-existent library ID, admin users see no content because no artists are associated with that library
 					idx, err = repo.GetIndex(false, []int{999})
@@ -488,7 +512,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Test the search
-					results, err := (*testRepo).Search("550e8400-e29b-41d4-a716-446655440010", 0, 10)
+					results, err := (*testRepo).Search("550e8400-e29b-41d4-a716-446655440010", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 
 					if shouldFind {
@@ -519,12 +543,12 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Restricted user should not find this artist
-				results, err := restrictedRepo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10)
+				results, err := restrictedRepo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
 				// But admin should find it
-				results, err = repo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", 0, 10)
+				results, err = repo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 
@@ -536,7 +560,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			Context("Text Search", func() {
 				It("allows admin to find artists by name regardless of library", func() {
-					results, err := repo.Search("Beatles", 0, 10)
+					results, err := repo.Search("Beatles", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(HaveLen(1))
 					Expect(results[0].Name).To(Equal("The Beatles"))
@@ -556,7 +580,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Restricted user should not find this artist
-					results, err := restrictedRepo.Search("Unique Search Name", 0, 10)
+					results, err := restrictedRepo.Search("Unique Search Name", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "Text search should respect library filtering")
 
@@ -625,11 +649,11 @@ var _ = Describe("ArtistRepository", func() {
 			It("sees all artists regardless of library permissions", func() {
 				count, err := repo.CountAll()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(count).To(Equal(int64(2)))
+				Expect(count).To(Equal(int64(4)))
 
 				artists, err := repo.GetAll()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(artists).To(HaveLen(2))
+				Expect(artists).To(HaveLen(4))
 
 				exists, err := repo.Exists(artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
@@ -661,10 +685,10 @@ var _ = Describe("ArtistRepository", func() {
 				// Should see missing artist in GetAll by default for admin users
 				artists, err := repo.GetAll()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(artists).To(HaveLen(3)) // Including the missing artist
+				Expect(artists).To(HaveLen(5)) // Including the missing artist
 
 				// Search never returns missing artists (hardcoded behavior)
-				results, err := repo.Search("Missing Artist", 0, 10)
+				results, err := repo.Search("Missing Artist", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -718,11 +742,11 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("Search returns empty results for users without library access", func() {
-				results, err := restrictedRepo.Search("Beatles", 0, 10)
+				results, err := restrictedRepo.Search("Beatles", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
-				results, err = restrictedRepo.Search("Kraftwerk", 0, 10)
+				results, err = restrictedRepo.Search("Kraftwerk", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -767,19 +791,19 @@ var _ = Describe("ArtistRepository", func() {
 			It("CountAll returns correct count after gaining access", func() {
 				count, err := restrictedRepo.CountAll()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(count).To(Equal(int64(2))) // Beatles and Kraftwerk
+				Expect(count).To(Equal(int64(4))) // Beatles, Kraftwerk, Seatbelts, and The Roots
 			})
 
 			It("GetAll returns artists after gaining access", func() {
 				artists, err := restrictedRepo.GetAll()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(artists).To(HaveLen(2))
+				Expect(artists).To(HaveLen(4))
 
 				var names []string
 				for _, artist := range artists {
 					names = append(names, artist.Name)
 				}
-				Expect(names).To(ContainElements("The Beatles", "Kraftwerk"))
+				Expect(names).To(ContainElements("The Beatles", "Kraftwerk", "シートベルツ", "The Roots"))
 			})
 
 			It("Exists returns true for accessible artists", func() {
@@ -796,7 +820,7 @@ var _ = Describe("ArtistRepository", func() {
 				// With valid library access, should see artists
 				idx, err := restrictedRepo.GetIndex(false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(idx).To(HaveLen(2))
+				Expect(idx).To(HaveLen(4))
 
 				// With non-existent library ID, should see nothing (non-admin user)
 				idx, err = restrictedRepo.GetIndex(false, []int{999})

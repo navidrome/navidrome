@@ -246,6 +246,12 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 		return prop
 	}
 
+	// Handle primitive types (including []byte which maps to string/byte, not array)
+	if isPrimitiveGoType(goType) {
+		prop.Type, prop.Format = goTypeToXTPTypeAndFormat(goType)
+		return prop
+	}
+
 	// Handle slice types
 	if strings.HasPrefix(goType, "[]") {
 		elemType := goType[2:]
@@ -259,7 +265,7 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 		return prop
 	}
 
-	// Handle primitive types
+	// Handle remaining types
 	prop.Type, prop.Format = goTypeToXTPTypeAndFormat(goType)
 	return prop
 }

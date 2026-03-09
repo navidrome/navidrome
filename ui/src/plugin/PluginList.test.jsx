@@ -34,9 +34,7 @@ vi.mock('react-admin', async () => {
     TopToolbar: ({ children }) => (
       <div data-testid="top-toolbar">{children}</div>
     ),
-    Datagrid: ({ children }) => (
-      <table data-testid="datagrid">{children}</table>
-    ),
+    Datagrid: ({ children }) => <div data-testid="datagrid">{children}</div>,
     TextField: ({ source }) => <span data-testid={`text-${source}`} />,
   }
 })

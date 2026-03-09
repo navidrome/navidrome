@@ -417,12 +417,26 @@ var _ = Describe("artistArtworkReader", func() {
 
 type fakeFolderRepo struct {
 	model.FolderRepository
-	result []model.Folder
-	err    error
+	result       []model.Folder
+	parentResult *model.Folder
+	getErr       error
+	getCallCount int
+	err          error
 }
 
 func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
 	return f.result, f.err
+}
+
+func (f *fakeFolderRepo) Get(id string) (*model.Folder, error) {
+	f.getCallCount++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	if f.parentResult != nil {
+		return f.parentResult, nil
+	}
+	return nil, model.ErrNotFound
 }
 
 type fakeDataStore struct {

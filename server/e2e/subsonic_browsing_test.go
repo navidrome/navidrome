@@ -288,7 +288,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Genres).ToNot(BeNil())
-			Expect(resp.Genres.Genre).To(HaveLen(3))
+			Expect(resp.Genres.Genre).To(HaveLen(4))
 		})
 
 		It("includes correct genre names", func() {
@@ -327,8 +327,8 @@ var _ = Describe("Browsing Endpoints", func() {
 				}
 			}
 			Expect(jazzGenre).ToNot(BeNil())
-			Expect(jazzGenre.SongCount).To(Equal(int32(1)))
-			Expect(jazzGenre.AlbumCount).To(Equal(int32(1)))
+			Expect(jazzGenre.SongCount).To(Equal(int32(2)))
+			Expect(jazzGenre.AlbumCount).To(Equal(int32(2)))
 		})
 
 		It("reports correct song and album counts for Pop", func() {

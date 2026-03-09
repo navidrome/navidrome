@@ -14,6 +14,7 @@ type MockScanner struct {
 	scanFoldersCalls []ScanFoldersCall
 	scanningStatus   bool
 	statusResponse   *model.ScannerStatus
+	scanStatusFunc   func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus
 }
 
 type ScanAllCall struct {
@@ -38,6 +39,13 @@ func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 
 	m.scanAllCalls = append(m.scanAllCalls, ScanAllCall{FullScan: fullScan})
 
+	// Simulate the scanner updating its status when the scan starts
+	if m.scanStatusFunc != nil {
+		m.statusResponse = m.scanStatusFunc(fullScan, nil)
+	} else {
+		m.scanningStatus = true
+	}
+
 	return nil, nil
 }
 
@@ -53,6 +61,13 @@ func (m *MockScanner) ScanFolders(_ context.Context, fullScan bool, targets []mo
 		FullScan: fullScan,
 		Targets:  targetsCopy,
 	})
+
+	// Simulate the scanner updating its status when the scan starts
+	if m.scanStatusFunc != nil {
+		m.statusResponse = m.scanStatusFunc(fullScan, targetsCopy)
+	} else {
+		m.scanningStatus = true
+	}
 
 	return nil, nil
 }
@@ -117,4 +132,12 @@ func (m *MockScanner) SetStatusResponse(status *model.ScannerStatus) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.statusResponse = status
+}
+
+// SetScanStatusFunc sets a function that will be called when ScanAll/ScanFolders is invoked,
+// simulating the scanner updating its status when the scan starts.
+func (m *MockScanner) SetScanStatusFunc(fn func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scanStatusFunc = fn
 }

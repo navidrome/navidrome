@@ -119,7 +119,7 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	return nil
 }
 
-func (m *MockAlbumRepo) Search(q string, offset int, size int, options ...model.QueryOptions) (model.Albums, error) {
+func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}

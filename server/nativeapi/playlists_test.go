@@ -1,7 +1,9 @@
 package nativeapi
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -11,12 +13,174 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("Playlist Image Endpoints", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	DescribeTable("uploadPlaylistImage guard",
+		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+			handler := uploadPlaylistImage(&mockPlaylistsService{})
+
+			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
+			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
+			req = req.WithContext(ctx)
+
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(expectedStatus))
+		},
+		Entry("enabled, regular user passes guard", true, false, http.StatusBadRequest),
+		Entry("enabled, admin passes guard", true, true, http.StatusBadRequest),
+		Entry("disabled, admin passes guard", false, true, http.StatusBadRequest),
+		Entry("disabled, regular user is forbidden", false, false, http.StatusForbidden),
+	)
+
+	DescribeTable("deletePlaylistImage guard",
+		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+			handler := deletePlaylistImage(&mockPlaylistsService{})
+
+			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
+			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
+			req = req.WithContext(ctx)
+
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(expectedStatus))
+		},
+		Entry("enabled, regular user passes guard", true, false, http.StatusNotFound),
+		Entry("enabled, admin passes guard", true, true, http.StatusNotFound),
+		Entry("disabled, admin passes guard", false, true, http.StatusNotFound),
+		Entry("disabled, regular user is forbidden", false, false, http.StatusForbidden),
+	)
+})
+
+var _ = Describe("Playlist Tracks Endpoint", func() {
+	var (
+		router   http.Handler
+		plsSvc   *mockPlaylistsService
+		userRepo *tests.MockedUserRepo
+		w        *httptest.ResponseRecorder
+	)
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.SessionTimeout = time.Minute
+
+		plsSvc = &mockPlaylistsService{}
+		userRepo = tests.CreateMockUserRepo()
+
+		ds := &tests.MockDataStore{
+			MockedUser:     userRepo,
+			MockedProperty: &tests.MockedPropertyRepo{},
+		}
+
+		auth.Init(ds)
+
+		testUser := model.User{
+			ID:          "user-1",
+			UserName:    "testuser",
+			Name:        "Test User",
+			IsAdmin:     false,
+			NewPassword: "testpass",
+		}
+		err := userRepo.Put(&testUser)
+		Expect(err).ToNot(HaveOccurred())
+
+		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
+		router = server.JWTVerifier(nativeRouter)
+		w = httptest.NewRecorder()
+	})
+
+	createAuthenticatedRequest := func(method, path string) *http.Request {
+		req := httptest.NewRequest(method, path, nil)
+		testUser := model.User{ID: "user-1", UserName: "testuser"}
+		token, err := auth.CreateToken(&testUser)
+		Expect(err).ToNot(HaveOccurred())
+		req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
+		return req
+	}
+
+	Describe("GET /playlist/{playlistId}/tracks", func() {
+		It("returns 404 when playlist does not exist", func() {
+			req := createAuthenticatedRequest("GET", "/playlist/non-existent/tracks")
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns tracks when playlist exists", func() {
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
+				tracks: model.PlaylistTracks{
+					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
+					{ID: "2", MediaFileID: "mf-2", PlaylistID: "pls-1"},
+				},
+			}
+
+			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks")
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+
+			var response []model.PlaylistTrack
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).To(HaveLen(2))
+			Expect(response[0].ID).To(Equal("1"))
+			Expect(response[1].ID).To(Equal("2"))
+		})
+	})
+
+	Describe("GET /playlist/{playlistId}/tracks/{id}", func() {
+		It("returns 404 when playlist does not exist", func() {
+			req := createAuthenticatedRequest("GET", "/playlist/non-existent/tracks/1")
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns the track when playlist exists", func() {
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
+				tracks: model.PlaylistTracks{
+					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
+				},
+			}
+
+			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/1")
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+
+			var response model.PlaylistTrack
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.ID).To(Equal("1"))
+			Expect(response.MediaFileID).To(Equal("mf-1"))
+		})
+
+		It("returns 404 when track does not exist in playlist", func() {
+			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
+				tracks: model.PlaylistTracks{},
+			}
+
+			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/999")
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+	})
+})
 
 type mockPlaylistTrackRepo struct {
 	model.PlaylistTrackRepository
@@ -48,120 +212,27 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 	return nil, rest.ErrNotFound
 }
 
-var _ = Describe("Playlist Tracks Endpoint", func() {
-	var (
-		router   http.Handler
-		ds       *tests.MockDataStore
-		plsRepo  *tests.MockPlaylistRepo
-		userRepo *tests.MockedUserRepo
-		w        *httptest.ResponseRecorder
-	)
+type mockPlaylistsService struct {
+	playlists.Playlists
+	tracksRepo    rest.Repository
+	removeImageFn func(ctx context.Context, id string) error
+	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
+}
 
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.SessionTimeout = time.Minute
-
-		plsRepo = &tests.MockPlaylistRepo{}
-		userRepo = tests.CreateMockUserRepo()
-
-		ds = &tests.MockDataStore{
-			MockedPlaylist: plsRepo,
-			MockedUser:     userRepo,
-			MockedProperty: &tests.MockedPropertyRepo{},
-		}
-
-		auth.Init(ds)
-
-		testUser := model.User{
-			ID:          "user-1",
-			UserName:    "testuser",
-			Name:        "Test User",
-			IsAdmin:     false,
-			NewPassword: "testpass",
-		}
-		err := userRepo.Put(&testUser)
-		Expect(err).ToNot(HaveOccurred())
-
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
-		router = server.JWTVerifier(nativeRouter)
-		w = httptest.NewRecorder()
-	})
-
-	createAuthenticatedRequest := func(method, path string) *http.Request {
-		req := httptest.NewRequest(method, path, nil)
-		testUser := model.User{ID: "user-1", UserName: "testuser"}
-		token, err := auth.CreateToken(&testUser)
-		Expect(err).ToNot(HaveOccurred())
-		req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
-		return req
+func (m *mockPlaylistsService) RemoveImage(ctx context.Context, id string) error {
+	if m.removeImageFn != nil {
+		return m.removeImageFn(ctx, id)
 	}
+	return model.ErrNotFound
+}
 
-	Describe("GET /playlist/{playlistId}/tracks", func() {
-		It("returns 404 when playlist does not exist", func() {
-			req := createAuthenticatedRequest("GET", "/playlist/non-existent/tracks")
-			router.ServeHTTP(w, req)
+func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader io.Reader, ext string) error {
+	if m.setImageFn != nil {
+		return m.setImageFn(ctx, id, reader, ext)
+	}
+	return model.ErrNotFound
+}
 
-			Expect(w.Code).To(Equal(http.StatusNotFound))
-		})
-
-		It("returns tracks when playlist exists", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{
-					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
-					{ID: "2", MediaFileID: "mf-2", PlaylistID: "pls-1"},
-				},
-			}
-
-			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks")
-			router.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response []model.PlaylistTrack
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response).To(HaveLen(2))
-			Expect(response[0].ID).To(Equal("1"))
-			Expect(response[1].ID).To(Equal("2"))
-		})
-	})
-
-	Describe("GET /playlist/{playlistId}/tracks/{id}", func() {
-		It("returns 404 when playlist does not exist", func() {
-			req := createAuthenticatedRequest("GET", "/playlist/non-existent/tracks/1")
-			router.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusNotFound))
-		})
-
-		It("returns the track when playlist exists", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{
-					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
-				},
-			}
-
-			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/1")
-			router.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response model.PlaylistTrack
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response.ID).To(Equal("1"))
-			Expect(response.MediaFileID).To(Equal("mf-1"))
-		})
-
-		It("returns 404 when track does not exist in playlist", func() {
-			plsRepo.TracksReturn = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{},
-			}
-
-			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/999")
-			router.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusNotFound))
-		})
-	})
-})
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+	return m.tracksRepo
+}

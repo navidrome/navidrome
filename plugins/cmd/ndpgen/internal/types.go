@@ -173,16 +173,6 @@ func (s Service) HasErrors() bool {
 	return false
 }
 
-// HasRawMethods returns true if any method in the service uses raw binary framing.
-func (s Service) HasRawMethods() bool {
-	for _, m := range s.Methods {
-		if m.Raw {
-			return true
-		}
-	}
-	return false
-}
-
 // Method represents a host function method within a service.
 type Method struct {
 	Name       string  // Go method name (e.g., "Call")
@@ -191,7 +181,6 @@ type Method struct {
 	Returns    []Param // Return values (excluding error)
 	HasError   bool    // Whether the method returns an error
 	Doc        string  // Documentation comment for the method
-	Raw        bool    // If true, response uses binary framing instead of JSON
 }
 
 // FunctionName returns the Extism host function export name.
@@ -341,6 +330,52 @@ type Param struct {
 	Name     string // Parameter name
 	Type     string // Go type (e.g., "string", "int32", "[]byte")
 	JSONName string // JSON field name (camelCase)
+}
+
+// IsByteSlice returns true if the parameter type is []byte.
+func (p Param) IsByteSlice() bool {
+	return p.Type == "[]byte"
+}
+
+// IsByteSlice returns true if the field type is []byte.
+func (f FieldDef) IsByteSlice() bool {
+	return f.Type == "[]byte"
+}
+
+// HasByteFields returns true if any method params, returns, or struct fields use []byte.
+func (s Service) HasByteFields() bool {
+	for _, m := range s.Methods {
+		for _, p := range m.Params {
+			if p.IsByteSlice() {
+				return true
+			}
+		}
+		for _, r := range m.Returns {
+			if r.IsByteSlice() {
+				return true
+			}
+		}
+	}
+	for _, st := range s.Structs {
+		for _, f := range st.Fields {
+			if f.IsByteSlice() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// HasByteFields returns true if any capability struct fields use []byte.
+func (c Capability) HasByteFields() bool {
+	for _, st := range c.Structs {
+		for _, f := range st.Fields {
+			if f.IsByteSlice() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // NewParam creates a Param with auto-generated JSON name.

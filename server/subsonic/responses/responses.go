@@ -61,6 +61,7 @@ type Subsonic struct {
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
+	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 }
 
 const (
@@ -303,7 +304,7 @@ type Playlist struct {
 	Comment               string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
 	SongCount             int32     `xml:"songCount,attr"                json:"songCount"`
 	Duration              int32     `xml:"duration,attr"                 json:"duration"`
-	Public                bool      `xml:"public,attr,omitempty"         json:"public,omitempty"`
+	Public                bool      `xml:"public,attr"                   json:"public,omitempty"`
 	Owner                 string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created               time.Time `xml:"created,attr"                  json:"created"`
 	Changed               time.Time `xml:"changed,attr"                  json:"changed"`
@@ -616,4 +617,27 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 		return json.Marshal([]T{})
 	}
 	return json.Marshal(v)
+}
+
+// TranscodeDecision represents the response for getTranscodeDecision (OpenSubsonic transcoding extension)
+type TranscodeDecision struct {
+	CanDirectPlay    bool           `xml:"canDirectPlay,attr"               json:"canDirectPlay"`
+	CanTranscode     bool           `xml:"canTranscode,attr"                json:"canTranscode"`
+	TranscodeReasons []string       `xml:"transcodeReason,omitempty"        json:"transcodeReason,omitempty"`
+	ErrorReason      string         `xml:"errorReason,attr,omitempty"       json:"errorReason,omitempty"`
+	TranscodeParams  string         `xml:"transcodeParams,attr,omitempty"   json:"transcodeParams,omitempty"`
+	SourceStream     *StreamDetails `xml:"sourceStream,omitempty"           json:"sourceStream,omitempty"`
+	TranscodeStream  *StreamDetails `xml:"transcodeStream,omitempty"        json:"transcodeStream,omitempty"`
+}
+
+// StreamDetails describes audio stream properties for transcoding decisions
+type StreamDetails struct {
+	Protocol        string `xml:"protocol,attr,omitempty"        json:"protocol,omitempty"`
+	Container       string `xml:"container,attr,omitempty"       json:"container,omitempty"`
+	Codec           string `xml:"codec,attr,omitempty"           json:"codec,omitempty"`
+	AudioChannels   int32  `xml:"audioChannels,attr,omitempty"   json:"audioChannels,omitempty"`
+	AudioBitrate    int32  `xml:"audioBitrate,attr,omitempty"     json:"audioBitrate,omitempty"`
+	AudioProfile    string `xml:"audioProfile,attr,omitempty"    json:"audioProfile,omitempty"`
+	AudioSamplerate int32  `xml:"audioSamplerate,attr,omitempty" json:"audioSamplerate,omitempty"`
+	AudioBitdepth   int32  `xml:"audioBitdepth,attr,omitempty"   json:"audioBitdepth,omitempty"`
 }

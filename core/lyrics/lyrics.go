@@ -9,23 +9,45 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+// Lyrics can fetch lyrics for a media file.
+type Lyrics interface {
+	GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error)
+}
+
+// PluginLoader discovers and loads lyrics provider plugins.
+type PluginLoader interface {
+	LoadLyricsProvider(name string) (Lyrics, bool)
+}
+
+type lyricsService struct {
+	pluginLoader PluginLoader
+}
+
+// NewLyrics creates a new lyrics service. pluginLoader may be nil if no plugin
+// system is available.
+func NewLyrics(pluginLoader PluginLoader) Lyrics {
+	return &lyricsService{pluginLoader: pluginLoader}
+}
+
+// GetLyrics returns lyrics for the given media file, trying sources in the
+// order specified by conf.Server.LyricsPriority.
+func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	var lyricsList model.LyricList
 	var err error
 
-	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.LyricsPriority), ",") {
+	for pattern := range strings.SplitSeq(conf.Server.LyricsPriority, ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
-		case pattern == "embedded":
+		case strings.EqualFold(pattern, "embedded"):
 			lyricsList, err = fromEmbedded(ctx, mf)
 		case strings.HasPrefix(pattern, "."):
-			lyricsList, err = fromExternalFile(ctx, mf, pattern)
+			lyricsList, err = fromExternalFile(ctx, mf, strings.ToLower(pattern))
 		default:
-			log.Error(ctx, "Invalid lyric pattern", "pattern", pattern)
+			lyricsList, err = l.fromPlugin(ctx, mf, pattern)
 		}
 
 		if err != nil {
-			log.Error(ctx, "error parsing lyrics", "source", pattern, err)
+			log.Error(ctx, "error getting lyrics", "source", pattern, err)
 		}
 
 		if len(lyricsList) > 0 {

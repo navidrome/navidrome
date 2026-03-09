@@ -5,24 +5,33 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
+	_ "golang.org/x/image/webp"
 )
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-func playlistTracksHandler(ds model.DataStore, handler restHandler, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
+func playlistTracksHandler(pls playlists.Playlists, handler restHandler, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		plsId := chi.URLParam(r, "playlistId")
-		tracks := ds.Playlist(r.Context()).Tracks(plsId, refreshSmartPlaylist(r))
+		tracks := pls.TracksRepository(r.Context(), plsId, refreshSmartPlaylist(r))
 		if tracks == nil {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -31,27 +40,27 @@ func playlistTracksHandler(ds model.DataStore, handler restHandler, refreshSmart
 	}
 }
 
-func getPlaylist(ds model.DataStore) http.HandlerFunc {
-	handler := playlistTracksHandler(ds, rest.GetAll, func(r *http.Request) bool {
+func getPlaylist(pls playlists.Playlists) http.HandlerFunc {
+	handler := playlistTracksHandler(pls, rest.GetAll, func(r *http.Request) bool {
 		return req.Params(r).Int64Or("_start", 0) == 0
 	})
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.ToLower(r.Header.Get("accept")) == "audio/x-mpegurl" {
-			handleExportPlaylist(ds)(w, r)
+			handleExportPlaylist(pls)(w, r)
 			return
 		}
 		handler(w, r)
 	}
 }
 
-func getPlaylistTrack(ds model.DataStore) http.HandlerFunc {
-	return playlistTracksHandler(ds, rest.Get, func(*http.Request) bool { return true })
+func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
+	return playlistTracksHandler(pls, rest.Get, func(*http.Request) bool { return true })
 }
 
-func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
+func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		pls, err := playlists.ImportM3U(ctx, r.Body)
+		pl, err := pls.ImportM3U(ctx, r.Body)
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
 			// TODO: consider returning StatusBadRequest for playlists that are malformed
@@ -59,7 +68,7 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(pls.ToM3U8())) //nolint:gosec
+		_, err = w.Write([]byte(pl.ToM3U8())) //nolint:gosec
 		if err != nil {
 			log.Error(ctx, "Error sending m3u contents", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,45 +77,41 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	}
 }
 
-func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
+func handleExportPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
-		pls, err := plsRepo.GetWithTracks(plsId, true, false)
+		playlist, err := pls.GetWithTracks(ctx, plsId)
 		if errors.Is(err, model.ErrNotFound) {
-			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
+			log.Warn(ctx, "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error(r.Context(), "Error retrieving the playlist", "playlistId", plsId, err)
+			log.Error(ctx, "Error retrieving the playlist", "playlistId", plsId, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		log.Debug(ctx, "Exporting playlist as M3U", "playlistId", plsId, "name", pls.Name)
+		log.Debug(ctx, "Exporting playlist as M3U", "playlistId", plsId, "name", playlist.Name)
 		w.Header().Set("Content-Type", "audio/x-mpegurl")
-		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", pls.Name)
+		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", playlist.Name)
 		w.Header().Set("Content-Disposition", disposition)
 
-		_, err = w.Write([]byte(pls.ToM3U8())) //nolint:gosec
+		_, err = w.Write([]byte(playlist.ToM3U8())) //nolint:gosec
 		if err != nil {
-			log.Error(ctx, "Error sending playlist", "name", pls.Name)
+			log.Error(ctx, "Error sending playlist", "name", playlist.Name)
 			return
 		}
 	}
 }
 
-func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
+func deleteFromPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		ids, _ := p.Strings("id")
-		err := ds.WithTxImmediate(func(tx model.DataStore) error {
-			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId, true)
-			return tracksRepo.Delete(ids...)
-		})
+		err := pls.RemoveTracks(r.Context(), playlistId, ids)
 		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
 			log.Warn(r.Context(), "Track not found in playlist", "playlistId", playlistId, "id", ids[0])
 			http.Error(w, "not found", http.StatusNotFound)
@@ -121,7 +126,7 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
-func addToPlaylist(ds model.DataStore) http.HandlerFunc {
+func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	type addTracksPayload struct {
 		Ids       []string       `json:"ids"`
 		AlbumIds  []string       `json:"albumIds"`
@@ -130,6 +135,7 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
@@ -138,24 +144,23 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
 		count, c := 0, 0
-		if c, err = tracksRepo.Add(payload.Ids); err != nil {
+		if c, err = pls.AddTracks(ctx, playlistId, payload.Ids); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		count += c
-		if c, err = tracksRepo.AddAlbums(payload.AlbumIds); err != nil {
+		if c, err = pls.AddAlbums(ctx, playlistId, payload.AlbumIds); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		count += c
-		if c, err = tracksRepo.AddArtists(payload.ArtistIds); err != nil {
+		if c, err = pls.AddArtists(ctx, playlistId, payload.ArtistIds); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		count += c
-		if c, err = tracksRepo.AddDiscs(payload.Discs); err != nil {
+		if c, err = pls.AddDiscs(ctx, playlistId, payload.Discs); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -169,12 +174,13 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
-func reorderItem(ds model.DataStore) http.HandlerFunc {
+func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 	type reorderPayload struct {
 		InsertBefore string `json:"insert_before"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		id := p.IntOr(":id", 0)
@@ -193,9 +199,8 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
-		err = tracksRepo.Reorder(id, newPos)
-		if errors.Is(err, rest.ErrPermissionDenied) {
+		err = pls.ReorderTrack(ctx, playlistId, id, newPos)
+		if errors.Is(err, model.ErrNotAuthorized) {
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}
@@ -211,11 +216,11 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
-func getSongPlaylists(ds model.DataStore) http.HandlerFunc {
+func getSongPlaylists(svc playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p := req.Params(r)
 		trackId, _ := p.String(":id")
-		playlists, err := ds.Playlist(r.Context()).GetPlaylists(trackId)
+		playlists, err := svc.GetPlaylists(r.Context(), trackId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -226,5 +231,113 @@ func getSongPlaylists(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 		_, _ = w.Write(data) //nolint:gosec
+	}
+}
+
+const maxImageSize = 10 << 20 // 10MB
+
+func uploadPlaylistImage(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		user, _ := request.UserFrom(ctx)
+		if !conf.Server.EnableCoverArtUpload && !user.IsAdmin {
+			http.Error(w, "cover art upload is disabled", http.StatusForbidden)
+			return
+		}
+		p := req.Params(r)
+		playlistId, _ := p.String(":id")
+
+		if err := r.ParseMultipartForm(maxImageSize); err != nil { //nolint:gosec // size is limited by maxImageSize parameter
+			log.Error(ctx, "Error parsing multipart form", err)
+			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
+			return
+		}
+
+		file, header, err := r.FormFile("image")
+		if err != nil {
+			log.Error(ctx, "Error reading uploaded file", err)
+			http.Error(w, "missing image file", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		// Validate the uploaded file is a valid image
+		_, format, err := image.DecodeConfig(file)
+		if err != nil {
+			log.Error(ctx, "Uploaded file is not a valid image", err)
+			http.Error(w, "invalid image file", http.StatusBadRequest)
+			return
+		}
+
+		// Reset reader after DecodeConfig consumed some bytes
+		if seeker, ok := file.(io.Seeker); ok {
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				log.Error(ctx, "Error seeking file", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Determine file extension from decoded format or original filename
+		ext := "." + format
+		if ext == "." {
+			ext = strings.ToLower(filepath.Ext(header.Filename))
+		}
+		if ext == "" || ext == "." {
+			log.Error(ctx, "Could not determine image type", "playlistId", playlistId, "filename", header.Filename)
+			http.Error(w, "could not determine image type", http.StatusBadRequest)
+			return
+		}
+
+		err = pls.SetImage(ctx, playlistId, file, ext)
+		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to upload playlist image", "playlistId", playlistId, err)
+			http.Error(w, "not authorized", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image upload", "playlistId", playlistId, err)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error(ctx, "Error saving playlist image", "playlistId", playlistId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = fmt.Fprintf(w, `{"status":"ok"}`) //nolint:gosec
+	}
+}
+
+func deletePlaylistImage(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		user, _ := request.UserFrom(ctx)
+		if !conf.Server.EnableCoverArtUpload && !user.IsAdmin {
+			http.Error(w, "cover art upload is disabled", http.StatusForbidden)
+			return
+		}
+		p := req.Params(r)
+		playlistId, _ := p.String(":id")
+
+		err := pls.RemoveImage(ctx, playlistId)
+		if errors.Is(err, model.ErrNotAuthorized) {
+			log.Error(ctx, "Not authorized to remove playlist image", "playlistId", playlistId, err)
+			http.Error(w, "not authorized", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Playlist not found for image removal", "playlistId", playlistId, err)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error(ctx, "Error removing playlist image", "playlistId", playlistId, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = fmt.Fprintf(w, `{"status":"ok"}`) //nolint:gosec
 	}
 }

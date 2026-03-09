@@ -9,8 +9,8 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -130,7 +130,7 @@ var _ = Describe("phasePlaylists", func() {
 
 type mockPlaylists struct {
 	mock.Mock
-	core.Playlists
+	playlists.Playlists
 }
 
 func (p *mockPlaylists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
