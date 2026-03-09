@@ -80,7 +80,9 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		}
 	}
 
+	fastScanCompleted := make(chan struct{})
 	go func() {
+		defer close(fastScanCompleted)
 		start := time.Now()
 		var err error
 
@@ -98,6 +100,36 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		}
 		log.Info(ctx, "On-demand scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
 	}()
+
+	// Wait briefly for the scanner to start and update its status, so the response
+	// reflects the current scan (not stale data from a previous scan).
+	const (
+		pollInterval = 50 * time.Millisecond
+		pollTimeout  = 3 * time.Second
+	)
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	timer := time.NewTimer(pollTimeout)
+	defer timer.Stop()
+
+loop:
+	for {
+		status, err := api.scanner.Status(ctx)
+		if err == nil && status.Scanning {
+			break
+		}
+		select {
+		case <-fastScanCompleted:
+			log.Info(ctx, "Fast scan completed", "user", loggedUser.UserName)
+			break loop
+		case <-timer.C:
+			log.Warn(ctx, "Timed out waiting for scanner to start; response may be stale")
+			break loop
+		case <-ctx.Done():
+			return nil, newError(responses.ErrorGeneric, "Request cancelled while waiting for scanner to start")
+		case <-ticker.C:
+		}
+	}
 
 	return api.GetScanStatus(r)
 }
