@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
-const defaultBitrate = 256 // kbps
+const fallbackBitrate = 256 // kbps
 
 // Decider is the core service interface for making transcoding decisions
 type Decider interface {
@@ -58,6 +58,13 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	// Check for server-side player transcoding override
 	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
 		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
+	} else if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
+		if clientInfo.MaxAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxAudioBitrate {
+			modified := *clientInfo
+			modified.MaxAudioBitrate = player.MaxBitRate
+			clientInfo = &modified
+			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+		}
 	}
 
 	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
@@ -291,6 +298,21 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Strea
 	return ts, targetFormat
 }
 
+// lookupDefaultBitrate returns the default bitrate for the given format.
+// It checks the DB first (for user-customized values), then falls back to
+// the built-in defaults, and finally to fallbackBitrate.
+func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string) int {
+	if t, err := ds.Transcoding(ctx).FindByFormat(format); err == nil && t.DefaultBitRate > 0 {
+		return t.DefaultBitRate
+	}
+	for _, dt := range consts.DefaultTranscodings {
+		if dt.TargetFormat == format && dt.DefaultBitRate > 0 {
+			return dt.DefaultBitRate
+		}
+	}
+	return fallbackBitrate
+}
+
 // LookupTranscodeCommand returns the ffmpeg command for the given format.
 // It checks the DB first (for user-customized commands), then falls back to
 // the built-in default command. Returns "" if the format is unknown.
@@ -341,8 +363,10 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *StreamDetails,
 		if !targetIsLossless {
 			if clientInfo.MaxTranscodingAudioBitrate > 0 {
 				ts.Bitrate = clientInfo.MaxTranscodingAudioBitrate
+			} else if clientInfo.MaxAudioBitrate > 0 {
+				ts.Bitrate = clientInfo.MaxAudioBitrate
 			} else {
-				ts.Bitrate = defaultBitrate
+				ts.Bitrate = lookupDefaultBitrate(ctx, s.ds, targetFormat)
 			}
 		} else {
 			if clientInfo.MaxAudioBitrate > 0 && src.Bitrate > clientInfo.MaxAudioBitrate {

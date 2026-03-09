@@ -229,7 +229,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				Expect(decision.TargetBitrate).To(Equal(defaultBitrate)) // 256 kbps
+				Expect(decision.TargetBitrate).To(Equal(160)) // mp3 default from mock transcoding repo
 			})
 
 			It("preserves lossy bitrate when under max", func() {
@@ -993,8 +993,8 @@ var _ = Describe("Decider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TargetFormat).To(Equal("mp3"))
-				// With no cap, lossless→lossy uses defaultBitrate (256)
-				Expect(decision.TargetBitrate).To(Equal(defaultBitrate))
+				// With no cap, lossless→lossy uses format default bitrate (160 for mp3 from mock)
+				Expect(decision.TargetBitrate).To(Equal(160))
 			})
 
 			It("does not apply override when no transcoding is in context", func() {
@@ -1011,6 +1011,97 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 
+		})
+
+		Context("Player MaxBitRate cap", func() {
+			It("applies player MaxBitRate cap when client has no limit", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac", "mp3"}, AudioCodecs: []string{"flac", "mp3"}, Protocols: []string{ProtocolHTTP}},
+					},
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
+
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				// Source bitrate 1000 > player cap 320, so direct play is not possible
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// Lossless→lossy should use MaxAudioBitrate (320) as target, not format default
+				Expect(decision.TargetBitrate).To(Equal(320))
+			})
+
+			It("uses client limit when it is more restrictive than player MaxBitRate", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					Name:                       "TestClient",
+					MaxAudioBitrate:            256,
+					MaxTranscodingAudioBitrate: 256,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 500})
+
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				// Client limit 256 < player cap 500, so player cap doesn't apply; client limit wins
+				Expect(decision.TargetBitrate).To(Equal(256))
+			})
+
+			It("does not cap when player MaxBitRate is 0", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 0})
+
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+		})
+
+		Context("Format-aware default bitrate", func() {
+			It("uses opus default bitrate from DB", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 48000, BitDepth: 16})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetBitrate).To(Equal(96)) // opus default from mock
+			})
+
+			It("uses aac default bitrate from DB", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "aac", AudioCodec: "aac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetBitrate).To(Equal(256)) // aac default from mock
+			})
+
+			It("falls back to 256 for unknown format", func() {
+				bitrate := lookupDefaultBitrate(ctx, ds, "xyz")
+				Expect(bitrate).To(Equal(fallbackBitrate))
+			})
 		})
 	})
 
