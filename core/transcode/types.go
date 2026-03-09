@@ -1,13 +1,8 @@
 package transcode
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"time"
-
-	"github.com/lestrrat-go/jwx/v3/jwt"
-	"github.com/navidrome/navidrome/model"
 )
 
 var (
@@ -32,14 +27,6 @@ type StreamRequest struct {
 	BitDepth   int
 	Channels   int
 	Offset     int // seconds
-}
-
-// Decider is the core service interface for making transcoding decisions
-type Decider interface {
-	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
-	CreateTranscodeParams(decision *Decision) (string, error)
-	ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error)
-	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
 }
 
 // ClientInfo represents client playback capabilities.
@@ -131,35 +118,6 @@ type Decision struct {
 	TranscodeStream  *StreamDetails
 }
 
-// toClaimsMap converts a Decision into a JWT claims map for token encoding.
-// Only non-zero transcode fields are included.
-func (d *Decision) toClaimsMap() map[string]any {
-	m := map[string]any{
-		"mid":             d.MediaID,
-		"ua":              d.SourceUpdatedAt.Truncate(time.Second).Unix(),
-		jwt.ExpirationKey: time.Now().Add(tokenTTL).UTC().Unix(),
-	}
-	if d.CanDirectPlay {
-		m["dp"] = true
-	}
-	if d.CanTranscode && d.TargetFormat != "" {
-		m["f"] = d.TargetFormat
-		if d.TargetBitrate != 0 {
-			m["b"] = d.TargetBitrate
-		}
-		if d.TargetChannels != 0 {
-			m["ch"] = d.TargetChannels
-		}
-		if d.TargetSampleRate != 0 {
-			m["sr"] = d.TargetSampleRate
-		}
-		if d.TargetBitDepth != 0 {
-			m["bd"] = d.TargetBitDepth
-		}
-	}
-	return m
-}
-
 // StreamDetails describes audio stream properties.
 // Bitrate is in kilobits per second (kbps).
 type StreamDetails struct {
@@ -173,71 +131,4 @@ type StreamDetails struct {
 	Duration   float32
 	Size       int64
 	IsLossless bool
-}
-
-// params contains the parameters extracted from a transcode token.
-// TargetBitrate is in kilobits per second (kbps).
-type params struct {
-	MediaID          string
-	DirectPlay       bool
-	TargetFormat     string
-	TargetBitrate    int
-	TargetChannels   int
-	TargetSampleRate int
-	TargetBitDepth   int
-	SourceUpdatedAt  time.Time
-}
-
-// paramsFromToken extracts and validates Params from a parsed JWT token.
-// Returns an error if required claims (media ID, source timestamp) are missing.
-func paramsFromToken(token jwt.Token) (*params, error) {
-	var p params
-	var mid string
-	if err := token.Get("mid", &mid); err == nil {
-		p.MediaID = mid
-	}
-	if p.MediaID == "" {
-		return nil, fmt.Errorf("%w: missing media ID", ErrTokenInvalid)
-	}
-
-	var dp bool
-	if err := token.Get("dp", &dp); err == nil {
-		p.DirectPlay = dp
-	}
-
-	ua := getIntClaim(token, "ua")
-	if ua != 0 {
-		p.SourceUpdatedAt = time.Unix(int64(ua), 0)
-	}
-	if p.SourceUpdatedAt.IsZero() {
-		return nil, fmt.Errorf("%w: missing source timestamp", ErrTokenInvalid)
-	}
-
-	var f string
-	if err := token.Get("f", &f); err == nil {
-		p.TargetFormat = f
-	}
-	p.TargetBitrate = getIntClaim(token, "b")
-	p.TargetChannels = getIntClaim(token, "ch")
-	p.TargetSampleRate = getIntClaim(token, "sr")
-	p.TargetBitDepth = getIntClaim(token, "bd")
-	return &p, nil
-}
-
-// getIntClaim extracts an int claim from a JWT token, handling the case where
-// the value may be stored as int64 or float64 (common in JSON-based JWT libraries).
-func getIntClaim(token jwt.Token, key string) int {
-	var v int
-	if err := token.Get(key, &v); err == nil {
-		return v
-	}
-	var v64 int64
-	if err := token.Get(key, &v64); err == nil {
-		return int(v64)
-	}
-	var f float64
-	if err := token.Get(key, &f); err == nil {
-		return int(f)
-	}
-	return 0
 }

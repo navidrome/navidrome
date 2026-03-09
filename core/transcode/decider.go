@@ -2,26 +2,27 @@ package transcode
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
-
-	"encoding/json"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
 
-const (
-	tokenTTL       = 12 * time.Hour
-	defaultBitrate = 256 // kbps
-)
+const defaultBitrate = 256 // kbps
+
+// Decider is the core service interface for making transcoding decisions
+type Decider interface {
+	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
+	CreateTranscodeParams(decision *Decision) (string, error)
+	ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error)
+	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
+}
 
 func NewDecider(ds model.DataStore, ff ffmpeg.FFmpeg) Decider {
 	return &deciderService{
@@ -421,124 +422,4 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 		"profile", result.Profile, "bitRate", result.BitRate,
 		"sampleRate", result.SampleRate, "bitDepth", result.BitDepth, "channels", result.Channels)
 	return result, nil
-}
-
-// buildLegacyClientInfo translates legacy Subsonic stream/download parameters
-// into a ClientInfo for use with MakeDecision.
-// It does NOT read request.TranscodingFrom(ctx) — that is handled by
-// MakeDecision's applyServerOverride.
-func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int) *ClientInfo {
-	ci := &ClientInfo{Name: "legacy"}
-
-	// Determine target format for transcoding
-	var targetFormat string
-	switch {
-	case reqFormat != "":
-		targetFormat = reqFormat
-	case reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
-		targetFormat = conf.Server.DefaultDownsamplingFormat
-	}
-
-	if targetFormat != "" {
-		ci.DirectPlayProfiles = []DirectPlayProfile{
-			{Containers: []string{mf.Suffix}, AudioCodecs: []string{mf.AudioCodec()}, Protocols: []string{ProtocolHTTP}},
-		}
-		ci.TranscodingProfiles = []Profile{
-			{Container: targetFormat, AudioCodec: targetFormat, Protocol: ProtocolHTTP},
-		}
-		if reqBitRate > 0 {
-			ci.MaxAudioBitrate = reqBitRate
-			ci.MaxTranscodingAudioBitrate = reqBitRate
-		}
-	} else {
-		// No transcoding requested — direct play everything
-		ci.DirectPlayProfiles = []DirectPlayProfile{
-			{Protocols: []string{ProtocolHTTP}},
-		}
-	}
-
-	return ci
-}
-
-// ResolveRequest uses MakeDecision to resolve legacy Subsonic stream parameters
-// into a fully specified StreamRequest.
-func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest {
-	var req StreamRequest
-	req.ID = mf.ID
-	req.Offset = offset
-
-	if reqFormat == "raw" {
-		req.Format = "raw"
-		return req
-	}
-
-	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
-	decision, err := s.MakeDecision(ctx, mf, clientInfo, DecisionOptions{SkipProbe: true})
-	if err != nil {
-		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanDirectPlay {
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanTranscode {
-		req.Format = decision.TargetFormat
-		req.BitRate = decision.TargetBitrate
-		req.SampleRate = decision.TargetSampleRate
-		req.BitDepth = decision.TargetBitDepth
-		req.Channels = decision.TargetChannels
-		return req
-	}
-
-	// No compatible profile — fallback to raw
-	req.Format = "raw"
-	return req
-}
-
-func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
-	return auth.EncodeToken(decision.toClaimsMap())
-}
-
-func (s *deciderService) parseTranscodeParams(tokenStr string) (*params, error) {
-	token, err := auth.DecodeAndVerifyToken(tokenStr)
-	if err != nil {
-		return nil, err
-	}
-	return paramsFromToken(token)
-}
-
-func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error) {
-	p, err := s.parseTranscodeParams(token)
-	if err != nil {
-		return StreamRequest{}, nil, errors.Join(ErrTokenInvalid, err)
-	}
-	if p.MediaID != mediaID {
-		return StreamRequest{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
-	}
-	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return StreamRequest{}, nil, ErrMediaNotFound
-		}
-		return StreamRequest{}, nil, err
-	}
-	if !mf.UpdatedAt.Truncate(time.Second).Equal(p.SourceUpdatedAt) {
-		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
-			"tokenUpdatedAt", p.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
-		return StreamRequest{}, nil, ErrTokenStale
-	}
-
-	req := StreamRequest{ID: mediaID, Offset: offset}
-	if !p.DirectPlay && p.TargetFormat != "" {
-		req.Format = p.TargetFormat
-		req.BitRate = p.TargetBitrate
-		req.SampleRate = p.TargetSampleRate
-		req.BitDepth = p.TargetBitDepth
-		req.Channels = p.TargetChannels
-	}
-	return req, mf, nil
 }
