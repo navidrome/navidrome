@@ -129,6 +129,18 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 
+			It("handles container aliases (opus -> ogg)", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "opus", Codec: "Opus", BitRate: 165, Channels: 2, SampleRate: 48000})
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"ogg"}, AudioCodecs: []string{"opus"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, DecisionOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
 			It("handles codec aliases (adts -> aac)", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2})
 				ci := &ClientInfo{

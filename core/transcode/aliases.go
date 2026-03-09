@@ -10,7 +10,7 @@ var containerAliasGroups = func() map[string]string {
 	groups := [][]string{
 		{"aac", "adts", "m4a", "mp4", "m4b", "m4p"},
 		{"mpeg", "mp3", "mp2"},
-		{"ogg", "oga"},
+		{"ogg", "oga", "opus"},
 		{"aif", "aiff"},
 		{"asf", "wma"},
 		{"mpc", "mpp"},
