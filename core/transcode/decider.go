@@ -57,7 +57,7 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	// Check for server-side player transcoding override
 	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
-		clientInfo = applyServerOverride(clientInfo, &trc, ctx)
+		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
 	}
 
 	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
@@ -153,7 +153,7 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Stre
 
 // applyServerOverride replaces the client-provided profiles with synthetic ones
 // matching the server-forced transcoding format and bitrate.
-func applyServerOverride(original *ClientInfo, trc *model.Transcoding, ctx context.Context) *ClientInfo {
+func applyServerOverride(ctx context.Context, original *ClientInfo, trc *model.Transcoding) *ClientInfo {
 	maxBitRate := trc.DefaultBitRate
 	if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
 		maxBitRate = player.MaxBitRate
