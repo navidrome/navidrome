@@ -99,5 +99,20 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		log.Info(ctx, "On-demand scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
 	}()
 
+	// Wait briefly for the scanner to start and update its status, so the response
+	// reflects the current scan (not stale data from a previous scan).
+	const (
+		pollInterval = 50 * time.Millisecond
+		pollTimeout  = 3 * time.Second
+	)
+	deadline := time.Now().Add(pollTimeout)
+	for time.Now().Before(deadline) {
+		status, err := api.scanner.Status(ctx)
+		if err == nil && status.Scanning {
+			break
+		}
+		time.Sleep(pollInterval)
+	}
+
 	return api.GetScanStatus(r)
 }
