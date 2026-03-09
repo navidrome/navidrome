@@ -218,7 +218,7 @@ func isValidComparison(c string) bool {
 }
 
 // toResponseStreamDetails converts a core StreamDetails to the API response type.
-func toResponseStreamDetails(sd *stream.StreamDetails) *responses.StreamDetails {
+func toResponseStreamDetails(sd *stream.Details) *responses.StreamDetails {
 	return &responses.StreamDetails{
 		Protocol:        stream.ProtocolHTTP, // TODO: derive from decision when HLS support is added
 		Container:       sd.Container,
@@ -279,7 +279,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Make the decision
-	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.DecisionOptions{})
+	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
 		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision")

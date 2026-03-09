@@ -51,13 +51,13 @@ type Router struct {
 	playback          playback.PlaybackServer
 	metrics           metrics.Metrics
 	lyrics            lyricssvc.Lyrics
-	transcodeDecision stream.Decider
+	transcodeDecision stream.TranscodeDecider
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.Decider,
+	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
 ) *Router {
 	r := &Router{
 		ds:                ds,

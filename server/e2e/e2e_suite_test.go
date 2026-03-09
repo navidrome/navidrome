@@ -287,15 +287,15 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 // spyStreamer captures the StreamRequest passed to DoStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {
-	LastRequest   stream.StreamRequest
+	LastRequest   stream.Request
 	LastMediaFile *model.MediaFile
 }
 
-func (s *spyStreamer) NewStream(ctx context.Context, req stream.StreamRequest) (*stream.Stream, error) {
+func (s *spyStreamer) NewStream(ctx context.Context, req stream.Request) (*stream.Stream, error) {
 	return nil, model.ErrNotFound
 }
 
-func (s *spyStreamer) DoStream(_ context.Context, mf *model.MediaFile, req stream.StreamRequest) (*stream.Stream, error) {
+func (s *spyStreamer) DoStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	s.LastRequest = req
 	s.LastMediaFile = mf
 	format := req.Format
@@ -477,7 +477,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS, spy streamer, and real Decider
 	spy = &spyStreamer{}
-	decider := stream.NewDecider(ds, noopFFmpeg{})
+	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(

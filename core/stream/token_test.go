@@ -16,7 +16,7 @@ var _ = Describe("Token", func() {
 	var (
 		ds  *tests.MockDataStore
 		ff  *tests.MockFFmpeg
-		svc Decider
+		svc TranscodeDecider
 		ctx context.Context
 	)
 
@@ -28,7 +28,7 @@ var _ = Describe("Token", func() {
 		}
 		ff = tests.NewMockFFmpeg("")
 		auth.Init(ds)
-		svc = NewDecider(ds, ff)
+		svc = NewTranscodeDecider(ds, ff)
 	})
 
 	Describe("Token round-trip", func() {
@@ -43,7 +43,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a direct play token", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-123",
 				CanDirectPlay:   true,
 				SourceUpdatedAt: sourceTime,
@@ -61,7 +61,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with kbps bitrate", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-456",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -84,7 +84,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with sample rate", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:          "media-789",
 				CanDirectPlay:    false,
 				CanTranscode:     true,
@@ -107,7 +107,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with bit depth", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-bd",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -127,7 +127,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("omits bit depth from token when 0", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-nobd",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -145,7 +145,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("omits sample rate from token when 0", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:          "media-100",
 				CanDirectPlay:    false,
 				CanTranscode:     true,
@@ -164,7 +164,7 @@ var _ = Describe("Token", func() {
 
 		It("truncates SourceUpdatedAt to seconds", func() {
 			timeWithNanos := time.Date(2025, 6, 15, 10, 30, 0, 123456789, time.UTC)
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-trunc",
 				CanDirectPlay:   true,
 				SourceUpdatedAt: timeWithNanos,
@@ -196,7 +196,7 @@ var _ = Describe("Token", func() {
 		})
 
 		createTokenForMedia := func(mediaID string, updatedAt time.Time) string {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         mediaID,
 				CanDirectPlay:   true,
 				SourceUpdatedAt: updatedAt,

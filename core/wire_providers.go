@@ -23,7 +23,7 @@ var Set = wire.NewSet(
 	NewLibrary,
 	NewUser,
 	NewMaintenance,
-	stream.NewDecider,
+	stream.NewTranscodeDecider,
 	agents.GetAgents,
 	external.NewProvider,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),

@@ -46,9 +46,9 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 }
 
 // ResolveRequest uses MakeDecision to resolve legacy Subsonic stream parameters
-// into a fully specified StreamRequest.
-func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest {
-	var req StreamRequest
+// into a fully specified Request.
+func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request {
+	var req Request
 	req.ID = mf.ID
 	req.Offset = offset
 
@@ -58,7 +58,7 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 	}
 
 	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
-	decision, err := s.MakeDecision(ctx, mf, clientInfo, DecisionOptions{SkipProbe: true})
+	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true})
 	if err != nil {
 		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
 		req.Format = "raw"

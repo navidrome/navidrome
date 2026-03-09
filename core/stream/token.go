@@ -29,7 +29,7 @@ type params struct {
 
 // toClaimsMap converts a Decision into a JWT claims map for token encoding.
 // Only non-zero transcode fields are included.
-func (d *Decision) toClaimsMap() map[string]any {
+func (d *TranscodeDecision) toClaimsMap() map[string]any {
 	m := map[string]any{
 		"mid":             d.MediaID,
 		"ua":              d.SourceUpdatedAt.Truncate(time.Second).Unix(),
@@ -110,7 +110,7 @@ func getIntClaim(token jwt.Token, key string) int {
 	return 0
 }
 
-func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
+func (s *deciderService) CreateTranscodeParams(decision *TranscodeDecision) (string, error) {
 	return auth.EncodeToken(decision.toClaimsMap())
 }
 
@@ -122,28 +122,28 @@ func (s *deciderService) parseTranscodeParams(tokenStr string) (*params, error) 
 	return paramsFromToken(token)
 }
 
-func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error) {
+func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (Request, *model.MediaFile, error) {
 	p, err := s.parseTranscodeParams(token)
 	if err != nil {
-		return StreamRequest{}, nil, errors.Join(ErrTokenInvalid, err)
+		return Request{}, nil, errors.Join(ErrTokenInvalid, err)
 	}
 	if p.MediaID != mediaID {
-		return StreamRequest{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
+		return Request{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
 	}
 	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
-			return StreamRequest{}, nil, ErrMediaNotFound
+			return Request{}, nil, ErrMediaNotFound
 		}
-		return StreamRequest{}, nil, err
+		return Request{}, nil, err
 	}
 	if !mf.UpdatedAt.Truncate(time.Second).Equal(p.SourceUpdatedAt) {
 		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
 			"tokenUpdatedAt", p.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
-		return StreamRequest{}, nil, ErrTokenStale
+		return Request{}, nil, ErrTokenStale
 	}
 
-	req := StreamRequest{ID: mediaID, Offset: offset}
+	req := Request{ID: mediaID, Offset: offset}
 	if !p.DirectPlay && p.TargetFormat != "" {
 		req.Format = p.TargetFormat
 		req.BitRate = p.TargetBitrate
