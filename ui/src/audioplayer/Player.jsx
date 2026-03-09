@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -53,15 +53,21 @@ const Player = () => {
 
   const { authenticated } = useAuthState()
 
-  // Detect browser codec profile once on mount, then resolve transcode
-  // decisions for the current and upcoming tracks so musicSrc is a string URL
+  // Keep a ref to playerState so the mount effect can read the latest value
+  // without re-triggering on every queue/position change
+  const playerStateRef = useRef(playerState)
+  playerStateRef.current = playerState
+
+  // Detect browser codec profile and eagerly resolve transcode URLs for the
+  // persisted queue once on mount (e.g. after a browser refresh)
   useEffect(() => {
     const profile = detectBrowserProfile()
     decisionService.setProfile(profile)
     dispatch(setTranscodingProfile(profile))
 
-    const currentIdx = playerState.savedPlayIndex || 0
-    const trackIds = playerState.queue
+    const state = playerStateRef.current
+    const currentIdx = state.savedPlayIndex || 0
+    const trackIds = state.queue
       .slice(currentIdx, currentIdx + 4)
       .filter((item) => !item.isRadio && item.trackId)
       .map((item) => item.trackId)
@@ -84,7 +90,6 @@ const Player = () => {
       })
       dispatch(refreshQueue(resolvedUrls))
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch])
 
   // Pre-fetch transcode decisions for next 2-3 songs when queue or position changes
