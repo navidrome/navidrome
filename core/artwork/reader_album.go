@@ -116,17 +116,15 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	// that is not already included. This finds cover art in the album root folder
 	// (e.g., "Artist/Album/cover.jpg" when tracks are in "Artist/Album/CD1/" and "Artist/Album/CD2/").
 	// We skip single-folder albums to avoid pulling images from the artist folder.
-	if len(folders) > 1 {
-		if commonParentID := commonParentFolder(folders, folderIDSet); commonParentID != "" {
-			parentFolder, err := ds.Folder(ctx).Get(commonParentID)
-			if errors.Is(err, model.ErrNotFound) {
-				log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
-			} else if err != nil {
-				return nil, nil, nil, err
-			}
-			if parentFolder != nil {
-				folders = append(folders, *parentFolder)
-			}
+	if commonParentID := commonParentFolder(folders, folderIDSet); commonParentID != "" {
+		parentFolder, err := ds.Folder(ctx).Get(commonParentID)
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
+		} else if err != nil {
+			return nil, nil, nil, err
+		}
+		if parentFolder != nil {
+			folders = append(folders, *parentFolder)
 		}
 	}
 
@@ -155,7 +153,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 // commonParentFolder returns the shared parent folder ID when all folders have the
 // same parent and that parent is not already in folderIDSet. Returns "" otherwise.
 func commonParentFolder(folders []model.Folder, folderIDSet map[string]bool) string {
-	if len(folders) == 0 {
+	if len(folders) < 2 {
 		return ""
 	}
 	parentID := folders[0].ParentID
