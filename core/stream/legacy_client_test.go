@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"github.com/navidrome/navidrome/conf"

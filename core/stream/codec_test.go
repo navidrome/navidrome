@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	. "github.com/onsi/ginkgo/v2"
