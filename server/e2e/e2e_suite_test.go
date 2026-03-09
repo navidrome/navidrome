@@ -225,14 +225,14 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
-// noopStreamer implements core.MediaStreamer
+// noopStreamer implements transcode.MediaStreamer
 type noopStreamer struct{}
 
-func (n noopStreamer) NewStream(context.Context, core.StreamRequest) (*core.Stream, error) {
+func (n noopStreamer) NewStream(context.Context, transcode.StreamRequest) (*transcode.Stream, error) {
 	return nil, model.ErrNotFound
 }
 
-func (n noopStreamer) DoStream(context.Context, *model.MediaFile, core.StreamRequest) (*core.Stream, error) {
+func (n noopStreamer) DoStream(context.Context, *model.MediaFile, transcode.StreamRequest) (*transcode.Stream, error) {
 	return nil, model.ErrNotFound
 }
 
@@ -243,12 +243,12 @@ func (n noopDecider) MakeDecision(context.Context, *model.MediaFile, *transcode.
 	return nil, nil
 }
 
-func (n noopDecider) CreateTranscodeParams(*transcode.Decision) (string, error) {
-	return "", nil
+func (n noopDecider) ResolveStream(context.Context, *model.MediaFile, string, int, int) transcode.StreamRequest {
+	return transcode.StreamRequest{Format: "raw"}
 }
 
-func (n noopDecider) ParseTranscodeParams(string) (*transcode.Params, error) {
-	return nil, nil
+func (n noopDecider) CreateTranscodeParams(*transcode.Decision) (string, error) {
+	return "", nil
 }
 
 func (n noopDecider) ValidateTranscodeParams(context.Context, string, string) (*transcode.Params, *model.MediaFile, error) {
@@ -318,12 +318,12 @@ func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
 
 // Compile-time interface checks
 var (
-	_ artwork.Artwork       = noopArtwork{}
-	_ core.MediaStreamer    = noopStreamer{}
-	_ core.Archiver         = noopArchiver{}
-	_ external.Provider     = noopProvider{}
-	_ scrobbler.PlayTracker = noopPlayTracker{}
-	_ transcode.Decider     = noopDecider{}
+	_ artwork.Artwork         = noopArtwork{}
+	_ transcode.MediaStreamer = noopStreamer{}
+	_ core.Archiver           = noopArchiver{}
+	_ external.Provider       = noopProvider{}
+	_ scrobbler.PlayTracker   = noopPlayTracker{}
+	_ transcode.Decider       = noopDecider{}
 )
 
 var _ = BeforeSuite(func() {

@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/publicurl"
+	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -20,14 +21,14 @@ import (
 type Router struct {
 	http.Handler
 	artwork       artwork.Artwork
-	streamer      core.MediaStreamer
+	streamer      transcode.MediaStreamer
 	archiver      core.Archiver
 	share         core.Share
 	assetsHandler http.Handler
 	ds            model.DataStore
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
+func New(ds model.DataStore, artwork artwork.Artwork, streamer transcode.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
 	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver}
 	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))

@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -360,7 +359,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	}
 
 	// Build streaming parameters from the token
-	streamReq := core.StreamRequest{ID: mediaID, Offset: p.IntOr("offset", 0)}
+	streamReq := transcode.StreamRequest{ID: mediaID, Offset: p.IntOr("offset", 0)}
 	if !params.DirectPlay && params.TargetFormat != "" {
 		streamReq.Format = params.TargetFormat
 		streamReq.BitRate = params.TargetBitrate // Already in kbps, matching the streamer

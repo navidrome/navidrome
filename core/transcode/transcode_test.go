@@ -1101,10 +1101,14 @@ var _ = Describe("Decider", func() {
 	})
 
 	Describe("Token round-trip", func() {
-		var sourceTime time.Time
+		var (
+			sourceTime time.Time
+			impl       *deciderService
+		)
 
 		BeforeEach(func() {
 			sourceTime = time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC)
+			impl = svc.(*deciderService)
 		})
 
 		It("creates and parses a direct play token", func() {
@@ -1117,7 +1121,7 @@ var _ = Describe("Decider", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(token).ToNot(BeEmpty())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-123"))
 			Expect(params.DirectPlay).To(BeTrue())
@@ -1138,7 +1142,7 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-456"))
 			Expect(params.DirectPlay).To(BeFalse())
@@ -1162,7 +1166,7 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-789"))
 			Expect(params.DirectPlay).To(BeFalse())
@@ -1185,7 +1189,7 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.MediaID).To(Equal("media-bd"))
 			Expect(params.TargetBitDepth).To(Equal(24))
@@ -1204,7 +1208,7 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.TargetBitDepth).To(Equal(0))
 		})
@@ -1222,7 +1226,7 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.TargetSampleRate).To(Equal(0))
 		})
@@ -1237,13 +1241,13 @@ var _ = Describe("Decider", func() {
 			token, err := svc.CreateTranscodeParams(decision)
 			Expect(err).ToNot(HaveOccurred())
 
-			params, err := svc.ParseTranscodeParams(token)
+			params, err := impl.parseTranscodeParams(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(params.SourceUpdatedAt.Unix()).To(Equal(timeWithNanos.Truncate(time.Second).Unix()))
 		})
 
 		It("rejects an invalid token", func() {
-			_, err := svc.ParseTranscodeParams("invalid-token")
+			_, err := impl.parseTranscodeParams("invalid-token")
 			Expect(err).To(HaveOccurred())
 		})
 	})

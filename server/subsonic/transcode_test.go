@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -369,8 +368,6 @@ type mockTranscodeDecision struct {
 	decision       *transcode.Decision
 	token          string
 	tokenErr       error
-	params         *transcode.Params
-	parseErr       error
 	validateParams *transcode.Params
 	validateMF     *model.MediaFile
 	validateErr    error
@@ -383,15 +380,12 @@ func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFi
 	return &transcode.Decision{}, nil
 }
 
-func (m *mockTranscodeDecision) CreateTranscodeParams(_ *transcode.Decision) (string, error) {
-	return m.token, m.tokenErr
+func (m *mockTranscodeDecision) ResolveStream(_ context.Context, _ *model.MediaFile, _ string, _ int, _ int) transcode.StreamRequest {
+	return transcode.StreamRequest{Format: "raw"}
 }
 
-func (m *mockTranscodeDecision) ParseTranscodeParams(_ string) (*transcode.Params, error) {
-	if m.parseErr != nil {
-		return nil, m.parseErr
-	}
-	return m.params, nil
+func (m *mockTranscodeDecision) CreateTranscodeParams(_ *transcode.Decision) (string, error) {
+	return m.token, m.tokenErr
 }
 
 func (m *mockTranscodeDecision) ValidateTranscodeParams(_ context.Context, _ string, _ string) (*transcode.Params, *model.MediaFile, error) {
@@ -406,15 +400,15 @@ func (m *mockTranscodeDecision) ValidateTranscodeParams(_ context.Context, _ str
 var errStreamCaptured = errors.New("stream request captured")
 
 type fakeMediaStreamer struct {
-	captured *core.StreamRequest
+	captured *transcode.StreamRequest
 }
 
-func (f *fakeMediaStreamer) NewStream(_ context.Context, req core.StreamRequest) (*core.Stream, error) {
+func (f *fakeMediaStreamer) NewStream(_ context.Context, req transcode.StreamRequest) (*transcode.Stream, error) {
 	f.captured = &req
 	return nil, errStreamCaptured
 }
 
-func (f *fakeMediaStreamer) DoStream(_ context.Context, _ *model.MediaFile, req core.StreamRequest) (*core.Stream, error) {
+func (f *fakeMediaStreamer) DoStream(_ context.Context, _ *model.MediaFile, req transcode.StreamRequest) (*transcode.Stream, error) {
 	f.captured = &req
 	return nil, errStreamCaptured
 }

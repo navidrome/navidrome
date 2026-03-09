@@ -1,9 +1,8 @@
-package subsonic
+package transcode
 
 import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,13 +22,13 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("mp3"))
 		Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("mp3"))
-		Expect(ci.TranscodingProfiles[0].Protocol).To(Equal(transcode.ProtocolHTTP))
+		Expect(ci.TranscodingProfiles[0].Protocol).To(Equal(ProtocolHTTP))
 		Expect(ci.MaxAudioBitrate).To(BeZero())
 		Expect(ci.MaxTranscodingAudioBitrate).To(BeZero())
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(Equal([]string{"flac"}))
 		Expect(ci.DirectPlayProfiles[0].AudioCodecs).To(Equal([]string{mf.AudioCodec()}))
-		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{transcode.ProtocolHTTP}))
+		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 	})
 
 	It("sets transcoding profile and bitrate for explicit format with bitrate", func() {
@@ -50,7 +49,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
 		Expect(ci.DirectPlayProfiles[0].AudioCodecs).To(BeEmpty())
-		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{transcode.ProtocolHTTP}))
+		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 		Expect(ci.TranscodingProfiles).To(BeEmpty())
 		Expect(ci.MaxAudioBitrate).To(BeZero())
 	})
@@ -64,7 +63,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("opus"))
 		Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
-		Expect(ci.TranscodingProfiles[0].Protocol).To(Equal(transcode.ProtocolHTTP))
+		Expect(ci.TranscodingProfiles[0].Protocol).To(Equal(ProtocolHTTP))
 		Expect(ci.MaxAudioBitrate).To(Equal(128))
 		Expect(ci.MaxTranscodingAudioBitrate).To(Equal(128))
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
@@ -78,7 +77,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
 		Expect(ci.DirectPlayProfiles[0].AudioCodecs).To(BeEmpty())
-		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{transcode.ProtocolHTTP}))
+		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 		Expect(ci.TranscodingProfiles).To(BeEmpty())
 		Expect(ci.MaxAudioBitrate).To(BeZero())
 	})

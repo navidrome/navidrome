@@ -39,7 +39,7 @@ type Router struct {
 	http.Handler
 	ds                model.DataStore
 	artwork           artwork.Artwork
-	streamer          core.MediaStreamer
+	streamer          transcode.MediaStreamer
 	archiver          core.Archiver
 	players           core.Players
 	provider          external.Provider
@@ -54,7 +54,7 @@ type Router struct {
 	transcodeDecision transcode.Decider
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer transcode.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision transcode.Decider,

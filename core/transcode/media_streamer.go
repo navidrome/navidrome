@@ -1,4 +1,4 @@
-package core
+package transcode
 
 import (
 	"context"
@@ -12,23 +12,11 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/cache"
 )
-
-// StreamRequest contains all parameters for creating a media stream.
-type StreamRequest struct {
-	ID         string
-	Format     string
-	BitRate    int // kbps
-	SampleRate int
-	BitDepth   int
-	Channels   int
-	Offset     int // seconds
-}
 
 type MediaStreamer interface {
 	NewStream(ctx context.Context, req StreamRequest) (*Stream, error)
@@ -171,7 +159,7 @@ func NewTranscodingCache() TranscodingCache {
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
-			command := transcode.LookupTranscodeCommand(ctx, job.ms.ds, job.format)
+			command := LookupTranscodeCommand(ctx, job.ms.ds, job.format)
 			if command == "" {
 				log.Error(ctx, "No transcoding command available", "format", job.format)
 				return nil, os.ErrInvalid
@@ -205,4 +193,13 @@ func NewTranscodingCache() TranscodingCache {
 			}
 			return out, nil
 		})
+}
+
+// userName extracts the username from the context for logging purposes.
+func userName(ctx context.Context) string {
+	if user, ok := request.UserFrom(ctx); !ok {
+		return "UNKNOWN"
+	} else {
+		return user.UserName
+	}
 }

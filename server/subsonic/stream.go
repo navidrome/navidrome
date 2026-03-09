@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/transcode"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -18,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *core.Stream, id string) {
+func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *transcode.Stream, id string) {
 	if stream.Seekable() {
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 	} else {
@@ -66,7 +65,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 		return nil, err
 	}
 
-	streamReq := api.resolveStreamRequest(ctx, mf, format, maxBitRate, timeOffset)
+	streamReq := api.transcodeDecision.ResolveStream(ctx, mf, format, maxBitRate, timeOffset)
 	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
 	if err != nil {
 		return nil, err
@@ -136,7 +135,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		streamReq := api.resolveStreamRequest(ctx, v, format, maxBitRate, 0)
+		streamReq := api.transcodeDecision.ResolveStream(ctx, v, format, maxBitRate, 0)
 		stream, err := api.streamer.DoStream(ctx, v, streamReq)
 		if err != nil {
 			return nil, err
@@ -168,78 +167,4 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	}
 
 	return nil, err
-}
-
-// buildLegacyClientInfo translates legacy Subsonic stream/download parameters
-// into a transcode.ClientInfo for use with MakeDecision.
-// It does NOT read request.TranscodingFrom(ctx) — that is handled by
-// MakeDecision's applyServerOverride.
-func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int) *transcode.ClientInfo {
-	ci := &transcode.ClientInfo{Name: "legacy"}
-
-	// Determine target format for transcoding
-	var targetFormat string
-	switch {
-	case reqFormat != "":
-		targetFormat = reqFormat
-	case reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
-		targetFormat = conf.Server.DefaultDownsamplingFormat
-	}
-
-	if targetFormat != "" {
-		ci.DirectPlayProfiles = []transcode.DirectPlayProfile{
-			{Containers: []string{mf.Suffix}, AudioCodecs: []string{mf.AudioCodec()}, Protocols: []string{transcode.ProtocolHTTP}},
-		}
-		ci.TranscodingProfiles = []transcode.Profile{
-			{Container: targetFormat, AudioCodec: targetFormat, Protocol: transcode.ProtocolHTTP},
-		}
-		if reqBitRate > 0 {
-			ci.MaxAudioBitrate = reqBitRate
-			ci.MaxTranscodingAudioBitrate = reqBitRate
-		}
-	} else {
-		// No transcoding requested — direct play everything
-		ci.DirectPlayProfiles = []transcode.DirectPlayProfile{
-			{Protocols: []string{transcode.ProtocolHTTP}},
-		}
-	}
-
-	return ci
-}
-
-// resolveStreamRequest uses MakeDecision to resolve legacy stream parameters
-// into a fully specified StreamRequest.
-func (api *Router) resolveStreamRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) core.StreamRequest {
-	req := core.StreamRequest{ID: mf.ID, Offset: offset}
-
-	if reqFormat == "raw" {
-		req.Format = "raw"
-		return req
-	}
-
-	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
-	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, transcode.DecisionOptions{SkipProbe: true})
-	if err != nil {
-		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanDirectPlay {
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanTranscode {
-		req.Format = decision.TargetFormat
-		req.BitRate = decision.TargetBitrate
-		req.SampleRate = decision.TargetSampleRate
-		req.BitDepth = decision.TargetBitDepth
-		req.Channels = decision.TargetChannels
-		return req
-	}
-
-	// No compatible profile — fallback to raw
-	req.Format = "raw"
-	return req
 }

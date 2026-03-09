@@ -23,11 +23,22 @@ type DecisionOptions struct {
 	SkipProbe bool
 }
 
+// StreamRequest contains the resolved parameters for creating a media stream.
+type StreamRequest struct {
+	ID         string
+	Format     string
+	BitRate    int // kbps
+	SampleRate int
+	BitDepth   int
+	Channels   int
+	Offset     int // seconds
+}
+
 // Decider is the core service interface for making transcoding decisions
 type Decider interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
+	ResolveStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
 	CreateTranscodeParams(decision *Decision) (string, error)
-	ParseTranscodeParams(token string) (*Params, error)
 	ValidateTranscodeParams(ctx context.Context, token string, mediaID string) (*Params, *model.MediaFile, error)
 }
 
