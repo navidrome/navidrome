@@ -194,12 +194,22 @@ export default {
     },
     RaDeleteWithConfirmButton: {
       deleteButton: {
-        color: '#fff',
+        color: '#fff !important',
+      },
+    },
+    RaDeleteWithUndoButton: {
+      deleteButton: {
+        color: '#fff !important',
+      },
+    },
+    RaBulkDeleteWithConfirmButton: {
+      deleteButton: {
+        color: '#fff !important',
       },
     },
     RaBulkDeleteWithUndoButton: {
       deleteButton: {
-        color: '#fff',
+        color: '#fff !important',
       },
     },
     RaPaginationActions: {
