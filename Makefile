@@ -109,7 +109,7 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go tool wire gen -tags=$(GO_BUILD_TAGS) ./...
+	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
 
 gen: check_go_env ##@Development Run go generate for code generation
