@@ -283,7 +283,7 @@ var formatCodecMap = map[string]string{
 var formatOutputMap = map[string]string{
 	"mp3":  "mp3",
 	"opus": "opus",
-	"aac":  "ipod",
+	"aac":  "adts",
 	"flac": "flac",
 }
 
@@ -337,11 +337,6 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 	if outputFmt, ok := formatOutputMap[opts.Format]; ok {
 		args = append(args, "-f", outputFmt)
-	}
-
-	// For AAC in MP4 container, enable fragmented MP4 for pipe-safe streaming
-	if opts.Format == "aac" {
-		args = append(args, "-movflags", "frag_keyframe+empty_moov")
 	}
 
 	args = append(args, "-")
