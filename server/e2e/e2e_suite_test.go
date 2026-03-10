@@ -71,11 +71,11 @@ const (
 
 // Shared test state
 var (
-	ctx    context.Context
-	ds     *tests.MockDataStore
-	router *subsonic.Router
-	spy    *spyStreamer
-	lib    model.Library
+	ctx         context.Context
+	ds          *tests.MockDataStore
+	router      *subsonic.Router
+	streamerSpy *spyStreamer
+	lib         model.Library
 
 	// Snapshot paths for fast DB restore
 	dbFilePath   string
@@ -471,15 +471,15 @@ func setupTestDB() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	// Create the Subsonic Router with real DS, spy streamer, and real Decider
-	spy = &spyStreamer{}
+	// Create the Subsonic Router with real DS, streamer spy, and real Decider
+	streamerSpy = &spyStreamer{}
 	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
-		spy,
+		streamerSpy,
 		noopArchiver{},
 		core.NewPlayers(ds),
 		noopProvider{},

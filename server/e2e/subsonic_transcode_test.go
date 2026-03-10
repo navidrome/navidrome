@@ -544,8 +544,8 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				// Stream using the token
 				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
 				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(spy.LastRequest.Format).To(Equal("mp3"))
-				Expect(spy.LastRequest.BitRate).To(Equal(128))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
+				Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 			})
 		})
 	})
@@ -617,7 +617,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				w := doRawReq("getTranscodeStream", "mediaId", mp3TrackID, "mediaType", "song", "transcodeParams", token)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				// Direct play: format should be "raw" or empty
-				Expect(spy.LastRequest.Format).To(BeElementOf("raw", ""))
+				Expect(streamerSpy.LastRequest.Format).To(BeElementOf("raw", ""))
 			})
 
 			It("streams transcoded FLAC to MP3", func() {
@@ -631,7 +631,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				// Stream using the token
 				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
 				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(spy.LastRequest.Format).To(Equal("mp3"))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
 			})
 
 			It("passes offset through to stream request", func() {
@@ -645,7 +645,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				w := doRawReq("getTranscodeStream", "mediaId", mp3TrackID, "mediaType", "song",
 					"transcodeParams", token, "offset", "30")
 				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(spy.LastRequest.Offset).To(Equal(30))
+				Expect(streamerSpy.LastRequest.Offset).To(Equal(30))
 			})
 		})
 	})

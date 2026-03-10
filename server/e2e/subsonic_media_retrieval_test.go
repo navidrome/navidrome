@@ -38,22 +38,22 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			w := doRawReq("stream", "id", trackID)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("streams raw when format=raw", func() {
 			w := doRawReq("stream", "id", trackID, "format", "raw")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("transcodes to different format with bitrate", func() {
 			w := doRawReq("stream", "id", trackID, "format", "opus", "maxBitRate", "128")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("opus"))
-			Expect(spy.LastRequest.BitRate).To(Equal(128))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
 
 		It("downsamples when only maxBitRate is specified (lower than source)", func() {
@@ -63,45 +63,45 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			w := doRawReq("stream", "id", trackID, "maxBitRate", "128")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("opus"))
-			Expect(spy.LastRequest.BitRate).To(Equal(128))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
 
 		It("streams raw when maxBitRate is higher than source", func() {
 			w := doRawReq("stream", "id", trackID, "maxBitRate", "999")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("streams raw when format matches source and no bitrate reduction", func() {
 			w := doRawReq("stream", "id", trackID, "format", "mp3", "maxBitRate", "320")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("transcodes when same format but lower bitrate", func() {
 			w := doRawReq("stream", "id", trackID, "format", "mp3", "maxBitRate", "128")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("mp3"))
-			Expect(spy.LastRequest.BitRate).To(Equal(128))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
+			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
 
 		It("falls back to raw for unknown format", func() {
 			w := doRawReq("stream", "id", trackID, "format", "xyz")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("passes timeOffset through", func() {
 			w := doRawReq("stream", "id", trackID, "format", "opus", "maxBitRate", "128", "timeOffset", "30")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("opus"))
-			Expect(spy.LastRequest.Offset).To(Equal(30))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			Expect(streamerSpy.LastRequest.Offset).To(Equal(30))
 		})
 	})
 
@@ -131,7 +131,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			w := doRawReq("download", "id", trackID)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
 		})
 
 		It("downloads with explicit format and bitrate", func() {
@@ -141,8 +141,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			w := doRawReq("download", "id", trackID, "format", "opus", "bitrate", "128")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(spy.LastRequest.Format).To(Equal("opus"))
-			Expect(spy.LastRequest.BitRate).To(Equal(128))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
 
 		It("returns error when downloads are disabled", func() {
