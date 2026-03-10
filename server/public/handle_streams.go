@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -25,8 +26,12 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
 	if err != nil {
-		log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
-		http.Error(w, "not found", http.StatusNotFound)
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
 		return
 	}
 
