@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -25,8 +26,15 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	}
 
 	if targetFormat != "" {
-		ci.DirectPlayProfiles = []DirectPlayProfile{
-			{Containers: []string{mf.Suffix}, AudioCodecs: []string{mf.AudioCodec()}, Protocols: []string{ProtocolHTTP}},
+		// Add a direct play profile for the source format when no explicit
+		// format was requested (bitrate-only downsampling) or when the
+		// requested format matches the source. When the client explicitly
+		// requests a different format, direct play must not match the
+		// source — otherwise the source is returned untranscoded.
+		if reqFormat == "" || strings.EqualFold(reqFormat, mf.Suffix) {
+			ci.DirectPlayProfiles = []DirectPlayProfile{
+				{Containers: []string{mf.Suffix}, AudioCodecs: []string{mf.AudioCodec()}, Protocols: []string{ProtocolHTTP}},
+			}
 		}
 		ci.TranscodingProfiles = []Profile{
 			{Container: targetFormat, AudioCodec: targetFormat, Protocol: ProtocolHTTP},

@@ -25,10 +25,25 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.TranscodingProfiles[0].Protocol).To(Equal(ProtocolHTTP))
 		Expect(ci.MaxAudioBitrate).To(BeZero())
 		Expect(ci.MaxTranscodingAudioBitrate).To(BeZero())
+		Expect(ci.DirectPlayProfiles).To(BeEmpty())
+	})
+
+	It("does not add direct play profile when explicit format differs from source (no bitrate)", func() {
+		ci := buildLegacyClientInfo(mf, "opus", 0)
+
+		Expect(ci.TranscodingProfiles).To(HaveLen(1))
+		Expect(ci.TranscodingProfiles[0].Container).To(Equal("opus"))
+		Expect(ci.DirectPlayProfiles).To(BeEmpty())
+	})
+
+	It("adds direct play profile when explicit format matches source format", func() {
+		ci := buildLegacyClientInfo(mf, "flac", 0)
+
+		Expect(ci.TranscodingProfiles).To(HaveLen(1))
+		Expect(ci.TranscodingProfiles[0].Container).To(Equal("flac"))
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(Equal([]string{"flac"}))
 		Expect(ci.DirectPlayProfiles[0].AudioCodecs).To(Equal([]string{mf.AudioCodec()}))
-		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 	})
 
 	It("sets transcoding profile and bitrate for explicit format with bitrate", func() {
@@ -39,8 +54,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("mp3"))
 		Expect(ci.MaxAudioBitrate).To(Equal(192))
 		Expect(ci.MaxTranscodingAudioBitrate).To(Equal(192))
-		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
-		Expect(ci.DirectPlayProfiles[0].Containers).To(Equal([]string{"flac"}))
+		Expect(ci.DirectPlayProfiles).To(BeEmpty())
 	})
 
 	It("returns direct play profile when no format and no bitrate", func() {
