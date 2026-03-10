@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-const tokenTTL = 12 * time.Hour
+const tokenTTL = 48 * time.Hour
 
 // params contains the parameters extracted from a transcode token.
 // TargetBitrate is in kilobits per second (kbps).
