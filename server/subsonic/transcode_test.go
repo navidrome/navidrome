@@ -231,6 +231,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 410 for invalid or mismatched token", func() {
+			mockMFRepo.SetData(model.MediaFiles{{ID: "123"}})
 			mockTD.resolveErr = stream.ErrTokenInvalid
 			r := newGetRequest("mediaId=123", "mediaType=song", "transcodeParams=bad-token")
 			resp, err := router.GetTranscodeStream(w, r)
@@ -240,7 +241,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 404 when media file not found", func() {
-			mockTD.resolveErr = stream.ErrMediaNotFound
+			// mockMFRepo has no data, so Get() returns ErrNotFound
 			r := newGetRequest("mediaId=gone-id", "mediaType=song", "transcodeParams=valid-token")
 			resp, err := router.GetTranscodeStream(w, r)
 			Expect(err).ToNot(HaveOccurred())
@@ -249,6 +250,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 410 when media file has changed (stale token)", func() {
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
 			mockTD.resolveErr = stream.ErrTokenStale
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=stale-token")
 			resp, err := router.GetTranscodeStream(w, r)
@@ -260,8 +262,8 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
 			mockTD.resolvedReq = stream.Request{}
-			mockTD.resolvedMF = &model.MediaFile{ID: "song-1"}
 
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
 			_, _ = router.GetTranscodeStream(w, r)
@@ -277,6 +279,7 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-2"}})
 			mockTD.resolvedReq = stream.Request{
 				Format:     "mp3",
 				BitRate:    256,
@@ -284,7 +287,6 @@ var _ = Describe("Transcode endpoints", func() {
 				BitDepth:   16,
 				Channels:   2,
 			}
-			mockTD.resolvedMF = &model.MediaFile{ID: "song-2"}
 
 			r := newGetRequest("mediaId=song-2", "mediaType=song", "transcodeParams=valid-token", "offset=10")
 			_, _ = router.GetTranscodeStream(w, r)
@@ -356,7 +358,6 @@ type mockTranscodeDecision struct {
 	token       string
 	tokenErr    error
 	resolvedReq stream.Request
-	resolvedMF  *model.MediaFile
 	resolveErr  error
 }
 
@@ -375,13 +376,13 @@ func (m *mockTranscodeDecision) CreateTranscodeParams(_ *stream.TranscodeDecisio
 	return m.token, m.tokenErr
 }
 
-func (m *mockTranscodeDecision) ResolveRequestFromToken(_ context.Context, _ string, _ string, offset int) (stream.Request, *model.MediaFile, error) {
+func (m *mockTranscodeDecision) ResolveRequestFromToken(_ context.Context, _ string, _ *model.MediaFile, offset int) (stream.Request, error) {
 	if m.resolveErr != nil {
-		return stream.Request{}, nil, m.resolveErr
+		return stream.Request{}, m.resolveErr
 	}
 	req := m.resolvedReq
 	req.Offset = offset
-	return req, m.resolvedMF, nil
+	return req, nil
 }
 
 // fakeMediaStreamer captures the StreamRequest and returns a sentinel error,

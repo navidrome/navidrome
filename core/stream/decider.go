@@ -20,7 +20,7 @@ const fallbackBitrate = 256 // kbps
 type TranscodeDecider interface {
 	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts TranscodeOptions) (*TranscodeDecision, error)
 	CreateTranscodeParams(decision *TranscodeDecision) (string, error)
-	ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (Request, *model.MediaFile, error)
+	ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error)
 	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request
 }
 

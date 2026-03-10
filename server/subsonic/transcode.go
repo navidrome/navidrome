@@ -343,12 +343,22 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
+	// Fetch the media file
+	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file", "mediaID", mediaID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return nil, nil
+	}
+
 	// Validate the token and resolve streaming parameters
-	streamReq, mf, err := api.transcodeDecision.ResolveRequestFromToken(ctx, transcodeParamsToken, mediaID, p.IntOr("offset", 0))
+	streamReq, err := api.transcodeDecision.ResolveRequestFromToken(ctx, transcodeParamsToken, mf, p.IntOr("offset", 0))
 	if err != nil {
 		switch {
-		case errors.Is(err, stream.ErrMediaNotFound):
-			http.Error(w, "Not Found", http.StatusNotFound)
 		case errors.Is(err, stream.ErrTokenInvalid), errors.Is(err, stream.ErrTokenStale):
 			http.Error(w, "Gone", http.StatusGone)
 		default:

@@ -122,25 +122,18 @@ func (s *deciderService) parseTranscodeParams(tokenStr string) (*params, error) 
 	return paramsFromToken(token)
 }
 
-func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (Request, *model.MediaFile, error) {
+func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error) {
 	p, err := s.parseTranscodeParams(token)
 	if err != nil {
-		return Request{}, nil, errors.Join(ErrTokenInvalid, err)
+		return Request{}, errors.Join(ErrTokenInvalid, err)
 	}
-	if p.MediaID != mediaID {
-		return Request{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
-	}
-	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return Request{}, nil, ErrMediaNotFound
-		}
-		return Request{}, nil, err
+	if p.MediaID != mf.ID {
+		return Request{}, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mf.ID)
 	}
 	if !mf.UpdatedAt.Truncate(time.Second).Equal(p.SourceUpdatedAt) {
-		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
+		log.Info(ctx, "Transcode token is stale", "mediaID", mf.ID,
 			"tokenUpdatedAt", p.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
-		return Request{}, nil, ErrTokenStale
+		return Request{}, ErrTokenStale
 	}
 
 	req := Request{Offset: offset}
@@ -151,5 +144,5 @@ func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token stri
 		req.BitDepth = p.TargetBitDepth
 		req.Channels = p.TargetChannels
 	}
-	return req, mf, nil
+	return req, nil
 }

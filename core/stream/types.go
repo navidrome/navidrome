@@ -6,9 +6,8 @@ import (
 )
 
 var (
-	ErrTokenInvalid  = errors.New("invalid or expired transcode token")
-	ErrMediaNotFound = errors.New("media file not found")
-	ErrTokenStale    = errors.New("transcode token is stale: media file has changed")
+	ErrTokenInvalid = errors.New("invalid or expired transcode token")
+	ErrTokenStale   = errors.New("transcode token is stale: media file has changed")
 )
 
 // TranscodeOptions controls optional behavior of MakeTranscodeDecision.
