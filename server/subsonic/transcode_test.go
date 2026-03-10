@@ -260,14 +260,13 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
-			mockTD.resolvedReq = stream.Request{ID: "song-1"}
+			mockTD.resolvedReq = stream.Request{}
 			mockTD.resolvedMF = &model.MediaFile{ID: "song-1"}
 
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
 			_, _ = router.GetTranscodeStream(w, r)
 
 			Expect(fakeStreamer.captured).ToNot(BeNil())
-			Expect(fakeStreamer.captured.ID).To(Equal("song-1"))
 			Expect(fakeStreamer.captured.Format).To(BeEmpty())
 			Expect(fakeStreamer.captured.BitRate).To(BeZero())
 			Expect(fakeStreamer.captured.SampleRate).To(BeZero())
@@ -279,7 +278,6 @@ var _ = Describe("Transcode endpoints", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
 			mockTD.resolvedReq = stream.Request{
-				ID:         "song-2",
 				Format:     "mp3",
 				BitRate:    256,
 				SampleRate: 44100,
@@ -292,7 +290,6 @@ var _ = Describe("Transcode endpoints", func() {
 			_, _ = router.GetTranscodeStream(w, r)
 
 			Expect(fakeStreamer.captured).ToNot(BeNil())
-			Expect(fakeStreamer.captured.ID).To(Equal("song-2"))
 			Expect(fakeStreamer.captured.Format).To(Equal("mp3"))
 			Expect(fakeStreamer.captured.BitRate).To(Equal(256))
 			Expect(fakeStreamer.captured.SampleRate).To(Equal(44100))

@@ -49,7 +49,6 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 // into a fully specified Request.
 func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request {
 	var req Request
-	req.ID = mf.ID
 	req.Offset = offset
 
 	if reqFormat == "raw" {

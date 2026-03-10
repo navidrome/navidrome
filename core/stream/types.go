@@ -20,7 +20,6 @@ type TranscodeOptions struct {
 
 // Request contains the resolved parameters for creating a media stream.
 type Request struct {
-	ID         string
 	Format     string
 	BitRate    int // kbps
 	SampleRate int

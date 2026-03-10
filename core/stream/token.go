@@ -143,7 +143,7 @@ func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token stri
 		return Request{}, nil, ErrTokenStale
 	}
 
-	req := Request{ID: mediaID, Offset: offset}
+	req := Request{Offset: offset}
 	if !p.DirectPlay && p.TargetFormat != "" {
 		req.Format = p.TargetFormat
 		req.BitRate = p.TargetBitrate

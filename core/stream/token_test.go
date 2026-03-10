@@ -214,7 +214,6 @@ var _ = Describe("Token", func() {
 
 			req, mf, err := svc.ResolveRequestFromToken(ctx, token, "song-1", 0)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(req.ID).To(Equal("song-1"))
 			Expect(req.Format).To(BeEmpty()) // direct play has no target format
 			Expect(mf.ID).To(Equal("song-1"))
 		})
