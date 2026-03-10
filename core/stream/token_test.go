@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"context"
@@ -16,7 +16,7 @@ var _ = Describe("Token", func() {
 	var (
 		ds  *tests.MockDataStore
 		ff  *tests.MockFFmpeg
-		svc Decider
+		svc TranscodeDecider
 		ctx context.Context
 	)
 
@@ -28,7 +28,7 @@ var _ = Describe("Token", func() {
 		}
 		ff = tests.NewMockFFmpeg("")
 		auth.Init(ds)
-		svc = NewDecider(ds, ff)
+		svc = NewTranscodeDecider(ds, ff)
 	})
 
 	Describe("Token round-trip", func() {
@@ -43,7 +43,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a direct play token", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-123",
 				CanDirectPlay:   true,
 				SourceUpdatedAt: sourceTime,
@@ -61,7 +61,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with kbps bitrate", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-456",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -84,7 +84,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with sample rate", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:          "media-789",
 				CanDirectPlay:    false,
 				CanTranscode:     true,
@@ -107,7 +107,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("creates and parses a transcode token with bit depth", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-bd",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -127,7 +127,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("omits bit depth from token when 0", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-nobd",
 				CanDirectPlay:   false,
 				CanTranscode:    true,
@@ -145,7 +145,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("omits sample rate from token when 0", func() {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:          "media-100",
 				CanDirectPlay:    false,
 				CanTranscode:     true,
@@ -164,7 +164,7 @@ var _ = Describe("Token", func() {
 
 		It("truncates SourceUpdatedAt to seconds", func() {
 			timeWithNanos := time.Date(2025, 6, 15, 10, 30, 0, 123456789, time.UTC)
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         "media-trunc",
 				CanDirectPlay:   true,
 				SourceUpdatedAt: timeWithNanos,
@@ -184,19 +184,14 @@ var _ = Describe("Token", func() {
 	})
 
 	Describe("ResolveRequestFromToken", func() {
-		var (
-			mockMFRepo *tests.MockMediaFileRepo
-			sourceTime time.Time
-		)
+		var sourceTime time.Time
 
 		BeforeEach(func() {
 			sourceTime = time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC)
-			mockMFRepo = &tests.MockMediaFileRepo{}
-			ds.MockedMediaFile = mockMFRepo
 		})
 
 		createTokenForMedia := func(mediaID string, updatedAt time.Time) string {
-			decision := &Decision{
+			decision := &TranscodeDecision{
 				MediaID:         mediaID,
 				CanDirectPlay:   true,
 				SourceUpdatedAt: updatedAt,
@@ -206,46 +201,35 @@ var _ = Describe("Token", func() {
 			return token
 		}
 
-		It("returns stream request and media file for valid token", func() {
-			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-1", UpdatedAt: sourceTime},
-			})
+		It("returns stream request for valid token", func() {
+			mf := &model.MediaFile{ID: "song-1", UpdatedAt: sourceTime}
 			token := createTokenForMedia("song-1", sourceTime)
 
-			req, mf, err := svc.ResolveRequestFromToken(ctx, token, "song-1", 0)
+			req, err := svc.ResolveRequestFromToken(ctx, token, mf, 0)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(req.ID).To(Equal("song-1"))
 			Expect(req.Format).To(BeEmpty()) // direct play has no target format
-			Expect(mf.ID).To(Equal("song-1"))
 		})
 
 		It("returns ErrTokenInvalid for invalid token", func() {
-			_, _, err := svc.ResolveRequestFromToken(ctx, "bad-token", "song-1", 0)
+			mf := &model.MediaFile{ID: "song-1", UpdatedAt: sourceTime}
+			_, err := svc.ResolveRequestFromToken(ctx, "bad-token", mf, 0)
 			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
 		})
 
 		It("returns ErrTokenInvalid when mediaID does not match token", func() {
+			mf := &model.MediaFile{ID: "song-2", UpdatedAt: sourceTime}
 			token := createTokenForMedia("song-1", sourceTime)
 
-			_, _, err := svc.ResolveRequestFromToken(ctx, token, "song-2", 0)
+			_, err := svc.ResolveRequestFromToken(ctx, token, mf, 0)
 			Expect(err).To(MatchError(ContainSubstring(ErrTokenInvalid.Error())))
-		})
-
-		It("returns ErrMediaNotFound when media file does not exist", func() {
-			token := createTokenForMedia("gone-id", sourceTime)
-
-			_, _, err := svc.ResolveRequestFromToken(ctx, token, "gone-id", 0)
-			Expect(err).To(MatchError(ErrMediaNotFound))
 		})
 
 		It("returns ErrTokenStale when media file has changed", func() {
 			newTime := sourceTime.Add(1 * time.Hour)
-			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-1", UpdatedAt: newTime},
-			})
+			mf := &model.MediaFile{ID: "song-1", UpdatedAt: newTime}
 			token := createTokenForMedia("song-1", sourceTime)
 
-			_, _, err := svc.ResolveRequestFromToken(ctx, token, "song-1", 0)
+			_, err := svc.ResolveRequestFromToken(ctx, token, mf, 0)
 			Expect(err).To(MatchError(ErrTokenStale))
 		})
 	})

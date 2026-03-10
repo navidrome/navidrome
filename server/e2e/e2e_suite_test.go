@@ -28,7 +28,7 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -284,25 +284,21 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
-// spyStreamer captures the StreamRequest passed to DoStream for test assertions,
+// spyStreamer captures the Request passed to NewStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {
-	LastRequest   transcode.StreamRequest
+	LastRequest   stream.Request
 	LastMediaFile *model.MediaFile
 }
 
-func (s *spyStreamer) NewStream(ctx context.Context, req transcode.StreamRequest) (*transcode.Stream, error) {
-	return nil, model.ErrNotFound
-}
-
-func (s *spyStreamer) DoStream(_ context.Context, mf *model.MediaFile, req transcode.StreamRequest) (*transcode.Stream, error) {
+func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	s.LastRequest = req
 	s.LastMediaFile = mf
 	format := req.Format
 	if format == "" || format == "raw" {
 		format = mf.Suffix
 	}
-	return transcode.NewTestStream(mf, format, req.BitRate), nil
+	return stream.NewTestStream(mf, format, req.BitRate), nil
 }
 
 // noopFFmpeg implements ffmpeg.FFmpeg with no-op methods.
@@ -391,12 +387,12 @@ func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
 
 // Compile-time interface checks
 var (
-	_ artwork.Artwork         = noopArtwork{}
-	_ transcode.MediaStreamer = &spyStreamer{}
-	_ core.Archiver           = noopArchiver{}
-	_ external.Provider       = noopProvider{}
-	_ scrobbler.PlayTracker   = noopPlayTracker{}
-	_ ffmpeg.FFmpeg           = noopFFmpeg{}
+	_ artwork.Artwork       = noopArtwork{}
+	_ stream.MediaStreamer  = &spyStreamer{}
+	_ core.Archiver         = noopArchiver{}
+	_ external.Provider     = noopProvider{}
+	_ scrobbler.PlayTracker = noopPlayTracker{}
+	_ ffmpeg.FFmpeg         = noopFFmpeg{}
 )
 
 var _ = BeforeSuite(func() {
@@ -477,7 +473,7 @@ func setupTestDB() {
 
 	// Create the Subsonic Router with real DS, spy streamer, and real Decider
 	spy = &spyStreamer{}
-	decider := transcode.NewDecider(ds, noopFFmpeg{})
+	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
 	router = subsonic.New(

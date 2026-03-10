@@ -382,7 +382,7 @@ func injectBeforeOutput(args []string, flag, value string) []string {
 // isLosslessOutputFormat returns true if the format is a lossless audio format
 // where preserving bit depth via -sample_fmt is meaningful.
 // Note: this covers only formats ffmpeg can produce as output. For the full set of
-// lossless formats used in transcoding decisions, see core/transcode/codec.go:isLosslessFormat.
+// lossless formats used in transcoding decisions, see core/stream/codec.go:isLosslessFormat.
 func isLosslessOutputFormat(format string) bool {
 	switch strings.ToLower(format) {
 	case "flac", "alac", "wav", "aiff":

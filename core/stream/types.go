@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"errors"
@@ -6,21 +6,19 @@ import (
 )
 
 var (
-	ErrTokenInvalid  = errors.New("invalid or expired transcode token")
-	ErrMediaNotFound = errors.New("media file not found")
-	ErrTokenStale    = errors.New("transcode token is stale: media file has changed")
+	ErrTokenInvalid = errors.New("invalid or expired transcode token")
+	ErrTokenStale   = errors.New("transcode token is stale: media file has changed")
 )
 
-// DecisionOptions controls optional behavior of MakeDecision.
-type DecisionOptions struct {
-	// SkipProbe prevents MakeDecision from running ffprobe on the media file.
+// TranscodeOptions controls optional behavior of MakeTranscodeDecision.
+type TranscodeOptions struct {
+	// SkipProbe prevents MakeTranscodeDecision from running ffprobe on the media file.
 	// When true, source stream details are derived from tag metadata only.
 	SkipProbe bool
 }
 
-// StreamRequest contains the resolved parameters for creating a media stream.
-type StreamRequest struct {
-	ID         string
+// Request contains the resolved parameters for creating a media stream.
+type Request struct {
 	Format     string
 	BitRate    int // kbps
 	SampleRate int
@@ -100,9 +98,9 @@ const (
 	CodecProfileTypeAudio = "AudioCodec"
 )
 
-// Decision represents the internal decision result.
+// TranscodeDecision represents the internal decision result.
 // All bitrate values are in kilobits per second (kbps).
-type Decision struct {
+type TranscodeDecision struct {
 	MediaID          string
 	CanDirectPlay    bool
 	CanTranscode     bool
@@ -113,14 +111,14 @@ type Decision struct {
 	TargetChannels   int
 	TargetSampleRate int
 	TargetBitDepth   int
-	SourceStream     StreamDetails
+	SourceStream     Details
 	SourceUpdatedAt  time.Time
-	TranscodeStream  *StreamDetails
+	TranscodeStream  *Details
 }
 
-// StreamDetails describes audio stream properties.
+// Details describes audio stream properties.
 // Bitrate is in kilobits per second (kbps).
-type StreamDetails struct {
+type Details struct {
 	Container  string
 	Codec      string
 	Profile    string // Audio profile (e.g., "LC", "HE-AACv2"). Populated from ffprobe data.

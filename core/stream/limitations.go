@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"strconv"
@@ -16,7 +16,7 @@ const (
 
 // checkLimitations checks codec profile limitations against source stream details.
 // Returns "" if all limitations pass, or a typed reason string for the first failure.
-func checkLimitations(src *StreamDetails, limitations []Limitation) string {
+func checkLimitations(src *Details, limitations []Limitation) string {
 	for _, lim := range limitations {
 		var ok bool
 		var reason string
@@ -50,7 +50,7 @@ func checkLimitations(src *StreamDetails, limitations []Limitation) string {
 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
 // Returns the adjustment result.
-func applyLimitation(sourceBitrate int, lim *Limitation, ts *StreamDetails) adjustResult {
+func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResult {
 	switch lim.Name {
 	case LimitationAudioChannels:
 		return applyIntLimitation(lim.Comparison, lim.Values, ts.Channels, func(v int) { ts.Channels = v })

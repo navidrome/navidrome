@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -23,13 +23,13 @@ type Archiver interface {
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
-func NewArchiver(ms transcode.MediaStreamer, ds model.DataStore, shares Share) Archiver {
+func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share) Archiver {
 	return &archiver{ds: ds, ms: ms, shares: shares}
 }
 
 type archiver struct {
 	ds     model.DataStore
-	ms     transcode.MediaStreamer
+	ms     stream.MediaStreamer
 	shares Share
 }
 
@@ -177,7 +177,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 
 	var r io.ReadCloser
 	if format != "raw" && format != "" {
-		r, err = a.ms.DoStream(ctx, &mf, transcode.StreamRequest{Format: format, BitRate: bitrate})
+		r, err = a.ms.NewStream(ctx, &mf, stream.Request{Format: format, BitRate: bitrate})
 	} else {
 		r, err = os.Open(path)
 	}

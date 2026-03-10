@@ -7,8 +7,9 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -23,8 +24,19 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, transcode.StreamRequest{
-		ID: info.id, Format: info.format, BitRate: info.bitrate,
+	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	stream, err := pub.streamer.NewStream(ctx, mf, stream.Request{
+		Format: info.format, BitRate: info.bitrate,
 	})
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)

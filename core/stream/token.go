@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-const tokenTTL = 12 * time.Hour
+const tokenTTL = 48 * time.Hour
 
 // params contains the parameters extracted from a transcode token.
 // TargetBitrate is in kilobits per second (kbps).
@@ -29,7 +29,7 @@ type params struct {
 
 // toClaimsMap converts a Decision into a JWT claims map for token encoding.
 // Only non-zero transcode fields are included.
-func (d *Decision) toClaimsMap() map[string]any {
+func (d *TranscodeDecision) toClaimsMap() map[string]any {
 	m := map[string]any{
 		"mid":             d.MediaID,
 		"ua":              d.SourceUpdatedAt.Truncate(time.Second).Unix(),
@@ -110,7 +110,7 @@ func getIntClaim(token jwt.Token, key string) int {
 	return 0
 }
 
-func (s *deciderService) CreateTranscodeParams(decision *Decision) (string, error) {
+func (s *deciderService) CreateTranscodeParams(decision *TranscodeDecision) (string, error) {
 	return auth.EncodeToken(decision.toClaimsMap())
 }
 
@@ -122,28 +122,21 @@ func (s *deciderService) parseTranscodeParams(tokenStr string) (*params, error) 
 	return paramsFromToken(token)
 }
 
-func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error) {
+func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error) {
 	p, err := s.parseTranscodeParams(token)
 	if err != nil {
-		return StreamRequest{}, nil, errors.Join(ErrTokenInvalid, err)
+		return Request{}, errors.Join(ErrTokenInvalid, err)
 	}
-	if p.MediaID != mediaID {
-		return StreamRequest{}, nil, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mediaID)
-	}
-	mf, err := s.ds.MediaFile(ctx).Get(mediaID)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return StreamRequest{}, nil, ErrMediaNotFound
-		}
-		return StreamRequest{}, nil, err
+	if p.MediaID != mf.ID {
+		return Request{}, fmt.Errorf("%w: token mediaID %q does not match %q", ErrTokenInvalid, p.MediaID, mf.ID)
 	}
 	if !mf.UpdatedAt.Truncate(time.Second).Equal(p.SourceUpdatedAt) {
-		log.Info(ctx, "Transcode token is stale", "mediaID", mediaID,
+		log.Info(ctx, "Transcode token is stale", "mediaID", mf.ID,
 			"tokenUpdatedAt", p.SourceUpdatedAt, "fileUpdatedAt", mf.UpdatedAt)
-		return StreamRequest{}, nil, ErrTokenStale
+		return Request{}, ErrTokenStale
 	}
 
-	req := StreamRequest{ID: mediaID, Offset: offset}
+	req := Request{Offset: offset}
 	if !p.DirectPlay && p.TargetFormat != "" {
 		req.Format = p.TargetFormat
 		req.BitRate = p.TargetBitrate
@@ -151,5 +144,5 @@ func (s *deciderService) ResolveRequestFromToken(ctx context.Context, token stri
 		req.BitDepth = p.TargetBitDepth
 		req.Channels = p.TargetChannels
 	}
-	return req, mf, nil
+	return req, nil
 }

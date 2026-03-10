@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *transcode.Stream, id string) {
+func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *stream.Stream, id string) {
 	if stream.Seekable() {
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 	} else {
@@ -66,7 +66,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	}
 
 	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
-	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
+	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	switch v := entity.(type) {
 	case *model.MediaFile:
 		streamReq := api.transcodeDecision.ResolveRequest(ctx, v, format, maxBitRate, 0)
-		stream, err := api.streamer.DoStream(ctx, v, streamReq)
+		stream, err := api.streamer.NewStream(ctx, v, streamReq)
 		if err != nil {
 			return nil, err
 		}

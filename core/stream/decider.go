@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"context"
@@ -16,15 +16,15 @@ import (
 
 const fallbackBitrate = 256 // kbps
 
-// Decider is the core service interface for making transcoding decisions
-type Decider interface {
-	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error)
-	CreateTranscodeParams(decision *Decision) (string, error)
-	ResolveRequestFromToken(ctx context.Context, token string, mediaID string, offset int) (StreamRequest, *model.MediaFile, error)
-	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) StreamRequest
+// TranscodeDecider is the core service interface for making transcoding decisions
+type TranscodeDecider interface {
+	MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts TranscodeOptions) (*TranscodeDecision, error)
+	CreateTranscodeParams(decision *TranscodeDecision) (string, error)
+	ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error)
+	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request
 }
 
-func NewDecider(ds model.DataStore, ff ffmpeg.FFmpeg) Decider {
+func NewTranscodeDecider(ds model.DataStore, ff ffmpeg.FFmpeg) TranscodeDecider {
 	return &deciderService{
 		ds: ds,
 		ff: ff,
@@ -36,8 +36,8 @@ type deciderService struct {
 	ff ffmpeg.FFmpeg
 }
 
-func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts DecisionOptions) (*Decision, error) {
-	decision := &Decision{
+func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts TranscodeOptions) (*TranscodeDecision, error) {
+	decision := &TranscodeDecision{
 		MediaID:         mf.ID,
 		SourceUpdatedAt: mf.UpdatedAt,
 	}
@@ -126,8 +126,8 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	return decision, nil
 }
 
-func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) StreamDetails {
-	sd := StreamDetails{
+func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Details {
+	sd := Details{
 		Container: mf.Suffix,
 		Duration:  mf.Duration,
 		Size:      mf.Size,
@@ -197,7 +197,7 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
-func (s *deciderService) checkDirectPlayProfile(src *StreamDetails, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
+func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
 	// Check protocol (only http for now)
 	if len(profile.Protocols) > 0 && !containsIgnoreCase(profile.Protocols, ProtocolHTTP) {
 		return "protocol not supported"
@@ -234,7 +234,7 @@ func (s *deciderService) checkDirectPlayProfile(src *StreamDetails, profile *Dir
 // Returns the stream details and the internal transcoding format (which may differ from the
 // response container when a codec fallback occurs, e.g., "mp4"→"aac").
 // Returns nil, "" if the profile cannot produce a valid output.
-func (s *deciderService) computeTranscodedStream(ctx context.Context, src *StreamDetails, profile *Profile, clientInfo *ClientInfo) (*StreamDetails, string) {
+func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Details, profile *Profile, clientInfo *ClientInfo) (*Details, string) {
 	// Check protocol (only http for now)
 	if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
 		log.Trace(ctx, "Skipping transcoding profile: unsupported protocol", "protocol", profile.Protocol)
@@ -260,7 +260,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Strea
 		return nil, ""
 	}
 
-	ts := &StreamDetails{
+	ts := &Details{
 		Container:  responseContainer,
 		Codec:      strings.ToLower(profile.AudioCodec),
 		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
@@ -358,7 +358,7 @@ func resolveTargetFormat(profile *Profile) (responseContainer, targetFormat stri
 
 // computeBitrate determines the target bitrate for the transcoded stream.
 // Returns false if the profile should be rejected.
-func (s *deciderService) computeBitrate(ctx context.Context, src *StreamDetails, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
+func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *Details) bool {
 	if src.IsLossless {
 		if !targetIsLossless {
 			if clientInfo.MaxTranscodingAudioBitrate > 0 {
@@ -388,7 +388,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *StreamDetails,
 
 // applyCodecLimitations applies codec profile limitations to the transcoded stream.
 // Returns false if the profile should be rejected.
-func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *StreamDetails) bool {
+func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *Details) bool {
 	targetCodec := ts.Codec
 	for _, codecProfile := range clientInfo.CodecProfiles {
 		if !strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) {

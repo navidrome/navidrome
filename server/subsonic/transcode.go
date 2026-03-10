@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -59,10 +59,10 @@ type limitationRequest struct {
 	Required   bool     `json:"required,omitempty"`
 }
 
-// toCoreClientInfo converts the API request struct to the transcode.ClientInfo struct.
+// toCoreClientInfo converts the API request struct to the stream.ClientInfo struct.
 // The OpenSubsonic spec uses bps for bitrate values; core uses kbps.
-func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
-	ci := &transcode.ClientInfo{
+func (r *clientInfoRequest) toCoreClientInfo() *stream.ClientInfo {
+	ci := &stream.ClientInfo{
 		Name:                       r.Name,
 		Platform:                   r.Platform,
 		MaxAudioBitrate:            bpsToKbps(r.MaxAudioBitrate),
@@ -70,7 +70,7 @@ func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
 	}
 
 	for _, dp := range r.DirectPlayProfiles {
-		ci.DirectPlayProfiles = append(ci.DirectPlayProfiles, transcode.DirectPlayProfile{
+		ci.DirectPlayProfiles = append(ci.DirectPlayProfiles, stream.DirectPlayProfile{
 			Containers:       dp.Containers,
 			AudioCodecs:      dp.AudioCodecs,
 			Protocols:        dp.Protocols,
@@ -79,7 +79,7 @@ func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
 	}
 
 	for _, tp := range r.TranscodingProfiles {
-		ci.TranscodingProfiles = append(ci.TranscodingProfiles, transcode.Profile{
+		ci.TranscodingProfiles = append(ci.TranscodingProfiles, stream.Profile{
 			Container:        tp.Container,
 			AudioCodec:       tp.AudioCodec,
 			Protocol:         tp.Protocol,
@@ -88,19 +88,19 @@ func (r *clientInfoRequest) toCoreClientInfo() *transcode.ClientInfo {
 	}
 
 	for _, cp := range r.CodecProfiles {
-		coreCP := transcode.CodecProfile{
+		coreCP := stream.CodecProfile{
 			Type: cp.Type,
 			Name: cp.Name,
 		}
 		for _, lim := range cp.Limitations {
-			coreLim := transcode.Limitation{
+			coreLim := stream.Limitation{
 				Name:       lim.Name,
 				Comparison: lim.Comparison,
 				Values:     lim.Values,
 				Required:   lim.Required,
 			}
 			// Convert audioBitrate limitation values from bps to kbps
-			if lim.Name == transcode.LimitationAudioBitrate {
+			if lim.Name == stream.LimitationAudioBitrate {
 				coreLim.Values = convertBitrateValues(lim.Values)
 			}
 			coreCP.Limitations = append(coreCP.Limitations, coreLim)
@@ -178,8 +178,8 @@ func isValidMediaType(mediaType string) bool {
 }
 
 var validProtocols = []string{
-	transcode.ProtocolHTTP,
-	transcode.ProtocolHLS,
+	stream.ProtocolHTTP,
+	stream.ProtocolHLS,
 }
 
 func isValidProtocol(p string) bool {
@@ -187,7 +187,7 @@ func isValidProtocol(p string) bool {
 }
 
 var validCodecProfileTypes = []string{
-	transcode.CodecProfileTypeAudio,
+	stream.CodecProfileTypeAudio,
 }
 
 func isValidCodecProfileType(t string) bool {
@@ -195,11 +195,11 @@ func isValidCodecProfileType(t string) bool {
 }
 
 var validLimitationNames = []string{
-	transcode.LimitationAudioChannels,
-	transcode.LimitationAudioBitrate,
-	transcode.LimitationAudioProfile,
-	transcode.LimitationAudioSamplerate,
-	transcode.LimitationAudioBitdepth,
+	stream.LimitationAudioChannels,
+	stream.LimitationAudioBitrate,
+	stream.LimitationAudioProfile,
+	stream.LimitationAudioSamplerate,
+	stream.LimitationAudioBitdepth,
 }
 
 func isValidLimitationName(n string) bool {
@@ -207,10 +207,10 @@ func isValidLimitationName(n string) bool {
 }
 
 var validComparisons = []string{
-	transcode.ComparisonEquals,
-	transcode.ComparisonNotEquals,
-	transcode.ComparisonLessThanEqual,
-	transcode.ComparisonGreaterThanEqual,
+	stream.ComparisonEquals,
+	stream.ComparisonNotEquals,
+	stream.ComparisonLessThanEqual,
+	stream.ComparisonGreaterThanEqual,
 }
 
 func isValidComparison(c string) bool {
@@ -218,9 +218,9 @@ func isValidComparison(c string) bool {
 }
 
 // toResponseStreamDetails converts a core StreamDetails to the API response type.
-func toResponseStreamDetails(sd *transcode.StreamDetails) *responses.StreamDetails {
+func toResponseStreamDetails(sd *stream.Details) *responses.StreamDetails {
 	return &responses.StreamDetails{
-		Protocol:        transcode.ProtocolHTTP, // TODO: derive from decision when HLS support is added
+		Protocol:        stream.ProtocolHTTP, // TODO: derive from decision when HLS support is added
 		Container:       sd.Container,
 		Codec:           sd.Codec,
 		AudioBitrate:    int32(kbpsToBps(sd.Bitrate)),
@@ -232,7 +232,7 @@ func toResponseStreamDetails(sd *transcode.StreamDetails) *responses.StreamDetai
 }
 
 // GetTranscodeDecision handles the OpenSubsonic getTranscodeDecision endpoint.
-// It receives client capabilities and returns a decision on whether to direct play or transcode.
+// It receives client capabilities and returns a decision on whether to direct play or stream.
 func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
@@ -279,7 +279,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Make the decision
-	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, transcode.DecisionOptions{})
+	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
 		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision")
@@ -343,13 +343,23 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
+	// Fetch the media file
+	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file", "mediaID", mediaID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return nil, nil
+	}
+
 	// Validate the token and resolve streaming parameters
-	streamReq, mf, err := api.transcodeDecision.ResolveRequestFromToken(ctx, transcodeParamsToken, mediaID, p.IntOr("offset", 0))
+	streamReq, err := api.transcodeDecision.ResolveRequestFromToken(ctx, transcodeParamsToken, mf, p.IntOr("offset", 0))
 	if err != nil {
 		switch {
-		case errors.Is(err, transcode.ErrMediaNotFound):
-			http.Error(w, "Not Found", http.StatusNotFound)
-		case errors.Is(err, transcode.ErrTokenInvalid), errors.Is(err, transcode.ErrTokenStale):
+		case errors.Is(err, stream.ErrTokenInvalid), errors.Is(err, stream.ErrTokenStale):
 			http.Error(w, "Gone", http.StatusGone)
 		default:
 			log.Error(ctx, "Error validating transcode params", err)
@@ -358,8 +368,8 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 		return nil, nil
 	}
 
-	// Create stream (use DoStream to avoid duplicate DB fetch)
-	stream, err := api.streamer.DoStream(ctx, mf, streamReq)
+	// Create stream
+	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		log.Error(ctx, "Error creating stream", "mediaID", mediaID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

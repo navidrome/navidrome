@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"context"
@@ -20,8 +20,7 @@ import (
 )
 
 type MediaStreamer interface {
-	NewStream(ctx context.Context, req StreamRequest) (*Stream, error)
-	DoStream(ctx context.Context, mf *model.MediaFile, req StreamRequest) (*Stream, error)
+	NewStream(ctx context.Context, mf *model.MediaFile, req Request) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
@@ -52,16 +51,7 @@ func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.channels, j.format, j.offset)
 }
 
-func (ms *mediaStreamer) NewStream(ctx context.Context, req StreamRequest) (*Stream, error) {
-	mf, err := ms.ds.MediaFile(ctx).Get(req.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return ms.DoStream(ctx, mf, req)
-}
-
-func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req StreamRequest) (*Stream, error) {
+func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req Request) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool

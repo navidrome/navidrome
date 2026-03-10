@@ -1,4 +1,4 @@
-package transcode
+package stream
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTranscode(t *testing.T) {
+func TestStream(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Transcode Suite")
+	RunSpecs(t, "Stream Suite")
 }

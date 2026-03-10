@@ -9,7 +9,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/transcode"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -45,7 +45,7 @@ var _ = Describe("Archiver", func() {
 			}}).Return(mfs, nil)
 
 			ds.On("MediaFile", mock.Anything).Return(mfRepo)
-			ms.On("DoStream", mock.Anything, mock.Anything, transcode.StreamRequest{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
+			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
 			err := arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)
@@ -74,7 +74,7 @@ var _ = Describe("Archiver", func() {
 			}}).Return(mfs, nil)
 
 			ds.On("MediaFile", mock.Anything).Return(mfRepo)
-			ms.On("DoStream", mock.Anything, mock.Anything, transcode.StreamRequest{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
+			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
 			err := arch.ZipArtist(context.Background(), "1", "mp3", 128, out)
@@ -105,7 +105,7 @@ var _ = Describe("Archiver", func() {
 			}
 
 			sh.On("Load", mock.Anything, "1").Return(share, nil)
-			ms.On("DoStream", mock.Anything, mock.Anything, transcode.StreamRequest{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
+			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
 			err := arch.ZipShare(context.Background(), "1", out)
@@ -137,7 +137,7 @@ var _ = Describe("Archiver", func() {
 			plRepo := &mockPlaylistRepository{}
 			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
 			ds.On("Playlist", mock.Anything).Return(plRepo)
-			ms.On("DoStream", mock.Anything, mock.Anything, transcode.StreamRequest{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
+			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
 			err := arch.ZipPlaylist(context.Background(), "1", "mp3", 128, out)
@@ -215,15 +215,15 @@ func (m *mockPlaylistRepository) GetWithTracks(id string, refreshSmartPlaylists,
 
 type mockMediaStreamer struct {
 	mock.Mock
-	transcode.MediaStreamer
+	stream.MediaStreamer
 }
 
-func (m *mockMediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, req transcode.StreamRequest) (*transcode.Stream, error) {
+func (m *mockMediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	args := m.Called(ctx, mf, req)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
-	return &transcode.Stream{ReadCloser: args.Get(0).(io.ReadCloser)}, nil
+	return &stream.Stream{ReadCloser: args.Get(0).(io.ReadCloser)}, nil
 }
 
 type mockShare struct {
