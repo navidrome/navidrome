@@ -17,8 +17,8 @@ type SubsonicAPIService interface {
 	Call(ctx context.Context, uri string) (responseJSON string, err error)
 
 	// CallRaw executes a Subsonic API request and returns the raw binary response.
-	// Optimized for binary endpoints like getCoverArt and stream that return
-	// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
-	//nd:hostfunc raw=true
+	// Designed for binary endpoints like getCoverArt and stream that return
+	// non-JSON data. The data is base64-encoded over JSON on the wire.
+	//nd:hostfunc
 	CallRaw(ctx context.Context, uri string) (contentType string, data []byte, err error)
 }

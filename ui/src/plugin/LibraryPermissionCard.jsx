@@ -23,8 +23,10 @@ export const LibraryPermissionCard = ({
   classes,
   selectedLibraries,
   allLibraries,
+  allowWriteAccess,
   onSelectedLibrariesChange,
   onAllLibrariesChange,
+  onAllowWriteAccessChange,
 }) => {
   const translate = useTranslate()
 
@@ -58,9 +60,17 @@ export const LibraryPermissionCard = ({
     [onAllLibrariesChange],
   )
 
+  const handleAllowWriteAccessToggle = React.useCallback(
+    (event) => {
+      onAllowWriteAccessChange(event.target.checked)
+    },
+    [onAllowWriteAccessChange],
+  )
+
   // Get permission reason from manifest
   const libraryPermission = manifest?.permissions?.library
   const reason = libraryPermission?.reason
+  const hasFilesystem = libraryPermission?.filesystem === true
 
   // Check if permission is required but not configured
   const isConfigurationRequired =
@@ -106,6 +116,24 @@ export const LibraryPermissionCard = ({
             {translate('resources.plugin.messages.allLibrariesHelp')}
           </Typography>
         </Box>
+
+        {hasFilesystem && (
+          <Box mb={2}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={allowWriteAccess}
+                  onChange={handleAllowWriteAccessToggle}
+                  color="primary"
+                />
+              }
+              label={translate('resources.plugin.fields.allowWriteAccess')}
+            />
+            <Typography variant="body2" color="textSecondary">
+              {translate('resources.plugin.messages.allowWriteAccessHelp')}
+            </Typography>
+          </Box>
+        )}
 
         {!allLibraries && (
           <Box className={classes.usersList}>
@@ -166,6 +194,8 @@ LibraryPermissionCard.propTypes = {
   classes: PropTypes.object.isRequired,
   selectedLibraries: PropTypes.array.isRequired,
   allLibraries: PropTypes.bool.isRequired,
+  allowWriteAccess: PropTypes.bool.isRequired,
   onSelectedLibrariesChange: PropTypes.func.isRequired,
   onAllLibrariesChange: PropTypes.func.isRequired,
+  onAllowWriteAccessChange: PropTypes.func.isRequired,
 }

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -179,7 +179,8 @@ var _ = Describe("JWT Authentication", func() {
 				Expect(err).To(BeNil())
 
 				// Verify token has no expiration
-				Expect(testToken.Expiration().IsZero()).To(BeTrue())
+				_, hasExp := testToken.Expiration()
+				Expect(hasExp).To(BeFalse())
 
 				testJWT, err := jwt.Sign(testToken, jwt.WithInsecureNoSignature())
 				Expect(err).To(BeNil())

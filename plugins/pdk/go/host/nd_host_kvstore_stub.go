@@ -37,6 +37,28 @@ func KVStoreSet(key string, value []byte) error {
 	return KVStoreMock.Set(key, value)
 }
 
+// SetWithTTL is the mock method for KVStoreSetWithTTL.
+func (m *mockKVStoreService) SetWithTTL(key string, value []byte, ttlSeconds int64) error {
+	args := m.Called(key, value, ttlSeconds)
+	return args.Error(0)
+}
+
+// KVStoreSetWithTTL delegates to the mock instance.
+// SetWithTTL stores a byte value with the given key and a time-to-live.
+//
+// After ttlSeconds, the key is treated as non-existent and will be
+// cleaned up lazily. ttlSeconds must be greater than 0.
+//
+// Parameters:
+//   - key: The storage key (max 256 bytes, UTF-8)
+//   - value: The byte slice to store
+//   - ttlSeconds: Time-to-live in seconds (must be > 0)
+//
+// Returns an error if the storage limit would be exceeded or the operation fails.
+func KVStoreSetWithTTL(key string, value []byte, ttlSeconds int64) error {
+	return KVStoreMock.SetWithTTL(key, value, ttlSeconds)
+}
+
 // Get is the mock method for KVStoreGet.
 func (m *mockKVStoreService) Get(key string) ([]byte, bool, error) {
 	args := m.Called(key)
@@ -54,21 +76,22 @@ func KVStoreGet(key string) ([]byte, bool, error) {
 	return KVStoreMock.Get(key)
 }
 
-// Delete is the mock method for KVStoreDelete.
-func (m *mockKVStoreService) Delete(key string) error {
-	args := m.Called(key)
-	return args.Error(0)
+// GetMany is the mock method for KVStoreGetMany.
+func (m *mockKVStoreService) GetMany(keys []string) (map[string][]byte, error) {
+	args := m.Called(keys)
+	return args.Get(0).(map[string][]byte), args.Error(1)
 }
 
-// KVStoreDelete delegates to the mock instance.
-// Delete removes a value from storage.
+// KVStoreGetMany delegates to the mock instance.
+// GetMany retrieves multiple values in a single call.
 //
 // Parameters:
-//   - key: The storage key
+//   - keys: The storage keys to retrieve
 //
-// Returns an error if the operation fails. Does not return an error if the key doesn't exist.
-func KVStoreDelete(key string) error {
-	return KVStoreMock.Delete(key)
+// Returns a map of key to value for keys that exist and have not expired.
+// Missing or expired keys are omitted from the result.
+func KVStoreGetMany(keys []string) (map[string][]byte, error) {
+	return KVStoreMock.GetMany(keys)
 }
 
 // Has is the mock method for KVStoreHas.
@@ -103,6 +126,40 @@ func (m *mockKVStoreService) List(prefix string) ([]string, error) {
 // Returns a slice of matching keys.
 func KVStoreList(prefix string) ([]string, error) {
 	return KVStoreMock.List(prefix)
+}
+
+// Delete is the mock method for KVStoreDelete.
+func (m *mockKVStoreService) Delete(key string) error {
+	args := m.Called(key)
+	return args.Error(0)
+}
+
+// KVStoreDelete delegates to the mock instance.
+// Delete removes a value from storage.
+//
+// Parameters:
+//   - key: The storage key
+//
+// Returns an error if the operation fails. Does not return an error if the key doesn't exist.
+func KVStoreDelete(key string) error {
+	return KVStoreMock.Delete(key)
+}
+
+// DeleteByPrefix is the mock method for KVStoreDeleteByPrefix.
+func (m *mockKVStoreService) DeleteByPrefix(prefix string) (int64, error) {
+	args := m.Called(prefix)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+// KVStoreDeleteByPrefix delegates to the mock instance.
+// DeleteByPrefix removes all keys matching the given prefix.
+//
+// Parameters:
+//   - prefix: Key prefix to match (must not be empty)
+//
+// Returns the number of keys deleted. Includes expired keys.
+func KVStoreDeleteByPrefix(prefix string) (int64, error) {
+	return KVStoreMock.DeleteByPrefix(prefix)
 }
 
 // GetStorageUsed is the mock method for KVStoreGetStorageUsed.

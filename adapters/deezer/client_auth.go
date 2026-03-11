@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -84,8 +84,8 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 
 	// Calculate TTL with a 1-minute buffer for clock skew and network delays
-	expiresAt := token.Expiration()
-	if expiresAt.IsZero() {
+	expiresAt, ok := token.Expiration()
+	if !ok || expiresAt.IsZero() {
 		return "", errors.New("deezer: JWT token has no expiration time")
 	}
 

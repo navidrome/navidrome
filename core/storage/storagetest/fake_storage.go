@@ -284,6 +284,9 @@ func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
 	p.AudioProperties.BitDepth = getInt("bitdepth")
 	p.AudioProperties.SampleRate = getInt("samplerate")
 	p.AudioProperties.Channels = getInt("channels")
+	if codec, ok := data["codec"].(string); ok {
+		p.AudioProperties.Codec = codec
+	}
 	for k, v := range data {
 		p.Tags[k] = []string{fmt.Sprintf("%v", v)}
 	}

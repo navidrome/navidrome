@@ -1,5 +1,5 @@
 package model
 
 type SearchableRepository[T any] interface {
-	Search(q string, offset, size int, options ...QueryOptions) (T, error)
+	Search(q string, options ...QueryOptions) (T, error)
 }

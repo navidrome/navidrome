@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"maps"
@@ -256,8 +255,11 @@ func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
 }
 
 // matchHostPattern matches a host against a pattern.
-// Supports wildcards like *.example.com
+// Supports "*" (allow all) and wildcards like "*.example.com".
 func matchHostPattern(pattern, host string) bool {
+	if pattern == "*" {
+		return true
+	}
 	if pattern == host {
 		return true
 	}
@@ -352,7 +354,7 @@ func (s *webSocketServiceImpl) invokeOnTextMessage(ctx context.Context, connecti
 func (s *webSocketServiceImpl) invokeOnBinaryMessage(ctx context.Context, connectionID string, data []byte) {
 	invokeWebSocketCallback(ctx, s, FuncWebSocketOnBinaryMessage, capabilities.OnBinaryMessageRequest{
 		ConnectionID: connectionID,
-		Data:         base64.StdEncoding.EncodeToString(data),
+		Data:         data,
 	}, "binary message", connectionID)
 }
 

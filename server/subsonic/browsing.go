@@ -443,7 +443,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
 	dir := &responses.Directory{}
 	dir.Id = album.ID
-	dir.Name = album.Name
+	dir.Name = album.FullName()
 	dir.Parent = album.AlbumArtistID
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {

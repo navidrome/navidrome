@@ -365,6 +365,66 @@ var _ = Describe("LibraryScanning", func() {
 			Expect(targets[0].LibraryID).To(Equal(1))
 			Expect(targets[0].FolderPath).To(Equal(""))
 		})
+
+		It("returns correct scanType in response when fullScan=false", func() {
+			// Setup mock to update status when scan starts (simulating the real scanner)
+			ms.SetScanStatusFunc(func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus {
+				scanType := "quick"
+				if fullScan {
+					scanType = "full"
+				}
+				return &model.ScannerStatus{
+					Scanning: true,
+					ScanType: scanType,
+				}
+			})
+
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "admin-id",
+				IsAdmin: true,
+			})
+
+			r := httptest.NewRequest("GET", "/rest/startScan", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.StartScan(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).ToNot(BeNil())
+			Expect(response.ScanStatus).ToNot(BeNil())
+			Expect(response.ScanStatus.Scanning).To(BeTrue())
+			Expect(response.ScanStatus.ScanType).To(Equal("quick"))
+		})
+
+		It("returns correct scanType in response when fullScan=true", func() {
+			// Setup mock to update status when scan starts (simulating the real scanner)
+			ms.SetScanStatusFunc(func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus {
+				scanType := "quick"
+				if fullScan {
+					scanType = "full"
+				}
+				return &model.ScannerStatus{
+					Scanning: true,
+					ScanType: scanType,
+				}
+			})
+
+			ctx := request.WithUser(context.Background(), model.User{
+				ID:      "admin-id",
+				IsAdmin: true,
+			})
+
+			r := httptest.NewRequest("GET", "/rest/startScan?fullScan=true", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.StartScan(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response).ToNot(BeNil())
+			Expect(response.ScanStatus).ToNot(BeNil())
+			Expect(response.ScanStatus.Scanning).To(BeTrue())
+			Expect(response.ScanStatus.ScanType).To(Equal("full"))
+		})
 	})
 
 	Describe("GetScanStatus", func() {

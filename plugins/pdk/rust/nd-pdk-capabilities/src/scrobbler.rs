@@ -76,7 +76,7 @@ pub struct ScrobbleRequest {
     #[serde(default)]
     pub timestamp: i64,
 }
-/// TrackInfo contains track metadata for scrobbling.
+/// TrackInfo contains track metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackInfo {

@@ -36,6 +36,20 @@ var (
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
 	buildTestPlugins(t, testDataDir)
+
+	// Create a shared wazero compilation cache directory.
+	// All test managers will point CacheFolder here so that WASM compilation
+	// is done once per binary and then reused from disk cache.
+	sharedCacheDir, err := os.MkdirTemp("", "plugins-shared-cache-*")
+	if err != nil {
+		t.Fatalf("Failed to create shared cache dir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(sharedCacheDir) })
+
+	// Set CacheFolder globally so all tests (including those using
+	// configtest.SetupConfig) inherit it without needing to set it manually.
+	conf.Server.CacheFolder = sharedCacheDir
+
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
@@ -114,7 +128,6 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	conf.Server.Plugins.Enabled = true
 	conf.Server.Plugins.Folder = tmpDir
 	conf.Server.Plugins.AutoReload = false
-	conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 	// Setup mock DataStore with pre-enabled plugins
 	mockPluginRepo := tests.CreateMockPluginRepo()

@@ -1,15 +1,15 @@
 package public
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -24,10 +24,24 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0)
+	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	stream, err := pub.streamer.NewStream(ctx, mf, stream.Request{
+		Format: info.format, BitRate: info.bitrate,
+	})
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
 	}
 
 	// Make sure the stream will be closed at the end, to avoid leakage
@@ -85,21 +99,13 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 	if token == nil {
 		return shareTrackInfo{}, errors.New("unauthorized")
 	}
-	err = jwt.Validate(token, jwt.WithRequiredClaim("id"))
-	if err != nil {
-		return shareTrackInfo{}, err
+	c := auth.ClaimsFromToken(token)
+	if c.ID == "" {
+		return shareTrackInfo{}, errors.New("required claim \"id\" not found")
 	}
-	claims, err := token.AsMap(context.Background())
-	if err != nil {
-		return shareTrackInfo{}, err
-	}
-	id, ok := claims["id"].(string)
-	if !ok {
-		return shareTrackInfo{}, errors.New("invalid id type")
-	}
-	resp := shareTrackInfo{}
-	resp.id = id
-	resp.format, _ = claims["f"].(string)
-	resp.bitrate, _ = claims["b"].(int)
-	return resp, nil
+	return shareTrackInfo{
+		id:      c.ID,
+		format:  c.Format,
+		bitrate: c.BitRate,
+	}, nil
 }

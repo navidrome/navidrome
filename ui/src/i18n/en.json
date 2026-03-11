@@ -218,9 +218,15 @@
         "makePrivate": "Make Private",
         "searchOrCreate": "Search playlists or type to create new...",
         "pressEnterToCreate": "Press Enter to create new playlist",
-        "removeFromSelection": "Remove from selection"
+        "removeFromSelection": "Remove from selection",
+        "uploadCover": "Upload Cover",
+        "removeCover": "Remove Cover"
       },
       "message": {
+        "coverUploaded": "Cover art updated",
+        "coverRemoved": "Cover art removed",
+        "coverUploadError": "Error uploading cover art",
+        "coverRemoveError": "Error removing cover art",
         "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
         "noPlaylistsFound": "No playlists found",
@@ -355,7 +361,8 @@
         "allUsers": "Allow all users",
         "selectedUsers": "Selected users",
         "allLibraries": "Allow all libraries",
-        "selectedLibraries": "Selected libraries"
+        "selectedLibraries": "Selected libraries",
+        "allowWriteAccess": "Allow write access"
       },
       "sections": {
         "status": "Status",
@@ -400,6 +407,7 @@
         "allLibrariesHelp": "When enabled, the plugin will have access to all libraries, including those created in the future.",
         "noLibraries": "No libraries selected",
         "librariesRequired": "This plugin requires access to library information. Select which libraries the plugin can access, or enable 'Allow all libraries'.",
+        "allowWriteAccessHelp": "When enabled, the plugin can modify files in the library directories. By default, plugins have read-only access.",
         "requiredHosts": "Required hosts"
       },
       "placeholders": {

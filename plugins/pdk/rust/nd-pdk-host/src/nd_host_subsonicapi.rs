@@ -5,6 +5,29 @@
 
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+
+mod base64_bytes {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use base64::Engine as _;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&BASE64.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        BASE64.decode(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,14 +50,22 @@ struct SubsonicAPICallRawRequest {
     uri: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SubsonicAPICallRawResponse {
+    #[serde(default)]
+    content_type: String,
+    #[serde(default)]
+    #[serde(with = "base64_bytes")]
+    data: Vec<u8>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[host_fn]
 extern "ExtismHost" {
     fn subsonicapi_call(input: Json<SubsonicAPICallRequest>) -> Json<SubsonicAPICallResponse>;
-}
-
-#[link(wasm_import_module = "extism:host/user")]
-extern "C" {
-    fn subsonicapi_callraw(offset: u64) -> u64;
+    fn subsonicapi_callraw(input: Json<SubsonicAPICallRawRequest>) -> Json<SubsonicAPICallRawResponse>;
 }
 
 /// Call executes a Subsonic API request and returns the JSON response.
@@ -65,54 +96,27 @@ pub fn call(uri: &str) -> Result<String, Error> {
 }
 
 /// CallRaw executes a Subsonic API request and returns the raw binary response.
-/// Optimized for binary endpoints like getCoverArt and stream that return
-/// non-JSON data. The response is returned as raw bytes without JSON encoding overhead.
+/// Designed for binary endpoints like getCoverArt and stream that return
+/// non-JSON data. The data is base64-encoded over JSON on the wire.
 ///
 /// # Arguments
 /// * `uri` - String parameter.
 ///
 /// # Returns
-/// A tuple of (content_type, data) with the raw binary response.
+/// A tuple of (content_type, data).
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn call_raw(uri: &str) -> Result<(String, Vec<u8>), Error> {
-    let req = SubsonicAPICallRawRequest {
-        uri: uri.to_owned(),
+    let response = unsafe {
+        subsonicapi_callraw(Json(SubsonicAPICallRawRequest {
+            uri: uri.to_owned(),
+        }))?
     };
-    let input_bytes = serde_json::to_vec(&req).map_err(|e| Error::msg(e.to_string()))?;
-    let input_mem = Memory::from_bytes(&input_bytes).map_err(|e| Error::msg(e.to_string()))?;
 
-    let response_offset = unsafe { subsonicapi_callraw(input_mem.offset()) };
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
 
-    let response_mem = Memory::find(response_offset)
-        .ok_or_else(|| Error::msg("empty response from host"))?;
-    let response_bytes = response_mem.to_vec();
-
-    if response_bytes.is_empty() {
-        return Err(Error::msg("empty response from host"));
-    }
-    if response_bytes[0] == 0x01 {
-        let msg = String::from_utf8_lossy(&response_bytes[1..]).to_string();
-        return Err(Error::msg(msg));
-    }
-    if response_bytes[0] != 0x00 {
-        return Err(Error::msg("unknown response status"));
-    }
-    if response_bytes.len() < 5 {
-        return Err(Error::msg("malformed raw response: incomplete header"));
-    }
-    let ct_len = u32::from_be_bytes([
-        response_bytes[1],
-        response_bytes[2],
-        response_bytes[3],
-        response_bytes[4],
-    ]) as usize;
-    if ct_len > response_bytes.len() - 5 {
-        return Err(Error::msg("malformed raw response: content-type overflow"));
-    }
-    let ct_end = 5 + ct_len;
-    let content_type = String::from_utf8_lossy(&response_bytes[5..ct_end]).to_string();
-    let data = response_bytes[ct_end..].to_vec();
-    Ok((content_type, data))
+    Ok((response.0.content_type, response.0.data))
 }

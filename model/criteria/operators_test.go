@@ -178,6 +178,21 @@ var _ = Describe("Operators", func() {
 		})
 	})
 
+	DescribeTable("ToSql idempotency",
+		func(expr Expression) {
+			sql1, args1, err1 := expr.ToSql()
+			sql2, args2, err2 := expr.ToSql()
+
+			gomega.Expect(err1).ToNot(gomega.HaveOccurred())
+			gomega.Expect(err2).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql2).To(gomega.Equal(sql1))
+			gomega.Expect(args2).To(gomega.Equal(args1))
+		},
+		Entry("tag expression", Is{"genre": "Rock"}),
+		Entry("role expression", Contains{"artist": "Beatles"}),
+		Entry("nested criteria", Criteria{Expression: All{Is{"genre": "Rock"}, Contains{"artist": "Beatles"}}}),
+	)
+
 	DescribeTable("JSON Marshaling",
 		func(op Expression, jsonString string) {
 			obj := And{op}

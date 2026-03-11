@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -527,7 +529,7 @@ var _ = Describe("MediaRepository", func() {
 	Describe("Search", func() {
 		Context("text search", func() {
 			It("finds media files by title", func() {
-				results, err := mr.Search("Antenna", 0, 10)
+				results, err := mr.Search("Antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3)) // songAntenna, songAntennaWithLyrics, songAntenna2
 				for _, result := range results {
@@ -536,7 +538,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media files case insensitively", func() {
-				results, err := mr.Search("antenna", 0, 10)
+				results, err := mr.Search("antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3))
 				for _, result := range results {
@@ -545,7 +547,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when no matches found", func() {
-				results, err := mr.Search("nonexistent", 0, 10)
+				results, err := mr.Search("nonexistent", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -578,7 +580,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_recording_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -586,7 +588,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_release_track_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -594,7 +596,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when MBID is not found", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -614,7 +616,7 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Search never returns missing media files (hardcoded behavior)
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", 0, 10)
+				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
@@ -709,6 +711,46 @@ var _ = Describe("MediaRepository", func() {
 			results, err = mr.FindByPaths([]string{"2:artist/Album/track.mp3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
+		})
+	})
+
+	Describe("wrapMediaFileCursor", func() {
+		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
+			// Simulate what queryWithStableResults does on the rows.Err() path:
+			// it yields a zero-value dbMediaFile (where MediaFile is nil) with an error.
+			dbErr := fmt.Errorf("database is locked")
+			cursor := func(yield func(dbMediaFile, error) bool) {
+				var empty dbMediaFile // MediaFile pointer is nil
+				yield(empty, dbErr)
+			}
+
+			// wrapMediaFileCursor should handle the nil MediaFile without panicking
+			wrappedCursor := wrapMediaFileCursor(cursor)
+			var gotErr error
+			Expect(func() {
+				for _, err := range wrappedCursor {
+					gotErr = err
+				}
+			}).ToNot(Panic())
+			Expect(gotErr).To(HaveOccurred())
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
+		})
+
+		It("yields mediafiles from a valid cursor", func() {
+			mf := &model.MediaFile{ID: "mf1", Title: "Test"}
+			cursor := func(yield func(dbMediaFile, error) bool) {
+				yield(dbMediaFile{MediaFile: mf}, nil)
+			}
+
+			wrappedCursor := wrapMediaFileCursor(cursor)
+			var mediafiles []model.MediaFile
+			for m, err := range wrappedCursor {
+				Expect(err).ToNot(HaveOccurred())
+				mediafiles = append(mediafiles, m)
+			}
+			Expect(mediafiles).To(HaveLen(1))
+			Expect(mediafiles[0].ID).To(Equal("mf1"))
 		})
 	})
 })

@@ -9,6 +9,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -187,75 +188,235 @@ func buildFTS5Query(userInput string) string {
 	return result
 }
 
-// likeSearchColumns defines the core columns to search with LIKE queries.
-// These are the primary user-visible fields for each entity type.
-// Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
-var likeSearchColumns = map[string][]string{
-	"media_file": {"title", "album", "artist", "album_artist"},
-	"album":      {"name", "album_artist"},
-	"artist":     {"name"},
+// ftsColumn pairs an FTS5 column name with its BM25 relevance weight.
+type ftsColumn struct {
+	Name   string
+	Weight float64
 }
 
-// likeSearchExpr generates LIKE-based search filters against core columns.
-// Each word in the query must match at least one column (AND between words),
-// and each word can match any column (OR within a word).
-// Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
-func likeSearchExpr(tableName string, s string) Sqlizer {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		log.Trace("Search using LIKE backend, query is empty", "table", tableName)
-		return nil
-	}
-	columns, ok := likeSearchColumns[tableName]
-	if !ok {
-		log.Trace("Search using LIKE backend, couldn't find columns for this table", "table", tableName)
-		return nil
-	}
-	words := strings.Fields(s)
-	wordFilters := And{}
-	for _, word := range words {
-		colFilters := Or{}
-		for _, col := range columns {
-			colFilters = append(colFilters, Like{tableName + "." + col: "%" + word + "%"})
+// ftsColumnDefs defines FTS5 columns and their BM25 relevance weights.
+// The order MUST match the column order in the FTS5 table definition (see migrations).
+// All columns are both searched and ranked. When adding indexed-but-not-searched
+// columns in the future, use Weight: 0 to exclude from the search column filter.
+var ftsColumnDefs = map[string][]ftsColumn{
+	"media_file": {
+		{"title", 10.0},
+		{"album", 5.0},
+		{"artist", 3.0},
+		{"album_artist", 3.0},
+		{"sort_title", 1.0},
+		{"sort_album_name", 1.0},
+		{"sort_artist_name", 1.0},
+		{"sort_album_artist_name", 1.0},
+		{"disc_subtitle", 1.0},
+		{"search_participants", 2.0},
+		{"search_normalized", 1.0},
+	},
+	"album": {
+		{"name", 10.0},
+		{"sort_album_name", 1.0},
+		{"album_artist", 3.0},
+		{"search_participants", 2.0},
+		{"discs", 1.0},
+		{"catalog_num", 1.0},
+		{"album_version", 1.0},
+		{"search_normalized", 1.0},
+	},
+	"artist": {
+		{"name", 10.0},
+		{"sort_artist_name", 1.0},
+		{"search_normalized", 1.0},
+	},
+}
+
+// ftsColumnFilters and ftsBM25Weights are precomputed from ftsColumnDefs at init time
+// to avoid per-query allocations.
+var (
+	ftsColumnFilters = map[string]string{}
+	ftsBM25Weights   = map[string]string{}
+)
+
+func init() {
+	for table, cols := range ftsColumnDefs {
+		var names []string
+		weights := make([]string, len(cols))
+		for i, c := range cols {
+			if c.Weight > 0 {
+				names = append(names, c.Name)
+			}
+			weights[i] = fmt.Sprintf("%.1f", c.Weight)
 		}
-		wordFilters = append(wordFilters, colFilters)
+		ftsColumnFilters[table] = "{" + strings.Join(names, " ") + "}"
+		ftsBM25Weights[table] = strings.Join(weights, ", ")
 	}
-	log.Trace("Search using LIKE backend", "query", wordFilters, "table", tableName)
-	return wordFilters
 }
 
-// ftsSearchColumns defines which FTS5 columns are included in general search.
-// Columns not listed here are indexed but not searched by default,
-// enabling future additions (comments, lyrics, bios) without affecting general search.
-var ftsSearchColumns = map[string]string{
-	"media_file": "{title album artist album_artist sort_title sort_album_name sort_artist_name sort_album_artist_name disc_subtitle search_participants search_normalized}",
-	"album":      "{name sort_album_name album_artist search_participants discs catalog_num album_version search_normalized}",
-	"artist":     "{name sort_artist_name search_normalized}",
+// ftsSearch implements searchStrategy using FTS5 full-text search with BM25 ranking.
+type ftsSearch struct {
+	tableName string
+	ftsTable  string
+	matchExpr string
+	rankExpr  string
 }
 
-// ftsSearchExpr generates an FTS5 MATCH-based search filter.
-// If the query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!"),
-// it falls back to LIKE-based search.
-func ftsSearchExpr(tableName string, s string) Sqlizer {
-	q := buildFTS5Query(s)
-	if q == "" {
-		s = strings.TrimSpace(strings.ReplaceAll(s, `"`, ""))
-		if s != "" {
-			log.Trace("Search using LIKE fallback for non-tokenizable query", "table", tableName, "query", s)
-			return likeSearchExpr(tableName, s)
+// ToSql returns a single-query fallback for the REST filter path (no two-phase split).
+func (s *ftsSearch) ToSql() (string, []interface{}, error) {
+	sql := s.tableName + ".rowid IN (SELECT rowid FROM " + s.ftsTable + " WHERE " + s.ftsTable + " MATCH ?)"
+	return sql, []interface{}{s.matchExpr}, nil
+}
+
+// execute runs a two-phase FTS5 search:
+//   - Phase 1: lightweight rowid query (main table + FTS + library filter) for ranking and pagination.
+//   - Phase 2: full SELECT with all JOINs, scoped to Phase 1's rowid set.
+//
+// Complex ORDER BY (function calls, aggregations) are dropped from Phase 1.
+func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
+	qualifiedOrderBys := []string{s.rankExpr}
+	for _, ob := range cfg.OrderBy {
+		if qualified := qualifyOrderBy(s.tableName, ob); qualified != "" {
+			qualifiedOrderBys = append(qualifiedOrderBys, qualified)
+		}
+	}
+
+	// Phase 1: fresh query — must set LIMIT/OFFSET from options explicitly.
+	// Mirror applyOptions behavior: Max=0 means no limit, not LIMIT 0.
+	rowidQuery := Select(s.tableName+".rowid").
+		From(s.tableName).
+		Join(s.ftsTable+" ON "+s.ftsTable+".rowid = "+s.tableName+".rowid AND "+s.ftsTable+" MATCH ?", s.matchExpr).
+		Where(Eq{s.tableName + ".missing": false}).
+		OrderBy(qualifiedOrderBys...)
+	if options.Max > 0 {
+		rowidQuery = rowidQuery.Limit(uint64(options.Max))
+	}
+	if options.Offset > 0 {
+		rowidQuery = rowidQuery.Offset(uint64(options.Offset))
+	}
+
+	// Library filter + musicFolderId must be applied here, before pagination.
+	if cfg.LibraryFilter != nil {
+		rowidQuery = cfg.LibraryFilter(rowidQuery)
+	} else {
+		rowidQuery = r.applyLibraryFilter(rowidQuery)
+	}
+	if options.Filters != nil {
+		rowidQuery = rowidQuery.Where(options.Filters)
+	}
+
+	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
+	if err != nil {
+		return fmt.Errorf("building FTS rowid query: %w", err)
+	}
+
+	// Phase 2: strip LIMIT/OFFSET from sq (Phase 1 handled pagination),
+	// join on the ranked rowid set to hydrate with full columns.
+	sq = sq.RemoveLimit().RemoveOffset()
+	rankedSubquery := fmt.Sprintf(
+		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
+		rowidSQL,
+	)
+	sq = sq.Join(rankedSubquery+" ON "+s.tableName+".rowid = _ranked._rid", rowidArgs...)
+	sq = sq.OrderBy("_ranked._rn")
+	return r.queryAll(sq, dest)
+}
+
+// qualifyOrderBy prepends tableName to a simple column name. Returns empty string for
+// complex expressions (function calls, aggregations) that can't be used in Phase 1.
+func qualifyOrderBy(tableName, orderBy string) string {
+	orderBy = strings.TrimSpace(orderBy)
+	if orderBy == "" || strings.ContainsAny(orderBy, "(,") {
+		return ""
+	}
+	parts := strings.Fields(orderBy)
+	if !strings.Contains(parts[0], ".") {
+		parts[0] = tableName + "." + parts[0]
+	}
+	return strings.Join(parts, " ")
+}
+
+// ftsQueryDegraded returns true when the FTS query lost significant discriminating
+// content compared to the original input. This happens when special characters that
+// are part of the entity name (e.g., "1+", "C++", "!!!", "C#") get stripped by FTS
+// tokenization, leaving only very short/broad tokens. Also detects quoted phrases
+// that would be degraded by FTS5's unicode61 tokenizer (e.g., "1+" → token "1").
+func ftsQueryDegraded(original, ftsQuery string) bool {
+	original = strings.TrimSpace(original)
+	if original == "" || ftsQuery == "" {
+		return false
+	}
+	// Strip quotes from original for comparison — we want the raw content
+	stripped := strings.ReplaceAll(original, `"`, "")
+	// Extract the alphanumeric content from the original query
+	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	// If the original is entirely alphanumeric, nothing was stripped — not degraded
+	if len(alphaNum) == len(stripped) {
+		return false
+	}
+	// Check if all effective FTS tokens are very short (≤2 chars).
+	// Short tokens with prefix matching are too broad when special chars were stripped.
+	// For quoted phrases, extract the content and check the tokens inside.
+	tokens := strings.Fields(ftsQuery)
+	for _, t := range tokens {
+		t = strings.TrimSuffix(t, "*")
+		// Skip internal phrase placeholders
+		if strings.HasPrefix(t, "\x00") {
+			return false
+		}
+		// For OR groups from processPunctuatedWords (e.g., ("a ha" OR aha*)),
+		// the punctuated word was already handled meaningfully — not degraded.
+		if strings.HasPrefix(t, "(") {
+			return false
+		}
+		// For quoted phrases, check the tokens inside as FTS5 will tokenize them
+		if strings.HasPrefix(t, `"`) {
+			// Extract content between quotes
+			inner := strings.Trim(t, `"`)
+			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
+			for _, it := range strings.Fields(innerAlpha) {
+				if len(it) > 2 {
+					return false
+				}
+			}
+			continue
+		}
+		if len(t) > 2 {
+			return false
+		}
+	}
+	return true
+}
+
+// newFTSSearch creates an FTS5 search strategy. Falls back to LIKE search if the
+// query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!") or if FTS
+// tokenization stripped significant content from the query (e.g., "1+" → "1*").
+// Returns nil when the query produces no searchable tokens at all.
+func newFTSSearch(tableName, query string) searchStrategy {
+	q := buildFTS5Query(query)
+	if q == "" || ftsQueryDegraded(query, q) {
+		// Fallback: try LIKE search with the raw query
+		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
+		if cleaned != "" {
+			log.Trace("Search using LIKE fallback for non-tokenizable query", "table", tableName, "query", cleaned)
+			return newLikeSearch(tableName, cleaned)
 		}
 		return nil
 	}
 	ftsTable := tableName + "_fts"
 	matchExpr := q
-	if cols, ok := ftsSearchColumns[tableName]; ok {
+	if cols, ok := ftsColumnFilters[tableName]; ok {
 		matchExpr = cols + " : (" + q + ")"
 	}
 
-	filter := Expr(
-		tableName+".rowid IN (SELECT rowid FROM "+ftsTable+" WHERE "+ftsTable+" MATCH ?)",
-		matchExpr,
-	)
-	log.Trace("Search using FTS5 backend", "table", tableName, "query", q, "filter", filter)
-	return filter
+	rankExpr := ftsTable + ".rank"
+	if weights, ok := ftsBM25Weights[tableName]; ok {
+		rankExpr = "bm25(" + ftsTable + ", " + weights + ")"
+	}
+
+	s := &ftsSearch{
+		tableName: tableName,
+		ftsTable:  ftsTable,
+		matchExpr: matchExpr,
+		rankExpr:  rankExpr,
+	}
+	log.Trace("Search using FTS5 backend", "table", tableName, "query", q, "filter", s)
+	return s
 }

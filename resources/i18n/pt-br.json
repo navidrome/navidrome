@@ -218,9 +218,15 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção"
+        "removeFromSelection": "Remover da seleção",
+        "uploadCover": "Enviar Capa",
+        "removeCover": "Remover Capa"
       },
       "message": {
+        "coverUploaded": "Capa atualizada",
+        "coverRemoved": "Capa removida",
+        "coverUploadError": "Erro ao enviar capa",
+        "coverRemoveError": "Erro ao remover capa",
         "duplicate_song": "Adicionar músicas duplicadas",
         "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
         "noPlaylistsFound": "Nenhuma playlist encontrada",
@@ -353,7 +359,8 @@
         "allUsers": "Permitir todos os usuários",
         "selectedUsers": "Usuários selecionados",
         "allLibraries": "Permitir todas as bibliotecas",
-        "selectedLibraries": "Bibliotecas selecionadas"
+        "selectedLibraries": "Bibliotecas selecionadas",
+        "allowWriteAccess": "Permitir acesso de escrita"
       },
       "sections": {
         "status": "Status",
@@ -396,6 +403,7 @@
         "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
         "noLibraries": "Nenhuma biblioteca selecionada",
         "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
         "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido."

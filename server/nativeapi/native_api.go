@@ -29,7 +29,7 @@ type PluginManager interface {
 	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
 	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
-	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries bool) error
+	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
 	RescanPlugins(ctx context.Context) error
 	UnloadDisabledPlugins(ctx context.Context)
 }
@@ -140,6 +140,8 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 			r.Get("/", rest.Get(constructor))
 			r.Put("/", rest.Put(constructor))
 			r.Delete("/", rest.Delete(constructor))
+			r.Post("/image", uploadPlaylistImage(api.playlists))
+			r.Delete("/image", deletePlaylistImage(api.playlists))
 		})
 	})
 }

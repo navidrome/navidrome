@@ -248,21 +248,35 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Conditionally join album/artist annotation tables only when referenced by criteria or sort
 	requiredJoins := rules.RequiredJoins()
-	if requiredJoins.Has(criteria.JoinAlbumAnnotation) {
-		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
-			"album_annotation.item_id = media_file.album_id"+
-			" AND album_annotation.item_type = 'album'"+
-			" AND album_annotation.user_id = ?)", usr.ID)
-	}
-	if requiredJoins.Has(criteria.JoinArtistAnnotation) {
-		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
-			"artist_annotation.item_id = media_file.artist_id"+
-			" AND artist_annotation.item_type = 'artist'"+
-			" AND artist_annotation.user_id = ?)", usr.ID)
-	}
+	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, usr.ID)
 
 	// Only include media files from libraries the user has access to
 	sq = r.applyLibraryFilter(sq, "media_file")
+
+	// Resolve percentage-based limit to an absolute number before applying criteria
+	if rules.IsPercentageLimit() {
+		// Use only expression-based joins for the COUNT query (sort joins are unnecessary)
+		exprJoins := rules.ExpressionJoins()
+		countSq := Select("count(*) as count").From("media_file").
+			LeftJoin("annotation on ("+
+				"annotation.item_id = media_file.id"+
+				" AND annotation.item_type = 'media_file'"+
+				" AND annotation.user_id = ?)", usr.ID)
+		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, usr.ID)
+		countSq = r.applyLibraryFilter(countSq, "media_file")
+		countSq = countSq.Where(rules)
+
+		var res struct{ Count int64 }
+		err = r.queryOne(countSq, &res)
+		if err != nil {
+			log.Error(r.ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
+			return false
+		}
+		resolvedLimit := rules.EffectiveLimit(res.Count)
+		log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rules.LimitPercent, "totalMatching", res.Count, "resolvedLimit", resolvedLimit)
+		rules.Limit = resolvedLimit
+		rules.LimitPercent = 0
+	}
 
 	// Apply the criteria rules
 	sq = r.addCriteria(sq, rules)
@@ -294,6 +308,22 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 
 	return true
+}
+
+func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins criteria.JoinType, userID string) SelectBuilder {
+	if joins.Has(criteria.JoinAlbumAnnotation) {
+		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
+			"album_annotation.item_id = media_file.album_id"+
+			" AND album_annotation.item_type = 'album'"+
+			" AND album_annotation.user_id = ?)", userID)
+	}
+	if joins.Has(criteria.JoinArtistAnnotation) {
+		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
+			"artist_annotation.item_id = media_file.artist_id"+
+			" AND artist_annotation.item_type = 'artist'"+
+			" AND artist_annotation.user_id = ?)", userID)
+	}
+	return sq
 }
 
 func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) SelectBuilder {

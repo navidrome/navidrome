@@ -264,7 +264,6 @@ var _ = Describe("LibraryService", Ordered, func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Plugins.Enabled = true
 			conf.Server.Plugins.Folder = tmpDir
-			conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 			// Create mock &tests.MockLibraryRepo{}
 			mockLibRepo := &tests.MockLibraryRepo{}
@@ -360,7 +359,6 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = tmpDir
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = filepath.Join(tmpDir, "cache")
 
 		// Setup mock DataStore with pre-enabled plugin and library
 		mockPluginRepo := tests.CreateMockPluginRepo()

@@ -197,7 +197,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 
 	child.Parent = mf.AlbumID
-	child.Album = mf.Album
+	child.Album = mf.FullAlbumName()
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
@@ -302,7 +302,7 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 func fakePath(mf model.MediaFile) string {
 	builder := strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
+	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName())))
 	if mf.DiscNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
 	}
@@ -321,9 +321,10 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
-	child.Title = al.Name
-	child.Name = al.Name
-	child.Album = al.Name
+	fullName := al.FullName()
+	child.Title = fullName
+	child.Name = fullName
+	child.Album = fullName
 	child.Artist = al.AlbumArtist
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
@@ -405,7 +406,7 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
-	dir.Name = album.Name
+	dir.Name = album.FullName()
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
 	dir.CoverArt = album.CoverArtID().String()
