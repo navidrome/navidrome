@@ -16,7 +16,7 @@ describe('detectBrowserProfile', () => {
 
   it('includes codecs that return "probably"', () => {
     mockCanPlayType.mockImplementation((mime) => {
-      if (mime === 'audio/mpeg') return 'probably'
+      if (mime === 'audio/mpeg; codecs="mp3"') return 'probably'
       if (mime === 'audio/ogg; codecs="opus"') return 'probably'
       return ''
     })
@@ -31,11 +31,15 @@ describe('detectBrowserProfile', () => {
     expect(codecs).toContain('opus')
   })
 
-  it('excludes codecs that return "maybe"', () => {
-    mockCanPlayType.mockReturnValue('maybe')
+  it('includes codecs that return "maybe"', () => {
+    mockCanPlayType.mockImplementation((mime) => {
+      if (mime === 'audio/flac') return 'maybe'
+      return ''
+    })
 
     const profile = detectBrowserProfile()
-    expect(profile.directPlayProfiles).toEqual([])
+    const codecs = profile.directPlayProfiles.flatMap((p) => p.audioCodecs)
+    expect(codecs).toContain('flac')
   })
 
   it('excludes codecs that return empty string', () => {
@@ -56,7 +60,7 @@ describe('detectBrowserProfile', () => {
 
   it('filters transcoding profiles by canPlayType', () => {
     mockCanPlayType.mockImplementation((mime) => {
-      if (mime === 'audio/mpeg') return 'probably'
+      if (mime === 'audio/mpeg; codecs="mp3"') return 'probably'
       if (mime === 'audio/ogg; codecs="opus"') return 'probably'
       return ''
     })
@@ -102,6 +106,17 @@ describe('detectBrowserProfile', () => {
 
     const profile = detectBrowserProfile()
     expect(profile.codecProfiles).toEqual([])
+  })
+
+  it('matches codec when any mime variant returns "probably"', () => {
+    mockCanPlayType.mockImplementation((mime) => {
+      if (mime === 'audio/flac; codecs="flac"') return 'probably'
+      return ''
+    })
+
+    const profile = detectBrowserProfile()
+    const codecs = profile.directPlayProfiles.flatMap((p) => p.audioCodecs)
+    expect(codecs).toContain('flac')
   })
 
   it('includes platform info', () => {
