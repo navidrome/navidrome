@@ -80,6 +80,11 @@ func matchesCodec(codec string, codecs []string) bool {
 	return matchesWithAliases(codec, codecs, codecAliasGroups)
 }
 
+// IsAACCodec returns true if the given codec or container name resolves to AAC.
+func IsAACCodec(name string) bool {
+	return matchesCodec(name, []string{"aac"}) || matchesContainer(name, []string{"aac"})
+}
+
 func containsIgnoreCase(slice []string, s string) bool {
 	return slices.ContainsFunc(slice, func(item string) bool {
 		return strings.EqualFold(item, s)
