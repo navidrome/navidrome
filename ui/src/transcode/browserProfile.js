@@ -18,6 +18,11 @@ export const CODEC_PROBES = [
 // MP3 is always included as a universal fallback.
 const TRANSCODE_CODECS = ['flac', 'opus', 'mp3']
 
+// Safari transcoding is limited to mp3 only. Safari cannot reliably stream
+// Ogg containers (reports canPlayType support but fails on non-seekable
+// transcoded streams), and FLAC transcoding also fails in practice.
+const SAFARI_TRANSCODE_CODECS = ['mp3']
+
 function canPlay(audio, mimeList) {
   return mimeList.some((m) => {
     const result = audio.canPlayType(m)
@@ -27,6 +32,13 @@ function canPlay(audio, mimeList) {
 
 function probeSupported(audio, probes) {
   return probes.filter(({ mime }) => canPlay(audio, mime))
+}
+
+function isSafari() {
+  const ua = navigator.userAgent
+  return (
+    ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Chromium')
+  )
 }
 
 export function detectBrowserProfile() {
@@ -40,13 +52,15 @@ export function detectBrowserProfile() {
     }),
   )
 
-  // Build transcoding profiles from supported codecs, always keeping mp3 as fallback
-  const transcodingProfiles = TRANSCODE_CODECS.reduce((profiles, codec) => {
+  // Build transcoding profiles from supported codecs, always keeping mp3 as fallback.
+  // Safari is limited to mp3 transcoding only.
+  const transcodeCodecs = isSafari()
+    ? SAFARI_TRANSCODE_CODECS
+    : TRANSCODE_CODECS
+  const transcodingProfiles = transcodeCodecs.reduce((profiles, codec) => {
     const probe = CODEC_PROBES.find((p) => p.codec === codec)
-    if (
-      canPlay(audio, probe.mime) ||
-      codec === 'mp3'
-    ) {
+    if (!probe) return profiles
+    if (canPlay(audio, probe.mime) || codec === 'mp3') {
       profiles.push({
         container: probe.container,
         audioCodec: codec,
