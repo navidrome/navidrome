@@ -1,4 +1,4 @@
-// Each entry: { codec name for the server, container, MIME to probe }
+// Each entry: { codec name for the server, container, mime: [MIME probe strings] }
 export const CODEC_PROBES = [
   { codec: 'mp3', container: 'mp3', mime: ['audio/mpeg; codecs="mp3"'] },
   { codec: 'opus', container: 'ogg', mime: ['audio/ogg; codecs="opus"'] },
