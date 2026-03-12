@@ -260,7 +260,13 @@
                 "createdAt": "Data di creazione"
             },
             "notifications": {},
-            "actions": {}
+            "actions": {
+                "download": {
+                    "title": "Scarica",
+                    "currentTrack": "Traccia corrente",
+                    "allTracks": "Tutte le tracce"
+                }
+            }
         },
         "missing": {
             "name": "File mancante |||| File mancanti",

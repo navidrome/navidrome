@@ -253,6 +253,13 @@
         "updatedAt": "Güncelleme Tarihi",
         "createdAt": "Oluşturma Tarihi",
         "downloadable": "İndirmelere İzin Ver"
+      },
+      "actions": {
+        "download": {
+          "title": "İndir",
+          "currentTrack": "Mevcut parça",
+          "allTracks": "Tüm parçalar"
+        }
       }
     },
     "missing": {
