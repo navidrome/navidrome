@@ -2,10 +2,13 @@ package public
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
@@ -53,6 +56,10 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
+
+	if conf.Server.EnableDownloads && p.BoolOr("download", false) {
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+downloadFilename(mf, info.format)+"\"")
+	}
 
 	if stream.Seekable() {
 		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
@@ -108,4 +115,16 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 		format:  c.Format,
 		bitrate: c.BitRate,
 	}, nil
+}
+
+func sanitizeName(target string) string {
+	return strings.ReplaceAll(target, "/", "_")
+}
+
+func downloadFilename(mf *model.MediaFile, format string) string {
+	ext := mf.Suffix
+	if format != "" && format != "raw" {
+		ext = format
+	}
+	return fmt.Sprintf("%s - %s.%s", sanitizeName(mf.Artist), sanitizeName(mf.Title), ext)
 }

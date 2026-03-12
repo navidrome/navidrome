@@ -263,7 +263,13 @@
         "createdAt": "Created at"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "Download",
+          "currentTrack": "Current Track",
+          "allTracks": "All Tracks"
+        }
+      }
     },
     "missing": {
       "name": "Missing File |||| Missing Files",
