@@ -255,6 +255,13 @@
         "updatedAt": "Opdateret d.",
         "createdAt": "Oprettet d.",
         "downloadable": "Tillad downloads?"
+      },
+      "actions": {
+        "download": {
+          "title": "Download",
+          "currentTrack": "Nuværende nummer",
+          "allTracks": "Alle numre"
+        }
       }
     },
     "missing": {

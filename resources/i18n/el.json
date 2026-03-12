@@ -255,6 +255,13 @@
         "updatedAt": "Ενημερώθηκε στις",
         "createdAt": "Δημιουργήθηκε στις",
         "downloadable": "Επιτρέπονται οι λήψεις?"
+      },
+      "actions": {
+        "download": {
+          "title": "Λήψη",
+          "currentTrack": "Τρέχον κομμάτι",
+          "allTracks": "Όλα τα κομμάτια"
+        }
       }
     },
     "missing": {

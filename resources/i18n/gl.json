@@ -255,6 +255,13 @@
         "updatedAt": "Actualizada o",
         "createdAt": "Creada o",
         "downloadable": "Permitir descargas?"
+      },
+      "actions": {
+        "download": {
+          "title": "Descargar",
+          "currentTrack": "Pista actual",
+          "allTracks": "Todas as pistas"
+        }
       }
     },
     "missing": {

@@ -255,6 +255,13 @@
         "updatedAt": "Bijgewerkt op",
         "createdAt": "Aangemaakt op",
         "downloadable": "Downloads toestaan?"
+      },
+      "actions": {
+        "download": {
+          "title": "Downloaden",
+          "currentTrack": "Huidig nummer",
+          "allTracks": "Alle nummers"
+        }
       }
     },
     "missing": {

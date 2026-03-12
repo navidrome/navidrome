@@ -257,7 +257,13 @@
         "createdAt": "Sortze-data:"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "Deskargatu",
+          "currentTrack": "Uneko pista",
+          "allTracks": "Pista guztiak"
+        }
+      }
     },
     "missing": {
       "name": "Aurkitu ez den fitxategia |||| Aurkitu ez diren fitxategiak",
@@ -590,7 +596,7 @@
     "shareSuccess": "URLa arbelera kopiatu da: %{url}",
     "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
     "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
-    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"    
+    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"
   },
   "menu": {
     "library": "Liburutegia",

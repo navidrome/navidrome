@@ -261,6 +261,13 @@
         "updatedAt": "Últ. Atualização",
         "createdAt": "Data de Criação",
         "downloadable": "Permitir Baixar?"
+      },
+      "actions": {
+        "download": {
+          "title": "Baixar",
+          "currentTrack": "Faixa atual",
+          "allTracks": "Todas as faixas"
+        }
       }
     },
     "missing": {

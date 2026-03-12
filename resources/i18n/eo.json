@@ -253,6 +253,13 @@
         "updatedAt": "Ĝisdatiĝis je",
         "createdAt": "Fariĝis je",
         "downloadable": "Ĉu Ebligi Elŝutojn?"
+      },
+      "actions": {
+        "download": {
+          "title": "Elŝuti",
+          "currentTrack": "Nuna trako",
+          "allTracks": "Ĉiuj trakoj"
+        }
       }
     },
     "missing": {

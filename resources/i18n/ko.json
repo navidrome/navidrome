@@ -12,7 +12,7 @@
         "artist": "아티스트",
         "album": "앨범",
         "path": "파일 경로",
-		"libraryName": "라이브러리",
+        "libraryName": "라이브러리",
         "genre": "장르",
         "compilation": "컴필레이션",
         "year": "년",
@@ -183,7 +183,7 @@
         "scrobbleEnabled": "외부 서비스에 스크로블 보내기"
       }
     },
-"transcoding": {
+    "transcoding": {
       "name": "트랜스코딩 |||| 트랜스코딩",
       "fields": {
         "name": "이름",
@@ -254,7 +254,13 @@
         "createdAt": "생성됨"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "다운로드",
+          "currentTrack": "현재 트랙",
+          "allTracks": "모든 트랙"
+        }
+      }
     },
     "missing": {
       "name": "누락 파일 |||| 누락 파일들",

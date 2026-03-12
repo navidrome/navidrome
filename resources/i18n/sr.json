@@ -229,7 +229,13 @@
         "visitCount": "Број посета"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "Преузми",
+          "currentTrack": "Тренутна песма",
+          "allTracks": "Све песме"
+        }
+      }
     },
     "missing": {
       "name": "Фајл који недостаје|||| Фајлови који недостају",

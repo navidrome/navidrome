@@ -255,6 +255,13 @@
         "updatedAt": "Frissítve",
         "createdAt": "Létrehozva",
         "downloadable": "Engedélyezed a letöltéseket?"
+      },
+      "actions": {
+        "download": {
+          "title": "Letöltés",
+          "currentTrack": "Jelenlegi szám",
+          "allTracks": "Összes szám"
+        }
       }
     },
     "missing": {

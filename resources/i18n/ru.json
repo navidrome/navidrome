@@ -255,6 +255,13 @@
         "updatedAt": "Обновлено в",
         "createdAt": "Создано",
         "downloadable": "Разрешить загрузку?"
+      },
+      "actions": {
+        "download": {
+          "title": "Скачать",
+          "currentTrack": "Текущий трек",
+          "allTracks": "Все треки"
+        }
       }
     },
     "missing": {
