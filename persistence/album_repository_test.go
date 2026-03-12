@@ -85,6 +85,47 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("recently_added sort", func() {
+		It("sorts correctly regardless of timestamp format (T-format vs space-format)", func() {
+			// Album with T-format timestamp (RFC3339Nano) — older but would sort as "newer"
+			// due to 'T' (ASCII 84) > ' ' (ASCII 32) in string comparison
+			olderAlbum := &model.Album{LibraryID: 1, ID: "ts-older", Name: "Older Album"}
+			Expect(albumRepo.Put(olderAlbum)).To(Succeed())
+			_, err := albumRepo.executeSQL(squirrel.Update("album").
+				Set("created_at", "2024-01-01T10:00:00Z").
+				Where(squirrel.Eq{"id": "ts-older"}))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Album with space-format timestamp (go-sqlite3 format) — newer but would sort as "older"
+			newerAlbum := &model.Album{LibraryID: 1, ID: "ts-newer", Name: "Newer Album"}
+			Expect(albumRepo.Put(newerAlbum)).To(Succeed())
+			_, err = albumRepo.executeSQL(squirrel.Update("album").
+				Set("created_at", "2025-06-15 10:00:00+00:00").
+				Where(squirrel.Eq{"id": "ts-newer"}))
+			Expect(err).ToNot(HaveOccurred())
+
+			albums, err := albumRepo.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Find positions of our test albums
+			var olderIdx, newerIdx int
+			for i, a := range albums {
+				switch a.ID {
+				case "ts-older":
+					olderIdx = i
+				case "ts-newer":
+					newerIdx = i
+				}
+			}
+			// Newer album (2025) should come before older album (2024) in desc order
+			Expect(newerIdx).To(BeNumerically("<", olderIdx),
+				"Newer album (2025, space-format) should sort before older album (2024, T-format) in desc order")
+
+			// Clean up
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"ts-older", "ts-newer"}}))
+		})
+	})
+
 	Context("Filters", func() {
 		var albumWithoutAnnotation model.Album
 
