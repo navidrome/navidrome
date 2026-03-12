@@ -26,7 +26,7 @@
     <meta property="og:image" content="{{ .ShareImageURL }}">
     <meta property="og:image:width" content="300">
     <meta property="og:image:height" content="300">
-    <title>Navidrome</title>
+    <title>{{ if .ShareDescription }}{{ .ShareDescription }} | Navidrome{{ else }}Navidrome{{ end }}</title>
     <script>
       // Shim for libraries that check for Node.js process object
       window.process = { env: {} };
