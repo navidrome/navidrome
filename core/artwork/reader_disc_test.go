@@ -63,7 +63,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 		createFile := func(path string) string {
 			fullPath := filepath.Join(tmpDir, filepath.FromSlash(path))
 			Expect(os.MkdirAll(filepath.Dir(fullPath), 0755)).To(Succeed())
-			Expect(os.WriteFile(fullPath, []byte("image data"), 0644)).To(Succeed())
+			Expect(os.WriteFile(fullPath, []byte("image data"), 0600)).To(Succeed())
 			return fullPath
 		}
 
