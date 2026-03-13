@@ -126,7 +126,7 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
 		dstRect = dst.Bounds()
 	}
-	xdraw.ApproxBiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
+	xdraw.BiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()

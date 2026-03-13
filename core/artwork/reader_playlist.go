@@ -264,6 +264,6 @@ func fillCenter(src image.Image, dstW, dstH int) image.Image {
 	}
 
 	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
-	xdraw.ApproxBiLinear.Scale(dst, dst.Bounds(), src, cropRect, draw.Src, nil)
+	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, cropRect, draw.Src, nil)
 	return dst
 }
