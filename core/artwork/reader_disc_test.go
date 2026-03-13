@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -147,6 +148,83 @@ var _ = Describe("Disc Artwork Reader", func() {
 		})
 	})
 
+	Describe("fromDiscSubtitle", func() {
+		var (
+			ctx    context.Context
+			tmpDir string
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			tmpDir = GinkgoT().TempDir()
+		})
+
+		createFile := func(path string) string {
+			fullPath := filepath.Join(tmpDir, filepath.FromSlash(path))
+			Expect(os.MkdirAll(filepath.Dir(fullPath), 0755)).To(Succeed())
+			Expect(os.WriteFile(fullPath, []byte("image data"), 0600)).To(Succeed())
+			return fullPath
+		}
+
+		It("matches image file whose stem equals the disc subtitle (case-insensitive)", func() {
+			f1 := createFile("album/The Blue Disc.jpg")
+			reader := &discArtworkReader{
+				discNumber: 1,
+				imgFiles:   []string{f1},
+			}
+
+			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
+		It("matches case-insensitively", func() {
+			f1 := createFile("album/bonus tracks.png")
+			reader := &discArtworkReader{
+				discNumber: 2,
+				imgFiles:   []string{f1},
+			}
+
+			sf := reader.fromDiscSubtitle(ctx, "Bonus Tracks")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
+		It("returns error when no matching file found", func() {
+			f1 := createFile("album/cover.jpg")
+			reader := &discArtworkReader{
+				discNumber: 1,
+				imgFiles:   []string{f1},
+			}
+
+			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
+			_, _, err := sf()
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("matches first file when multiple extensions exist", func() {
+			f1 := createFile("album/The Blue Disc.jpg")
+			f2 := createFile("album/The Blue Disc.png")
+			reader := &discArtworkReader{
+				discNumber: 1,
+				imgFiles:   []string{f1, f2},
+			}
+
+			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+	})
+
 	Describe("discArtworkReader", func() {
 		Describe("fromDiscArtPriority", func() {
 			var reader *discArtworkReader
@@ -188,6 +266,18 @@ var _ = Describe("Disc Artwork Reader", func() {
 			It("returns no source funcs when imgFiles is empty and pattern is not embedded", func() {
 				reader.imgFiles = nil
 				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*")
+				Expect(ff).To(HaveLen(0))
+			})
+
+			It("returns source func for discsubtitle pattern", func() {
+				reader.album = model.Album{Discs: model.Discs{2: "Bonus Tracks"}}
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "discsubtitle")
+				Expect(ff).To(HaveLen(1))
+			})
+
+			It("returns no source func for discsubtitle when disc has no subtitle", func() {
+				reader.album = model.Album{Discs: model.Discs{2: ""}}
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "discsubtitle")
 				Expect(ff).To(HaveLen(0))
 			})
 		})

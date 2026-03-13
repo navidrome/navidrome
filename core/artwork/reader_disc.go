@@ -136,11 +136,36 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 			ff = append(ff, fromTag(ctx, d.firstTrackPath), fromFFmpegTag(ctx, ffmpeg, d.firstTrackPath))
 		case pattern == "external":
 			// Not supported for disc art, silently ignore
+		case pattern == "discsubtitle":
+			if subtitle := strings.TrimSpace(d.album.Discs[d.discNumber]); subtitle != "" {
+				ff = append(ff, d.fromDiscSubtitle(ctx, subtitle))
+			}
 		case len(d.imgFiles) > 0:
 			ff = append(ff, d.fromExternalFile(ctx, pattern))
 		}
 	}
 	return ff
+}
+
+// fromDiscSubtitle returns a sourceFunc that matches image files whose stem
+// (filename without extension) equals the disc subtitle (case-insensitive).
+func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		for _, file := range d.imgFiles {
+			_, name := filepath.Split(file)
+			stem := strings.TrimSuffix(name, filepath.Ext(name))
+			if !strings.EqualFold(stem, subtitle) {
+				continue
+			}
+			f, err := os.Open(file)
+			if err != nil {
+				log.Warn(ctx, "Could not open disc art file", "file", file, err)
+				continue
+			}
+			return f, file, nil
+		}
+		return nil, "", fmt.Errorf("disc %d: no image file matching subtitle %q", d.discNumber, subtitle)
+	}
 }
 
 // extractDiscNumber extracts a disc number from a filename based on a glob pattern.
