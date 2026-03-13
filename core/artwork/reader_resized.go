@@ -51,11 +51,11 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 }
 
 func (a *resizedArtworkReader) Key() string {
-	baseKey := fmt.Sprintf("%s.%d.%d", a.cacheKey, a.size, conf.Server.CoverArtQuality)
+	baseKey := fmt.Sprintf("%s.%d", a.cacheKey, a.size)
 	if a.square {
 		return baseKey + ".square"
 	}
-	return baseKey
+	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverJpegQuality)
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {
