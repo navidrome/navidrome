@@ -52,7 +52,7 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 }
 
 func (a *resizedArtworkReader) Key() string {
-	baseKey := fmt.Sprintf("%s.%d.%d", a.cacheKey, a.size, conf.Server.CoverJpegQuality)
+	baseKey := fmt.Sprintf("%s.%d.%d", a.cacheKey, a.size, conf.Server.CoverArtQuality)
 	if a.square {
 		return baseKey + ".square"
 	}
@@ -132,7 +132,7 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 	buf.Reset()
 	// Encode resized artwork as WebP — supports alpha, ~74% smaller than JPEG at same quality,
 	// with only ~25% slower full-pipeline encode (cached, so only paid once per artwork+size).
-	err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverJpegQuality})
+	err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
 	encoded := make([]byte, buf.Len())
 	copy(encoded, buf.Bytes())

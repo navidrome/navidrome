@@ -69,7 +69,8 @@ type configOptions struct {
 	MPVPath                         string
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
-	CoverJpegQuality                int
+	CoverArtQuality                 int
+	CoverJpegQuality                int // Deprecated: Use CoverArtQuality instead
 	ArtistArtPriority               string
 	LyricsPriority                  string
 	EnableGravatar                  bool
@@ -283,6 +284,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -415,6 +417,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -655,7 +658,7 @@ func setViperDefaults() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
-	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)

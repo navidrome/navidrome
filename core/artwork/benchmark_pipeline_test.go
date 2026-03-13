@@ -12,7 +12,7 @@ import (
 func BenchmarkResizeFullPipeline(b *testing.B) {
 	cleanup := configtest.SetupConfig()
 	b.Cleanup(cleanup)
-	conf.Server.CoverJpegQuality = 75
+	conf.Server.CoverArtQuality = 75
 
 	sourceSizes := []int{1000, 3000}
 	targetSize := 300
