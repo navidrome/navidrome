@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"net/http/httptest"
+	"time"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -103,27 +104,43 @@ var _ = Describe("helpers", func() {
 			Expect(buildDiscSubtitles(album)).To(BeNil())
 		})
 
-		It("should return the disc title for a single disc", func() {
+		It("should return the disc title with cover art for a single disc", func() {
+			updatedAt := time.Now().Truncate(time.Second)
 			album := model.Album{
+				ID:        "album1",
+				UpdatedAt: updatedAt,
 				Discs: map[int]string{
 					1: "Special Edition",
 				},
 			}
-			Expect(buildDiscSubtitles(album)).To(Equal([]responses.DiscTitle{{Disc: 1, Title: "Special Edition"}}))
+			result := buildDiscSubtitles(album)
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Disc).To(Equal(int32(1)))
+			Expect(result[0].Title).To(Equal("Special Edition"))
+			expectedArtID := model.NewArtworkID(model.KindDiscArtwork, "album1:1", &updatedAt)
+			Expect(result[0].CoverArt).To(Equal(expectedArtID.String()))
 		})
 
-		It("should return correct disc titles when album has discs with valid disc numbers", func() {
+		It("should return correct disc titles with cover art when album has multiple discs", func() {
+			updatedAt := time.Now().Truncate(time.Second)
 			album := model.Album{
+				ID:        "album1",
+				UpdatedAt: updatedAt,
 				Discs: map[int]string{
 					1: "Disc 1",
 					2: "Disc 2",
 				},
 			}
-			expected := []responses.DiscTitle{
-				{Disc: 1, Title: "Disc 1"},
-				{Disc: 2, Title: "Disc 2"},
-			}
-			Expect(buildDiscSubtitles(album)).To(Equal(expected))
+			result := buildDiscSubtitles(album)
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].Disc).To(Equal(int32(1)))
+			Expect(result[0].Title).To(Equal("Disc 1"))
+			expectedArtID1 := model.NewArtworkID(model.KindDiscArtwork, "album1:1", &updatedAt)
+			Expect(result[0].CoverArt).To(Equal(expectedArtID1.String()))
+			Expect(result[1].Disc).To(Equal(int32(2)))
+			Expect(result[1].Title).To(Equal("Disc 2"))
+			expectedArtID2 := model.NewArtworkID(model.KindDiscArtwork, "album1:2", &updatedAt)
+			Expect(result[1].CoverArt).To(Equal(expectedArtID2.String()))
 		})
 	})
 
