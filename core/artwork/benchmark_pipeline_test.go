@@ -1,7 +1,6 @@
 package artwork
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 
@@ -24,7 +23,7 @@ func BenchmarkResizeFullPipeline(b *testing.B) {
 			b.SetBytes(int64(len(jpegData)))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				result, _, err := resizeImage(bytes.NewReader(jpegData), targetSize, false)
+				result, _, err := resizeStaticImage(jpegData, targetSize, false)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -38,7 +37,7 @@ func BenchmarkResizeFullPipeline(b *testing.B) {
 			b.SetBytes(int64(len(jpegData)))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				result, _, err := resizeImage(bytes.NewReader(jpegData), targetSize, true)
+				result, _, err := resizeStaticImage(jpegData, targetSize, true)
 				if err != nil {
 					b.Fatal(err)
 				}

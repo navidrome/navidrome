@@ -320,6 +320,10 @@ func (n noopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProb
 	return nil, errors.New("noop ffmpeg: probe not supported")
 }
 
+func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io.ReadCloser, error) {
+	return nil, errors.New("noop ffmpeg: convert animated image not supported")
+}
+
 func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
 func (n noopFFmpeg) IsAvailable() bool        { return false }
 func (n noopFFmpeg) Version() string          { return "noop" }

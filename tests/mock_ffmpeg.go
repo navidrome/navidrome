@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"strings"
@@ -38,6 +39,17 @@ func (ff *MockFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, erro
 		return nil, ff.Error
 	}
 	return ff, nil
+}
+
+func (ff *MockFFmpeg) ConvertAnimatedImage(_ context.Context, reader io.Reader, _ int, _ int) (io.ReadCloser, error) {
+	if ff.Error != nil {
+		return nil, ff.Error
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 func (ff *MockFFmpeg) Probe(context.Context, []string) (string, error) {

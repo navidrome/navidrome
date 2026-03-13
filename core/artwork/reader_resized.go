@@ -70,7 +70,7 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 	}
 	defer orig.Close()
 
-	resized, origSize, err := resizeImage(orig, a.size, a.square)
+	resized, origSize, err := a.resizeImage(ctx, orig)
 	if resized == nil {
 		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size, "square", a.square)
 	} else {
@@ -84,11 +84,42 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 		orig, _, err = a.a.Get(ctx, a.artID, 0, false)
 		return orig, "", err
 	}
+	// Preserve ReadCloser semantics if the resized reader already supports Close
+	// (e.g., ffmpeg pipe), otherwise wrap with NopCloser
+	if rc, ok := resized.(io.ReadCloser); ok {
+		return rc, fmt.Sprintf("%s@%d", a.artID, a.size), nil
+	}
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }
 
-func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error) {
-	original, _, err := image.Decode(reader)
+func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader) (io.Reader, int, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, 0, fmt.Errorf("reading image data: %w", err)
+	}
+
+	// Preserve animation for animated images (skip for square thumbnails)
+	if !a.square {
+		if isAnimatedGIF(data) {
+			if a.a.ffmpeg.IsAvailable() {
+				// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
+				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+				if err == nil {
+					return r, 0, nil
+				}
+				log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
+			}
+		} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
+			// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
+			return bytes.NewReader(data), 0, nil
+		}
+	}
+
+	return resizeStaticImage(data, a.size, a.square)
+}
+
+func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
+	original, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, err
 	}
