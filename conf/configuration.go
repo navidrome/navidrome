@@ -70,7 +70,6 @@ type configOptions struct {
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
 	CoverArtQuality                 int
-	CoverJpegQuality                int // Deprecated: Use CoverArtQuality instead
 	ArtistArtPriority               string
 	LyricsPriority                  string
 	EnableGravatar                  bool

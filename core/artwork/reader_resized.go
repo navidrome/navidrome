@@ -55,7 +55,7 @@ func (a *resizedArtworkReader) Key() string {
 	if a.square {
 		return baseKey + ".square"
 	}
-	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverJpegQuality)
+	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverArtQuality)
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {
