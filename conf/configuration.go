@@ -69,7 +69,7 @@ type configOptions struct {
 	MPVPath                         string
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
-	CoverJpegQuality                int
+	CoverArtQuality                 int
 	ArtistArtPriority               string
 	LyricsPriority                  string
 	EnableGravatar                  bool
@@ -140,6 +140,7 @@ type configOptions struct {
 	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevJpegCoverArt                   bool
 }
 
 type scannerOptions struct {
@@ -283,6 +284,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -415,6 +417,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -655,7 +658,7 @@ func setViperDefaults() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
-	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
@@ -707,7 +710,7 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.enableaveragerating", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
-	viper.SetDefault("agents", "lastfm,spotify,deezer")
+	viper.SetDefault("agents", "deezer,lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("lastfm.apikey", "")
@@ -749,7 +752,7 @@ func setViperDefaults() {
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
-	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devartworkmaxrequests", max(4, runtime.NumCPU()))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
@@ -765,6 +768,7 @@ func setViperDefaults() {
 	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
+	viper.SetDefault("devjpegcoverart", false)
 }
 
 func init() {

@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	xdraw "golang.org/x/image/draw"
 )
 
 type playlistArtworkReader struct {
@@ -200,7 +200,7 @@ func (a *playlistArtworkReader) createTile(_ context.Context, r io.ReadCloser) (
 	if err != nil {
 		return nil, err
 	}
-	return imaging.Fill(img, tileSize/2, tileSize/2, imaging.Center, imaging.Lanczos), nil
+	return fillCenter(img, tileSize/2, tileSize/2), nil
 }
 
 func (a *playlistArtworkReader) createTiledImage(_ context.Context, tiles []image.Image) (io.ReadCloser, error) {
@@ -237,4 +237,33 @@ func rect(pos int) image.Rectangle {
 	r.Max.X = r.Min.X + tileSize/2
 	r.Max.Y = r.Min.Y + tileSize/2
 	return r
+}
+
+// fillCenter crops the source image from the center and scales it to fill dstW x dstH exactly,
+// equivalent to imaging.Fill with Center anchor.
+func fillCenter(src image.Image, dstW, dstH int) image.Image {
+	srcBounds := src.Bounds()
+	srcW := srcBounds.Dx()
+	srcH := srcBounds.Dy()
+
+	// Calculate crop rectangle (center crop to match destination aspect ratio)
+	srcAspect := float64(srcW) / float64(srcH)
+	dstAspect := float64(dstW) / float64(dstH)
+
+	var cropRect image.Rectangle
+	if srcAspect > dstAspect {
+		// Source is wider — crop horizontally
+		cropW := int(float64(srcH) * dstAspect)
+		cropX := (srcW - cropW) / 2
+		cropRect = image.Rect(srcBounds.Min.X+cropX, srcBounds.Min.Y, srcBounds.Min.X+cropX+cropW, srcBounds.Max.Y)
+	} else {
+		// Source is taller — crop vertically
+		cropH := int(float64(srcW) / dstAspect)
+		cropY := (srcH - cropH) / 2
+		cropRect = image.Rect(srcBounds.Min.X, srcBounds.Min.Y+cropY, srcBounds.Max.X, srcBounds.Min.Y+cropY+cropH)
+	}
+
+	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, cropRect, draw.Src, nil)
+	return dst
 }

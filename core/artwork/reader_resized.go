@@ -5,16 +5,25 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"sync"
 	"time"
 
-	"github.com/disintegration/imaging"
+	"github.com/gen2brain/webp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	xdraw "golang.org/x/image/draw"
 )
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 type resizedArtworkReader struct {
 	artID      model.ArtworkID
@@ -46,7 +55,7 @@ func (a *resizedArtworkReader) Key() string {
 	if a.square {
 		return baseKey + ".square"
 	}
-	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverJpegQuality)
+	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverArtQuality)
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {
@@ -79,7 +88,7 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 }
 
 func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error) {
-	original, format, err := image.Decode(reader)
+	original, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -96,26 +105,45 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 		return nil, originalSize, nil
 	}
 
-	var resized image.Image
-	if originalSize >= size {
-		resized = imaging.Fit(original, size, size, imaging.Lanczos)
-	} else {
-		if bounds.Max.Y < bounds.Max.X {
-			resized = imaging.Resize(original, size, 0, imaging.Lanczos)
-		} else {
-			resized = imaging.Resize(original, 0, size, imaging.Lanczos)
-		}
-	}
-	if square {
-		bg := image.NewRGBA(image.Rect(0, 0, size, size))
-		resized = imaging.OverlayCenter(bg, resized, 1)
-	}
+	// Calculate aspect-fit dimensions
+	srcW, srcH := bounds.Dx(), bounds.Dy()
+	scale := float64(size) / float64(max(srcW, srcH))
+	dstW := int(float64(srcW) * scale)
+	dstH := int(float64(srcH) * scale)
 
-	buf := new(bytes.Buffer)
-	if format == "png" || square {
-		err = png.Encode(buf, resized)
+	var dst *image.NRGBA
+	var dstRect image.Rectangle
+	if square {
+		// Square canvas with image centered (transparent padding via zero-initialized NRGBA)
+		dst = image.NewNRGBA(image.Rect(0, 0, size, size))
+		offsetX := (size - dstW) / 2
+		offsetY := (size - dstH) / 2
+		dstRect = image.Rect(offsetX, offsetY, offsetX+dstW, offsetY+dstH)
 	} else {
-		err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+		// Tight-fit canvas
+		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+		dstRect = dst.Bounds()
 	}
-	return buf, originalSize, err
+	xdraw.BiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
+
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	if conf.Server.DevJpegCoverArt {
+		if square {
+			err = png.Encode(buf, dst)
+		} else {
+			err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
+		}
+	} else {
+		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	}
+	if err != nil {
+		bufPool.Put(buf)
+		return nil, originalSize, err
+	}
+	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
+	encoded := make([]byte, buf.Len())
+	copy(encoded, buf.Bytes())
+	bufPool.Put(buf)
+	return bytes.NewReader(encoded), originalSize, nil
 }
