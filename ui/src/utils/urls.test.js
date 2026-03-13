@@ -37,7 +37,9 @@ describe('toDownloadUrl', () => {
   })
 
   it('preserves existing query parameters', () => {
-    const result = toDownloadUrl('https://example.com/share/s/abc123?format=mp3')
+    const result = toDownloadUrl(
+      'https://example.com/share/s/abc123?format=mp3',
+    )
     const url = new URL(result)
     expect(url.searchParams.get('format')).toBe('mp3')
     expect(url.searchParams.get('download')).toBe('true')
