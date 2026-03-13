@@ -28,6 +28,40 @@ var _ = Describe("ArtworkID", func() {
 			Expect(parsedId.LastUpdate.Unix()).To(Equal(id.LastUpdate.Unix()))
 		})
 	})
+	Describe("ParseArtworkID - disc kind", func() {
+		It("parses a disc artwork ID with dc prefix", func() {
+			now := time.Now()
+			id := model.NewArtworkID(model.KindDiscArtwork, "albumid123:2", &now)
+			parsedId, err := model.ParseArtworkID(id.String())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(parsedId.Kind).To(Equal(model.KindDiscArtwork))
+			Expect(parsedId.ID).To(Equal("albumid123:2"))
+			Expect(parsedId.LastUpdate.Unix()).To(Equal(now.Unix()))
+		})
+	})
+
+	Describe("ParseDiscArtworkID", func() {
+		DescribeTable("parses composite disc artwork IDs",
+			func(id string, expectedAlbum string, expectedDisc int, expectErr bool) {
+				albumID, discNumber, err := model.ParseDiscArtworkID(id)
+				if expectErr {
+					Expect(err).To(HaveOccurred())
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(albumID).To(Equal(expectedAlbum))
+					Expect(discNumber).To(Equal(expectedDisc))
+				}
+			},
+			Entry("valid id", "albumid123:2", "albumid123", 2, false),
+			Entry("disc number 1", "abc:1", "abc", 1, false),
+			Entry("large disc number", "abc:10", "abc", 10, false),
+			Entry("missing colon", "albumid123", "", 0, true),
+			Entry("missing disc number", "albumid123:", "", 0, true),
+			Entry("non-numeric disc", "albumid123:abc", "", 0, true),
+			Entry("empty string", "", "", 0, true),
+		)
+	})
+
 	Describe("ParseArtworkID()", func() {
 		It("parses album artwork ids", func() {
 			id, err := model.ParseArtworkID("al-1234")
