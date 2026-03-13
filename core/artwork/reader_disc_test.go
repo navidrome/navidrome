@@ -1,6 +1,10 @@
 package artwork
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -43,5 +47,81 @@ var _ = Describe("Disc Artwork Reader", func() {
 			// Pattern with no wildcard before dot
 			Entry("front1.jpg with front*.*", "front*.*", "front1.jpg", 1, true),
 		)
+	})
+
+	Describe("fromDiscExternalFile", func() {
+		var (
+			ctx    context.Context
+			tmpDir string
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			tmpDir = GinkgoT().TempDir()
+		})
+
+		createFile := func(path string) string {
+			fullPath := filepath.Join(tmpDir, filepath.FromSlash(path))
+			Expect(os.MkdirAll(filepath.Dir(fullPath), 0755)).To(Succeed())
+			Expect(os.WriteFile(fullPath, []byte("image data"), 0644)).To(Succeed())
+			return fullPath
+		}
+
+		It("matches file with disc number in single-folder album", func() {
+			f1 := createFile("album/disc1.jpg")
+			f2 := createFile("album/disc2.jpg")
+			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+
+			sf := fromDiscExternalFile(ctx, []string{f1, f2}, "disc*.*", 1, discFolders, false)
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
+		It("skips file without number in single-folder album", func() {
+			f1 := createFile("album/disc.jpg")
+			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+
+			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 1, discFolders, false)
+			r, _, _ := sf()
+			Expect(r).To(BeNil())
+		})
+
+		It("matches file without number in multi-folder album by folder", func() {
+			f1 := createFile("album/cd1/disc.jpg")
+			f2 := createFile("album/cd2/disc.jpg")
+			discFolders := map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true}
+
+			sf := fromDiscExternalFile(ctx, []string{f1, f2}, "disc*.*", 1, discFolders, true)
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
+		It("prefers disc number over folder when number is present", func() {
+			// disc2.jpg in cd1 folder should match disc 2, not disc 1
+			f1 := createFile("album/cd1/disc2.jpg")
+			discFolders := map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true}
+
+			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 2, discFolders, true)
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
+		It("does not match disc2.jpg when looking for disc 1", func() {
+			f1 := createFile("album/disc2.jpg")
+			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+
+			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 1, discFolders, false)
+			r, _, _ := sf()
+			Expect(r).To(BeNil())
+		})
 	})
 })
