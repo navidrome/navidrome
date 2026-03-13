@@ -8,6 +8,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/disintegration/imaging"
@@ -15,6 +16,12 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 type resizedArtworkReader struct {
 	artID      model.ArtworkID
@@ -42,11 +49,11 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 }
 
 func (a *resizedArtworkReader) Key() string {
-	baseKey := fmt.Sprintf("%s.%d", a.cacheKey, a.size)
+	baseKey := fmt.Sprintf("%s.%d.%d", a.cacheKey, a.size, conf.Server.CoverJpegQuality)
 	if a.square {
 		return baseKey + ".square"
 	}
-	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverJpegQuality)
+	return baseKey
 }
 
 func (a *resizedArtworkReader) LastUpdated() time.Time {
@@ -98,12 +105,12 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 
 	var resized image.Image
 	if originalSize >= size {
-		resized = imaging.Fit(original, size, size, imaging.Lanczos)
+		resized = imaging.Fit(original, size, size, imaging.CatmullRom)
 	} else {
 		if bounds.Max.Y < bounds.Max.X {
-			resized = imaging.Resize(original, size, 0, imaging.Lanczos)
+			resized = imaging.Resize(original, size, 0, imaging.CatmullRom)
 		} else {
-			resized = imaging.Resize(original, 0, size, imaging.Lanczos)
+			resized = imaging.Resize(original, 0, size, imaging.CatmullRom)
 		}
 	}
 	if square {
@@ -111,11 +118,16 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 		resized = imaging.OverlayCenter(bg, resized, 1)
 	}
 
-	buf := new(bytes.Buffer)
-	if format == "png" || square {
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	if format == "png" {
 		err = png.Encode(buf, resized)
 	} else {
 		err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	}
-	return buf, originalSize, err
+	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
+	encoded := make([]byte, buf.Len())
+	copy(encoded, buf.Bytes())
+	bufPool.Put(buf)
+	return bytes.NewReader(encoded), originalSize, err
 }

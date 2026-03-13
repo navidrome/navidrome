@@ -380,9 +380,9 @@ var _ = Describe("Artwork", func() {
 			var alCover model.Album
 
 			DescribeTable("resize",
-				func(format string, landscape bool, size int) {
-					coverFileName := "cover." + format
-					dirName := createImage(format, landscape, size)
+				func(srcFormat string, expectedFormat string, landscape bool, size int) {
+					coverFileName := "cover." + srcFormat
+					dirName := createImage(srcFormat, landscape, size)
 					alCover = model.Album{
 						ID:        "444",
 						Name:      "Only external",
@@ -399,14 +399,14 @@ var _ = Describe("Artwork", func() {
 
 					img, format, err := image.Decode(r)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(format).To(Equal("png"))
+					Expect(format).To(Equal(expectedFormat))
 					Expect(img.Bounds().Size().X).To(Equal(size))
 					Expect(img.Bounds().Size().Y).To(Equal(size))
 				},
-				Entry("portrait png image", "png", false, 200),
-				Entry("landscape png image", "png", true, 200),
-				Entry("portrait jpg image", "jpg", false, 200),
-				Entry("landscape jpg image", "jpg", true, 200),
+				Entry("portrait png image", "png", "png", false, 200),
+				Entry("landscape png image", "png", "png", true, 200),
+				Entry("portrait jpg image", "jpg", "jpeg", false, 200),
+				Entry("landscape jpg image", "jpg", "jpeg", true, 200),
 			)
 		})
 		When("Requested size is larger than original", func() {
