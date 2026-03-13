@@ -141,6 +141,7 @@ type configOptions struct {
 	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevJpegCoverArt                   bool
 }
 
 type scannerOptions struct {
@@ -768,6 +769,7 @@ func setViperDefaults() {
 	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
+	viper.SetDefault("devjpegcoverart", false)
 }
 
 func init() {

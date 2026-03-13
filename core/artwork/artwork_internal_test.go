@@ -412,6 +412,60 @@ var _ = Describe("Artwork", func() {
 				Entry("landscape jpg image", "jpg", "webp", true, 200),
 			)
 		})
+		When("DevJpegCoverArt is true and square is false", func() {
+			BeforeEach(func() {
+				conf.Server.DevJpegCoverArt = true
+			})
+			It("returns JPEG even if original image is a PNG", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("jpeg"))
+				Expect(img.Bounds().Size().X).To(Equal(15))
+				Expect(img.Bounds().Size().Y).To(Equal(15))
+			})
+			It("returns JPEG if original image is a JPG", func() {
+				conf.Server.CoverArtPriority = "cover.jpg"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("jpeg"))
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
+		When("DevJpegCoverArt is true and square is true", func() {
+			var alCover model.Album
+
+			BeforeEach(func() {
+				conf.Server.DevJpegCoverArt = true
+			})
+			It("returns PNG for square mode", func() {
+				dirName := createImage("png", false, 200)
+				alCover = model.Album{
+					ID:        "444",
+					Name:      "Only external",
+					FolderIDs: []string{"tmp"},
+				}
+				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
+
+				conf.Server.CoverArtPriority = "cover.png"
+				r, _, err := aw.Get(context.Background(), alCover.CoverArtID(), 200, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("png"))
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
 		When("Requested size is larger than original", func() {
 			It("clamps size to original dimensions", func() {
 				conf.Server.CoverArtPriority = "front.png"

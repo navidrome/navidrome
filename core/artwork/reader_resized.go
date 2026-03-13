@@ -7,8 +7,8 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	_ "image/jpeg"
-	_ "image/png"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"sync"
 	"time"
@@ -130,9 +130,15 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	// Encode resized artwork as WebP — supports alpha, ~74% smaller than JPEG at same quality,
-	// with only ~25% slower full-pipeline encode (cached, so only paid once per artwork+size).
-	err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	if conf.Server.DevJpegCoverArt {
+		if square {
+			err = png.Encode(buf, dst)
+		} else {
+			err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
+		}
+	} else {
+		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	}
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
 	encoded := make([]byte, buf.Len())
 	copy(encoded, buf.Bytes())
