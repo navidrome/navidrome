@@ -209,7 +209,7 @@ describe('SharePlayer', () => {
       expect(createdLinks[0].href).toContain('/share/d/share-1')
       expect(createdLinks[0].download).toBe('My Playlist.zip')
       expect(createdLinks[0].click).toHaveBeenCalled()
-      expect(createdLinks[0]).not.toBeInTheDocument() 
+      expect(createdLinks[0]).not.toBeInTheDocument()
     })
 
     it('closes the dialog after clicking "All Tracks"', async () => {
@@ -287,7 +287,7 @@ describe('SharePlayer', () => {
       expect(createdLinks).toHaveLength(1)
       expect(createdLinks[0].href).toContain('download=true')
       expect(createdLinks[0].click).toHaveBeenCalled()
-      expect(createdLinks[0]).not.toBeInTheDocument() 
+      expect(createdLinks[0]).not.toBeInTheDocument()
     })
   })
 })
