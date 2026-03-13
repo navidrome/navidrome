@@ -661,7 +661,7 @@ func setViperDefaults() {
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
-	viper.SetDefault("discartpriority", "disc*.*, cd*.*, discsubtitle, embedded")
+	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
