@@ -50,6 +50,7 @@ const useStyles = makeStyles({
     objectFit: 'cover',
     borderRadius: '4px',
     flexShrink: 0,
+    cursor: 'pointer',
   },
   row: {
     cursor: 'pointer',
@@ -133,7 +134,6 @@ const DiscSubtitleRow = forwardRef(
                 src={coverArtUrl}
                 className={classes.discCoverArt}
                 alt=""
-                style={{ cursor: 'pointer' }}
                 onClick={handleOpenLightbox}
                 onError={() => setImageError(true)}
               />
