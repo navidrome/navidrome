@@ -125,6 +125,22 @@ var _ = Describe("REST Adapter", func() {
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
+			It("updates smart playlist rules", func() {
+				mockPlsRepo.Data["smart-1"] = &model.Playlist{
+					ID:      "smart-1",
+					Name:    "Smart Playlist",
+					OwnerID: "user-1",
+					Rules:   &criteria.Criteria{Expression: criteria.Contains{"title": "old"}},
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				newRules := &criteria.Criteria{Expression: criteria.Contains{"title": "new"}}
+				pls := &model.Playlist{Name: "Smart Playlist", Rules: newRules}
+				err := repo.Update("smart-1", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+			})
+
 			It("returns rest.ErrNotFound when playlist doesn't exist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
