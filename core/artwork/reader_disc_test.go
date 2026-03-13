@@ -49,7 +49,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 		)
 	})
 
-	Describe("fromDiscExternalFile", func() {
+	Describe("fromExternalFile", func() {
 		var (
 			ctx    context.Context
 			tmpDir string
@@ -70,9 +70,13 @@ var _ = Describe("Disc Artwork Reader", func() {
 		It("matches file with disc number in single-folder album", func() {
 			f1 := createFile("album/disc1.jpg")
 			f2 := createFile("album/disc2.jpg")
-			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+			reader := &discArtworkReader{
+				discNumber:  1,
+				imgFiles:    []string{f1, f2},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
 
-			sf := fromDiscExternalFile(ctx, []string{f1, f2}, "disc*.*", 1, discFolders, false)
+			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, path, err := sf()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(r).ToNot(BeNil())
@@ -82,9 +86,13 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 		It("skips file without number in single-folder album", func() {
 			f1 := createFile("album/disc.jpg")
-			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+			reader := &discArtworkReader{
+				discNumber:  1,
+				imgFiles:    []string{f1},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
 
-			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 1, discFolders, false)
+			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, _, _ := sf()
 			Expect(r).To(BeNil())
 		})
@@ -92,9 +100,14 @@ var _ = Describe("Disc Artwork Reader", func() {
 		It("matches file without number in multi-folder album by folder", func() {
 			f1 := createFile("album/cd1/disc.jpg")
 			f2 := createFile("album/cd2/disc.jpg")
-			discFolders := map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true}
+			reader := &discArtworkReader{
+				discNumber:    1,
+				imgFiles:      []string{f1, f2},
+				discFolders:   map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true},
+				isMultiFolder: true,
+			}
 
-			sf := fromDiscExternalFile(ctx, []string{f1, f2}, "disc*.*", 1, discFolders, true)
+			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, path, err := sf()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(r).ToNot(BeNil())
@@ -105,9 +118,14 @@ var _ = Describe("Disc Artwork Reader", func() {
 		It("prefers disc number over folder when number is present", func() {
 			// disc2.jpg in cd1 folder should match disc 2, not disc 1
 			f1 := createFile("album/cd1/disc2.jpg")
-			discFolders := map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true}
+			reader := &discArtworkReader{
+				discNumber:    2,
+				imgFiles:      []string{f1},
+				discFolders:   map[string]bool{filepath.Join(tmpDir, "album", "cd1"): true},
+				isMultiFolder: true,
+			}
 
-			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 2, discFolders, true)
+			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, path, err := sf()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(r).ToNot(BeNil())
@@ -117,9 +135,13 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 		It("does not match disc2.jpg when looking for disc 1", func() {
 			f1 := createFile("album/disc2.jpg")
-			discFolders := map[string]bool{filepath.Join(tmpDir, "album"): true}
+			reader := &discArtworkReader{
+				discNumber:  1,
+				imgFiles:    []string{f1},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
 
-			sf := fromDiscExternalFile(ctx, []string{f1}, "disc*.*", 1, discFolders, false)
+			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, _, _ := sf()
 			Expect(r).To(BeNil())
 		})
@@ -140,7 +162,6 @@ var _ = Describe("Disc Artwork Reader", func() {
 						"/music/album/cd2/disc2.jpg",
 					},
 					firstTrackPath: "/music/album/cd2/track1.flac",
-					rootFolder:     "/music",
 				}
 			})
 

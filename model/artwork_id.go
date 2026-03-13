@@ -93,6 +93,10 @@ func MustParseArtworkID(id string) ArtworkID {
 	return artID
 }
 
+func DiscArtworkID(albumID string, discNumber int) string {
+	return fmt.Sprintf("%s:%d", albumID, discNumber)
+}
+
 func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 || parts[1] == "" {

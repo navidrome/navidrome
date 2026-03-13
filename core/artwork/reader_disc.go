@@ -28,7 +28,6 @@ type discArtworkReader struct {
 	discFolders    map[string]bool
 	isMultiFolder  bool
 	firstTrackPath string
-	rootFolder     string
 	updatedAt      *time.Time
 }
 
@@ -96,7 +95,6 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		discFolders:    discFolders,
 		isMultiFolder:  isMultiFolder,
 		firstTrackPath: core.AbsolutePath(ctx, a.ds, al.LibraryID, firstTrackPath),
-		rootFolder:     core.AbsolutePath(ctx, a.ds, al.LibraryID, ""),
 		updatedAt:      imagesUpdatedAt,
 	}
 	r.cacheKey.artID = artID
@@ -139,7 +137,7 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 		case pattern == "external":
 			// Not supported for disc art, silently ignore
 		case len(d.imgFiles) > 0:
-			ff = append(ff, fromDiscExternalFile(ctx, d.imgFiles, pattern, d.discNumber, d.discFolders, d.isMultiFolder))
+			ff = append(ff, d.fromExternalFile(ctx, pattern))
 		}
 	}
 	return ff
@@ -192,7 +190,7 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 	return num, true
 }
 
-// fromDiscExternalFile returns a sourceFunc that matches image files against a glob
+// fromExternalFile returns a sourceFunc that matches image files against a glob
 // pattern with disc-number-aware filtering.
 //
 // Matching rules:
@@ -202,9 +200,9 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 //     it's in a folder containing tracks for this disc.
 //   - If no number is found and this is a single-folder album, the file is skipped
 //     (ambiguous).
-func fromDiscExternalFile(ctx context.Context, files []string, pattern string, discNumber int, discFolders map[string]bool, isMultiFolder bool) sourceFunc {
+func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		for _, file := range files {
+		for _, file := range d.imgFiles {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
 			if err != nil {
@@ -219,13 +217,13 @@ func fromDiscExternalFile(ctx context.Context, files []string, pattern string, d
 			num, hasNum := extractDiscNumber(pattern, name)
 			if hasNum {
 				// File has a disc number — must match target disc
-				if num != discNumber {
+				if num != d.discNumber {
 					continue
 				}
-			} else if isMultiFolder {
+			} else if d.isMultiFolder {
 				// No number, multi-folder: match by folder association
 				dir := filepath.Dir(file)
-				if !discFolders[dir] {
+				if !d.discFolders[dir] {
 					continue
 				}
 			} else {
@@ -240,6 +238,6 @@ func fromDiscExternalFile(ctx context.Context, files []string, pattern string, d
 			}
 			return f, file, nil
 		}
-		return nil, "", fmt.Errorf("disc %d: pattern '%s' not matched by files", discNumber, pattern)
+		return nil, "", fmt.Errorf("disc %d: pattern '%s' not matched by files", d.discNumber, pattern)
 	}
 }

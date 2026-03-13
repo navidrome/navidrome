@@ -393,7 +393,7 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	var discTitles []responses.DiscTitle
 	for num, title := range a.Discs {
 		artID := model.NewArtworkID(model.KindDiscArtwork,
-			fmt.Sprintf("%s:%d", a.ID, num), &a.UpdatedAt)
+			model.DiscArtworkID(a.ID, num), &a.UpdatedAt)
 		discTitles = append(discTitles, responses.DiscTitle{
 			Disc:     int32(num),
 			Title:    title,
