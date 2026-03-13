@@ -23,6 +23,7 @@
         "bitDepth": "Bit depth",
         "sampleRate": "Sample rate",
         "channels": "Channels",
+        "disc": "Disc %{discNumber}",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
         "comment": "Comment",

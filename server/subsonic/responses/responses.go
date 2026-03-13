@@ -575,8 +575,9 @@ func (r ReplayGain) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 }
 
 type DiscTitle struct {
-	Disc  int32  `xml:"disc,attr" json:"disc"`
-	Title string `xml:"title,attr" json:"title"`
+	Disc     int32  `xml:"disc,attr"                json:"disc"`
+	Title    string `xml:"title,attr"               json:"title"`
+	CoverArt string `xml:"coverArt,attr,omitempty"  json:"coverArt,omitempty"`
 }
 
 type ItemDate struct {

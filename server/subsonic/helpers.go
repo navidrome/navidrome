@@ -392,7 +392,13 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	}
 	var discTitles []responses.DiscTitle
 	for num, title := range a.Discs {
-		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
+		artID := model.NewArtworkID(model.KindDiscArtwork,
+			model.DiscArtworkID(a.ID, num), &a.UpdatedAt)
+		discTitles = append(discTitles, responses.DiscTitle{
+			Disc:     int32(num),
+			Title:    title,
+			CoverArt: artID.String(),
+		})
 	}
 	if len(discTitles) == 1 && discTitles[0].Title == "" {
 		return nil

@@ -22,6 +22,7 @@ var (
 	KindArtistArtwork    = Kind{"ar", "artist"}
 	KindAlbumArtwork     = Kind{"al", "album"}
 	KindPlaylistArtwork  = Kind{"pl", "playlist"}
+	KindDiscArtwork      = Kind{"dc", "disc"}
 )
 
 var artworkKindMap = map[string]Kind{
@@ -29,6 +30,7 @@ var artworkKindMap = map[string]Kind{
 	KindArtistArtwork.prefix:    KindArtistArtwork,
 	KindAlbumArtwork.prefix:     KindAlbumArtwork,
 	KindPlaylistArtwork.prefix:  KindPlaylistArtwork,
+	KindDiscArtwork.prefix:      KindDiscArtwork,
 }
 
 type ArtworkID struct {
@@ -89,6 +91,22 @@ func MustParseArtworkID(id string) ArtworkID {
 		panic(artID)
 	}
 	return artID
+}
+
+func DiscArtworkID(albumID string, discNumber int) string {
+	return fmt.Sprintf("%s:%d", albumID, discNumber)
+}
+
+func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
+	parts := strings.SplitN(id, ":", 2)
+	if len(parts) != 2 || parts[1] == "" {
+		return "", 0, errors.New("invalid disc artwork id")
+	}
+	num, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid disc number in artwork id: %w", err)
+	}
+	return parts[0], num, nil
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {

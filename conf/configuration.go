@@ -71,6 +71,7 @@ type configOptions struct {
 	CoverArtPriority                string
 	CoverArtQuality                 int
 	ArtistArtPriority               string
+	DiscArtPriority                 string
 	LyricsPriority                  string
 	EnableGravatar                  bool
 	EnableFavourites                bool
@@ -660,6 +661,7 @@ func setViperDefaults() {
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)

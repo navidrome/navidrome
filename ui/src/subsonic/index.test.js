@@ -105,6 +105,56 @@ describe('getCoverArtUrl', () => {
   })
 })
 
+describe('getDiscCoverArtUrl', () => {
+  beforeEach(() => {
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('should construct URL with dc-albumId:discNumber format, size, and cache param', () => {
+    const url = subsonic.getDiscCoverArtUrl(
+      'album-123',
+      2,
+      '2023-01-01T00:00:00Z',
+      48,
+    )
+
+    expect(url).toContain('getCoverArt')
+    expect(url).toContain('id=dc-album-123%3A2')
+    expect(url).toContain('size=48')
+    expect(url).toContain('_=2023-01-01T00%3A00%3A00Z')
+  })
+
+  it('should handle missing updatedAt', () => {
+    const url = subsonic.getDiscCoverArtUrl('album-123', 1, undefined, 48)
+
+    expect(url).toContain('id=dc-album-123%3A1')
+    expect(url).toContain('size=48')
+    expect(url).not.toContain('_=')
+  })
+
+  it('should handle missing size', () => {
+    const url = subsonic.getDiscCoverArtUrl(
+      'album-123',
+      1,
+      '2023-01-01T00:00:00Z',
+    )
+
+    expect(url).toContain('id=dc-album-123%3A1')
+    expect(url).toContain('_=2023-01-01T00%3A00%3A00Z')
+    expect(url).not.toContain('size=')
+  })
+})
+
 describe('getAvatarUrl', () => {
   beforeEach(() => {
     // Mock localStorage values required by subsonic

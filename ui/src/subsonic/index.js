@@ -91,6 +91,16 @@ const getCoverArtUrl = (record, size, square) => {
   }
 }
 
+const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
+  const options = {
+    ...(updatedAt && { _: updatedAt }),
+    ...(size && { size }),
+  }
+  return baseUrl(
+    url('getCoverArt', 'dc-' + albumId + ':' + discNumber, options),
+  )
+}
+
 const getArtistInfo = (id) => {
   return httpClient(url('getArtistInfo', id))
 }
@@ -129,6 +139,7 @@ export default {
   getScanStatus,
   getNowPlaying,
   getCoverArtUrl,
+  getDiscCoverArtUrl,
   getAvatarUrl,
   streamUrl,
   getAlbumInfo,

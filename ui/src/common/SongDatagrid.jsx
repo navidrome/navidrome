@@ -1,4 +1,10 @@
-import React, { isValidElement, useMemo, useCallback, forwardRef } from 'react'
+import React, {
+  isValidElement,
+  useMemo,
+  useCallback,
+  useState,
+  forwardRef,
+} from 'react'
 import { useDispatch } from 'react-redux'
 import {
   Datagrid,
@@ -17,7 +23,10 @@ import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
+import Lightbox from 'react-image-lightbox'
+import 'react-image-lightbox/style.css'
 import { playTracks } from '../actions'
+import subsonic from '../subsonic'
 import { AlbumContextMenu } from '../common'
 import { DraggableTypes } from '../consts'
 import { formatFullDate } from '../utils'
@@ -28,10 +37,20 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     verticalAlign: 'middle',
+    display: 'flex',
+    alignItems: 'center',
   },
   discIcon: {
-    verticalAlign: 'text-top',
-    marginRight: '4px',
+    marginRight: '14px',
+  },
+  discCoverArt: {
+    width: '48px',
+    height: '48px',
+    marginRight: '14px',
+    objectFit: 'cover',
+    borderRadius: '4px',
+    flexShrink: 0,
+    cursor: 'pointer',
   },
   row: {
     cursor: 'pointer',
@@ -61,19 +80,45 @@ const useStyles = makeStyles({
 
 const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
+    const translate = useTranslate()
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
+    const [imageError, setImageError] = useState(false)
+    const [isLightboxOpen, setLightboxOpen] = useState(false)
     const handlePlaySubset = (discNumber) => () => {
       onClick(discNumber)
     }
 
-    let subtitle = []
-    if (record.discNumber > 0) {
-      subtitle.push(record.discNumber)
-    }
-    if (record.discSubtitle) {
-      subtitle.push(record.discSubtitle)
-    }
+    const coverArtUrl = subsonic.getDiscCoverArtUrl(
+      record.albumId,
+      record.discNumber,
+      record.updatedAt,
+      96,
+    )
+
+    const fullImageUrl = subsonic.getDiscCoverArtUrl(
+      record.albumId,
+      record.discNumber,
+      record.updatedAt,
+    )
+
+    const handleOpenLightbox = useCallback(
+      (e) => {
+        if (!imageError) {
+          e.stopPropagation()
+          setLightboxOpen(true)
+        }
+      },
+      [imageError],
+    )
+
+    const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
+
+    const subtitle = record.discSubtitle
+      ? record.discSubtitle
+      : translate('resources.song.fields.disc', {
+          discNumber: record.discNumber,
+        })
 
     return (
       <TableRow
@@ -84,9 +129,28 @@ const DiscSubtitleRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-            {subtitle.join(': ')}
+            {!imageError ? (
+              <img
+                src={coverArtUrl}
+                className={classes.discCoverArt}
+                alt=""
+                onClick={handleOpenLightbox}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+            )}
+            {subtitle}
           </Typography>
+          {isLightboxOpen && !imageError && (
+            <Lightbox
+              imagePadding={50}
+              animationDuration={200}
+              imageTitle={record.album + ' - ' + subtitle}
+              mainSrc={fullImageUrl}
+              onCloseRequest={handleCloseLightbox}
+            />
+          )}
         </TableCell>
         <TableCell>
           <AlbumContextMenu
