@@ -10,7 +10,10 @@ import (
 
 func BenchmarkTagExtraction(b *testing.B) {
 	// Ensure working directory is the project root (tests.Init not called with -run='^$')
-	_, file, _, _ := runtime.Caller(0)
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		b.Fatal("runtime.Caller failed")
+	}
 	appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), "..", ".."))
 
 	// Use existing test fixture with embedded artwork
