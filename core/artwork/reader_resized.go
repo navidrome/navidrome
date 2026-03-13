@@ -5,16 +5,18 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	"image/jpeg"
-	"image/png"
+	_ "image/png"
 	"io"
 	"sync"
 	"time"
 
-	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	xdraw "golang.org/x/image/draw"
 )
 
 var bufPool = sync.Pool{
@@ -86,7 +88,7 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 }
 
 func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error) {
-	original, format, err := image.Decode(reader)
+	original, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -103,28 +105,33 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 		return nil, originalSize, nil
 	}
 
-	var resized image.Image
-	if originalSize >= size {
-		resized = imaging.Fit(original, size, size, imaging.CatmullRom)
-	} else {
-		if bounds.Max.Y < bounds.Max.X {
-			resized = imaging.Resize(original, size, 0, imaging.CatmullRom)
-		} else {
-			resized = imaging.Resize(original, 0, size, imaging.CatmullRom)
-		}
-	}
+	// Calculate aspect-fit dimensions
+	srcW, srcH := bounds.Dx(), bounds.Dy()
+	scale := float64(size) / float64(max(srcW, srcH))
+	dstW := int(float64(srcW) * scale)
+	dstH := int(float64(srcH) * scale)
+
+	var dst *image.RGBA
+	var dstRect image.Rectangle
 	if square {
-		bg := image.NewRGBA(image.Rect(0, 0, size, size))
-		resized = imaging.OverlayCenter(bg, resized, 1)
+		// Square canvas with image centered (black padding)
+		dst = image.NewRGBA(image.Rect(0, 0, size, size))
+		draw.Draw(dst, dst.Bounds(), &image.Uniform{color.Black}, image.Point{}, draw.Src)
+		offsetX := (size - dstW) / 2
+		offsetY := (size - dstH) / 2
+		dstRect = image.Rect(offsetX, offsetY, offsetX+dstW, offsetY+dstH)
+	} else {
+		// Tight-fit canvas
+		dst = image.NewRGBA(image.Rect(0, 0, dstW, dstH))
+		dstRect = dst.Bounds()
 	}
+	xdraw.ApproxBiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	if format == "png" {
-		err = png.Encode(buf, resized)
-	} else {
-		err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
-	}
+	// Always encode resized artwork as JPEG — cover art doesn't need transparency,
+	// and JPEG encode is ~5x faster than PNG with much smaller output.
+	err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
 	encoded := make([]byte, buf.Len())
 	copy(encoded, buf.Bytes())

@@ -353,14 +353,14 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 		When("Square is false", func() {
-			It("returns a PNG if original image is a PNG", func() {
+			It("returns JPEG even if original image is a PNG", func() {
 				conf.Server.CoverArtPriority = "front.png"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(format).To(Equal("png"))
+				Expect(format).To(Equal("jpeg"))
 				Expect(img.Bounds().Size().X).To(Equal(15))
 				Expect(img.Bounds().Size().Y).To(Equal(15))
 			})
@@ -403,8 +403,8 @@ var _ = Describe("Artwork", func() {
 					Expect(img.Bounds().Size().X).To(Equal(size))
 					Expect(img.Bounds().Size().Y).To(Equal(size))
 				},
-				Entry("portrait png image", "png", "png", false, 200),
-				Entry("landscape png image", "png", "png", true, 200),
+				Entry("portrait png image", "png", "jpeg", false, 200),
+				Entry("landscape png image", "png", "jpeg", true, 200),
 				Entry("portrait jpg image", "jpg", "jpeg", false, 200),
 				Entry("landscape jpg image", "jpg", "jpeg", true, 200),
 			)
