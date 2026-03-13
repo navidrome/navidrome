@@ -43,6 +43,7 @@ type AudioProbeResult struct {
 type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
@@ -76,6 +77,23 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 		args = buildTemplateArgs(opts)
 	}
 	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{cmdPath, "-i", "pipe:0"}
+	if maxSize > 0 {
+		vf := fmt.Sprintf("scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease", maxSize, maxSize)
+		args = append(args, "-vf", vf)
+	}
+	args = append(args, "-loop", "0", "-c:v", "libwebp_anim",
+		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
+
+	return e.start(ctx, args, reader)
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -223,9 +241,12 @@ func (e *ffmpeg) Version() string {
 	return parts[2]
 }
 
-func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
+func (e *ffmpeg) start(ctx context.Context, args []string, input ...io.Reader) (io.ReadCloser, error) {
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
 	j := &ffCmd{args: args}
+	if len(input) > 0 {
+		j.input = input[0]
+	}
 	j.PipeReader, j.out = io.Pipe()
 	err := j.start(ctx)
 	if err != nil {
@@ -237,14 +258,18 @@ func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error
 
 type ffCmd struct {
 	*io.PipeReader
-	out  *io.PipeWriter
-	args []string
-	cmd  *exec.Cmd
+	out   *io.PipeWriter
+	args  []string
+	cmd   *exec.Cmd
+	input io.Reader // optional stdin source
 }
 
 func (j *ffCmd) start(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
+	if j.input != nil {
+		cmd.Stdin = j.input
+	}
 	if log.IsGreaterOrEqualTo(log.LevelTrace) {
 		cmd.Stderr = os.Stderr
 	} else {
