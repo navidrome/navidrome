@@ -1,14 +1,20 @@
 package artwork
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"go.senan.xyz/taglib"
 )
 
 func BenchmarkTagExtraction(b *testing.B) {
+	// Ensure working directory is the project root (tests.Init not called with -run='^$')
+	_, file, _, _ := runtime.Caller(0)
+	appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), "..", ".."))
+
 	// Use existing test fixture with embedded artwork
-	testFile := "tests/fixtures/artist/an-album/test.mp3"
+	testFile := filepath.Join(appPath, "tests/fixtures/artist/an-album/test.mp3")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
