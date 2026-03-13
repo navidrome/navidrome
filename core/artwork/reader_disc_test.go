@@ -124,4 +124,51 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(r).To(BeNil())
 		})
 	})
+
+	Describe("discArtworkReader", func() {
+		Describe("fromDiscArtPriority", func() {
+			var reader *discArtworkReader
+
+			BeforeEach(func() {
+				reader = &discArtworkReader{
+					discNumber:    2,
+					isMultiFolder: true,
+					discFolders:   map[string]bool{"/music/album/cd2": true},
+					imgFiles: []string{
+						"/music/album/cd1/disc.jpg",
+						"/music/album/cd2/disc.jpg",
+						"/music/album/cd2/disc2.jpg",
+					},
+					firstTrackPath: "/music/album/cd2/track1.flac",
+					rootFolder:     "/music",
+				}
+			})
+
+			It("returns source funcs for glob patterns", func() {
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*")
+				Expect(ff).To(HaveLen(1))
+			})
+
+			It("returns source funcs for embedded pattern", func() {
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "embedded")
+				Expect(ff).To(HaveLen(2)) // fromTag + fromFFmpegTag
+			})
+
+			It("handles multiple comma-separated patterns", func() {
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*, cd*.*, embedded")
+				Expect(ff).To(HaveLen(4)) // disc*.* + cd*.* + fromTag + fromFFmpegTag
+			})
+
+			It("ignores 'external' pattern silently", func() {
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "external")
+				Expect(ff).To(HaveLen(0))
+			})
+
+			It("returns no source funcs when imgFiles is empty and pattern is not embedded", func() {
+				reader.imgFiles = nil
+				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*")
+				Expect(ff).To(HaveLen(0))
+			})
+		})
+	})
 })
