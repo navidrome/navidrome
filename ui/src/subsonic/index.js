@@ -96,7 +96,9 @@ const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
     ...(updatedAt && { _: updatedAt }),
     ...(size && { size }),
   }
-  return baseUrl(url('getCoverArt', 'dc-' + albumId + ':' + discNumber, options))
+  return baseUrl(
+    url('getCoverArt', 'dc-' + albumId + ':' + discNumber, options),
+  )
 }
 
 const getArtistInfo = (id) => {
