@@ -104,16 +104,17 @@ func isAnimatedPNG(data []byte) bool {
 	}
 
 	// Scan chunks for "acTL" (animation control)
-	pos := 8
-	for pos+8 <= len(data) {
-		chunkLen := binary.BigEndian.Uint32(data[pos : pos+4])
+	pos := uint64(8)
+	dataLen := uint64(len(data))
+	for pos+8 <= dataLen {
+		chunkLen := uint64(binary.BigEndian.Uint32(data[pos : pos+4]))
 		chunkType := string(data[pos+4 : pos+8])
 
 		if chunkType == "acTL" {
 			return true
 		}
 		// Move to next chunk: 4 (length) + 4 (type) + chunkLen (data) + 4 (CRC)
-		pos += 12 + int(chunkLen)
+		pos += 12 + chunkLen
 	}
 	return false
 }

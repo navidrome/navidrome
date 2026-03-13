@@ -84,6 +84,11 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 		orig, _, err = a.a.Get(ctx, a.artID, 0, false)
 		return orig, "", err
 	}
+	// Preserve ReadCloser semantics if the resized reader already supports Close
+	// (e.g., ffmpeg pipe), otherwise wrap with NopCloser
+	if rc, ok := resized.(io.ReadCloser); ok {
+		return rc, fmt.Sprintf("%s@%d", a.artID, a.size), nil
+	}
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }
 
