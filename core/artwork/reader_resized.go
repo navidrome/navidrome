@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"image/color"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
@@ -115,9 +114,8 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 	var dst *image.NRGBA
 	var dstRect image.Rectangle
 	if square {
-		// Square canvas with image centered (transparent padding)
+		// Square canvas with image centered (transparent padding via zero-initialized NRGBA)
 		dst = image.NewNRGBA(image.Rect(0, 0, size, size))
-		draw.Draw(dst, dst.Bounds(), &image.Uniform{color.Transparent}, image.Point{}, draw.Src)
 		offsetX := (size - dstW) / 2
 		offsetY := (size - dstH) / 2
 		dstRect = image.Rect(offsetX, offsetY, offsetX+dstW, offsetY+dstH)
@@ -139,9 +137,13 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 	} else {
 		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
 	}
+	if err != nil {
+		bufPool.Put(buf)
+		return nil, originalSize, err
+	}
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
 	encoded := make([]byte, buf.Len())
 	copy(encoded, buf.Bytes())
 	bufPool.Put(buf)
-	return bytes.NewReader(encoded), originalSize, err
+	return bytes.NewReader(encoded), originalSize, nil
 }
