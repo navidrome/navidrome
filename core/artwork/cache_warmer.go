@@ -132,7 +132,7 @@ func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
 func (a *cacheWarmer) processBatch(ctx context.Context, batch []model.ArtworkID) {
 	log.Trace(ctx, "PreCaching a new batch of artwork", "batchSize", len(batch))
 	input := pl.FromSlice(ctx, batch)
-	errs := pl.Sink(ctx, 2, input, a.doCacheImage)
+	errs := pl.Sink(ctx, 4, input, a.doCacheImage)
 	for err := range errs {
 		log.Debug(ctx, "Error warming cache", err)
 	}
