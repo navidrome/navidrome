@@ -7,8 +7,11 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+
 	"os"
 	"path/filepath"
+
+	_ "github.com/gen2brain/webp"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -353,24 +356,24 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 		When("Square is false", func() {
-			It("returns JPEG even if original image is a PNG", func() {
+			It("returns WebP even if original image is a PNG", func() {
 				conf.Server.CoverArtPriority = "front.png"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(format).To(Equal("jpeg"))
+				Expect(format).To(Equal("webp"))
 				Expect(img.Bounds().Size().X).To(Equal(15))
 				Expect(img.Bounds().Size().Y).To(Equal(15))
 			})
-			It("returns a JPEG if original image is not a PNG", func() {
+			It("returns WebP if original image is not a PNG", func() {
 				conf.Server.CoverArtPriority = "cover.jpg"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
-				Expect(format).To(Equal("jpeg"))
+				Expect(format).To(Equal("webp"))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(img.Bounds().Size().X).To(Equal(200))
 				Expect(img.Bounds().Size().Y).To(Equal(200))
@@ -403,10 +406,10 @@ var _ = Describe("Artwork", func() {
 					Expect(img.Bounds().Size().X).To(Equal(size))
 					Expect(img.Bounds().Size().Y).To(Equal(size))
 				},
-				Entry("portrait png image", "png", "jpeg", false, 200),
-				Entry("landscape png image", "png", "jpeg", true, 200),
-				Entry("portrait jpg image", "jpg", "jpeg", false, 200),
-				Entry("landscape jpg image", "jpg", "jpeg", true, 200),
+				Entry("portrait png image", "png", "webp", false, 200),
+				Entry("landscape png image", "png", "webp", true, 200),
+				Entry("portrait jpg image", "jpg", "webp", false, 200),
+				Entry("landscape jpg image", "jpg", "webp", true, 200),
 			)
 		})
 		When("Requested size is larger than original", func() {

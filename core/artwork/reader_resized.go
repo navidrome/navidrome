@@ -7,12 +7,13 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/jpeg"
+	_ "image/jpeg"
 	_ "image/png"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/gen2brain/webp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -111,27 +112,27 @@ func resizeImage(reader io.Reader, size int, square bool) (io.Reader, int, error
 	dstW := int(float64(srcW) * scale)
 	dstH := int(float64(srcH) * scale)
 
-	var dst *image.RGBA
+	var dst *image.NRGBA
 	var dstRect image.Rectangle
 	if square {
-		// Square canvas with image centered (black padding)
-		dst = image.NewRGBA(image.Rect(0, 0, size, size))
-		draw.Draw(dst, dst.Bounds(), &image.Uniform{color.Black}, image.Point{}, draw.Src)
+		// Square canvas with image centered (transparent padding)
+		dst = image.NewNRGBA(image.Rect(0, 0, size, size))
+		draw.Draw(dst, dst.Bounds(), &image.Uniform{color.Transparent}, image.Point{}, draw.Src)
 		offsetX := (size - dstW) / 2
 		offsetY := (size - dstH) / 2
 		dstRect = image.Rect(offsetX, offsetY, offsetX+dstW, offsetY+dstH)
 	} else {
 		// Tight-fit canvas
-		dst = image.NewRGBA(image.Rect(0, 0, dstW, dstH))
+		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
 		dstRect = dst.Bounds()
 	}
 	xdraw.ApproxBiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	// Always encode resized artwork as JPEG — cover art doesn't need transparency,
-	// and JPEG encode is ~5x faster than PNG with much smaller output.
-	err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
+	// Encode resized artwork as WebP — supports alpha, ~74% smaller than JPEG at same quality,
+	// with only ~25% slower full-pipeline encode (cached, so only paid once per artwork+size).
+	err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverJpegQuality})
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
 	encoded := make([]byte, buf.Len())
 	copy(encoded, buf.Bytes())
