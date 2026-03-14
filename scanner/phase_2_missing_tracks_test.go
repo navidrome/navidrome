@@ -241,6 +241,39 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(movedTrack.Size).To(Equal(missingTrack.Size))
 		})
 
+		It("should not match the same target to multiple missing tracks (prevents duplicate paths)", func() {
+			// Simulate a scenario where two missing tracks from different locations have the same
+			// base filename and match the same newly imported track via IsEquivalent.
+			// Without deduplication, both missing tracks would be "moved" to the same target,
+			// creating two non-missing records with the same path.
+			missingTrack1 := model.MediaFile{ID: "1", PID: "A", Path: "old_dir1/song.mp3", Title: "title1", Size: 100}
+			missingTrack2 := model.MediaFile{ID: "2", PID: "A", Path: "old_dir2/song.mp3", Title: "title1", Size: 100}
+			matchedTrack := model.MediaFile{ID: "3", PID: "A", Path: "new_dir/song.mp3", Title: "title1", Size: 200}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack1)
+			_ = ds.MediaFile(ctx).Put(&missingTrack2)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			in := &missingTracks{
+				missing: []model.MediaFile{missingTrack1, missingTrack2},
+				matched: []model.MediaFile{matchedTrack},
+			}
+
+			_, err := phase.processMissingTracks(in)
+			Expect(err).ToNot(HaveOccurred())
+			// Only one of the missing tracks should be matched
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
+
+			// The matched track should have been consumed by the first missing track
+			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+
+			// The second missing track should remain unchanged
+			unmatchedTrack, _ := ds.MediaFile(ctx).Get("2")
+			Expect(unmatchedTrack.Path).To(Equal(missingTrack2.Path))
+		})
+
 		It("should return an error when there's an error moving the matched track", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
