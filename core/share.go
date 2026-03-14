@@ -7,11 +7,11 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -73,7 +73,7 @@ type shareRepositoryWrapper struct {
 
 func (r *shareRepositoryWrapper) newId() (string, error) {
 	for {
-		id, err := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
+		id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
 		if err != nil {
 			return "", err
 		}

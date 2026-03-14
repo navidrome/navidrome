@@ -39,7 +39,6 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v3 v3.0.13
 	github.com/maruel/natural v1.3.0
-	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5

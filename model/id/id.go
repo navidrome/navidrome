@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"strings"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/nanoid"
 )
 
 func NewRandom() string {
-	id, err := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 22)
+	id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 22)
 	if err != nil {
 		log.Error("Could not generate new ID", err)
 	}
