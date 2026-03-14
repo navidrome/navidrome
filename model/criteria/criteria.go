@@ -74,6 +74,18 @@ func (c Criteria) ChildPlaylistIds() []string {
 	return slices.Compact(ids)
 }
 
+func (c Criteria) ChildPlaylistPaths() []string {
+	if c.Expression == nil {
+		return nil
+	}
+
+	if parent := c.Expression.(interface{ ChildPlaylistPaths() (paths []string) }); parent != nil {
+		return parent.ChildPlaylistPaths()
+	}
+
+	return nil
+}
+
 func (c Criteria) MarshalJSON() ([]byte, error) {
 	aux := struct {
 		All          []Expression `json:"all,omitempty"`

@@ -91,24 +91,32 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
 func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
-	if len(childPlaylistIds) == 0 {
+	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
+	if len(childPlaylistIds) == 0 || len(childPlaylistPaths) == 0 {
 		return true
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
+	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Or{Eq{"playlist.id": childPlaylistIds}, Eq{"playlist.path": childPlaylistPaths}}})
 	if err != nil {
 		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
 		return false
 	}
 
-	found := make(map[string]struct{}, len(childPlaylists))
+	found := make(map[string]struct{}, len(childPlaylists)*2)
 	for i := range childPlaylists {
 		found[childPlaylists[i].ID] = struct{}{}
+		found[childPlaylists[i].Path] = struct{}{}
 		r.refreshSmartPlaylist(&childPlaylists[i])
 	}
 	for _, id := range childPlaylistIds {
 		if _, ok := found[id]; !ok {
 			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
+		}
+	}
+
+	for _, path := range childPlaylistPaths {
+		if _, ok := found[path]; !ok {
+			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
 		}
 	}
 	return true
