@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/maruel/natural"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/natural"
 )
 
 type albumArtworkReader struct {
