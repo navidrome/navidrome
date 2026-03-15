@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -410,6 +412,54 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(string(data)).To(Equal("single album artist image"))
 				reader.Close()
+			})
+		})
+	})
+
+	Describe("fromArtistUploadedImage", func() {
+		var (
+			tempDir string
+			reader  *artistReader
+		)
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tempDir = GinkgoT().TempDir()
+			conf.Server.DataFolder = tempDir
+
+			// Create the artwork/artist directory
+			Expect(os.MkdirAll(filepath.Join(tempDir, "artwork", "artist"), 0755)).To(Succeed())
+
+			reader = &artistReader{}
+		})
+
+		When("artist has an uploaded image", func() {
+			It("returns the uploaded image", func() {
+				imgPath := filepath.Join(tempDir, "artwork", "artist", "ar-1_test.jpg")
+				Expect(os.WriteFile(imgPath, []byte("uploaded artist image"), 0600)).To(Succeed())
+
+				reader.artist = model.Artist{ID: "ar-1", UploadedImage: "ar-1_test.jpg"}
+				sf := reader.fromArtistUploadedImage()
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("uploaded artist image"))
+				r.Close()
+			})
+		})
+
+		When("artist has no uploaded image", func() {
+			It("returns nil reader (falls through)", func() {
+				reader.artist = model.Artist{ID: "ar-1"}
+				sf := reader.fromArtistUploadedImage()
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
 			})
 		})
 	})

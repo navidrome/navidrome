@@ -93,8 +93,13 @@ func (a *artistReader) LastUpdated() time.Time {
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)
+	ff := []sourceFunc{a.fromArtistUploadedImage()}
+	ff = append(ff, a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)...)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *artistReader) fromArtistUploadedImage() sourceFunc {
+	return fromLocalFile(a.artist.UploadedImagePath())
 }
 
 func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
