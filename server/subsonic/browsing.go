@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/unicode/norm"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
@@ -183,7 +185,7 @@ func (api *Router) getFolderIndex(ctx context.Context, musicFolderIds []int, ifM
 	var indexOrder []string
 	for _, f := range allFolders {
 		letter := "#"
-		if runes := []rune(f.Name); len(runes) > 0 {
+		if runes := []rune(norm.NFKD.String(f.Name)); len(runes) > 0 {
 			up := strings.ToUpper(string(runes[0]))
 			if up >= "A" && up <= "Z" {
 				letter = up
