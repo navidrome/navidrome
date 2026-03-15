@@ -37,7 +37,8 @@
         "sampleRate": "Samplingfrekvens",
         "missing": "Manglende",
         "libraryName": "Bibliotek",
-        "composer": "Komponist"
+        "composer": "Komponist",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Afspil senere",
@@ -218,13 +219,19 @@
         "saveQueue": "Gem kø på afspilningsliste",
         "searchOrCreate": "Søg i afspilningslister eller skriv for at oprette nye...",
         "pressEnterToCreate": "Tryk Enter for at oprette en ny afspilningsliste",
-        "removeFromSelection": "Fjern fra valg"
+        "removeFromSelection": "Fjern fra valg",
+        "uploadCover": "",
+        "removeCover": ""
       },
       "message": {
         "duplicate_song": "Tilføj dubletter af sange",
         "song_exist": "Der føjes dubletter til playlisten",
         "noPlaylistsFound": "Ingen playlister fundet",
-        "noPlaylists": "Ingen tilgængelige playlister"
+        "noPlaylists": "Ingen tilgængelige playlister",
+        "coverUploaded": "",
+        "coverRemoved": "",
+        "coverUploadError": "",
+        "coverRemoveError": ""
       }
     },
     "radio": {
@@ -353,7 +360,8 @@
         "allUsers": "Tillad alle brugere",
         "selectedUsers": "Valgte brugere",
         "allLibraries": "Tillad alle biblioteker",
-        "selectedLibraries": "Valgte biblioteker"
+        "selectedLibraries": "Valgte biblioteker",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Status",
@@ -398,7 +406,8 @@
         "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
         "requiredHosts": "Påkrævede hosts",
         "configValidationError": "Konfigurationsvalidering mislykkedes:",
-        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt."
+        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "nøgle",
@@ -675,7 +684,7 @@
       "exportFailed": "Kunne ikke kopiere konfigurationen",
       "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
       "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver",
-      "downloadToml": ""
+      "downloadToml": "Download konfigurationen (TOML)"
     }
   },
   "activity": {

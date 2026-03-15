@@ -37,7 +37,8 @@
         "sampleRate": "Samplingsfrekvens",
         "missing": "Saknade",
         "libraryName": "Bibliotek",
-        "composer": "Kompositör"
+        "composer": "Kompositör",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Lägg till i kön",
@@ -218,13 +219,19 @@
         "saveQueue": "Spara kö till spellista",
         "searchOrCreate": "Sök spellista eller skapa ny...",
         "pressEnterToCreate": "Tryck Enter för att skapa ny spellista",
-        "removeFromSelection": "Ta bort från urval"
+        "removeFromSelection": "Ta bort från urval",
+        "uploadCover": "",
+        "removeCover": ""
       },
       "message": {
         "duplicate_song": "Lägg till dubletter",
         "song_exist": "Vissa låtar finns redan i spellistan. Vill du lägga till dubbletterna eller hoppa över dem?",
         "noPlaylistsFound": "Hittade inga spellistor",
-        "noPlaylists": "Inga spellistor tillgängliga"
+        "noPlaylists": "Inga spellistor tillgängliga",
+        "coverUploaded": "",
+        "coverRemoved": "",
+        "coverUploadError": "",
+        "coverRemoveError": ""
       }
     },
     "radio": {
@@ -353,7 +360,8 @@
         "allUsers": "Tillåt alla användare",
         "selectedUsers": "Valda användare",
         "allLibraries": "Tillåt alla bibliotek",
-        "selectedLibraries": "Valda bibliotek"
+        "selectedLibraries": "Valda bibliotek",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Status",
@@ -398,7 +406,8 @@
         "librariesRequired": "Detta tillägg kräver tillgång till biblioteksinformation. Välj vilka bibliotek tillägget kan komma åt eller aktivera 'Tillåt alla bibliotek'.",
         "requiredHosts": "Krävda värdar",
         "configValidationError": "Validering av konfigurationen misslyckades:",
-        "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt."
+        "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "nyckel",
@@ -674,7 +683,8 @@
       "exportSuccess": "Inställningarna kopierade till urklippet i TOML-format",
       "exportFailed": "Kopiering av inställningarna misslyckades",
       "devFlagsHeader": "Utvecklingsflaggor (kan ändras eller tas bort)",
-      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner"
+      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner",
+      "downloadToml": "Ladda ner konfiguration (TOML)"
     }
   },
   "activity": {
