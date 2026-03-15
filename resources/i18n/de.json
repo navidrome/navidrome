@@ -255,6 +255,13 @@
         "updatedAt": "Geändert am",
         "createdAt": "Erstellt am",
         "downloadable": "Downloads erlauben?"
+      },
+      "actions": {
+        "download": {
+          "title": "Herunterladen",
+          "currentTrack": "Aktueller Titel",
+          "allTracks": "Alle Titel"
+        }
       }
     },
     "missing": {

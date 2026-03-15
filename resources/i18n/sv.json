@@ -255,6 +255,13 @@
         "updatedAt": "Uppdaterad",
         "createdAt": "Skapad",
         "downloadable": "Tillåt nedladdning?"
+      },
+      "actions": {
+        "download": {
+          "title": "Ladda ner",
+          "currentTrack": "Nuvarande spår",
+          "allTracks": "Alla spår"
+        }
       }
     },
     "missing": {

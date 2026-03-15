@@ -255,6 +255,13 @@
         "updatedAt": "Diperbarui pada",
         "createdAt": "Dibuat pada",
         "downloadable": "Izinkan Pengunduhan?"
+      },
+      "actions": {
+        "download": {
+          "title": "Unduh",
+          "currentTrack": "Trek saat ini",
+          "allTracks": "Semua trek"
+        }
       }
     },
     "missing": {

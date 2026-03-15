@@ -158,6 +158,9 @@ func addShareData(r *http.Request, data map[string]any, shareInfo *model.Share) 
 		Description:  shareInfo.Description,
 		Downloadable: shareInfo.Downloadable,
 	}
+	if sd.Description == "" {
+		sd.Description = shareInfo.Contents
+	}
 	sd.Tracks = slice.Map(shareInfo.Tracks, func(mf model.MediaFile) shareTrack {
 		return shareTrack{
 			ID:        mf.ID,

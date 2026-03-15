@@ -255,6 +255,13 @@
         "updatedAt": "Актуализирана на",
         "createdAt": "Създадена на",
         "downloadable": "Разреши изтегляния?"
+      },
+      "actions": {
+        "download": {
+          "title": "Изтегляне",
+          "currentTrack": "Текуща песен",
+          "allTracks": "Всички песни"
+        }
       }
     },
     "missing": {

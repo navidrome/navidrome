@@ -196,6 +196,13 @@
                 "updatedAt": "",
                 "createdAt": "",
                 "downloadable": ""
+            },
+            "actions": {
+                "download": {
+                    "title": "دانلود",
+                    "currentTrack": "آهنگ فعلی",
+                    "allTracks": "همه آهنگ‌ها"
+                }
             }
         }
     },

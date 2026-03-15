@@ -1,7 +1,7 @@
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
-import { Admin as RAAdmin, Resource } from 'react-admin'
+import { Admin as RAAdmin, Resource, TranslationProvider } from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
@@ -168,7 +168,13 @@ const AppWithHotkeys = () => {
   let language = localStorage.getItem('locale') || 'en'
   document.documentElement.lang = language
   if (config.enableSharing && shareInfo) {
-    return <SharePlayer />
+    return (
+      <Provider store={adminStore}>
+        <TranslationProvider i18nProvider={i18nProvider}>
+          <SharePlayer />
+        </TranslationProvider>
+      </Provider>
+    )
   }
   return (
     <HotKeys keyMap={keyMap}>

@@ -255,6 +255,13 @@
         "updatedAt": "Zaktualizowano",
         "createdAt": "Stworzono",
         "downloadable": "Zezwolić Na Pobieranie?"
+      },
+      "actions": {
+        "download": {
+          "title": "Pobierz",
+          "currentTrack": "Bieżący utwór",
+          "allTracks": "Wszystkie utwory"
+        }
       }
     },
     "missing": {

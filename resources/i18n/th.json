@@ -255,6 +255,13 @@
         "updatedAt": "อัปเดตเมื่อ",
         "createdAt": "สร้างเมื่อ",
         "downloadable": "อนุญาตให้ดาวโหลด?"
+      },
+      "actions": {
+        "download": {
+          "title": "ดาวน์โหลด",
+          "currentTrack": "แทร็กปัจจุบัน",
+          "allTracks": "แทร็กทั้งหมด"
+        }
       }
     },
     "missing": {

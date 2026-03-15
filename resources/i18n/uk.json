@@ -253,6 +253,13 @@
         "updatedAt": "Оновлено",
         "createdAt": "Створено",
         "downloadable": "Дозволити завантаження?"
+      },
+      "actions": {
+        "download": {
+          "title": "Завантажити",
+          "currentTrack": "Поточний трек",
+          "allTracks": "Усі треки"
+        }
       }
     },
     "missing": {

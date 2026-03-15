@@ -255,6 +255,13 @@
         "updatedAt": "Päivitetty",
         "createdAt": "Luotu",
         "downloadable": "Salli lataus?"
+      },
+      "actions": {
+        "download": {
+          "title": "Lataa",
+          "currentTrack": "Nykyinen kappale",
+          "allTracks": "Kaikki kappaleet"
+        }
       }
     },
     "missing": {

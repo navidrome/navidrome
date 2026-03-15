@@ -298,6 +298,13 @@ var _ = Describe("addShareData", func() {
 				addShareData(r, data, shareInfo)
 				Expect(data["ShareDescription"]).To(Equal(shareInfo.Contents))
 			})
+			It("should use shareInfo.Contents as ShareInfo.Description", func() {
+				addShareData(r, data, shareInfo)
+				var sd shareData
+				err := json.Unmarshal([]byte(data["ShareInfo"].(string)), &sd)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sd.Description).To(Equal(shareInfo.Contents))
+			})
 		})
 	})
 })

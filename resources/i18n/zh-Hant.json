@@ -257,7 +257,13 @@
         "createdAt": "建立於"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "下載",
+          "currentTrack": "目前曲目",
+          "allTracks": "所有曲目"
+        }
+      }
     },
     "missing": {
       "name": "遺失檔案 |||| 遺失檔案",
