@@ -149,9 +149,19 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
+// TODO: Ownership checks should be moved to the service layer (core/share.go)
 func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	// TODO Validate record
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && usr.ID != invalidUserId {
+		existing, err := r.Get(id)
+		if err != nil {
+			return err
+		}
+		if existing.UserID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
 	cols = append(cols, "updated_at")
