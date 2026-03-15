@@ -90,6 +90,13 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
+func SongsByFolder(folderID string) Options {
+	return addDefaultFilters(Options{
+		Filters: Eq{"folder_id": folderID},
+		Sort:    "path",
+	})
+}
+
 func SongsByRandom(genre string, fromYear, toYear int) Options {
 	options := Options{
 		Sort: "random",
