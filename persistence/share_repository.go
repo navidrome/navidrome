@@ -30,7 +30,18 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	return r
 }
 
+// TODO: Ownership checks should be moved to the service layer (core/share.go)
 func (r *shareRepository) Delete(id string) error {
+	usr := loggedUser(r.ctx)
+	if !usr.IsAdmin && usr.ID != invalidUserId {
+		share, err := r.Get(id)
+		if err != nil {
+			return err
+		}
+		if share.UserID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+	}
 	err := r.delete(Eq{"id": id})
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
