@@ -50,7 +50,9 @@ const useStyles = makeStyles(
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'), {
+    noSsr: true,
+  })
   const [artistInfo, setArtistInfo] = useState()
 
   const biography = artistInfo?.biography || record.biography
