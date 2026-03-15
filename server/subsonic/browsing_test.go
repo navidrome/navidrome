@@ -190,51 +190,77 @@ var _ = Describe("Browsing", func() {
 	})
 
 	Describe("GetIndexes", func() {
-		It("should validate user access to the specified musicFolderId", func() {
-			// Create mock user with access to library 1 only
+		var lib1 model.Library
+
+		BeforeEach(func() {
+			lib1 = model.Library{ID: 1, Name: "Test Library 1", Path: "/music/library1"}
+		})
+
+		It("should return error when musicFolderId is not accessible", func() {
 			ctx = contextWithUser(ctx, "user-id", 1)
 
-			// Create request with musicFolderId=2 (not accessible)
 			r := httptest.NewRequest("GET", "/rest/getIndexes?musicFolderId=2", nil)
 			r = r.WithContext(ctx)
 
-			// Call endpoint
 			response, err := api.GetIndexes(r)
-
-			// Should return error due to lack of access
 			Expect(err).To(HaveOccurred())
 			Expect(response).To(BeNil())
 		})
 
-		It("should default to first accessible library when no musicFolderId specified", func() {
-			// Create mock user with access to libraries 2 and 3
-			ctx = contextWithUser(ctx, "user-id", 2, 3)
+		It("returns an empty index when the library has no top-level folders", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			// Folder repo returns nothing — no top-level folders
 
-			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{
-				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
-				{ID: 3, Name: "Test Library 3", Path: "/music/library3"},
-			})
-
-			// Setup mock artist data
-			mockArtistRepo := ds.Artist(ctx).(*tests.MockArtistRepo)
-			mockArtistRepo.SetData(model.Artists{
-				{ID: "1", Name: "Test Artist 1"},
-				{ID: "2", Name: "Test Artist 2"},
-			})
-
-			// Create request without musicFolderId
 			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
 			r = r.WithContext(ctx)
 
-			// Call endpoint
 			response, err := api.GetIndexes(r)
-
-			// Should succeed and use first accessible library (2)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(response).ToNot(BeNil())
 			Expect(response.Indexes).ToNot(BeNil())
+			Expect(response.Indexes.Index).To(BeEmpty())
+		})
+
+		It("returns top-level folders grouped by first letter", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			rootID := model.FolderID(lib1, ".")
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{
+				{ID: "f-jazz", ParentID: rootID, Name: "Jazz"},
+				{ID: "f-rock", ParentID: rootID, Name: "Rock"},
+				{ID: "f-blues", ParentID: rootID, Name: "Blues"},
+			})
+
+			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetIndexes(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Indexes.Index).To(HaveLen(3)) // B, J, R
+			// Find the "J" index
+			Expect(response.Indexes.Index).To(ContainElement(
+				And(
+					HaveField("Name", "J"),
+					HaveField("Artists", ContainElement(
+						And(HaveField("Id", "f-jazz"), HaveField("Name", "Jazz")),
+					)),
+				),
+			))
+		})
+
+		It("groups non-alpha folder names under '#'", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			rootID := model.FolderID(lib1, ".")
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{
+				{ID: "f-90s", ParentID: rootID, Name: "90s Hip-Hop"},
+			})
+
+			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetIndexes(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Indexes.Index).To(HaveLen(1))
+			Expect(response.Indexes.Index[0].Name).To(Equal("#"))
+			Expect(response.Indexes.Index[0].Artists[0].Id).To(Equal("f-90s"))
 		})
 	})
 
