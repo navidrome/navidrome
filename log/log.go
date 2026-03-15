@@ -145,6 +145,15 @@ func SetOutput(w io.Writer) {
 	defaultLogger.SetOutput(w)
 }
 
+// EnableJournalFormat wraps the current logger formatter with syslog
+// priority prefixes for systemd-journald. Only call this when output
+// goes to stderr and JOURNAL_STREAM is set.
+func EnableJournalFormat() {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
+	defaultLogger.Formatter = &journalFormatter{inner: defaultLogger.Formatter}
+}
+
 // Redact applies redaction to a single string
 func Redact(msg string) string {
 	r, _ := redacted.redact(msg)
