@@ -199,7 +199,6 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.EnableSharing = conf.Server.EnableSharing
 	data.Config.EnableStarRating = conf.Server.EnableStarRating
 	data.Config.EnableLastFM = conf.Server.LastFM.Enabled && conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != ""
-	data.Config.EnableSpotify = conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != ""
 	data.Config.EnableListenBrainz = conf.Server.ListenBrainz.Enabled
 	data.Config.EnableDeezer = conf.Server.Deezer.Enabled
 	data.Config.EnableMediaFileCoverArt = conf.Server.EnableMediaFileCoverArt

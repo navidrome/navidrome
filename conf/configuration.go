@@ -105,7 +105,6 @@ type configOptions struct {
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
-	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
 	EnableScrobbleHistory           bool
@@ -185,11 +184,6 @@ type lastfmOptions struct {
 
 	// Computed values
 	Languages []string // Computed from Language, split by comma
-}
-
-type spotifyOptions struct {
-	ID     string
-	Secret string //nolint:gosec
 }
 
 type deezerOptions struct {
@@ -411,6 +405,7 @@ func Load(noConfigDump bool) {
 	// Parse Deezer.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
 	Server.Deezer.Languages = parseLanguages(Server.Deezer.Language)
 
+	// Deprecated options
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
 	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
@@ -419,6 +414,9 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+
+	// Removed options
+	logRemovedOptions("Spotify.ID", "Spotify.Secret")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -441,6 +439,23 @@ func logDeprecatedOptions(oldName, newName string) {
 	}
 	if viper.InConfig(oldName) {
 		logWarning(oldName, newName)
+	}
+}
+
+// logRemovedOptions checks if the option is set, and if yes, outputs a warning message saying the option is
+// not available anymore
+func logRemovedOptions(options ...string) {
+	for _, option := range options {
+		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		logWarning := func(option string) {
+			log.Warn(fmt.Sprintf("Option '%s' is not available anymore and will be ignored. Please remove it from your config", option))
+		}
+		if viper.InConfig(option) {
+			logWarning(option)
+		}
+		if os.Getenv(envVar) != "" {
+			logWarning(envVar)
+		}
 	}
 }
 
@@ -482,7 +497,6 @@ func disableExternalServices() {
 	Server.EnableInsightsCollector = false
 	Server.EnableM3UExternalAlbumArt = false
 	Server.LastFM.Enabled = false
-	Server.Spotify.ID = ""
 	Server.Deezer.Enabled = false
 	Server.ListenBrainz.Enabled = false
 	Server.Agents = ""
@@ -712,14 +726,12 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.enableaveragerating", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
-	viper.SetDefault("agents", "deezer,lastfm,spotify")
+	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
-	viper.SetDefault("spotify.id", "")
-	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
