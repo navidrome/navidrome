@@ -346,6 +346,10 @@ func Load(noConfigDump bool) {
 			os.Exit(1)
 		}
 		log.SetOutput(out)
+	} else if os.Getenv("JOURNAL_STREAM") != "" {
+		// When running under systemd, prepend syslog priority prefixes so
+		// journald assigns the correct severity to each log line.
+		log.EnableJournalFormat()
 	}
 
 	log.SetLevelString(Server.LogLevel)
