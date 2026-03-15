@@ -309,6 +309,14 @@ var _ = Describe("helpers", func() {
 				Expect(child.Artist).To(Equal("Test Artist"))
 			})
 		})
+
+		Context("when MediaFile has an empty title", func() {
+			It("still includes the title field in the response", func() {
+				mf.Title = ""
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Title).To(Equal(""))
+			})
+		})
 	})
 
 	Describe("osChildFromMediaFile", func() {

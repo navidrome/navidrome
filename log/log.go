@@ -27,7 +27,6 @@ var redacted = &Hook{
 		// Keys from the config
 		"(ApiKey:\")[\\w]*",
 		"(Secret:\")[\\w]*",
-		"(Spotify.*ID:\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
 		"(UserHeader:[\\s]*\")[^\"]*",
 		"(TrustedSources:[\\s]*\")[^\"]*",
@@ -144,6 +143,15 @@ func SetOutput(w io.Writer) {
 	loggerMu.Lock()
 	defer loggerMu.Unlock()
 	defaultLogger.SetOutput(w)
+}
+
+// EnableJournalFormat wraps the current logger formatter with syslog
+// priority prefixes for systemd-journald. Only call this when output
+// goes to stderr and JOURNAL_STREAM is set.
+func EnableJournalFormat() {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
+	defaultLogger.Formatter = &journalFormatter{inner: defaultLogger.Formatter}
 }
 
 // Redact applies redaction to a single string

@@ -12,7 +12,7 @@ import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { canChangeTracks } from '../common'
+import { canChangeTracks, OverflowTooltip } from '../common'
 import { DraggableTypes } from '../consts'
 import config from '../config'
 
@@ -39,9 +39,11 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
     <MenuItemLink
       to={`/playlist/${pls.id}/show`}
       primaryText={
-        <Typography variant="inherit" noWrap ref={dropRef}>
-          {pls.name}
-        </Typography>
+        <OverflowTooltip title={pls.name} placement="right">
+          <Typography variant="inherit" noWrap ref={dropRef}>
+            {pls.name}
+          </Typography>
+        </OverflowTooltip>
       }
       sidebarIsOpen={sidebarIsOpen}
       dense={false}
