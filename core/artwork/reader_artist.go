@@ -109,6 +109,8 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		switch {
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
+		case pattern == "image-folder":
+			ff = append(ff, fromArtistImageFolder(ctx, a.artist))
 		case strings.HasPrefix(pattern, "album/"):
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
@@ -200,4 +202,53 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		return "", time.Time{}, err
 	}
 	return folderPath, folders[0].ImagesUpdatedAt, nil
+}
+
+func fromArtistImageFolder(ctx context.Context, artist model.Artist) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		folder := conf.Server.ArtistImageFolder
+		if folder == "" {
+			return nil, "", nil
+		}
+		entries, err := os.ReadDir(folder)
+		if err != nil {
+			log.Warn(ctx, "Could not read artist image folder", "folder", folder, err)
+			return nil, "", nil
+		}
+		// Try MBID match first
+		if artist.MbzArtistID != "" {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				name := entry.Name()
+				base := strings.TrimSuffix(name, filepath.Ext(name))
+				if strings.EqualFold(base, artist.MbzArtistID) && model.IsImageFile(name) {
+					path := filepath.Join(folder, name)
+					f, err := os.Open(path)
+					if err != nil {
+						continue
+					}
+					return f, path, nil
+				}
+			}
+		}
+		// Fall back to artist name match
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			base := strings.TrimSuffix(name, filepath.Ext(name))
+			if strings.EqualFold(base, artist.Name) && model.IsImageFile(name) {
+				path := filepath.Join(folder, name)
+				f, err := os.Open(path)
+				if err != nil {
+					continue
+				}
+				return f, path, nil
+			}
+		}
+		return nil, "", fmt.Errorf("no image found for artist %q in %s", artist.Name, folder)
+	}
 }
