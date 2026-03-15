@@ -60,6 +60,89 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	Describe("buildFolderDirectory", func() {
+		var folder model.Folder
+
+		BeforeEach(func() {
+			folder = model.Folder{
+				ID:       "folder-1",
+				ParentID: "root-1",
+				Name:     "Jazz",
+			}
+		})
+
+		It("returns a directory with correct id, name and parent", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.Id).To(Equal("folder-1"))
+			Expect(dir.Name).To(Equal("Jazz"))
+			Expect(dir.Parent).To(Equal("root-1"))
+		})
+
+		It("includes child folders as directory entries with IsDir=true", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			childFolder := model.Folder{ID: "folder-2", ParentID: "folder-1", Name: "Blues"}
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{childFolder})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.Child).To(HaveLen(1))
+			Expect(dir.Child[0].Id).To(Equal("folder-2"))
+			Expect(dir.Child[0].IsDir).To(BeTrue())
+		})
+
+		It("includes media files as directory entries with IsDir=false", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{})
+			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf-1", Title: "Track 1", FolderID: "folder-1"},
+			})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.Child).To(HaveLen(1))
+			Expect(dir.Child[0].Id).To(Equal("mf-1"))
+			Expect(dir.Child[0].IsDir).To(BeFalse())
+		})
+
+		It("lists child folders before media files", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			childFolder := model.Folder{ID: "folder-2", ParentID: "folder-1", Name: "Sub"}
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{childFolder})
+			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf-1", Title: "Track 1", FolderID: "folder-1"},
+			})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.Child).To(HaveLen(2))
+			Expect(dir.Child[0].IsDir).To(BeTrue())
+			Expect(dir.Child[1].IsDir).To(BeFalse())
+		})
+
+		It("sets cover art when folder has image files", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			folder.ImageFiles = []string{"cover.jpg"}
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.CoverArt).ToNot(BeEmpty())
+		})
+
+		It("returns empty cover art when folder has no image files", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{})
+
+			dir, err := api.buildFolderDirectory(ctx, &folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(dir.CoverArt).To(BeEmpty())
+		})
+	})
+
 	Describe("GetIndexes", func() {
 		It("should validate user access to the specified musicFolderId", func() {
 			// Create mock user with access to library 1 only

@@ -400,6 +400,31 @@ func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 	return response, nil
 }
 
+func (api *Router) buildFolderDirectory(ctx context.Context, folder *model.Folder) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = folder.ID
+	dir.Name = folder.Name
+	dir.Parent = folder.ParentID
+	dir.CoverArt = folder.CoverArtID().String()
+
+	childFolders, err := api.ds.Folder(ctx).GetAll(filter.FoldersByParent(folder.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByFolder(folder.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	dir.Child = make([]responses.Child, 0, len(childFolders)+len(mfs))
+	for _, f := range childFolders {
+		dir.Child = append(dir.Child, childFromFolder(ctx, f))
+	}
+	dir.Child = append(dir.Child, slice.MapWithArg(mfs, ctx, childFromMediaFile)...)
+	return dir, nil
+}
+
 func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artist) (*responses.Directory, error) {
 	dir := &responses.Directory{}
 	dir.Id = artist.ID
