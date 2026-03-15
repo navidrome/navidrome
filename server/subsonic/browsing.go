@@ -144,13 +144,19 @@ func (api *Router) getFolderIndex(ctx context.Context, musicFolderIds []int, ifM
 		return res, nil
 	}
 
-	// Filter accessible libraries down to the requested ones
+	// Fetch all libraries from the database; user.Libraries in context may be
+	// empty for admin users (not in user_library table), so we can't rely on it.
+	allLibraries, err := api.ds.Library(ctx).GetAll()
+	if err != nil {
+		log.Error(ctx, "Error retrieving libraries for folder index", err)
+		return nil, err
+	}
 	libIdSet := make(map[int]bool, len(musicFolderIds))
 	for _, id := range musicFolderIds {
 		libIdSet[id] = true
 	}
 	var libraries []model.Library
-	for _, lib := range getUserAccessibleLibraries(ctx) {
+	for _, lib := range allLibraries {
 		if len(libIdSet) == 0 || libIdSet[lib.ID] {
 			libraries = append(libraries, lib)
 		}

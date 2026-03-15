@@ -195,6 +195,7 @@ var _ = Describe("Browsing", func() {
 
 		BeforeEach(func() {
 			lib1 = model.Library{ID: 1, Name: "Test Library 1", Path: "/music/library1"}
+			ds.Library(ctx).(*tests.MockLibraryRepo).SetData(model.Libraries{lib1})
 		})
 
 		It("should return error when musicFolderId is not accessible", func() {
