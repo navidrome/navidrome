@@ -387,6 +387,15 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 	includeNotPresent := p.BoolOr("includeNotPresent", false)
 
 	artist, err := api.provider.UpdateArtistInfo(ctx, id, count, includeNotPresent)
+	if errors.Is(err, model.ErrNotFound) {
+		// The ID may be a folder ID (e.g. from a folder-browsing client like DSub
+		// that calls getArtistInfo on any directory ID). Return empty info rather
+		// than an error so the client degrades gracefully.
+		if _, folderErr := api.ds.Folder(ctx).Get(id); folderErr == nil {
+			empty := model.Artists{}
+			return &responses.ArtistInfoBase{}, &empty, nil
+		}
+	}
 	if err != nil {
 		return nil, nil, err
 	}
