@@ -477,6 +477,54 @@ var _ = Describe("helpers", func() {
 		})
 	})
 
+	Describe("childFromFolder", func() {
+		var folder model.Folder
+		var ctx context.Context
+
+		BeforeEach(func() {
+			folder = model.Folder{
+				ID:            "folder-1",
+				ParentID:      "parent-1",
+				Name:          "Jazz",
+				NumAudioFiles: 12,
+			}
+			ctx = context.Background()
+		})
+
+		It("sets Id from folder ID", func() {
+			child := childFromFolder(ctx, folder)
+			Expect(child.Id).To(Equal("folder-1"))
+		})
+
+		It("sets Parent from folder ParentID", func() {
+			child := childFromFolder(ctx, folder)
+			Expect(child.Parent).To(Equal("parent-1"))
+		})
+
+		It("marks the child as a directory", func() {
+			child := childFromFolder(ctx, folder)
+			Expect(child.IsDir).To(BeTrue())
+		})
+
+		It("sets Title and Name from folder Name", func() {
+			child := childFromFolder(ctx, folder)
+			Expect(child.Title).To(Equal("Jazz"))
+			Expect(child.Name).To(Equal("Jazz"))
+		})
+
+		It("leaves CoverArt empty (populated in task 1.3)", func() {
+			child := childFromFolder(ctx, folder)
+			Expect(child.CoverArt).To(BeEmpty())
+		})
+
+		It("works for a root folder with no parent", func() {
+			folder.ParentID = ""
+			child := childFromFolder(ctx, folder)
+			Expect(child.Parent).To(BeEmpty())
+			Expect(child.IsDir).To(BeTrue())
+		})
+	})
+
 	Describe("AverageRating in responses", func() {
 		var ctx context.Context
 

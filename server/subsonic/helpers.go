@@ -317,6 +317,16 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
+func childFromFolder(_ context.Context, folder model.Folder) responses.Child {
+	child := responses.Child{}
+	child.Id = folder.ID
+	child.Parent = folder.ParentID
+	child.IsDir = true
+	child.Title = folder.Name
+	child.Name = folder.Name
+	return child
+}
+
 func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
