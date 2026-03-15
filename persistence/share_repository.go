@@ -31,16 +31,28 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 }
 
 // TODO: Ownership checks should be moved to the service layer (core/share.go)
-func (r *shareRepository) Delete(id string) error {
+func (r *shareRepository) checkOwnership(id string) error {
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && usr.ID != invalidUserId {
-		share, err := r.Get(id)
-		if err != nil {
-			return err
-		}
-		if share.UserID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
+	if usr.IsAdmin || usr.ID == invalidUserId {
+		return nil
+	}
+	sel := r.newSelect().Columns("user_id").Where(Eq{"id": id})
+	var share struct {
+		UserID string `db:"user_id"`
+	}
+	err := r.queryOne(sel, &share)
+	if err != nil {
+		return err
+	}
+	if share.UserID != usr.ID {
+		return rest.ErrPermissionDenied
+	}
+	return nil
+}
+
+func (r *shareRepository) Delete(id string) error {
+	if err := r.checkOwnership(id); err != nil {
+		return err
 	}
 	err := r.delete(Eq{"id": id})
 	if errors.Is(err, model.ErrNotFound) {
@@ -149,18 +161,10 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
-// TODO: Ownership checks should be moved to the service layer (core/share.go)
 func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && usr.ID != invalidUserId {
-		existing, err := r.Get(id)
-		if err != nil {
-			return err
-		}
-		if existing.UserID != usr.ID {
-			return rest.ErrPermissionDenied
-		}
+	if err := r.checkOwnership(id); err != nil {
+		return err
 	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
