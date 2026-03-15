@@ -184,5 +184,38 @@ var _ = Describe("ShareRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
+
+		Describe("Update", func() {
+			It("allows a non-admin user to update their own share", func() {
+				insertShare("own-share-upd", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("own-share-upd", &model.Share{Description: "Updated"}, "description")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("denies a non-admin user from updating another user's share", func() {
+				insertShare("other-share-upd", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), otherUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("other-share-upd", &model.Share{Description: "Hacked"}, "description")
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("allows an admin to update any user's share", func() {
+				insertShare("admin-upd-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("admin-upd-share", &model.Share{Description: "Admin Updated"}, "description")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("allows headless context (no user) to update a share", func() {
+				insertShare("headless-upd-share", ownerUser.ID)
+				repo := NewShareRepository(context.Background(), GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("headless-upd-share", &model.Share{Description: "Headless"}, "description")
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
 	})
 })
