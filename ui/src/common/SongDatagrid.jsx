@@ -85,7 +85,14 @@ const DiscSubtitleRow = forwardRef(
     const classes = useStyles({ isDesktop })
     const [imageError, setImageError] = useState(false)
     const [isLightboxOpen, setLightboxOpen] = useState(false)
+    const lightboxClosedAt = React.useRef(0)
     const handlePlaySubset = (discNumber) => () => {
+      // Ignore clicks shortly after the lightbox was closed to prevent
+      // mobile touch events from "falling through" the overlay and
+      // triggering playback.
+      if (Date.now() - lightboxClosedAt.current < 400) {
+        return
+      }
       onClick(discNumber)
     }
 
@@ -112,7 +119,10 @@ const DiscSubtitleRow = forwardRef(
       [imageError],
     )
 
-    const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
+    const handleCloseLightbox = useCallback(() => {
+      lightboxClosedAt.current = Date.now()
+      setLightboxOpen(false)
+    }, [])
 
     const subtitle = record.discSubtitle
       ? record.discSubtitle
