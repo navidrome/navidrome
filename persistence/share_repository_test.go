@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -128,6 +129,60 @@ var _ = Describe("ShareRepository", func() {
 			Expect(share.ID).To(Equal(shareID))
 			// Albums array should be empty since we used non-existent album ID
 			Expect(share.Albums).To(BeEmpty())
+		})
+	})
+
+	Describe("Ownership Checks", func() {
+		var ownerUser = model.User{ID: "2222", UserName: "regular-user"}
+		var otherUser = model.User{ID: "3333", UserName: "third-user"}
+
+		insertShare := func(shareID, userID string) {
+			_, err := GetDBXBuilder().NewQuery(`
+				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+			`).Bind(map[string]any{
+				"id":      shareID,
+				"user":    userID,
+				"desc":    "Test Share",
+				"type":    "media_file",
+				"ids":     "1001",
+				"created": time.Now(),
+				"updated": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		Describe("Delete", func() {
+			It("allows a non-admin user to delete their own share", func() {
+				insertShare("own-share-del", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Delete("own-share-del")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("denies a non-admin user from deleting another user's share", func() {
+				insertShare("other-share-del", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), otherUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Delete("other-share-del")
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("allows an admin to delete any user's share", func() {
+				insertShare("admin-del-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Delete("admin-del-share")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("allows headless context (no user) to delete a share", func() {
+				insertShare("headless-del-share", ownerUser.ID)
+				repo := NewShareRepository(context.Background(), GetDBXBuilder())
+				err := repo.(rest.Persistable).Delete("headless-del-share")
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 	})
 })
