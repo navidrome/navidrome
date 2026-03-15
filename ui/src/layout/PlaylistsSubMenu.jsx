@@ -7,7 +7,7 @@ import {
 } from 'react-admin'
 import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
-import { Typography } from '@material-ui/core'
+import { Typography, Tooltip } from '@material-ui/core'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import { BiCog } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
@@ -39,9 +39,11 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
     <MenuItemLink
       to={`/playlist/${pls.id}/show`}
       primaryText={
-        <Typography variant="inherit" noWrap ref={dropRef}>
-          {pls.name}
-        </Typography>
+        <Tooltip title={pls.name}>
+          <Typography variant="inherit" noWrap ref={dropRef}>
+            {pls.name}
+          </Typography>
+        </Tooltip>
       }
       sidebarIsOpen={sidebarIsOpen}
       dense={false}

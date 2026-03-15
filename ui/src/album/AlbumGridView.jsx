@@ -2,6 +2,7 @@ import React from 'react'
 import {
   GridList,
   GridListTile,
+  Tooltip,
   Typography,
   GridListTileBar,
   useMediaQuery,
@@ -198,11 +199,17 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         to={linkToRecord(basePath, record.id, 'show')}
       >
         <span>
-          <Typography className={classes.albumName}>{record.name}</Typography>
-          {record.tags && record.tags['albumversion'] && (
-            <Typography className={classes.albumVersion}>
-              {record.tags['albumversion']}
+          <Tooltip title={record.name}>
+            <Typography className={classes.albumName}>
+              {record.name}
             </Typography>
+          </Tooltip>
+          {record.tags && record.tags['albumversion'] && (
+            <Tooltip title={record.tags['albumversion']}>
+              <Typography className={classes.albumVersion}>
+                {record.tags['albumversion']}
+              </Typography>
+            </Tooltip>
           )}
         </span>
       </Link>

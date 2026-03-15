@@ -274,12 +274,14 @@ const PlaylistDetails = (props) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <Typography
-              variant={isDesktop ? 'h5' : 'h6'}
-              className={classes.title}
-            >
-              {record.name || translate('ra.page.loading')}
-            </Typography>
+            <Tooltip title={record.name || ''}>
+              <Typography
+                variant={isDesktop ? 'h5' : 'h6'}
+                className={classes.title}
+              >
+                {record.name || translate('ra.page.loading')}
+              </Typography>
+            </Tooltip>
             <Typography component="p" className={classes.stats}>
               {record.songCount ? (
                 <span>
