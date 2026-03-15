@@ -324,6 +324,7 @@ func childFromFolder(_ context.Context, folder model.Folder) responses.Child {
 	child.IsDir = true
 	child.Title = folder.Name
 	child.Name = folder.Name
+	child.CoverArt = folder.CoverArtID().String()
 	return child
 }
 

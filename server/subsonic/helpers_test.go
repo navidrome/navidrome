@@ -512,9 +512,15 @@ var _ = Describe("helpers", func() {
 			Expect(child.Name).To(Equal("Jazz"))
 		})
 
-		It("leaves CoverArt empty (populated in task 1.3)", func() {
+		It("leaves CoverArt empty when folder has no images", func() {
 			child := childFromFolder(ctx, folder)
 			Expect(child.CoverArt).To(BeEmpty())
+		})
+
+		It("sets CoverArt when folder has images", func() {
+			folder.ImageFiles = []string{"cover.jpg"}
+			child := childFromFolder(ctx, folder)
+			Expect(child.CoverArt).To(HavePrefix("fo-"))
 		})
 
 		It("works for a root folder with no parent", func() {
