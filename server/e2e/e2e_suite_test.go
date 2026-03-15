@@ -442,7 +442,7 @@ var _ = BeforeSuite(func() {
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.NewPlaylists(initDS), metrics.NewNoopInstance())
+		playlists.NewPlaylists(initDS, core.NewImageUploadService()), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -479,7 +479,7 @@ func setupTestDB() {
 	streamerSpy = &spyStreamer{}
 	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.NewPlaylists(ds), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -489,7 +489,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		playlists.NewPlaylists(ds),
+		playlists.NewPlaylists(ds, core.NewImageUploadService()),
 		noopPlayTracker{},
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
