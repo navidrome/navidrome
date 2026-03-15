@@ -27,7 +27,6 @@ var redacted = &Hook{
 		// Keys from the config
 		"(ApiKey:\")[\\w]*",
 		"(Secret:\")[\\w]*",
-		"(Spotify.*ID:\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
 		"(UserHeader:[\\s]*\")[^\"]*",
 		"(TrustedSources:[\\s]*\")[^\"]*",
