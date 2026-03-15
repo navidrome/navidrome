@@ -107,7 +107,12 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	}
 	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
 
-	res, err := api.getFolderIndex(r.Context(), musicFolderIds, ifModifiedSince)
+	var res *responses.Indexes
+	if conf.Server.Subsonic.FolderBrowsing {
+		res, err = api.getFolderIndex(r.Context(), musicFolderIds, ifModifiedSince)
+	} else {
+		res, err = api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
+	}
 	if err != nil {
 		return nil, err
 	}

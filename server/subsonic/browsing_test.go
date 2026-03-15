@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -261,6 +262,26 @@ var _ = Describe("Browsing", func() {
 			Expect(response.Indexes.Index).To(HaveLen(1))
 			Expect(response.Indexes.Index[0].Name).To(Equal("#"))
 			Expect(response.Indexes.Index[0].Artists[0].Id).To(Equal("f-90s"))
+		})
+
+		It("falls back to artist-based index when FolderBrowsing is disabled", func() {
+			conf.Server.Subsonic.FolderBrowsing = false
+			DeferCleanup(func() { conf.Server.Subsonic.FolderBrowsing = true })
+
+			ctx = contextWithUser(ctx, "user-id", 1)
+			ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
+				{ID: "a-1", Name: "Kraftwerk"},
+			})
+
+			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetIndexes(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Indexes).ToNot(BeNil())
+			// Artist-based index returns artist entries, not folder entries
+			Expect(response.Indexes.Index).ToNot(BeEmpty())
+			Expect(response.Indexes.Index[0].Artists[0].Id).To(Equal("a-1"))
 		})
 	})
 
