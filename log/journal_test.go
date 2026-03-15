@@ -1,48 +1,41 @@
 package log
 
 import (
-	"testing"
-
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 )
 
-func TestJournalFormatterPrefixes(t *testing.T) {
-	inner := &logrus.TextFormatter{
-		DisableTimestamp: true,
-		DisableColors:   true,
-	}
-	formatter := &journalFormatter{inner: inner}
+var _ = Describe("journalFormatter", func() {
+	var formatter *journalFormatter
 
-	tests := []struct {
-		level          logrus.Level
-		expectedPrefix string
-	}{
-		{logrus.ErrorLevel, "<3>"},
-		{logrus.WarnLevel, "<4>"},
-		{logrus.InfoLevel, "<6>"},
-		{logrus.DebugLevel, "<7>"},
-		{logrus.TraceLevel, "<7>"},
-		{logrus.FatalLevel, "<2>"},
-		{logrus.PanicLevel, "<0>"},
-		{logrus.Level(99), "<6>"}, // unknown level defaults to info
-	}
+	BeforeEach(func() {
+		inner := &logrus.TextFormatter{
+			DisableTimestamp: true,
+			DisableColors:    true,
+		}
+		formatter = &journalFormatter{inner: inner}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.level.String(), func(t *testing.T) {
+	DescribeTable("prefixes log lines with syslog priority",
+		func(level logrus.Level, expectedPrefix string) {
 			entry := &logrus.Entry{
 				Logger:  logrus.New(),
-				Level:   tt.level,
+				Level:   level,
 				Message: "test message",
 				Data:    logrus.Fields{},
 			}
 			out, err := formatter.Format(entry)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			got := string(out)
-			if len(got) < len(tt.expectedPrefix) || got[:len(tt.expectedPrefix)] != tt.expectedPrefix {
-				t.Errorf("expected prefix %q, got %q", tt.expectedPrefix, got)
-			}
-		})
-	}
-}
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(out)).To(HavePrefix(expectedPrefix))
+		},
+		Entry("error", logrus.ErrorLevel, "<3>"),
+		Entry("warning", logrus.WarnLevel, "<4>"),
+		Entry("info", logrus.InfoLevel, "<6>"),
+		Entry("debug", logrus.DebugLevel, "<7>"),
+		Entry("trace", logrus.TraceLevel, "<7>"),
+		Entry("fatal", logrus.FatalLevel, "<2>"),
+		Entry("panic", logrus.PanicLevel, "<0>"),
+		Entry("unknown level defaults to info", logrus.Level(99), "<6>"),
+	)
+})
