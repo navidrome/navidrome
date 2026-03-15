@@ -83,7 +83,7 @@ const useStyles = makeStyles(
 )
 
 const MobileArtistDetails = ({ artistInfo, biography, record }) => {
-  const img = subsonic.getCoverArtUrl(record)
+  const img = subsonic.getCoverArtUrl(record, 800)
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
