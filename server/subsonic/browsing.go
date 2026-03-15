@@ -143,6 +143,8 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	var dir *responses.Directory
 
 	switch v := entity.(type) {
+	case *model.Folder:
+		dir, err = api.buildFolderDirectory(ctx, v)
 	case *model.Artist:
 		dir, err = api.buildArtistDirectory(ctx, v)
 	case *model.Album:

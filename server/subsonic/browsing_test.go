@@ -143,6 +143,52 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	Describe("GetMusicDirectory with folder ID", func() {
+		It("returns directory for a valid folder ID", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			folder := model.Folder{ID: "folder-1", ParentID: "root-1", Name: "Rock"}
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{folder})
+
+			r := httptest.NewRequest("GET", "/rest/getMusicDirectory?id=folder-1", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetMusicDirectory(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Directory).ToNot(BeNil())
+			Expect(response.Directory.Id).To(Equal("folder-1"))
+			Expect(response.Directory.Name).To(Equal("Rock"))
+			Expect(response.Directory.Parent).To(Equal("root-1"))
+		})
+
+		It("returns error for unknown ID", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+
+			r := httptest.NewRequest("GET", "/rest/getMusicDirectory?id=nonexistent", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetMusicDirectory(r)
+			Expect(err).To(HaveOccurred())
+			Expect(response).To(BeNil())
+		})
+
+		It("includes child folders as IsDir=true entries in the directory", func() {
+			ctx = contextWithUser(ctx, "user-id", 1)
+			folder := model.Folder{ID: "folder-1", ParentID: "", Name: "Music"}
+			child := model.Folder{ID: "folder-2", ParentID: "folder-1", Name: "Jazz"}
+			ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{folder, child})
+
+			r := httptest.NewRequest("GET", "/rest/getMusicDirectory?id=folder-1", nil)
+			r = r.WithContext(ctx)
+
+			response, err := api.GetMusicDirectory(r)
+			Expect(err).ToNot(HaveOccurred())
+			// The mock returns all folders; verify child-2 is present and IsDir
+			Expect(response.Directory.Child).To(ContainElement(
+				And(HaveField("Id", "folder-2"), HaveField("IsDir", true)),
+			))
+		})
+	})
+
 	Describe("GetIndexes", func() {
 		It("should validate user access to the specified musicFolderId", func() {
 			// Create mock user with access to library 1 only
