@@ -74,6 +74,11 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if artistFolderLastUpdate.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = artistFolderLastUpdate
 	}
+	if conf.Server.ArtistImageFolder != "" && strings.Contains(strings.ToLower(conf.Server.ArtistArtPriority), "image-folder") {
+		if imgFolderUpdate := getArtistImageFolderModTime(ar, conf.Server.ArtistImageFolder); imgFolderUpdate.After(a.cacheKey.lastUpdate) {
+			a.cacheKey.lastUpdate = imgFolderUpdate
+		}
+	}
 	a.cacheKey.artID = artID
 	return a, nil
 }
@@ -251,4 +256,29 @@ func fromArtistImageFolder(ctx context.Context, artist model.Artist) sourceFunc 
 		}
 		return nil, "", fmt.Errorf("no image found for artist %q in %s", artist.Name, folder)
 	}
+}
+
+func getArtistImageFolderModTime(ar *model.Artist, folder string) time.Time {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return time.Time{}
+	}
+	for _, names := range []string{ar.MbzArtistID, ar.Name} {
+		if names == "" {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			base := strings.TrimSuffix(name, filepath.Ext(name))
+			if strings.EqualFold(base, names) && model.IsImageFile(name) {
+				if info, err := entry.Info(); err == nil {
+					return info.ModTime()
+				}
+			}
+		}
+	}
+	return time.Time{}
 }

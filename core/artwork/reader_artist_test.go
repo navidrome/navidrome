@@ -600,6 +600,53 @@ var _ = Describe("artistArtworkReader", func() {
 			})
 		})
 	})
+
+	Describe("getArtistImageFolderModTime", func() {
+		var tempDir string
+
+		BeforeEach(func() {
+			tempDir = GinkgoT().TempDir()
+		})
+
+		When("matching file exists by MBID", func() {
+			It("returns the file mod time", func() {
+				mbid := "f27ec8db-af05-4f36-916e-3d57f91ecf5e"
+				imgPath := filepath.Join(tempDir, mbid+".jpg")
+				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
+
+				ar := &model.Artist{Name: "Test", MbzArtistID: mbid}
+				modTime := getArtistImageFolderModTime(ar, tempDir)
+				Expect(modTime).ToNot(BeZero())
+			})
+		})
+
+		When("matching file exists by name", func() {
+			It("returns the file mod time", func() {
+				imgPath := filepath.Join(tempDir, "Test Artist.png")
+				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
+
+				ar := &model.Artist{Name: "Test Artist"}
+				modTime := getArtistImageFolderModTime(ar, tempDir)
+				Expect(modTime).ToNot(BeZero())
+			})
+		})
+
+		When("no matching file exists", func() {
+			It("returns zero time", func() {
+				ar := &model.Artist{Name: "Unknown Artist"}
+				modTime := getArtistImageFolderModTime(ar, tempDir)
+				Expect(modTime).To(BeZero())
+			})
+		})
+
+		When("folder does not exist", func() {
+			It("returns zero time", func() {
+				ar := &model.Artist{Name: "Test"}
+				modTime := getArtistImageFolderModTime(ar, "/nonexistent/path")
+				Expect(modTime).To(BeZero())
+			})
+		})
+	})
 })
 
 type fakeFolderRepo struct {
