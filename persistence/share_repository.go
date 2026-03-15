@@ -42,6 +42,9 @@ func (r *shareRepository) checkOwnership(id string) error {
 	}
 	err := r.queryOne(sel, &share)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return rest.ErrNotFound
+		}
 		return err
 	}
 	if share.UserID != usr.ID {
