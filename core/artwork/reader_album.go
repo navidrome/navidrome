@@ -59,10 +59,11 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 }
 
 func (a *albumArtworkReader) Key() string {
-	var hash [16]byte
+	hashInput := conf.Server.CoverArtPriority
 	if conf.Server.EnableExternalServices {
-		hash = md5.Sum([]byte(conf.Server.Agents + conf.Server.CoverArtPriority))
+		hashInput += conf.Server.Agents
 	}
+	hash := md5.Sum([]byte(hashInput))
 	return fmt.Sprintf(
 		"%s.%x.%t",
 		a.cacheKey.Key(),
