@@ -219,19 +219,13 @@
         "saveQueue": "บันทึกคิวลงเพลย์ลิสต์",
         "searchOrCreate": "ค้นหาเพลย์ลิสต์หรือพิมพ์เพื่อสร้างใหม่",
         "pressEnterToCreate": "กด Enter เพื่อสร้างเพลย์ลิสต์",
-        "removeFromSelection": "เอาออกจากที่เลือกไว้",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "เอาออกจากที่เลือกไว้"
       },
       "message": {
         "duplicate_song": "เพิ่มเพลงซ้ำ",
         "song_exist": "เพิ่มเพลงซ้ำกันในเพลย์ลิสต์ คุณจะเพิ่มเพลงต่อหรือข้าม",
         "noPlaylistsFound": "ไม่พบเพลย์ลิสต์",
-        "noPlaylists": "ไม่มีเพลย์ลิสต์อยู่",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "ไม่มีเพลย์ลิสต์อยู่"
       }
     },
     "radio": {

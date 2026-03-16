@@ -29,11 +29,12 @@ const (
 
 type artistReader struct {
 	cacheKey
-	a            *artwork
-	provider     external.Provider
-	artist       model.Artist
-	artistFolder string
-	imgFiles     []string
+	a                *artwork
+	provider         external.Provider
+	artist           model.Artist
+	artistFolder     string
+	imgFiles         []string
+	imgFolderImgPath string // cached path from ArtistImageFolder lookup
 }
 
 func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
@@ -71,8 +72,19 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 
 	a.cacheKey.lastUpdate = *imagesUpdatedAt
+	if ar.UpdatedAt != nil && ar.UpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *ar.UpdatedAt
+	}
 	if artistFolderLastUpdate.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = artistFolderLastUpdate
+	}
+	if conf.Server.ArtistImageFolder != "" && strings.Contains(strings.ToLower(conf.Server.ArtistArtPriority), "image-folder") {
+		a.imgFolderImgPath = findImageInArtistFolder(conf.Server.ArtistImageFolder, ar.MbzArtistID, ar.Name)
+		if a.imgFolderImgPath != "" {
+			if info, err := os.Stat(a.imgFolderImgPath); err == nil && info.ModTime().After(a.cacheKey.lastUpdate) {
+				a.cacheKey.lastUpdate = info.ModTime()
+			}
+		}
 	}
 	a.cacheKey.artID = artID
 	return a, nil
@@ -93,8 +105,13 @@ func (a *artistReader) LastUpdated() time.Time {
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)
+	ff := []sourceFunc{a.fromArtistUploadedImage()}
+	ff = append(ff, a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)...)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *artistReader) fromArtistUploadedImage() sourceFunc {
+	return fromLocalFile(a.artist.UploadedImagePath())
 }
 
 func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
@@ -104,6 +121,8 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		switch {
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
+		case pattern == "image-folder":
+			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
@@ -195,4 +214,52 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		return "", time.Time{}, err
 	}
 	return folderPath, folders[0].ImagesUpdatedAt, nil
+}
+
+func (a *artistReader) fromArtistImageFolder(ctx context.Context) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		folder := conf.Server.ArtistImageFolder
+		if folder == "" {
+			return nil, "", nil
+		}
+		// Use cached path from newArtistArtworkReader if available,
+		// avoiding a second directory scan.
+		path := a.imgFolderImgPath
+		if path == "" {
+			path = findImageInArtistFolder(folder, a.artist.MbzArtistID, a.artist.Name)
+		}
+		if path == "" {
+			return nil, "", fmt.Errorf("no image found for artist %q in %s", a.artist.Name, folder)
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, path, nil
+	}
+}
+
+// findImageInArtistFolder scans a folder for an image file matching the artist's MBID or name
+// (case-insensitive). Returns the full path, or empty string if not found.
+func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return ""
+	}
+	for _, candidate := range []string{mbzArtistID, artistName} {
+		if candidate == "" {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			base := strings.TrimSuffix(name, filepath.Ext(name))
+			if strings.EqualFold(base, candidate) && model.IsImageFile(name) {
+				return filepath.Join(folder, name)
+			}
+		}
+	}
+	return ""
 }

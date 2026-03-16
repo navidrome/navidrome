@@ -219,19 +219,13 @@
         "saveQueue": "Warteschlange in Wiedergabeliste speichern",
         "searchOrCreate": "Wiedergabeliste suchen oder neue erstellen...",
         "pressEnterToCreate": "Enter drücken um neue Wiedergabeliste zu erstellen",
-        "removeFromSelection": "Von Auswahl entfernen",
-        "uploadCover": "Cover hochladen",
-        "removeCover": "Cover entfernen"
+        "removeFromSelection": "Von Auswahl entfernen"
       },
       "message": {
         "duplicate_song": "Duplikate hinzufügen",
         "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?",
         "noPlaylistsFound": "Keine Wiedergabeliste gefunden",
-        "noPlaylists": "Keine Wiedergabelisten vorhanden",
-        "coverUploaded": "Cover aktualisiert",
-        "coverRemoved": "Cover entfernt",
-        "coverUploadError": "Fehler beim Hochladen des Covers",
-        "coverRemoveError": "Fehler beim Entfernen des Covers"
+        "noPlaylists": "Keine Wiedergabelisten vorhanden"
       }
     },
     "radio": {
@@ -597,7 +591,13 @@
     "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
     "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
     "noTopSongsFound": "Keine beliebten Titel gefunden",
-    "startingInstantMix": "Lade Sofort-Mix..."
+    "startingInstantMix": "Lade Sofort-Mix...",
+    "uploadCover": "Cover hochladen",
+    "removeCover": "Cover entfernen",
+    "coverUploaded": "Cover aktualisiert",
+    "coverRemoved": "Cover entfernt",
+    "coverUploadError": "Fehler beim Hochladen des Covers",
+    "coverRemoveError": "Fehler beim Entfernen des Covers"
   },
   "menu": {
     "library": "Bibliothek",

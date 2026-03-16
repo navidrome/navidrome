@@ -219,19 +219,13 @@
         "saveQueue": "Tallenna jono soittolistaan",
         "searchOrCreate": "Etsi soittolistoja tai kirjoita luodaksesi uuden...",
         "pressEnterToCreate": "Paina Enter luodaksesi uuden soittolistan",
-        "removeFromSelection": "Poista valinnasta",
-        "uploadCover": "Lataa kansikuva",
-        "removeCover": "Poista kansikuva"
+        "removeFromSelection": "Poista valinnasta"
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
         "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?",
         "noPlaylistsFound": "Soittolistoja ei löytynyt",
-        "noPlaylists": "Soittolistoja ei ole saatavilla",
-        "coverUploaded": "Kansikuva päivitetty",
-        "coverRemoved": "Kansikuva poistettu",
-        "coverUploadError": "Virhe ladattaessa kansikuvaa",
-        "coverRemoveError": "Virhe poistettaessa kansikuvaa"
+        "noPlaylists": "Soittolistoja ei ole saatavilla"
       }
     },
     "radio": {
@@ -597,7 +591,13 @@
     "remove_all_missing_content": "Haluatko varmasti poistaa kaikki puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien toistomäärät ja arvostelut.",
     "noSimilarSongsFound": "Samankaltaisia kappaleita ei löytynyt",
     "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt",
-    "startingInstantMix": "Ladataan Pikasekoitus..."
+    "startingInstantMix": "Ladataan Pikasekoitus...",
+    "uploadCover": "Lataa kansikuva",
+    "removeCover": "Poista kansikuva",
+    "coverUploaded": "Kansikuva päivitetty",
+    "coverRemoved": "Kansikuva poistettu",
+    "coverUploadError": "Virhe ladattaessa kansikuvaa",
+    "coverRemoveError": "Virhe poistettaessa kansikuvaa"
   },
   "menu": {
     "library": "Kirjasto",

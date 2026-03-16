@@ -44,10 +44,11 @@ type Router struct {
 	users         core.User
 	maintenance   core.Maintenance
 	pluginManager PluginManager
+	imgUpload     core.ImageUploadService
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload}
 	r.Handler = r.routes()
 	return r
 }
@@ -66,7 +67,7 @@ func (api *Router) routes() http.Handler {
 		api.RX(r, "/user", api.users.NewRepository, true)
 		api.R(r, "/song", model.MediaFile{}, false)
 		api.R(r, "/album", model.Album{}, false)
-		api.R(r, "/artist", model.Artist{}, false)
+		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
 		api.R(r, "/player", model.Player{}, true)
 		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)

@@ -219,19 +219,13 @@
         "saveQueue": "Сохранить очередь в плейлист",
         "searchOrCreate": "Поиск плейлистов или введите текст для создания новых...",
         "pressEnterToCreate": "Нажмите Enter, чтобы создать новый список воспроизведения",
-        "removeFromSelection": "Удалить из списка выделенных",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Удалить из списка выделенных"
       },
       "message": {
         "duplicate_song": "Повторяющиеся треки",
         "song_exist": "Некоторые треки уже есть в плейлисте. Вы хотите добавить их или пропустить?",
         "noPlaylistsFound": "Плейлисты не найдены",
-        "noPlaylists": "Нет доступных плейлистов",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Нет доступных плейлистов"
       }
     },
     "radio": {

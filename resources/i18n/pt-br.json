@@ -218,15 +218,9 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção",
-        "uploadCover": "Enviar Capa",
-        "removeCover": "Remover Capa"
+        "removeFromSelection": "Remover da seleção"
       },
       "message": {
-        "coverUploaded": "Capa atualizada",
-        "coverRemoved": "Capa removida",
-        "coverUploadError": "Erro ao enviar capa",
-        "coverRemoveError": "Erro ao remover capa",
         "duplicate_song": "Adicionar músicas duplicadas",
         "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
         "noPlaylistsFound": "Nenhuma playlist encontrada",
@@ -560,6 +554,12 @@
     }
   },
   "message": {
+    "uploadCover": "Enviar Capa",
+    "removeCover": "Remover Capa",
+    "coverUploaded": "Capa atualizada",
+    "coverRemoved": "Capa removida",
+    "coverUploadError": "Erro ao enviar capa",
+    "coverRemoveError": "Erro ao remover capa",
     "note": "ATENÇÃO",
     "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",

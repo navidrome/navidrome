@@ -6,12 +6,13 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
+import useArtistImageState from './useArtistImageState'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -57,6 +58,7 @@ const useStyles = makeStyles(
       alignItems: 'center',
       justifyContent: 'center',
       boxShadow: 'none',
+      position: 'relative',
     },
     artistDetail: {
       flex: '1',
@@ -85,36 +87,15 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles()
   const title = record.name
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const [imageLoading, setImageLoading] = React.useState(false)
-  const [imageError, setImageError] = React.useState(false)
-
-  // Reset image state when artist changes
-  React.useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const handleImageLoad = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
-
-  const handleOpenLightbox = React.useCallback(() => {
-    if (!imageError) {
-      setLightboxOpen(true)
-    }
-  }, [imageError])
-
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    [],
-  )
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useArtistImageState(record.id)
 
   return (
     <div className={classes.root}>
@@ -135,6 +116,11 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
               }}
             />
           )}
+          <ImageUploadOverlay
+            entityType="artist"
+            entityId={record.id}
+            hasUploadedImage={!!record.uploadedImage}
+          />
         </Card>
         <div className={classes.details}>
           <CardContent className={classes.content}>

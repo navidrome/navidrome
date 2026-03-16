@@ -219,19 +219,13 @@
         "saveQueue": "Salvar a Cola como Lista de reprodución",
         "searchOrCreate": "Buscar listas ou escribe para crear nova…",
         "pressEnterToCreate": "Preme Enter para crear nova lista",
-        "removeFromSelection": "Retirar da selección",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Retirar da selección"
       },
       "message": {
         "duplicate_song": "Engadir cancións duplicadas",
         "song_exist": "Hai duplicadas que serán engadidas á lista de reprodución. Desexas engadir as duplicadas ou omitilas?",
         "noPlaylistsFound": "Sen listas de reprodución",
-        "noPlaylists": "Sen listas dispoñibles",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Sen listas dispoñibles"
       }
     },
     "radio": {

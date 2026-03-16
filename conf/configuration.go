@@ -71,6 +71,7 @@ type configOptions struct {
 	CoverArtPriority                string
 	CoverArtQuality                 int
 	ArtistArtPriority               string
+	ArtistImageFolder               string
 	DiscArtPriority                 string
 	LyricsPriority                  string
 	EnableGravatar                  bool

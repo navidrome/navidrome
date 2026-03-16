@@ -219,19 +219,13 @@
         "saveQueue": "Desar la cua a una llista",
         "searchOrCreate": "Cerca llistes o escriu per crear-ne de noves...",
         "pressEnterToCreate": "Prem Retorn per crear una nova llista",
-        "removeFromSelection": "Elimina de la selecció",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Elimina de la selecció"
       },
       "message": {
         "duplicate_song": "Afegeix cançons duplicades",
         "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?",
         "noPlaylistsFound": "No s'ha trobat cap llista",
-        "noPlaylists": "No hi ha cap llista disponible",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "No hi ha cap llista disponible"
       }
     },
     "radio": {

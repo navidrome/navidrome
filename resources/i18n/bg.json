@@ -219,19 +219,13 @@
         "saveQueue": "Запазване на опашката в плейлист",
         "searchOrCreate": "Търсете в плейлисти или пишете, за да създадете нови...",
         "pressEnterToCreate": "Натиснете Enter, за да създадете нов плейлист",
-        "removeFromSelection": "Премахване от селекцията",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Премахване от селекцията"
       },
       "message": {
         "duplicate_song": "Добави дублирани песни",
         "song_exist": "Към плейлиста се добавят дублиращи. Желаете ли да ги добавите или предпочитате да ги пропуснете?",
         "noPlaylistsFound": "Няма намерени плейлисти",
-        "noPlaylists": "Няма налични плейлисти",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Няма налични плейлисти"
       }
     },
     "radio": {
