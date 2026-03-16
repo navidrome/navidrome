@@ -135,7 +135,15 @@
       "actions": {
         "topSongs": "Top Songs",
         "shuffle": "Shuffle",
-        "radio": "Radio"
+        "radio": "Radio",
+        "uploadCover": "Upload Cover",
+        "removeCover": "Remove Cover"
+      },
+      "message": {
+        "coverUploaded": "Cover art updated",
+        "coverRemoved": "Cover art removed",
+        "coverUploadError": "Error uploading cover art",
+        "coverRemoveError": "Error removing cover art"
       }
     },
     "user": {
