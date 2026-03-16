@@ -71,6 +71,9 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 
 	a.cacheKey.lastUpdate = *imagesUpdatedAt
+	if ar.UpdatedAt != nil && ar.UpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *ar.UpdatedAt
+	}
 	if artistFolderLastUpdate.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = artistFolderLastUpdate
 	}
