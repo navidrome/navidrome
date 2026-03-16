@@ -504,13 +504,26 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.Kind).To(Equal(KindMediaFileArtwork))
 			Expect(id.ID).To(Equal(mf.ID))
 		})
-		It("returns its album id if HasCoverArt is false", func() {
+		It("returns disc art id if HasCoverArt is false and DiscNumber > 0", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: false, DiscNumber: 2}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindDiscArtwork))
+			Expect(id.ID).To(Equal("1:2"))
+		})
+		It("returns its album id if HasCoverArt is false and DiscNumber is 0", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: false}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
-		It("returns its album id if EnableMediaFileCoverArt is disabled", func() {
+		It("returns disc art id if EnableMediaFileCoverArt is disabled and DiscNumber > 0", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, DiscNumber: 3}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindDiscArtwork))
+			Expect(id.ID).To(Equal("1:3"))
+		})
+		It("returns its album id if EnableMediaFileCoverArt is disabled and DiscNumber is 0", func() {
 			conf.Server.EnableMediaFileCoverArt = false
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
