@@ -7,15 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
-)
-
-const (
-	EntityArtist   = "artist"
-	EntityPlaylist = "playlist"
 )
 
 type ImageUploadService interface {
@@ -31,7 +25,7 @@ func NewImageUploadService() ImageUploadService {
 
 func (s *imageUploadService) SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (string, error) {
 	filename := imageFilename(entityID, name, ext)
-	absPath := filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, entityType, filename)
+	absPath := model.UploadedImagePath(entityType, filename)
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
 		return "", fmt.Errorf("creating image directory: %w", err)

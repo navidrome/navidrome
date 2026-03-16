@@ -8,6 +8,7 @@ import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
+import useArtistImageState from './useArtistImageState'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -88,36 +89,15 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const [imageLoading, setImageLoading] = React.useState(false)
-  const [imageError, setImageError] = React.useState(false)
-
-  // Reset image state when artist changes
-  React.useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const handleImageLoad = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
-
-  const handleOpenLightbox = React.useCallback(() => {
-    if (!imageError) {
-      setLightboxOpen(true)
-    }
-  }, [imageError])
-
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    [],
-  )
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useArtistImageState(record.id)
 
   return (
     <>

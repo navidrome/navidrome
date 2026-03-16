@@ -8,7 +8,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 )
@@ -36,7 +36,7 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 			return model.ErrNotFound
 		}
 		oldPath := ar.UploadedImagePath()
-		filename, err := api.imgUpload.SetImage(ctx, core.EntityArtist, ar.ID, ar.Name, oldPath, reader, ext)
+		filename, err := api.imgUpload.SetImage(ctx, consts.EntityArtist, ar.ID, ar.Name, oldPath, reader, ext)
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -296,7 +297,7 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 	}
 
 	oldPath := pls.UploadedImagePath()
-	filename, err := s.imgUpload.SetImage(ctx, "playlist", pls.ID, pls.Name, oldPath, reader, ext)
+	filename, err := s.imgUpload.SetImage(ctx, consts.EntityPlaylist, pls.ID, pls.Name, oldPath, reader, ext)
 	if err != nil {
 		return err
 	}

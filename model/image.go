@@ -7,9 +7,9 @@ import (
 	"github.com/navidrome/navidrome/consts"
 )
 
-// uploadedImagePath returns the absolute filesystem path for a manually uploaded
+// UploadedImagePath returns the absolute filesystem path for a manually uploaded
 // entity cover image. Returns empty string if filename is empty.
-func uploadedImagePath(entityType, filename string) string {
+func UploadedImagePath(entityType, filename string) string {
 	if filename == "" {
 		return ""
 	}

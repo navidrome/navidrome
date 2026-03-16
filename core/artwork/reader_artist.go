@@ -29,11 +29,12 @@ const (
 
 type artistReader struct {
 	cacheKey
-	a            *artwork
-	provider     external.Provider
-	artist       model.Artist
-	artistFolder string
-	imgFiles     []string
+	a                *artwork
+	provider         external.Provider
+	artist           model.Artist
+	artistFolder     string
+	imgFiles         []string
+	imgFolderImgPath string // cached path from ArtistImageFolder lookup
 }
 
 func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
@@ -78,8 +79,11 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 		a.cacheKey.lastUpdate = artistFolderLastUpdate
 	}
 	if conf.Server.ArtistImageFolder != "" && strings.Contains(strings.ToLower(conf.Server.ArtistArtPriority), "image-folder") {
-		if imgFolderUpdate := getArtistImageFolderModTime(ar, conf.Server.ArtistImageFolder); imgFolderUpdate.After(a.cacheKey.lastUpdate) {
-			a.cacheKey.lastUpdate = imgFolderUpdate
+		a.imgFolderImgPath = findImageInArtistFolder(conf.Server.ArtistImageFolder, ar.MbzArtistID, ar.Name)
+		if a.imgFolderImgPath != "" {
+			if info, err := os.Stat(a.imgFolderImgPath); err == nil && info.ModTime().After(a.cacheKey.lastUpdate) {
+				a.cacheKey.lastUpdate = info.ModTime()
+			}
 		}
 	}
 	a.cacheKey.artID = artID
@@ -118,7 +122,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
 		case pattern == "image-folder":
-			ff = append(ff, fromArtistImageFolder(ctx, a.artist))
+			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
@@ -212,15 +216,20 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	return folderPath, folders[0].ImagesUpdatedAt, nil
 }
 
-func fromArtistImageFolder(ctx context.Context, artist model.Artist) sourceFunc {
+func (a *artistReader) fromArtistImageFolder(ctx context.Context) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		folder := conf.Server.ArtistImageFolder
 		if folder == "" {
 			return nil, "", nil
 		}
-		path := findImageInArtistFolder(folder, artist.MbzArtistID, artist.Name)
+		// Use cached path from newArtistArtworkReader if available,
+		// avoiding a second directory scan.
+		path := a.imgFolderImgPath
 		if path == "" {
-			return nil, "", fmt.Errorf("no image found for artist %q in %s", artist.Name, folder)
+			path = findImageInArtistFolder(folder, a.artist.MbzArtistID, a.artist.Name)
+		}
+		if path == "" {
+			return nil, "", fmt.Errorf("no image found for artist %q in %s", a.artist.Name, folder)
 		}
 		f, err := os.Open(path)
 		if err != nil {
@@ -253,18 +262,4 @@ func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
 		}
 	}
 	return ""
-}
-
-// getArtistImageFolderModTime returns the mod time of the matching image file
-// in the artist image folder, using targeted os.Stat calls instead of reading
-// the entire directory (this is called on every artwork request for cache key computation).
-func getArtistImageFolderModTime(ar *model.Artist, folder string) time.Time {
-	path := findImageInArtistFolder(folder, ar.MbzArtistID, ar.Name)
-	if path == "" {
-		return time.Time{}
-	}
-	if info, err := os.Stat(path); err == nil {
-		return info.ModTime()
-	}
-	return time.Time{}
 }

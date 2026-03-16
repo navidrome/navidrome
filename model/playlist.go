@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -113,7 +114,7 @@ func (pls Playlist) CoverArtID() ArtworkID {
 // This does NOT cover sidecar images or external URLs — those are resolved
 // by the artwork reader's fallback chain.
 func (pls Playlist) UploadedImagePath() string {
-	return uploadedImagePath("playlist", pls.UploadedImage)
+	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
 type Playlists []Playlist

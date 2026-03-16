@@ -103,6 +103,12 @@ const (
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
+// Entity types
+const (
+	EntityArtist   = "artist"
+	EntityPlaylist = "playlist"
+)
+
 const (
 	AlbumPlayCountModeAbsolute   = "absolute"
 	AlbumPlayCountModeNormalized = "normalized"

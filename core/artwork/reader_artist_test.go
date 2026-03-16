@@ -468,19 +468,21 @@ var _ = Describe("artistArtworkReader", func() {
 		var (
 			ctx     context.Context
 			tempDir string
+			ar      *artistReader
 		)
 
 		BeforeEach(func() {
 			ctx = context.Background()
 			DeferCleanup(configtest.SetupConfig())
 			tempDir = GinkgoT().TempDir()
+			ar = &artistReader{}
 		})
 
 		When("ArtistImageFolder is not configured", func() {
 			It("returns nil (skips)", func() {
 				conf.Server.ArtistImageFolder = ""
-				artist := model.Artist{Name: "Test Artist"}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).To(BeNil())
@@ -495,8 +497,8 @@ var _ = Describe("artistArtworkReader", func() {
 				imgPath := filepath.Join(tempDir, mbid+".jpg")
 				Expect(os.WriteFile(imgPath, []byte("mbid image"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist", MbzArtistID: mbid}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).ToNot(BeNil())
@@ -516,8 +518,8 @@ var _ = Describe("artistArtworkReader", func() {
 				imgPath := filepath.Join(tempDir, "f27ec8db-af05-4f36-916e-3d57f91ecf5e.png")
 				Expect(os.WriteFile(imgPath, []byte("mbid case image"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist", MbzArtistID: mbid}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).ToNot(BeNil())
@@ -532,8 +534,8 @@ var _ = Describe("artistArtworkReader", func() {
 				imgPath := filepath.Join(tempDir, "Test Artist.jpg")
 				Expect(os.WriteFile(imgPath, []byte("name image"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist", MbzArtistID: "nonexistent-mbid"}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: "nonexistent-mbid"}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).ToNot(BeNil())
@@ -552,8 +554,8 @@ var _ = Describe("artistArtworkReader", func() {
 				imgPath := filepath.Join(tempDir, "test artist.jpg")
 				Expect(os.WriteFile(imgPath, []byte("case insensitive"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist"}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).ToNot(BeNil())
@@ -571,8 +573,8 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(mbidPath, []byte("mbid image"), 0600)).To(Succeed())
 				Expect(os.WriteFile(namePath, []byte("name image"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist", MbzArtistID: mbid}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, path, err := sf()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).ToNot(BeNil())
@@ -591,17 +593,38 @@ var _ = Describe("artistArtworkReader", func() {
 				// Create an unrelated file
 				Expect(os.WriteFile(filepath.Join(tempDir, "other.jpg"), []byte("other"), 0600)).To(Succeed())
 
-				artist := model.Artist{Name: "Test Artist"}
-				sf := fromArtistImageFolder(ctx, artist)
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
 				r, _, err := sf()
 				Expect(err).To(HaveOccurred())
 				Expect(r).To(BeNil())
 				Expect(err.Error()).To(ContainSubstring("no image found"))
 			})
 		})
+
+		When("cached imgFolderImgPath is set", func() {
+			It("uses cached path instead of scanning", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				imgPath := filepath.Join(tempDir, "cached.jpg")
+				Expect(os.WriteFile(imgPath, []byte("cached image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist"}
+				ar.imgFolderImgPath = imgPath
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("cached image"))
+				r.Close()
+			})
+		})
 	})
 
-	Describe("getArtistImageFolderModTime", func() {
+	Describe("findImageInArtistFolder", func() {
 		var tempDir string
 
 		BeforeEach(func() {
@@ -609,41 +632,37 @@ var _ = Describe("artistArtworkReader", func() {
 		})
 
 		When("matching file exists by MBID", func() {
-			It("returns the file mod time", func() {
+			It("returns the file path", func() {
 				mbid := "f27ec8db-af05-4f36-916e-3d57f91ecf5e"
 				imgPath := filepath.Join(tempDir, mbid+".jpg")
 				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
 
-				ar := &model.Artist{Name: "Test", MbzArtistID: mbid}
-				modTime := getArtistImageFolderModTime(ar, tempDir)
-				Expect(modTime).ToNot(BeZero())
+				path := findImageInArtistFolder(tempDir, mbid, "Test")
+				Expect(path).To(Equal(imgPath))
 			})
 		})
 
 		When("matching file exists by name", func() {
-			It("returns the file mod time", func() {
+			It("returns the file path", func() {
 				imgPath := filepath.Join(tempDir, "Test Artist.png")
 				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
 
-				ar := &model.Artist{Name: "Test Artist"}
-				modTime := getArtistImageFolderModTime(ar, tempDir)
-				Expect(modTime).ToNot(BeZero())
+				path := findImageInArtistFolder(tempDir, "", "Test Artist")
+				Expect(path).To(Equal(imgPath))
 			})
 		})
 
 		When("no matching file exists", func() {
-			It("returns zero time", func() {
-				ar := &model.Artist{Name: "Unknown Artist"}
-				modTime := getArtistImageFolderModTime(ar, tempDir)
-				Expect(modTime).To(BeZero())
+			It("returns empty string", func() {
+				path := findImageInArtistFolder(tempDir, "", "Unknown Artist")
+				Expect(path).To(BeEmpty())
 			})
 		})
 
 		When("folder does not exist", func() {
-			It("returns zero time", func() {
-				ar := &model.Artist{Name: "Test"}
-				modTime := getArtistImageFolderModTime(ar, "/nonexistent/path")
-				Expect(modTime).To(BeZero())
+			It("returns empty string", func() {
+				path := findImageInArtistFolder("/nonexistent/path", "", "Test")
+				Expect(path).To(BeEmpty())
 			})
 		})
 	})

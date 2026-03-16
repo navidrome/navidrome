@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 type Artist struct {
@@ -61,7 +63,7 @@ func (a Artist) CoverArtID() ArtworkID {
 }
 
 func (a Artist) UploadedImagePath() string {
-	return uploadedImagePath("artist", a.UploadedImage)
+	return UploadedImagePath(consts.EntityArtist, a.UploadedImage)
 }
 
 // Roles returns the roles this artist has participated in., based on the Stats field

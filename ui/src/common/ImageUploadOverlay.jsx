@@ -36,7 +36,7 @@ const useStyles = makeStyles(() => ({
   },
 }))
 
-const ImageUploadOverlay = ({
+export const ImageUploadOverlay = ({
   entityType,
   entityId,
   hasUploadedImage,
@@ -138,4 +138,3 @@ const ImageUploadOverlay = ({
   )
 }
 
-export default ImageUploadOverlay

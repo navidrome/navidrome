@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ var _ = Describe("ImageUploadService", func() {
 		It("creates directory and saves image file", func() {
 			ctx := context.Background()
 			reader := strings.NewReader("fake image data")
-			filename, err := svc.SetImage(ctx, core.EntityArtist, "ar-1", "Pink Floyd", "", reader, ".jpg")
+			filename, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Pink Floyd", "", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(filename).To(Equal("ar-1_pink_floyd.jpg"))
 
@@ -41,7 +42,7 @@ var _ = Describe("ImageUploadService", func() {
 		It("falls back to ID-only filename when name cleans to empty", func() {
 			ctx := context.Background()
 			reader := strings.NewReader("data")
-			filename, err := svc.SetImage(ctx, core.EntityPlaylist, "pl-1", "!!!", "", reader, ".png")
+			filename, err := svc.SetImage(ctx, consts.EntityPlaylist, "pl-1", "!!!", "", reader, ".png")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(filename).To(Equal("pl-1.png"))
 		})
@@ -54,7 +55,7 @@ var _ = Describe("ImageUploadService", func() {
 			Expect(os.WriteFile(oldFile, []byte("old"), 0600)).To(Succeed())
 
 			reader := strings.NewReader("new image")
-			_, err := svc.SetImage(ctx, core.EntityArtist, "ar-1", "New Name", oldFile, reader, ".jpg")
+			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "New Name", oldFile, reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(oldFile).ToNot(BeAnExistingFile())
 
@@ -65,7 +66,7 @@ var _ = Describe("ImageUploadService", func() {
 		It("ignores missing old file without error", func() {
 			ctx := context.Background()
 			reader := strings.NewReader("data")
-			_, err := svc.SetImage(ctx, core.EntityArtist, "ar-1", "Name", "/nonexistent/path.jpg", reader, ".jpg")
+			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Name", "/nonexistent/path.jpg", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
