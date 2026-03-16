@@ -137,4 +137,3 @@ export const ImageUploadOverlay = ({
     </div>
   )
 }
-
