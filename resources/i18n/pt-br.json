@@ -134,7 +134,15 @@
       "actions": {
         "shuffle": "Aleatório",
         "radio": "Rádio",
-        "topSongs": "Mais tocadas"
+        "topSongs": "Mais tocadas",
+        "uploadCover": "Enviar Capa",
+        "removeCover": "Remover Capa"
+      },
+      "message": {
+        "coverUploaded": "Capa atualizada",
+        "coverRemoved": "Capa removida",
+        "coverUploadError": "Erro ao enviar capa",
+        "coverRemoveError": "Erro ao remover capa"
       }
     },
     "user": {
