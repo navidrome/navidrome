@@ -219,19 +219,13 @@
         "saveQueue": "Shrani čakalno vrsto na seznam predvajanja",
         "searchOrCreate": "Iščite po seznamih predvajanja ali vnesite besedilo, da ustvarite nove ...",
         "pressEnterToCreate": "Pritisnite Enter za ustvarjanje novega seznama predvajanja",
-        "removeFromSelection": "Odstrani iz izbora",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Odstrani iz izbora"
       },
       "message": {
         "duplicate_song": "Dodaj podvojene pesmi",
         "song_exist": "Seznamu predvajanja boste dodali duplikate. Jih želite dodati ali izpustiti?",
         "noPlaylistsFound": "Ni najdenih seznamov predvajanja",
-        "noPlaylists": "Ni na voljo seznamov predvajanja",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Ni na voljo seznamov predvajanja"
       }
     },
     "radio": {

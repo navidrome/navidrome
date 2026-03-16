@@ -219,19 +219,13 @@
         "saveQueue": "Gem kø på afspilningsliste",
         "searchOrCreate": "Søg i afspilningslister eller skriv for at oprette nye...",
         "pressEnterToCreate": "Tryk Enter for at oprette en ny afspilningsliste",
-        "removeFromSelection": "Fjern fra valg",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Fjern fra valg"
       },
       "message": {
         "duplicate_song": "Tilføj dubletter af sange",
         "song_exist": "Der føjes dubletter til playlisten",
         "noPlaylistsFound": "Ingen playlister fundet",
-        "noPlaylists": "Ingen tilgængelige playlister",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Ingen tilgængelige playlister"
       }
     },
     "radio": {

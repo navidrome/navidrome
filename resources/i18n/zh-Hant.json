@@ -219,19 +219,13 @@
         "saveQueue": "將播放佇列儲存到播放清單",
         "searchOrCreate": "搜尋播放清單，或輸入名稱來新建…",
         "pressEnterToCreate": "按 Enter 鍵建立新的播放清單",
-        "removeFromSelection": "移除選取項目",
-        "uploadCover": "上傳封面",
-        "removeCover": "移除封面"
+        "removeFromSelection": "移除選取項目"
       },
       "message": {
         "duplicate_song": "加入重複的歌曲",
         "song_exist": "有重複歌曲正要加入播放清單，您要加入或略過重複歌曲？",
         "noPlaylistsFound": "找不到播放清單",
-        "noPlaylists": "暫無播放清單",
-        "coverUploaded": "已更新封面圖",
-        "coverRemoved": "已移除封面圖",
-        "coverUploadError": "上傳封面圖時發生錯誤",
-        "coverRemoveError": "移除封面圖時發生錯誤"
+        "noPlaylists": "暫無播放清單"
       }
     },
     "radio": {
@@ -597,7 +591,13 @@
     "remove_all_missing_content": "您確定要從媒體庫中刪除所有遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括它們的播放次數和評分。",
     "noSimilarSongsFound": "找不到相似歌曲",
     "noTopSongsFound": "找不到熱門歌曲",
-    "startingInstantMix": "正在載入即時混音..."
+    "startingInstantMix": "正在載入即時混音...",
+    "uploadCover": "上傳封面",
+    "removeCover": "移除封面",
+    "coverUploaded": "已更新封面圖",
+    "coverRemoved": "已移除封面圖",
+    "coverUploadError": "上傳封面圖時發生錯誤",
+    "coverRemoveError": "移除封面圖時發生錯誤"
   },
   "menu": {
     "library": "媒體庫",

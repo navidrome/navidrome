@@ -219,19 +219,13 @@
         "saveQueue": "Spara kö till spellista",
         "searchOrCreate": "Sök spellista eller skapa ny...",
         "pressEnterToCreate": "Tryck Enter för att skapa ny spellista",
-        "removeFromSelection": "Ta bort från urval",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Ta bort från urval"
       },
       "message": {
         "duplicate_song": "Lägg till dubletter",
         "song_exist": "Vissa låtar finns redan i spellistan. Vill du lägga till dubbletterna eller hoppa över dem?",
         "noPlaylistsFound": "Hittade inga spellistor",
-        "noPlaylists": "Inga spellistor tillgängliga",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "Inga spellistor tillgängliga"
       }
     },
     "radio": {

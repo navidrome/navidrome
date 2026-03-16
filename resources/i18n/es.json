@@ -219,19 +219,13 @@
         "saveQueue": "Guardar la fila de reproducción en una playlist",
         "searchOrCreate": "Buscar listas de reproducción o escribe para crear una nueva…",
         "pressEnterToCreate": "Pulsa Enter para crear una nueva lista de reproducción",
-        "removeFromSelection": "Quitar de la selección",
-        "uploadCover": "",
-        "removeCover": ""
+        "removeFromSelection": "Quitar de la selección"
       },
       "message": {
         "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
         "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
         "noPlaylistsFound": "No se encontraron listas de reproducción",
-        "noPlaylists": "No hay listas de reproducción disponibles",
-        "coverUploaded": "",
-        "coverRemoved": "",
-        "coverUploadError": "",
-        "coverRemoveError": ""
+        "noPlaylists": "No hay listas de reproducción disponibles"
       }
     },
     "radio": {
