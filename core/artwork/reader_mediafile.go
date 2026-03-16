@@ -26,16 +26,22 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if err != nil {
 		return nil, err
 	}
+	_, _, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
+	if err != nil {
+		return nil, err
+	}
 	a := &mediafileArtworkReader{
 		a:         artwork,
 		mediafile: *mf,
 		album:     *al,
 	}
 	a.cacheKey.artID = artID
-	if al.UpdatedAt.After(mf.UpdatedAt) {
+	a.cacheKey.lastUpdate = mf.UpdatedAt
+	if al.UpdatedAt.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = al.UpdatedAt
-	} else {
-		a.cacheKey.lastUpdate = mf.UpdatedAt
+	}
+	if imagesUpdatedAt != nil && imagesUpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *imagesUpdatedAt
 	}
 	return a, nil
 }
@@ -60,6 +66,12 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}
-	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
+	// For multi-disc albums, fall back to disc artwork first; for single-disc albums,
+	// skip disc resolution (it would just fall through to album art anyway).
+	if len(a.album.Discs) > 1 {
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
+	} else {
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
+	}
 	return selectImageReader(ctx, a.artID, ff...)
 }

@@ -85,6 +85,53 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("recently_added sort", func() {
+		It("sorts correctly regardless of timestamp format (T-format vs space-format)", func() {
+			// Both timestamps share the same date prefix "2024-01-15" so the T vs space
+			// character at position 10 determines sort order in raw string comparison.
+			// Without normalization, 'T' (ASCII 84) > ' ' (ASCII 32) makes the older
+			// T-format timestamp sort AFTER the newer space-format one.
+
+			// Older album: morning of Jan 15, stored in T-format
+			olderAlbum := &model.Album{LibraryID: 1, ID: "ts-older", Name: "Older Album"}
+			Expect(albumRepo.Put(olderAlbum)).To(Succeed())
+			_, err := albumRepo.executeSQL(squirrel.Update("album").
+				Set("created_at", "2024-01-15T08:00:00Z").
+				Where(squirrel.Eq{"id": "ts-older"}))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Newer album: evening of Jan 15, stored in space-format
+			newerAlbum := &model.Album{LibraryID: 1, ID: "ts-newer", Name: "Newer Album"}
+			Expect(albumRepo.Put(newerAlbum)).To(Succeed())
+			_, err = albumRepo.executeSQL(squirrel.Update("album").
+				Set("created_at", "2024-01-15 20:00:00+00:00").
+				Where(squirrel.Eq{"id": "ts-newer"}))
+			Expect(err).ToNot(HaveOccurred())
+
+			albums, err := albumRepo.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Find positions of our test albums
+			olderIdx, newerIdx := -1, -1
+			for i, a := range albums {
+				switch a.ID {
+				case "ts-older":
+					olderIdx = i
+				case "ts-newer":
+					newerIdx = i
+				}
+			}
+			Expect(olderIdx).To(BeNumerically(">=", 0), "older album not found in results")
+			Expect(newerIdx).To(BeNumerically(">=", 0), "newer album not found in results")
+			// Newer album (evening, space-format) should come before older album (morning, T-format) in desc order
+			Expect(newerIdx).To(BeNumerically("<", olderIdx),
+				"Newer album (20:00 space-format) should sort before older album (08:00 T-format) in desc order")
+
+			// Clean up
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"ts-older", "ts-newer"}}))
+		})
+	})
+
 	Context("Filters", func() {
 		var albumWithoutAnnotation model.Album
 
