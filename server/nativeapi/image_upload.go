@@ -37,7 +37,7 @@ func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext st
 		if !checkImageUploadPermission(w, r) {
 			return
 		}
-		if err := r.ParseMultipartForm(maxImageSize); err != nil {
+		if err := r.ParseMultipartForm(maxImageSize); err != nil { //nolint:gosec // size is limited by maxImageSize parameter
 			log.Error(ctx, "Error parsing multipart form", err)
 			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
 			return
