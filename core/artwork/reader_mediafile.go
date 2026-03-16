@@ -66,6 +66,12 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}
-	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
+	// For multi-disc albums, fall back to disc artwork first; for single-disc albums,
+	// skip disc resolution (it would just fall through to album art anyway).
+	if len(a.album.Discs) > 1 {
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
+	} else {
+		ff = append(ff, fromAlbum(ctx, a.a, model.NewArtworkID(model.KindAlbumArtwork, a.album.ID, nil)))
+	}
 	return selectImageReader(ctx, a.artID, ff...)
 }
