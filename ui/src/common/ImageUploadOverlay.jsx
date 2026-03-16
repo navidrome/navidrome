@@ -72,11 +72,11 @@ const ImageUploadOverlay = ({
           headers: new Headers({}),
           body: formData,
         })
-        notify(`resources.${entityType}.message.coverUploaded`, 'success')
+        notify(`message.coverUploaded`, 'success')
         if (onImageChange) onImageChange()
         refresh()
       } catch (err) {
-        notify(`resources.${entityType}.message.coverUploadError`, 'warning')
+        notify(`message.coverUploadError`, 'warning')
       }
 
       e.target.value = ''
@@ -93,11 +93,11 @@ const ImageUploadOverlay = ({
         await httpClient(`${REST_URL}/${entityType}/${entityId}/image`, {
           method: 'DELETE',
         })
-        notify(`resources.${entityType}.message.coverRemoved`, 'success')
+        notify(`message.coverRemoved`, 'success')
         if (onImageChange) onImageChange()
         refresh()
       } catch (err) {
-        notify(`resources.${entityType}.message.coverRemoveError`, 'warning')
+        notify(`message.coverRemoveError`, 'warning')
       }
     },
     [entityType, entityId, notify, refresh, onImageChange],
@@ -107,7 +107,7 @@ const ImageUploadOverlay = ({
 
   return (
     <div className={classes.coverOverlay}>
-      <Tooltip title={translate(`resources.${entityType}.actions.uploadCover`)}>
+      <Tooltip title={translate(`message.uploadCover`)}>
         <IconButton
           className={classes.overlayButton}
           onClick={handleUploadClick}
@@ -117,9 +117,7 @@ const ImageUploadOverlay = ({
         </IconButton>
       </Tooltip>
       {hasUploadedImage && (
-        <Tooltip
-          title={translate(`resources.${entityType}.actions.removeCover`)}
-        >
+        <Tooltip title={translate(`message.removeCover`)}>
           <IconButton
             className={classes.overlayButton}
             onClick={handleRemoveCover}
