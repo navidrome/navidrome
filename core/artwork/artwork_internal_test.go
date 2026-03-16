@@ -236,6 +236,17 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("al-444_0"))
 			})
+			It("falls back to disc cover art when media file has a disc number", func() {
+				mfWithDisc := model.MediaFile{ID: "46", Path: "tests/fixtures/test.ogg", AlbumID: "444", DiscNumber: 2}
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfWithDisc)).To(Succeed())
+
+				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithDisc.ID))
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := aw.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				// Should fall back to disc art, which itself falls back to album art
+				Expect(path).To(Equal("dc-444:2_0"))
+			})
 		})
 	})
 	Describe("playlistArtworkReader", func() {

@@ -60,6 +60,6 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}
-	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
+	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
 	return selectImageReader(ctx, a.artID, ff...)
 }
