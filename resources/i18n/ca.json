@@ -37,7 +37,8 @@
         "sampleRate": "Freqüencia de mostreig",
         "missing": "Desaparegut",
         "libraryName": "Biblioteca",
-        "composer": "Compositor"
+        "composer": "Compositor",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Reprodueix després",
@@ -218,13 +219,19 @@
         "saveQueue": "Desar la cua a una llista",
         "searchOrCreate": "Cerca llistes o escriu per crear-ne de noves...",
         "pressEnterToCreate": "Prem Retorn per crear una nova llista",
-        "removeFromSelection": "Elimina de la selecció"
+        "removeFromSelection": "Elimina de la selecció",
+        "uploadCover": "",
+        "removeCover": ""
       },
       "message": {
         "duplicate_song": "Afegeix cançons duplicades",
         "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?",
         "noPlaylistsFound": "No s'ha trobat cap llista",
-        "noPlaylists": "No hi ha cap llista disponible"
+        "noPlaylists": "No hi ha cap llista disponible",
+        "coverUploaded": "",
+        "coverRemoved": "",
+        "coverUploadError": "",
+        "coverRemoveError": ""
       }
     },
     "radio": {
@@ -353,7 +360,8 @@
         "allUsers": "Permet tots els usuaris",
         "selectedUsers": "Usuaris seleccionats",
         "allLibraries": "Permet totes les llibreries",
-        "selectedLibraries": "Biblioteques seleccionades"
+        "selectedLibraries": "Biblioteques seleccionades",
+        "allowWriteAccess": ""
       },
       "sections": {
         "status": "Estat",
@@ -398,7 +406,8 @@
         "librariesRequired": "Aquest controlador necessita accedir a la informació de la biblioteca. Selecciona a quines biblioteques pot accedir o activa «Permet totes les biblioteques».",
         "requiredHosts": "Hosts requerits",
         "configValidationError": "Ha fallat la validació de la configuració:",
-        "schemaRenderError": "No s'ha pogut renderitzar el formulari de configuració. És possible que l'esquema del controlador sigui invàlid."
+        "schemaRenderError": "No s'ha pogut renderitzar el formulari de configuració. És possible que l'esquema del controlador sigui invàlid.",
+        "allowWriteAccessHelp": ""
       },
       "placeholders": {
         "configKey": "clau",
@@ -674,7 +683,8 @@
       "exportSuccess": "Configuració exportada al porta-retalls en format TOML",
       "exportFailed": "La còpia de la configuració ha fallat",
       "devFlagsHeader": "Indicadors de desenvolupament (subjecte a canvis o eliminació)",
-      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures"
+      "devFlagsComment": "Aquests paràmetres són experimentals i és possible que s'eliminin en versions futures",
+      "downloadToml": "Descarrega la configuració (TOML)"
     }
   },
   "activity": {
