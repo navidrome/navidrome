@@ -71,7 +71,7 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 	if len(a.album.Discs) > 1 {
 		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
 	} else {
-		ff = append(ff, fromAlbum(ctx, a.a, model.NewArtworkID(model.KindAlbumArtwork, a.album.ID, nil)))
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
 	}
 	return selectImageReader(ctx, a.artID, ff...)
 }
