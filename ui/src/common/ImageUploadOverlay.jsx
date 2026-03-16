@@ -51,15 +51,12 @@ const ImageUploadOverlay = ({
   const canEdit =
     config.enableCoverArtUpload || localStorage.getItem('role') === 'admin'
 
-  const handleUploadClick = useCallback(
-    (e) => {
-      e.stopPropagation()
-      if (fileInputRef.current) {
-        fileInputRef.current.click()
-      }
-    },
-    [fileInputRef],
-  )
+  const handleUploadClick = useCallback((e) => {
+    e.stopPropagation()
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }, [])
 
   const handleFileChange = useCallback(
     async (e) => {

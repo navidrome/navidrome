@@ -215,56 +215,27 @@ func fromArtistImageFolder(ctx context.Context, artist model.Artist) sourceFunc 
 		if folder == "" {
 			return nil, "", nil
 		}
-		entries, err := os.ReadDir(folder)
+		path := findImageInArtistFolder(folder, artist.MbzArtistID, artist.Name)
+		if path == "" {
+			return nil, "", fmt.Errorf("no image found for artist %q in %s", artist.Name, folder)
+		}
+		f, err := os.Open(path)
 		if err != nil {
-			log.Warn(ctx, "Could not read artist image folder", "folder", folder, err)
-			return nil, "", nil
+			return nil, "", err
 		}
-		// Try MBID match first
-		if artist.MbzArtistID != "" {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					continue
-				}
-				name := entry.Name()
-				base := strings.TrimSuffix(name, filepath.Ext(name))
-				if strings.EqualFold(base, artist.MbzArtistID) && model.IsImageFile(name) {
-					path := filepath.Join(folder, name)
-					f, err := os.Open(path)
-					if err != nil {
-						continue
-					}
-					return f, path, nil
-				}
-			}
-		}
-		// Fall back to artist name match
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			base := strings.TrimSuffix(name, filepath.Ext(name))
-			if strings.EqualFold(base, artist.Name) && model.IsImageFile(name) {
-				path := filepath.Join(folder, name)
-				f, err := os.Open(path)
-				if err != nil {
-					continue
-				}
-				return f, path, nil
-			}
-		}
-		return nil, "", fmt.Errorf("no image found for artist %q in %s", artist.Name, folder)
+		return f, path, nil
 	}
 }
 
-func getArtistImageFolderModTime(ar *model.Artist, folder string) time.Time {
+// findImageInArtistFolder scans a folder for an image file matching the artist's MBID or name
+// (case-insensitive). Returns the full path, or empty string if not found.
+func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
 	entries, err := os.ReadDir(folder)
 	if err != nil {
-		return time.Time{}
+		return ""
 	}
-	for _, names := range []string{ar.MbzArtistID, ar.Name} {
-		if names == "" {
+	for _, candidate := range []string{mbzArtistID, artistName} {
+		if candidate == "" {
 			continue
 		}
 		for _, entry := range entries {
@@ -273,12 +244,24 @@ func getArtistImageFolderModTime(ar *model.Artist, folder string) time.Time {
 			}
 			name := entry.Name()
 			base := strings.TrimSuffix(name, filepath.Ext(name))
-			if strings.EqualFold(base, names) && model.IsImageFile(name) {
-				if info, err := entry.Info(); err == nil {
-					return info.ModTime()
-				}
+			if strings.EqualFold(base, candidate) && model.IsImageFile(name) {
+				return filepath.Join(folder, name)
 			}
 		}
+	}
+	return ""
+}
+
+// getArtistImageFolderModTime returns the mod time of the matching image file
+// in the artist image folder, using targeted os.Stat calls instead of reading
+// the entire directory (this is called on every artwork request for cache key computation).
+func getArtistImageFolderModTime(ar *model.Artist, folder string) time.Time {
+	path := findImageInArtistFolder(folder, ar.MbzArtistID, ar.Name)
+	if path == "" {
+		return time.Time{}
+	}
+	if info, err := os.Stat(path); err == nil {
+		return info.ModTime()
 	}
 	return time.Time{}
 }

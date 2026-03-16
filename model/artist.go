@@ -2,13 +2,8 @@ package model
 
 import (
 	"maps"
-	"path/filepath"
 	"slices"
 	"time"
-
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Artist struct {
@@ -65,19 +60,8 @@ func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
 }
 
-func (a Artist) ImageFilename(ext string) string {
-	clean := utils.CleanFileName(a.Name)
-	if clean == "" {
-		return a.ID + ext
-	}
-	return a.ID + "_" + clean + ext
-}
-
 func (a Artist) UploadedImagePath() string {
-	if a.UploadedImage == "" {
-		return ""
-	}
-	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "artist", a.UploadedImage)
+	return uploadedImagePath("artist", a.UploadedImage)
 }
 
 // Roles returns the roles this artist has participated in., based on the Stats field

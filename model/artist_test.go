@@ -11,18 +11,6 @@ import (
 )
 
 var _ = Describe("Artist", func() {
-	Describe("ImageFilename", func() {
-		It("generates filename with cleaned name", func() {
-			a := model.Artist{ID: "ar-1", Name: "Pink Floyd"}
-			Expect(a.ImageFilename(".jpg")).To(Equal("ar-1_pink_floyd.jpg"))
-		})
-
-		It("falls back to ID when name cleans to empty", func() {
-			a := model.Artist{ID: "ar-1", Name: "!!!"}
-			Expect(a.ImageFilename(".png")).To(Equal("ar-1.png"))
-		})
-	})
-
 	Describe("UploadedImagePath", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
