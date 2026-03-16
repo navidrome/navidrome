@@ -4,7 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
@@ -67,6 +67,7 @@ const useStyles = makeStyles(
       minWidth: '7rem',
       display: 'flex',
       borderRadius: '5em',
+      position: 'relative',
     },
     loveButton: {
       top: theme.spacing(-0.2),
@@ -138,6 +139,11 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
                 }}
               />
             )}
+            <ImageUploadOverlay
+              entityType="artist"
+              entityId={record.id}
+              hasUploadedImage={!!record.uploadedImage}
+            />
           </Card>
           <div className={classes.details}>
             <Typography

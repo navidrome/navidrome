@@ -6,7 +6,7 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
@@ -57,6 +57,7 @@ const useStyles = makeStyles(
       alignItems: 'center',
       justifyContent: 'center',
       boxShadow: 'none',
+      position: 'relative',
     },
     artistDetail: {
       flex: '1',
@@ -135,6 +136,11 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
               }}
             />
           )}
+          <ImageUploadOverlay
+            entityType="artist"
+            entityId={record.id}
+            hasUploadedImage={!!record.uploadedImage}
+          />
         </Card>
         <div className={classes.details}>
           <CardContent className={classes.content}>
