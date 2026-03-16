@@ -42,6 +42,13 @@ func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext st
 			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
 			return
 		}
+		defer func() {
+			if r.MultipartForm != nil {
+				if err := r.MultipartForm.RemoveAll(); err != nil {
+					log.Warn(ctx, "Error removing multipart temp files", err)
+				}
+			}
+		}()
 		file, header, err := r.FormFile("image")
 		if err != nil {
 			log.Error(ctx, "Error reading uploaded file", err)

@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -33,7 +34,10 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 		artistID := chi.URLParamFromCtx(ctx, "id")
 		ar, err := api.ds.Artist(ctx).Get(artistID)
 		if err != nil {
-			return model.ErrNotFound
+			if errors.Is(err, model.ErrNotFound) {
+				return model.ErrNotFound
+			}
+			return err
 		}
 		oldPath := ar.UploadedImagePath()
 		filename, err := api.imgUpload.SetImage(ctx, consts.EntityArtist, ar.ID, ar.Name, oldPath, reader, ext)
@@ -52,7 +56,10 @@ func (api *Router) deleteArtistImage() http.HandlerFunc {
 		artistID := chi.URLParamFromCtx(ctx, "id")
 		ar, err := api.ds.Artist(ctx).Get(artistID)
 		if err != nil {
-			return model.ErrNotFound
+			if errors.Is(err, model.ErrNotFound) {
+				return model.ErrNotFound
+			}
+			return err
 		}
 		if err := api.imgUpload.RemoveImage(ctx, ar.UploadedImagePath()); err != nil {
 			return err

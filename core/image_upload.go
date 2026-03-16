@@ -57,7 +57,7 @@ func (s *imageUploadService) RemoveImage(ctx context.Context, path string) error
 		return nil
 	}
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		log.Warn(ctx, "Failed to remove image", "path", path, err)
+		return fmt.Errorf("removing image %q: %w", path, err)
 	}
 	return nil
 }
