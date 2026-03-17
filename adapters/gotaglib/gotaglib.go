@@ -66,7 +66,7 @@ func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err er
 	debug.SetPanicOnFault(true)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("gotaglib: WASM runtime panic reading file. Skipping", "file", filePath, "panic", r)
+			log.Error("gotaglib: WASM runtime panic reading file. Skipping", "filePath", filePath, "panic", r)
 			err = fmt.Errorf("WASM runtime panic: %v", r)
 		}
 	}()
