@@ -248,7 +248,7 @@ ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
 TimeoutStopSec=20
 RestartSec=120
 EnvironmentFile=-/etc/sysconfig/{{.Name}}
-Environment="EMIT_SYSTEMD_COLORS=1"
+Environment="ND_SYSTEMD_PRIORITY_LOGGING=1"
 
 DevicePolicy=closed
 NoNewPrivileges=yes
