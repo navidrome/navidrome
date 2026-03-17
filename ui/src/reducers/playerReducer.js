@@ -134,30 +134,24 @@ const reduceAddTracks = (state, { data }) => {
 }
 
 const reducePlayNext = (state, { data }) => {
+  const newTracks = Object.keys(data).map((id) => mapToAudioLists(data[id]))
   const newQueue = []
   const current = state.current || {}
   let foundPos = false
-  let currentIndex = 0
   state.queue.forEach((item) => {
     newQueue.push(item)
     if (item.uuid === current.uuid) {
       foundPos = true
-      currentIndex = newQueue.length - 1
-      Object.keys(data).forEach((id) => {
-        newQueue.push(mapToAudioLists(data[id]))
-      })
+      newQueue.push(...newTracks)
     }
   })
   if (!foundPos) {
-    Object.keys(data).forEach((id) => {
-      newQueue.push(mapToAudioLists(data[id]))
-    })
+    newQueue.push(...newTracks)
   }
 
   return {
     ...state,
     queue: newQueue,
-    playIndex: foundPos ? currentIndex : undefined,
     clear: true,
   }
 }
@@ -170,14 +164,18 @@ const reduceSetVolume = (state, { data: { volume } }) => {
 }
 
 const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
+  // Only keep clear and playIndex alive when there is an actual pending
+  // track switch (playIndex differs from savedPlayIndex). This lets
+  // PLAYER_PLAY_TRACKS selections survive the sync, while allowing
+  // PLAYER_PLAY_NEXT (which sets playIndex to the current track) to
+  // reset immediately and avoid restarting playback.
+  const hasPendingSwitch =
+    state.playIndex != null && state.playIndex !== state.savedPlayIndex
   return {
     ...state,
     queue: audioLists,
-    // Keep clear and playIndex alive so the music player can still
-    // pick up a pending track selection set by PLAYER_PLAY_TRACKS.
-    // They will be consumed by the next PLAYER_CURRENT dispatch.
-    clear: state.playIndex != null ? state.clear : false,
-    playIndex: state.playIndex != null ? state.playIndex : undefined,
+    clear: hasPendingSwitch ? state.clear : false,
+    playIndex: hasPendingSwitch ? state.playIndex : undefined,
   }
 }
 
