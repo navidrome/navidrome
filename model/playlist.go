@@ -133,6 +133,42 @@ func (pls Playlist) UploadedImagePath() string {
 	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "playlist", pls.UploadedImage)
 }
 
+func (pls Playlist) NormalizeChildPaths() {
+	if pls.Rules.Expression == nil {
+		return
+	}
+
+	normalizePlaylistPaths(pls.Rules.Expression, pls.Path)
+}
+
+func normalizePlaylistPaths(inputRule any, referencingPlaylistPath string) {
+	switch rule := inputRule.(type) {
+	case criteria.Any:
+		for _, rules := range rule {
+			normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+	case criteria.All:
+		for _, rules := range rule {
+			normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+	case criteria.InPlaylist:
+		dir := filepath.Dir(referencingPlaylistPath)
+		if path, ok := rule["path"].(string); ok {
+			if !filepath.IsAbs(path) {
+				rule["path"] = filepath.Clean(filepath.Join(dir, path))
+			}
+		}
+	case criteria.NotInPlaylist:
+		dir := filepath.Dir(referencingPlaylistPath)
+		if path, ok := rule["path"].(string); ok {
+			if !filepath.IsAbs(path) {
+				rule["path"] = filepath.Clean(filepath.Join(dir, path))
+			}
+		}
+	}
+	return
+}
+
 type Playlists []Playlist
 
 type PlaylistRepository interface {
