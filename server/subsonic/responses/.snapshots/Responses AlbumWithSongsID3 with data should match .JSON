@@ -8,6 +8,7 @@
     "id": "1",
     "name": "album",
     "artist": "artist",
+    "duration": 292,
     "genre": "rock",
     "userRating": 4,
     "genres": [
