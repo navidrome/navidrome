@@ -4,7 +4,9 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -315,13 +318,38 @@ func (r *artistRepository) GetIndex(includeMissing bool, libraryIds []int, roles
 }
 
 func (r *artistRepository) purgeEmpty() error {
-	del := Delete(r.tableName).Where("id not in (select artist_id from album_artists)")
+	orphanFilter := "id not in (select artist_id from album_artists)"
+
+	// Collect uploaded image filenames before deleting
+	sel := Select("uploaded_image").From(r.tableName).
+		Where(orphanFilter).
+		Where("uploaded_image != ''")
+	var imageFiles []string
+	if err := r.queryAllSlice(sel, &imageFiles); err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("collecting artist images for cleanup: %w", err)
+	}
+
+	// Delete orphan artists
+	del := Delete(r.tableName).Where(orphanFilter)
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("purging empty artists: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)
+	}
+
+	if len(imageFiles) == 0 {
+		return nil
+	}
+
+	// Best-effort cleanup of uploaded image files
+	log.Debug(r.ctx, "Cleaning up artist images", "totalImages", len(imageFiles))
+	for _, filename := range imageFiles {
+		path := model.UploadedImagePath(consts.EntityArtist, filename)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn(r.ctx, "Failed to remove artist image during GC", "path", path, err)
+		}
 	}
 	return nil
 }
