@@ -333,9 +333,9 @@ func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
 	}
 	if negate {
 		return "media_file.id NOT IN (" + subQText + ")", subQArgs, nil
-	} else {
-		return "media_file.id IN (" + subQText + ")", subQArgs, nil
 	}
+
+	return "media_file.id IN (" + subQText + ")", subQArgs, nil
 }
 
 func extractPlaylistField(inputRule any, field string) (values []string) {
