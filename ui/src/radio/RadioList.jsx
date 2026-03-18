@@ -113,7 +113,7 @@ const RadioList = ({ permissions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'radio',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['streamUrl', 'createdAt'],
   })
 
   const handleRowClick = async (id, basePath, record) => {
