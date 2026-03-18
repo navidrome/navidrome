@@ -26,7 +26,7 @@ type Lyrics struct {
 }
 
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
-const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(.[0-9]{1,3})?\]`
+const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})([.:][0-9]{1,3})?\]`
 
 var (
 	// Should either be at the beginning of file, or beginning of line
@@ -40,7 +40,19 @@ func (l Lyrics) IsEmpty() bool {
 }
 
 func ToLyrics(language, text string) (*Lyrics, error) {
+	if lyrics, ok, err := parseTTMLLyrics(language, text); ok || err != nil {
+		return lyrics, err
+	}
+	if lyrics, ok, err := parseSRTLyrics(language, text); ok || err != nil {
+		return lyrics, err
+	}
+	return parseLRCLyrics(language, text)
+}
+
+func parseLRCLyrics(language, text string) (*Lyrics, error) {
 	text = str.SanitizeText(text)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
 
 	lines := strings.Split(text, "\n")
 	structuredLines := make([]Line, 0, len(lines)*2)
@@ -49,14 +61,15 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 	title := ""
 	var offset *int64 = nil
 
-	synced := syncRegex.MatchString(text)
+	synced := syncRegex.MatchString(text) || wordSyncRegex.MatchString(text)
 	priorLine := ""
 	validLine := false
 	repeated := false
 	var timestamps []int64
 
 	for _, line := range lines {
-		line := strings.TrimSpace(line)
+		rawLine := strings.TrimRight(line, " \t")
+		line := strings.TrimSpace(rawLine)
 		if line == "" {
 			if validLine {
 				priorLine += "\n"
@@ -90,59 +103,34 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 				continue
 			}
 
-			times := timeRegex.FindAllStringSubmatchIndex(line, -1)
-			if len(times) > 1 {
-				repeated = true
+			parsedLine, ok, err := parseLRCSyncedLine(line)
+			if err != nil {
+				return nil, err
 			}
-
-			// The second condition is for when there is a timestamp in the middle of
-			// a line (after any text)
-			if times == nil || times[0][0] != 0 {
-				if validLine {
-					priorLine += "\n" + line
+			if ok {
+				if len(parsedLine.timestamps) > 1 {
+					repeated = true
 				}
+
+				if validLine {
+					for idx := range timestamps {
+						structuredLines = append(structuredLines, Line{
+							Start: &timestamps[idx],
+							Value: strings.TrimSpace(priorLine),
+						})
+					}
+					timestamps = nil
+				}
+
+				timestamps = parsedLine.timestamps
+				priorLine = parsedLine.text
+				validLine = true
 				continue
 			}
 
 			if validLine {
-				for idx := range timestamps {
-					structuredLines = append(structuredLines, Line{
-						Start: &timestamps[idx],
-						Value: strings.TrimSpace(priorLine),
-					})
-				}
-				timestamps = nil
+				priorLine += "\n" + stripWordSyncTags(line)
 			}
-
-			end := 0
-
-			// [fullStart, fullEnd, hourStart, hourEnd, minStart, minEnd, secStart, secEnd, msStart, msEnd]
-			for _, match := range times {
-				// for multiple matches, we need to check that later matches are not
-				// in the middle of the string
-				if end != 0 {
-					middle := strings.TrimSpace(line[end:match[0]])
-					if middle != "" {
-						break
-					}
-				}
-
-				end = match[1]
-				timeInMillis, err := parseTime(line, match)
-				if err != nil {
-					return nil, err
-				}
-
-				timestamps = append(timestamps, timeInMillis)
-			}
-
-			if end >= len(line) {
-				priorLine = ""
-			} else {
-				priorLine = strings.TrimSpace(line[end:])
-			}
-
-			validLine = true
 		} else {
 			text = line
 			structuredLines = append(structuredLines, Line{
