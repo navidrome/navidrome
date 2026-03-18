@@ -6,7 +6,6 @@ import (
 	"io"
 	"mime"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -51,6 +50,9 @@ func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.channels, j.format, j.offset)
 }
 
+// NewStream creates a Stream for the given MediaFile and Request. It handles both raw streaming (no transcoding)
+// and transcoded streaming based on the requested format and bitrate. It also logs detailed information about
+// the streaming request and whether the transcoding result was served from cache or not.
 func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req Request) (*Stream, error) {
 	var format string
 	var bitRate int
@@ -133,14 +135,14 @@ func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
 }
 
-// NewTestStream creates a Stream for testing purposes.
-func NewTestStream(mf *model.MediaFile, format string, bitRate int) *Stream {
+// NewStream creates a non-seekable Stream from the given components.
+func NewStream(mf *model.MediaFile, format string, bitRate int, r io.ReadCloser) *Stream {
 	return &Stream{
 		ctx:        context.Background(),
 		mf:         mf,
 		format:     format,
 		bitRate:    bitRate,
-		ReadCloser: io.NopCloser(strings.NewReader("fake audio data")),
+		ReadCloser: r,
 	}
 }
 
