@@ -74,12 +74,14 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			c, err := io.Copy(w, stream)
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				if err != nil {
-					log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
-				} else {
-					log.Trace(ctx, "Success sending shared transcode file", "id", info.id, "size", c)
-				}
+			if err != nil {
+				log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
+			} else if c == 0 {
+				log.Warn(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
+					"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
+					"id", info.id, "format", stream.ContentType())
+			} else {
+				log.Trace(ctx, "Success sending shared transcoded file", "id", info.id, "size", c)
 			}
 		}
 	}
