@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -258,10 +259,11 @@ func (e *ffmpeg) start(ctx context.Context, args []string, input ...io.Reader) (
 
 type ffCmd struct {
 	*io.PipeReader
-	out   *io.PipeWriter
-	args  []string
-	cmd   *exec.Cmd
-	input io.Reader // optional stdin source
+	out    *io.PipeWriter
+	args   []string
+	cmd    *exec.Cmd
+	input  io.Reader // optional stdin source
+	stderr *bytes.Buffer
 }
 
 func (j *ffCmd) start(ctx context.Context) error {
@@ -270,10 +272,12 @@ func (j *ffCmd) start(ctx context.Context) error {
 	if j.input != nil {
 		cmd.Stdin = j.input
 	}
+	j.stderr = &bytes.Buffer{}
+	stderrWriter := &limitedWriter{buf: j.stderr, limit: 4096}
 	if log.IsGreaterOrEqualTo(log.LevelTrace) {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = io.MultiWriter(os.Stderr, stderrWriter)
 	} else {
-		cmd.Stderr = io.Discard
+		cmd.Stderr = stderrWriter
 	}
 	j.cmd = cmd
 
@@ -287,13 +291,37 @@ func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode()))
+			errMsg := fmt.Sprintf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode())
+			if stderrOutput := strings.TrimSpace(j.stderr.String()); stderrOutput != "" {
+				errMsg += ": " + stderrOutput
+			}
+			_ = j.out.CloseWithError(errors.New(errMsg))
 		} else {
 			_ = j.out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", j.args[0], err))
 		}
 		return
 	}
 	_ = j.out.Close()
+}
+
+// limitedWriter wraps a bytes.Buffer and stops writing once the limit is reached.
+// Writes that would exceed the limit are silently discarded to prevent unbounded memory usage.
+type limitedWriter struct {
+	buf   *bytes.Buffer
+	limit int
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	remaining := w.limit - w.buf.Len()
+	if remaining <= 0 {
+		return n, nil // Discard but report success to avoid breaking the writer
+	}
+	if len(p) > remaining {
+		p = p[:remaining]
+	}
+	w.buf.Write(p)
+	return n, nil // Always report full write to avoid ErrShortWrite from io.MultiWriter
 }
 
 // formatCodecMap maps target format to ffmpeg codec flag.
