@@ -32,7 +32,6 @@ func (a *radioArtworkReader) LastUpdated() time.Time {
 func (a *radioArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
 		a.fromRadioUploadedImage(),
-		fromAlbumPlaceholder(),
 	)
 }
 

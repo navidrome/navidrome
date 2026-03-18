@@ -20,6 +20,7 @@ import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles({
@@ -78,13 +79,11 @@ const avatarStyle = { width: 40, height: 40 }
 
 const CoverArtField = ({ record }) => {
   if (!record) return null
+  const src = record.uploadedImage
+    ? subsonic.getCoverArtUrl(record, 40, true)
+    : RADIO_PLACEHOLDER_IMAGE
   return (
-    <Avatar
-      src={subsonic.getCoverArtUrl(record, 40, true)}
-      variant="rounded"
-      style={avatarStyle}
-      alt={record.name}
-    />
+    <Avatar src={src} variant="rounded" style={avatarStyle} alt={record.name} />
   )
 }
 CoverArtField.defaultProps = { label: '' }

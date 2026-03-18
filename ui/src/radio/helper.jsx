@@ -1,21 +1,23 @@
 import subsonic from '../subsonic'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 
 export async function songFromRadio(radio) {
   if (!radio) {
     return undefined
   }
 
-  let cover = subsonic.getCoverArtUrl(radio, 300)
-
-  // If no uploaded image, try favicon as fallback
-  if (!radio.uploadedImage) {
+  let cover = RADIO_PLACEHOLDER_IMAGE
+  if (radio.uploadedImage) {
+    cover = subsonic.getCoverArtUrl(radio, 300, true)
+  } else {
+    // Try favicon as fallback
     try {
       const url = new URL(radio.homePageUrl ?? radio.streamUrl)
       url.pathname = '/favicon.ico'
       await resourceExists(url)
       cover = url.toString()
     } catch {
-      // Use artwork URL (will show placeholder)
+      // No cover available
     }
   }
 

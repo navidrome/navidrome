@@ -11,6 +11,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { urlValidate } from '../utils/validations'
 import { Title, ImageUploadOverlay, useImageLoadingState } from '../common'
 import subsonic from '../subsonic'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 
 const useStyles = makeStyles({
   coverParent: {
@@ -29,6 +30,11 @@ const useStyles = makeStyles({
   },
   coverLoading: {
     opacity: 0.5,
+  },
+  placeholder: {
+    width: '8rem',
+    height: '8rem',
+    objectFit: 'contain',
   },
 })
 
@@ -72,18 +78,24 @@ const RadioCoverArt = ({ record }) => {
 
   if (!record) return null
 
-  const imageUrl = subsonic.getCoverArtUrl(record, 300, true)
-
   return (
     <div className={classes.coverParent}>
-      <CardMedia
-        component="img"
-        src={imageUrl}
-        className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        title={record.name}
-      />
+      {record.uploadedImage ? (
+        <CardMedia
+          component="img"
+          src={subsonic.getCoverArtUrl(record, 300, true)}
+          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          title={record.name}
+        />
+      ) : (
+        <img
+          src={RADIO_PLACEHOLDER_IMAGE}
+          className={classes.placeholder}
+          alt={record.name}
+        />
+      )}
       <ImageUploadOverlay
         entityType="radio"
         entityId={record.id}
