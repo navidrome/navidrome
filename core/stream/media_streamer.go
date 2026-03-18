@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -140,13 +139,14 @@ func (s *Stream) EstimatedContentLength() int {
 }
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
-// (supporting range requests). For non-seekable streams it writes directly, detecting empty output
-// and io.Copy errors. It returns a non-nil error only when no bytes have been written and the caller
-// can still send an error response; once bytes are committed (HTTP 200 flushed) it logs and returns nil.
-func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+// (supporting range requests). For non-seekable streams it writes directly and logs any errors.
+// Returns the number of bytes written and an error only when io.Copy fails with 0 bytes written
+// (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
+// Empty output (0 bytes, no error) is logged but not treated as an error.
+func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
 		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
-		return nil
+		return -1, nil
 	}
 
 	w.Header().Set("Accept-Ranges", "none")
@@ -160,7 +160,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	if r.Method == http.MethodHead {
 		go func() { _, _ = io.Copy(io.Discard, s) }()
-		return nil
+		return 0, nil
 	}
 
 	id := s.mf.ID
@@ -169,19 +169,18 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		log.Error(ctx, "Error sending transcoded file", "id", id, err)
 		if c == 0 {
 			w.Header().Del("Content-Length")
-			return fmt.Errorf("sending transcoded file: %w", err)
+			return 0, fmt.Errorf("sending transcoded file: %w", err)
 		}
-		return nil
+		return c, nil
 	}
 	if c == 0 {
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
 			"id", id, "format", s.ContentType())
-		w.Header().Del("Content-Length")
-		return errors.New("transcoding failed: empty output")
+	} else {
+		log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
 	}
-	log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
-	return nil
+	return c, nil
 }
 
 // NewStream creates a non-seekable Stream from the given components.

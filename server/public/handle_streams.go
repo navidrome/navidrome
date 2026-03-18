@@ -53,7 +53,8 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	if err := stream.Serve(ctx, w, r); err != nil {
+	n, err := stream.Serve(ctx, w, r)
+	if err != nil || n == 0 {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }

@@ -46,7 +46,8 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	return nil, stream.Serve(ctx, w, r)
+	_, err = stream.Serve(ctx, w, r)
+	return nil, err
 }
 
 func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -114,7 +115,8 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
 		w.Header().Set("Content-Disposition", disposition)
 
-		return nil, stream.Serve(ctx, w, r)
+		_, err = stream.Serve(ctx, w, r)
+		return nil, err
 	case *model.Album:
 		setHeaders(v.Name)
 		return nil, api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w)

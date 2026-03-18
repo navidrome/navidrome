@@ -166,27 +166,17 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 			streamerSpy.SimulateEmptyStream = false
 		})
 
-		It("returns a Subsonic error for stream endpoint", func() {
+		It("returns 200 with empty body for stream endpoint", func() {
 			w := doRawReq("stream", "id", flacTrackID, "format", "opus")
 			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var wrapper responses.JsonWrapper
-			Expect(json.Unmarshal(w.Body.Bytes(), &wrapper)).To(Succeed())
-			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
-			Expect(wrapper.Subsonic.Error).ToNot(BeNil())
-			Expect(wrapper.Subsonic.Error.Message).To(ContainSubstring("transcoding failed"))
+			Expect(w.Body.Len()).To(Equal(0))
 		})
 
-		It("returns a Subsonic error for download endpoint", func() {
+		It("returns 200 with empty body for download endpoint", func() {
 			conf.Server.EnableDownloads = true
 			w := doRawReq("download", "id", flacTrackID, "format", "opus")
 			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var wrapper responses.JsonWrapper
-			Expect(json.Unmarshal(w.Body.Bytes(), &wrapper)).To(Succeed())
-			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
-			Expect(wrapper.Subsonic.Error).ToNot(BeNil())
-			Expect(wrapper.Subsonic.Error.Message).To(ContainSubstring("transcoding failed"))
+			Expect(w.Body.Len()).To(Equal(0))
 		})
 	})
 })
