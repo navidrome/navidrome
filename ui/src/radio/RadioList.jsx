@@ -132,14 +132,7 @@ const RadioList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
-          leftAvatar={(r) => (
-            <Avatar
-              src={subsonic.getCoverArtUrl(r, 40, true)}
-              variant="rounded"
-              style={{ width: 40, height: 40 }}
-              alt={r.name}
-            />
-          )}
+          leftAvatar={(r) => <CoverArtField record={r} />}
           leftIcon={(r) => (
             <StreamField
               record={r}

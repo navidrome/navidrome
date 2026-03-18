@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
@@ -48,7 +47,6 @@ func (api *Router) uploadRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = filename
-		radio.UpdatedAt = time.Now()
 		return api.ds.Radio(ctx).Put(radio)
 	})
 }
@@ -67,7 +65,6 @@ func (api *Router) deleteRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = ""
-		radio.UpdatedAt = time.Now()
 		return api.ds.Radio(ctx).Put(radio)
 	})
 }
