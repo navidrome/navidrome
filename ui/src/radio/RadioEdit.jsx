@@ -1,4 +1,3 @@
-import { useState, useCallback, useEffect } from 'react'
 import {
   DateField,
   Edit,
@@ -10,7 +9,7 @@ import {
 import { CardMedia } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { urlValidate } from '../utils/validations'
-import { Title, ImageUploadOverlay } from '../common'
+import { Title, ImageUploadOverlay, useImageLoadingState } from '../common'
 import subsonic from '../subsonic'
 
 const useStyles = makeStyles({
@@ -68,18 +67,12 @@ const RadioEdit = (props) => {
 
 const RadioCoverArt = ({ record }) => {
   const classes = useStyles()
-  const [imageLoading, setImageLoading] = useState(true)
-
-  const imageUrl = record ? subsonic.getCoverArtUrl(record, 300, true) : ''
-
-  useEffect(() => {
-    setImageLoading(true)
-  }, [record?.id])
-
-  const handleImageLoad = useCallback(() => setImageLoading(false), [])
-  const handleImageError = useCallback(() => setImageLoading(false), [])
+  const { imageLoading, handleImageLoad, handleImageError } =
+    useImageLoadingState(record?.id)
 
   if (!record) return null
+
+  const imageUrl = subsonic.getCoverArtUrl(record, 300, true)
 
   return (
     <div className={classes.coverParent}>

@@ -4,11 +4,15 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
+import {
+  LoveButton,
+  RatingField,
+  ImageUploadOverlay,
+  useImageLoadingState,
+} from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
-import useArtistImageState from './useArtistImageState'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -97,7 +101,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
     handleImageError,
     handleOpenLightbox,
     handleCloseLightbox,
-  } = useArtistImageState(record.id)
+  } = useImageLoadingState(record.id)
 
   return (
     <>
