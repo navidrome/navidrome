@@ -86,6 +86,9 @@ const getCoverArtUrl = (record, size, square) => {
   } else if (record.sync !== undefined) {
     // This is a playlist
     return baseUrl(url('getCoverArt', 'pl-' + record.id, options))
+  } else if (record.streamUrl !== undefined) {
+    // This is a radio station
+    return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
   } else {
     return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
   }
