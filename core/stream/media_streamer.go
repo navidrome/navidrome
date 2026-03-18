@@ -140,7 +140,7 @@ func NewTestStream(mf *model.MediaFile, format string, bitRate int) *Stream {
 		mf:         mf,
 		format:     format,
 		bitRate:    bitRate,
-		ReadCloser: io.NopCloser(strings.NewReader("")),
+		ReadCloser: io.NopCloser(strings.NewReader("fake audio data")),
 	}
 }
 

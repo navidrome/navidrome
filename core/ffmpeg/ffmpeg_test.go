@@ -605,6 +605,12 @@ var _ = Describe("ffmpeg", func() {
 		})
 
 		Context("stderr capture", func() {
+			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("stderr capture tests use /bin/sh, skipping on Windows")
+				}
+			})
+
 			It("should include stderr in error when process fails", func() {
 				ff := &ffmpeg{}
 				ctx := GinkgoT().Context()

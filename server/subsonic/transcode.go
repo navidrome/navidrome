@@ -395,7 +395,8 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	api.serveStream(ctx, w, r, stream, mediaID)
-
+	if err := api.serveStream(ctx, w, r, stream, mediaID); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 	return nil, nil
 }

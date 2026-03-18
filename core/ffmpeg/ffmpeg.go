@@ -312,15 +312,16 @@ type limitedWriter struct {
 }
 
 func (w *limitedWriter) Write(p []byte) (int, error) {
+	n := len(p)
 	remaining := w.limit - w.buf.Len()
 	if remaining <= 0 {
-		return len(p), nil // Discard but report success to avoid breaking the writer
+		return n, nil // Discard but report success to avoid breaking the writer
 	}
 	if len(p) > remaining {
 		p = p[:remaining]
 	}
 	w.buf.Write(p)
-	return len(p), nil
+	return n, nil // Always report full write to avoid ErrShortWrite from io.MultiWriter
 }
 
 // formatCodecMap maps target format to ffmpeg codec flag.

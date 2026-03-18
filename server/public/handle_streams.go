@@ -76,10 +76,16 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 			c, err := io.Copy(w, stream)
 			if err != nil {
 				log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
+				if c == 0 {
+					w.Header().Del("Content-Length")
+					http.Error(w, "internal error", http.StatusInternalServerError)
+				}
 			} else if c == 0 {
-				log.Warn(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
+				log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 					"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
 					"id", info.id, "format", stream.ContentType())
+				w.Header().Del("Content-Length")
+				http.Error(w, "transcoding failed", http.StatusInternalServerError)
 			} else {
 				log.Trace(ctx, "Success sending shared transcoded file", "id", info.id, "size", c)
 			}
