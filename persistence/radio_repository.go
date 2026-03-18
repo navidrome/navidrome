@@ -68,6 +68,9 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 		radio.CreatedAt = time.Now()
 		radio.ID = id.NewRandom()
 	}
+	if len(colsToUpdate) > 0 {
+		colsToUpdate = append(colsToUpdate, "UpdatedAt")
+	}
 	_, err := r.put(radio.ID, radio, colsToUpdate...)
 	return err
 }
