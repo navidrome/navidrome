@@ -96,12 +96,14 @@ func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, er
 	homepageUrl, _ := p.String("homepageUrl")
 	ctx := r.Context()
 
-	radio := &model.Radio{
-		ID:          id,
-		StreamUrl:   streamUrl,
-		HomePageUrl: homepageUrl,
-		Name:        name,
+	// Fetch existing radio to preserve fields not provided by the Subsonic API (e.g. UploadedImage)
+	radio, err := api.ds.Radio(ctx).Get(id)
+	if err != nil {
+		return nil, err
 	}
+	radio.StreamUrl = streamUrl
+	radio.HomePageUrl = homepageUrl
+	radio.Name = name
 
 	err = api.ds.Radio(ctx).Put(radio)
 	if err != nil {

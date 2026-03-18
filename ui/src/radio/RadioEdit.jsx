@@ -88,6 +88,7 @@ const RadioCoverArt = ({ record }) => {
           onLoad={handleImageLoad}
           onError={handleImageError}
           title={record.name}
+          alt={record.name}
         />
       ) : (
         <img
