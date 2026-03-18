@@ -94,6 +94,11 @@ const useStyles = makeStyles(
 )
 
 const useCoverStyles = makeStyles({
+  coverContainer: {
+    width: '100%',
+    aspectRatio: '1',
+    overflow: 'hidden',
+  },
   cover: {
     display: 'inline-block',
     width: '100%',
@@ -150,7 +155,7 @@ const Cover = withContentRect('bounds')(({
   }, [])
 
   return (
-    <div ref={measureRef}>
+    <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
         <img
           key={record.id} // Force re-render when record changes
