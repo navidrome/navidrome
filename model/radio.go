@@ -32,5 +32,5 @@ type RadioRepository interface {
 	Delete(id string) error
 	Get(id string) (*Radio, error)
 	GetAll(options ...QueryOptions) (Radios, error)
-	Put(u *Radio) error
+	Put(u *Radio, colsToUpdate ...string) error
 }

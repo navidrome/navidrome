@@ -47,7 +47,7 @@ func (api *Router) uploadRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = filename
-		return api.ds.Radio(ctx).Put(radio)
+		return api.ds.Radio(ctx).Put(radio, "UploadedImage")
 	})
 }
 
@@ -65,6 +65,6 @@ func (api *Router) deleteRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = ""
-		return api.ds.Radio(ctx).Put(radio)
+		return api.ds.Radio(ctx).Put(radio, "UploadedImage")
 	})
 }
