@@ -2,10 +2,13 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
+	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type MediaStreamer interface {
@@ -133,6 +137,51 @@ func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+}
+
+// Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
+// (supporting range requests). For non-seekable streams it writes directly, detecting empty output
+// and io.Copy errors. It returns a non-nil error only when no bytes have been written and the caller
+// can still send an error response; once bytes are committed (HTTP 200 flushed) it logs and returns nil.
+func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if s.Seekable() {
+		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
+		return nil
+	}
+
+	w.Header().Set("Accept-Ranges", "none")
+	w.Header().Set("Content-Type", s.ContentType())
+
+	if req.Params(r).BoolOr("estimateContentLength", false) {
+		length := strconv.Itoa(s.EstimatedContentLength())
+		log.Trace(ctx, "Estimated content-length", "contentLength", length)
+		w.Header().Set("Content-Length", length)
+	}
+
+	if r.Method == http.MethodHead {
+		go func() { _, _ = io.Copy(io.Discard, s) }()
+		return nil
+	}
+
+	id := s.mf.ID
+	c, err := io.Copy(w, s)
+	if err != nil {
+		log.Error(ctx, "Error sending transcoded file", "id", id, err)
+		if c == 0 {
+			w.Header().Del("Content-Length")
+			return fmt.Errorf("sending transcoded file: %w", err)
+		}
+		return nil
+	}
+	if c == 0 {
+		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
+			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
+			"id", id, "format", s.ContentType())
+		w.Header().Del("Content-Length")
+		return errors.New("transcoding failed: empty output")
+	}
+	log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
+	return nil
 }
 
 // NewStream creates a non-seekable Stream from the given components.
