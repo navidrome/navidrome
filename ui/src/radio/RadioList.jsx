@@ -1,4 +1,4 @@
-import { makeStyles, useMediaQuery } from '@material-ui/core'
+import { Avatar, makeStyles, useMediaQuery } from '@material-ui/core'
 import React, { cloneElement } from 'react'
 import {
   CreateButton,
@@ -16,6 +16,7 @@ import {
 } from 'react-admin'
 import { List } from '../common'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
+import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
@@ -73,6 +74,19 @@ const RadioListActions = ({
   )
 }
 
+const CoverArtField = ({ record }) => {
+  if (!record) return null
+  return (
+    <Avatar
+      src={subsonic.getCoverArtUrl(record, 40, true)}
+      variant="rounded"
+      style={{ width: 40, height: 40 }}
+      alt={record.name}
+    />
+  )
+}
+CoverArtField.defaultProps = { label: '' }
+
 const RadioList = ({ permissions, ...props }) => {
   const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -80,6 +94,7 @@ const RadioList = ({ permissions, ...props }) => {
   const isAdmin = permissions === 'admin'
 
   const toggleableFields = {
+    coverArt: <CoverArtField source="id" sortable={false} />,
     name: <TextField source="name" />,
     homePageUrl: (
       <UrlField
@@ -117,6 +132,14 @@ const RadioList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
+          leftAvatar={(r) => (
+            <Avatar
+              src={subsonic.getCoverArtUrl(r, 40, true)}
+              variant="rounded"
+              style={{ width: 40, height: 40 }}
+              alt={r.name}
+            />
+          )}
           leftIcon={(r) => (
             <StreamField
               record={r}
