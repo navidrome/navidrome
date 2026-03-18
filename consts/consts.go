@@ -108,6 +108,7 @@ const (
 const (
 	EntityArtist   = "artist"
 	EntityPlaylist = "playlist"
+	EntityRadio    = "radio"
 )
 
 const (

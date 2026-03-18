@@ -58,34 +58,20 @@ func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, e
 	return res, err
 }
 
-func (r *radioRepository) Put(radio *model.Radio) error {
+func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
 
-	var values map[string]any
-
 	radio.UpdatedAt = time.Now()
-
 	if radio.ID == "" {
 		radio.CreatedAt = time.Now()
 		radio.ID = id.NewRandom()
-		values, _ = toSQLArgs(*radio)
-	} else {
-		values, _ = toSQLArgs(*radio)
-		update := Update(r.tableName).Where(Eq{"id": radio.ID}).SetMap(values)
-		count, err := r.executeSQL(update)
-
-		if err != nil {
-			return err
-		} else if count > 0 {
-			return nil
-		}
 	}
-
-	values["created_at"] = time.Now()
-	insert := Insert(r.tableName).SetMap(values)
-	_, err := r.executeSQL(insert)
+	if len(colsToUpdate) > 0 {
+		colsToUpdate = append(colsToUpdate, "UpdatedAt")
+	}
+	_, err := r.put(radio.ID, radio, colsToUpdate...)
 	return err
 }
 
