@@ -109,6 +109,52 @@ var _ = Describe("sources", func() {
 			}))
 		})
 
+		It("should return synchronized lyrics from an SRT file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".srt")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				model.Lyrics{
+					Lang: "xxx",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "We're no strangers to love",
+						},
+						{
+							Start: gg.P(int64(22801)),
+							Value: "You know the rules and so do I",
+						},
+					},
+					Synced: true,
+				},
+			}))
+		})
+
+		It("should return synchronized lyrics from a TTML file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				model.Lyrics{
+					Lang: "xxx",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "We're no strangers to love",
+						},
+						{
+							Start: gg.P(int64(22801)),
+							Value: "You know the rules and so do I",
+						},
+					},
+					Synced: true,
+				},
+			}))
+		})
+
 		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
 			// The function looks for <basePath-without-ext><suffix>, so we need to pass
 			// a MediaFile with .mp3 path and look for .lrc suffix
