@@ -162,6 +162,7 @@ func parseTimeToken(token string) (int64, error) {
 func sanitizeLyricText(text string) string {
 	text = str.SanitizeText(text)
 	text = strings.TrimSpace(text)
+	fmt.Printf("sanitizeLyricText input: %q\n", text)
 
 	for {
 		lower := strings.ToLower(text)
