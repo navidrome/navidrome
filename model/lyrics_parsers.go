@@ -164,17 +164,18 @@ func sanitizeLyricText(text string) string {
 	text = strings.TrimSpace(text)
 
 	for {
+		lower := strings.ToLower(text)
 		switch {
-		case strings.HasPrefix(text, "[bg:") && strings.HasSuffix(text, "]"):
-			text = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(text, "[bg:"), "]"))
-		case strings.HasPrefix(text, "bg:"):
-			text = strings.TrimSpace(strings.TrimPrefix(text, "bg:"))
-		case strings.HasPrefix(text, "v1:"):
-			text = strings.TrimSpace(strings.TrimPrefix(text, "v1:"))
-		case strings.HasPrefix(text, "v2:"):
-			text = strings.TrimSpace(strings.TrimPrefix(text, "v2:"))
-		case strings.HasPrefix(text, "v3:"):
-			text = strings.TrimSpace(strings.TrimPrefix(text, "v3:"))
+		case strings.HasPrefix(lower, "[bg:") && strings.HasSuffix(text, "]"):
+			text = strings.TrimSpace(text[len("[bg:") : len(text)-1])
+		case strings.HasPrefix(lower, "bg:"):
+			text = strings.TrimSpace(text[len("bg:"):])
+		case strings.HasPrefix(lower, "v1:"):
+			text = strings.TrimSpace(text[len("v1:"):])
+		case strings.HasPrefix(lower, "v2:"):
+			text = strings.TrimSpace(text[len("v2:"):])
+		case strings.HasPrefix(lower, "v3:"):
+			text = strings.TrimSpace(text[len("v3:"):])
 		default:
 			return text
 		}
