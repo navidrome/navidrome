@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -29,6 +29,7 @@ import {
   RatingField,
   SizeField,
   useAlbumsPerPage,
+  useImageLoadingState,
 } from '../common'
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
@@ -220,11 +221,17 @@ const AlbumDetails = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
-  const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
-  const [imageLoading, setImageLoading] = useState(false)
-  const [imageError, setImageError] = useState(false)
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useImageLoadingState(record.id)
 
   let notes = albumInfo?.notes || record.notes
 
@@ -247,32 +254,8 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  // Reset image state when album changes
-  useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
-
-  const handleImageLoad = useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
-
-  const handleOpenLightbox = useCallback(() => {
-    if (!imageError) {
-      setLightboxOpen(true)
-    }
-  }, [imageError])
-
-  const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
 
   return (
     <Card className={classes.root}>

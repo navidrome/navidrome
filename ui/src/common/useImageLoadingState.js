@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 
 /**
- * Manages image loading/error state and lightbox open/close for artist detail views.
- * Resets when record.id changes.
+ * Manages image loading/error state and lightbox open/close.
+ * Resets when recordId changes.
  */
-const useArtistImageState = (recordId) => {
-  const [imageLoading, setImageLoading] = useState(false)
+export const useImageLoadingState = (recordId) => {
+  const [imageLoading, setImageLoading] = useState(true)
   const [imageError, setImageError] = useState(false)
   const [isLightboxOpen, setLightboxOpen] = useState(false)
 
@@ -42,5 +42,3 @@ const useArtistImageState = (recordId) => {
     handleCloseLightbox,
   }
 }
-
-export default useArtistImageState

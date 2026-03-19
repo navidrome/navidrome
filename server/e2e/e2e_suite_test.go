@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -287,18 +288,28 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 // spyStreamer captures the Request passed to NewStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {
-	LastRequest   stream.Request
-	LastMediaFile *model.MediaFile
+	LastRequest         stream.Request
+	LastMediaFile       *model.MediaFile
+	SimulateError       error // When set, NewStream returns this error
+	SimulateEmptyStream bool  // When true, returns a 0-byte stream (simulates ffmpeg producing no output)
 }
 
 func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	s.LastRequest = req
 	s.LastMediaFile = mf
+	if s.SimulateError != nil {
+		return nil, s.SimulateError
+	}
 	format := req.Format
 	if format == "" || format == "raw" {
 		format = mf.Suffix
 	}
-	return stream.NewTestStream(mf, format, req.BitRate), nil
+	content := "fake audio data"
+	if s.SimulateEmptyStream {
+		content = ""
+	}
+	r := io.NopCloser(strings.NewReader(content))
+	return stream.NewStream(mf, format, req.BitRate, r), nil
 }
 
 // noopFFmpeg implements ffmpeg.FFmpeg with no-op methods.
