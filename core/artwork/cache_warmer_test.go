@@ -180,14 +180,9 @@ var _ = Describe("CacheWarmer", func() {
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
 			cw.PreCache(model.MustParseArtworkID("al-1"))
 
-			Eventually(func() int {
-				cw.mutex.Lock()
-				defer cw.mutex.Unlock()
-				return len(cw.buffer)
-			}).Should(Equal(0))
-
-			sizes := aw.getCachedSizes()
-			Expect(sizes).To(ContainElements(consts.UICoverArtSize, consts.UIThumbnailSize))
+			Eventually(func() []int {
+				return aw.getCachedSizes()
+			}).Should(ContainElements(consts.UICoverArtSize, consts.UIThumbnailSize))
 		})
 	})
 })
