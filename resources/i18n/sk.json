@@ -156,7 +156,7 @@
         "libraries": "Knižnice"
       },
       "helperTexts": {
-        "name": "Zmena mena se zobrazí až po ďalšom prihlásení",
+        "name": "Zmena mena sa zobrazí až po ďalšom prihlásení",
         "libraries": "Vyberte konkrétne knižnice pre tohto používateľa alebo nechajte pole prázdne, ak chcete použiť predvolené knižnice"
       },
       "notifications": {
@@ -169,7 +169,7 @@
       },
       "message": {
         "listenBrainzToken": "Vložte svoj používateľský ListenBrainz token.",
-        "clickHereForToken": "Kliknite sem pre zísanie svojho tokenu",
+        "clickHereForToken": "Kliknite sem pre získanie svojho tokenu",
         "selectAllLibraries": "Vybrať všetky knižnice",
         "adminAutoLibraries": "Administrátori majú automaticky prístup ku všetkým knižniciam"
       }
@@ -223,7 +223,7 @@
       },
       "message": {
         "duplicate_song": "Pridať duplicitné položky",
-        "song_exist": "Pridávate duplikát už existujúcej položky v zozname skladieb. Chete pridať duplikát alebo ho preskočiť?",
+        "song_exist": "Pridávate duplikát už existujúcej položky v zozname skladieb. Chcete pridať duplikát alebo ho preskočiť?",
         "noPlaylistsFound": "Žiadne zoznamy skladieb sa nenašli",
         "noPlaylists": "Žiadne zoznamy skladieb nie sú dostupné"
       }
@@ -403,7 +403,7 @@
         "noLibraries": "Žiadne knižnice nevybrané",
         "librariesRequired": "Tento plugin vyžaduje prístup k informáciám o knižniciach. Vyberte, ku ktorým knižniciam má plugin prístup, alebo povolte 'Povoliť všetky knižnice'.",
         "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie.",
-        "requiredHosts": "Požadované hosty"
+        "requiredHosts": "Požadovaní hostitelia"
       },
       "placeholders": {
         "configKey": "kľúč",
@@ -697,14 +697,14 @@
     "selectiveScan": "Selektívne",
     "serverUptime": "Doba od spustenia",
     "serverDown": "OFFLINE",
-    "scanType": "Poslednný Sken",
-    "status": "Sken Error",
+    "scanType": "Posledný Sken",
+    "status": "Chyba skenovania",
     "elapsedTime": "Uplynutý čas"
   },
   "nowPlaying": {
-    "title": "Now Playing",
-    "empty": "Nothing playing",
-    "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
+    "title": "Práve hrá",
+    "empty": "Nič sa neprehráva",
+    "minutesAgo": "pred %{smart_count} minútou |||| pred %{smart_count} minútami"
   },
   "help": {
     "title": "Klávesové skratky Navidrome",
