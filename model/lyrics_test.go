@@ -116,4 +116,82 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &e, Value: "Test"},
 		}))
 	})
+
+	It("parses enhanced LRC word timestamps as synced lyrics", func() {
+		a, b := int64(18800), int64(22801)
+		lyrics, err := ToLyrics("eng", "<00:18.800>We're no strangers to love\n<00:22.801>You know the rules and so do I")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "We're no strangers to love"},
+			{Start: &b, Value: "You know the rules and so do I"},
+		}))
+	})
+
+	It("strips ELRC background speaker prefixes from line text", func() {
+		a := int64(1000)
+		lyrics, err := ToLyrics("eng", "[00:01.00][bg:v2: Yatsu ga taisou na mune o haru]")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "Yatsu ga taisou na mune o haru"},
+		}))
+	})
+
+	It("strips ELRC speaker prefixes from line text", func() {
+		a := int64(1000)
+		lyrics, err := ToLyrics("eng", "[00:01.00]V2: Kiku mimi tatsu")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "Kiku mimi tatsu"},
+		}))
+	})
+
+	It("parses SRT lyrics", func() {
+		a, b := int64(18800), int64(22801)
+		lyrics, err := ToLyrics("eng", "1\n00:00:18,800 --> 00:00:22,000\nWe're no strangers to love\n\n2\n00:00:22,801 --> 00:00:26,000\nYou know the rules and so do I\n")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "We're no strangers to love"},
+			{Start: &b, Value: "You know the rules and so do I"},
+		}))
+	})
+
+	It("parses TTML lyrics", func() {
+		a, b := int64(18800), int64(22801)
+		lyrics, err := ToLyrics("eng", `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+      <p begin="00:00:18.800" end="00:00:22.000">We're no strangers to love</p>
+      <p begin="00:00:22.801" end="00:00:26.000">You know the rules and so do I</p>
+    </div>
+  </body>
+</tt>`)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "We're no strangers to love"},
+			{Start: &b, Value: "You know the rules and so do I"},
+		}))
+	})
+
+	It("parses TTML lyrics with bare ampersands", func() {
+		a := int64(1000)
+		lyrics, err := ToLyrics("eng", `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:02.000">Rock & Roll</p>
+    </div>
+  </body>
+</tt>`)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "Rock & Roll"},
+		}))
+	})
 })
