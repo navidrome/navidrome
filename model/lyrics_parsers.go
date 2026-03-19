@@ -162,10 +162,23 @@ func parseTimeToken(token string) (int64, error) {
 func sanitizeLyricText(text string) string {
 	text = str.SanitizeText(text)
 	text = strings.TrimSpace(text)
-	text = strings.TrimPrefix(text, "v1:")
-	text = strings.TrimPrefix(text, "v2:")
-	text = strings.TrimPrefix(text, "v3:")
-	return strings.TrimSpace(text)
+
+	for {
+		switch {
+		case strings.HasPrefix(text, "[bg:") && strings.HasSuffix(text, "]"):
+			text = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(text, "[bg:"), "]"))
+		case strings.HasPrefix(text, "bg:"):
+			text = strings.TrimSpace(strings.TrimPrefix(text, "bg:"))
+		case strings.HasPrefix(text, "v1:"):
+			text = strings.TrimSpace(strings.TrimPrefix(text, "v1:"))
+		case strings.HasPrefix(text, "v2:"):
+			text = strings.TrimSpace(strings.TrimPrefix(text, "v2:"))
+		case strings.HasPrefix(text, "v3:"):
+			text = strings.TrimSpace(strings.TrimPrefix(text, "v3:"))
+		default:
+			return text
+		}
+	}
 }
 
 func parseSRTLyrics(language, text string) (*Lyrics, bool, error) {
