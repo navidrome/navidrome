@@ -128,7 +128,7 @@ var _ = Describe("ToLyrics", func() {
 		}))
 	})
 
-	It("strips ELRC background speaker prefixes from line text", func() {
+		It("strips ELRC background speaker prefixes from line text", func() {
 		a := int64(1000)
 		lyrics, err := ToLyrics("eng", "[00:01.00][bg:v2: Yatsu ga taisou na mune o haru]")
 		Expect(err).ToNot(HaveOccurred())
@@ -137,7 +137,7 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &a, Value: "Yatsu ga taisou na mune o haru"},
 		}))
 	})
-
+  
 	It("parses SRT lyrics", func() {
 		a, b := int64(18800), int64(22801)
 		lyrics, err := ToLyrics("eng", "1\n00:00:18,800 --> 00:00:22,000\nWe're no strangers to love\n\n2\n00:00:22,801 --> 00:00:26,000\nYou know the rules and so do I\n")
