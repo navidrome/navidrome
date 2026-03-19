@@ -288,7 +288,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
-					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+					Id: "1", Name: "album", Artist: "artist", Duration: 292, Genre: "rock",
 				}
 				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},

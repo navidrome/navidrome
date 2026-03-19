@@ -103,7 +103,7 @@ func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, er
 		Name:        name,
 	}
 
-	err = api.ds.Radio(ctx).Put(radio)
+	err = api.ds.Radio(ctx).Put(radio, "StreamUrl", "HomePageUrl", "Name")
 	if err != nil {
 		return nil, err
 	}

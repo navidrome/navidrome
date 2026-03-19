@@ -71,7 +71,7 @@ func (api *Router) routes() http.Handler {
 		api.R(r, "/genre", model.Genre{}, false)
 		api.R(r, "/player", model.Player{}, true)
 		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		api.R(r, "/radio", model.Radio{}, true)
+		api.addRadioRoute(r)
 		api.R(r, "/tag", model.Tag{}, true)
 		if conf.Server.EnableSharing {
 			api.RX(r, "/share", api.share.NewRepository, true)

@@ -6,6 +6,7 @@
   "openSubsonic": true,
   "album": {
     "id": "",
-    "name": ""
+    "name": "",
+    "duration": 0
   }
 }
