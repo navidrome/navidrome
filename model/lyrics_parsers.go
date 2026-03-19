@@ -159,16 +159,19 @@ func parseTimeToken(token string) (int64, error) {
 	return (((hours*60+minutes)*60)+sec)*1000 + millis, nil
 }
 
+var embeddedTimestampRegex = regexp.MustCompile(`^\[\d{2}:\d{2}([.:]\d{2,3})?\]`)
+
 func sanitizeLyricText(text string) string {
 	text = str.SanitizeText(text)
 	text = strings.TrimSpace(text)
-	fmt.Printf("sanitizeLyricText input: %q\n", text)
 
 	for {
 		lower := strings.ToLower(text)
 		switch {
 		case strings.HasPrefix(lower, "[bg:") && strings.HasSuffix(text, "]"):
 			text = strings.TrimSpace(text[len("[bg:") : len(text)-1])
+		case embeddedTimestampRegex.MatchString(lower):
+			text = strings.TrimSpace(embeddedTimestampRegex.ReplaceAllString(text, ""))
 		case strings.HasPrefix(lower, "bg:"):
 			text = strings.TrimSpace(text[len("bg:"):])
 		case strings.HasPrefix(lower, "v1:"):
