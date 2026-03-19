@@ -128,26 +128,25 @@ var _ = Describe("ToLyrics", func() {
 		}))
 	})
 
-	It("strips ELRC background speaker prefixes from line text", func() {
-		It("strips ELRC background speaker prefixes from line text", func() {
-		a := int64(1000)
-		lyrics, err := ToLyrics("eng", "[00:01.00][bg:v2: Yatsu ga taisou na mune o haru]")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(lyrics.Synced).To(BeTrue())
-		Expect(lyrics.Line).To(Equal([]Line{
-			{Start: &a, Value: "Yatsu ga taisou na mune o haru"},
-		}))
-	})
+It("strips ELRC background speaker prefixes from line text", func() {
+    a := int64(1000)
+    lyrics, err := ToLyrics("eng", "[00:01.00][bg:v2: Yatsu ga taisou na mune o haru]")
+    Expect(err).ToNot(HaveOccurred())
+    Expect(lyrics.Synced).To(BeTrue())
+    Expect(lyrics.Line).To(Equal([]Line{
+        {Start: &a, Value: "Yatsu ga taisou na mune o haru"},
+    }))
+})
 
-	It("strips ELRC speaker prefixes from line text", func() {
-		a := int64(1000)
-		lyrics, err := ToLyrics("eng", "[00:01.00]V2: Kiku mimi tatsu")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(lyrics.Synced).To(BeTrue())
-		Expect(lyrics.Line).To(Equal([]Line{
-			{Start: &a, Value: "Kiku mimi tatsu"},
-		}))
-	})
+It("strips ELRC speaker prefixes from line text", func() {
+    a := int64(1000)
+    lyrics, err := ToLyrics("eng", "[00:01.00]V2: Kiku mimi tatsu")
+    Expect(err).ToNot(HaveOccurred())
+    Expect(lyrics.Synced).To(BeTrue())
+    Expect(lyrics.Line).To(Equal([]Line{
+        {Start: &a, Value: "Kiku mimi tatsu"},
+    }))
+})
 
   
 	It("parses SRT lyrics", func() {
