@@ -235,6 +235,7 @@ var _ = Describe("MediaRetrievalController", func() {
 				Expect(realLyric.Kind).To(Equal(expectedLyric.Kind))
 				Expect(realLyric.Lang).To(Equal(expectedLyric.Lang))
 				Expect(realLyric.Synced).To(Equal(expectedLyric.Synced))
+				Expect(realLyric.Agents).To(Equal(expectedLyric.Agents))
 
 				if expectedLyric.Offset == nil {
 					Expect(realLyric.Offset).To(BeNil())
@@ -259,7 +260,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					expectedCueLine := expectedLyric.CueLine[j]
 					Expect(realCueLine.Index).To(Equal(expectedCueLine.Index))
 					Expect(realCueLine.Value).To(Equal(expectedCueLine.Value))
-					Expect(realCueLine.Role).To(Equal(expectedCueLine.Role))
+					Expect(realCueLine.AgentID).To(Equal(expectedCueLine.AgentID))
 					if expectedCueLine.Start == nil {
 						Expect(realCueLine.Start).To(BeNil())
 					} else {
@@ -542,6 +543,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			lyricsJson, err := json.Marshal(model.LyricList{
 				{
 					Lang:   "eng",
+					Agents: []model.Agent{{ID: "lead", Role: "main"}, {ID: "lead__bg", Role: "bg"}},
 					Synced: true,
 					Line: []model.Line{
 						{
@@ -550,15 +552,16 @@ var _ = Describe("MediaRetrievalController", func() {
 							Value: "Hello echo",
 							Cue: []model.Cue{
 								{
-									Start: &tokenStartA,
-									End:   &tokenEndA,
-									Value: "Hello",
+									Start:   &tokenStartA,
+									End:     &tokenEndA,
+									Value:   "Hello",
+									AgentID: "lead",
 								},
 								{
-									Start: &tokenStartB,
-									End:   &tokenEndB,
-									Value: "echo",
-									Role:  "x-bg",
+									Start:   &tokenStartB,
+									End:     &tokenEndB,
+									Value:   "echo",
+									AgentID: "lead__bg",
 								},
 							},
 						},
@@ -586,6 +589,10 @@ var _ = Describe("MediaRetrievalController", func() {
 						Kind:          "main",
 						Lang:          "eng",
 						Synced:        true,
+						Agents: []responses.Agent{
+							{ID: "lead", Role: "main"},
+							{ID: "lead__bg", Role: "bg"},
+						},
 						Line: []responses.Line{
 							{
 								Start: &lineStart,
@@ -594,10 +601,11 @@ var _ = Describe("MediaRetrievalController", func() {
 						},
 						CueLine: []responses.CueLine{
 							{
-								Index: 0,
-								Start: &lineStart,
-								End:   &lineEnd,
-								Value: "Hello echo",
+								Index:   0,
+								Start:   &lineStart,
+								End:     &lineEnd,
+								Value:   "Hello echo",
+								AgentID: "lead",
 								Cue: []responses.LyricCue{
 									{
 										Start: tokenStartA,
@@ -607,11 +615,11 @@ var _ = Describe("MediaRetrievalController", func() {
 								},
 							},
 							{
-								Index: 0,
-								Start: &lineStart,
-								End:   &lineEnd,
-								Value: "Hello echo",
-								Role:  "bg",
+								Index:   0,
+								Start:   &lineStart,
+								End:     &lineEnd,
+								Value:   "Hello echo",
+								AgentID: "lead__bg",
 								Cue: []responses.LyricCue{
 									{
 										Start: tokenStartB,

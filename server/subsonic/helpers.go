@@ -470,14 +470,22 @@ func mapExplicitStatus(explicitStatus string) string {
 	return ""
 }
 
-// sanitizeRole strips the TTML x- prefix from role values for the API.
-func sanitizeRole(role string) string {
-	return strings.TrimPrefix(role, "x-")
-}
-
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
 	lines := make([]responses.Line, len(lyrics.Line))
 	var cueLines []responses.CueLine
+	agentOrderByID := make(map[string]int, len(lyrics.Agents))
+	agentRoleByID := make(map[string]string, len(lyrics.Agents))
+	responseAgents := make([]responses.Agent, 0, len(lyrics.Agents))
+
+	for i, agent := range lyrics.Agents {
+		agentOrderByID[agent.ID] = i
+		agentRoleByID[agent.ID] = agent.Role
+		responseAgents = append(responseAgents, responses.Agent{
+			ID:   agent.ID,
+			Role: agent.Role,
+			Name: agent.Name,
+		})
+	}
 
 	for i, line := range lyrics.Line {
 		lines[i] = responses.Line{
@@ -488,41 +496,50 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			continue
 		}
 
-		// Group cues by role, preserving order of first appearance
-		roleOrder := make([]string, 0, 2)
-		cuesByRole := make(map[string][]responses.LyricCue)
+		agentOrder := make([]string, 0, 2)
+		cuesByAgent := make(map[string][]model.Cue)
 		for _, cue := range line.Cue {
 			if cue.Start == nil {
 				continue
 			}
-			role := sanitizeRole(cue.Role)
-			if _, exists := cuesByRole[role]; !exists {
-				roleOrder = append(roleOrder, role)
+			agentID := strings.TrimSpace(cue.AgentID)
+			if _, exists := cuesByAgent[agentID]; !exists {
+				agentOrder = append(agentOrder, agentID)
 			}
-			cuesByRole[role] = append(cuesByRole[role], responses.LyricCue{
-				Start: *cue.Start,
-				End:   cue.End,
-				Value: cue.Value,
-			})
+			cuesByAgent[agentID] = append(cuesByAgent[agentID], cue)
 		}
 
-		// Ensure main vocals (empty role) always comes first
-		sort.SliceStable(roleOrder, func(i, j int) bool {
-			return roleOrder[i] == "" && roleOrder[j] != ""
+		sort.SliceStable(agentOrder, func(i, j int) bool {
+			leftRole := agentRoleByID[agentOrder[i]]
+			rightRole := agentRoleByID[agentOrder[j]]
+			if leftRole == "main" && rightRole != "main" {
+				return true
+			}
+			if rightRole == "main" && leftRole != "main" {
+				return false
+			}
+
+			leftOrder, leftOK := agentOrderByID[agentOrder[i]]
+			rightOrder, rightOK := agentOrderByID[agentOrder[j]]
+			if leftOK && rightOK && leftOrder != rightOrder {
+				return leftOrder < rightOrder
+			}
+			if leftOK != rightOK {
+				return leftOK
+			}
+			return i < j
 		})
 
-		// Create a separate CueLine for each role group
-		for _, role := range roleOrder {
-			cues := cuesByRole[role]
+		for _, agentID := range agentOrder {
 			cueLine := responses.CueLine{
 				Index: int32(i),
 				Start: line.Start,
 				End:   line.End,
 				Value: line.Value,
-				Cue:   cues,
+				Cue:   buildLyricCues(cuesByAgent[agentID], line.End),
 			}
-			if role != "" {
-				cueLine.Role = role
+			if agentID != "" {
+				cueLine.AgentID = agentID
 			}
 			cueLines = append(cueLines, cueLine)
 		}
@@ -544,6 +561,9 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			kind = "main"
 		}
 		structured.Kind = kind
+		if len(cueLines) > 0 && len(responseAgents) > 0 {
+			structured.Agents = responseAgents
+		}
 	}
 
 	if structured.DisplayArtist == "" {
@@ -554,6 +574,67 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 	}
 
 	return structured
+}
+
+func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {
+	if len(cues) == 0 {
+		return nil
+	}
+
+	hasAnyEnd := false
+	for i := range cues {
+		if cues[i].End != nil {
+			hasAnyEnd = true
+			break
+		}
+	}
+
+	normalized := make([]responses.LyricCue, 0, len(cues))
+	for i := range cues {
+		if cues[i].Start == nil {
+			continue
+		}
+
+		cue := responses.LyricCue{
+			Start: *cues[i].Start,
+			Value: cues[i].Value,
+		}
+		if hasAnyEnd {
+			end := cues[i].End
+			if end == nil {
+				if i+1 < len(cues) && cues[i+1].Start != nil {
+					v := *cues[i+1].Start
+					end = &v
+				} else if lineEnd != nil {
+					v := *lineEnd
+					end = &v
+				}
+			}
+			if end != nil && i+1 < len(cues) && cues[i+1].Start != nil && *end > *cues[i+1].Start {
+				v := *cues[i+1].Start
+				end = &v
+			}
+			if end != nil && *end < cue.Start {
+				v := cue.Start
+				end = &v
+			}
+			cue.End = end
+		}
+		normalized = append(normalized, cue)
+	}
+
+	if hasAnyEnd {
+		for i := range normalized {
+			if normalized[i].End == nil {
+				for j := range normalized {
+					normalized[j].End = nil
+				}
+				break
+			}
+		}
+	}
+
+	return normalized
 }
 
 func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {

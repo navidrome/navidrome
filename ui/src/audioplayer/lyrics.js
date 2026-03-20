@@ -62,6 +62,11 @@ const hasTimedLines = (lyric) =>
   Array.isArray(lyric.line) &&
   lyric.line.some((line) => Number.isFinite(Number(line.start)))
 
+const preferTimedLyrics = (lyrics) => {
+  const timed = lyrics.filter(hasTimedLines)
+  return timed.length > 0 ? timed : lyrics
+}
+
 const normalizeToken = (token) => {
   if (!token) {
     return null
@@ -77,10 +82,38 @@ const normalizeToken = (token) => {
   }
 }
 
-const normalizeCueLine = (cueLine, fallbackIndex) => {
+const buildAgentLookup = (structuredLyric) => {
+  const lookup = new Map()
+  const agents = Array.isArray(structuredLyric?.agents) ? structuredLyric.agents : []
+  for (const agent of agents) {
+    const id = typeof agent?.id === 'string' ? agent.id : ''
+    if (!id || lookup.has(id)) {
+      continue
+    }
+    lookup.set(id, {
+      id,
+      role: typeof agent?.role === 'string' ? agent.role : '',
+      name: typeof agent?.name === 'string' ? agent.name : '',
+    })
+  }
+  return lookup
+}
+
+const deriveUiRole = (agent) => {
+  if (!agent?.role || agent.role === 'main') {
+    return ''
+  }
+  return agent.role
+}
+
+const normalizeCueLine = (cueLine, fallbackIndex, agentLookup) => {
   const index = Number.isFinite(Number(cueLine?.index))
     ? Number(cueLine.index)
     : fallbackIndex
+  const agentId = typeof cueLine?.agentId === 'string' ? cueLine.agentId : ''
+  const agent = agentId ? agentLookup.get(agentId) || null : null
+  const fallbackRole =
+    typeof cueLine?.role === 'string' ? cueLine.role : ''
   const tokens = sortTokensByStart(
     Array.isArray(cueLine?.cue)
       ? cueLine.cue.map(normalizeToken).filter(Boolean)
@@ -92,7 +125,10 @@ const normalizeCueLine = (cueLine, fallbackIndex) => {
     start: toTime(cueLine?.start),
     end: toTime(cueLine?.end),
     value: typeof cueLine?.value === 'string' ? cueLine.value : '',
-    role: typeof cueLine?.role === 'string' ? cueLine.role : '',
+    role: agent ? deriveUiRole(agent) : fallbackRole,
+    agentId,
+    agentRole: agent?.role || fallbackRole,
+    agentName: agent?.name || '',
     tokens,
   }
 }
@@ -194,6 +230,9 @@ const buildSyntheticWordTokens = (line, token) => {
     end: baseStart + (duration * (idx + 1)) / chunks.length,
     value: chunk,
     role: typeof token?.role === 'string' ? token.role : '',
+    agentId: typeof token?.agentId === 'string' ? token.agentId : '',
+    agentName: typeof token?.agentName === 'string' ? token.agentName : '',
+    agentRole: typeof token?.agentRole === 'string' ? token.agentRole : '',
   }))
 }
 
@@ -240,8 +279,8 @@ export const selectLyricLayers = (structuredLyrics, preferredLanguage) => {
     }
   }
 
-  const synced = structuredLyrics.filter(hasTimedLines)
-  if (synced.length === 0) {
+  const available = structuredLyrics.filter(hasStructuredLyricContent)
+  if (available.length === 0) {
     return {
       main: null,
       translation: null,
@@ -255,22 +294,25 @@ export const selectLyricLayers = (structuredLyrics, preferredLanguage) => {
     [LYRIC_KIND_PRONUNCIATION]: [],
   }
 
-  for (const lyric of synced) {
+  for (const lyric of available) {
     grouped[normalizeLyricKind(lyric?.kind)].push(lyric)
   }
 
   const mainCandidates = grouped[LYRIC_KIND_MAIN].length
     ? grouped[LYRIC_KIND_MAIN]
-    : synced
+    : available
 
   return {
-    main: pickLyricByLanguage(mainCandidates, preferredLanguage),
+    main: pickLyricByLanguage(
+      preferTimedLyrics(mainCandidates),
+      preferredLanguage,
+    ),
     translation: pickLyricByLanguage(
-      grouped[LYRIC_KIND_TRANSLATION],
+      preferTimedLyrics(grouped[LYRIC_KIND_TRANSLATION]),
       preferredLanguage,
     ),
     pronunciation: pickLyricByLanguage(
-      grouped[LYRIC_KIND_PRONUNCIATION],
+      preferTimedLyrics(grouped[LYRIC_KIND_PRONUNCIATION]),
       preferredLanguage,
     ),
   }
@@ -316,6 +358,7 @@ export const buildKaraokeLines = (structuredLyric) => {
     return []
   }
 
+  const agentLookup = buildAgentLookup(structuredLyric)
   const baseLines = Array.isArray(structuredLyric.line)
     ? structuredLyric.line
     : []
@@ -328,12 +371,19 @@ export const buildKaraokeLines = (structuredLyric) => {
       ? (() => {
           const normalizedCueLines = rawCueLines.map(
             (cueLine, fallbackIndex) => {
-              const normalized = normalizeCueLine(cueLine, fallbackIndex)
+              const normalized = normalizeCueLine(
+                cueLine,
+                fallbackIndex,
+                agentLookup,
+              )
               return {
                 ...normalized,
                 tokens: normalized.tokens.map((token) => ({
                   ...token,
                   role: normalized.role,
+                  agentId: normalized.agentId,
+                  agentName: normalized.agentName,
+                  agentRole: normalized.agentRole,
                 })),
               }
             },
@@ -366,6 +416,9 @@ export const buildKaraokeLines = (structuredLyric) => {
               start: first.start ?? toTime(baseLine.start) ?? fallbackStart,
               end: first.end ?? toTime(baseLine.end) ?? fallbackEnd,
               value,
+              agentId: first.agentId,
+              agentName: first.agentName,
+              agentRole: first.agentRole,
               tokens,
             }
           })
