@@ -131,7 +131,7 @@ var _ = Describe("parseTTML", func() {
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Agents).To(Equal([]model.Agent{
 				{ID: "main", Role: "main"},
-				{ID: "main__bg", Role: "bg"},
+				{ID: "__nd_bg__|main", Role: "bg"},
 			}))
 			Expect(list[0].Line).To(HaveLen(1))
 
@@ -143,7 +143,7 @@ var _ = Describe("parseTTML", func() {
 
 			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(1000)), End: gg.P(int64(1400)), Value: "He", AgentID: "main"}))
 			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(1400)), End: gg.P(int64(1800)), Value: "llo", AgentID: "main"}))
-			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2500)), Value: "echo", AgentID: "main__bg"}))
+			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2500)), Value: "echo", AgentID: "__nd_bg__|main"}))
 		})
 
 		It("should parse named TTML agents into main, voice, and group roles", func() {
@@ -176,6 +176,44 @@ var _ = Describe("parseTTML", func() {
 			Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("v1"))
 			Expect(list[0].Line[1].Cue[0].AgentID).To(Equal("v2"))
 			Expect(list[0].Line[2].Cue[0].AgentID).To(Equal("v1000"))
+		})
+
+		It("should avoid collisions between derived background agents and explicit TTML agent ids", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <head>
+    <metadata>
+      <ttm:agent xml:id="lead" type="person"><ttm:name>Lead</ttm:name></ttm:agent>
+      <ttm:agent xml:id="lead__bg" type="person"><ttm:name>Existing Background Id</ttm:name></ttm:agent>
+    </metadata>
+  </head>
+  <body xml:lang="eng">
+    <div>
+      <p begin="1s" end="2s" ttm:agent="lead">
+        <span begin="1s" end="1.4s">Lead</span>
+        <span ttm:role="x-bg"><span begin="1.5s" end="1.8s">Echo</span></span>
+      </p>
+      <p begin="2s" end="3s" ttm:agent="lead__bg">
+        <span begin="2s" end="2.5s">Named</span>
+      </p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Agents).To(Equal([]model.Agent{
+				{ID: "lead", Role: "main", Name: "Lead"},
+				{ID: "__nd_bg__|lead", Role: "bg", Name: "Lead"},
+				{ID: "lead__bg", Role: "voice", Name: "Existing Background Id"},
+			}))
+			Expect(list[0].Line).To(HaveLen(2))
+			Expect(list[0].Line[0].Cue).To(HaveLen(2))
+			Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("lead"))
+			Expect(list[0].Line[0].Cue[1].AgentID).To(Equal("__nd_bg__|lead"))
+			Expect(list[0].Line[1].Cue).To(HaveLen(1))
+			Expect(list[0].Line[1].Cue[0].AgentID).To(Equal("lead__bg"))
 		})
 	})
 
