@@ -230,6 +230,15 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	rules := *pls.Rules
 
 	// If the playlist depends on other playlists, recursively refresh them first
+	childPlaylistPaths := rules.ChildPlaylistPaths()
+	for _, path := range childPlaylistPaths {
+		childPls, err := r.FindByPath(path)
+		if err != nil {
+			log.Error(r.ctx, "Error loading child playlist", "id", pls.ID, "childId", path, err)
+			return false
+		}
+		r.refreshSmartPlaylist(childPls)
+	}
 	childPlaylistIds := rules.ChildPlaylistIds()
 	for _, id := range childPlaylistIds {
 		childPls, err := r.Get(id)
