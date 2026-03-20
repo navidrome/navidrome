@@ -16,8 +16,8 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/utils/run"
-	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
 
@@ -69,8 +69,10 @@ type configOptions struct {
 	MPVPath                         string
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
-	CoverJpegQuality                int
+	CoverArtQuality                 int
 	ArtistArtPriority               string
+	ArtistImageFolder               string
+	DiscArtPriority                 string
 	LyricsPriority                  string
 	EnableGravatar                  bool
 	EnableFavourites                bool
@@ -104,7 +106,6 @@ type configOptions struct {
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
-	Spotify                         spotifyOptions      `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
 	EnableScrobbleHistory           bool
@@ -132,7 +133,6 @@ type configOptions struct {
 	DevExternalScanner                bool
 	DevScannerThreads                 uint
 	DevSelectiveWatcher               bool
-	DevLegacyEmbedImage               bool
 	DevInsightsInitialDelay           time.Duration
 	DevEnablePlayerInsights           bool
 	DevEnablePluginsInsights          bool
@@ -140,6 +140,8 @@ type configOptions struct {
 	DevExternalArtistFetchMultiplier  float64
 	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
+	DevEnableMediaFileProbe           bool
+	DevJpegCoverArt                   bool
 }
 
 type scannerOptions struct {
@@ -183,11 +185,6 @@ type lastfmOptions struct {
 
 	// Computed values
 	Languages []string // Computed from Language, split by comma
-}
-
-type spotifyOptions struct {
-	ID     string
-	Secret string //nolint:gosec
 }
 
 type deezerOptions struct {
@@ -283,6 +280,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -343,6 +341,10 @@ func Load(noConfigDump bool) {
 			os.Exit(1)
 		}
 		log.SetOutput(out)
+	} else if os.Getenv("JOURNAL_STREAM") != "" {
+		// When running under systemd, prepend syslog priority prefixes so
+		// journald assigns the correct severity to each log line.
+		log.EnableJournalFormat()
 	}
 
 	log.SetLevelString(Server.LogLevel)
@@ -408,6 +410,7 @@ func Load(noConfigDump bool) {
 	// Parse Deezer.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
 	Server.Deezer.Languages = parseLanguages(Server.Deezer.Language)
 
+	// Deprecated options
 	logDeprecatedOptions("Scanner.GenreSeparators", "")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
 	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
@@ -415,6 +418,10 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
+	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+
+	// Removed options
+	logRemovedOptions("Spotify.ID", "Spotify.Secret")
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -437,6 +444,23 @@ func logDeprecatedOptions(oldName, newName string) {
 	}
 	if viper.InConfig(oldName) {
 		logWarning(oldName, newName)
+	}
+}
+
+// logRemovedOptions checks if the option is set, and if yes, outputs a warning message saying the option is
+// not available anymore
+func logRemovedOptions(options ...string) {
+	for _, option := range options {
+		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		logWarning := func(option string) {
+			log.Warn(fmt.Sprintf("Option '%s' is not available anymore and will be ignored. Please remove it from your config", option))
+		}
+		if viper.InConfig(option) {
+			logWarning(option)
+		}
+		if os.Getenv(envVar) != "" {
+			logWarning(envVar)
+		}
 	}
 }
 
@@ -478,7 +502,6 @@ func disableExternalServices() {
 	Server.EnableInsightsCollector = false
 	Server.EnableM3UExternalAlbumArt = false
 	Server.LastFM.Enabled = false
-	Server.Spotify.ID = ""
 	Server.Deezer.Enabled = false
 	Server.ListenBrainz.Enabled = false
 	Server.Agents = ""
@@ -547,15 +570,9 @@ func validateBackupSchedule() error {
 }
 
 func validateSchedule(schedule, field string) (string, error) {
-	if _, err := time.ParseDuration(schedule); err == nil {
-		schedule = "@every " + schedule
-	}
-	c := cron.New()
-	id, err := c.AddFunc(schedule, func() {})
+	_, err := scheduler.ParseCrontab(schedule)
 	if err != nil {
 		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", schedule, err)
-	} else {
-		c.Remove(id)
 	}
 	return schedule, err
 }
@@ -655,9 +672,10 @@ func setViperDefaults() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
-	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("lyricspriority", ".ttml,.elrc,.lrc,.srt,.txt,embedded")
+	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
@@ -707,14 +725,12 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.enableaveragerating", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
-	viper.SetDefault("agents", "lastfm,spotify,deezer")
+	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
-	viper.SetDefault("spotify.id", "")
-	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
@@ -749,7 +765,7 @@ func setViperDefaults() {
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
-	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devartworkmaxrequests", max(4, runtime.NumCPU()))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
@@ -764,6 +780,8 @@ func setViperDefaults() {
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
 	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
+	viper.SetDefault("devenablemediafileprobe", true)
+	viper.SetDefault("devjpegcoverart", false)
 }
 
 func init() {

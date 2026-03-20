@@ -188,7 +188,7 @@ var _ = Describe("MPV", func() {
 
 			It("returns empty slice for empty template", func() {
 				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
-				Expect(args).To(Equal([]string{}))
+				Expect(args).To(BeEmpty())
 			})
 		})
 	})

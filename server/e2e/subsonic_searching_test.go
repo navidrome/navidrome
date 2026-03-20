@@ -115,9 +115,9 @@ var _ = Describe("Search Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.SearchResult3).ToNot(BeNil())
-			Expect(resp.SearchResult3.Artist).To(HaveLen(5))
-			Expect(resp.SearchResult3.Album).To(HaveLen(6))
-			Expect(resp.SearchResult3.Song).To(HaveLen(7))
+			Expect(resp.SearchResult3.Artist).To(HaveLen(6))
+			Expect(resp.SearchResult3.Album).To(HaveLen(7))
+			Expect(resp.SearchResult3.Song).To(HaveLen(13))
 		})
 
 		It("finds across all entity types simultaneously", func() {

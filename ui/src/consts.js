@@ -7,6 +7,8 @@ export const M3U_MIME_TYPE = 'audio/x-mpegurl'
 
 export const AUTO_THEME_ID = 'AUTO_THEME_ID'
 
+export const AUTO_THEME_CONFIG_VALUE = 'Auto'
+
 export const DraggableTypes = {
   SONG: 'song',
   ALBUM: 'album',
@@ -21,6 +23,8 @@ DraggableTypes.ALL.push(
   DraggableTypes.DISC,
   DraggableTypes.ARTIST,
 )
+
+export const RADIO_PLACEHOLDER_IMAGE = 'internet-radio-icon.svg'
 
 export const DEFAULT_SHARE_BITRATE = 128
 

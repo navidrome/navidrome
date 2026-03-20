@@ -81,7 +81,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 
 	defer imgReader.Close()
 	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
 
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {

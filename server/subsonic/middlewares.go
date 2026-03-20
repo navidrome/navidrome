@@ -31,9 +31,11 @@ import (
 
 func postFormToQueryParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB
 		err := r.ParseForm()
 		if err != nil {
 			sendError(w, r, newError(responses.ErrorGeneric, err.Error()))
+			return
 		}
 		var parts []string
 		for key, values := range r.Form {

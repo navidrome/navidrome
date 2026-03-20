@@ -2,12 +2,13 @@ package public
 
 import (
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -22,10 +23,24 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0)
+	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else {
+			log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	stream, err := pub.streamer.NewStream(ctx, mf, stream.Request{
+		Format: info.format, BitRate: info.bitrate,
+	})
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
 	}
 
 	// Make sure the stream will be closed at the end, to avoid leakage
@@ -38,34 +53,9 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	if stream.Seekable() {
-		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-	} else {
-		// If the stream doesn't provide a size (i.e. is not seekable), we can't support ranges/content-length
-		w.Header().Set("Accept-Ranges", "none")
-		w.Header().Set("Content-Type", stream.ContentType())
-
-		estimateContentLength := p.BoolOr("estimateContentLength", false)
-
-		// if Client requests the estimated content-length, send it
-		if estimateContentLength {
-			length := strconv.Itoa(stream.EstimatedContentLength())
-			log.Trace(ctx, "Estimated content-length", "contentLength", length)
-			w.Header().Set("Content-Length", length)
-		}
-
-		if r.Method == http.MethodHead {
-			go func() { _, _ = io.Copy(io.Discard, stream) }()
-		} else {
-			c, err := io.Copy(w, stream)
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				if err != nil {
-					log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
-				} else {
-					log.Trace(ctx, "Success sending shared transcode file", "id", info.id, "size", c)
-				}
-			}
-		}
+	n, err := stream.Serve(ctx, w, r)
+	if err != nil || n == 0 {
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }
 

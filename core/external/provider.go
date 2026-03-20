@@ -374,13 +374,19 @@ func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error)
 		return nil, err
 	}
 
-	e.callGetImage(ctx, e.ag, &artist)
-	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-		return nil, ctx.Err()
+	// Use already-stored image URL if available, avoiding expensive external API calls.
+	// If the info is expired, the background refresh (via UpdateArtistInfo/artistQueue) will update it.
+	imageUrl := artist.ArtistImageUrl()
+	if imageUrl == "" {
+		// No cached URL — must fetch from external source synchronously
+		e.callGetImage(ctx, e.ag, &artist)
+		if utils.IsCtxDone(ctx) {
+			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
+			return nil, ctx.Err()
+		}
+		imageUrl = artist.ArtistImageUrl()
 	}
 
-	imageUrl := artist.ArtistImageUrl()
 	if imageUrl == "" {
 		return nil, model.ErrNotFound
 	}

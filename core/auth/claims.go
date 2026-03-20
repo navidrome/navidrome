@@ -86,9 +86,11 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	if err := token.Get("f", &f); err == nil {
 		c.Format = f
 	}
-	var b int
-	if err := token.Get("b", &b); err == nil {
-		c.BitRate = b
+	if err := token.Get("b", &c.BitRate); err != nil {
+		var bf float64
+		if err := token.Get("b", &bf); err == nil {
+			c.BitRate = int(bf)
+		}
 	}
 	return c
 }

@@ -20,7 +20,15 @@ const useStyle = makeStyles(
   },
 )
 
-export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
+export const QualityInfo = ({
+  record,
+  size,
+  gainMode,
+  preAmp,
+  className,
+  transcodeStream,
+  isDirectPlay,
+}) => {
   const classes = useStyle()
   let { suffix, bitRate, rgAlbumGain, rgAlbumPeak, rgTrackGain, rgTrackPeak } =
     record
@@ -32,6 +40,20 @@ export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
     if (!llFormats.has(suffix) && bitRate > 0) {
       info += ' ' + bitRate
     }
+  }
+
+  // Show transcode target when transcoding (not direct play)
+  if (transcodeStream && !isDirectPlay) {
+    const targetCodec = (transcodeStream.codec || '').toUpperCase()
+    const targetBitrate = transcodeStream.audioBitrate
+      ? Math.round(transcodeStream.audioBitrate / 1000)
+      : 0
+    let targetInfo = targetCodec
+    if (targetBitrate > 0) {
+      targetInfo += ' ' + targetBitrate
+    }
+    const sourceSuffix = suffix || placeholder
+    info = `${sourceSuffix} → ${targetInfo}`
   }
 
   const extra = useMemo(() => {
@@ -63,6 +85,8 @@ QualityInfo.propTypes = {
   size: PropTypes.string,
   className: PropTypes.string,
   gainMode: PropTypes.string,
+  transcodeStream: PropTypes.object,
+  isDirectPlay: PropTypes.bool,
 }
 
 QualityInfo.defaultProps = {

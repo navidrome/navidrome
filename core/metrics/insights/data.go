@@ -61,7 +61,6 @@ type Data struct {
 		EnableListenBrainz      bool   `json:"enableListenBrainz,omitempty"`
 		EnableDeezer            bool   `json:"enableDeezer,omitempty"`
 		EnableMediaFileCoverArt bool   `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify           bool   `json:"enableSpotify,omitempty"`
 		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
 		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
 		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`

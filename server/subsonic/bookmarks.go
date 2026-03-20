@@ -78,7 +78,11 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 	if pq == nil || len(pq.Items) == 0 {
-		return newResponse(), nil
+		response := newResponse()
+		response.PlayQueue = &responses.PlayQueue{
+			Username: user.UserName,
+		}
+		return response, nil
 	}
 
 	response := newResponse()
@@ -145,7 +149,11 @@ func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, er
 		return nil, err
 	}
 	if pq == nil || len(pq.Items) == 0 {
-		return newResponse(), nil
+		response := newResponse()
+		response.PlayQueueByIndex = &responses.PlayQueueByIndex{
+			Username: user.UserName,
+		}
+		return response, nil
 	}
 
 	response := newResponse()

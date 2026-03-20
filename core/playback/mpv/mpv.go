@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kballard/go-shellquote"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/shellquote"
 )
 
 func start(ctx context.Context, args []string) (Executor, error) {
