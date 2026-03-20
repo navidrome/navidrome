@@ -124,6 +124,49 @@ describe('lyrics helpers', () => {
     expect(layers.pronunciation).toBeNull()
   })
 
+  it('falls back to unsynced lyric content when no timed track exists', () => {
+    const layers = selectLyricLayers(
+      [
+        {
+          lang: 'eng',
+          synced: false,
+          line: [{ value: 'Plain embedded lyric' }],
+        },
+      ],
+      'eng',
+    )
+
+    expect(layers.main).toEqual({
+      lang: 'eng',
+      synced: false,
+      line: [{ value: 'Plain embedded lyric' }],
+    })
+  })
+
+  it('still prefers timed lyrics when both timed and untimed tracks exist', () => {
+    const layers = selectLyricLayers(
+      [
+        {
+          lang: 'eng',
+          synced: false,
+          line: [{ value: 'Plain lyric' }],
+        },
+        {
+          lang: 'eng',
+          synced: true,
+          line: [{ start: 1000, value: 'Timed lyric' }],
+        },
+      ],
+      'eng',
+    )
+
+    expect(layers.main).toEqual({
+      lang: 'eng',
+      synced: true,
+      line: [{ start: 1000, value: 'Timed lyric' }],
+    })
+  })
+
   it('matches layer line by timing for the active main line', () => {
     const mainLines = [
       { index: 0, start: 1000, end: 1800, value: 'Line A', tokens: [] },
@@ -200,7 +243,69 @@ describe('lyrics helpers', () => {
     expect(getPreferredLyricLanguage()).toBe('pt-BR')
   })
 
-  it('builds karaoke lines from cueLine payload', () => {
+  it('builds karaoke lines from agent-based cueLine payload', () => {
+    const lines = buildKaraokeLines({
+      lang: 'eng',
+      synced: true,
+      line: [{ start: 1000, end: 3000, value: 'Hello world' }],
+      agents: [
+        { id: 'lead', role: 'main', name: 'Lead Vocal' },
+        { id: 'backing', role: 'bg' },
+      ],
+      cueLine: [
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'lead',
+          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
+        },
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'backing',
+          cue: [{ start: 2000, end: 2500, value: 'world' }],
+        },
+      ],
+    })
+
+    expect(lines).toEqual([
+      {
+        agentId: 'lead',
+        agentName: 'Lead Vocal',
+        agentRole: 'main',
+        index: 0,
+        start: 1000,
+        end: 3000,
+        value: 'Hello world',
+        tokens: [
+          {
+            start: 1000,
+            end: 1500,
+            value: 'Hello',
+            role: '',
+            agentId: 'lead',
+            agentName: 'Lead Vocal',
+            agentRole: 'main',
+          },
+          {
+            start: 2000,
+            end: 2500,
+            value: 'world',
+            role: 'bg',
+            agentId: 'backing',
+            agentName: '',
+            agentRole: 'bg',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('falls back to legacy cueLine role values when agents are absent', () => {
     const lines = buildKaraokeLines({
       lang: 'eng',
       synced: true,
@@ -211,32 +316,15 @@ describe('lyrics helpers', () => {
           start: 1000,
           end: 3000,
           value: 'Hello world',
-          role: '',
-          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
-        },
-        {
-          index: 0,
-          start: 1000,
-          end: 3000,
-          value: 'Hello world',
           role: 'bg',
-          cue: [{ start: 2000, end: 2500, value: 'world' }],
+          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
         },
       ],
     })
 
-    expect(lines).toEqual([
-      {
-        index: 0,
-        start: 1000,
-        end: 3000,
-        value: 'Hello world',
-        tokens: [
-          { start: 1000, end: 1500, value: 'Hello', role: '' },
-          { start: 2000, end: 2500, value: 'world', role: 'bg' },
-        ],
-      },
-    ])
+    expect(lines[0].tokens[0].role).toBe('bg')
+    expect(lines[0].tokens[0].agentId).toBe('')
+    expect(lines[0].tokens[0].agentName).toBe('')
   })
 
   it('sorts token timing by start to keep playback stable', () => {

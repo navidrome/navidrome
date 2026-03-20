@@ -108,7 +108,7 @@ const PlayerToolbar = ({
   )
 
   const toggleLyricsButton = (
-    <Tooltip title="Toggle synchronized lyrics">
+    <Tooltip title="Toggle lyrics">
       <span>
         <IconButton
           size={isDesktop ? 'small' : undefined}
