@@ -1,6 +1,6 @@
 module github.com/navidrome/navidrome
 
-go 1.25.0
+go 1.26
 
 // Fork to implement raw tags support
 replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260307161927-168f6e74ada7
