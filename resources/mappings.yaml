@@ -81,7 +81,7 @@ main:
   albumsort:
     aliases: [ tsoa, albumsort, soal, wm/albumsortorder ]
   albumversion:
-    aliases: [albumversion, musicbrainz_albumcomment, musicbrainz album comment, version]
+    aliases: [albumversion, musicbrainz_albumcomment, musicbrainz album comment]
     album: true
   genre:
     aliases: [ tcon, genre, ©gen, wm/genre, ignr ]
