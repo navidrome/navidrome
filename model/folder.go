@@ -31,6 +31,14 @@ type Folder struct {
 	CreatedAt       time.Time `structs:"created_at"`
 }
 
+// CoverArtID returns a non-empty ArtworkID only when the folder contains image files.
+func (f Folder) CoverArtID() ArtworkID {
+	if len(f.ImageFiles) == 0 {
+		return ArtworkID{}
+	}
+	return artworkIDFromFolder(f)
+}
+
 func (f Folder) AbsolutePath() string {
 	return filepath.Join(f.LibraryPath, f.Path, f.Name)
 }
