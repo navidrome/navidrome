@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -31,20 +30,16 @@ var _ = Describe("Scheduler", func() {
 	})
 
 	It("adds and executes a job", func() {
-		wg := sync.WaitGroup{}
-		wg.Add(1)
+		done := make(chan struct{})
 
-		executed := false
-		id, err := s.Add("@every 100ms", func() {
-			executed = true
-			wg.Done()
+		id, err := s.Add("@every 50ms", func() {
+			close(done)
 		})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id).ToNot(BeZero())
 
-		wg.Wait()
-		Expect(executed).To(BeTrue())
+		Eventually(done).Should(BeClosed())
 	})
 
 	It("adds a job with random ~ syntax", func() {
@@ -55,37 +50,29 @@ var _ = Describe("Scheduler", func() {
 	})
 
 	It("removes a job", func() {
-		// Use a WaitGroup to ensure the job executes once
-		wg := sync.WaitGroup{}
-		wg.Add(1)
+		done := make(chan struct{})
 
 		counter := 0
-		id, err := s.Add("@every 100ms", func() {
+		id, err := s.Add("@every 50ms", func() {
 			counter++
 			if counter == 1 {
-				wg.Done() // Signal that the job has executed once
+				close(done)
 			}
 		})
-
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id).ToNot(BeZero())
 
-		// Wait for the job to execute at least once
-		wg.Wait()
-
 		// Verify job executed
+		Eventually(done).Should(BeClosed())
 		Expect(counter).To(Equal(1))
 
 		// Remove the job
 		s.Remove(id)
 
-		// Store the counter value
-		currentCount := counter
-
 		// Wait some time to ensure job doesn't execute again
 		time.Sleep(200 * time.Millisecond)
 
 		// Verify counter didn't increase
-		Expect(counter).To(Equal(currentCount))
+		Expect(counter).To(Equal(1))
 	})
 })
