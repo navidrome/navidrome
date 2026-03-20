@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/robfig/cron/v3"
 )
 
 func TestScheduler(t *testing.T) {
-	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scheduler Suite")
@@ -47,6 +45,13 @@ var _ = Describe("Scheduler", func() {
 
 		wg.Wait()
 		Expect(executed).To(BeTrue())
+	})
+
+	It("adds a job with random ~ syntax", func() {
+		id, err := s.Add("0~59 * * * *", func() {})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(id).ToNot(BeZero())
+		s.Remove(id)
 	})
 
 	It("removes a job", func() {
