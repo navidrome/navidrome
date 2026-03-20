@@ -543,7 +543,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			lyricsJson, err := json.Marshal(model.LyricList{
 				{
 					Lang:   "eng",
-					Agents: []model.Agent{{ID: "lead", Role: "main"}, {ID: "lead__bg", Role: "bg"}},
+					Agents: []model.Agent{{ID: "lead", Role: "main"}, {ID: "__nd_bg__|lead", Role: "bg"}},
 					Synced: true,
 					Line: []model.Line{
 						{
@@ -561,7 +561,7 @@ var _ = Describe("MediaRetrievalController", func() {
 									Start:   &tokenStartB,
 									End:     &tokenEndB,
 									Value:   "echo",
-									AgentID: "lead__bg",
+									AgentID: "__nd_bg__|lead",
 								},
 							},
 						},
@@ -591,7 +591,7 @@ var _ = Describe("MediaRetrievalController", func() {
 						Synced:        true,
 						Agents: []responses.Agent{
 							{ID: "lead", Role: "main"},
-							{ID: "lead__bg", Role: "bg"},
+							{ID: "__nd_bg__|lead", Role: "bg"},
 						},
 						Line: []responses.Line{
 							{
@@ -619,7 +619,7 @@ var _ = Describe("MediaRetrievalController", func() {
 								Start:   &lineStart,
 								End:     &lineEnd,
 								Value:   "Hello echo",
-								AgentID: "lead__bg",
+								AgentID: "__nd_bg__|lead",
 								Cue: []responses.LyricCue{
 									{
 										Start: tokenStartB,
