@@ -46,6 +46,7 @@ type ttmlTimingParams struct {
 type ttmlTimingContext struct {
 	lang     string
 	role     string
+	agentID  string
 	begin    int64
 	hasBegin bool
 	end      int64
@@ -70,6 +71,12 @@ type ttmlResolvedMetadataLine struct {
 	line  model.Line
 }
 
+type ttmlDefinedAgent struct {
+	ID   string
+	Type string
+	Name string
+}
+
 type ttmlParser struct {
 	decoder *xml.Decoder
 	params  ttmlTimingParams
@@ -85,6 +92,8 @@ type ttmlParser struct {
 
 	pronunciationLangOrder   []string
 	pronunciationEntriesByLg map[string][]ttmlMetadataEntry
+
+	definedAgents map[string]ttmlDefinedAgent
 
 	metadataSeq int
 }
@@ -103,6 +112,7 @@ func parseTTML(contents []byte) (model.LyricList, error) {
 		mainLineRefsByKey:        make(map[string]ttmlLineRef),
 		translationEntriesByLg:   make(map[string][]ttmlMetadataEntry),
 		pronunciationEntriesByLg: make(map[string][]ttmlMetadataEntry),
+		definedAgents:            make(map[string]ttmlDefinedAgent),
 	}
 
 	root := ttmlTimingContext{lang: "xxx"}
@@ -140,6 +150,8 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 		return p.parseMetadataTrack(start, parent, ttmlLyricKindTranslation)
 	case "transliteration":
 		return p.parseMetadataTrack(start, parent, ttmlLyricKindPronunciation)
+	case "agent":
+		return p.parseAgentDefinition(start)
 	}
 
 	ctx := p.childContext(start.Attr, parent)
@@ -228,6 +240,49 @@ func (p *ttmlParser) parseMetadataTrack(start xml.StartElement, parent ttmlTimin
 			}
 		case xml.EndElement:
 			if strings.EqualFold(t.Name.Local, start.Name.Local) {
+				return nil
+			}
+		}
+	}
+}
+
+func (p *ttmlParser) parseAgentDefinition(start xml.StartElement) error {
+	id, ok := attrValue(start.Attr, "id")
+	id = strings.TrimSpace(id)
+	if !ok || id == "" {
+		return p.skipElement(start)
+	}
+
+	agent := ttmlDefinedAgent{
+		ID:   id,
+		Type: strings.ToLower(strings.TrimSpace(attrOrEmpty(start.Attr, "type"))),
+	}
+
+	for {
+		token, err := p.decoder.Token()
+		if err != nil {
+			return err
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			if strings.EqualFold(t.Name.Local, "name") {
+				name, err := p.collectElementText(t)
+				if err != nil {
+					return err
+				}
+				name = sanitizeTTMLText(name)
+				if name != "" && agent.Name == "" {
+					agent.Name = name
+				}
+				continue
+			}
+			if err := p.skipElement(t); err != nil {
+				return err
+			}
+		case xml.EndElement:
+			if strings.EqualFold(t.Name.Local, start.Name.Local) {
+				p.definedAgents[agent.ID] = agent
 				return nil
 			}
 		}
@@ -338,8 +393,8 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 			tokenText := sanitizeTTMLText(value)
 			if local == "span" && hasOwnTiming && !ctx.invalid && tokenText != "" && len(tokens) == 0 {
 				parsedToken := model.Cue{
-					Value: tokenText,
-					Role:  ctx.role,
+					Value:   tokenText,
+					AgentID: p.resolveCueAgentID(ctx),
 				}
 				if ctx.hasBegin {
 					startMs := ctx.begin
@@ -366,12 +421,12 @@ func (p *ttmlParser) toLyricList() model.LyricList {
 		if len(lines) == 0 {
 			continue
 		}
-		res = append(res, model.Lyrics{
+		res = append(res, p.finalizeLyrics(model.Lyrics{
 			Kind:   ttmlLyricKindMain,
 			Lang:   lang,
 			Line:   lines,
 			Synced: linesAreSynced(lines),
-		})
+		}))
 	}
 
 	res = append(res, p.buildMetadataLyrics(ttmlLyricKindTranslation, p.translationLangOrder, p.translationEntriesByLg)...)
@@ -440,15 +495,166 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 			lines[i] = resolved[i].line
 		}
 
-		res = append(res, model.Lyrics{
+		res = append(res, p.finalizeLyrics(model.Lyrics{
 			Kind:   kind,
 			Lang:   lang,
 			Line:   lines,
 			Synced: linesAreSynced(lines),
-		})
+		}))
 	}
 
 	return res
+}
+
+func (p *ttmlParser) finalizeLyrics(lyrics model.Lyrics) model.Lyrics {
+	lyrics.Line = model.NormalizeCueLines(lyrics.Line)
+	lyrics.Line, lyrics.Agents = p.resolveAgents(lyrics.Line)
+	return model.NormalizeLyrics(lyrics)
+}
+
+func (p *ttmlParser) resolveAgents(lines []model.Line) ([]model.Line, []model.Agent) {
+	if len(lines) == 0 {
+		return lines, nil
+	}
+
+	normalized := model.NormalizeCueLines(lines)
+	usedOrder := make([]string, 0, 4)
+	usedSet := make(map[string]struct{}, 4)
+	sawEmptyCue := false
+
+	for i := range normalized {
+		for j := range normalized[i].Cue {
+			agentID := strings.TrimSpace(normalized[i].Cue[j].AgentID)
+			if agentID == "" {
+				sawEmptyCue = true
+				continue
+			}
+			if _, exists := usedSet[agentID]; !exists {
+				usedSet[agentID] = struct{}{}
+				usedOrder = append(usedOrder, agentID)
+			}
+		}
+	}
+
+	if len(usedOrder) == 0 {
+		return normalized, nil
+	}
+
+	mainID := ""
+	for _, agentID := range usedOrder {
+		role := p.baseRoleForAgent(agentID)
+		if role != "bg" && role != "group" {
+			mainID = agentID
+			break
+		}
+	}
+	if mainID == "" && sawEmptyCue {
+		mainID = "main"
+	}
+	if mainID == "" {
+		for _, agentID := range usedOrder {
+			if p.baseRoleForAgent(agentID) != "bg" {
+				mainID = agentID
+				break
+			}
+		}
+	}
+	if mainID == "" {
+		mainID = usedOrder[0]
+	}
+
+	if _, exists := usedSet[mainID]; !exists {
+		usedSet[mainID] = struct{}{}
+		usedOrder = append([]string{mainID}, usedOrder...)
+	}
+
+	for i := range normalized {
+		for j := range normalized[i].Cue {
+			if strings.TrimSpace(normalized[i].Cue[j].AgentID) == "" {
+				normalized[i].Cue[j].AgentID = mainID
+			}
+		}
+	}
+
+	agents := make([]model.Agent, 0, len(usedOrder))
+	for _, agentID := range usedOrder {
+		role := p.baseRoleForAgent(agentID)
+		if agentID == mainID {
+			role = "main"
+		}
+		agent := model.Agent{
+			ID:   agentID,
+			Role: role,
+			Name: p.agentNameForID(agentID),
+		}
+		agents = append(agents, agent)
+	}
+
+	return normalized, agents
+}
+
+func (p *ttmlParser) resolveCueAgentID(ctx ttmlTimingContext) string {
+	agentID := strings.TrimSpace(ctx.agentID)
+	if contextHasRole(ctx.role, "x-bg") {
+		if agentID == "" {
+			agentID = "main"
+		}
+		return backgroundAgentID(agentID)
+	}
+	return agentID
+}
+
+func (p *ttmlParser) baseRoleForAgent(agentID string) string {
+	if isBackgroundAgentID(agentID) {
+		return "bg"
+	}
+
+	if agent, ok := p.definedAgents[agentID]; ok {
+		switch agent.Type {
+		case "group":
+			return "group"
+		default:
+			return "voice"
+		}
+	}
+
+	return "voice"
+}
+
+func (p *ttmlParser) agentNameForID(agentID string) string {
+	if isBackgroundAgentID(agentID) {
+		baseID := strings.TrimSuffix(agentID, "__bg")
+		if baseID == "main" {
+			return ""
+		}
+		if agent, ok := p.definedAgents[baseID]; ok {
+			return agent.Name
+		}
+		return ""
+	}
+
+	if agent, ok := p.definedAgents[agentID]; ok {
+		return agent.Name
+	}
+
+	return ""
+}
+
+func backgroundAgentID(agentID string) string {
+	return agentID + "__bg"
+}
+
+func isBackgroundAgentID(agentID string) bool {
+	return strings.HasSuffix(agentID, "__bg")
+}
+
+func contextHasRole(roles string, role string) bool {
+	for _, candidate := range strings.Fields(strings.ToLower(roles)) {
+		if candidate == strings.ToLower(role) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *ttmlParser) addMainLine(lang string, lineKey string, line model.Line) {
@@ -494,6 +700,9 @@ func (p *ttmlParser) childContext(attrs []xml.Attr, parent ttmlTimingContext) tt
 
 	if lang, ok := attrValue(attrs, "lang"); ok {
 		ctx.lang = normalizeTTMLLang(lang)
+	}
+	if agentID, ok := attrValue(attrs, "agent"); ok {
+		ctx.agentID = strings.TrimSpace(agentID)
 	}
 	if role, ok := attrValue(attrs, "role"); ok {
 		role = strings.TrimSpace(role)
@@ -805,6 +1014,55 @@ func attrValue(attrs []xml.Attr, key string) (string, bool) {
 	return "", false
 }
 
+func attrOrEmpty(attrs []xml.Attr, key string) string {
+	value, _ := attrValue(attrs, key)
+	return value
+}
+
+func (p *ttmlParser) collectElementText(start xml.StartElement) (string, error) {
+	var text strings.Builder
+
+	for {
+		token, err := p.decoder.Token()
+		if err != nil {
+			return "", err
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			value, err := p.collectElementText(t)
+			if err != nil {
+				return "", err
+			}
+			text.WriteString(value)
+		case xml.EndElement:
+			if strings.EqualFold(t.Name.Local, start.Name.Local) {
+				return text.String(), nil
+			}
+		case xml.CharData:
+			text.WriteString(string(t))
+		}
+	}
+}
+
+func (p *ttmlParser) skipElement(_ xml.StartElement) error {
+	depth := 1
+	for depth > 0 {
+		token, err := p.decoder.Token()
+		if err != nil {
+			return err
+		}
+
+		switch token.(type) {
+		case xml.StartElement:
+			depth++
+		case xml.EndElement:
+			depth--
+		}
+	}
+	return nil
+}
+
 func normalizeTTMLLang(lang string) string {
 	lang = strings.ToLower(strings.TrimSpace(lang))
 	if lang == "" {
@@ -840,42 +1098,7 @@ func linesAreSynced(lines []model.Line) bool {
 }
 
 func hydrateLineTimingFromTokens(line model.Line) model.Line {
-	if len(line.Cue) == 0 {
-		return line
-	}
-
-	var earliestStart *int64
-	var latestEnd *int64
-	for i := range line.Cue {
-		token := line.Cue[i]
-		if token.Start != nil {
-			if earliestStart == nil || *token.Start < *earliestStart {
-				v := *token.Start
-				earliestStart = &v
-			}
-		}
-
-		candidateEnd := token.End
-		if candidateEnd == nil {
-			candidateEnd = token.Start
-		}
-		if candidateEnd != nil {
-			if latestEnd == nil || *candidateEnd > *latestEnd {
-				v := *candidateEnd
-				latestEnd = &v
-			}
-		}
-	}
-
-	if line.Start == nil && earliestStart != nil {
-		v := *earliestStart
-		line.Start = &v
-	}
-	if line.End == nil && latestEnd != nil {
-		v := *latestEnd
-		line.End = &v
-	}
-	return line
+	return model.NormalizeLineTiming(line)
 }
 
 func max(v float64, fallback float64) float64 {

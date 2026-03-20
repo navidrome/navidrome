@@ -129,8 +129,8 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line0.Start).To(Equal(&t1000))
 		Expect(line0.Value).To(Equal("Some lyrics here"))
 		Expect(line0.Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
-			{Start: &t1500, End: &t2000, Value: "lyrics "},
+			{Start: &t1000, Value: "Some "},
+			{Start: &t1500, Value: "lyrics "},
 			{Start: &t2000, Value: "here"},
 		}))
 
@@ -138,7 +138,7 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line1.Start).To(Equal(&t3000))
 		Expect(line1.Value).To(Equal("More words"))
 		Expect(line1.Cue).To(Equal([]Cue{
-			{Start: &t3000, End: &t3500, Value: "More "},
+			{Start: &t3000, Value: "More "},
 			{Start: &t3500, Value: "words"},
 		}))
 	})
@@ -161,7 +161,7 @@ var _ = Describe("ToLyrics", func() {
 		t1000, t1500, t5000, t5500 := int64(1000), int64(1500), int64(5000), int64(5500)
 
 		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
+			{Start: &t1000, Value: "Some "},
 			{Start: &t1500, Value: "lyrics"},
 		}))
 		Expect(lyrics.Line[0].Value).To(Equal("Some lyrics"))
@@ -170,7 +170,7 @@ var _ = Describe("ToLyrics", func() {
 		Expect(lyrics.Line[1].Value).To(Equal("Plain line"))
 
 		Expect(lyrics.Line[2].Cue).To(Equal([]Cue{
-			{Start: &t5000, End: &t5500, Value: "More "},
+			{Start: &t5000, Value: "More "},
 			{Start: &t5500, Value: "words"},
 		}))
 		Expect(lyrics.Line[2].Value).To(Equal("More words"))

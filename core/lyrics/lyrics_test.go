@@ -44,6 +44,36 @@ var _ = Describe("sources", func() {
 		},
 	}
 
+	elrcLyrics := model.LyricList{
+		model.Lyrics{
+			DisplayArtist: "ELRC Artist",
+			DisplayTitle:  "ELRC Song",
+			Lang:          "eng",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(1000)),
+					End:   gg.P(int64(1500)),
+					Value: "Lead words",
+					Cue: []model.Cue{
+						{
+							Start: gg.P(int64(1000)),
+							Value: "Lead ",
+						},
+						{
+							Start: gg.P(int64(1500)),
+							Value: "words",
+						},
+					},
+				},
+				{
+					Start: gg.P(int64(3000)),
+					Value: "Fallback line",
+				},
+			},
+			Synced: true,
+		},
+	}
+
 	ttmlLyrics := model.LyricList{
 		model.Lyrics{
 			Kind: "main",
@@ -88,6 +118,25 @@ var _ = Describe("sources", func() {
 		},
 	}
 
+	srtLyrics := model.LyricList{
+		model.Lyrics{
+			Lang: "xxx",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					End:   gg.P(int64(22800)),
+					Value: "We're from subtitles",
+				},
+				{
+					Start: gg.P(int64(22801)),
+					End:   gg.P(int64(26000)),
+					Value: "Another subtitle line",
+				},
+			},
+			Synced: true,
+		},
+	}
+
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 
@@ -109,8 +158,10 @@ var _ = Describe("sources", func() {
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
 		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics),
+		Entry("elrc > lrc > embedded", ".elrc,.lrc,embedded", elrcLyrics),
+		Entry("srt > txt > embedded", ".srt,.txt,embedded", srtLyrics),
 		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
-		Entry("ttml > lrc > embedded", ".ttml,.lrc,embedded", ttmlLyrics))
+		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics))
 
 	Context("Errors", func() {
 		var RegularUserContext = XContext

@@ -12,10 +12,16 @@ import (
 )
 
 type Cue struct {
-	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
-	End   *int64 `structs:"end,omitempty"   json:"end,omitempty"`
-	Value string `structs:"value"           json:"value"`
-	Role  string `structs:"role,omitempty"  json:"role,omitempty"`
+	Start   *int64 `structs:"start,omitempty"   json:"start,omitempty"`
+	End     *int64 `structs:"end,omitempty"     json:"end,omitempty"`
+	Value   string `structs:"value"             json:"value"`
+	AgentID string `structs:"agentId,omitempty" json:"agentId,omitempty"`
+}
+
+type Agent struct {
+	ID   string `structs:"id"             json:"id"`
+	Role string `structs:"role"           json:"role"`
+	Name string `structs:"name,omitempty" json:"name,omitempty"`
 }
 
 type Line struct {
@@ -26,13 +32,14 @@ type Line struct {
 }
 
 type Lyrics struct {
-	DisplayArtist string `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
-	Kind          string `structs:"kind,omitempty"          json:"kind,omitempty"`
-	Lang          string `structs:"lang"                    json:"lang"`
-	Line          []Line `structs:"line"                    json:"line"`
-	Offset        *int64 `structs:"offset,omitempty"        json:"offset,omitempty"`
-	Synced        bool   `structs:"synced"                  json:"synced"`
+	DisplayArtist string  `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string  `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string  `structs:"kind,omitempty"          json:"kind,omitempty"`
+	Lang          string  `structs:"lang"                    json:"lang"`
+	Agents        []Agent `structs:"agents,omitempty"       json:"agents,omitempty"`
+	Line          []Line  `structs:"line"                    json:"line"`
+	Offset        *int64  `structs:"offset,omitempty"        json:"offset,omitempty"`
+	Synced        bool    `structs:"synced"                  json:"synced"`
 }
 
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
@@ -199,7 +206,7 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 		DisplayArtist: artist,
 		DisplayTitle:  title,
 		Lang:          language,
-		Line:          structuredLines,
+		Line:          NormalizeCueLines(structuredLines),
 		Offset:        offset,
 		Synced:        synced,
 	}
@@ -264,11 +271,6 @@ func parseEnhancedCues(text string) []Cue {
 		cues[i] = Cue{
 			Start: &start,
 			Value: seg.text,
-		}
-		// Derive End from the next cue's Start
-		if i+1 < len(segments) {
-			end := segments[i+1].start
-			cues[i].End = &end
 		}
 	}
 	return cues
@@ -338,3 +340,127 @@ func parseTime(line string, match []int) (int64, error) {
 }
 
 type LyricList []Lyrics
+
+func NormalizeLyrics(lyrics Lyrics) Lyrics {
+	lyrics.Line = NormalizeCueLines(lyrics.Line)
+	if len(lyrics.Agents) == 0 {
+		lyrics.Agents = nil
+	}
+	return lyrics
+}
+
+func NormalizeCueLines(lines []Line) []Line {
+	if len(lines) == 0 {
+		return lines
+	}
+
+	normalized := make([]Line, len(lines))
+	copy(normalized, lines)
+
+	for i := range normalized {
+		var fallbackEnd *int64
+		if normalized[i].End != nil {
+			v := *normalized[i].End
+			fallbackEnd = &v
+		} else if i+1 < len(normalized) && normalized[i+1].Start != nil {
+			v := *normalized[i+1].Start
+			fallbackEnd = &v
+		}
+
+		normalized[i] = normalizeCueLine(normalized[i], fallbackEnd)
+	}
+
+	return normalized
+}
+
+func NormalizeLineTiming(line Line) Line {
+	if len(line.Cue) == 0 {
+		return line
+	}
+
+	var earliestStart *int64
+	var latestEnd *int64
+	for i := range line.Cue {
+		token := line.Cue[i]
+		if token.Start != nil {
+			if earliestStart == nil || *token.Start < *earliestStart {
+				v := *token.Start
+				earliestStart = &v
+			}
+		}
+
+		candidateEnd := token.End
+		if candidateEnd == nil {
+			candidateEnd = token.Start
+		}
+		if candidateEnd != nil {
+			if latestEnd == nil || *candidateEnd > *latestEnd {
+				v := *candidateEnd
+				latestEnd = &v
+			}
+		}
+	}
+
+	if line.Start == nil && earliestStart != nil {
+		v := *earliestStart
+		line.Start = &v
+	}
+	if line.End == nil && latestEnd != nil {
+		v := *latestEnd
+		line.End = &v
+	}
+	return line
+}
+
+func normalizeCueLine(line Line, fallbackEnd *int64) Line {
+	if len(line.Cue) == 0 {
+		return line
+	}
+
+	hasAnyEnd := false
+	for i := range line.Cue {
+		if line.Cue[i].End != nil {
+			hasAnyEnd = true
+			break
+		}
+	}
+	if !hasAnyEnd {
+		line.Cue = clearCueEnds(line.Cue)
+		return NormalizeLineTiming(line)
+	}
+
+	for i := range line.Cue {
+		if line.Cue[i].End != nil {
+			continue
+		}
+
+		if i+1 < len(line.Cue) && line.Cue[i+1].Start != nil {
+			v := *line.Cue[i+1].Start
+			line.Cue[i].End = &v
+			continue
+		}
+
+		if fallbackEnd != nil {
+			v := *fallbackEnd
+			line.Cue[i].End = &v
+		}
+	}
+
+	for i := range line.Cue {
+		if line.Cue[i].End == nil {
+			line.Cue = clearCueEnds(line.Cue)
+			return NormalizeLineTiming(line)
+		}
+	}
+
+	return NormalizeLineTiming(line)
+}
+
+func clearCueEnds(cues []Cue) []Cue {
+	normalized := make([]Cue, len(cues))
+	copy(normalized, cues)
+	for i := range normalized {
+		normalized[i].End = nil
+	}
+	return normalized
+}
