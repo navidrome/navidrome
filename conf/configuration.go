@@ -341,9 +341,11 @@ func Load(noConfigDump bool) {
 			os.Exit(1)
 		}
 		log.SetOutput(out)
-	} else if os.Getenv("JOURNAL_STREAM") != "" {
+	} else if os.Getenv("ND_SYSTEMD_PRIORITY_LOGGING") != "" && os.Getenv("JOURNAL_STREAM") != "" {
 		// When running under systemd, prepend syslog priority prefixes so
 		// journald assigns the correct severity to each log line.
+		// Note that we have an additional environment variable, as JOURNAL_STREAM
+		// can be present in a systemd environment even if not running as a systemd service
 		log.EnableJournalFormat()
 	}
 
