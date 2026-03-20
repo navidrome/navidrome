@@ -24,6 +24,7 @@ const (
 	ttmlLyricKindMain          = "main"
 	ttmlLyricKindTranslation   = "translation"
 	ttmlLyricKindPronunciation = "pronunciation"
+	ttmlBackgroundAgentPrefix  = "__nd_bg__|"
 )
 
 var offsetTimeRegex = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)(h|m|s|ms|f|t)$`)
@@ -623,7 +624,7 @@ func (p *ttmlParser) baseRoleForAgent(agentID string) string {
 
 func (p *ttmlParser) agentNameForID(agentID string) string {
 	if isBackgroundAgentID(agentID) {
-		baseID := strings.TrimSuffix(agentID, "__bg")
+		baseID := strings.TrimPrefix(agentID, ttmlBackgroundAgentPrefix)
 		if baseID == "main" {
 			return ""
 		}
@@ -641,11 +642,11 @@ func (p *ttmlParser) agentNameForID(agentID string) string {
 }
 
 func backgroundAgentID(agentID string) string {
-	return agentID + "__bg"
+	return ttmlBackgroundAgentPrefix + agentID
 }
 
 func isBackgroundAgentID(agentID string) bool {
-	return strings.HasSuffix(agentID, "__bg")
+	return strings.HasPrefix(agentID, ttmlBackgroundAgentPrefix)
 }
 
 func contextHasRole(roles string, role string) bool {
