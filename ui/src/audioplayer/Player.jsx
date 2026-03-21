@@ -21,6 +21,7 @@ import {
   currentPlaying,
   refreshQueue,
   setPlayMode,
+  updateQueueLyric,
   setTranscodingProfile,
   setVolume,
   syncQueue,
@@ -32,7 +33,26 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
+import {
+  getPreferredLyricLanguage,
+  hasStructuredLyricContent,
+  selectLyricLayers,
+  structuredLyricToLrc,
+} from './lyrics'
+import KaraokeLyricsOverlay from './KaraokeLyricsOverlay'
 import { detectBrowserProfile, decisionService } from '../transcode'
+
+const emptyLyricLayers = {
+  main: null,
+  translation: null,
+  pronunciation: null,
+}
+
+const normalizeLyricLayers = (layers) => ({
+  main: layers?.main || null,
+  translation: layers?.translation || null,
+  pronunciation: layers?.pronunciation || null,
+})
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -120,6 +140,72 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
+  const lyricCacheRef = useRef(new Map())
+  const lyricRequestIdRef = useRef(0)
+  const playerRef = useRef(null)
+  const [karaokeVisible, setKaraokeVisible] = useState(false)
+  const [selectedLyricLayers, setSelectedLyricLayers] =
+    useState(emptyLyricLayers)
+  const [showTranslation, setShowTranslation] = useState(false)
+  const [showPronunciation, setShowPronunciation] = useState(false)
+  const currentTrackId = playerState.current?.trackId
+  const currentTrackIsRadio = playerState.current?.isRadio
+  const selectedStructuredLyric = selectedLyricLayers.main
+  const hasKaraokeLyric = hasStructuredLyricContent(selectedStructuredLyric)
+  const hasTranslationLyric = hasStructuredLyricContent(
+    selectedLyricLayers.translation,
+  )
+  const hasPronunciationLyric = hasStructuredLyricContent(
+    selectedLyricLayers.pronunciation,
+  )
+
+  const applyLyricToRuntimePlayer = useCallback((trackId, lyric) => {
+    if (!trackId) {
+      return
+    }
+
+    const player = playerRef.current
+    if (!player || typeof player.setState !== 'function') {
+      return
+    }
+
+    player.setState((prevState) => {
+      const prevLists = Array.isArray(prevState.audioLists)
+        ? prevState.audioLists
+        : []
+      let changed = false
+      const audioLists = prevLists.map((item) => {
+        if (item.trackId !== trackId) {
+          return item
+        }
+        if (item.lyric === lyric) {
+          return item
+        }
+        changed = true
+        return {
+          ...item,
+          lyric,
+        }
+      })
+
+      const currentItem = audioLists.find(
+        (item) => item.musicSrc === prevState.musicSrc,
+      )
+      const currentLyric =
+        typeof currentItem?.lyric === 'string'
+          ? currentItem.lyric
+          : prevState.lyric
+
+      if (!changed && currentLyric === prevState.lyric) {
+        return null
+      }
+
+      return {
+        audioLists,
+        lyric: currentLyric,
+      }
+    })
+  }, [])
 
   useEffect(() => {
     if (
@@ -166,6 +252,107 @@ const Player = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [playerState, audioInstance])
 
+  useEffect(() => {
+    if (!currentTrackId || currentTrackIsRadio) {
+      setSelectedLyricLayers(emptyLyricLayers)
+      setShowTranslation(false)
+      setShowPronunciation(false)
+      setKaraokeVisible(false)
+      return
+    }
+
+    const cached = lyricCacheRef.current.get(currentTrackId)
+    let layers = emptyLyricLayers
+    if (cached && typeof cached !== 'string') {
+      if (cached.layers) {
+        layers = normalizeLyricLayers(cached.layers)
+      } else if (cached.structuredLyric) {
+        layers = normalizeLyricLayers({
+          main: cached.structuredLyric,
+        })
+      }
+    }
+    setSelectedLyricLayers(layers)
+    setShowTranslation(false)
+    setShowPronunciation(hasStructuredLyricContent(layers.pronunciation))
+  }, [currentTrackId, currentTrackIsRadio])
+
+  useEffect(() => {
+    lyricRequestIdRef.current += 1
+    const requestId = lyricRequestIdRef.current
+
+    if (!currentTrackId || currentTrackIsRadio) {
+      return
+    }
+
+    const cached = lyricCacheRef.current.get(currentTrackId)
+    if (cached !== undefined) {
+      const cachedLyric =
+        typeof cached === 'string' ? cached : cached?.lrc || ''
+      const cachedLayers =
+        typeof cached === 'string'
+          ? emptyLyricLayers
+          : cached?.layers
+            ? normalizeLyricLayers(cached.layers)
+            : normalizeLyricLayers({ main: cached?.structuredLyric })
+
+      setSelectedLyricLayers(cachedLayers)
+      setShowTranslation(false)
+      setShowPronunciation(
+        hasStructuredLyricContent(cachedLayers.pronunciation),
+      )
+      if (cachedLyric) {
+        dispatch(updateQueueLyric(currentTrackId, cachedLyric))
+        applyLyricToRuntimePlayer(currentTrackId, cachedLyric)
+      }
+      return
+    }
+
+    subsonic
+      .getLyricsBySongId(currentTrackId)
+      .then((resp) => {
+        if (lyricRequestIdRef.current !== requestId) {
+          return
+        }
+
+        const structuredLyrics =
+          resp?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
+        const layers = selectLyricLayers(
+          structuredLyrics,
+          getPreferredLyricLanguage(),
+        )
+        const lyric = layers.main ? structuredLyricToLrc(layers.main) : ''
+        lyricCacheRef.current.set(currentTrackId, {
+          lrc: lyric,
+          layers,
+        })
+        setSelectedLyricLayers(layers)
+        setShowTranslation(false)
+        setShowPronunciation(hasStructuredLyricContent(layers.pronunciation))
+
+        if (lyric !== '') {
+          dispatch(updateQueueLyric(currentTrackId, lyric))
+          applyLyricToRuntimePlayer(currentTrackId, lyric)
+        }
+      })
+      .catch(() => {
+        if (lyricRequestIdRef.current !== requestId) {
+          return
+        }
+        setSelectedLyricLayers(emptyLyricLayers)
+        setShowTranslation(false)
+        setShowPronunciation(false)
+        // Do not cache network/request failures as empty lyrics, so we can retry.
+        lyricCacheRef.current.delete(currentTrackId)
+      })
+  }, [dispatch, currentTrackId, currentTrackIsRadio, applyLyricToRuntimePlayer])
+
+  useEffect(() => {
+    if (!hasKaraokeLyric && karaokeVisible) {
+      setKaraokeVisible(false)
+    }
+  }, [hasKaraokeLyric, karaokeVisible])
+
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
@@ -177,7 +364,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
-      showLyric: true,
+      showLyric: false,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -214,12 +401,24 @@ const Player = () => {
         (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
-        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+        <PlayerToolbar
+          id={current.trackId}
+          isRadio={current.isRadio}
+          onToggleLyrics={() => setKaraokeVisible((visible) => !visible)}
+          lyricsActive={karaokeVisible}
+          lyricsDisabled={!hasKaraokeLyric}
+        />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
       showMediaSession: !current.isRadio,
     }
-  }, [playerState, defaultOptions, isMobilePlayer])
+  }, [
+    playerState,
+    defaultOptions,
+    isMobilePlayer,
+    karaokeVisible,
+    hasKaraokeLyric,
+  ])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
@@ -391,6 +590,7 @@ const Player = () => {
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
+        ref={playerRef}
         {...options}
         className={classes.player}
         onAudioListsChange={onAudioListsChange}
@@ -405,6 +605,28 @@ const Player = () => {
         onAudioError={onAudioError}
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
+      />
+      <KaraokeLyricsOverlay
+        visible={karaokeVisible}
+        mainLyric={selectedLyricLayers.main}
+        translationLyric={selectedLyricLayers.translation}
+        pronunciationLyric={selectedLyricLayers.pronunciation}
+        showTranslation={showTranslation}
+        showPronunciation={showPronunciation}
+        translationEnabled={hasTranslationLyric}
+        pronunciationEnabled={hasPronunciationLyric}
+        onToggleTranslation={() =>
+          setShowTranslation((previous) =>
+            hasTranslationLyric ? !previous : false,
+          )
+        }
+        onTogglePronunciation={() =>
+          setShowPronunciation((previous) =>
+            hasPronunciationLyric ? !previous : false,
+          )
+        }
+        audioInstance={audioInstance}
+        onClose={() => setKaraokeVisible(false)}
       />
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>

@@ -1,0 +1,7 @@
+1
+00:00:18,800 --> 00:00:22,800
+We're from subtitles
+
+2
+00:00:22,801 --> 00:00:26,000
+Another subtitle line
