@@ -38,7 +38,7 @@
         "missing": "Falta",
         "libraryName": "Biblioteca",
         "composer": "Composición",
-        "disc": ""
+        "disc": "Disco %{discNumber}"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -355,7 +355,7 @@
         "selectedUsers": "Usuarias seleccionadas",
         "allLibraries": "Permitir todas as bibliotecas",
         "selectedLibraries": "Selecciona bibliotecas",
-        "allowWriteAccess": ""
+        "allowWriteAccess": "Conceder acceso de escritura"
       },
       "sections": {
         "status": "Estado",
@@ -401,7 +401,7 @@
         "requiredHosts": "Servidores requeridos",
         "configValidationError": "Fallou a comprobación da configuración:",
         "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido.",
-        "allowWriteAccessHelp": ""
+        "allowWriteAccessHelp": "A activalo, este complemento pode modificar ficheiros nos directorios da biblioteca. Por defecto os complementos teñen acceso de só-lectura."
       },
       "placeholders": {
         "configKey": "clave",
@@ -591,7 +591,13 @@
     "remove_all_missing_content": "Tes certeza de querer retirar da base de datos todos os ficheiros que faltan? Isto eliminará todas as referencias a eles, incluíndo o número de reproducións e valoracións.",
     "noSimilarSongsFound": "Sen cancións parecidas",
     "noTopSongsFound": "Sen cancións destacadas",
-    "startingInstantMix": "Cargando Mestura Súbita…"
+    "startingInstantMix": "Cargando Mestura Súbita…",
+    "uploadCover": "Subir capa",
+    "removeCover": "Retirar capa",
+    "coverUploaded": "Subiuse a capa",
+    "coverRemoved": "Retirouse a capa",
+    "coverUploadError": "Erro ao subir a capa",
+    "coverRemoveError": "Erro ao retirar a capa"
   },
   "menu": {
     "library": "Biblioteca",
