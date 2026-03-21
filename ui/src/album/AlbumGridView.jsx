@@ -33,13 +33,11 @@ const useStyles = makeStyles(
       transition: 'all 150ms ease-out',
       opacity: 0,
       textAlign: 'left',
-      marginBottom: '3px',
       background:
         'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
     },
     tileBarMobile: {
       textAlign: 'left',
-      marginBottom: '3px',
       background:
         'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
     },
