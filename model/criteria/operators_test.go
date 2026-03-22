@@ -29,6 +29,8 @@ var _ = Describe("Operators", func() {
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
 		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
+		Entry("is [bool from string]", Is{"loved": "true"}, "COALESCE(annotation.starred, false) = ?", true),
+		Entry("is [bool false from string]", Is{"loved": "false"}, "COALESCE(annotation.starred, false) = ?", false),
 		Entry("is [numeric]", Is{"library_id": 1}, "media_file.library_id = ?", 1),
 		Entry("is [numeric list]", Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
 		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
