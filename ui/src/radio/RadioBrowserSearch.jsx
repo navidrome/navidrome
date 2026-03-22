@@ -97,7 +97,11 @@ const RadioBrowserSearchFields = ({ form }) => {
         </Button>
       </Box>
       {searched && !loading && results.length === 0 && (
-        <Typography variant="body2" color="textSecondary" style={{ marginTop: 8 }}>
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          style={{ marginTop: 8 }}
+        >
           {translate('resources.radio.radioBrowser.noResults')}
         </Typography>
       )}
