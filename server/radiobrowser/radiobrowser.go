@@ -4,6 +4,7 @@ package radiobrowser
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -38,6 +39,12 @@ type apiStation struct {
 	Homepage    string `json:"homepage"`
 	StationUUID string `json:"stationuuid"`
 }
+
+// Sentinel errors for query validation. Use errors.Is to detect them.
+var (
+	ErrQueryTooShort = errors.New("query too short")
+	ErrQueryTooLong  = errors.New("query too long")
+)
 
 var fallbackAPIHosts = []string{
 	"de1.api.radio-browser.info",
@@ -87,10 +94,10 @@ func shuffleHosts(hosts []string) []string {
 func Search(ctx context.Context, rawQuery string, limit int) ([]Station, error) {
 	q := strings.TrimSpace(rawQuery)
 	if len(q) < minQueryLen {
-		return nil, fmt.Errorf("query too short (min %d characters)", minQueryLen)
+		return nil, fmt.Errorf("query too short (min %d characters): %w", minQueryLen, ErrQueryTooShort)
 	}
 	if len(q) > maxQueryLen {
-		return nil, fmt.Errorf("query too long (max %d characters)", maxQueryLen)
+		return nil, fmt.Errorf("query too long (max %d characters): %w", maxQueryLen, ErrQueryTooLong)
 	}
 	if limit <= 0 {
 		limit = defaultLimit

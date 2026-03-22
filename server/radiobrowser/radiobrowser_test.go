@@ -1,6 +1,11 @@
 package radiobrowser
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestNormalizeStations(t *testing.T) {
 	raw := []apiStation{
@@ -17,5 +22,18 @@ func TestNormalizeStations(t *testing.T) {
 	}
 	if got[1].StreamURL != "http://b-only" {
 		t.Fatalf("second stream: %q", got[1].StreamURL)
+	}
+}
+
+func TestSearchSentinelErrors(t *testing.T) {
+	ctx := context.Background()
+	_, err := Search(ctx, "x", 10)
+	if !errors.Is(err, ErrQueryTooShort) {
+		t.Fatalf("short query: want ErrQueryTooShort, got %v", err)
+	}
+	long := strings.Repeat("a", maxQueryLen+1)
+	_, err = Search(ctx, long, 10)
+	if !errors.Is(err, ErrQueryTooLong) {
+		t.Fatalf("long query: want ErrQueryTooLong, got %v", err)
 	}
 }

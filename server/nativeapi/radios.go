@@ -87,7 +87,7 @@ func (api *Router) searchRadioBrowser() http.HandlerFunc {
 		}
 		stations, err := radiobrowser.Search(r.Context(), q, limit)
 		if err != nil {
-			if strings.Contains(err.Error(), "too short") || strings.Contains(err.Error(), "too long") {
+			if errors.Is(err, radiobrowser.ErrQueryTooShort) || errors.Is(err, radiobrowser.ErrQueryTooLong) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
