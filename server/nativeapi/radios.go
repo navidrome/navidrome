@@ -113,7 +113,8 @@ func (api *Router) radioBrowserClick() http.HandlerFunc {
 			http.Error(w, "streamUrl required", http.StatusBadRequest)
 			return
 		}
-		go func(u string) {
+go func(u string) {
+			defer func() { _ = recover() }()
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
 			radiobrowser.NotifyClick(ctx, u)
