@@ -152,9 +152,11 @@ func NotifyClick(ctx context.Context, streamURL string) {
 	_, _ = get(ctx, path)
 }
 
+// Shared client for Radio Browser requests: safe for concurrent use and reuses TCP connections.
+var apiHTTPClient = &http.Client{Timeout: 20 * time.Second}
+
 func get(ctx context.Context, path string) ([]byte, error) {
 	hosts := shuffleHosts(APIHosts())
-	client := &http.Client{Timeout: 20 * time.Second}
 	var lastErr error
 	for _, host := range hosts {
 		reqURL := "https://" + host + path
@@ -165,7 +167,7 @@ func get(ctx context.Context, path string) ([]byte, error) {
 		}
 		req.Header.Set("User-Agent", consts.HTTPUserAgent)
 
-		resp, err := client.Do(req)
+		resp, err := apiHTTPClient.Do(req)
 		if err != nil {
 			lastErr = err
 			continue
