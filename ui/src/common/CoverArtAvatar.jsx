@@ -2,6 +2,7 @@ import { useRecordContext } from 'react-admin'
 import { Avatar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
+import { COVER_ART_SIZE } from '../consts'
 import subsonic from '../subsonic'
 
 const useStyles = makeStyles({
@@ -25,7 +26,7 @@ export const CoverArtAvatar = ({
   const square = variant !== 'circular'
   return (
     <Avatar
-      src={subsonic.getCoverArtUrl(record, 80, square)}
+      src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE, square)}
       variant={variant}
       className={clsx(classes.avatar, square && classes.square)}
       alt={record.name}
