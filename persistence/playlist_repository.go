@@ -215,6 +215,10 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
+	return r.doRefreshSmartPlaylist(pls, usr.ID)
+}
+
+func (r *playlistRepository) doRefreshSmartPlaylist(pls *model.Playlist, userID string) bool {
 	log.Debug(r.ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
@@ -244,11 +248,11 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on ("+
 		"annotation.item_id = media_file.id"+
 		" AND annotation.item_type = 'media_file'"+
-		" AND annotation.user_id = ?)", usr.ID)
+		" AND annotation.user_id = ?)", userID)
 
 	// Conditionally join album/artist annotation tables only when referenced by criteria or sort
 	requiredJoins := rules.RequiredJoins()
-	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, usr.ID)
+	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, userID)
 
 	// Only include media files from libraries the user has access to
 	sq = r.applyLibraryFilter(sq, "media_file")
@@ -261,8 +265,8 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 			LeftJoin("annotation on ("+
 				"annotation.item_id = media_file.id"+
 				" AND annotation.item_type = 'media_file'"+
-				" AND annotation.user_id = ?)", usr.ID)
-		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, usr.ID)
+				" AND annotation.user_id = ?)", userID)
+		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, userID)
 		countSq = r.applyLibraryFilter(countSq, "media_file")
 		countSq = countSq.Where(rules)
 
@@ -308,6 +312,18 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 
 	return true
+}
+
+func (r *playlistRepository) Evaluate(id string) error {
+	pls, err := r.Get(id)
+	if err != nil {
+		return err
+	}
+	if !pls.IsSmartPlaylist() {
+		return nil
+	}
+	r.doRefreshSmartPlaylist(pls, pls.OwnerID)
+	return nil
 }
 
 func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins criteria.JoinType, userID string) SelectBuilder {
