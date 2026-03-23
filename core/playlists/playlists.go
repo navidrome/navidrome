@@ -2,7 +2,6 @@ package playlists
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -50,12 +50,20 @@ type Playlists interface {
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
 }
 
-type playlists struct {
-	ds model.DataStore
+// ImageUploadService is a local interface satisfied by core.ImageUploadService.
+// Defined here to avoid an import cycle between core and core/playlists.
+type ImageUploadService interface {
+	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
+	RemoveImage(ctx context.Context, path string) error
 }
 
-func NewPlaylists(ds model.DataStore) Playlists {
-	return &playlists{ds: ds}
+type playlists struct {
+	ds        model.DataStore
+	imgUpload ImageUploadService
+}
+
+func NewPlaylists(ds model.DataStore, imgUpload ImageUploadService) Playlists {
+	return &playlists{ds: ds, imgUpload: imgUpload}
 }
 
 func InPath(folder model.Folder) bool {
@@ -288,33 +296,13 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 		return err
 	}
 
-	filename := pls.ImageFilename(ext)
 	oldPath := pls.UploadedImagePath()
-	pls.UploadedImage = filename
-	absPath := pls.UploadedImagePath()
-
-	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		return fmt.Errorf("creating playlist images directory: %w", err)
-	}
-
-	// Remove old image if it exists
-	if oldPath != "" {
-		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
-			log.Warn(ctx, "Failed to remove old playlist image", "path", oldPath, err)
-		}
-	}
-
-	// Save new image
-	f, err := os.Create(absPath)
+	filename, err := s.imgUpload.SetImage(ctx, consts.EntityPlaylist, pls.ID, pls.Name, oldPath, reader, ext)
 	if err != nil {
-		return fmt.Errorf("creating playlist image file: %w", err)
-	}
-	defer f.Close()
-
-	if _, err := io.Copy(f, reader); err != nil {
-		return fmt.Errorf("writing playlist image file: %w", err)
+		return err
 	}
 
+	pls.UploadedImage = filename
 	return s.ds.Playlist(ctx).Put(pls)
 }
 
@@ -324,10 +312,8 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 		return err
 	}
 
-	if path := pls.UploadedImagePath(); path != "" {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			log.Warn(ctx, "Failed to remove playlist image", "path", path, err)
-		}
+	if err := s.imgUpload.RemoveImage(ctx, pls.UploadedImagePath()); err != nil {
+		return err
 	}
 
 	pls.UploadedImage = ""

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
@@ -206,6 +207,27 @@ var _ = BeforeSuite(func() {
 	lr := NewLibraryRepository(ctx, conn)
 	for i := range testArtists {
 		err := lr.AddArtist(1, testArtists[i].ID)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Populate album_artists based on the AlbumArtistID relationships in testAlbums
+	artistIDs := map[string]bool{}
+	for _, a := range testArtists {
+		artistIDs[a.ID] = true
+	}
+	for i := range testAlbums {
+		a := testAlbums[i]
+		if a.AlbumArtistID == "" || !artistIDs[a.AlbumArtistID] {
+			continue
+		}
+		_, err := alr.executeSQL(squirrel.Insert("album_artists").SetMap(map[string]any{
+			"album_id":  a.ID,
+			"artist_id": a.AlbumArtistID,
+			"role":      "artist",
+			"sub_role":  "",
+		}))
 		if err != nil {
 			panic(err)
 		}

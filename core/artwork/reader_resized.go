@@ -155,7 +155,7 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
 		dstRect = dst.Bounds()
 	}
-	xdraw.BiLinear.Scale(dst, dstRect, original, bounds, draw.Src, nil)
+	xdraw.CatmullRom.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()

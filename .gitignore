@@ -38,3 +38,4 @@ AGENTS.md
 *.ndp
 openspec/
 go.work*
+.worktrees/

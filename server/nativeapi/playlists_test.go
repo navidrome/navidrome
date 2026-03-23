@@ -98,7 +98,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		err := userRepo.Put(&testUser)
 		Expect(err).ToNot(HaveOccurred())
 
-		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
+		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})

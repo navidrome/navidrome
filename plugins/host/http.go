@@ -4,11 +4,12 @@ import "context"
 
 // HTTPRequest represents an outbound HTTP request from a plugin.
 type HTTPRequest struct {
-	Method    string            `json:"method"`
-	URL       string            `json:"url"`
-	Headers   map[string]string `json:"headers,omitempty"`
-	Body      []byte            `json:"body,omitempty"`
-	TimeoutMs int32             `json:"timeoutMs,omitempty"`
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers,omitempty"`
+	NoFollowRedirects bool              `json:"noFollowRedirects,omitempty"`
+	Body              []byte            `json:"body,omitempty"`
+	TimeoutMs         int32             `json:"timeoutMs,omitempty"`
 }
 
 // HTTPResponse represents the response from an outbound HTTP request.

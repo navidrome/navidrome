@@ -19,7 +19,7 @@ var _ = Describe("Manifest", func() {
 				"permissions": {
 					"http": {
 						"reason": "Fetch metadata",
-						"requiredHosts": ["api.example.com", "*.spotify.com"]
+						"requiredHosts": ["api.example.com", "*.musicbrainz.org"]
 					}
 				}
 			}`)
@@ -34,7 +34,7 @@ var _ = Describe("Manifest", func() {
 			Expect(*m.Website).To(Equal("https://example.com"))
 			Expect(m.Permissions.Http).ToNot(BeNil())
 			Expect(*m.Permissions.Http.Reason).To(Equal("Fetch metadata"))
-			Expect(m.Permissions.Http.RequiredHosts).To(ContainElements("api.example.com", "*.spotify.com"))
+			Expect(m.Permissions.Http.RequiredHosts).To(ContainElements("api.example.com", "*.musicbrainz.org"))
 		})
 
 		It("parses a minimal manifest", func() {

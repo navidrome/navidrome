@@ -91,11 +91,5 @@ func checkExternalCredentials() {
 		} else {
 			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
 		}
-
-		if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-			log.Info("Spotify integration is not enabled: missing ID/Secret")
-		} else {
-			log.Debug("Spotify integration is ENABLED")
-		}
 	}
 }

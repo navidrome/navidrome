@@ -3,11 +3,14 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
@@ -827,6 +830,89 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
+		})
+	})
+
+	Describe("purgeEmpty", func() {
+		var repo *artistRepository
+		var tmpDir string
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tmpDir = GinkgoT().TempDir()
+			conf.Server.DataFolder = tmpDir
+
+			ctx := request.WithUser(GinkgoT().Context(), adminUser)
+			repo = NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+		})
+
+		// Helper to create an artist image file on disk and return its path
+		createImageFile := func(filename string) string {
+			dir := filepath.Join(tmpDir, consts.ArtworkFolder, consts.EntityArtist)
+			Expect(os.MkdirAll(dir, 0755)).To(Succeed())
+			path := filepath.Join(dir, filename)
+			Expect(os.WriteFile(path, []byte("fake image data"), 0600)).To(Succeed())
+			return path
+		}
+
+		It("removes uploaded image files for purged artists", func() {
+			// Create an orphan artist (not in album_artists) with an uploaded image
+			orphanArtist := model.Artist{ID: "orphan-with-image", Name: "Orphan Artist", UploadedImage: "orphan-with-image_Orphan_Artist.jpg"}
+			Expect(repo.Put(&orphanArtist)).To(Succeed())
+			imgPath := createImageFile("orphan-with-image_Orphan_Artist.jpg")
+
+			Expect(repo.purgeEmpty()).To(Succeed())
+
+			// Artist should be gone from DB
+			exists, err := repo.Exists("orphan-with-image")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+
+			// Image file should be removed from disk
+			_, err = os.Stat(imgPath)
+			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
+
+		It("handles missing image files gracefully", func() {
+			// Artist has UploadedImage set but no actual file on disk
+			orphanArtist := model.Artist{ID: "orphan-no-file", Name: "Ghost Image", UploadedImage: "orphan-no-file_Ghost_Image.jpg"}
+			Expect(repo.Put(&orphanArtist)).To(Succeed())
+
+			Expect(repo.purgeEmpty()).To(Succeed())
+
+			// Artist should be gone from DB
+			exists, err := repo.Exists("orphan-no-file")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("does not delete images for artists that are kept", func() {
+			// Create an artist with an uploaded image AND an album_artists entry so it won't be purged
+			keptArtist := model.Artist{ID: "kept-artist", Name: "Kept Artist", UploadedImage: "kept-artist_Kept_Artist.jpg"}
+			Expect(repo.Put(&keptArtist)).To(Succeed())
+			imgPath := createImageFile("kept-artist_Kept_Artist.jpg")
+
+			// Insert an album_artists record to keep this artist from being purged
+			_, err := repo.executeSQL(squirrel.Insert("album_artists").
+				SetMap(map[string]any{"album_id": "101", "artist_id": "kept-artist", "role": "artist", "sub_role": ""}))
+			Expect(err).ToNot(HaveOccurred())
+
+			DeferCleanup(func() {
+				_, _ = repo.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"artist_id": "kept-artist"}))
+				_ = repo.delete(squirrel.Eq{"id": "kept-artist"})
+			})
+
+			Expect(repo.purgeEmpty()).To(Succeed())
+
+			// Artist should still exist (check directly, bypassing library filter)
+			var ids []string
+			err = repo.queryAllSlice(squirrel.Select("id").From("artist").Where(squirrel.Eq{"id": "kept-artist"}), &ids)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(HaveLen(1))
+
+			// Image file should still be on disk
+			_, err = os.Stat(imgPath)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
