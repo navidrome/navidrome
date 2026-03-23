@@ -70,8 +70,6 @@ const (
 	PlaceholderArtistArt      = "artist-placeholder.webp"
 	PlaceholderAlbumArt       = "album-placeholder.webp"
 	PlaceholderAvatar         = "logo-192x192.png"
-	UICoverArtSize            = 300
-	UIThumbnailSize           = 80
 	DefaultUIVolume           = 100
 	DefaultUISearchDebounceMs = 200
 
@@ -85,6 +83,12 @@ const (
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
 )
+
+const (
+	UICoverArtSize = 600
+)
+
+var CacheWarmerImageSizes = []int{UICoverArtSize}
 
 // Prometheus options
 const (

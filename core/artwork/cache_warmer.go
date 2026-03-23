@@ -142,15 +142,14 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	for _, size := range []int{consts.UICoverArtSize, consts.UIThumbnailSize} {
+	for _, size := range consts.CacheWarmerImageSizes {
 		r, _, err := a.artwork.Get(ctx, id, size, true)
 		if err != nil {
 			return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
 		}
-		defer r.Close()
-		if _, err = io.Copy(io.Discard, r); err != nil {
-			return err
-		}
+		_, err = io.Copy(io.Discard, r)
+		r.Close()
+		return err
 	}
 	return nil
 }

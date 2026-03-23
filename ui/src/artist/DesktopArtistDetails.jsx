@@ -15,6 +15,7 @@ import {
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
+import { COVER_ART_SIZE } from '../consts'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
 
@@ -109,7 +110,7 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
             <CardMedia
               key={record.id}
               component="img"
-              src={subsonic.getCoverArtUrl(record, 300)}
+              src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE)}
               className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
               onClick={handleOpenLightbox}
               onLoad={handleImageLoad}

@@ -509,10 +509,15 @@ type InternetRadioStations struct {
 }
 
 type Radio struct {
-	ID          string `xml:"id,attr"                    json:"id"`
-	Name        string `xml:"name,attr"                  json:"name"`
-	StreamUrl   string `xml:"streamUrl,attr"             json:"streamUrl"`
-	HomepageUrl string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
+	ID                 string `xml:"id,attr"                    json:"id"`
+	Name               string `xml:"name,attr"                  json:"name"`
+	StreamUrl          string `xml:"streamUrl,attr"             json:"streamUrl"`
+	HomepageUrl        string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
+	*OpenSubsonicRadio `xml:",omitempty" json:",omitempty"`
+}
+
+type OpenSubsonicRadio struct {
+	CoverArt string `xml:"coverArt,attr,omitempty"  json:"coverArt"`
 }
 
 type JukeboxStatus struct {
