@@ -19,7 +19,7 @@ import {
   ArtistLinkField,
   OverflowTooltip,
 } from '../common'
-import { DraggableTypes } from '../consts'
+import { COVER_ART_SIZE, DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
 
@@ -157,7 +157,7 @@ const Cover = withContentRect('bounds')(({
       <div ref={dragAlbumRef}>
         <img
           key={record.id} // Force re-render when record changes
-          src={subsonic.getCoverArtUrl(record, 300, true)}
+          src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)}
           alt={record.name}
           className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
           onLoad={handleImageLoad}

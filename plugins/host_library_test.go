@@ -544,7 +544,7 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		// Note: This test is slightly flaky due to a potential race condition in wazero's
 		// WASI filesystem mounting. The test passes ~85% of the time. Using FlakeAttempts
 		// to automatically retry on failure.
-		It("should read file from mounted library directory", FlakeAttempts(3), func() {
+		It("should read file from mounted library directory", FlakeAttempts(5), func() {
 			ctx := GinkgoT().Context()
 
 			output, err := callTestLibrary(ctx, testLibraryInput{
@@ -557,7 +557,7 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		})
 
 		// Note: Uses FlakeAttempts for the same reason as the read_file test above
-		It("should list files in mounted library directory", FlakeAttempts(3), func() {
+		It("should list files in mounted library directory", FlakeAttempts(5), func() {
 			ctx := GinkgoT().Context()
 
 			output, err := callTestLibrary(ctx, testLibraryInput{

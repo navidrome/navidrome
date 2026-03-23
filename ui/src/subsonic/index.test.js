@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { COVER_ART_SIZE } from '../consts'
 import subsonic from './index'
 
 describe('getCoverArtUrl', () => {
@@ -30,10 +31,10 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(playlistRecord, 300, true)
+    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('pl-playlist-123')
-    expect(url).toContain('size=300')
+    expect(url).toContain('size=600')
     expect(url).toContain('square=true')
     expect(url).toContain('_=2023-01-01T00%3A00%3A00Z')
   })
@@ -44,10 +45,10 @@ describe('getCoverArtUrl', () => {
       sync: true,
     }
 
-    const url = subsonic.getCoverArtUrl(playlistRecord, 300, true)
+    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('pl-playlist-123')
-    expect(url).toContain('size=300')
+    expect(url).toContain('size=600')
     expect(url).toContain('square=true')
     expect(url).not.toContain('_=')
   })
@@ -59,10 +60,10 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(albumRecord, 300, true)
+    const url = subsonic.getCoverArtUrl(albumRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('al-album-123')
-    expect(url).toContain('size=300')
+    expect(url).toContain('size=600')
     expect(url).toContain('square=true')
   })
 
@@ -73,10 +74,10 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(songRecord, 300, true)
+    const url = subsonic.getCoverArtUrl(songRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('mf-song-123')
-    expect(url).toContain('size=300')
+    expect(url).toContain('size=600')
     expect(url).toContain('square=true')
   })
 
@@ -86,10 +87,10 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(artistRecord, 300, true)
+    const url = subsonic.getCoverArtUrl(artistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('ar-artist-123')
-    expect(url).toContain('size=300')
+    expect(url).toContain('size=600')
     expect(url).toContain('square=true')
   })
 

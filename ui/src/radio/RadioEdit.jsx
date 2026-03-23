@@ -11,7 +11,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { urlValidate } from '../utils/validations'
 import { Title, ImageUploadOverlay, useImageLoadingState } from '../common'
 import subsonic from '../subsonic'
-import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
+import { COVER_ART_SIZE, RADIO_PLACEHOLDER_IMAGE } from '../consts'
 
 const useStyles = makeStyles({
   coverParent: {
@@ -83,7 +83,7 @@ const RadioCoverArt = ({ record }) => {
       {record.uploadedImage ? (
         <CardMedia
           component="img"
-          src={subsonic.getCoverArtUrl(record, 300, true)}
+          src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)}
           className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
           onLoad={handleImageLoad}
           onError={handleImageError}

@@ -18,6 +18,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
+import { COVER_ART_SIZE } from '../consts'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
@@ -254,7 +255,7 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const imageUrl = subsonic.getCoverArtUrl(record, COVER_ART_SIZE)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (
