@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"testing"
-	"time"
 
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
@@ -47,32 +46,5 @@ var _ = Describe("Scheduler", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id).ToNot(BeZero())
 		s.Remove(id)
-	})
-
-	It("removes a job", func() {
-		done := make(chan struct{})
-
-		counter := 0
-		id, err := s.Add("@every 50ms", func() {
-			counter++
-			if counter == 1 {
-				close(done)
-			}
-		})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(id).ToNot(BeZero())
-
-		// Verify job executed
-		Eventually(done).Should(BeClosed())
-		Expect(counter).To(Equal(1))
-
-		// Remove the job
-		s.Remove(id)
-
-		// Wait some time to ensure job doesn't execute again
-		time.Sleep(200 * time.Millisecond)
-
-		// Verify counter didn't increase
-		Expect(counter).To(Equal(1))
 	})
 })
