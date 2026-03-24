@@ -41,12 +41,8 @@ export default {
       },
     },
     MuiFormHelperText: {
-      root: {
-        Mui: {
-          error: {
-            color: '#c45c3c',
-          },
-        },
+      error: {
+        color: '#c45c3c',
       },
     },
     MuiTableHead: {
@@ -69,7 +65,6 @@ export default {
       systemNameLink: {
         color: '#d4a039',
       },
-      icon: {},
       welcome: {
         color: '#e5ddd3',
       },
@@ -77,7 +72,6 @@ export default {
         minWidth: 300,
         background: '#1e1e1c',
       },
-      avatar: {},
       button: {
         boxShadow: '3px 3px 5px #0a0a09',
       },
@@ -85,7 +79,7 @@ export default {
     NDMobileArtistDetails: {
       bgContainer: {
         background:
-          'linear-gradient(to bottom, rgba(10 10 9 / 72%), rgb(20 20 19))!important',
+          'linear-gradient(to bottom, rgba(10, 10, 9, 0.72), #141413)!important',
       },
     },
   },

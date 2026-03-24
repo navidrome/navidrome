@@ -48,7 +48,7 @@ const stylesheet = `
 .audio-lists-panel-content .audio-item.playing, .audio-lists-panel-content .audio-item.playing svg {
     color: #d4a039
 }
-.audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg {
+.audio-lists-panel-content .audio-item:active .group:not(.player-delete) svg, .audio-lists-panel-content .audio-item:hover .group:not(.player-delete) svg {
     color: #d4a039
 }
 
