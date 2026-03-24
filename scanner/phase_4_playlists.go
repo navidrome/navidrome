@@ -23,16 +23,19 @@ type phasePlaylists struct {
 	ds        model.DataStore
 	pls       playlists.Playlists
 	cw        artwork.CacheWarmer
+	spe       playlists.SmartPlaylistEvaluator
 	refreshed atomic.Uint32
 }
 
-func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
+func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore,
+	pls playlists.Playlists, cw artwork.CacheWarmer, spe playlists.SmartPlaylistEvaluator) *phasePlaylists {
 	return &phasePlaylists{
 		ctx:       ctx,
 		scanState: scanState,
 		ds:        ds,
 		pls:       pls,
 		cw:        cw,
+		spe:       spe,
 	}
 }
 
@@ -105,6 +108,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			continue
 		}
 		if pls.IsSmartPlaylist() {
+			p.spe.Enqueue(pls.ID)
 			log.Debug("Scanner: Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
 		} else {
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
