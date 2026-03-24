@@ -31,8 +31,8 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
-			if strings.HasPrefix(line, "#PLAYLIST:") {
-				pls.Name = line[len("#PLAYLIST:"):]
+			if after, ok := strings.CutPrefix(line, "#PLAYLIST:"); ok {
+				pls.Name = after
 				continue
 			}
 			if after, ok := strings.CutPrefix(line, "#EXTALBUMARTURL:"); ok {

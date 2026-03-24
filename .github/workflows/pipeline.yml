@@ -338,7 +338,7 @@ jobs:
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Create manifest list and push to Docker Hub
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
