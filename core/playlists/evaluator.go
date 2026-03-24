@@ -69,31 +69,29 @@ func (e *smartPlaylistEvaluator) run() {
 }
 
 func (e *smartPlaylistEvaluator) waitSignal(timeout time.Duration) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
-	case <-time.After(timeout):
+	case <-timer.C:
 	case <-e.wakeSignal:
 	}
 }
 
 func (e *smartPlaylistEvaluator) processBatch(batch []string) {
-	log.Debug("Evaluating smart playlists in background", "count", len(batch))
-	for _, id := range batch {
-		e.doEvaluate(id)
-	}
-}
-
-func (e *smartPlaylistEvaluator) doEvaluate(id string) {
 	// Use admin context so userFilter() returns all playlists.
 	// Evaluate() internally uses pls.OwnerID for annotation JOINs.
 	ctx := auth.WithAdminUser(context.TODO(), e.ds)
 
-	start := time.Now()
-	err := e.ds.Playlist(ctx).Evaluate(id)
-	if err != nil {
-		log.Error("Error evaluating smart playlist in background", "id", id, err)
-		return
+	log.Debug(ctx, "Evaluating smart playlists in background", "count", len(batch))
+	for _, id := range batch {
+		start := time.Now()
+		err := e.ds.Playlist(ctx).Evaluate(id)
+		if err != nil {
+			log.Error(ctx, "Error evaluating smart playlist in background", "id", id, err)
+			continue
+		}
+		log.Debug(ctx, "Smart playlist evaluation complete", "id", id, "elapsed", time.Since(start))
 	}
-	log.Debug("Background smart playlist evaluation complete", "id", id, "elapsed", time.Since(start))
 }
 
 // NoopSmartPlaylistEvaluator returns an evaluator that does nothing.

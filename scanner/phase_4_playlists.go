@@ -109,7 +109,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 		}
 		if pls.IsSmartPlaylist() {
 			p.spe.Enqueue(pls.ID)
-			log.Debug("Scanner: Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
+			log.Debug(p.ctx, "Scanner: Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
 		} else {
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
 		}
