@@ -215,10 +215,6 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	return r.doRefreshSmartPlaylist(pls, usr.ID)
-}
-
-func (r *playlistRepository) doRefreshSmartPlaylist(pls *model.Playlist, userID string) bool {
 	log.Debug(r.ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
@@ -248,11 +244,11 @@ func (r *playlistRepository) doRefreshSmartPlaylist(pls *model.Playlist, userID 
 		From("media_file").LeftJoin("annotation on ("+
 		"annotation.item_id = media_file.id"+
 		" AND annotation.item_type = 'media_file'"+
-		" AND annotation.user_id = ?)", userID)
+		" AND annotation.user_id = ?)", usr.ID)
 
 	// Conditionally join album/artist annotation tables only when referenced by criteria or sort
 	requiredJoins := rules.RequiredJoins()
-	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, userID)
+	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, usr.ID)
 
 	// Only include media files from libraries the user has access to
 	sq = r.applyLibraryFilter(sq, "media_file")
@@ -265,8 +261,8 @@ func (r *playlistRepository) doRefreshSmartPlaylist(pls *model.Playlist, userID 
 			LeftJoin("annotation on ("+
 				"annotation.item_id = media_file.id"+
 				" AND annotation.item_type = 'media_file'"+
-				" AND annotation.user_id = ?)", userID)
-		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, userID)
+				" AND annotation.user_id = ?)", usr.ID)
+		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, usr.ID)
 		countSq = r.applyLibraryFilter(countSq, "media_file")
 		countSq = countSq.Where(rules)
 
@@ -322,7 +318,11 @@ func (r *playlistRepository) Evaluate(id string) error {
 	if !pls.IsSmartPlaylist() {
 		return nil
 	}
-	r.doRefreshSmartPlaylist(pls, pls.OwnerID)
+	// Reset EvaluatedAt so refreshSmartPlaylist won't skip due to delay check
+	pls.EvaluatedAt = nil
+	if !r.refreshSmartPlaylist(pls) {
+		return fmt.Errorf("failed to evaluate smart playlist %s", id)
+	}
 	return nil
 }
 
