@@ -10,14 +10,12 @@ import (
 	"slices"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chrono"
 )
 
-func newFolderEntry(job *scanJob, path string) *folderEntry {
-	id := model.FolderID(job.lib, path)
-	info := job.popLastUpdate(id)
+func newFolderEntry(job *scanJob, id, path string, updTime time.Time, hash string) *folderEntry {
 	f := &folderEntry{
 		id:         id,
 		job:        job,
@@ -25,8 +23,8 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
 		albumIDMap: make(map[string]string),
-		updTime:    info.UpdatedAt,
-		prevHash:   info.Hash,
+		updTime:    updTime,
+		prevHash:   hash,
 	}
 	return f
 }
@@ -74,7 +72,7 @@ func (f *folderEntry) isOutdated() bool {
 func (f *folderEntry) toFolder() *model.Folder {
 	folder := model.NewFolder(f.job.lib, f.path)
 	folder.NumAudioFiles = len(f.audioFiles)
-	if core.InPlaylistsPath(*folder) {
+	if playlists.InPath(*folder) {
 		folder.NumPlaylists = f.numPlaylists
 	}
 	folder.ImageFiles = slices.Collect(maps.Keys(f.imageFiles))

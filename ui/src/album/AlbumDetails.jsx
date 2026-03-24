@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -18,6 +18,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
+import { COVER_ART_SIZE } from '../consts'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
@@ -29,10 +30,12 @@ import {
   RatingField,
   SizeField,
   useAlbumsPerPage,
+  useImageLoadingState,
 } from '../common'
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import { SafeHTML } from '../common/SafeHTML'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -219,16 +222,21 @@ const AlbumDetails = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
-  const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
-  const [imageLoading, setImageLoading] = useState(false)
-  const [imageError, setImageError] = useState(false)
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useImageLoadingState(record.id)
 
-  let notes =
-    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+  let notes = albumInfo?.notes || record.notes
 
-  if (notes !== undefined) {
+  if (notes) {
     notes += '..'
   }
 
@@ -247,32 +255,8 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  // Reset image state when album changes
-  useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const imageUrl = subsonic.getCoverArtUrl(record, COVER_ART_SIZE)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
-
-  const handleImageLoad = useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
-
-  const handleOpenLightbox = useCallback(() => {
-    if (!imageError) {
-      setLightboxOpen(true)
-    }
-  }, [imageError])
-
-  const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
 
   return (
     <Card className={classes.root}>
@@ -340,7 +324,7 @@ const AlbumDetails = (props) => {
                 )}
               </Typography>
             )}
-            {isDesktop && (
+            {isDesktop && notes && (
               <Collapse
                 collapsedHeight={'2.75em'}
                 in={expanded}
@@ -351,7 +335,9 @@ const AlbumDetails = (props) => {
                   variant={'body1'}
                   onClick={() => setExpanded(!expanded)}
                 >
-                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                  <span>
+                    <SafeHTML>{notes}</SafeHTML>
+                  </span>
                 </Typography>
               </Collapse>
             )}
@@ -364,14 +350,16 @@ const AlbumDetails = (props) => {
       {!isDesktop && record['comment'] && (
         <CollapsibleComment record={record} />
       )}
-      {!isDesktop && (
+      {!isDesktop && notes && (
         <div className={classes.notes}>
           <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
             <Typography
               variant={'body1'}
               onClick={() => setExpanded(!expanded)}
             >
-              <span dangerouslySetInnerHTML={{ __html: notes }} />
+              <span>
+                <SafeHTML>{notes}</SafeHTML>
+              </span>
             </Typography>
           </Collapse>
         </div>

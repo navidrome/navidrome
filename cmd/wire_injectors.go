@@ -6,11 +6,12 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/navidrome/navidrome/adapters/lastfm"
+	"github.com/navidrome/navidrome/adapters/listenbrainz"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/agents/lastfm"
-	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -39,13 +40,15 @@ var allProviders = wire.NewSet(
 	events.GetBroker,
 	scanner.New,
 	scanner.GetWatcher,
-	plugins.GetManager,
 	metrics.GetPrometheusInstance,
 	db.Db,
-	wire.Bind(new(agents.PluginLoader), new(plugins.Manager)),
-	wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)),
-	wire.Bind(new(metrics.PluginLoader), new(plugins.Manager)),
-	wire.Bind(new(core.Scanner), new(scanner.Scanner)),
+	plugins.GetManager,
+	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
+	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
+	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 )
 
@@ -103,7 +106,7 @@ func CreatePrometheus() metrics.Metrics {
 	))
 }
 
-func CreateScanner(ctx context.Context) scanner.Scanner {
+func CreateScanner(ctx context.Context) model.Scanner {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -121,13 +124,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	))
 }
 
-func getPluginManager() plugins.Manager {
+func getPluginManager() *plugins.Manager {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func GetPluginManager(ctx context.Context) plugins.Manager {
+func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
 	return manager

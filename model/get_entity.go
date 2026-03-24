@@ -5,7 +5,7 @@ import (
 )
 
 // TODO: Should the type be encoded in the ID?
-func GetEntityByID(ctx context.Context, ds DataStore, id string) (interface{}, error) {
+func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
 	ar, err := ds.Artist(ctx).Get(id)
 	if err == nil {
 		return ar, nil
@@ -21,6 +21,10 @@ func GetEntityByID(ctx context.Context, ds DataStore, id string) (interface{}, e
 	mf, err := ds.MediaFile(ctx).Get(id)
 	if err == nil {
 		return mf, nil
+	}
+	r, err := ds.Radio(ctx).Get(id)
+	if err == nil {
+		return r, nil
 	}
 	return nil, err
 }

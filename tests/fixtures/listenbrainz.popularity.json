@@ -1,0 +1,81 @@
+[
+  {
+    "artist_mbids": ["d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"],
+    "artist_name": "Mili",
+    "artists": [
+      {
+        "artist_credit_name": "Mili",
+        "artist_mbid": "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+        "join_phrase": ""
+      }
+    ],
+    "caa_id": 14987576054,
+    "caa_release_mbid": "38a8f6e1-0e34-4418-a89d-78240a367408",
+    "length": 211912,
+    "recording_mbid": "9980309d-3480-4e7e-89ce-fce971a452be",
+    "recording_name": "world.execute(me);",
+    "release_color": { "blue": 109, "green": 94, "red": 95 },
+    "release_mbid": "38a8f6e1-0e34-4418-a89d-78240a367408",
+    "release_name": "Miracle Milk",
+    "tags": [
+      {
+        "count": 1,
+        "genre_mbid": "911c7bbb-172d-4df8-9478-dbff4296e791",
+        "tag": "pop"
+      },
+      {
+        "count": 1,
+        "genre_mbid": "b739a895-85ed-4ad3-8717-4e9ef5387dd8",
+        "tag": "dance-pop"
+      },
+      {
+        "count": 1,
+        "genre_mbid": "9c8ba153-740e-4b88-b7ff-31d004944c95",
+        "tag": "nerdcore"
+      },
+      {
+        "count": 1,
+        "genre_mbid": "c4a69842-f891-4569-9506-1882aa5db433",
+        "tag": "electronic rock"
+      },
+      { "count": 1, "tag": "hackercore" },
+      { "count": 1, "tag": "meter:4/4" },
+      { "count": 1, "tag": "vocal:true" },
+      { "count": 1, "tag": "bpm:130" },
+      {
+        "count": 1,
+        "genre_mbid": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "tag": "dance"
+      },
+      {
+        "count": 1,
+        "genre_mbid": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "tag": "electronic"
+      }
+    ],
+    "total_listen_count": 19440,
+    "total_user_count": 1102
+  },
+  {
+    "artist_mbids": ["d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"],
+    "artist_name": "Mili",
+    "artists": [
+      {
+        "artist_credit_name": "Mili",
+        "artist_mbid": "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
+        "join_phrase": ""
+      }
+    ],
+    "caa_id": 31388973421,
+    "caa_release_mbid": "e58ed9ef-2bc1-4480-9d6d-2d799beb5ba9",
+    "length": 174000,
+    "recording_mbid": "afa2c83d-b17f-4029-b9da-790ea9250cf9",
+    "recording_name": "String Theocracy",
+    "release_color": { "blue": 92, "green": 147, "red": 164 },
+    "release_mbid": "d79a38e3-7016-4f39-a31a-f495ce914b8e",
+    "release_name": "String Theocracy",
+    "tags": [],
+    "total_listen_count": 8986,
+    "total_user_count": 712
+  }
+]

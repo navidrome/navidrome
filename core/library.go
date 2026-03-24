@@ -21,11 +21,6 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// Scanner interface for triggering scans
-type Scanner interface {
-	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
-}
-
 // Watcher interface for managing file system watchers
 type Watcher interface {
 	Watch(ctx context.Context, lib *model.Library) error
@@ -42,19 +37,21 @@ type Library interface {
 }
 
 type libraryService struct {
-	ds      model.DataStore
-	scanner Scanner
-	watcher Watcher
-	broker  events.Broker
+	ds            model.DataStore
+	scanner       model.Scanner
+	watcher       Watcher
+	broker        events.Broker
+	pluginManager PluginUnloader
 }
 
 // NewLibrary creates a new Library service
-func NewLibrary(ds model.DataStore, scanner Scanner, watcher Watcher, broker events.Broker) Library {
+func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, broker events.Broker, pluginManager PluginUnloader) Library {
 	return &libraryService{
-		ds:      ds,
-		scanner: scanner,
-		watcher: watcher,
-		broker:  broker,
+		ds:            ds,
+		scanner:       scanner,
+		watcher:       watcher,
+		broker:        broker,
+		pluginManager: pluginManager,
 	}
 }
 
@@ -146,6 +143,7 @@ func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
 		scanner:           s.scanner,
 		watcher:           s.watcher,
 		broker:            s.broker,
+		pluginManager:     s.pluginManager,
 	}
 	return wrapper
 }
@@ -153,14 +151,15 @@ func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
 type libraryRepositoryWrapper struct {
 	rest.Repository
 	model.LibraryRepository
-	ctx     context.Context
-	ds      model.DataStore
-	scanner Scanner
-	watcher Watcher
-	broker  events.Broker
+	ctx           context.Context
+	ds            model.DataStore
+	scanner       model.Scanner
+	watcher       Watcher
+	broker        events.Broker
+	pluginManager PluginUnloader
 }
 
-func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
+func (r *libraryRepositoryWrapper) Save(entity any) (string, error) {
 	lib := entity.(*model.Library)
 	if err := r.validateLibrary(lib); err != nil {
 		return "", err
@@ -192,7 +191,7 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ...string) error {
+func (r *libraryRepositoryWrapper) Update(id string, entity any, _ ...string) error {
 	lib := entity.(*model.Library)
 	libID, err := strconv.Atoi(id)
 	if err != nil {
@@ -276,6 +275,10 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 		r.broker.SendBroadcastMessage(r.ctx, event.With("library", id))
 		log.Debug(r.ctx, "Library deleted - sent refresh event", "libraryID", libID, "name", lib.Name)
 	}
+
+	// After successful deletion, check if any plugins were auto-disabled
+	// and need to be unloaded from memory
+	r.pluginManager.UnloadDisabledPlugins(r.ctx)
 
 	return nil
 }

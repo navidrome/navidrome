@@ -80,7 +80,7 @@ func (h *Handler) serveImage(ctx context.Context, item cache.Item) (io.Reader, e
 	}
 	c := http.Client{Timeout: imageRequestTimeout}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageURL(image), nil)
-	resp, err := c.Do(req) //nolint:bodyclose // No need to close resp.Body, it will be closed via the CachedStream wrapper
+	resp, err := c.Do(req) //nolint:bodyclose,gosec // No need to close resp.Body, it will be closed via the CachedStream wrapper
 	if errors.Is(err, context.DeadlineExceeded) {
 		defaultImage, _ := base64.StdEncoding.DecodeString(consts.DefaultUILoginBackgroundOffline)
 		return strings.NewReader(string(defaultImage)), nil

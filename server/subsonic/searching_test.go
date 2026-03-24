@@ -21,7 +21,7 @@ var _ = Describe("Search", func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		// Get references to the mock repositories so we can inspect their Options
 		mockAlbumRepo = ds.Album(nil).(*tests.MockAlbumRepo)
@@ -30,7 +30,7 @@ var _ = Describe("Search", func() {
 	})
 
 	Context("musicFolderId parameter", func() {
-		assertQueryOptions := func(filter squirrel.Sqlizer, expectedQuery string, expectedArgs ...interface{}) {
+		assertQueryOptions := func(filter squirrel.Sqlizer, expectedQuery string, expectedArgs ...any) {
 			GinkgoHelper()
 			query, args, err := filter.ToSql()
 			Expect(err).ToNot(HaveOccurred())

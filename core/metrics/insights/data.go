@@ -16,6 +16,7 @@ type Data struct {
 		Containerized bool   `json:"containerized"`
 		Arch          string `json:"arch"`
 		NumCPU        int    `json:"numCPU"`
+		Package       string `json:"package,omitempty"`
 	} `json:"os"`
 	Mem struct {
 		Alloc      uint64 `json:"alloc"`
@@ -39,12 +40,14 @@ type Data struct {
 		Libraries     int64            `json:"libraries"`
 		ActiveUsers   int64            `json:"activeUsers"`
 		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
+		FileSuffixes  map[string]int64 `json:"fileSuffixes,omitempty"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`
 		LogFileConfigured       bool   `json:"logFileConfigured,omitempty"`
 		TLSConfigured           bool   `json:"tlsConfigured,omitempty"`
 		ScannerEnabled          bool   `json:"scannerEnabled,omitempty"`
+		ScannerExtractor        string `json:"scannerExtractor,omitempty"`
 		ScanSchedule            string `json:"scanSchedule,omitempty"`
 		ScanWatcherWait         uint64 `json:"scanWatcherWait,omitempty"`
 		ScanOnStartup           bool   `json:"scanOnStartup,omitempty"`
@@ -58,13 +61,13 @@ type Data struct {
 		EnableListenBrainz      bool   `json:"enableListenBrainz,omitempty"`
 		EnableDeezer            bool   `json:"enableDeezer,omitempty"`
 		EnableMediaFileCoverArt bool   `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify           bool   `json:"enableSpotify,omitempty"`
 		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
 		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
 		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`
 		EnableNowPlaying        bool   `json:"enableNowPlaying,omitempty"`
 		SessionTimeout          uint64 `json:"sessionTimeout,omitempty"`
 		SearchFullString        bool   `json:"searchFullString,omitempty"`
+		SearchBackend           string `json:"searchBackend,omitempty"`
 		RecentlyAddedByModTime  bool   `json:"recentlyAddedByModTime,omitempty"`
 		PreferSortTags          bool   `json:"preferSortTags,omitempty"`
 		BackupSchedule          string `json:"backupSchedule,omitempty"`

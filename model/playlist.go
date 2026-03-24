@@ -5,24 +5,27 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
 type Playlist struct {
-	ID        string         `structs:"id" json:"id"`
-	Name      string         `structs:"name" json:"name"`
-	Comment   string         `structs:"comment" json:"comment"`
-	Duration  float32        `structs:"duration" json:"duration"`
-	Size      int64          `structs:"size" json:"size"`
-	SongCount int            `structs:"song_count" json:"songCount"`
-	OwnerName string         `structs:"-" json:"ownerName"`
-	OwnerID   string         `structs:"owner_id" json:"ownerId"`
-	Public    bool           `structs:"public" json:"public"`
-	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
-	Path      string         `structs:"path" json:"path"`
-	Sync      bool           `structs:"sync" json:"sync"`
-	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
-	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
+	ID               string         `structs:"id" json:"id"`
+	Name             string         `structs:"name" json:"name"`
+	Comment          string         `structs:"comment" json:"comment"`
+	Duration         float32        `structs:"duration" json:"duration"`
+	Size             int64          `structs:"size" json:"size"`
+	SongCount        int            `structs:"song_count" json:"songCount"`
+	OwnerName        string         `structs:"-" json:"ownerName"`
+	OwnerID          string         `structs:"owner_id" json:"ownerId"`
+	Public           bool           `structs:"public" json:"public"`
+	Tracks           PlaylistTracks `structs:"-" json:"tracks,omitempty"`
+	Path             string         `structs:"path" json:"path"`
+	Sync             bool           `structs:"sync" json:"sync"`
+	UploadedImage    string         `structs:"uploaded_image" json:"uploadedImage"`
+	ExternalImageURL string         `structs:"external_image_url" json:"externalImageUrl,omitempty"`
+	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
+	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
@@ -104,6 +107,14 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 
 func (pls Playlist) CoverArtID() ArtworkID {
 	return artworkIDFromPlaylist(pls)
+}
+
+// UploadedImagePath returns the absolute filesystem path for a manually uploaded
+// playlist cover image. Returns empty string if no image has been uploaded.
+// This does NOT cover sidecar images or external URLs — those are resolved
+// by the artwork reader's fallback chain.
+func (pls Playlist) UploadedImagePath() string {
+	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
 type Playlists []Playlist

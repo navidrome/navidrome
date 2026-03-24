@@ -36,7 +36,9 @@
         "bitDepth": "Bittiefe",
         "sampleRate": "Samplerate",
         "missing": "Fehlend",
-        "libraryName": "Bibliothek"
+        "libraryName": "Bibliothek",
+        "composer": "Komponist",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Später abspielen",
@@ -46,7 +48,8 @@
         "download": "Herunterladen",
         "playNext": "Als nächstes abspielen",
         "info": "Mehr Informationen",
-        "showInPlaylist": "In Wiedergabeliste anzeigen"
+        "showInPlaylist": "In Wiedergabeliste anzeigen",
+        "instantMix": "Sofort-Mix"
       }
     },
     "album": {
@@ -301,14 +304,19 @@
       "actions": {
         "scan": "Bibliothek scannen",
         "manageUsers": "Zugriff verwalten",
-        "viewDetails": "Details ansehen"
+        "viewDetails": "Details ansehen",
+        "quickScan": "Schneller Scan",
+        "fullScan": "Kompletter Scan"
       },
       "notifications": {
         "created": "Bibliothek erfolgreich erstellt",
         "updated": "Bibliothek erfolgreich geändert",
         "deleted": "Bibliothek erfolgreich gelöscht",
         "scanStarted": "Bibliothek Scan gestartet",
-        "scanCompleted": "Bibliothek Scan vollständig"
+        "scanCompleted": "Bibliothek Scan vollständig",
+        "quickScanStarted": "Schneller Scan gestartet",
+        "fullScanStarted": "Kompletter Scan gestartet",
+        "scanError": "Fehler beim Starten des Scans. Logs prüfen"
       },
       "validation": {
         "nameRequired": "Bibliotheksname ist Pflichtfeld",
@@ -322,6 +330,82 @@
         "deleteConfirm": "Möchtest du diese Bibliothek wirklich löschen? Zugriffsrechte und Daten werden entfernt. ",
         "scanInProgress": "Bibliothek Scan läuft...",
         "noLibrariesAssigned": "Keine Bibliotheken zugeordnet"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Beschreibung",
+        "version": "Version",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Berechtigungen",
+        "enabled": "Aktiv",
+        "status": "Status",
+        "path": "Pfad",
+        "lastError": "Fehler",
+        "hasError": "Fehler",
+        "updatedAt": "Aktualisiert am",
+        "createdAt": "Installiert",
+        "configKey": "Schlüssel",
+        "configValue": "Wert",
+        "allUsers": "Alle Benutzer",
+        "selectedUsers": "Ausgewählte Benutzer",
+        "allLibraries": "Alle Bibliotheken",
+        "selectedLibraries": "Ausgewählte Bibliotheken",
+        "allowWriteAccess": "Schreibzugriff erlauben"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Konfiguration",
+        "manifest": "Manifest",
+        "usersPermission": "Benutzer Zugriff",
+        "libraryPermission": "Bibliotheken Zugriff"
+      },
+      "status": {
+        "enabled": "Aktiv",
+        "disabled": "Inaktiv"
+      },
+      "actions": {
+        "enable": "Aktivieren",
+        "disable": "Deaktivieren",
+        "disabledDueToError": "Fehler beheben um Plugin zu aktivieren",
+        "disabledUsersRequired": "Wähle Benutzer Zugriff um Plugin zu aktivieren",
+        "disabledLibrariesRequired": "Wähle Bibliotheken Zugriff um Plugin zu aktivieren",
+        "addConfig": "Konfiguration hinzufügen",
+        "rescan": "Scan"
+      },
+      "notifications": {
+        "enabled": "Plugin aktiv",
+        "disabled": "Plugin inaktiv",
+        "updated": "Plugin aktualisiert",
+        "error": "Fehler beim aktualisieren des Plugins"
+      },
+      "validation": {
+        "invalidJson": "Konfiguration muss valides JSON sein"
+      },
+      "messages": {
+        "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
+        "clickPermissions": "Berechtigung anklicken für mehr Details",
+        "noConfig": "Keine Konfiguration gesetzt",
+        "allUsersHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Benutzer, inklusive solcher, die in Zukunft erstellt werden.",
+        "noUsers": "Keine Benutzer ausgewählt",
+        "permissionReason": "Begründung",
+        "usersRequired": "Dieses Plugin benötigt Zugriff auf Benutzerinformationen. Wähle aus, auf welche Nutzer das Plugin zugreifen darf oder wähle 'Alle Benutzer'.",
+        "allLibrariesHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Bibliotheken, inklusive solcher, die in Zukunft erstellt werden.",
+        "noLibraries": "Keine Bibliotheken ausgewählt",
+        "librariesRequired": "Dieses Plugin benötigt Zugriff auf Bibliotheken. Wähle aus, auf welche Bibliotheken das Plugin zugreifen darf oder wähle 'Alle Bibliotheken'.",
+        "requiredHosts": "Benötigte Hosts",
+        "configValidationError": "Validierung der Konfiguration fehlgeschlagen:",
+        "schemaRenderError": "Rendern der Konfiguration fehlgeschlagen. Das Schema das Plugins ist eventuell nicht korrekt.",
+        "allowWriteAccessHelp": "Wenn aktiviert, kann das Plugin Dateien in den Bibliotheken verändern. Als Standard haben Plugins nur Lesezugriff."
+      },
+      "placeholders": {
+        "configKey": "Schlüssel",
+        "configValue": "Wert"
       }
     }
   },
@@ -506,7 +590,14 @@
     "remove_all_missing_title": "Alle fehlenden Dateien entfernen",
     "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
     "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
-    "noTopSongsFound": "Keine beliebten Titel gefunden"
+    "noTopSongsFound": "Keine beliebten Titel gefunden",
+    "startingInstantMix": "Lade Sofort-Mix...",
+    "uploadCover": "Cover hochladen",
+    "removeCover": "Cover entfernen",
+    "coverUploaded": "Cover aktualisiert",
+    "coverRemoved": "Cover entfernt",
+    "coverUploadError": "Fehler beim Hochladen des Covers",
+    "coverRemoveError": "Fehler beim Entfernen des Covers"
   },
   "menu": {
     "library": "Bibliothek",
@@ -592,7 +683,8 @@
       "exportSuccess": "Konfiguration im TOML Format in die Zwischenablage kopiert",
       "exportFailed": "Fehler beim Kopieren der Konfiguration",
       "devFlagsHeader": "Entwicklungseinstellungen (können sich ändern)",
-      "devFlagsComment": "Experimentelle Einstellungen, die eventuell in Zukunft entfernt oder geändert werden"
+      "devFlagsComment": "Experimentelle Einstellungen, die eventuell in Zukunft entfernt oder geändert werden",
+      "downloadToml": "Konfiguration Herunterladen (TOML)"
     }
   },
   "activity": {
@@ -604,7 +696,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Typ",
     "status": "Scan Fehler",
-    "elapsedTime": "Laufzeit"
+    "elapsedTime": "Laufzeit",
+    "selectiveScan": "Selektiver Scan"
   },
   "help": {
     "title": "Navidrome Hotkeys",

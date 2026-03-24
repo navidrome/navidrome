@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -13,12 +14,14 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -27,45 +30,51 @@ import (
 
 const Version = "1.16.1"
 
+var validJSIdentifier = regexp.MustCompile(`^[a-zA-Z_$][a-zA-Z0-9_$.]*$`)
+
 type handler = func(*http.Request) (*responses.Subsonic, error)
 type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
 type Router struct {
 	http.Handler
-	ds        model.DataStore
-	artwork   artwork.Artwork
-	streamer  core.MediaStreamer
-	archiver  core.Archiver
-	players   core.Players
-	provider  external.Provider
-	playlists core.Playlists
-	scanner   scanner.Scanner
-	broker    events.Broker
-	scrobbler scrobbler.PlayTracker
-	share     core.Share
-	playback  playback.PlaybackServer
-	metrics   metrics.Metrics
+	ds                model.DataStore
+	artwork           artwork.Artwork
+	streamer          stream.MediaStreamer
+	archiver          core.Archiver
+	players           core.Players
+	provider          external.Provider
+	playlists         playlistsvc.Playlists
+	scanner           model.Scanner
+	broker            events.Broker
+	scrobbler         scrobbler.PlayTracker
+	share             core.Share
+	playback          playback.PlaybackServer
+	metrics           metrics.Metrics
+	lyrics            lyricssvc.Lyrics
+	transcodeDecision stream.TranscodeDecider
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
-	players core.Players, provider external.Provider, scanner scanner.Scanner, broker events.Broker,
-	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
-	metrics metrics.Metrics,
+func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
+	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
+	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
+	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
 ) *Router {
 	r := &Router{
-		ds:        ds,
-		artwork:   artwork,
-		streamer:  streamer,
-		archiver:  archiver,
-		players:   players,
-		provider:  provider,
-		playlists: playlists,
-		scanner:   scanner,
-		broker:    broker,
-		scrobbler: scrobbler,
-		share:     share,
-		playback:  playback,
-		metrics:   metrics,
+		ds:                ds,
+		artwork:           artwork,
+		streamer:          streamer,
+		archiver:          archiver,
+		players:           players,
+		provider:          provider,
+		playlists:         playlists,
+		scanner:           scanner,
+		broker:            broker,
+		scrobbler:         scrobbler,
+		share:             share,
+		playback:          playback,
+		metrics:           metrics,
+		lyrics:            lyrics,
+		transcodeDecision: transcodeDecision,
 	}
 	r.Handler = r.routes()
 	return r
@@ -119,11 +128,7 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getAlbumList2", api.GetAlbumList2)
 			h(r, "getStarred", api.GetStarred)
 			h(r, "getStarred2", api.GetStarred2)
-			if conf.Server.EnableNowPlaying {
-				h(r, "getNowPlaying", api.GetNowPlaying)
-			} else {
-				h501(r, "getNowPlaying")
-			}
+			h(r, "getNowPlaying", api.GetNowPlaying)
 			h(r, "getRandomSongs", api.GetRandomSongs)
 			h(r, "getSongsByGenre", api.GetSongsByGenre)
 		})
@@ -148,7 +153,9 @@ func (api *Router) routes() http.Handler {
 			h(r, "createBookmark", api.CreateBookmark)
 			h(r, "deleteBookmark", api.DeleteBookmark)
 			h(r, "getPlayQueue", api.GetPlayQueue)
+			h(r, "getPlayQueueByIndex", api.GetPlayQueueByIndex)
 			h(r, "savePlayQueue", api.SavePlayQueue)
+			h(r, "savePlayQueueByIndex", api.SavePlayQueueByIndex)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -172,6 +179,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
+			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
+			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
 			// configure request throttling
@@ -290,6 +299,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorGeneric, err.Error())
 	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
+	case errors.Is(err, model.ErrNotAuthorized):
+		err = newError(responses.ErrorAuthorizationFail)
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
@@ -318,11 +329,20 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
 	case "jsonp":
-		w.Header().Set("Content-Type", "application/javascript")
 		callback, _ := p.String("callback")
+		if !validJSIdentifier.MatchString(callback) {
+			log.Warn(r.Context(), "Invalid JSONP callback parameter", "callback", callback)
+			w.Header().Set("Content-Type", "application/json")
+			errResp := newResponse()
+			errResp.Status = responses.StatusFailed
+			errResp.Error = &responses.Error{Code: responses.ErrorGeneric, Message: "invalid callback parameter"}
+			response, _ = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
+			break
+		}
+		w.Header().Set("Content-Type", "application/javascript")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		response, err = json.Marshal(wrapper)
-		response = []byte(fmt.Sprintf("%s(%s)", callback, response))
+		response = fmt.Appendf(nil, "%s(%s)", callback, response)
 	default:
 		w.Header().Set("Content-Type", "application/xml")
 		response, err = xml.Marshal(payload)
@@ -354,7 +374,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		}
 	}
 
-	if _, err := w.Write(response); err != nil {
+	if _, err := w.Write(response); err != nil { //nolint:gosec
 		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
 	}
 }

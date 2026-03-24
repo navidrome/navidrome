@@ -35,6 +35,7 @@ type AudioProperties struct {
 	BitDepth   int
 	SampleRate int
 	Channels   int
+	Codec      string
 }
 
 type Date string
@@ -250,7 +251,15 @@ func processPairMapping(name model.TagName, mapping model.TagConf, lowered model
 	id3Base := parseID3Pairs(name, lowered)
 
 	if len(aliasValues) > 0 {
-		id3Base = append(id3Base, parseVorbisPairs(aliasValues)...)
+		// For lyrics, don't use parseVorbisPairs as parentheses in lyrics content
+		// should not be interpreted as language keys (e.g. "(intro)" is not a language)
+		if name == model.TagLyrics {
+			for _, v := range aliasValues {
+				id3Base = append(id3Base, NewPair("xxx", v))
+			}
+		} else {
+			id3Base = append(id3Base, parseVorbisPairs(aliasValues)...)
+		}
 	}
 	return id3Base
 }
@@ -260,8 +269,8 @@ func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
 	prefix := string(name) + ":"
 	for tagKey, tagValues := range lowered {
 		keyStr := string(tagKey)
-		if strings.HasPrefix(keyStr, prefix) {
-			keyPart := strings.TrimPrefix(keyStr, prefix)
+		if after, ok := strings.CutPrefix(keyStr, prefix); ok {
+			keyPart := after
 			if keyPart == string(name) {
 				keyPart = ""
 			}

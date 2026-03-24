@@ -1,0 +1,16 @@
+{
+  "name": "Library Inspector",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
+  "description": "Periodically logs library details and finds largest files",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/library-inspector",
+  "permissions": {
+    "library": {
+      "reason": "To read library metadata and scan directories for file sizes",
+      "filesystem": true
+    },
+    "scheduler": {
+      "reason": "To schedule periodic library inspections"
+    }
+  }
+}

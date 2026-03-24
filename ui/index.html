@@ -28,6 +28,10 @@
     <meta property="og:image:height" content="300">
     <title>Navidrome</title>
     <script>
+      // Shim for libraries that check for Node.js process object
+      window.process = { env: {} };
+    </script>
+    <script>
       window.__APP_CONFIG__ = {{ .AppConfig }}
     </script>
     <script>

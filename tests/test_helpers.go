@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 type testingT interface {
@@ -34,4 +37,24 @@ func ClearDB() error {
 			PRAGMA integrity_check;
 		`)
 	return err
+}
+
+// LogHook sets up a logrus test hook and configures the default logger to use it.
+// It returns the hook and a cleanup function to restore the default logger.
+// Example usage:
+//
+//	hook, cleanup := LogHook()
+//	defer cleanup()
+//	// ... perform logging operations ...
+//	Expect(hook.LastEntry()).ToNot(BeNil())
+//	Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
+//	Expect(hook.LastEntry().Message).To(Equal("log message"))
+func LogHook() (*test.Hook, func()) {
+	l, hook := test.NewNullLogger()
+	log.SetLevel(log.LevelWarn)
+	log.SetDefaultLogger(l)
+	return hook, func() {
+		// Restore default logger after test
+		log.SetDefaultLogger(logrus.New())
+	}
 }

@@ -36,7 +36,9 @@
         "bitDepth": "Bitdjup",
         "sampleRate": "Samplingsfrekvens",
         "missing": "Saknade",
-        "libraryName": "Bibliotek"
+        "libraryName": "Bibliotek",
+        "composer": "Kompositör",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Lägg till i kön",
@@ -46,7 +48,8 @@
         "download": "Ladda ner",
         "playNext": "Spela nästa",
         "info": "Mer information",
-        "showInPlaylist": "Visa i spellista"
+        "showInPlaylist": "Visa i spellista",
+        "instantMix": "Direktmix"
       }
     },
     "album": {
@@ -301,14 +304,19 @@
       "actions": {
         "scan": "Scanna bibliotek",
         "manageUsers": "Hantera användaråtkomst",
-        "viewDetails": "Se detaljer"
+        "viewDetails": "Se detaljer",
+        "quickScan": "Snabbscan",
+        "fullScan": "Komplett scan"
       },
       "notifications": {
         "created": "Biblioteket har skapats",
         "updated": "Biblioteket har uppdaterats",
         "deleted": "Biblioteket har raderats",
         "scanStarted": "Biblioteksscan startad",
-        "scanCompleted": "Biblioteksscan avslutad"
+        "scanCompleted": "Biblioteksscan avslutad",
+        "quickScanStarted": "Snabbscan startad",
+        "fullScanStarted": "Komplett scan startad",
+        "scanError": "Fel vid start av scan. Se loggarna"
       },
       "validation": {
         "nameRequired": "Biblioteksnamn krävs",
@@ -322,6 +330,82 @@
         "deleteConfirm": "Är du säker på att du vill ta bort detta bibliotek? Detta raderar all förbunden data och användartillgång.",
         "scanInProgress": "Scanning pågår...",
         "noLibrariesAssigned": "Inga bibliotek har tilldelats den här användaren"
+      }
+    },
+    "plugin": {
+      "name": "Tillägg |||| Tillägg",
+      "fields": {
+        "id": "ID",
+        "name": "Namn",
+        "description": "Beskrivning",
+        "version": "Version",
+        "author": "Författare",
+        "website": "Website",
+        "permissions": "Behörigheter",
+        "enabled": "Aktiverad",
+        "status": "Status",
+        "path": "Sökväg",
+        "lastError": "Fel",
+        "hasError": "Fel",
+        "updatedAt": "Uppdaterad",
+        "createdAt": "Installerad",
+        "configKey": "Nyckel",
+        "configValue": "Värde",
+        "allUsers": "Tillåt alla användare",
+        "selectedUsers": "Valda användare",
+        "allLibraries": "Tillåt alla bibliotek",
+        "selectedLibraries": "Valda bibliotek",
+        "allowWriteAccess": ""
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Tilläggsinformation",
+        "configuration": "Konfiguration",
+        "manifest": "Manifest",
+        "usersPermission": "Användarbehörigheter",
+        "libraryPermission": "Biblioteksbehörigheter"
+      },
+      "status": {
+        "enabled": "Aktiverad",
+        "disabled": "Inaktiverad"
+      },
+      "actions": {
+        "enable": "Aktivera",
+        "disable": "Inaktivera",
+        "disabledDueToError": "Åtgärda felet innan aktivering",
+        "disabledUsersRequired": "Välj användare före aktivering",
+        "disabledLibrariesRequired": "Välj bibliotek före aktivering",
+        "addConfig": "Lägg till konfiguration",
+        "rescan": "Scanna om"
+      },
+      "notifications": {
+        "enabled": "Tillägg aktiverat",
+        "disabled": "Tillägg inaktiverat",
+        "updated": "Tillägg uppdaterat",
+        "error": "Fel vid uppdatering av tillägg"
+      },
+      "validation": {
+        "invalidJson": "Konfigurationen måste vara giltig JSON"
+      },
+      "messages": {
+        "configHelp": "Konfigurera tillägget med nyckel–värde-par. Lämna tomt om tillägget inte kräver någon konfiguration.",
+        "clickPermissions": "Klicka på en behörighet för mer information",
+        "noConfig": "Ingen konfiguration angiven",
+        "allUsersHelp": "När den är aktiverad får tillägget tillgång till alla användare, inklusive de som skapas i framtiden.",
+        "noUsers": "Inga användare valda",
+        "permissionReason": "Orsak",
+        "usersRequired": "Detta tillägg kräver åtkomst till användarinformation. Välj vilka användare insticksprogrammet ska ha åtkomst till, eller aktivera 'Tillåt alla användare'.",
+        "allLibrariesHelp": "När den är aktiverad får tillägget tillgång till alla bibliotek, inklusive de som skapas i framtiden.",
+        "noLibraries": "Inga bibliotek valda",
+        "librariesRequired": "Detta tillägg kräver tillgång till biblioteksinformation. Välj vilka bibliotek tillägget kan komma åt eller aktivera 'Tillåt alla bibliotek'.",
+        "requiredHosts": "Krävda värdar",
+        "configValidationError": "Validering av konfigurationen misslyckades:",
+        "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt.",
+        "allowWriteAccessHelp": ""
+      },
+      "placeholders": {
+        "configKey": "nyckel",
+        "configValue": "värde"
       }
     }
   },
@@ -506,7 +590,8 @@
     "remove_all_missing_title": "Ta bort alla saknade filer",
     "remove_all_missing_content": "Är du säker på att du vill ta bort alla saknade filer från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg.",
     "noSimilarSongsFound": "Hittade inga liknande låtar",
-    "noTopSongsFound": "Hittade inga topplåtar"
+    "noTopSongsFound": "Hittade inga topplåtar",
+    "startingInstantMix": "Laddar direktmix..."
   },
   "menu": {
     "library": "Bibliotek",
@@ -539,7 +624,7 @@
     "librarySelector": {
       "allLibraries": "Alla bibliotek (%{count})",
       "multipleLibraries": "%{selected} av %{total} bibliotek",
-      "selectLibraries": "Valda bibliotek",
+      "selectLibraries": "Välj bibliotek",
       "none": "Inga"
     }
   },
@@ -592,7 +677,8 @@
       "exportSuccess": "Inställningarna kopierade till urklippet i TOML-format",
       "exportFailed": "Kopiering av inställningarna misslyckades",
       "devFlagsHeader": "Utvecklingsflaggor (kan ändras eller tas bort)",
-      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner"
+      "devFlagsComment": "Dessa inställningar är experimentella och kan tas bort i framtida versioner",
+      "downloadToml": "Ladda ner konfiguration (TOML)"
     }
   },
   "activity": {
@@ -604,7 +690,8 @@
     "serverDown": "OFFLINE",
     "scanType": "Typ",
     "status": "Fel vid scanning",
-    "elapsedTime": "Spelad tid"
+    "elapsedTime": "Spelad tid",
+    "selectiveScan": "Urval"
   },
   "help": {
     "title": "Navidrome kortkommandon",

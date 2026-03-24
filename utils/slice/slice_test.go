@@ -172,4 +172,42 @@ var _ = Describe("Slice Utils", func() {
 			Expect(result).To(ConsistOf("2", "4", "6", "8"))
 		})
 	})
+
+	Describe("Filter", func() {
+		It("returns empty slice for an empty input", func() {
+			filterFunc := func(v int) bool { return v > 0 }
+			result := slice.Filter([]int{}, filterFunc)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns all elements when filter matches all", func() {
+			filterFunc := func(v int) bool { return v > 0 }
+			result := slice.Filter([]int{1, 2, 3, 4}, filterFunc)
+			Expect(result).To(HaveExactElements(1, 2, 3, 4))
+		})
+
+		It("returns empty slice when filter matches none", func() {
+			filterFunc := func(v int) bool { return v > 10 }
+			result := slice.Filter([]int{1, 2, 3, 4}, filterFunc)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns only matching elements", func() {
+			filterFunc := func(v int) bool { return v%2 == 0 }
+			result := slice.Filter([]int{1, 2, 3, 4, 5, 6}, filterFunc)
+			Expect(result).To(HaveExactElements(2, 4, 6))
+		})
+
+		It("works with string slices", func() {
+			filterFunc := func(s string) bool { return len(s) > 3 }
+			result := slice.Filter([]string{"a", "abc", "abcd", "ab", "abcde"}, filterFunc)
+			Expect(result).To(HaveExactElements("abcd", "abcde"))
+		})
+
+		It("preserves order of elements", func() {
+			filterFunc := func(v int) bool { return v%2 == 1 }
+			result := slice.Filter([]int{9, 8, 7, 6, 5, 4, 3, 2, 1}, filterFunc)
+			Expect(result).To(HaveExactElements(9, 7, 5, 3, 1))
+		})
+	})
 })

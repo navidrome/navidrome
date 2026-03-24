@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
@@ -287,7 +288,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
-					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+					Id: "1", Name: "album", Artist: "artist", Duration: 292, Genre: "rock",
 				}
 				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
@@ -531,9 +532,9 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("with data", func() {
-			timestamp, _ := time.Parse(time.RFC3339, "2020-04-11T16:43:00Z04:00")
+			timestamp := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
 			BeforeEach(func() {
-				pls := make([]Playlist, 2)
+				pls := make([]Playlist, 3)
 				pls[0] = Playlist{
 					Id:        "111",
 					Name:      "aaa",
@@ -545,8 +546,13 @@ var _ = Describe("Responses", func() {
 					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
+					OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{
+						Readonly:   true,
+						ValidUntil: &timestamp,
+					},
 				}
-				pls[1] = Playlist{Id: "222", Name: "bbb"}
+				pls[1] = Playlist{Id: "333", Name: "ccc", OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{}}
+				pls[2] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
 			})
 
@@ -768,11 +774,45 @@ var _ = Describe("Responses", func() {
 				response.PlayQueue.Username = "user1"
 				response.PlayQueue.Current = "111"
 				response.PlayQueue.Position = 243
-				response.PlayQueue.Changed = &time.Time{}
+				response.PlayQueue.Changed = time.Time{}
 				response.PlayQueue.ChangedBy = "a_client"
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.PlayQueue.Entry = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("PlayQueueByIndex", func() {
+		BeforeEach(func() {
+			response.PlayQueueByIndex = &PlayQueueByIndex{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.PlayQueueByIndex.Username = "user1"
+				response.PlayQueueByIndex.CurrentIndex = gg.P(0)
+				response.PlayQueueByIndex.Position = 243
+				response.PlayQueueByIndex.Changed = time.Time{}
+				response.PlayQueueByIndex.ChangedBy = "a_client"
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.PlayQueueByIndex.Entry = child
 			})
 			It("should match .XML", func() {
 				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())

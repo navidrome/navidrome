@@ -1,0 +1,11 @@
+{
+  "name": "Test Scheduler",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test scheduler plugin for integration testing",
+  "permissions": {
+    "scheduler": {
+      "reason": "For testing scheduler callbacks"
+    }
+  }
+}

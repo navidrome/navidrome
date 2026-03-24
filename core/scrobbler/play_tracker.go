@@ -31,6 +31,13 @@ type Submission struct {
 	Timestamp time.Time
 }
 
+type nowPlayingEntry struct {
+	ctx      context.Context
+	userId   string
+	track    *model.MediaFile
+	position int
+}
+
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
@@ -52,6 +59,11 @@ type playTracker struct {
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
 	mu                sync.RWMutex
+	npQueue           map[string]nowPlayingEntry
+	npMu              sync.Mutex
+	npSignal          chan struct{}
+	shutdown          chan struct{}
+	workerDone        chan struct{}
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
@@ -71,6 +83,10 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		builtinScrobblers: make(map[string]Scrobbler),
 		pluginScrobblers:  make(map[string]Scrobbler),
 		pluginLoader:      pluginManager,
+		npQueue:           make(map[string]nowPlayingEntry),
+		npSignal:          make(chan struct{}, 1),
+		shutdown:          make(chan struct{}),
+		workerDone:        make(chan struct{}),
 	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
@@ -90,10 +106,17 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		p.builtinScrobblers[name] = s
 	}
 	log.Debug("List of builtin scrobblers enabled", "names", enabled)
+	go p.nowPlayingWorker()
 	return p
 }
 
-// pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers
+// stopNowPlayingWorker stops the background worker. This is primarily for testing.
+func (p *playTracker) stopNowPlayingWorker() {
+	close(p.shutdown)
+	<-p.workerDone // Wait for worker to finish
+}
+
+// pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers.
 func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scrobbler) bool {
 	if len(pluginNames) != len(scrobblers) {
 		return false
@@ -106,7 +129,9 @@ func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scro
 	return true
 }
 
-// refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers
+// refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers.
+// The buffered scrobblers use a loader function to dynamically get the current plugin instance,
+// so we only need to add/remove scrobblers when plugins are added/removed (not when reloaded).
 func (p *playTracker) refreshPluginScrobblers() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -125,15 +150,16 @@ func (p *playTracker) refreshPluginScrobblers() {
 	// Build a set of current plugins for faster lookups
 	current := make(map[string]struct{}, len(pluginNames))
 
-	// Process additions - add new plugins
+	// Process additions - add new plugins with a loader that dynamically fetches the current instance
 	for _, name := range pluginNames {
 		current[name] = struct{}{}
-		// Only create a new scrobbler if it doesn't exist
 		if _, exists := p.pluginScrobblers[name]; !exists {
-			s, ok := p.pluginLoader.LoadScrobbler(name)
-			if ok && s != nil {
-				p.pluginScrobblers[name] = newBufferedScrobbler(p.ds, s, name)
-			}
+			// Capture the name for the closure
+			pluginName := name
+			loader := p.pluginLoader
+			p.pluginScrobblers[name] = newBufferedScrobblerWithLoader(p.ds, name, func() (Scrobbler, bool) {
+				return loader.LoadScrobbler(pluginName)
+			})
 		}
 	}
 
@@ -186,10 +212,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 
 	// Calculate TTL based on remaining track duration. If position exceeds track duration,
 	// remaining is set to 0 to avoid negative TTL.
-	remaining := int(mf.Duration) - position
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := max(int(mf.Duration)-position, 0)
 	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
@@ -198,9 +221,58 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, mf, position)
+		p.enqueueNowPlaying(ctx, playerId, user.ID, mf, position)
 	}
 	return nil
+}
+
+func (p *playTracker) enqueueNowPlaying(ctx context.Context, playerId string, userId string, track *model.MediaFile, position int) {
+	p.npMu.Lock()
+	defer p.npMu.Unlock()
+	ctx = context.WithoutCancel(ctx) // Prevent cancellation from affecting background processing
+	p.npQueue[playerId] = nowPlayingEntry{
+		ctx:      ctx,
+		userId:   userId,
+		track:    track,
+		position: position,
+	}
+	p.sendNowPlayingSignal()
+}
+
+func (p *playTracker) sendNowPlayingSignal() {
+	// Don't block if the previous signal was not read yet
+	select {
+	case p.npSignal <- struct{}{}:
+	default:
+	}
+}
+
+func (p *playTracker) nowPlayingWorker() {
+	defer close(p.workerDone)
+	for {
+		select {
+		case <-p.shutdown:
+			return
+		case <-time.After(time.Second):
+		case <-p.npSignal:
+		}
+
+		p.npMu.Lock()
+		if len(p.npQueue) == 0 {
+			p.npMu.Unlock()
+			continue
+		}
+
+		// Keep a copy of the entries to process and clear the queue
+		entries := p.npQueue
+		p.npQueue = make(map[string]nowPlayingEntry)
+		p.npMu.Unlock()
+
+		// Process entries without holding lock
+		for _, entry := range entries {
+			p.dispatchNowPlaying(entry.ctx, entry.userId, entry.track, entry.position)
+		}
+	}
 }
 
 func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {
@@ -276,8 +348,14 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 		}
 		for _, artist := range track.Participants[model.RoleArtist] {
 			err = tx.Artist(ctx).IncPlayCount(artist.ID, timestamp)
+			if err != nil {
+				return err
+			}
 		}
-		return err
+		if conf.Server.EnableScrobbleHistory {
+			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+		}
+		return nil
 	})
 }
 

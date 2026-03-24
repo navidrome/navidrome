@@ -177,7 +177,11 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		return err
 	}
 	// https://www.sqlite.org/pragma.html#pragma_optimize
-	_, err = r.executeSQL(Expr("PRAGMA optimize=0x10012;"))
+	// Use mask 0x10000 to check table sizes without running ANALYZE
+	// Running ANALYZE can cause query planner issues with expression-based collation indexes
+	if conf.Server.DevOptimizeDB {
+		_, err = r.executeSQL(Expr("PRAGMA optimize=0x10000;"))
+	}
 	return err
 }
 
@@ -262,6 +266,10 @@ func (r *libraryRepository) Delete(id int) error {
 	defer libLock.Unlock()
 	delete(libCache, id)
 
+	// Clean up orphaned plugin references for the deleted library
+	if err := cleanupPluginLibraryReferences(r.db, id); err != nil {
+		log.Error(r.ctx, "Failed to cleanup plugin library references", "libraryID", id, err)
+	}
 	return nil
 }
 
@@ -297,7 +305,7 @@ func (r *libraryRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *libraryRepository) Read(id string) (interface{}, error) {
+func (r *libraryRepository) Read(id string) (any, error) {
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		log.Trace(r.ctx, "invalid library id: %s", id, err)
@@ -306,7 +314,7 @@ func (r *libraryRepository) Read(id string) (interface{}, error) {
 	return r.Get(idInt)
 }
 
-func (r *libraryRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *libraryRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -314,11 +322,11 @@ func (r *libraryRepository) EntityName() string {
 	return "library"
 }
 
-func (r *libraryRepository) NewInstance() interface{} {
+func (r *libraryRepository) NewInstance() any {
 	return &model.Library{}
 }
 
-func (r *libraryRepository) Save(entity interface{}) (string, error) {
+func (r *libraryRepository) Save(entity any) (string, error) {
 	lib := entity.(*model.Library)
 	lib.ID = 0 // Reset ID to ensure we create a new library
 	err := r.Put(lib)
@@ -328,7 +336,7 @@ func (r *libraryRepository) Save(entity interface{}) (string, error) {
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (r *libraryRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *libraryRepository) Update(id string, entity any, cols ...string) error {
 	lib := entity.(*model.Library)
 	idInt, err := strconv.Atoi(id)
 	if err != nil {

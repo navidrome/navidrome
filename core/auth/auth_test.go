@@ -45,7 +45,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns the claims from a valid JWT token", func() {
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["iat"] = time.Now().Unix()
 			claims["exp"] = time.Now().Add(1 * time.Minute).Unix()
@@ -54,11 +54,11 @@ var _ = Describe("Auth", func() {
 
 			decodedClaims, err := auth.Validate(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(decodedClaims["iss"]).To(Equal("issuer"))
+			Expect(decodedClaims.Issuer).To(Equal("issuer"))
 		})
 
 		It("returns ErrExpired if the `exp` field is in the past", func() {
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["exp"] = time.Now().Add(-1 * time.Minute).Unix()
 			_, tokenStr, err := auth.TokenAuth.Encode(claims)
@@ -82,18 +82,18 @@ var _ = Describe("Auth", func() {
 			claims, err := auth.Validate(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(claims["iss"]).To(Equal(consts.JWTIssuer))
-			Expect(claims["sub"]).To(Equal("johndoe"))
-			Expect(claims["uid"]).To(Equal("123"))
-			Expect(claims["adm"]).To(Equal(true))
-			Expect(claims["exp"]).To(BeTemporally(">", time.Now()))
+			Expect(claims.Issuer).To(Equal(consts.JWTIssuer))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.UserID).To(Equal("123"))
+			Expect(claims.IsAdmin).To(Equal(true))
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})
 
 	Describe("TouchToken", func() {
 		It("updates the expiration time", func() {
 			yesterday := time.Now().Add(-oneDay)
-			claims := map[string]interface{}{}
+			claims := map[string]any{}
 			claims["iss"] = "issuer"
 			claims["exp"] = yesterday.Unix()
 			token, _, err := auth.TokenAuth.Encode(claims)
@@ -104,8 +104,7 @@ var _ = Describe("Auth", func() {
 
 			decodedClaims, err := auth.Validate(touched)
 			Expect(err).NotTo(HaveOccurred())
-			exp := decodedClaims["exp"].(time.Time)
-			Expect(exp.Sub(yesterday)).To(BeNumerically(">=", oneDay))
+			Expect(decodedClaims.ExpiresAt.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
 	})
 })

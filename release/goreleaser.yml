@@ -19,6 +19,7 @@ builds:
       - linux_arm_v6
       - linux_arm_v7
       - linux_arm64
+      - linux_riscv64
       - windows_386
       - windows_amd64
 
@@ -82,6 +83,15 @@ nfpms:
         file_info:
           owner: navidrome
           group: navidrome
+
+      - src: release/linux/.package.rpm  # contents: "rpm"
+        dst: /var/lib/navidrome/.package
+        type: "config|noreplace"
+        packager: rpm
+      - src: release/linux/.package.deb  # contents: "deb"
+        dst: /var/lib/navidrome/.package
+        type: "config|noreplace"
+        packager: deb
 
     scripts:
       preinstall: "release/linux/preinstall.sh"

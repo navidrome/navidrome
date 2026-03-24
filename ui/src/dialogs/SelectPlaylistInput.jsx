@@ -318,11 +318,10 @@ export const SelectPlaylistInput = ({ onChange }) => {
 
   const canCreateNew = Boolean(
     searchText.trim() &&
-      !filteredOptions.some(
-        (option) =>
-          option.name.toLowerCase() === searchText.toLowerCase().trim(),
-      ) &&
-      !selectedPlaylists.some((p) => p.name === searchText.trim()),
+    !filteredOptions.some(
+      (option) => option.name.toLowerCase() === searchText.toLowerCase().trim(),
+    ) &&
+    !selectedPlaylists.some((p) => p.name === searchText.trim()),
   )
 
   return (

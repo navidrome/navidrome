@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -45,6 +46,9 @@ var _ = Describe("Tag Library Filtering", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 
+		// Generate unique path suffix to avoid conflicts with other tests
+		uniqueSuffix := time.Now().Format("20060102150405.000")
+
 		// Clean up database
 		db := GetDBXBuilder()
 		_, err := db.NewQuery("DELETE FROM library_tag").Execute()
@@ -57,12 +61,12 @@ var _ = Describe("Tag Library Filtering", func() {
 		_, err = db.NewQuery("DELETE FROM library WHERE id > 1").Execute()
 		Expect(err).ToNot(HaveOccurred())
 
-		// Create test libraries
+		// Create test libraries with unique names and paths to avoid conflicts with other tests
 		_, err = db.NewQuery("INSERT INTO library (id, name, path) VALUES ({:id}, {:name}, {:path})").
-			Bind(dbx.Params{"id": libraryID2, "name": "Library 2", "path": "/music/lib2"}).Execute()
+			Bind(dbx.Params{"id": libraryID2, "name": "Library 2-" + uniqueSuffix, "path": "/music/lib2-" + uniqueSuffix}).Execute()
 		Expect(err).ToNot(HaveOccurred())
 		_, err = db.NewQuery("INSERT INTO library (id, name, path) VALUES ({:id}, {:name}, {:path})").
-			Bind(dbx.Params{"id": libraryID3, "name": "Library 3", "path": "/music/lib3"}).Execute()
+			Bind(dbx.Params{"id": libraryID3, "name": "Library 3-" + uniqueSuffix, "path": "/music/lib3-" + uniqueSuffix}).Execute()
 		Expect(err).ToNot(HaveOccurred())
 
 		// Give admin access to all libraries
@@ -161,7 +165,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should respect explicit library_id filters within accessible libraries", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID2},
+					Filters: map[string]any{"library_id": libraryID2},
 				})
 				// Should see only tags from library 2: pop and rock(lib2)
 				Expect(tags).To(HaveLen(2))
@@ -170,7 +174,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should not return tags when filtering by inaccessible library", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should return no tags since user can't access library 3
 				Expect(tags).To(HaveLen(0))
@@ -178,7 +182,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should filter by library 1 correctly", func() {
 				tags := readAllTags(&regularUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID1},
+					Filters: map[string]any{"library_id": libraryID1},
 				})
 				// Should see only rock from library 1
 				Expect(tags).To(HaveLen(1))
@@ -223,7 +227,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				tags := readAllTags(nil, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should see only jazz from library 3
 				Expect(tags).To(HaveLen(1))
@@ -239,7 +243,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should respect explicit library_id filters", func() {
 				tags := readAllTags(&adminUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID3},
+					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should see only jazz from library 3
 				Expect(tags).To(HaveLen(1))
@@ -248,7 +252,7 @@ var _ = Describe("Tag Library Filtering", func() {
 
 			It("should filter by library 2 correctly", func() {
 				tags := readAllTags(&adminUser, rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": libraryID2},
+					Filters: map[string]any{"library_id": libraryID2},
 				})
 				// Should see pop and rock from library 2
 				Expect(tags).To(HaveLen(2))

@@ -44,7 +44,7 @@ func newLocalStorage(u url.URL) storage.Storage {
 
 func (s *localStorage) FS() (storage.MusicFS, error) {
 	path := s.u.Path
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(path); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
 	return &localFS{FS: os.DirFS(path), extractor: s.extractor}, nil

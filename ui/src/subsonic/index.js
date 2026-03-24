@@ -23,7 +23,13 @@ const url = (command, id, options) => {
       delete options.ts
     }
     Object.keys(options).forEach((k) => {
-      params.append(k, options[k])
+      const value = options[k]
+      // Handle array parameters by appending each value separately
+      if (Array.isArray(value)) {
+        value.forEach((v) => params.append(k, v))
+      } else {
+        params.append(k, value)
+      }
     })
   }
   return `/rest/${command}?${params.toString()}`
@@ -80,9 +86,22 @@ const getCoverArtUrl = (record, size, square) => {
   } else if (record.sync !== undefined) {
     // This is a playlist
     return baseUrl(url('getCoverArt', 'pl-' + record.id, options))
+  } else if (record.streamUrl !== undefined) {
+    // This is a radio station
+    return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
   } else {
     return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
   }
+}
+
+const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
+  const options = {
+    ...(updatedAt && { _: updatedAt }),
+    ...(size && { size }),
+  }
+  return baseUrl(
+    url('getCoverArt', 'dc-' + albumId + ':' + discNumber, options),
+  )
 }
 
 const getArtistInfo = (id) => {
@@ -123,6 +142,7 @@ export default {
   getScanStatus,
   getNowPlaying,
   getCoverArtUrl,
+  getDiscCoverArtUrl,
   getAvatarUrl,
   streamUrl,
   getAlbumInfo,

@@ -29,7 +29,7 @@ func Stage[In any, Out any](
 	limit := int64(maxWorkers)
 	sem1 := semaphore.NewWeighted(limit)
 
-	go func() {
+	go func() { //nolint:gosec // intentional context.Background() below to wait for workers after ctx cancellation
 		defer close(outputChannel)
 		defer close(errorChannel)
 
@@ -58,7 +58,7 @@ func Stage[In any, Out any](
 		// By using context.Background() here we are assuming the fn will stop when the context
 		// is canceled. This is required so we can wait for the workers to finish and avoid closing
 		// the outputChannel before they are done.
-		if err := sem1.Acquire(context.Background(), limit); err != nil {
+		if err := sem1.Acquire(context.Background(), limit); err != nil { //nolint:gosec // intentional: must wait for workers after ctx cancellation
 			log.Error(ctx, "Failed waiting for workers", err)
 		}
 	}()
@@ -152,7 +152,7 @@ func Tee[T any](ctx context.Context, in <-chan T) (<-chan T, <-chan T) {
 		defer close(out2)
 		for val := range ReadOrDone(ctx, in) {
 			var out1, out2 = out1, out2
-			for i := 0; i < 2; i++ {
+			for range 2 {
 				select {
 				case <-ctx.Done():
 				case out1 <- val:

@@ -26,11 +26,13 @@ var _ = Describe("sqlRestful", func() {
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeNil())
 		})
 
-		It(`returns nil if tries a filter with fullTextExpr("'")`, func() {
+		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "legacy"
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
-			options.Filters = map[string]interface{}{"name": "'"}
+			options.Filters = map[string]any{"name": "'"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
 		})
 
@@ -40,32 +42,32 @@ var _ = Describe("sqlRestful", func() {
 					return nil
 				},
 			}
-			options.Filters = map[string]interface{}{"name": "joe"}
+			options.Filters = map[string]any{"name": "joe"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
 		})
 
 		It("returns a '=' condition for 'id' filter", func() {
-			options.Filters = map[string]interface{}{"id": "123"}
+			options.Filters = map[string]any{"id": "123"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": "123"}}))
 		})
 
 		It("returns a 'in' condition for multiples 'id' filters", func() {
-			options.Filters = map[string]interface{}{"id": []string{"123", "456"}}
+			options.Filters = map[string]any{"id": []string{"123", "456"}}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": []string{"123", "456"}}}))
 		})
 
 		It("returns a 'like' condition for other filters", func() {
-			options.Filters = map[string]interface{}{"name": "joe"}
+			options.Filters = map[string]any{"name": "joe"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Like{"name": "joe%"}}))
 		})
 
 		It("uses the custom filter", func() {
 			r.filterMappings = map[string]filterFunc{
-				"test": func(field string, value interface{}) squirrel.Sqlizer {
+				"test": func(field string, value any) squirrel.Sqlizer {
 					return squirrel.Gt{field: value}
 				},
 			}
-			options.Filters = map[string]interface{}{"test": 100}
+			options.Filters = map[string]any{"test": 100}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Gt{"test": 100}}))
 		})
 	})
@@ -77,6 +79,7 @@ var _ = Describe("sqlRestful", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Search.Backend = "legacy"
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}
 			filter = fullTextFilter(tableName, mbidFields...)
@@ -99,11 +102,11 @@ var _ = Describe("sqlRestful", func() {
 				uuid := "550e8400-e29b-41d4-a716-446655440000"
 				result := noMbidFilter("search", uuid)
 
-				// mbidExpr with no fields returns nil, so cmp.Or falls back to fullTextExpr
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% 550e8400-e29b-41d4-a716-446655440000%"},
-				}
-				Expect(result).To(Equal(expected))
+				// mbidExpr with no fields returns nil, so cmp.Or falls back to search strategy
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% 550e8400-e29b-41d4-a716-446655440000%"))
 			})
 		})
 
@@ -111,54 +114,75 @@ var _ = Describe("sqlRestful", func() {
 			It("returns full text search condition only", func() {
 				result := filter("search", "beatles")
 
-				// mbidExpr returns nil for non-UUIDs, so fullTextExpr result is returned directly
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% beatles%"},
-				}
-				Expect(result).To(Equal(expected))
+				// mbidExpr returns nil for non-UUIDs, so search strategy result is returned directly
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% beatles%"))
 			})
 
 			It("handles multi-word search terms", func() {
 				result := filter("search", "the beatles abbey road")
 
-				// Should return And condition directly
-				andCondition, ok := result.(squirrel.And)
-				Expect(ok).To(BeTrue())
-				Expect(andCondition).To(HaveLen(4))
-
-				// Check that all words are present (order may vary)
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% the%"}))
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% beatles%"}))
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% abbey%"}))
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% road%"}))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				// All words should be present as LIKE conditions
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(HaveLen(4))
+				Expect(args).To(ContainElement("% the%"))
+				Expect(args).To(ContainElement("% beatles%"))
+				Expect(args).To(ContainElement("% abbey%"))
+				Expect(args).To(ContainElement("% road%"))
 			})
 		})
 
 		Context("when SearchFullString config changes behavior", func() {
 			It("uses different separator with SearchFullString=false", func() {
-				conf.Server.SearchFullString = false
+				conf.Server.Search.FullString = false
 				result := filter("search", "test query")
 
-				andCondition, ok := result.(squirrel.And)
-				Expect(ok).To(BeTrue())
-				Expect(andCondition).To(HaveLen(2))
-
-				// Check that all words are present with leading space (order may vary)
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% test%"}))
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "% query%"}))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(HaveLen(2))
+				Expect(args).To(ContainElement("% test%"))
+				Expect(args).To(ContainElement("% query%"))
 			})
 
 			It("uses no separator with SearchFullString=true", func() {
-				conf.Server.SearchFullString = true
+				conf.Server.Search.FullString = true
 				result := filter("search", "test query")
 
-				andCondition, ok := result.(squirrel.And)
-				Expect(ok).To(BeTrue())
-				Expect(andCondition).To(HaveLen(2))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(HaveLen(2))
+				Expect(args).To(ContainElement("%test%"))
+				Expect(args).To(ContainElement("%query%"))
+			})
+		})
 
-				// Check that all words are present without leading space (order may vary)
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "%test%"}))
-				Expect(andCondition).To(ContainElement(squirrel.Like{"test_table.full_text": "%query%"}))
+		Context("single-character queries (regression: must not be rejected)", func() {
+			It("returns valid filter for single-char query with legacy backend", func() {
+				conf.Server.Search.Backend = "legacy"
+				result := filter("search", "a")
+				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("LIKE"))
+				Expect(args).ToNot(BeEmpty())
+			})
+
+			It("returns valid filter for single-char query with FTS backend", func() {
+				conf.Server.Search.Backend = "fts"
+				conf.Server.Search.FullString = false
+				ftsFilter := fullTextFilter(tableName, mbidFields...)
+				result := ftsFilter("search", "a")
+				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("MATCH"))
+				Expect(args).ToNot(BeEmpty())
 			})
 		})
 
@@ -176,10 +200,10 @@ var _ = Describe("sqlRestful", func() {
 			It("handles special characters that are sanitized", func() {
 				result := filter("search", "don't")
 
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% dont%"}, // str.SanitizeStrings removes quotes
-				}
-				Expect(result).To(Equal(expected))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% dont%"))
 			})
 
 			It("returns nil for single quote (SQL injection protection)", func() {
@@ -203,31 +227,30 @@ var _ = Describe("sqlRestful", func() {
 				result := filter("search", "550e8400-invalid-uuid")
 
 				// Should return full text filter since UUID is invalid
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% 550e8400-invalid-uuid%"},
-				}
-				Expect(result).To(Equal(expected))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% 550e8400-invalid-uuid%"))
 			})
 
 			It("handles empty mbid fields array", func() {
 				emptyMbidFilter := fullTextFilter(tableName, []string{}...)
 				result := emptyMbidFilter("search", "test")
 
-				// mbidExpr with empty fields returns nil, so cmp.Or falls back to fullTextExpr
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% test%"},
-				}
-				Expect(result).To(Equal(expected))
+				// mbidExpr with empty fields returns nil, so search strategy result is returned directly
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% test%"))
 			})
 
 			It("converts value to lowercase before processing", func() {
 				result := filter("search", "TEST")
 
-				// The function converts to lowercase internally
-				expected := squirrel.And{
-					squirrel.Like{"test_table.full_text": "% test%"},
-				}
-				Expect(result).To(Equal(expected))
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("test_table.full_text LIKE"))
+				Expect(args).To(ContainElement("% test%"))
 			})
 		})
 	})

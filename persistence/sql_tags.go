@@ -60,7 +60,7 @@ func tagIDFilter(name string, idValue any) Sqlizer {
 }
 
 // tagLibraryIdFilter filters tags based on library access through the library_tag table
-func tagLibraryIdFilter(_ string, value interface{}) Sqlizer {
+func tagLibraryIdFilter(_ string, value any) Sqlizer {
 	return Eq{"library_tag.library_id": value}
 }
 
@@ -142,14 +142,14 @@ func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.count(sq, r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *baseTagRepository) Read(id string) (interface{}, error) {
+func (r *baseTagRepository) Read(id string) (any, error) {
 	query := r.newSelect().Where(Eq{"id": id})
 	var res model.Tag
 	err := r.queryOne(query, &res)
 	return &res, err
 }
 
-func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	query := r.newSelect(r.parseRestOptions(r.ctx, options...))
 	var res model.TagList
 	err := r.queryAll(query, &res)
@@ -160,7 +160,7 @@ func (r *baseTagRepository) EntityName() string {
 	return "tag"
 }
 
-func (r *baseTagRepository) NewInstance() interface{} {
+func (r *baseTagRepository) NewInstance() any {
 	return model.Tag{}
 }
 

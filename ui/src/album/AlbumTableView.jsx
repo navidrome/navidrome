@@ -14,6 +14,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
 import {
   ArtistLinkField,
+  CoverArtAvatar,
   DurationField,
   RangeField,
   SimpleList,
@@ -161,12 +162,18 @@ const AlbumTableView = ({
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
+      leftIcon={(r) => (
+        <span style={{ marginRight: '8px' }}>
+          <CoverArtAvatar record={r} variant="square" />
+        </span>
+      )}
       linkType={'show'}
       rightIcon={(r) => <AlbumContextMenu record={r} />}
       {...rest}
     />
   ) : (
     <AlbumDatagrid rowClick={'show'} classes={{ row: classes.row }} {...rest}>
+      <CoverArtAvatar source="id" variant="square" />
       <TextField source="name" />
       {columns}
       <AlbumContextMenu

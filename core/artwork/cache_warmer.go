@@ -132,7 +132,7 @@ func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
 func (a *cacheWarmer) processBatch(ctx context.Context, batch []model.ArtworkID) {
 	log.Trace(ctx, "PreCaching a new batch of artwork", "batchSize", len(batch))
 	input := pl.FromSlice(ctx, batch)
-	errs := pl.Sink(ctx, 2, input, a.doCacheImage)
+	errs := pl.Sink(ctx, 4, input, a.doCacheImage)
 	for err := range errs {
 		log.Debug(ctx, "Error warming cache", err)
 	}
@@ -142,13 +142,13 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	r, _, err := a.artwork.Get(ctx, id, consts.UICoverArtSize, true)
-	if err != nil {
-		return fmt.Errorf("caching id='%s': %w", id, err)
-	}
-	defer r.Close()
-	_, err = io.Copy(io.Discard, r)
-	if err != nil {
+	for _, size := range consts.CacheWarmerImageSizes {
+		r, _, err := a.artwork.Get(ctx, id, size, true)
+		if err != nil {
+			return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
+		}
+		_, err = io.Copy(io.Discard, r)
+		r.Close()
 		return err
 	}
 	return nil

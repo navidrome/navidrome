@@ -30,7 +30,33 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	return r
 }
 
+// TODO: Ownership checks should be moved to the service layer (core/share.go)
+func (r *shareRepository) checkOwnership(id string) error {
+	usr := loggedUser(r.ctx)
+	if usr.IsAdmin || usr.ID == invalidUserId {
+		return nil
+	}
+	sel := r.newSelect().Columns("user_id").Where(Eq{"id": id})
+	var share struct {
+		UserID string `db:"user_id"`
+	}
+	err := r.queryOne(sel, &share)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return rest.ErrNotFound
+		}
+		return err
+	}
+	if share.UserID != usr.ID {
+		return rest.ErrPermissionDenied
+	}
+	return nil
+}
+
 func (r *shareRepository) Delete(id string) error {
+	if err := r.checkOwnership(id); err != nil {
+		return err
+	}
 	err := r.delete(Eq{"id": id})
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
@@ -138,9 +164,11 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
-func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	// TODO Validate record
+	if err := r.checkOwnership(id); err != nil {
+		return err
+	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
 	cols = append(cols, "updated_at")
@@ -151,7 +179,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 	return err
 }
 
-func (r *shareRepository) Save(entity interface{}) (string, error) {
+func (r *shareRepository) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	// TODO Validate record
 	u := loggedUser(r.ctx)
@@ -179,18 +207,18 @@ func (r *shareRepository) EntityName() string {
 	return "share"
 }
 
-func (r *shareRepository) NewInstance() interface{} {
+func (r *shareRepository) NewInstance() any {
 	return &model.Share{}
 }
 
-func (r *shareRepository) Read(id string) (interface{}, error) {
+func (r *shareRepository) Read(id string) (any, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sq := r.selectShare(r.parseRestOptions(r.ctx, options...))
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)

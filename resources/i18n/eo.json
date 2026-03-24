@@ -27,15 +27,16 @@
         "playDate": "Laste Ludita",
         "channels": "Kanaloj",
         "createdAt": "Dato de aligo",
-        "grouping": "",
+        "grouping": "Grupo",
         "mood": "Humoro",
-        "participants": "",
+        "participants": "Aldonaj partoprenantoj",
         "tags": "Aldonaj Etikedoj",
         "mappedTags": "Mapigitaj etikedoj",
         "rawTags": "Krudaj etikedoj",
-        "bitDepth": "",
-        "sampleRate": "",
-        "missing": ""
+        "bitDepth": "Bitprofundo",
+        "sampleRate": "Elprena rapido",
+        "missing": "Mankaj",
+        "libraryName": "Biblioteko"
       },
       "actions": {
         "addToQueue": "Ludi Poste",
@@ -44,7 +45,8 @@
         "shuffleAll": "Miksu Ĉiujn",
         "download": "Elŝuti",
         "playNext": "Ludu Poste",
-        "info": "Akiri Informon"
+        "info": "Akiri Informon",
+        "showInPlaylist": "Montri en Ludlisto"
       }
     },
     "album": {
@@ -68,14 +70,15 @@
         "releaseDate": "Publikiĝis",
         "releases": "Publikiĝo |||| Publikiĝoj",
         "released": "Publikiĝis",
-        "recordLabel": "",
-        "catalogNum": "",
+        "recordLabel": "Eldonejo",
+        "catalogNum": "Kataloga Numero",
         "releaseType": "Tipo",
-        "grouping": "",
-        "media": "",
+        "grouping": "Grupo",
+        "media": "Aŭdvidaĵo",
         "mood": "Humoro",
-        "date": "",
-        "missing": ""
+        "date": "Registraĵa Dato",
+        "missing": "Mankaj",
+        "libraryName": "Biblioteko"
       },
       "actions": {
         "playAll": "Ludi",
@@ -107,8 +110,8 @@
         "rating": "Takso",
         "genre": "Ĝenro",
         "size": "Grando",
-        "role": "",
-        "missing": ""
+        "role": "Rolo",
+        "missing": "Mankaj"
       },
       "roles": {
         "albumartist": "Albuma Artisto |||| Albumaj Artistoj",
@@ -117,13 +120,19 @@
         "conductor": "Dirigento |||| Dirigentoj",
         "lyricist": "Kantoteksisto |||| Kantotekstistoj",
         "arranger": "Aranĝisto |||| Aranĝistoj",
-        "producer": "",
-        "director": "",
-        "engineer": "",
+        "producer": "Produktisto |||| Produktistoj",
+        "director": "Direktoro |||| Direktoroj",
+        "engineer": "Inĝeniero |||| Inĝenieroj",
         "mixer": "Miksisto |||| Miksistoj",
         "remixer": "Remiksisto |||| Remiksistoj",
-        "djmixer": "",
-        "performer": ""
+        "djmixer": "Dĵ-a Miksisto |||| Dĵ-a Miksistoj",
+        "performer": "Plenumisto |||| Plenumistoj",
+        "maincredit": "Albuma Artisto aŭ Artisto |||| Albumaj Artistoj aŭ Artistoj"
+      },
+      "actions": {
+        "shuffle": "Miksi",
+        "radio": "Radio",
+        "topSongs": "Plej Luditaj Kantoj"
       }
     },
     "user": {
@@ -140,10 +149,12 @@
         "currentPassword": "Nuna Pasvorto",
         "newPassword": "Nova Pasvorto",
         "token": "Ĵetono",
-        "lastAccessAt": "Lasta Atingo"
+        "lastAccessAt": "Lasta Atingo",
+        "libraries": "Bibliotekoj"
       },
       "helperTexts": {
-        "name": "Ŝanĝoj de via nomo nur ĝisdatiĝs je via sekvanta ensaluto"
+        "name": "Ŝanĝoj de via nomo nur ĝisdatiĝs je via sekvanta ensaluto",
+        "libraries": "Elekti specifajn bibliotekojn por ĉi tiu uzanto, aŭ lasi malplena por uzi defaŭltajn bibliotekojn"
       },
       "notifications": {
         "created": "Uzanto farita",
@@ -152,7 +163,12 @@
       },
       "message": {
         "listenBrainzToken": "Enigi vian uzantan ĵetonon de ListenBrainz.",
-        "clickHereForToken": "Alkakli ĉi tie por akiri vian ĵetonon"
+        "clickHereForToken": "Alkakli ĉi tie por akiri vian ĵetonon",
+        "selectAllLibraries": "Elekti ĉiujn bibliotekojn",
+        "adminAutoLibraries": "Administrantoj aŭtomate havas aliron al ĉiuj bibliotekoj"
+      },
+      "validation": {
+        "librariesRequired": "Almenaŭ unu biblioteko devas esti elektita por neadministrantoj"
       }
     },
     "player": {
@@ -197,11 +213,16 @@
         "export": "Eksporti",
         "makePublic": "Publikigi",
         "makePrivate": "Malpublikigi",
-        "saveQueue": ""
+        "saveQueue": "Konservi Ludvicon al Ludlisto",
+        "searchOrCreate": "Serĉi ludlistojn aŭ tajpi por krei novan...",
+        "pressEnterToCreate": "Premu je Enter por krei novan ludliston",
+        "removeFromSelection": "Forigi de elekto"
       },
       "message": {
         "duplicate_song": "Aldoni duobligitajn kantojn",
-        "song_exist": "Estas duoblaĵoj kiuj aldoniĝas al la kantolisto. Ĉu vi ŝatus aldoni la duoblaĵojn aŭ pasigi ilin?"
+        "song_exist": "Estas duoblaĵoj kiuj aldoniĝas al la kantolisto. Ĉu vi ŝatus aldoni la duoblaĵojn aŭ pasigi ilin?",
+        "noPlaylistsFound": "Neniuj ludlistoj trovitaj",
+        "noPlaylists": "Neniuj ludlistoj haveblaj"
       }
     },
     "radio": {
@@ -235,20 +256,78 @@
       }
     },
     "missing": {
-      "name": "",
+      "name": "Manka Dosiero |||| Mankaj Dosieroj",
       "fields": {
-        "path": "",
-        "size": "",
-        "updatedAt": ""
+        "path": "Vojo",
+        "size": "Grando",
+        "updatedAt": "Malaperis je",
+        "libraryName": "Biblioteko"
       },
       "actions": {
-        "remove": "",
-        "remove_all": ""
+        "remove": "Forigi",
+        "remove_all": "Forigi Ĉiujn"
       },
       "notifications": {
-        "removed": ""
+        "removed": "Manka(j) dosiero(j) forigite"
       },
-      "empty": ""
+      "empty": "Neniuj Mankaj Dosieroj"
+    },
+    "library": {
+      "name": "Biblioteko |||| Bibliotekoj",
+      "fields": {
+        "name": "Nomo",
+        "path": "Vojo",
+        "remotePath": "Fora Vojo",
+        "lastScanAt": "Plej Lasta Skano",
+        "songCount": "Kantoj",
+        "albumCount": "Albumoj",
+        "artistCount": "Artistoj",
+        "totalSongs": "Kantoj",
+        "totalAlbums": "Albumoj",
+        "totalArtists": "Artistoj",
+        "totalFolders": "Dosierujoj",
+        "totalFiles": "Dosieroj",
+        "totalMissingFiles": "Mankaj Dosieroj",
+        "totalSize": "Totala Grando",
+        "totalDuration": "Daŭro",
+        "defaultNewUsers": "Defaŭlto por Novaj Uzantoj",
+        "createdAt": "Farite je",
+        "updatedAt": "Ĝisdatiĝis je"
+      },
+      "sections": {
+        "basic": "Bazaj Informoj",
+        "statistics": "Statistikaĵoj"
+      },
+      "actions": {
+        "scan": "Skani Bibliotekon",
+        "manageUsers": "Agordi Uzantan Aliron",
+        "viewDetails": "Montri Informojn",
+        "quickScan": "Rapida Skano",
+        "fullScan": "Plena Skano"
+      },
+      "notifications": {
+        "created": "Biblioteko kreiĝis sukcese",
+        "updated": "Biblioteko ĝisdatiĝis sukcese",
+        "deleted": "Biblioteko foriĝis sukcese",
+        "scanStarted": "Biblioteka skano komenciĝis",
+        "scanCompleted": "Biblioteka skano finiĝis",
+        "quickScanStarted": "Rapida skano komenciĝis",
+        "fullScanStarted": "Plena skano komenciĝis",
+        "scanError": "Eraro de skana komenco. Kontrolu la protokolojn"
+      },
+      "validation": {
+        "nameRequired": "Biblioteka nomo estas necesa",
+        "pathRequired": "Biblioteka vojo estas necesa",
+        "pathNotDirectory": "Biblioteka vojo devas esti dosierujo",
+        "pathNotFound": "Biblioteka vojo ne trovite",
+        "pathNotAccessible": "Biblioteka vojo ne estas alirebla",
+        "pathInvalid": "Nevalida biblioteka vojo"
+      },
+      "messages": {
+        "deleteConfirm": "Ĉu vi certas, ke vi volas forigi ĉi tiun bibliotekon? Ĉi tio forigos ĉiujn rilatajn datumojn kaj uzantan aliron.",
+        "scanInProgress": "Skano progresas...",
+        "noLibrariesAssigned": "Neniuj bibliotekoj asignitaj por ĉi tiu uzanto"
+      }
     }
   },
   "ra": {
@@ -427,10 +506,12 @@
     "shareFailure": "Eraro de kopio de ligilo %{url} al la tondujo",
     "downloadDialogTitle": "Elŝuti %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Kopii al la tondujo: Ctrl+C, Enter",
-    "remove_missing_title": "",
+    "remove_missing_title": "Forigi mankajn dosierojn",
     "remove_missing_content": "Ĉu vi certas, ke vi volas forigi la elektitajn mankajn dosierojn de la datumbazo? Ĉi tio forigos eterne ĉiujn referencojn de ili, inkluzive iliajn ludkvantojn kaj taksojn.",
-    "remove_all_missing_title": "",
-    "remove_all_missing_content": ""
+    "remove_all_missing_title": "Forigi ĉiujn mankajn dosierojn",
+    "remove_all_missing_content": "Ĉu vi certas, ke vi volas forigi ĉiujn mankajn dosierojn de la datumbazo? Ĉi tio permanante forigos ĉiujn referencojn al ili, inkluzive iliajn ludnombrojn kaj taksojn.",
+    "noSimilarSongsFound": "Neniuj similaj kantoj trovitaj",
+    "noTopSongsFound": "Neniuj plej luditaj kantoj trovitaj"
   },
   "menu": {
     "library": "Biblioteko",
@@ -453,13 +534,19 @@
           "album": "Uzi Albuman Songajnon",
           "track": "Uzi Kantan Songajnon"
         },
-        "lastfmNotConfigured": ""
+        "lastfmNotConfigured": "API-ŝlosilo de Last.fm ne agordita"
       }
     },
     "albumList": "Albumoj",
     "about": "Pri",
     "playlists": "Ludlistoj",
-    "sharedPlaylists": "Diskonigitaj Ludistoj"
+    "sharedPlaylists": "Diskonigitaj Ludistoj",
+    "librarySelector": {
+      "allLibraries": "Ĉiuj Bibliotekoj (%{count})",
+      "multipleLibraries": "%{selected} el %{total} Bibliotekoj",
+      "selectLibraries": "Elekti Bibliotekojn",
+      "none": "Neniu"
+    }
   },
   "player": {
     "playListsText": "Atendovico",
@@ -491,11 +578,26 @@
       "homepage": "Hejmpaĝo",
       "source": "Fontkodo",
       "featureRequests": "Trajta peto",
-      "lastInsightsCollection": "",
+      "lastInsightsCollection": "Plej lasta kolekto de datumoj",
       "insights": {
         "disabled": "Malebligita",
-        "waiting": ""
+        "waiting": "Atendante"
       }
+    },
+    "tabs": {
+      "about": "Pri",
+      "config": "Agordo"
+    },
+    "config": {
+      "configName": "Agorda Nomo",
+      "environmentVariable": "Medivariablo",
+      "currentValue": "Nuna Valoro",
+      "configurationFile": "Agorda Dosiero",
+      "exportToml": "Eksporti Agordojn (TOML)",
+      "exportSuccess": "Agordoj eksportiĝis al la tondujo en TOML-a formato",
+      "exportFailed": "Malsukcesis kopii agordojn",
+      "devFlagsHeader": "Programadaj Flagoj (povas ŝanĝiĝi/foriĝi)",
+      "devFlagsComment": "Ĉi tiuj estas eksperimentaj agordoj kaj eble foriĝos en estontaj versioj"
     }
   },
   "activity": {
@@ -505,9 +607,10 @@
     "fullScan": "Plena Skanado",
     "serverUptime": "Servila daŭro de funkciado",
     "serverDown": "SENKONEKTA",
-    "scanType": "",
-    "status": "",
-    "elapsedTime": ""
+    "scanType": "Plej Lasta Skano",
+    "status": "Skana Eraro",
+    "elapsedTime": "Pasinta Tempo",
+    "selectiveScan": "Selektema"
   },
   "help": {
     "title": "Navidrome klavkomando",
@@ -519,8 +622,13 @@
       "next_song": "Sekva kanto",
       "vol_up": "Pli volumo",
       "vol_down": "Malpli volumo",
-      "toggle_love": "Baskuli la stelon de nuna kanto",
+      "toggle_love": "Aldoni ĉi tiun kanton al plej ŝatataj",
       "current_song": "Iri al Nuna Kanto"
     }
+  },
+  "nowPlaying": {
+    "title": "Nun Ludanta",
+    "empty": "Nenio ludas",
+    "minutesAgo": "Antaŭ %{smart_count} minuto |||| Antaŭ %{smart_count} minutoj"
   }
 }

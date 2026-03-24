@@ -4,7 +4,7 @@ import { IconButton, Tooltip, Link } from '@material-ui/core'
 
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
-import { intersperse } from '../utils'
+import { intersperse, isLastFmURL } from '../utils'
 import config from '../config'
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -38,13 +38,13 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
   }
 
   if (config.lastFMEnabled) {
-    if (lastFMlink) {
+    if (lastFMlink && isLastFmURL(lastFMlink[2])) {
       addLink(
         lastFMlink[2],
         'message.openIn.lastfm',
         <ImLastfm2 className="lastfm-icon" />,
       )
-    } else if (artistInfo?.lastFmUrl) {
+    } else if (isLastFmURL(artistInfo?.lastFmUrl)) {
       addLink(
         artistInfo?.lastFmUrl,
         'message.openIn.lastfm',

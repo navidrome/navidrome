@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/deluan/rest"
-	_ "github.com/navidrome/navidrome/adapters/taglib" // Register taglib extractor
+	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
@@ -29,9 +29,10 @@ var _ = Describe("Library Service", func() {
 	var userRepo *tests.MockedUserRepo
 	var ctx context.Context
 	var tempDir string
-	var scanner *mockScanner
+	var scanner *tests.MockScanner
 	var watcherManager *mockWatcherManager
 	var broker *mockEventBroker
+	var pluginManager *mockPluginUnloader
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -43,14 +44,16 @@ var _ = Describe("Library Service", func() {
 		ds.MockedUser = userRepo
 
 		// Create a mock scanner that tracks calls
-		scanner = &mockScanner{}
+		scanner = tests.NewMockScanner()
 		// Create a mock watcher manager
 		watcherManager = &mockWatcherManager{
 			libraryStates: make(map[int]model.Library),
 		}
 		// Create a mock event broker
 		broker = &mockEventBroker{}
-		service = core.NewLibrary(ds, scanner, watcherManager, broker)
+		// Create a mock plugin unloader
+		pluginManager = &mockPluginUnloader{}
+		service = core.NewLibrary(ds, scanner, watcherManager, broker, pluginManager)
 		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
@@ -616,11 +619,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("triggers scan when updating library path", func() {
@@ -641,11 +645,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("does not trigger scan when updating library without path change", func() {
@@ -661,7 +666,7 @@ var _ = Describe("Library Service", func() {
 
 			// Wait a bit to ensure no scan was triggered
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -674,7 +679,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since creation failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -691,7 +696,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since update failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -707,11 +712,12 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
 			// Verify scan was called with correct parameters
-			Expect(scanner.ScanCalls[0].FullScan).To(BeFalse()) // Should be quick scan
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
 		})
 
 		It("does not trigger scan when library deletion fails", func() {
@@ -721,7 +727,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since deletion failed
 			Consistently(func() int {
-				return scanner.len()
+				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -866,31 +872,43 @@ var _ = Describe("Library Service", func() {
 			Expect(broker.Events).To(HaveLen(1))
 		})
 	})
+
+	Describe("Plugin Manager Integration", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			// Reset the call count for each test
+			pluginManager.unloadCalls = 0
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
+		})
+
+		It("calls UnloadDisabledPlugins after successful library deletion", func() {
+			libraryRepo.SetData(model.Libraries{
+				{ID: 2, Name: "Library to Delete", Path: tempDir},
+			})
+
+			err := repo.Delete("2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pluginManager.unloadCalls).To(Equal(1))
+		})
+
+		It("does not call UnloadDisabledPlugins when library deletion fails", func() {
+			// Try to delete non-existent library
+			err := repo.Delete("999")
+			Expect(err).To(HaveOccurred())
+			Expect(pluginManager.unloadCalls).To(Equal(0))
+		})
+	})
 })
 
-// mockScanner provides a simple mock implementation of core.Scanner for testing
-type mockScanner struct {
-	ScanCalls []ScanCall
-	mu        sync.RWMutex
+// mockPluginUnloader is a simple mock for testing UnloadDisabledPlugins calls
+type mockPluginUnloader struct {
+	unloadCalls int
 }
 
-type ScanCall struct {
-	FullScan bool
-}
-
-func (m *mockScanner) ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.ScanCalls = append(m.ScanCalls, ScanCall{
-		FullScan: fullScan,
-	})
-	return []string{}, nil
-}
-
-func (m *mockScanner) len() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.ScanCalls)
+func (m *mockPluginUnloader) UnloadDisabledPlugins(ctx context.Context) {
+	m.unloadCalls++
 }
 
 // mockWatcherManager provides a simple mock implementation of core.Watcher for testing

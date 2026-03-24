@@ -8,9 +8,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -230,9 +230,9 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
-	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
-	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 1200)
+	response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
+	response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
@@ -296,9 +296,9 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 
 	base := responses.ArtistInfoBase{}
 	base.Biography = artist.Biography
-	base.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
-	base.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
-	base.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 1200)
+	base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
+	base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
+	base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
 	base.LastFmUrl = artist.ExternalUrl
 	base.MusicBrainzID = artist.MbzArtistID
 
@@ -354,7 +354,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.provider.ArtistRadio(ctx, id, count)
+	songs, err := api.provider.SimilarSongs(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +410,9 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	}
 	dir.AlbumCount = getArtistAlbumCount(artist)
 	dir.UserRating = int32(artist.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = artist.AverageRating
+	}
 	if artist.Starred {
 		dir.Starred = artist.StarredAt
 	}
@@ -440,13 +443,16 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) (*responses.Directory, error) {
 	dir := &responses.Directory{}
 	dir.Id = album.ID
-	dir.Name = album.Name
+	dir.Name = album.FullName()
 	dir.Parent = album.AlbumArtistID
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = album.AverageRating
+	}
 	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {

@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ import (
 
 type Level uint32
 
-type LevelFunc = func(ctx interface{}, msg interface{}, keyValuePairs ...interface{})
+type LevelFunc = func(ctx any, msg any, keyValuePairs ...any)
 
 var redacted = &Hook{
 	AcceptedLevels: logrus.AllLevels,
@@ -26,10 +27,9 @@ var redacted = &Hook{
 		// Keys from the config
 		"(ApiKey:\")[\\w]*",
 		"(Secret:\")[\\w]*",
-		"(Spotify.*ID:\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
-		"(ReverseProxyUserHeader:[\\s]*\")[^\"]*",
-		"(ReverseProxyWhitelist:[\\s]*\")[^\"]*",
+		"(UserHeader:[\\s]*\")[^\"]*",
+		"(TrustedSources:[\\s]*\")[^\"]*",
 		"(MetricsPath:[\\s]*\")[^\"]*",
 		"(DevAutoCreateAdminPassword:[\\s]*\")[^\"]*",
 		"(DevAutoLoginUsername:[\\s]*\")[^\"]*",
@@ -70,6 +70,7 @@ type levelPath struct {
 
 var (
 	currentLevel  Level
+	loggerMu      sync.RWMutex
 	defaultLogger = logrus.New()
 	logSourceLine = false
 	rootPath      string
@@ -78,17 +79,19 @@ var (
 
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l Level) {
+	loggerMu.Lock()
 	currentLevel = l
 	defaultLogger.Level = logrus.TraceLevel
+	loggerMu.Unlock()
 	logrus.SetLevel(logrus.Level(l))
 }
 
 func SetLevelString(l string) {
-	level := levelFromString(l)
+	level := ParseLogLevel(l)
 	SetLevel(level)
 }
 
-func levelFromString(l string) Level {
+func ParseLogLevel(l string) Level {
 	envLevel := strings.ToLower(l)
 	var level Level
 	switch envLevel {
@@ -110,9 +113,11 @@ func levelFromString(l string) Level {
 
 // SetLogLevels sets the log levels for specific paths in the codebase.
 func SetLogLevels(levels map[string]string) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	logLevels = nil
 	for k, v := range levels {
-		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
+		logLevels = append(logLevels, levelPath{path: k, level: ParseLogLevel(v)})
 	}
 	sort.Slice(logLevels, func(i, j int) bool {
 		return logLevels[i].path > logLevels[j].path
@@ -125,6 +130,8 @@ func SetLogSourceLine(enabled bool) {
 
 func SetRedacting(enabled bool) {
 	if enabled {
+		loggerMu.Lock()
+		defer loggerMu.Unlock()
 		defaultLogger.AddHook(redacted)
 	}
 }
@@ -133,7 +140,18 @@ func SetOutput(w io.Writer) {
 	if runtime.GOOS == "windows" {
 		w = CRLFWriter(w)
 	}
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger.SetOutput(w)
+}
+
+// EnableJournalFormat wraps the current logger formatter with syslog
+// priority prefixes for systemd-journald. Only call this when output
+// goes to stderr and JOURNAL_STREAM is set.
+func EnableJournalFormat() {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
+	defaultLogger.Formatter = &journalFormatter{inner: defaultLogger.Formatter}
 }
 
 // Redact applies redaction to a single string
@@ -142,7 +160,7 @@ func Redact(msg string) string {
 	return r
 }
 
-func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Context {
+func NewContext(ctx context.Context, keyValuePairs ...any) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -158,10 +176,14 @@ func NewContext(ctx context.Context, keyValuePairs ...interface{}) context.Conte
 }
 
 func SetDefaultLogger(l *logrus.Logger) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	defaultLogger = l
 }
 
 func CurrentLevel() Level {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	return currentLevel
 }
 
@@ -170,32 +192,32 @@ func IsGreaterOrEqualTo(level Level) bool {
 	return shouldLog(level, 2)
 }
 
-func Fatal(args ...interface{}) {
-	log(LevelFatal, args...)
+func Fatal(args ...any) {
+	Log(LevelFatal, args...)
 	os.Exit(1)
 }
 
-func Error(args ...interface{}) {
-	log(LevelError, args...)
+func Error(args ...any) {
+	Log(LevelError, args...)
 }
 
-func Warn(args ...interface{}) {
-	log(LevelWarn, args...)
+func Warn(args ...any) {
+	Log(LevelWarn, args...)
 }
 
-func Info(args ...interface{}) {
-	log(LevelInfo, args...)
+func Info(args ...any) {
+	Log(LevelInfo, args...)
 }
 
-func Debug(args ...interface{}) {
-	log(LevelDebug, args...)
+func Debug(args ...any) {
+	Log(LevelDebug, args...)
 }
 
-func Trace(args ...interface{}) {
-	log(LevelTrace, args...)
+func Trace(args ...any) {
+	Log(LevelTrace, args...)
 }
 
-func log(level Level, args ...interface{}) {
+func Log(level Level, args ...any) {
 	if !shouldLog(level, 3) {
 		return
 	}
@@ -204,14 +226,21 @@ func log(level Level, args ...interface{}) {
 }
 
 func Writer() io.Writer {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	return defaultLogger.Writer()
 }
 
 func shouldLog(requiredLevel Level, skip int) bool {
-	if currentLevel >= requiredLevel {
+	loggerMu.RLock()
+	level := currentLevel
+	levels := logLevels
+	loggerMu.RUnlock()
+
+	if level >= requiredLevel {
 		return true
 	}
-	if len(logLevels) == 0 {
+	if len(levels) == 0 {
 		return false
 	}
 
@@ -221,7 +250,7 @@ func shouldLog(requiredLevel Level, skip int) bool {
 	}
 
 	file = strings.TrimPrefix(file, rootPath)
-	for _, lp := range logLevels {
+	for _, lp := range levels {
 		if strings.HasPrefix(file, lp.path) {
 			return lp.level >= requiredLevel
 		}
@@ -229,7 +258,7 @@ func shouldLog(requiredLevel Level, skip int) bool {
 	return false
 }
 
-func parseArgs(args []interface{}) (*logrus.Entry, string) {
+func parseArgs(args []any) (*logrus.Entry, string) {
 	var l *logrus.Entry
 	var err error
 	if args[0] == nil {
@@ -268,7 +297,7 @@ func parseArgs(args []interface{}) (*logrus.Entry, string) {
 	return l, ""
 }
 
-func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry {
+func addFields(logger *logrus.Entry, keyValuePairs []any) *logrus.Entry {
 	for i := 0; i < len(keyValuePairs); i += 2 {
 		switch name := keyValuePairs[i].(type) {
 		case error:
@@ -295,7 +324,7 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 	return logger
 }
 
-func extractLogger(ctx interface{}) (*logrus.Entry, error) {
+func extractLogger(ctx any) (*logrus.Entry, error) {
 	switch ctx := ctx.(type) {
 	case *logrus.Entry:
 		return ctx, nil
@@ -314,6 +343,8 @@ func extractLogger(ctx interface{}) (*logrus.Entry, error) {
 func createNewLogger() *logrus.Entry {
 	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
 	//l.Formatter = &logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true}
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
 	logger := logrus.NewEntry(defaultLogger)
 	return logger
 }

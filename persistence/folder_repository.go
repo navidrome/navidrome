@@ -4,7 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
+	"maps"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -91,8 +96,82 @@ func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
 	return r.count(query)
 }
 
-func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]model.FolderUpdateInfo, error) {
-	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(Eq{"library_id": lib.ID, "missing": false})
+func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...string) (map[string]model.FolderUpdateInfo, error) {
+	// If no specific paths, return all folders in the library
+	if len(targetPaths) == 0 {
+		return r.getFolderUpdateInfoAll(lib)
+	}
+
+	// Check if any path is root (return all folders)
+	for _, targetPath := range targetPaths {
+		if targetPath == "" || targetPath == "." {
+			return r.getFolderUpdateInfoAll(lib)
+		}
+	}
+
+	// Process paths in batches to avoid SQLite's expression tree depth limit (max 1000).
+	// Each path generates ~3 conditions, so batch size of 100 keeps us well under the limit.
+	const batchSize = 100
+	result := make(map[string]model.FolderUpdateInfo)
+
+	for batch := range slices.Chunk(targetPaths, batchSize) {
+		batchResult, err := r.getFolderUpdateInfoBatch(lib, batch)
+		if err != nil {
+			return nil, err
+		}
+		maps.Copy(result, batchResult)
+	}
+
+	return result, nil
+}
+
+// getFolderUpdateInfoAll returns update info for all non-missing folders in the library
+func (r folderRepository) getFolderUpdateInfoAll(lib model.Library) (map[string]model.FolderUpdateInfo, error) {
+	where := And{
+		Eq{"library_id": lib.ID},
+		Eq{"missing": false},
+	}
+	return r.queryFolderUpdateInfo(where)
+}
+
+// getFolderUpdateInfoBatch returns update info for a batch of target paths and their descendants
+func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPaths []string) (map[string]model.FolderUpdateInfo, error) {
+	where := And{
+		Eq{"library_id": lib.ID},
+		Eq{"missing": false},
+	}
+
+	// Collect folder IDs for exact target folders and path conditions for descendants
+	folderIDs := make([]string, 0, len(targetPaths))
+	pathConditions := make(Or, 0, len(targetPaths)*2)
+
+	for _, targetPath := range targetPaths {
+		// Clean the path to normalize it. Paths stored in the folder table do not have leading/trailing slashes.
+		cleanPath := strings.TrimPrefix(targetPath, string(os.PathSeparator))
+		cleanPath = filepath.Clean(cleanPath)
+
+		// Include the target folder itself by ID
+		folderIDs = append(folderIDs, model.FolderID(lib, cleanPath))
+
+		// Include all descendants: folders whose path field equals or starts with the target path
+		// Note: Folder.Path is the directory path, so children have path = targetPath
+		pathConditions = append(pathConditions, Eq{"path": cleanPath})
+		pathConditions = append(pathConditions, Like{"path": cleanPath + "/%"})
+	}
+
+	// Combine conditions: exact folder IDs OR descendant path patterns
+	if len(folderIDs) > 0 {
+		where = append(where, Or{Eq{"id": folderIDs}, pathConditions})
+	} else if len(pathConditions) > 0 {
+		where = append(where, pathConditions)
+	}
+
+	return r.queryFolderUpdateInfo(where)
+}
+
+// queryFolderUpdateInfo executes the query and returns the result map
+func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.FolderUpdateInfo, error) {
+	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(where)
 	var res []struct {
 		ID        string
 		UpdatedAt time.Time
@@ -140,16 +219,24 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	if err != nil {
 		return nil, err
 	}
+	return wrapFolderCursor(cursor), nil
+}
+
+func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {
+			if f.Folder == nil {
+				yield(model.Folder{}, fmt.Errorf("unexpected nil folder (%v): %w", f, err))
+				return
+			}
 			if !yield(*f.Folder, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
-func (r folderRepository) purgeEmpty() error {
+func (r folderRepository) purgeEmpty(libraryIDs ...int) error {
 	sq := Delete(r.tableName).Where(And{
 		Eq{"num_audio_files": 0},
 		Eq{"num_playlists": 0},
@@ -157,6 +244,10 @@ func (r folderRepository) purgeEmpty() error {
 		ConcatExpr("id not in (select parent_id from folder)"),
 		ConcatExpr("id not in (select folder_id from media_file)"),
 	})
+	// If libraryIDs are specified, only purge folders from those libraries
+	if len(libraryIDs) > 0 {
+		sq = sq.Where(Eq{"library_id": libraryIDs})
+	}
 	c, err := r.executeSQL(sq)
 	if err != nil {
 		return fmt.Errorf("purging empty folders: %w", err)

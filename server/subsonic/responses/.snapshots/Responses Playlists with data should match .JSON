@@ -14,16 +14,26 @@
         "duration": 120,
         "public": true,
         "owner": "admin",
+        "created": "2023-02-20T14:45:00Z",
+        "changed": "2023-02-20T14:45:00Z",
+        "coverArt": "pl-123123123123",
+        "readonly": true,
+        "validUntil": "2023-02-20T14:45:00Z"
+      },
+      {
+        "id": "333",
+        "name": "ccc",
+        "songCount": 0,
+        "duration": 0,
         "created": "0001-01-01T00:00:00Z",
         "changed": "0001-01-01T00:00:00Z",
-        "coverArt": "pl-123123123123"
+        "readonly": false
       },
       {
         "id": "222",
         "name": "bbb",
         "songCount": 0,
         "duration": 0,
-        "public": false,
         "created": "0001-01-01T00:00:00Z",
         "changed": "0001-01-01T00:00:00Z"
       }

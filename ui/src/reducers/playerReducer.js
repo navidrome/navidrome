@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import subsonic from '../subsonic'
+import { decisionService } from '../transcode'
 import {
   PLAYER_ADD_TRACKS,
   PLAYER_CLEAR_QUEUE,
@@ -10,6 +11,7 @@ import {
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
+  PLAYER_REFRESH_QUEUE,
 } from '../actions'
 import config from '../config'
 
@@ -29,6 +31,14 @@ const pad = (value) => {
     return str
   }
 }
+
+const makeMusicSrc = (trackId) =>
+  decisionService.getProfile()
+    ? () =>
+        decisionService
+          .resolveStreamUrl(trackId)
+          .catch(() => subsonic.streamUrl(trackId))
+    : subsonic.streamUrl(trackId)
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -76,7 +86,7 @@ const mapToAudioLists = (item) => {
     lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
-    musicSrc: subsonic.streamUrl(trackId),
+    musicSrc: makeMusicSrc(trackId),
     cover: subsonic.getCoverArtUrl(
       {
         id: trackId,
@@ -124,6 +134,7 @@ const reduceAddTracks = (state, { data }) => {
 }
 
 const reducePlayNext = (state, { data }) => {
+  const newTracks = Object.keys(data).map((id) => mapToAudioLists(data[id]))
   const newQueue = []
   const current = state.current || {}
   let foundPos = false
@@ -131,15 +142,11 @@ const reducePlayNext = (state, { data }) => {
     newQueue.push(item)
     if (item.uuid === current.uuid) {
       foundPos = true
-      Object.keys(data).forEach((id) => {
-        newQueue.push(mapToAudioLists(data[id]))
-      })
+      newQueue.push(...newTracks)
     }
   })
   if (!foundPos) {
-    Object.keys(data).forEach((id) => {
-      newQueue.push(mapToAudioLists(data[id]))
-    })
+    newQueue.push(...newTracks)
   }
 
   return {
@@ -157,11 +164,18 @@ const reduceSetVolume = (state, { data: { volume } }) => {
 }
 
 const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
+  // Only keep clear and playIndex alive when there is an actual pending
+  // track switch (playIndex differs from savedPlayIndex). This lets
+  // PLAYER_PLAY_TRACKS selections survive the sync, while allowing
+  // PLAYER_PLAY_NEXT (which sets playIndex to the current track) to
+  // reset immediately and avoid restarting playback.
+  const hasPendingSwitch =
+    state.playIndex != null && state.playIndex !== state.savedPlayIndex
   return {
     ...state,
     queue: audioLists,
-    clear: false,
-    playIndex: undefined,
+    clear: hasPendingSwitch ? state.clear : false,
+    playIndex: hasPendingSwitch ? state.playIndex : undefined,
   }
 }
 
@@ -170,11 +184,17 @@ const reduceCurrent = (state, { data }) => {
   const savedPlayIndex = state.queue.findIndex(
     (item) => item.uuid === current.uuid,
   )
+  // When a track selection is pending (playIndex is set), keep it alive
+  // until the music player confirms it actually switched to the requested
+  // track. Without this, a premature onAudioPlay callback for the
+  // still-playing old track would overwrite the pending selection.
+  const pending = state.playIndex != null && savedPlayIndex !== state.playIndex
   return {
     ...state,
     current,
-    playIndex: undefined,
-    savedPlayIndex,
+    playIndex: pending ? state.playIndex : undefined,
+    clear: pending ? state.clear : false,
+    savedPlayIndex: pending ? state.savedPlayIndex : savedPlayIndex,
     volume: data.volume,
   }
 }
@@ -207,6 +227,22 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
+    case PLAYER_REFRESH_QUEUE: {
+      const resolvedUrls = payload.data || {}
+      return {
+        ...previousState,
+        queue: previousState.queue.map((item) => ({
+          ...item,
+          musicSrc: item.isRadio
+            ? item.musicSrc
+            : resolvedUrls[item.trackId] || subsonic.streamUrl(item.trackId),
+        })),
+        clear: true,
+        autoPlay: false,
+        playIndex:
+          previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
+      }
+    }
     default:
       return previousState
   }

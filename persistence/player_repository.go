@@ -103,14 +103,14 @@ func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *playerRepository) Read(id string) (interface{}, error) {
+func (r *playerRepository) Read(id string) (any, error) {
 	sel := r.newRestSelect().Where(Eq{"player.id": id})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sel := r.newRestSelect(r.parseRestOptions(r.ctx, options...))
 	res := model.Players{}
 	err := r.queryAll(sel, &res)
@@ -121,7 +121,7 @@ func (r *playerRepository) EntityName() string {
 	return "player"
 }
 
-func (r *playerRepository) NewInstance() interface{} {
+func (r *playerRepository) NewInstance() any {
 	return &model.Player{}
 }
 
@@ -130,7 +130,7 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 	return u.IsAdmin || p.UserId == u.ID
 }
 
-func (r *playerRepository) Save(entity interface{}) (string, error) {
+func (r *playerRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Player)
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
@@ -142,7 +142,7 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *playerRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
 	if !r.isPermitted(t) {

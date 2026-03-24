@@ -88,10 +88,10 @@ func (r *tagRepository) purgeUnused() error {
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error purging unused tags: %w", err)
+		return fmt.Errorf("error purging %s unused tags: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Purged unused tags", "totalDeleted", c)
+		log.Debug(r.ctx, "Purged unused tags", "totalDeleted", c, "table", r.tableName)
 	}
 	return err
 }

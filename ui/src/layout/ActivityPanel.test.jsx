@@ -43,19 +43,47 @@ describe('<ActivityPanel />', () => {
     })
   })
 
-  it('clears the error icon after opening the panel', () => {
+  it('shows warning icon when server reports a scan error', () => {
     render(
       <Provider store={store}>
         <ActivityPanel />
       </Provider>,
     )
 
+    // Warning icon should be visible when there's a scan error
+    expect(screen.getByTestId('activity-warning-icon')).toBeInTheDocument()
+
+    // Open the panel - warning icon should still be visible
     const button = screen.getByRole('button')
-    expect(screen.getByTestId('activity-error-icon')).toBeInTheDocument()
-
     fireEvent.click(button)
-
-    expect(screen.getByTestId('activity-ok-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('activity-warning-icon')).toBeInTheDocument()
     expect(screen.getByText('Scan failed')).toBeInTheDocument()
+  })
+
+  it('shows error icon when server is down', () => {
+    const downStore = createStore(
+      combineReducers({ activity: activityReducer }),
+      {
+        activity: {
+          scanStatus: {
+            scanning: false,
+            folderCount: 0,
+            count: 0,
+            error: '',
+            elapsedTime: 0,
+          },
+          serverStart: { version: config.version, startTime: null }, // null startTime = server down
+        },
+      },
+    )
+
+    render(
+      <Provider store={downStore}>
+        <ActivityPanel />
+      </Provider>,
+    )
+
+    // Error icon should be visible when server is down
+    expect(screen.getByTestId('activity-error-icon')).toBeInTheDocument()
   })
 })

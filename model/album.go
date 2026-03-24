@@ -1,10 +1,13 @@
 package model
 
 import (
+	"fmt"
 	"iter"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/navidrome/navidrome/conf"
 
 	"github.com/gohugoio/hashstructure"
 )
@@ -68,6 +71,13 @@ type Album struct {
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+func (a Album) FullName() string {
+	if conf.Server.Subsonic.AppendAlbumVersion && len(a.Tags[TagAlbumVersion]) > 0 {
+		return fmt.Sprintf("%s (%s)", a.Name, a.Tags[TagAlbumVersion][0])
+	}
+	return a.Name
 }
 
 // Equals compares two Album structs, ignoring calculated fields

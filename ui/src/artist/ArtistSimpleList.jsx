@@ -2,12 +2,13 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
+import ListItemAvatar from '@material-ui/core/ListItemAvatar'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'react-admin'
-import { ArtistContextMenu, RatingField } from '../common'
+import { ArtistContextMenu, CoverArtAvatar, RatingField } from '../common'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -47,7 +48,11 @@ const ArtistSimpleList = ({
             data[id] && (
               <span key={id} onClick={() => linkType(id)}>
                 <ListItem className={classes.listItem} button={true}>
+                  <ListItemAvatar>
+                    <CoverArtAvatar record={data[id]} />
+                  </ListItemAvatar>
                   <ListItemText
+                    style={{ marginLeft: '8px' }}
                     primary={
                       <>
                         <div className={classes.title}>{data[id].name}</div>

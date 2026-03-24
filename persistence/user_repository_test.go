@@ -559,4 +559,15 @@ var _ = Describe("UserRepository", func() {
 			Expect(user.Libraries[0].ID).To(Equal(1))
 		})
 	})
+
+	Describe("filters", func() {
+		It("qualifies id filter with table name", func() {
+			r := repo.(*userRepository)
+			qo := r.parseRestOptions(r.ctx, rest.QueryOptions{Filters: map[string]any{"id": "123"}})
+			sel := r.selectUserWithLibraries(qo)
+			query, _, err := r.toSQL(sel)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(ContainSubstring("user.id = {:p0}"))
+		})
+	})
 })

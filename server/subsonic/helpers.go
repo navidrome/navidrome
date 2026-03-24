@@ -13,9 +13,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
@@ -34,10 +34,10 @@ func newResponse() *responses.Subsonic {
 
 type subError struct {
 	code     int32
-	messages []interface{}
+	messages []any
 }
 
-func newError(code int32, message ...interface{}) error {
+func newError(code int32, message ...any) error {
 	return subError{
 		code:     code,
 		messages: message,
@@ -99,7 +99,10 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		Name:           a.Name,
 		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
+	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -113,8 +116,11 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		Name:           a.Name,
 		AlbumCount:     getArtistAlbumCount(&a),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
+	}
+	if conf.Server.Subsonic.EnableAverageRating {
+		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
 		artist.Starred = a.StarredAt
@@ -166,13 +172,32 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 	return
 }
 
+func isClientInList(clientList, client string) bool {
+	if clientList == "" || client == "" {
+		return false
+	}
+	clients := strings.SplitSeq(clientList, ",")
+	for c := range clients {
+		if strings.TrimSpace(c) == client {
+			return true
+		}
+	}
+	return false
+}
+
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
 	child.Title = mf.FullTitle()
 	child.IsDir = false
+
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+		return child
+	}
+
 	child.Parent = mf.AlbumID
-	child.Album = mf.Album
+	child.Album = mf.FullAlbumName()
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
@@ -183,7 +208,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BitRate = int32(mf.BitRate)
 	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
-	player, ok := request.PlayerFrom(ctx)
+
 	if ok && player.ReportRealPath {
 		child.Path = mf.AbsolutePath()
 	} else {
@@ -199,6 +224,9 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = mf.AverageRating
+	}
 
 	format, _ := getTranscoding(ctx)
 	if mf.Suffix != "" && format != "" && mf.Suffix != format {
@@ -211,8 +239,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 }
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
-	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -274,7 +302,7 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 func fakePath(mf model.MediaFile) string {
 	builder := strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
+	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName())))
 	if mf.DiscNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
 	}
@@ -293,9 +321,10 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
-	child.Title = al.Name
-	child.Name = al.Name
-	child.Album = al.Name
+	fullName := al.FullName()
+	child.Title = fullName
+	child.Name = fullName
+	child.Album = fullName
 	child.Artist = al.AlbumArtist
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
@@ -310,6 +339,9 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		child.AverageRating = al.AverageRating
+	}
 	child.OpenSubsonicChild = osChildFromAlbum(ctx, al)
 	return child
 }
@@ -360,7 +392,13 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	}
 	var discTitles []responses.DiscTitle
 	for num, title := range a.Discs {
-		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
+		artID := model.NewArtworkID(model.KindDiscArtwork,
+			model.DiscArtworkID(a.ID, num), &a.UpdatedAt)
+		discTitles = append(discTitles, responses.DiscTitle{
+			Disc:     int32(num),
+			Title:    title,
+			CoverArt: artID.String(),
+		})
 	}
 	if len(discTitles) == 1 && discTitles[0].Title == "" {
 		return nil
@@ -374,7 +412,7 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
-	dir.Name = album.Name
+	dir.Name = album.FullName()
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
 	dir.CoverArt = album.CoverArtID().String()
@@ -403,6 +441,9 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
+	if conf.Server.Subsonic.EnableAverageRating {
+		dir.AverageRating = album.AverageRating
+	}
 	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
 		return responses.RecordLabel{Name: s}
 	})

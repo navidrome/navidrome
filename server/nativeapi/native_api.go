@@ -14,78 +14,97 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/metrics"
+	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 )
 
-type Router struct {
-	http.Handler
-	ds        model.DataStore
-	share     core.Share
-	playlists core.Playlists
-	insights  metrics.Insights
-	libs      core.Library
+// PluginManager defines the interface for plugin management operations.
+// This interface is used by the API handlers to enable/disable plugins and update configuration.
+type PluginManager interface {
+	EnablePlugin(ctx context.Context, id string) error
+	DisablePlugin(ctx context.Context, id string) error
+	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
+	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
+	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
+	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
+	RescanPlugins(ctx context.Context) error
+	UnloadDisabledPlugins(ctx context.Context)
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService}
+type Router struct {
+	http.Handler
+	ds            model.DataStore
+	share         core.Share
+	playlists     playlistsvc.Playlists
+	insights      metrics.Insights
+	libs          core.Library
+	users         core.User
+	maintenance   core.Maintenance
+	pluginManager PluginManager
+	imgUpload     core.ImageUploadService
+}
+
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload}
 	r.Handler = r.routes()
 	return r
 }
 
-func (n *Router) routes() http.Handler {
+func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
 	// Public
-	n.RX(r, "/translation", newTranslationRepository, false)
+	api.RX(r, "/translation", newTranslationRepository, false)
 
 	// Protected
 	r.Group(func(r chi.Router) {
-		r.Use(server.Authenticator(n.ds))
+		r.Use(server.Authenticator(api.ds))
 		r.Use(server.JWTRefresher)
-		r.Use(server.UpdateLastAccessMiddleware(n.ds))
-		n.R(r, "/user", model.User{}, true)
-		n.R(r, "/song", model.MediaFile{}, false)
-		n.R(r, "/album", model.Album{}, false)
-		n.R(r, "/artist", model.Artist{}, false)
-		n.R(r, "/genre", model.Genre{}, false)
-		n.R(r, "/player", model.Player{}, true)
-		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		n.R(r, "/radio", model.Radio{}, true)
-		n.R(r, "/tag", model.Tag{}, true)
+		r.Use(server.UpdateLastAccessMiddleware(api.ds))
+		api.RX(r, "/user", api.users.NewRepository, true)
+		api.R(r, "/song", model.MediaFile{}, false)
+		api.R(r, "/album", model.Album{}, false)
+		api.addArtistRoute(r)
+		api.R(r, "/genre", model.Genre{}, false)
+		api.R(r, "/player", model.Player{}, true)
+		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
+		api.addRadioRoute(r)
+		api.R(r, "/tag", model.Tag{}, true)
 		if conf.Server.EnableSharing {
-			n.RX(r, "/share", n.share.NewRepository, true)
+			api.RX(r, "/share", api.share.NewRepository, true)
 		}
 
-		n.addPlaylistRoute(r)
-		n.addPlaylistTrackRoute(r)
-		n.addSongPlaylistsRoute(r)
-		n.addQueueRoute(r)
-		n.addMissingFilesRoute(r)
-		n.addKeepAliveRoute(r)
-		n.addInsightsRoute(r)
+		api.addPlaylistRoute(r)
+		api.addPlaylistTrackRoute(r)
+		api.addSongPlaylistsRoute(r)
+		api.addQueueRoute(r)
+		api.addMissingFilesRoute(r)
+		api.addKeepAliveRoute(r)
+		api.addInsightsRoute(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
-			n.addInspectRoute(r)
-			n.addConfigRoute(r)
-			n.addUserLibraryRoute(r)
-			n.RX(r, "/library", n.libs.NewRepository, true)
+			api.addInspectRoute(r)
+			api.addConfigRoute(r)
+			api.addUserLibraryRoute(r)
+			api.addPluginRoute(r)
+			api.RX(r, "/library", api.libs.NewRepository, true)
 		})
 	})
 
 	return r
 }
 
-func (n *Router) R(r chi.Router, pathPrefix string, model interface{}, persistable bool) {
+func (api *Router) R(r chi.Router, pathPrefix string, model any, persistable bool) {
 	constructor := func(ctx context.Context) rest.Repository {
-		return n.ds.Resource(ctx, model)
+		return api.ds.Resource(ctx, model)
 	}
-	n.RX(r, pathPrefix, constructor, persistable)
+	api.RX(r, pathPrefix, constructor, persistable)
 }
 
-func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
+func (api *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
 	r.Route(pathPrefix, func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		if persistable {
@@ -102,9 +121,9 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 	})
 }
 
-func (n *Router) addPlaylistRoute(r chi.Router) {
+func (api *Router) addPlaylistRoute(r chi.Router) {
 	constructor := func(ctx context.Context) rest.Repository {
-		return n.ds.Resource(ctx, model.Playlist{})
+		return api.playlists.NewRepository(ctx)
 	}
 
 	r.Route("/playlist", func(r chi.Router) {
@@ -114,7 +133,7 @@ func (n *Router) addPlaylistRoute(r chi.Router) {
 				rest.Post(constructor)(w, r)
 				return
 			}
-			createPlaylistFromM3U(n.playlists)(w, r)
+			createPlaylistFromM3U(api.playlists)(w, r)
 		})
 
 		r.Route("/{id}", func(r chi.Router) {
@@ -122,59 +141,59 @@ func (n *Router) addPlaylistRoute(r chi.Router) {
 			r.Get("/", rest.Get(constructor))
 			r.Put("/", rest.Put(constructor))
 			r.Delete("/", rest.Delete(constructor))
+			r.Post("/image", uploadPlaylistImage(api.playlists))
+			r.Delete("/image", deletePlaylistImage(api.playlists))
 		})
 	})
 }
 
-func (n *Router) addPlaylistTrackRoute(r chi.Router) {
+func (api *Router) addPlaylistTrackRoute(r chi.Router) {
 	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			getPlaylist(n.ds)(w, r)
+			getPlaylist(api.playlists)(w, r)
 		})
 		r.With(server.URLParamsMiddleware).Route("/", func(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteFromPlaylist(n.ds)(w, r)
+				deleteFromPlaylist(api.playlists)(w, r)
 			})
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				addToPlaylist(n.ds)(w, r)
+				addToPlaylist(api.playlists)(w, r)
 			})
 		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				getPlaylistTrack(n.ds)(w, r)
+				getPlaylistTrack(api.playlists)(w, r)
 			})
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
-				reorderItem(n.ds)(w, r)
+				reorderItem(api.playlists)(w, r)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteFromPlaylist(n.ds)(w, r)
+				deleteFromPlaylist(api.playlists)(w, r)
 			})
 		})
 	})
 }
 
-func (n *Router) addSongPlaylistsRoute(r chi.Router) {
+func (api *Router) addSongPlaylistsRoute(r chi.Router) {
 	r.With(server.URLParamsMiddleware).Get("/song/{id}/playlists", func(w http.ResponseWriter, r *http.Request) {
-		getSongPlaylists(n.ds)(w, r)
+		getSongPlaylists(api.playlists)(w, r)
 	})
 }
 
-func (n *Router) addQueueRoute(r chi.Router) {
+func (api *Router) addQueueRoute(r chi.Router) {
 	r.Route("/queue", func(r chi.Router) {
-		r.Get("/", getQueue(n.ds))
-		r.Post("/", saveQueue(n.ds))
-		r.Put("/", updateQueue(n.ds))
-		r.Delete("/", clearQueue(n.ds))
+		r.Get("/", getQueue(api.ds))
+		r.Post("/", saveQueue(api.ds))
+		r.Put("/", updateQueue(api.ds))
+		r.Delete("/", clearQueue(api.ds))
 	})
 }
 
-func (n *Router) addMissingFilesRoute(r chi.Router) {
+func (api *Router) addMissingFilesRoute(r chi.Router) {
 	r.Route("/missing", func(r chi.Router) {
-		n.RX(r, "/", newMissingRepository(n.ds), false)
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			deleteMissingFiles(n.ds, w, r)
-		})
+		api.RX(r, "/", newMissingRepository(api.ds), false)
+		r.Delete("/", deleteMissingFiles(api.maintenance))
 	})
 }
 
@@ -192,13 +211,13 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
-	_, err = w.Write(resp)
+	_, err = w.Write(resp) //nolint:gosec
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (n *Router) addInspectRoute(r chi.Router) {
+func (api *Router) addInspectRoute(r chi.Router) {
 	if conf.Server.Inspect.Enabled {
 		r.Group(func(r chi.Router) {
 			if conf.Server.Inspect.MaxRequests > 0 {
@@ -207,28 +226,28 @@ func (n *Router) addInspectRoute(r chi.Router) {
 					conf.Server.Inspect.BacklogTimeout)
 				r.Use(middleware.ThrottleBacklog(conf.Server.Inspect.MaxRequests, conf.Server.Inspect.BacklogLimit, time.Duration(conf.Server.Inspect.BacklogTimeout)))
 			}
-			r.Get("/inspect", inspect(n.ds))
+			r.Get("/inspect", inspect(api.ds))
 		})
 	}
 }
 
-func (n *Router) addConfigRoute(r chi.Router) {
+func (api *Router) addConfigRoute(r chi.Router) {
 	if conf.Server.DevUIShowConfig {
 		r.Get("/config/*", getConfig)
 	}
 }
 
-func (n *Router) addKeepAliveRoute(r chi.Router) {
+func (api *Router) addKeepAliveRoute(r chi.Router) {
 	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
 	})
 }
 
-func (n *Router) addInsightsRoute(r chi.Router) {
+func (api *Router) addInsightsRoute(r chi.Router) {
 	r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
-		last, success := n.insights.LastRun(r.Context())
+		last, success := api.insights.LastRun(r.Context())
 		if conf.Server.EnableInsightsCollector {
-			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`)) //nolint:gosec
 		} else {
 			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
 		}

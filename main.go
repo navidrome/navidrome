@@ -9,11 +9,12 @@ import (
 
 //goland:noinspection GoBoolExpressions
 func main() {
-	// This import is used to force the inclusion of the `netgo` tag when compiling the project.
+	// These references force the inclusion of build tags when compiling the project.
 	// If you get compilation errors like "undefined: buildtags.NETGO", this means you forgot to specify
-	// the `netgo` build tag when compiling the project.
+	// the required build tags when compiling the project.
 	// To avoid these kind of errors, you should use `make build` to compile the project.
 	_ = buildtags.NETGO
+	_ = buildtags.SQLITE_FTS5
 
 	cmd.Execute()
 }

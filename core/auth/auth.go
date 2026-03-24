@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -45,42 +45,30 @@ func Init(ds model.DataStore) {
 	})
 }
 
-func createBaseClaims() map[string]any {
-	tokenClaims := map[string]any{}
-	tokenClaims[jwt.IssuerKey] = consts.JWTIssuer
-	return tokenClaims
-}
-
-func CreatePublicToken(claims map[string]any) (string, error) {
-	tokenClaims := createBaseClaims()
-	for k, v := range claims {
-		tokenClaims[k] = v
-	}
-	_, token, err := TokenAuth.Encode(tokenClaims)
-
+func CreatePublicToken(claims Claims) (string, error) {
+	claims.Issuer = consts.JWTIssuer
+	_, token, err := TokenAuth.Encode(claims.ToMap())
 	return token, err
 }
 
-func CreateExpiringPublicToken(exp time.Time, claims map[string]any) (string, error) {
-	tokenClaims := createBaseClaims()
+func CreateExpiringPublicToken(exp time.Time, claims Claims) (string, error) {
+	claims.Issuer = consts.JWTIssuer
 	if !exp.IsZero() {
-		tokenClaims[jwt.ExpirationKey] = exp.UTC().Unix()
+		claims.ExpiresAt = exp
 	}
-	for k, v := range claims {
-		tokenClaims[k] = v
-	}
-	_, token, err := TokenAuth.Encode(tokenClaims)
-
+	_, token, err := TokenAuth.Encode(claims.ToMap())
 	return token, err
 }
 
 func CreateToken(u *model.User) (string, error) {
-	claims := createBaseClaims()
-	claims[jwt.SubjectKey] = u.UserName
-	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
-	claims["uid"] = u.ID
-	claims["adm"] = u.IsAdmin
-	token, _, err := TokenAuth.Encode(claims)
+	claims := Claims{
+		Issuer:   consts.JWTIssuer,
+		Subject:  u.UserName,
+		IssuedAt: time.Now(),
+		UserID:   u.ID,
+		IsAdmin:  u.IsAdmin,
+	}
+	token, _, err := TokenAuth.Encode(claims.ToMap())
 	if err != nil {
 		return "", err
 	}
@@ -89,23 +77,18 @@ func CreateToken(u *model.User) (string, error) {
 }
 
 func TouchToken(token jwt.Token) (string, error) {
-	claims, err := token.AsMap(context.Background())
-	if err != nil {
-		return "", err
-	}
-
-	claims[jwt.ExpirationKey] = time.Now().UTC().Add(conf.Server.SessionTimeout).Unix()
-	_, newToken, err := TokenAuth.Encode(claims)
-
+	claims := ClaimsFromToken(token).
+		WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
+	_, newToken, err := TokenAuth.Encode(claims.ToMap())
 	return newToken, err
 }
 
-func Validate(tokenStr string) (map[string]interface{}, error) {
+func Validate(tokenStr string) (Claims, error) {
 	token, err := jwtauth.VerifyToken(TokenAuth, tokenStr)
 	if err != nil {
-		return nil, err
+		return Claims{}, err
 	}
-	return token.AsMap(context.Background())
+	return ClaimsFromToken(token), nil
 }
 
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
@@ -113,9 +96,9 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 	if err != nil {
 		c, err := ds.User(ctx).CountAll()
 		if c == 0 && err == nil {
-			log.Debug(ctx, "Scanner: No admin user yet!", err)
+			log.Debug(ctx, "No admin user yet!", err)
 		} else {
-			log.Error(ctx, "Scanner: No admin user found!", err)
+			log.Error(ctx, "No admin user found!", err)
 		}
 		u = &model.User{}
 	}
@@ -135,6 +118,19 @@ func createNewSecret(ctx context.Context, ds model.DataStore) string {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
 	return secret
+}
+
+// EncodeToken creates a signed JWT from an arbitrary claims map.
+// It sets the issuer claim automatically.
+func EncodeToken(claims map[string]any) (string, error) {
+	claims[jwt.IssuerKey] = consts.JWTIssuer
+	_, token, err := TokenAuth.Encode(claims)
+	return token, err
+}
+
+// DecodeAndVerifyToken verifies a JWT string and returns the parsed token.
+func DecodeAndVerifyToken(tokenStr string) (jwt.Token, error) {
+	return jwtauth.VerifyToken(TokenAuth, tokenStr)
 }
 
 func getEncKey() []byte {

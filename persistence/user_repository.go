@@ -57,6 +57,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r.db = db
 	r.tableName = "user"
 	r.registerModel(&model.User{}, map[string]filterFunc{
+		"id":       idFilter(r.tableName),
 		"password": invalidFilter(ctx),
 		"name":     r.withTableName(startsWithFilter),
 	})
@@ -339,7 +340,15 @@ func (r *userRepository) Delete(id string) error {
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Clean up orphaned plugin references for the deleted user
+	if err := cleanupPluginUserReferences(r.db, id); err != nil {
+		log.Error(r.ctx, "Failed to cleanup plugin user references", "userID", id, err)
+	}
+	return nil
 }
 
 func keyTo32Bytes(input string) []byte {

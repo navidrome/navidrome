@@ -142,4 +142,62 @@ var _ = Describe("LibraryRepository", func() {
 		Expect(libAfter.TotalSize).To(Equal(sizeRes.Sum))
 		Expect(libAfter.TotalDuration).To(Equal(durationRes.Sum))
 	})
+
+	Describe("ScanBegin and ScanEnd", func() {
+		var lib *model.Library
+
+		BeforeEach(func() {
+			lib = &model.Library{
+				ID:   0,
+				Name: "Test Scan Library",
+				Path: "/music/test-scan",
+			}
+			err := repo.Put(lib)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		DescribeTable("ScanBegin",
+			func(fullScan bool, expectedFullScanInProgress bool) {
+				err := repo.ScanBegin(lib.ID, fullScan)
+				Expect(err).ToNot(HaveOccurred())
+
+				updatedLib, err := repo.Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(updatedLib.LastScanStartedAt).ToNot(BeZero())
+				Expect(updatedLib.FullScanInProgress).To(Equal(expectedFullScanInProgress))
+			},
+			Entry("sets FullScanInProgress to true for full scan", true, true),
+			Entry("sets FullScanInProgress to false for quick scan", false, false),
+		)
+
+		Context("ScanEnd", func() {
+			BeforeEach(func() {
+				err := repo.ScanBegin(lib.ID, true)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("sets LastScanAt and clears FullScanInProgress and LastScanStartedAt", func() {
+				err := repo.ScanEnd(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				updatedLib, err := repo.Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(updatedLib.LastScanAt).ToNot(BeZero())
+				Expect(updatedLib.FullScanInProgress).To(BeFalse())
+				Expect(updatedLib.LastScanStartedAt).To(BeZero())
+			})
+
+			It("sets LastScanAt to be after LastScanStartedAt", func() {
+				libBefore, err := repo.Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = repo.ScanEnd(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				libAfter, err := repo.Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(libAfter.LastScanAt).To(BeTemporally(">=", libBefore.LastScanStartedAt))
+			})
+		})
+	})
 })

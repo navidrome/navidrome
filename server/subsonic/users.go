@@ -2,11 +2,13 @@ package subsonic
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -20,6 +22,7 @@ func buildUserResponse(user model.User) responses.User {
 		ScrobblingEnabled: true,
 		DownloadRole:      conf.Server.EnableDownloads,
 		ShareRole:         conf.Server.EnableSharing,
+		CoverArtRole:      conf.Server.EnableCoverArtUpload || user.IsAdmin,
 		Folder:            slice.Map(user.Libraries, func(lib model.Library) int32 { return int32(lib.ID) }),
 	}
 
@@ -35,7 +38,13 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	if !ok {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
-
+	username, err := req.Params(r).String("username")
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(username, loggedUser.UserName) {
+		return nil, newError(responses.ErrorAuthorizationFail)
+	}
 	response := newResponse()
 	user := buildUserResponse(loggedUser)
 	response.User = &user

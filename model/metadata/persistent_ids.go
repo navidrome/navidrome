@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
@@ -26,10 +27,14 @@ type getPIDFunc = func(mf model.MediaFile, md Metadata, spec string, prependLibI
 
 func createGetPID(hash hashFunc) getPIDFunc {
 	var getPID getPIDFunc
-	getAttr := func(mf model.MediaFile, md Metadata, attr string, prependLibId bool) string {
+	getAttr := func(mf model.MediaFile, md Metadata, attr string, prependLibId bool, spec string) string {
 		attr = strings.TrimSpace(strings.ToLower(attr))
 		switch attr {
 		case "albumid":
+			if spec == conf.Server.PID.Album {
+				log.Error("Recursive PID definition detected, ignoring `albumid`", "spec", spec)
+				return ""
+			}
 			return getPID(mf, md, conf.Server.PID.Album, prependLibId)
 		case "folder":
 			return filepath.Dir(mf.Path)
@@ -44,12 +49,12 @@ func createGetPID(hash hashFunc) getPIDFunc {
 	}
 	getPID = func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
 		pid := ""
-		fields := strings.Split(spec, "|")
-		for _, field := range fields {
+		fields := strings.SplitSeq(spec, "|")
+		for field := range fields {
 			attributes := strings.Split(field, ",")
 			hasValue := false
 			values := slice.Map(attributes, func(attr string) string {
-				v := getAttr(mf, md, attr, prependLibId)
+				v := getAttr(mf, md, attr, prependLibId, spec)
 				if v != "" {
 					hasValue = true
 				}

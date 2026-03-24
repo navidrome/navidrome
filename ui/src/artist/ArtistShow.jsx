@@ -1,4 +1,4 @@
-import React, { useState, createElement, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import {
   useShowController,
@@ -50,12 +50,12 @@ const useStyles = makeStyles(
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'), {
+    noSsr: true,
+  })
   const [artistInfo, setArtistInfo] = useState()
 
-  const biography =
-    artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '') ||
-    record.biography
+  const biography = artistInfo?.biography || record.biography
 
   useEffect(() => {
     subsonic
@@ -72,15 +72,9 @@ const ArtistDetails = (props) => {
       })
   }, [record.id])
 
-  const component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
+  const Component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (
-    <>
-      {createElement(component, {
-        artistInfo,
-        record,
-        biography,
-      })}
-    </>
+    <Component artistInfo={artistInfo} record={record} biography={biography} />
   )
 }
 

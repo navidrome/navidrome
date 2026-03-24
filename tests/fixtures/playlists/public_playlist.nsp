@@ -1,0 +1,11 @@
+{
+  "name": "Public Playlist",
+  "comment": "A smart playlist that is public",
+  "public": true,
+  "all": [
+    {"inTheLast": {"lastPlayed": 30}}
+  ],
+  "sort": "lastPlayed",
+  "order": "desc",
+  "limit": 50
+}

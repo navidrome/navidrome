@@ -1,23 +1,24 @@
 package persistence
 
 import (
-	"context"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx := log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
@@ -160,14 +161,23 @@ var _ = Describe("PlaylistRepository", func() {
 			})
 		})
 
-		// TODO Validate these tests
-		XContext("child smart playlists", func() {
-			When("refresh day has expired", func() {
+		Context("child smart playlists", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			When("refresh delay has expired", func() {
 				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
 
-					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					childRules := &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.Contains{"title": "Day"},
+						},
+					}
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
 
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
 						Expression: criteria.All{
@@ -175,48 +185,524 @@ var _ = Describe("PlaylistRepository", func() {
 						},
 					}}
 					Expect(repo.Put(&parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
 
+					// Nested playlist has not been evaluated yet
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(nestedPlsRead.EvaluatedAt).To(BeNil())
 
-					_, err = repo.GetWithTracks(parentPls.ID, true, false)
+					// Getting parent with refresh should recursively refresh the nested playlist
+					pls, err := repo.GetWithTracks(parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
+					Expect(pls.EvaluatedAt).ToNot(BeNil())
+					Expect(*pls.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 
-					// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
+					// Parent should have tracks from the nested playlist
+					Expect(pls.Tracks).To(HaveLen(1))
+					Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
+
+					// Nested playlist should now have been refreshed (EvaluatedAt set)
 					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
-
-					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
+					Expect(nestedPlsAfterParentGet.EvaluatedAt).ToNot(BeNil())
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 				})
 			})
 
-			When("refresh day has not expired", func() {
+			When("refresh delay has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+					childEvaluatedAt := time.Now().Add(-30 * time.Minute)
 
-					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					childRules := &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.Contains{"title": "Day"},
+						},
+					}
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules, EvaluatedAt: &childEvaluatedAt}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
 
+					// Parent has no EvaluatedAt, so it WILL refresh, but the child should not
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
 						Expression: criteria.All{
 							criteria.InPlaylist{"id": nestedPls.ID},
 						},
 					}}
 					Expect(repo.Put(&parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
 
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = repo.GetWithTracks(parentPls.ID, true, false)
+					// Getting parent with refresh should NOT recursively refresh the nested playlist
+					parent, err := repo.GetWithTracks(parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
 
-					// Check that the nested playlist was not refreshed by parent get by verifying evaluatedAt is not updated since first nestedPls get
+					// Parent should have been refreshed (its EvaluatedAt was nil)
+					Expect(parent.EvaluatedAt).ToNot(BeNil())
+					Expect(*parent.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
+
+					// Nested playlist should NOT have been refreshed (still within delay window)
 					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
-
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", childEvaluatedAt, time.Second))
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
 				})
 			})
+		})
+	})
+
+	Describe("Playlist Track Sorting", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
+		It("sorts tracks correctly by album (disc and track number)", func() {
+			By("creating a playlist with multi-disc album tracks in arbitrary order")
+			newPls := model.Playlist{Name: "Multi-Disc Test", OwnerID: "userid"}
+			// Add tracks in intentionally scrambled order
+			newPls.AddMediaFilesByID([]string{"2001", "2002", "2003", "2004"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("retrieving tracks sorted by album")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			tracks, err := tracksRepo.GetAll(model.QueryOptions{Sort: "album", Order: "asc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying tracks are sorted by disc number then track number")
+			Expect(tracks).To(HaveLen(4))
+			// Expected order: Disc 1 Track 1, Disc 1 Track 2, Disc 2 Track 1, Disc 2 Track 11
+			Expect(tracks[0].MediaFileID).To(Equal("2002")) // Disc 1, Track 1
+			Expect(tracks[1].MediaFileID).To(Equal("2004")) // Disc 1, Track 2
+			Expect(tracks[2].MediaFileID).To(Equal("2003")) // Disc 2, Track 1
+			Expect(tracks[3].MediaFileID).To(Equal("2001")) // Disc 2, Track 11
+		})
+	})
+
+	Describe("Smart Playlists with Album/Artist Annotation Criteria", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+		})
+
+		It("matches tracks from starred albums using albumLoved", func() {
+			// albumRadioactivity (ID "103") is starred in test fixtures
+			// Songs in album 103: 1003, 1004, 1005, 1006
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Album Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1003", "1004", "1005", "1006"))
+		})
+
+		It("matches tracks from starred artists using artistLoved", func() {
+			// artistBeatles (ID "3") is starred in test fixtures
+			// Songs with ArtistID "3": 1001, 1002, 3002
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Starred Artist Songs", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "3002"))
+		})
+
+		It("matches tracks with combined album and artist criteria", func() {
+			// albumLoved=true → songs from album 103 (1003, 1004, 1005, 1006)
+			// artistLoved=true → songs with artist 3 (1001, 1002)
+			// Using Any: union of both sets
+			rules := &criteria.Criteria{
+				Expression: criteria.Any{
+					criteria.Is{"albumLoved": true},
+					criteria.Is{"artistLoved": true},
+				},
+			}
+			newPls := model.Playlist{Name: "Combined Album+Artist", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "1003", "1004", "1005", "1006", "3002"))
+		})
+
+		It("returns no tracks when no albums/artists match", func() {
+			// No album has rating 5 in fixtures
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Is{"albumRating": 5},
+				},
+			}
+			newPls := model.Playlist{Name: "No Match", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(pls.Tracks).To(BeEmpty())
+		})
+	})
+
+	Describe("Smart Playlists with Tag Criteria", func() {
+		var mfRepo model.MediaFileRepository
+		var testPlaylistID string
+		var songWithGrouping, songWithoutGrouping model.MediaFile
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+
+			// Register 'grouping' as a valid tag for smart playlists
+			criteria.AddTagNames([]string{"grouping"})
+
+			// Create a song with the grouping tag
+			songWithGrouping = model.MediaFile{
+				ID:       "test-grouping-1",
+				Title:    "Song With Grouping",
+				Artist:   "Test Artist",
+				ArtistID: "1",
+				Album:    "Test Album",
+				AlbumID:  "101",
+				Path:     "/test/grouping/song1.mp3",
+				Tags: model.Tags{
+					"grouping": []string{"My Crate"},
+				},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithGrouping)).To(Succeed())
+
+			// Create a song without the grouping tag
+			songWithoutGrouping = model.MediaFile{
+				ID:           "test-grouping-2",
+				Title:        "Song Without Grouping",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         "/test/grouping/song2.mp3",
+				Tags:         model.Tags{},
+				Participants: model.Participants{},
+				LibraryID:    1,
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songWithoutGrouping)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+			// Clean up test media files
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-1"}).Execute()
+			_, _ = GetDBXBuilder().Delete("media_file", dbx.HashExp{"id": "test-grouping-2"}).Execute()
+		})
+
+		It("matches tracks with a tag value using 'contains' with empty string (issue #4728 workaround)", func() {
+			By("creating a smart playlist that checks if grouping tag has any value")
+			// This is the workaround for issue #4728: using 'contains' with empty string
+			// generates SQL: value LIKE '%%' which matches any non-empty string
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks with Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying only the track with grouping tag is matched")
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].MediaFileID).To(Equal(songWithGrouping.ID))
+		})
+
+		It("excludes tracks with a tag value using 'notContains' with empty string", func() {
+			By("creating a smart playlist that checks if grouping tag is NOT set")
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.NotContains{"grouping": ""},
+				},
+			}
+			newPls := model.Playlist{Name: "Tracks without Grouping", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying the track with grouping is NOT in the playlist")
+			for _, track := range pls.Tracks {
+				Expect(track.MediaFileID).ToNot(Equal(songWithGrouping.ID))
+			}
+
+			By("verifying the track without grouping IS in the playlist")
+			var foundWithoutGrouping bool
+			for _, track := range pls.Tracks {
+				if track.MediaFileID == songWithoutGrouping.ID {
+					foundWithoutGrouping = true
+					break
+				}
+			}
+			Expect(foundWithoutGrouping).To(BeTrue())
+		})
+	})
+
+	Describe("Track Deletion and Renumbering", func() {
+		var testPlaylistID string
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				testPlaylistID = ""
+			}
+		})
+
+		// helper to get track positions and media file IDs
+		getTrackInfo := func(playlistID string) (ids []string, mediaFileIDs []string) {
+			pls, err := repo.GetWithTracks(playlistID, false, false)
+			Expect(err).ToNot(HaveOccurred())
+			for _, t := range pls.Tracks {
+				ids = append(ids, t.ID)
+				mediaFileIDs = append(mediaFileIDs, t.MediaFileID)
+			}
+			return
+		}
+
+		It("renumbers correctly after deleting a track from the middle", func() {
+			By("creating a playlist with 4 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Middle", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003", "1004"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the second track (position 2)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("2")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2", "3"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1003", "1004"}))
+		})
+
+		It("renumbers correctly after deleting the first track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test First", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the first track (position 1)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("1")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1002", "1003"}))
+		})
+
+		It("renumbers correctly after deleting the last track", func() {
+			By("creating a playlist with 3 tracks")
+			newPls := model.Playlist{Name: "Renumber Test Last", OwnerID: "userid"}
+			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("deleting the last track (position 3)")
+			tracksRepo := repo.Tracks(newPls.ID, false)
+			Expect(tracksRepo.Delete("3")).To(Succeed())
+
+			By("verifying remaining tracks are renumbered sequentially")
+			ids, mediaFileIDs := getTrackInfo(newPls.ID)
+			Expect(ids).To(Equal([]string{"1", "2"}))
+			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
+		})
+	})
+
+	Describe("Smart Playlists Library Filtering", func() {
+		var mfRepo model.MediaFileRepository
+		var testPlaylistID string
+		var lib2ID int
+		var restrictedUserID string
+		var uniqueLibPath string
+
+		BeforeEach(func() {
+			db := GetDBXBuilder()
+
+			// Generate unique IDs for this test run
+			uniqueSuffix := time.Now().Format("20060102150405.000")
+			restrictedUserID = "restricted-user-" + uniqueSuffix
+			uniqueLibPath = "/music/lib2-" + uniqueSuffix
+
+			// Create a second library with unique name and path to avoid conflicts with other tests
+			_, err := db.DB().Exec("INSERT INTO library (name, path, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))", "Library 2-"+uniqueSuffix, uniqueLibPath)
+			Expect(err).ToNot(HaveOccurred())
+			err = db.DB().QueryRow("SELECT last_insert_rowid()").Scan(&lib2ID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create a restricted user with access only to library 1
+			_, err = db.DB().Exec("INSERT INTO user (id, user_name, name, is_admin, password, created_at, updated_at) VALUES (?, ?, 'Restricted User', false, 'pass', datetime('now'), datetime('now'))", restrictedUserID, restrictedUserID)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = db.DB().Exec("INSERT INTO user_library (user_id, library_id) VALUES (?, 1)", restrictedUserID)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create test media files in each library
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			mfRepo = NewMediaFileRepository(ctx, db)
+
+			// Song in library 1 (accessible by restricted user)
+			songLib1 := model.MediaFile{
+				ID:           "lib1-song",
+				Title:        "Song in Lib1",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         "/music/lib1/song.mp3",
+				LibraryID:    1,
+				Participants: model.Participants{},
+				Tags:         model.Tags{},
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songLib1)).To(Succeed())
+
+			// Song in library 2 (NOT accessible by restricted user)
+			songLib2 := model.MediaFile{
+				ID:           "lib2-song",
+				Title:        "Song in Lib2",
+				Artist:       "Test Artist",
+				ArtistID:     "1",
+				Album:        "Test Album",
+				AlbumID:      "101",
+				Path:         uniqueLibPath + "/song.mp3",
+				LibraryID:    lib2ID,
+				Participants: model.Participants{},
+				Tags:         model.Tags{},
+				Lyrics:       "[]",
+			}
+			Expect(mfRepo.Put(&songLib2)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			db := GetDBXBuilder()
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+			// Clean up test data
+			_, _ = db.Delete("media_file", dbx.HashExp{"id": "lib1-song"}).Execute()
+			_, _ = db.Delete("media_file", dbx.HashExp{"id": "lib2-song"}).Execute()
+			_, _ = db.Delete("user_library", dbx.HashExp{"user_id": restrictedUserID}).Execute()
+			_, _ = db.Delete("user", dbx.HashExp{"id": restrictedUserID}).Execute()
+			_, _ = db.DB().Exec("DELETE FROM library WHERE id = ?", lib2ID)
+		})
+
+		It("should only include tracks from libraries the user has access to (issue #4738)", func() {
+			db := GetDBXBuilder()
+			ctx := log.NewContext(GinkgoT().Context())
+
+			// Create the smart playlist as the restricted user
+			restrictedUser := model.User{ID: restrictedUserID, UserName: restrictedUserID, IsAdmin: false}
+			ctx = request.WithUser(ctx, restrictedUser)
+			restrictedRepo := NewPlaylistRepository(ctx, db)
+
+			// Create a smart playlist that matches all songs
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Gt{"playCount": -1}, // Matches everything
+				},
+			}
+			newPls := model.Playlist{Name: "All Songs", OwnerID: restrictedUserID, Rules: rules}
+			Expect(restrictedRepo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			By("refreshing the smart playlist")
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			pls, err := restrictedRepo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("verifying only the track from library 1 is in the playlist")
+			var foundLib1Song, foundLib2Song bool
+			for _, track := range pls.Tracks {
+				if track.MediaFileID == "lib1-song" {
+					foundLib1Song = true
+				}
+				if track.MediaFileID == "lib2-song" {
+					foundLib2Song = true
+				}
+			}
+			Expect(foundLib1Song).To(BeTrue(), "Song from library 1 should be in the playlist")
+			Expect(foundLib2Song).To(BeFalse(), "Song from library 2 should NOT be in the playlist")
+
+			By("verifying playlist_tracks table only contains the accessible track")
+			var playlistTracksCount int
+			err = db.DB().QueryRow("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ?", newPls.ID).Scan(&playlistTracksCount)
+			Expect(err).ToNot(HaveOccurred())
+			// Count should only include tracks visible to the user (lib1-song)
+			// The count may include other test songs from library 1, but NOT lib2-song
+			var lib2TrackCount int
+			err = db.DB().QueryRow("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ? AND media_file_id = 'lib2-song'", newPls.ID).Scan(&lib2TrackCount)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib2TrackCount).To(Equal(0), "lib2-song should not be in playlist_tracks")
+
+			By("verifying SongCount matches visible tracks")
+			Expect(pls.SongCount).To(Equal(len(pls.Tracks)), "SongCount should match the number of visible tracks")
 		})
 	})
 })

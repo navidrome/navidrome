@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -34,19 +35,19 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
+func createFS(files fstest.MapFS) storagetest.FakeFS {
+	fs := storagetest.FakeFS{}
+	fs.SetFiles(files)
+	storagetest.Register("fake", &fs)
+	return fs
+}
+
 var _ = Describe("Scanner", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds *tests.MockDataStore
 	var mfRepo *mockMediaFileRepo
-	var s scanner.Scanner
-
-	createFS := func(files fstest.MapFS) storagetest.FakeFS {
-		fs := storagetest.FakeFS{}
-		fs.SetFiles(files)
-		storagetest.Register("fake", &fs)
-		return fs
-	}
+	var s model.Scanner
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
@@ -84,7 +85,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			core.NewPlaylists(ds), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
@@ -478,6 +479,56 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.Missing).To(BeFalse())
 		})
 
+		It("marks tracks as missing when scanning a deleted folder with ScanFolders", func() {
+			By("Adding a third track to Revolver to have more test data")
+			fsys.Add("The Beatles/Revolver/03 - I'm Only Sleeping.mp3", revolver(track(3, "I'm Only Sleeping")))
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			By("Verifying initial state has 5 tracks")
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"missing": false},
+			})).To(Equal(int64(5)))
+
+			By("Removing the entire Revolver folder from filesystem")
+			fsys.Remove("The Beatles/Revolver/01 - Taxman.mp3")
+			fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+			fsys.Remove("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+
+			By("Scanning the parent folder (simulating watcher behavior)")
+			targets := []model.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "The Beatles"},
+			}
+			_, err := s.ScanFolders(ctx, false, targets)
+			Expect(err).To(Succeed())
+
+			By("Checking all Revolver tracks are marked as missing")
+			mf, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			mf, err = findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeTrue())
+
+			By("Checking the Help! tracks are not affected")
+			mf, err = findByPath("The Beatles/Help!/01 - Help!.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeFalse())
+
+			mf, err = findByPath("The Beatles/Help!/02 - The Night Before.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Missing).To(BeFalse())
+
+			By("Verifying only 2 non-missing tracks remain (Help! tracks)")
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"missing": false},
+			})).To(Equal(int64(2)))
+		})
+
 		It("does not override artist fields when importing an undertagged file", func() {
 			By("Making sure artist in the DB contains MBID and sort name")
 			aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{
@@ -621,6 +672,155 @@ var _ = Describe("Scanner", Ordered, func() {
 					_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 					Expect(err).To(MatchError(model.ErrNotFound))
 				})
+			})
+		})
+	})
+
+	Describe("Interrupted scan resumption", func() {
+		var fsys storagetest.FakeFS
+		var help func(...map[string]any) *fstest.MapFile
+
+		BeforeEach(func() {
+			help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+			fsys = createFS(fstest.MapFS{
+				"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
+				"The Beatles/Help!/02 - The Night Before.mp3": help(track(2, "The Night Before")),
+			})
+		})
+
+		simulateInterruptedScan := func(fullScan bool) {
+			// Call ScanBegin to properly set LastScanStartedAt and FullScanInProgress
+			// This simulates what would happen if a scan was interrupted (ScanBegin called but ScanEnd not)
+			Expect(ds.Library(ctx).ScanBegin(lib.ID, fullScan)).To(Succeed())
+
+			// Verify the update was persisted
+			reloaded, err := ds.Library(ctx).Get(lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(reloaded.LastScanStartedAt).ToNot(BeZero())
+			Expect(reloaded.FullScanInProgress).To(Equal(fullScan))
+		}
+
+		Context("when a quick scan is interrupted and resumed with a full scan request", func() {
+			BeforeEach(func() {
+				// First, complete a full scan to populate the database
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				// Verify files were imported
+				mfs, err := ds.MediaFile(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(2))
+
+				// Now simulate an interrupted quick scan
+				// (LastScanStartedAt is set, FullScanInProgress is false)
+				simulateInterruptedScan(false)
+			})
+
+			It("should rescan all folders when resumed as full scan", func() {
+				// Update a tag without changing the folder hash by preserving the original modtime.
+				// In a quick scan, this wouldn't be detected because the folder hash hasn't changed.
+				// But in a full scan, all files should be re-read regardless of hash.
+				origModTime := fsys.MapFS["The Beatles/Help!/01 - Help!.mp3"].ModTime
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "updated comment"}, origModTime)
+
+				// Resume with a full scan - this should process all folders
+				// even though folder hashes haven't changed
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				// Verify the comment was updated (which means the folder was processed and file re-imported)
+				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"title": "Help!"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(1))
+				Expect(mfs[0].Comment).To(Equal("updated comment"))
+			})
+		})
+
+		Context("when a full scan is interrupted and resumed with a quick scan request", func() {
+			BeforeEach(func() {
+				// First, complete a full scan to populate the database
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				// Verify files were imported
+				mfs, err := ds.MediaFile(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(2))
+
+				// Now simulate an interrupted full scan
+				// (LastScanStartedAt is set, FullScanInProgress is true)
+				simulateInterruptedScan(true)
+			})
+
+			It("should continue as full scan even when quick scan is requested", func() {
+				// Update a tag without changing the folder hash by preserving the original modtime.
+				origModTime := fsys.MapFS["The Beatles/Help!/01 - Help!.mp3"].ModTime
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "full scan comment"}, origModTime)
+
+				// Request a quick scan - but because a full scan was in progress,
+				// it should continue as a full scan
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				// Verify the comment was updated (folder was processed despite unchanged hash)
+				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"title": "Help!"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(1))
+				Expect(mfs[0].Comment).To(Equal("full scan comment"))
+			})
+		})
+
+		Context("when no scan was in progress", func() {
+			BeforeEach(func() {
+				// First, complete a full scan to populate the database
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				// Verify files were imported
+				mfs, err := ds.MediaFile(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(2))
+
+				// Library should have LastScanStartedAt cleared after successful scan
+				updatedLib, err := ds.Library(ctx).Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(updatedLib.LastScanStartedAt).To(BeZero())
+				Expect(updatedLib.FullScanInProgress).To(BeFalse())
+			})
+
+			It("should respect the full scan flag for new scans", func() {
+				// Update a tag without changing the folder hash by preserving the original modtime.
+				origModTime := fsys.MapFS["The Beatles/Help!/01 - Help!.mp3"].ModTime
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "new full scan"}, origModTime)
+
+				// Start a new full scan
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				// Verify the comment was updated
+				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"title": "Help!"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(1))
+				Expect(mfs[0].Comment).To(Equal("new full scan"))
+			})
+
+			It("should not rescan unchanged folders during quick scan", func() {
+				// Update a tag without changing the folder hash by preserving the original modtime.
+				// This simulates editing tags in a file (e.g., with a tag editor) without modifying its timestamp.
+				// In a quick scan, this should NOT be detected because the folder hash remains unchanged.
+				origModTime := fsys.MapFS["The Beatles/Help!/01 - Help!.mp3"].ModTime
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "should not appear"}, origModTime)
+
+				// Do a quick scan - unchanged folders should be skipped
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				// Verify the comment was NOT updated (folder was skipped)
+				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"title": "Help!"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(1))
+				Expect(mfs[0].Comment).To(BeEmpty())
 			})
 		})
 	})

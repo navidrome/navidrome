@@ -37,7 +37,7 @@ func (r sqlRepository) bmkID(itemID ...string) And {
 func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 	client, _ := request.ClientFrom(r.ctx)
 	user, _ := request.UserFrom(r.ctx)
-	values := map[string]interface{}{
+	values := map[string]any{
 		"comment":    comment,
 		"position":   position,
 		"updated_at": time.Now(),
@@ -148,10 +148,10 @@ func (r sqlRepository) cleanBookmarks() error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error cleaning up bookmarks: %w", err)
+		return fmt.Errorf("error cleaning up %s bookmarks: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c)
+		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c, "itemType", r.tableName)
 	}
 	return nil
 }

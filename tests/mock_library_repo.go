@@ -168,7 +168,7 @@ func (m *MockLibraryRepo) Count(options ...rest.QueryOptions) (int64, error) {
 	return m.CountAll()
 }
 
-func (m *MockLibraryRepo) Read(id string) (interface{}, error) {
+func (m *MockLibraryRepo) Read(id string) (any, error) {
 	idInt, _ := strconv.Atoi(id)
 	mf, err := m.Get(idInt)
 	if errors.Is(err, model.ErrNotFound) {
@@ -177,7 +177,7 @@ func (m *MockLibraryRepo) Read(id string) (interface{}, error) {
 	return mf, err
 }
 
-func (m *MockLibraryRepo) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (m *MockLibraryRepo) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return m.GetAll()
 }
 
@@ -185,13 +185,13 @@ func (m *MockLibraryRepo) EntityName() string {
 	return "library"
 }
 
-func (m *MockLibraryRepo) NewInstance() interface{} {
+func (m *MockLibraryRepo) NewInstance() any {
 	return &model.Library{}
 }
 
 // REST Repository methods (string-based IDs)
 
-func (m *MockLibraryRepo) Save(entity interface{}) (string, error) {
+func (m *MockLibraryRepo) Save(entity any) (string, error) {
 	lib := entity.(*model.Library)
 	if m.Err != nil {
 		return "", m.Err
@@ -216,7 +216,7 @@ func (m *MockLibraryRepo) Save(entity interface{}) (string, error) {
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (m *MockLibraryRepo) Update(id string, entity interface{}, cols ...string) error {
+func (m *MockLibraryRepo) Update(id string, entity any, cols ...string) error {
 	lib := entity.(*model.Library)
 	if m.Err != nil {
 		return m.Err

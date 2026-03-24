@@ -1,5 +1,10 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
+GO_BUILD_TAGS=netgo,sqlite_fts5
+
+# Set global environment variables, required for most targets
+export CGO_CFLAGS_ALLOW=--define-prefix
+export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
@@ -9,13 +14,14 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))-SNAPSHOT
 endif
 
-SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,darwin/amd64,darwin/arm64,windows/amd64,windows/386
+SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,linux/riscv64,darwin/amd64,darwin/arm64,windows/amd64,windows/386
 IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | grep -v "arm/v5" | tr '\n' ',' | sed 's/,$$//')
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.1.1-1
+CROSS_TAGLIB_VERSION ?= 2.2.1-1
+GOLANGCI_LINT_VERSION ?= v2.11.1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -25,11 +31,11 @@ setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First In
 .PHONY: setup
 
 dev: check_env   ##@Development Start Navidrome in development mode, with hot-reload for both frontend and backend
-	ND_ENABLEINSIGHTSCOLLECTOR="false" npx foreman -j Procfile.dev -p 4533 start
+	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
+	go tool reflex -d none -c reflex.conf
 .PHONY: server
 
 stop: ##@Development Stop development servers (UI and backend)
@@ -41,19 +47,23 @@ stop: ##@Development Stop development servers (UI and backend)
 .PHONY: stop
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go tool ginkgo watch -tags=netgo -notify ./...
+	go tool ginkgo watch -tags=$(GO_BUILD_TAGS) -notify ./...
 .PHONY: watch
 
 PKG ?= ./...
 test: ##@Development Run Go tests. Use PKG variable to specify packages to test, e.g. make test PKG=./server
-	go test -tags netgo $(PKG)
+	go test -tags $(GO_BUILD_TAGS) $(PKG)
 .PHONY: test
 
-testall: test-race test-i18n test-js ##@Development Run Go and JS tests
+test-ndpgen: ##@Development Run tests for ndpgen plugin
+	cd plugins/cmd/ndpgen && go test ./......
+.PHONY: test-ndpgen
+
+testall: test test-ndpgen test-i18n test-js ##@Development Run Go and JS tests
 .PHONY: testall
 
 test-race: ##@Development Run Go tests with race detector
-	go test -tags netgo -race -shuffle=on ./...
+	go test -tags $(GO_BUILD_TAGS) -race -shuffle=on  $(PKG)
 .PHONY: test-race
 
 test-js: ##@Development Run JS tests
@@ -65,11 +75,26 @@ test-i18n: ##@Development Validate all translations files
 .PHONY: test-i18n
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@INSTALL=false; \
+	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
+		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
+			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
+			rm -f ./bin/golangci-lint; \
+			INSTALL=true; \
+		fi; \
+	else \
+		INSTALL=true; \
+	fi; \
+	if [ "$$INSTALL" = "true" ]; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s $(GOLANGCI_LINT_VERSION); \
+	fi
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run -v --timeout 5m
+	PATH=$$PATH:./bin golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -84,8 +109,17 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go tool wire gen -tags=netgo ./...
+	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
+
+gen: check_go_env ##@Development Run go generate for code generation
+	go generate ./...
+	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host
+	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -python -rust
+	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust
+	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities
+	go mod tidy -C plugins/pdk/go
+.PHONY: gen
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
@@ -111,14 +145,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
@@ -168,8 +202,8 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
 
-run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker tag=<tag>
-	@if [ -z "$(tag)" ]; then echo "Usage: make run-docker tag=<tag>"; exit 1; fi
+docker-run: ##@Development Run a Navidrome Docker image. Usage: make docker-run tag=<tag>
+	@if [ -z "$(tag)" ]; then echo "Usage: make docker-run tag=<tag>"; exit 1; fi
 	@TAG_DIR="tmp/$$(echo '$(tag)' | tr '/:' '_')"; mkdir -p "$$TAG_DIR"; \
     VOLUMES="-v $(PWD)/$$TAG_DIR:/data"; \
 	if [ -f navidrome.toml ]; then \
@@ -180,7 +214,7 @@ run-docker: ##@Development Run a Navidrome Docker image. Usage: make run-docker 
 	  	fi; \
 	fi; \
 	echo "Running: docker run --rm -p 4533:4533 $$VOLUMES $(tag)"; docker run --rm -p 4533:4533 $$VOLUMES $(tag)
-.PHONY: run-docker
+.PHONY: docker-run
 
 package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
 	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
@@ -198,6 +232,39 @@ get-music: ##@Development Download some free music from Navidrome's demo instanc
 	@echo "Done. Remember to set your MusicFolder to ./music"
 .PHONY: get-music
 
+
+##########################################
+#### Worktrees
+
+WORKTREES_DIR := .worktrees
+
+wt: check_go_env ##@Worktrees Create and setup a git worktree. Usage: make wt name=feature-name [go=1]
+	@if [ -z "${name}" ]; then echo "Usage: make wt name=<branch-name> [go=1]"; exit 1; fi
+	@mkdir -p $(WORKTREES_DIR)
+	@echo "Creating worktree for branch '${name}'..."
+	@git worktree add $(WORKTREES_DIR)/${name} -b ${name} 2>/dev/null || \
+		git worktree add $(WORKTREES_DIR)/${name} ${name}
+	@if [ -n "${go}" ]; then \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name} --go-only; \
+	else \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name}; \
+	fi
+	@echo "\nWorktree ready at $(WORKTREES_DIR)/${name}"
+	@echo "  cd $(WORKTREES_DIR)/${name}"
+.PHONY: wt
+
+rm-wt: ##@Worktrees Remove a git worktree. Usage: make rm-wt name=feature-name
+	@if [ -z "${name}" ]; then echo "Usage: make rm-wt name=<branch-name>"; exit 1; fi
+	@if [ ! -d "$(WORKTREES_DIR)/${name}" ]; then echo "Worktree '${name}' not found in $(WORKTREES_DIR)/"; exit 1; fi
+	@echo "Removing worktree '${name}'..."
+	@git worktree remove --force $(WORKTREES_DIR)/${name}
+	@echo "Worktree '${name}' removed."
+	@echo "Note: branch '${name}' still exists. Delete it with: git branch -D ${name}"
+.PHONY: rm-wt
+
+ls-wt: ##@Worktrees List all active git worktrees
+	@git worktree list
+.PHONY: ls-wt
 
 ##########################################
 #### Miscellaneous
@@ -249,24 +316,6 @@ pre-push: lintall testall
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
-
-# Generate Go code from plugins/api/api.proto
-plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf files
-	go generate ./plugins/...
-.PHONY: plugin-gen
-
-plugin-examples: check_go_env ##@Development Build all example plugins
-	$(MAKE) -C plugins/examples clean all
-.PHONY: plugin-examples
-
-plugin-clean: check_go_env ##@Development Clean all plugins
-	$(MAKE) -C plugins/examples clean
-	$(MAKE) -C plugins/testdata clean
-.PHONY: plugin-clean
-
-plugin-tests: check_go_env ##@Development Build all test plugins
-	$(MAKE) -C plugins/testdata clean all
-.PHONY: plugin-tests
 
 .DEFAULT_GOAL := help
 

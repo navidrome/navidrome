@@ -10,6 +10,7 @@ import {
   ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
+  useListContext,
   usePermissions,
   useRefresh,
   useTranslate,
@@ -41,6 +42,9 @@ const useStyles = makeStyles({
     height: '24px',
   },
 })
+
+const formatReleaseType = (record) =>
+  record?.tagValue ? humanize(record?.tagValue) : '-- None --'
 
 const AlbumFilter = (props) => {
   const classes = useStyles()
@@ -142,9 +146,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput
           emptyText="-- None --"
-          optionText={(record) =>
-            record?.tagValue ? humanize(record?.tagValue) : '-- None --'
-          }
+          optionText={formatReleaseType}
         />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
@@ -171,6 +173,14 @@ const AlbumListTitle = ({ albumListType }) => {
     title = `${title} - ${listTitle}`
   }
   return <Title subTitle={title} args={{ smart_count: 2 }} />
+}
+
+const AlbumListPagination = (props) => {
+  const { loading } = useListContext()
+  if (loading) {
+    return null
+  }
+  return <Pagination {...props} />
 }
 
 const randomStartingSeed = Math.random().toString()
@@ -233,7 +243,7 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
-        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
+        pagination={<AlbumListPagination rowsPerPageOptions={perPageOptions} />}
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (

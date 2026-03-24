@@ -17,14 +17,17 @@ master.zip
 testDB
 cache/*
 *.swp
+coverage.out
 dist
 music
+music.old
 *.db*
 .gitinfo
 docker-compose.yml
 !contrib/docker-compose.yml
 binaries
 navidrome-*
+/ndpgen
 AGENTS.md
 .github/prompts
 .github/instructions
@@ -32,3 +35,7 @@ AGENTS.md
 *.exe
 *.test
 *.wasm
+*.ndp
+openspec/
+go.work*
+.worktrees/

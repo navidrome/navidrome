@@ -56,6 +56,8 @@ const (
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
+	DefaultInfoLanguage = "en"
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
@@ -63,19 +65,30 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	ArtworkFolder  = "artwork"
 
-	PlaceholderArtistArt = "artist-placeholder.webp"
-	PlaceholderAlbumArt  = "album-placeholder.webp"
-	PlaceholderAvatar    = "logo-192x192.png"
-	UICoverArtSize       = 300
-	DefaultUIVolume      = 100
+	PlaceholderArtistArt      = "artist-placeholder.webp"
+	PlaceholderAlbumArt       = "album-placeholder.webp"
+	PlaceholderAvatar         = "logo-192x192.png"
+	DefaultUIVolume           = 100
+	DefaultUISearchDebounceMs = 200
 
 	DefaultHttpClientTimeOut = 10 * time.Second
+
+	DefaultListenBrainzBaseURL         = "https://api.listenbrainz.org/1/"
+	DefaultListenBrainzArtistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	DefaultListenBrainzTrackAlgorithm  = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
 
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
 )
+
+const (
+	UICoverArtSize = 600
+)
+
+var CacheWarmerImageSizes = []int{UICoverArtSize}
 
 // Prometheus options
 const (
@@ -93,6 +106,13 @@ const (
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
 	DefaultCacheCleanUpInterval = 10 * time.Minute
+)
+
+// Entity types
+const (
+	EntityArtist   = "artist"
+	EntityPlaylist = "playlist"
+	EntityRadio    = "radio"
 )
 
 const (
@@ -147,8 +167,16 @@ var (
 			DefaultBitRate: 256,
 			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
+		{
+			Name:           "flac audio",
+			TargetFormat:   "flac",
+			DefaultBitRate: 0,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+		},
 	}
 )
+
+var HTTPUserAgent = "Navidrome" + "/" + Version
 
 var (
 	VariousArtists = "Various Artists"

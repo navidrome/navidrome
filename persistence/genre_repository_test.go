@@ -182,7 +182,7 @@ var _ = Describe("GenreRepository", func() {
 		It("should filter by name using like match", func() {
 			// Test filtering by partial name match using the "name" filter which maps to containsFilter("tag_value")
 			options := rest.QueryOptions{
-				Filters: map[string]interface{}{"name": "%rock%"},
+				Filters: map[string]any{"name": "%rock%"},
 			}
 			count, err := restRepo.Count(options)
 			Expect(err).ToNot(HaveOccurred())
@@ -289,7 +289,7 @@ var _ = Describe("GenreRepository", func() {
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				// Filter by specific library
 				genres, err := headlessRestRepo.ReadAll(rest.QueryOptions{
-					Filters: map[string]interface{}{"library_id": 2},
+					Filters: map[string]any{"library_id": 2},
 				})
 				Expect(err).ToNot(HaveOccurred())
 

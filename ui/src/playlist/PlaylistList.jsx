@@ -16,8 +16,10 @@ import {
   usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
+import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
+  CoverArtAvatar,
   DurationField,
   List,
   Writable,
@@ -27,6 +29,12 @@ import {
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
+
+const useStyles = makeStyles((theme) => ({
+  button: {
+    color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+}))
 
 const PlaylistFilter = (props) => {
   const { permissions } = usePermissions()
@@ -112,13 +120,24 @@ const ToggleAutoImport = ({ resource, source }) => {
   ) : null
 }
 
-const PlaylistListBulkActions = (props) => (
-  <>
-    <ChangePublicStatusButton public={true} {...props} />
-    <ChangePublicStatusButton public={false} {...props} />
-    <BulkDeleteButton {...props} />
-  </>
-)
+const PlaylistListBulkActions = (props) => {
+  const classes = useStyles()
+  return (
+    <>
+      <ChangePublicStatusButton
+        public={true}
+        {...props}
+        className={classes.button}
+      />
+      <ChangePublicStatusButton
+        public={false}
+        {...props}
+        className={classes.button}
+      />
+      <BulkDeleteButton {...props} className={classes.button} />
+    </>
+  )
+}
 
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -137,7 +156,9 @@ const PlaylistList = (props) => {
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
       comment: <TextField source="comment" />,
-      sync: <ToggleAutoImport source="sync" sortByOrder={'DESC'} />,
+      sync: !isXsmall && (
+        <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
+      ),
     }),
     [isDesktop, isXsmall],
   )
@@ -152,11 +173,13 @@ const PlaylistList = (props) => {
     <List
       {...props}
       exporter={false}
+      sort={{ field: 'name', order: 'ASC' }}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
+        <CoverArtAvatar source="id" variant="square" />
         <TextField source="name" />
         {columns}
         <Writable>

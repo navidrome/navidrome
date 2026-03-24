@@ -80,11 +80,10 @@ var _ = Describe("Extractor", func() {
 			Expect(err).To(BeNil())
 			Expect(m.Tags).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
 
-			// TabLib 1.12 returns 18, previous versions return 39.
+			// TagLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 19, 39, 40, 43, 49))
 			Expect(m.AudioProperties.Channels).To(BeElementOf(2))
-			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
 			Expect(m.HasPicture).To(BeTrue())
 		})
@@ -106,7 +105,7 @@ var _ = Describe("Extractor", func() {
 
 				Expect(m.Tags).To(Or(
 					HaveKeyWithValue("replaygain_album_gain", []string{albumGain}),
-					HaveKeyWithValue("----:com.apple.itunes:replaygain_track_gain", []string{albumGain}),
+					HaveKeyWithValue("----:com.apple.itunes:replaygain_album_gain", []string{albumGain}),
 				))
 
 				Expect(m.Tags).To(Or(

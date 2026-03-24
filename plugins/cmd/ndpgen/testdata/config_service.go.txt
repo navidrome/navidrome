@@ -1,0 +1,15 @@
+package testpkg
+
+import "context"
+
+//nd:hostservice name=Config permission=config
+type ConfigService interface {
+	//nd:hostfunc
+	Get(ctx context.Context, key string) (value string, exists bool, err error)
+
+	//nd:hostfunc
+	Set(ctx context.Context, key string, value string) error
+
+	//nd:hostfunc
+	Has(ctx context.Context, key string) (exists bool, err error)
+}

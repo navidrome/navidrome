@@ -10,6 +10,7 @@
         "playCount": "Plays",
         "title": "Title",
         "artist": "Artist",
+        "composer": "Composer",
         "album": "Album",
         "path": "File path",
         "libraryName": "Library",
@@ -22,6 +23,7 @@
         "bitDepth": "Bit depth",
         "sampleRate": "Sample rate",
         "channels": "Channels",
+        "disc": "Disc %{discNumber}",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
         "comment": "Comment",
@@ -46,7 +48,8 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "info": "Get Info"
+        "info": "Get Info",
+        "instantMix": "Instant Mix"
       }
     },
     "album": {
@@ -302,6 +305,8 @@
       },
       "actions": {
         "scan": "Scan Library",
+        "quickScan": "Quick Scan",
+        "fullScan": "Full Scan",
         "manageUsers": "Manage User Access",
         "viewDetails": "View Details"
       },
@@ -310,6 +315,9 @@
         "updated": "Library updated successfully",
         "deleted": "Library deleted successfully",
         "scanStarted": "Library scan started",
+        "quickScanStarted": "Quick scan started",
+        "fullScanStarted": "Full scan started",
+        "scanError": "Error starting scan. Check logs",
         "scanCompleted": "Library scan completed"
       },
       "validation": {
@@ -324,6 +332,82 @@
         "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
         "scanInProgress": "Scan in progress...",
         "noLibrariesAssigned": "No libraries assigned to this user"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description",
+        "version": "Version",
+        "author": "Author",
+        "website": "Website",
+        "permissions": "Permissions",
+        "enabled": "Enabled",
+        "status": "Status",
+        "path": "Path",
+        "lastError": "Error",
+        "hasError": "Error",
+        "updatedAt": "Updated",
+        "createdAt": "Installed",
+        "configKey": "Key",
+        "configValue": "Value",
+        "allUsers": "Allow all users",
+        "selectedUsers": "Selected users",
+        "allLibraries": "Allow all libraries",
+        "selectedLibraries": "Selected libraries",
+        "allowWriteAccess": "Allow write access"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Configuration",
+        "manifest": "Manifest",
+        "usersPermission": "Users Permission",
+        "libraryPermission": "Library Permission"
+      },
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "actions": {
+        "enable": "Enable",
+        "disable": "Disable",
+        "disabledDueToError": "Fix the error before enabling",
+        "disabledUsersRequired": "Select users before enabling",
+        "disabledLibrariesRequired": "Select libraries before enabling",
+        "addConfig": "Add Configuration",
+        "rescan": "Rescan"
+      },
+      "notifications": {
+        "enabled": "Plugin enabled",
+        "disabled": "Plugin disabled",
+        "updated": "Plugin updated",
+        "error": "Error updating plugin"
+      },
+      "validation": {
+        "invalidJson": "Configuration must be valid JSON"
+      },
+      "messages": {
+        "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
+        "configValidationError": "Configuration validation failed:",
+        "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
+        "clickPermissions": "Click a permission for details",
+        "noConfig": "No configuration set",
+        "allUsersHelp": "When enabled, the plugin will have access to all users, including those created in the future.",
+        "noUsers": "No users selected",
+        "permissionReason": "Reason",
+        "usersRequired": "This plugin requires access to user information. Select which users the plugin can access, or enable 'Allow all users'.",
+        "allLibrariesHelp": "When enabled, the plugin will have access to all libraries, including those created in the future.",
+        "noLibraries": "No libraries selected",
+        "librariesRequired": "This plugin requires access to library information. Select which libraries the plugin can access, or enable 'Allow all libraries'.",
+        "allowWriteAccessHelp": "When enabled, the plugin can modify files in the library directories. By default, plugins have read-only access.",
+        "requiredHosts": "Required hosts"
+      },
+      "placeholders": {
+        "configKey": "key",
+        "configValue": "value"
       }
     }
   },
@@ -473,11 +557,18 @@
     }
   },
   "message": {
+    "uploadCover": "Upload Cover",
+    "removeCover": "Remove Cover",
+    "coverUploaded": "Cover art updated",
+    "coverRemoved": "Cover art removed",
+    "coverUploadError": "Error uploading cover art",
+    "coverRemoveError": "Error removing cover art",
     "note": "NOTE",
     "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",
     "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
     "noSimilarSongsFound": "No similar songs found",
+    "startingInstantMix": "Loading Instant Mix...",
     "noTopSongsFound": "No top songs found",
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",
@@ -591,6 +682,7 @@
       "currentValue": "Current Value",
       "configurationFile": "Configuration File",
       "exportToml": "Export Configuration (TOML)",
+      "downloadToml": "Download Configuration (TOML)",
       "exportSuccess": "Configuration exported to clipboard in TOML format",
       "exportFailed": "Failed to copy configuration",
       "devFlagsHeader": "Development Flags (subject to change/removal)",
@@ -600,11 +692,12 @@
   "activity": {
     "title": "Activity",
     "totalScanned": "Total Folders Scanned",
-    "quickScan": "Quick Scan",
-    "fullScan": "Full Scan",
+    "quickScan": "Quick",
+    "fullScan": "Full",
+    "selectiveScan": "Selective",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "scanType": "Type",
+    "scanType": "Last Scan",
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
   },

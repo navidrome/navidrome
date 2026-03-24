@@ -22,7 +22,7 @@ type User struct {
 	Password string `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
 	// It is received from the UI with the name "password"
-	NewPassword string `structs:"password,omitempty" json:"password,omitempty"`
+	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
 	// If changing the password, this is also required
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
 }
@@ -42,8 +42,11 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 type Users []User
 
 type UserRepository interface {
+	ResourceRepository
 	CountAll(...QueryOptions) (int64, error)
+	Delete(id string) error
 	Get(id string) (*User, error)
+	GetAll(options ...QueryOptions) (Users, error)
 	Put(*User) error
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error

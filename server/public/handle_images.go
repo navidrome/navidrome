@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
@@ -33,7 +34,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	artId, err := decodeArtworkID(id)
 	if err != nil {
 		log.Error(r, "Error decoding artwork id", "id", id, err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	size := p.IntOr("size", 0)
@@ -59,9 +60,29 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 
 	defer imgReader.Close()
 	w.Header().Set("Cache-Control", "public, max-age=315360000")
-	w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
+	w.Header().Set("Last-Modified", lastUpdate.Format(http.TimeFormat))
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}
+}
+
+func decodeArtworkID(tokenString string) (model.ArtworkID, error) {
+	token, err := auth.TokenAuth.Decode(tokenString)
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	if token == nil {
+		return model.ArtworkID{}, errors.New("unauthorized")
+	}
+	c := auth.ClaimsFromToken(token)
+	if c.ID == "" {
+		return model.ArtworkID{}, errors.New("required claim \"id\" not found")
+	}
+	artID, err := model.ParseArtworkID(c.ID)
+	if err == nil {
+		return artID, nil
+	}
+	// Try to default to mediafile artworkId (if used with a mediafileShare token)
+	return model.ParseArtworkID("mf-" + c.ID)
 }

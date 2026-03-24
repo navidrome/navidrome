@@ -265,6 +265,67 @@ var _ = Describe("Provider - ArtistImage", func() {
 		mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 		mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
 	})
+
+	Context("Unicode handling in artist names", func() {
+		var artistWithEnDash *model.Artist
+		var expectedURL *url.URL
+
+		const (
+			originalArtistName   = "Run–D.M.C." // Artist name with en dash
+			normalizedArtistName = "Run-D.M.C." // Normalized version with hyphen
+		)
+
+		BeforeEach(func() {
+			// Test with en dash (–) in artist name like "Run–D.M.C."
+			artistWithEnDash = &model.Artist{ID: "artist-endash", Name: originalArtistName}
+			mockArtistRepo.Mock = mock.Mock{} // Reset default expectations
+			mockArtistRepo.On("Get", "artist-endash").Return(artistWithEnDash, nil).Once()
+
+			expectedURL, _ = url.Parse("http://example.com/rundmc.jpg")
+
+			// Mock the image agent to return an image for the artist
+			mockImageAgent.On("GetArtistImages", ctx, "artist-endash", mock.AnythingOfType("string"), "").
+				Return([]agents.ExternalImage{
+					{URL: "http://example.com/rundmc.jpg", Size: 1000},
+				}, nil).Once()
+
+		})
+
+		When("DevPreserveUnicodeInExternalCalls is true", func() {
+			BeforeEach(func() {
+				conf.Server.DevPreserveUnicodeInExternalCalls = true
+			})
+			It("preserves Unicode characters in artist names", func() {
+				// Act
+				imgURL, err := provider.ArtistImage(ctx, "artist-endash")
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(imgURL).To(Equal(expectedURL))
+				mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-endash")
+				// This is the key assertion: ensure the original Unicode name is used
+				mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-endash", originalArtistName, "")
+			})
+		})
+
+		When("DevPreserveUnicodeInExternalCalls is false", func() {
+			BeforeEach(func() {
+				conf.Server.DevPreserveUnicodeInExternalCalls = false
+			})
+
+			It("normalizes Unicode characters", func() {
+				// Act
+				imgURL, err := provider.ArtistImage(ctx, "artist-endash")
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(imgURL).To(Equal(expectedURL))
+				mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-endash")
+				// This assertion ensures the normalized name is used (en dash → hyphen)
+				mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-endash", normalizedArtistName, "")
+			})
+		})
+	})
 })
 
 // mockArtistImageAgent implementation using testify/mock

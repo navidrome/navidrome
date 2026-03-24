@@ -31,12 +31,14 @@
         "mood": "Tunnelma",
         "participants": "Lisäosallistujat",
         "tags": "Lisätunnisteet",
-        "mappedTags": "Mäpättyt tunnisteet",
+        "mappedTags": "Mäpätyt tunnisteet",
         "rawTags": "Raakatunnisteet",
         "bitDepth": "Bittisyvyys",
         "sampleRate": "Näytteenottotaajuus",
         "missing": "Puuttuva",
-        "libraryName": "Kirjasto"
+        "libraryName": "Kirjasto",
+        "composer": "Säveltäjä",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
@@ -46,7 +48,8 @@
         "download": "Lataa",
         "playNext": "Soita seuraavaksi",
         "info": "Info",
-        "showInPlaylist": "Näytä soittolistassa"
+        "showInPlaylist": "Näytä soittolistassa",
+        "instantMix": "Pikasekoitus"
       }
     },
     "album": {
@@ -301,14 +304,19 @@
       "actions": {
         "scan": "Skannaa kirjasto",
         "manageUsers": "Hallitse käyttäjien pääsyä",
-        "viewDetails": "Näytä tiedot"
+        "viewDetails": "Näytä tiedot",
+        "quickScan": "Nopea skannaus",
+        "fullScan": "Täysi skannaus"
       },
       "notifications": {
         "created": "Kirjasto luotu onnistuneesti",
         "updated": "Kirjasto päivitetty onnistuneesti",
         "deleted": "Kirjasto poistettu onnistuneesti",
         "scanStarted": "Kirjaston skannaus aloitettu",
-        "scanCompleted": "Kirjaston skannaus valmistunut"
+        "scanCompleted": "Kirjaston skannaus valmistunut",
+        "quickScanStarted": "Nopea skannaus aloitettu",
+        "fullScanStarted": "Täysi skannaus aloitettu",
+        "scanError": "Virhe skannauksen käynnistyksessä. Tarkista lokit"
       },
       "validation": {
         "nameRequired": "Kirjaston nimi vaaditaan",
@@ -319,9 +327,85 @@
         "pathInvalid": "Virheellinen kirjaston polku"
       },
       "messages": {
-        "deleteConfirm": "Oletko varma, että haluat poistaa tämän kirjaston? Tämä poistaa kaikki liittyvät tiedot ja käyttäjien pääsyn.",
+        "deleteConfirm": "Haluatko varmasti poistaa tämän kirjaston? Kaikki siihen liittyvät tiedot ja käyttäjien pääsy poistetaan.",
         "scanInProgress": "Skannaus käynnissä...",
         "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja"
+      }
+    },
+    "plugin": {
+      "name": "Liitännäinen |||| Liitännäiset",
+      "fields": {
+        "id": "ID",
+        "name": "Nimi",
+        "description": "Kuvaus",
+        "version": "Versio",
+        "author": "Tekijä",
+        "website": "Verkkosivusto",
+        "permissions": "Oikeudet",
+        "enabled": "Käytössä",
+        "status": "Tila",
+        "path": "Polku",
+        "lastError": "Virhe",
+        "hasError": "Virhe",
+        "updatedAt": "Päivitetty",
+        "createdAt": "Asennettu",
+        "configKey": "Avain",
+        "configValue": "Arvo",
+        "allUsers": "Salli kaikki käyttäjät",
+        "selectedUsers": "Valitut käyttäjät",
+        "allLibraries": "Salli kaikki kirjastot",
+        "selectedLibraries": "Valitut kirjastot",
+        "allowWriteAccess": "Salli kirjoitusoikeus"
+      },
+      "sections": {
+        "status": "Tila",
+        "info": "Lisäosan tiedot",
+        "configuration": "Määritykset",
+        "manifest": "Luettelo",
+        "usersPermission": "Käyttäjäoikeudet",
+        "libraryPermission": "Kirjaston oikeudet"
+      },
+      "status": {
+        "enabled": "Käytössä",
+        "disabled": "Ei käytössä"
+      },
+      "actions": {
+        "enable": "Ota käyttöön",
+        "disable": "Poista käytöstä",
+        "disabledDueToError": "Korjaa virhe ennen käyttöönottoa",
+        "disabledUsersRequired": "Valitse käyttäjät ennen käyttöönottoa",
+        "disabledLibrariesRequired": "Valitse kirjastot ennen käyttöönottoa",
+        "addConfig": "Lisää määritykset",
+        "rescan": "Skannaa uudelleen"
+      },
+      "notifications": {
+        "enabled": "Lisäosa käytössä",
+        "disabled": "Lisäosa ei käytössä",
+        "updated": "Lisäosa päivitetty",
+        "error": "Virhe lisäosaa päivitettäessä"
+      },
+      "validation": {
+        "invalidJson": "Määrityksen on oltava kelvollinen JSON"
+      },
+      "messages": {
+        "configHelp": "Määritä lisäosa avain-arvo-parien avulla. Jätä tyhjäksi, jos lisäosa ei vaadi määrityksiä.",
+        "clickPermissions": "Napsauta käyttöoikeutta saadaksesi lisätietoja",
+        "noConfig": "Ei määritettyjä asetuksia",
+        "allUsersHelp": "Kun tämä on käytössä, laajennuksella on pääsy kaikkiin käyttäjiin, myös tulevaisuudessa luotaviin.",
+        "noUsers": "Ei valittuja käyttäjiä",
+        "permissionReason": "Syy",
+        "usersRequired": "Tämä laajennus vaatii pääsyn käyttäjätietoihin. Valitse käyttäjät, joihin laajennus voi päästä, tai ota käyttöön 'Salli kaikki käyttäjät'.",
+        "allLibrariesHelp": "Kun tämä on käytössä, laajennuksella on pääsy kaikkiin kirjastoihin, myös tulevaisuudessa luotaviin.",
+        "noLibraries": "Ei valittuja kirjastoja",
+        "librariesRequired": "Tämä laajennus vaatii pääsyn kirjastotietoihin. Valitse, mihin kirjastoihin laajennus voi käyttää, tai ota käyttöön 'Salli kaikki kirjastot'.",
+        "requiredHosts": "Vaaditut palvelimet",
+        "configValidationError": "Määrityksen validointi epäonnistui:",
+        "schemaRenderError": "Konfiguraatiolomaketta ei voi näyttää. Lisäosan skeema saattaa olla virheellinen.",
+        "allowWriteAccessHelp": "Kun otettu käyttöön, liitännäinen voi muokata tiedostoja kirjastohakemistoissa. Oletuksena liitännäisillä on vain luku -oikeus."
+      },
+      "placeholders": {
+        "configKey": "avain",
+        "configValue": "arvo"
       }
     }
   },
@@ -336,7 +420,7 @@
       "username": "Käyttäjänimi",
       "password": "Salasana",
       "sign_in": "Kirjaudu",
-      "sign_in_error": "Autentikointi epäonnistui. Yritä uudelleen",
+      "sign_in_error": "Kirjautuminen epäonnistui. Yritä uudelleen",
       "logout": "Kirjaudu ulos",
       "insightsCollectionNote": "Navidrome kerää anonyymejä käyttötietoja auttaakseen parantamaan\nprojektia. Paina [tästä] saadaksesi lisätietoa\nja halutessasi kieltäytyä"
     },
@@ -346,7 +430,7 @@
       "required": "Pakollinen",
       "minLength": "Pitää vähintään olla %{min} merkkiä",
       "maxLength": "Saa olla enintään %{max} merkkiä",
-      "minValue": "pitää olla vähintään %{min}",
+      "minValue": "Pitää olla vähintään %{min}",
       "maxValue": "Saa olla enentään %{max}",
       "number": "Pitää olla numero",
       "email": "Pitää olla oikea sähköpostiosoite",
@@ -440,7 +524,7 @@
     },
     "navigation": {
       "no_results": "Ei tuloksia",
-      "no_more_results": "Sivunumero %{page} on rajojen ulkopuolella. Kokeile edellinen sivu.",
+      "no_more_results": "Sivunumeroa %{page} ei löydy. Yritä edellistä sivua.",
       "page_out_of_boundaries": "Sivunumero %{page} on rajojen ulkopuolella",
       "page_out_from_end": "Viimeinen sivu, ei voi edetä",
       "page_out_from_begin": "Ensimmäinen sivu, ei voi palata",
@@ -506,7 +590,14 @@
     "remove_all_missing_title": "Poista kaikki puuttuvat tiedostot",
     "remove_all_missing_content": "Haluatko varmasti poistaa kaikki puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien toistomäärät ja arvostelut.",
     "noSimilarSongsFound": "Samankaltaisia kappaleita ei löytynyt",
-    "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt"
+    "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt",
+    "startingInstantMix": "Ladataan Pikasekoitus...",
+    "uploadCover": "Lataa kansikuva",
+    "removeCover": "Poista kansikuva",
+    "coverUploaded": "Kansikuva päivitetty",
+    "coverRemoved": "Kansikuva poistettu",
+    "coverUploadError": "Virhe ladattaessa kansikuvaa",
+    "coverRemoveError": "Virhe poistettaessa kansikuvaa"
   },
   "menu": {
     "library": "Kirjasto",
@@ -522,7 +613,7 @@
         "desktop_notifications": "Työpöytäilmoitukset",
         "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
         "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun",
-        "replaygain": "RepleyGain -tila",
+        "replaygain": "ReplayGain -tila",
         "preAmp": "ReplayGain esivahvistus (dB)",
         "gain": {
           "none": "Pois käytöstä",
@@ -554,7 +645,7 @@
     "previousTrackText": "Edellinen kappale",
     "reloadText": "Päivitä",
     "volumeText": "Äänenvoimakkuus",
-    "toggleLyricText": "Toggle lyric",
+    "toggleLyricText": "Näytä/piilota sanat",
     "toggleMiniModeText": "Minimoi",
     "destroyText": "Poista",
     "downloadText": "Lataa",
@@ -581,18 +672,19 @@
     },
     "tabs": {
       "about": "Tietoja",
-      "config": "Kokoonpano"
+      "config": "Määritykset"
     },
     "config": {
       "configName": "Konfiguraation nimi",
       "environmentVariable": "Ympäristömuuttuja",
       "currentValue": "Nykyinen arvo",
-      "configurationFile": "Konfiguraatiotiedosto",
-      "exportToml": "Vie konfiguraatio (TOML)",
-      "exportSuccess": "Konfiguraatio viety leikepöydälle TOML-muodossa",
-      "exportFailed": "Konfiguraation kopiointi epäonnistui",
+      "configurationFile": "Määritystiedosto",
+      "exportToml": "Vie määritys (TOML)",
+      "exportSuccess": "Määritykset viety leikepöydälle TOML-muodossa",
+      "exportFailed": "Määritysten kopiointi epäonnistui",
       "devFlagsHeader": "Kehitysliput (voivat muuttua/poistua)",
-      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa"
+      "devFlagsComment": "Nämä ovat kokeellisia asetuksia ja ne voidaan poistaa tulevissa versioissa",
+      "downloadToml": "Lataa määritykset (TOML)"
     }
   },
   "activity": {
@@ -604,7 +696,8 @@
     "serverDown": "SAMMUTETTU",
     "scanType": "Tyyppi",
     "status": "Skannausvirhe",
-    "elapsedTime": "Kulunut aika"
+    "elapsedTime": "Kulunut aika",
+    "selectiveScan": "Valikoiva"
   },
   "help": {
     "title": "Navidrome pikapainikkeet",
@@ -612,7 +705,7 @@
       "show_help": "Näytä tämä apuvalikko",
       "toggle_menu": "Menuvalikko päälle ja pois",
       "toggle_play": "Toista / Tauko",
-      "prev_song": "Esellinen kappale",
+      "prev_song": "Edellinen kappale",
       "next_song": "Seuraava kappale",
       "vol_up": "Kovemmalle",
       "vol_down": "Hiljemmalle",

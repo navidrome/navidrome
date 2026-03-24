@@ -7,6 +7,7 @@
   "album": {
     "id": "",
     "name": "",
+    "duration": 0,
     "userRating": 0,
     "genres": [],
     "musicBrainzId": "",

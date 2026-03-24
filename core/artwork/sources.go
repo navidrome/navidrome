@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"go.senan.xyz/taglib"
 )
 
 func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
@@ -88,44 +88,37 @@ func fromTag(ctx context.Context, path string) sourceFunc {
 		if path == "" {
 			return nil, "", nil
 		}
-		f, err := os.Open(path)
+		f, err := taglib.OpenReadOnly(path, taglib.WithReadStyle(taglib.ReadStyleFast))
 		if err != nil {
 			return nil, "", err
 		}
 		defer f.Close()
 
-		m, err := tag.ReadFrom(f)
-		if err != nil {
-			return nil, "", err
-		}
-
-		types := m.PictureTypes()
-		if len(types) == 0 {
+		images := f.Properties().Images
+		if len(images) == 0 {
 			return nil, "", fmt.Errorf("no embedded image found in %s", path)
 		}
 
-		var picture *tag.Picture
-		for _, regex := range picTypeRegexes {
-			for _, t := range types {
-				if regex.MatchString(t) {
-					log.Trace(ctx, "Found embedded image", "type", t, "path", path)
-					picture = m.Pictures(t)
-					break
-				}
-			}
-			if picture != nil {
-				break
-			}
-		}
-		if picture == nil {
-			log.Trace(ctx, "Could not find a front image. Getting the first one", "type", types[0], "path", path)
-			picture = m.Picture()
-		}
-		if picture == nil {
+		imageIndex := findBestImageIndex(ctx, images, path)
+		data, err := f.Image(imageIndex)
+		if err != nil || len(data) == 0 {
 			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
 		}
-		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
+		return io.NopCloser(bytes.NewReader(data)), path, nil
 	}
+}
+
+func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path string) int {
+	for _, regex := range picTypeRegexes {
+		for i, img := range images {
+			if regex.MatchString(img.Type) {
+				log.Trace(ctx, "Found embedded image", "type", img.Type, "path", path)
+				return i
+			}
+		}
+	}
+	log.Trace(ctx, "Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
+	return 0
 }
 
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
@@ -182,7 +175,8 @@ func fromAlbumExternalSource(ctx context.Context, al model.Album, provider exter
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
 	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	resp, err := hc.Do(req)
+	req.Header.Set("User-Agent", consts.HTTPUserAgent)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, "", err
 	}

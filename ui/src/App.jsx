@@ -16,6 +16,7 @@ import playlist from './playlist'
 import radio from './radio'
 import share from './share'
 import library from './library'
+import plugin from './plugin'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -32,6 +33,7 @@ import {
   replayGainReducer,
   downloadMenuDialogReducer,
   shareDialogReducer,
+  transcodingReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -71,6 +73,7 @@ const adminStore = createAdminStore({
     activity: activityReducer,
     settings: settingsReducer,
     replayGain: replayGainReducer,
+    transcoding: transcodingReducer,
   },
 })
 
@@ -136,6 +139,13 @@ const Admin = (props) => {
           <Resource
             name="missing"
             {...missing}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+        permissions === 'admin' && config.pluginsEnabled ? (
+          <Resource
+            name="plugin"
+            {...plugin}
             options={{ subMenu: 'settings' }}
           />
         ) : null,

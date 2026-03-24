@@ -38,7 +38,7 @@ Before submitting a pull request, ensure that you go through the following:
 ### Commit Conventions
 Each commit message must adhere to the following format:
 ```
-<type>(scope): <description> - <issue number>
+<type>(scope): <description>
 
 [optional body]
 ```

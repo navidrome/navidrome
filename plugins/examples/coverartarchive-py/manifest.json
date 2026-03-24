@@ -1,0 +1,16 @@
+{
+  "name": "Cover Art Archive (Python)",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Album cover art from the Cover Art Archive - Python example",
+  "website": "https://coverartarchive.org",
+  "permissions": {
+    "http": {
+      "reason": "Fetch album cover art from Cover Art Archive API",
+      "requiredHosts": [
+        "coverartarchive.org",
+        "*.archive.org"
+      ]
+    }
+  }
+}

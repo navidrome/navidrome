@@ -54,8 +54,8 @@ func SanitizeFieldForSortingNoArticle(originalValue string) string {
 }
 
 func RemoveArticle(name string) string {
-	articles := strings.Split(conf.Server.IgnoredArticles, " ")
-	for _, a := range articles {
+	articles := strings.SplitSeq(conf.Server.IgnoredArticles, " ")
+	for a := range articles {
 		n := strings.TrimPrefix(name, a+" ")
 		if n != name {
 			return n
