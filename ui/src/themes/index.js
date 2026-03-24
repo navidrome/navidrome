@@ -14,6 +14,7 @@ import NuclearTheme from './nuclear'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
+import MoonbaseTheme from './moonbase'
 
 export default {
   // Classic default themes
@@ -30,6 +31,7 @@ export default {
   GruvboxDarkTheme,
   LigeraTheme,
   MonokaiTheme,
+  MoonbaseTheme,
   NautilineTheme,
   NordTheme,
   NuclearTheme,
