@@ -1,7 +1,7 @@
-import stylesheet from './moonbase.css.js'
+import stylesheet from './moonbaseBravo.css.js'
 
 export default {
-  themeName: 'Moonbase',
+  themeName: 'Moonbase - Bravo',
   palette: {
     primary: {
       main: '#d4a039',
