@@ -379,8 +379,13 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	}
 
 	// Create stream
-	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
+	s, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
+		if errors.Is(err, stream.ErrTranscodingBusy) {
+			log.Warn(ctx, "Transcoding throttle full", "mediaID", mediaID)
+			http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+			return nil, nil
+		}
 		log.Error(ctx, "Error creating stream", "mediaID", mediaID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return nil, nil
@@ -388,14 +393,14 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 
 	// Make sure the stream will be closed at the end
 	defer func() {
-		if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Error("Error closing stream", "id", mediaID, "file", stream.Name(), err)
+		if err := s.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
+			log.Error("Error closing stream", "id", mediaID, "file", s.Name(), err)
 		}
 	}()
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	n, err := stream.Serve(ctx, w, r)
+	n, err := s.Serve(ctx, w, r)
 	if err != nil || n == 0 {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
