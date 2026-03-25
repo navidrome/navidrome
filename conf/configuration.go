@@ -58,6 +58,7 @@ type configOptions struct {
 	PlaylistsPath                   string
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
+	MaxConcurrentTranscodes         int
 	DefaultDownsamplingFormat       string
 	Search                          searchOptions `json:",omitzero"`
 	SimilarSongsMatchThreshold      int
@@ -113,35 +114,37 @@ type configOptions struct {
 	Agents                          string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevLogLevels                      map[string]string `json:",omitempty"`
-	DevLogSourceLine                  bool
-	DevEnableProfiler                 bool
-	DevAutoCreateAdminPassword        string
-	DevAutoLoginUsername              string
-	DevActivityPanel                  bool
-	DevActivityPanelUpdateRate        time.Duration
-	DevSidebarPlaylists               bool
-	DevShowArtistPage                 bool
-	DevUIShowConfig                   bool
-	DevNewEventStream                 bool
-	DevOffsetOptimize                 int
-	DevArtworkMaxRequests             int
-	DevArtworkThrottleBacklogLimit    int
-	DevArtworkThrottleBacklogTimeout  time.Duration
-	DevArtistInfoTimeToLive           time.Duration
-	DevAlbumInfoTimeToLive            time.Duration
-	DevExternalScanner                bool
-	DevScannerThreads                 uint
-	DevSelectiveWatcher               bool
-	DevInsightsInitialDelay           time.Duration
-	DevEnablePlayerInsights           bool
-	DevEnablePluginsInsights          bool
-	DevPluginCompilationTimeout       time.Duration
-	DevExternalArtistFetchMultiplier  float64
-	DevOptimizeDB                     bool
-	DevPreserveUnicodeInExternalCalls bool
-	DevEnableMediaFileProbe           bool
-	DevJpegCoverArt                   bool
+	DevLogLevels                       map[string]string `json:",omitempty"`
+	DevLogSourceLine                   bool
+	DevEnableProfiler                  bool
+	DevAutoCreateAdminPassword         string
+	DevAutoLoginUsername               string
+	DevActivityPanel                   bool
+	DevActivityPanelUpdateRate         time.Duration
+	DevSidebarPlaylists                bool
+	DevShowArtistPage                  bool
+	DevUIShowConfig                    bool
+	DevNewEventStream                  bool
+	DevOffsetOptimize                  int
+	DevArtworkMaxRequests              int
+	DevArtworkThrottleBacklogLimit     int
+	DevArtworkThrottleBacklogTimeout   time.Duration
+	DevTranscodeThrottleBacklogLimit   int
+	DevTranscodeThrottleBacklogTimeout time.Duration
+	DevArtistInfoTimeToLive            time.Duration
+	DevAlbumInfoTimeToLive             time.Duration
+	DevExternalScanner                 bool
+	DevScannerThreads                  uint
+	DevSelectiveWatcher                bool
+	DevInsightsInitialDelay            time.Duration
+	DevEnablePlayerInsights            bool
+	DevEnablePluginsInsights           bool
+	DevPluginCompilationTimeout        time.Duration
+	DevExternalArtistFetchMultiplier   float64
+	DevOptimizeDB                      bool
+	DevPreserveUnicodeInExternalCalls  bool
+	DevEnableMediaFileProbe            bool
+	DevJpegCoverArt                    bool
 }
 
 type scannerOptions struct {
@@ -663,6 +666,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablem3uexternalalbumart", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
+	viper.SetDefault("maxconcurrenttranscodes", 4)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
@@ -770,6 +774,8 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkmaxrequests", max(4, runtime.NumCPU()))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devtranscodethrottlebackloglimit", consts.RequestThrottleBacklogLimit)
+	viper.SetDefault("devtranscodethrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)
