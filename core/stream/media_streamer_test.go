@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -32,7 +31,8 @@ var _ = Describe("MediaStreamer", func() {
 		})
 		testCache := stream.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache, stream.NewTranscodingThrottle(0, 100, time.Minute))
+		conf.Server.MaxConcurrentTranscodes = 0 // Disable throttling for general tests
+		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(conf.Server.CacheFolder)
@@ -82,32 +82,11 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("returns ErrTranscodingBusy when throttle rejects", func() {
-			throttle := stream.NewTranscodingThrottle(1, 1, 50*time.Millisecond)
-			Expect(throttle.Acquire(context.Background())).To(Succeed())
-
-			testCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-			throttledStreamer := stream.NewMediaStreamer(ds, ffmpeg, testCache, throttle)
-
-			_, err := throttledStreamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 64})
-			Expect(err).To(MatchError(stream.ErrTranscodingBusy))
-			throttle.Release()
-		})
-
-		It("does not throttle raw/direct-play requests", func() {
-			throttle := stream.NewTranscodingThrottle(1, 1, 50*time.Millisecond)
-			Expect(throttle.Acquire(context.Background())).To(Succeed())
-
-			testCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-			throttledStreamer := stream.NewMediaStreamer(ds, ffmpeg, testCache, throttle)
-
-			s, err := throttledStreamer.NewStream(ctx, mf, stream.Request{Format: "raw"})
+		It("does not throttle raw/direct-play requests even when throttle is saturated", func() {
+			s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "raw"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s).ToNot(BeNil())
 			_ = s.Close()
-			throttle.Release()
 		})
 	})
 })

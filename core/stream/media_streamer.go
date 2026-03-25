@@ -27,15 +27,14 @@ type MediaStreamer interface {
 
 type TranscodingCache cache.FileCache
 
-func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache, throttle *TranscodingThrottle) MediaStreamer {
-	return &mediaStreamer{ds: ds, transcoder: t, cache: cache, throttle: throttle}
+func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache) MediaStreamer {
+	return &mediaStreamer{ds: ds, transcoder: t, cache: cache}
 }
 
 type mediaStreamer struct {
 	ds         model.DataStore
 	transcoder ffmpeg.FFmpeg
 	cache      cache.FileCache
-	throttle   *TranscodingThrottle
 }
 
 type streamJob struct {
@@ -93,7 +92,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 
 	// Acquire throttle slot before accessing cache (which may spawn ffmpeg on miss)
-	if err := ms.throttle.Acquire(ctx); err != nil {
+	if err := getTranscodingThrottle().Acquire(ctx); err != nil {
 		return nil, err
 	}
 
@@ -110,18 +109,18 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
-		ms.throttle.Release()
+		getTranscodingThrottle().Release()
 		log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
 		return nil, err
 	}
 	cached = r.Cached
 	if cached {
 		// Cache hit — no ffmpeg process running, release the slot immediately
-		ms.throttle.Release()
+		getTranscodingThrottle().Release()
 		s.ReadCloser = r
 	} else {
 		// Cache miss — slot released when stream is closed
-		s.ReadCloser = &releaseOnClose{ReadCloser: r, release: ms.throttle.Release}
+		s.ReadCloser = &releaseOnClose{ReadCloser: r, release: getTranscodingThrottle().Release}
 	}
 	s.Seeker = r.Seeker
 

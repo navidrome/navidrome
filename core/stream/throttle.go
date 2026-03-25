@@ -18,8 +18,8 @@ import (
 // because the concurrency limit and backlog are both full.
 var ErrTranscodingBusy = errors.New("too many concurrent transcodes")
 
-// TranscodingThrottle limits the number of concurrent transcoding operations.
-type TranscodingThrottle struct {
+// transcodingThrottle limits the number of concurrent transcoding operations.
+type transcodingThrottle struct {
 	sem        *semaphore.Weighted
 	backlog    atomic.Int64
 	maxBacklog int64
@@ -27,14 +27,11 @@ type TranscodingThrottle struct {
 	disabled   bool
 }
 
-// NewTranscodingThrottle creates a throttle that allows maxConcurrent simultaneous
-// transcodes with maxBacklog queued waiters and the given timeout.
-// If maxConcurrent is 0, throttling is disabled.
-func NewTranscodingThrottle(maxConcurrent, maxBacklog int, timeout time.Duration) *TranscodingThrottle {
+func newTranscodingThrottle(maxConcurrent, maxBacklog int, timeout time.Duration) *transcodingThrottle {
 	if maxConcurrent <= 0 {
-		return &TranscodingThrottle{disabled: true}
+		return &transcodingThrottle{disabled: true}
 	}
-	return &TranscodingThrottle{
+	return &transcodingThrottle{
 		sem:        semaphore.NewWeighted(int64(maxConcurrent)),
 		maxBacklog: int64(maxBacklog),
 		timeout:    timeout,
@@ -42,7 +39,7 @@ func NewTranscodingThrottle(maxConcurrent, maxBacklog int, timeout time.Duration
 }
 
 // Acquire blocks until a transcoding slot is available, the backlog is full, or the timeout expires.
-func (t *TranscodingThrottle) Acquire(ctx context.Context) error {
+func (t *transcodingThrottle) Acquire(ctx context.Context) error {
 	if t.disabled {
 		return nil
 	}
@@ -74,7 +71,7 @@ func (t *TranscodingThrottle) Acquire(ctx context.Context) error {
 }
 
 // Release frees a transcoding slot.
-func (t *TranscodingThrottle) Release() {
+func (t *transcodingThrottle) Release() {
 	if t.disabled {
 		return
 	}
@@ -94,10 +91,10 @@ func (r *releaseOnClose) Close() error {
 	return err
 }
 
-// GetTranscodingThrottle returns a singleton TranscodingThrottle created from the current configuration.
-func GetTranscodingThrottle() *TranscodingThrottle {
-	return singleton.GetInstance(func() *TranscodingThrottle {
-		return NewTranscodingThrottle(
+// getTranscodingThrottle returns a singleton transcodingThrottle created from the current configuration.
+func getTranscodingThrottle() *transcodingThrottle {
+	return singleton.GetInstance(func() *transcodingThrottle {
+		return newTranscodingThrottle(
 			conf.Server.MaxConcurrentTranscodes,
 			conf.Server.DevTranscodeThrottleBacklogLimit,
 			conf.Server.DevTranscodeThrottleBacklogTimeout,

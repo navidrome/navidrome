@@ -16,7 +16,6 @@ import (
 var Set = wire.NewSet(
 	stream.NewMediaStreamer,
 	stream.GetTranscodingCache,
-	stream.GetTranscodingThrottle,
 	NewArchiver,
 	NewPlayers,
 	NewShare,

@@ -15,7 +15,7 @@ import (
 var _ = Describe("TranscodingThrottle", func() {
 	Describe("Acquire/Release", func() {
 		It("allows up to maxConcurrent acquires", func() {
-			t := NewTranscodingThrottle(2, 10, time.Second)
+			t := newTranscodingThrottle(2, 10, time.Second)
 			Expect(t.Acquire(context.Background())).To(Succeed())
 			Expect(t.Acquire(context.Background())).To(Succeed())
 			// Third should block, so test it doesn't return immediately
@@ -26,14 +26,14 @@ var _ = Describe("TranscodingThrottle", func() {
 		})
 
 		It("releases a slot and allows new acquire", func() {
-			t := NewTranscodingThrottle(1, 10, time.Second)
+			t := newTranscodingThrottle(1, 10, time.Second)
 			Expect(t.Acquire(context.Background())).To(Succeed())
 			t.Release()
 			Expect(t.Acquire(context.Background())).To(Succeed())
 		})
 
 		It("returns ErrTranscodingBusy when backlog limit is reached", func() {
-			t := NewTranscodingThrottle(1, 2, 5*time.Second)
+			t := newTranscodingThrottle(1, 2, 5*time.Second)
 			// Fill the slot
 			Expect(t.Acquire(context.Background())).To(Succeed())
 
@@ -61,14 +61,14 @@ var _ = Describe("TranscodingThrottle", func() {
 		})
 
 		It("returns ErrTranscodingBusy when timeout expires", func() {
-			t := NewTranscodingThrottle(1, 10, 50*time.Millisecond)
+			t := newTranscodingThrottle(1, 10, 50*time.Millisecond)
 			Expect(t.Acquire(context.Background())).To(Succeed())
 			err := t.Acquire(context.Background())
 			Expect(err).To(MatchError(ErrTranscodingBusy))
 		})
 
 		It("respects context cancellation", func() {
-			t := NewTranscodingThrottle(1, 10, 5*time.Second)
+			t := newTranscodingThrottle(1, 10, 5*time.Second)
 			Expect(t.Acquire(context.Background())).To(Succeed())
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
@@ -77,7 +77,7 @@ var _ = Describe("TranscodingThrottle", func() {
 		})
 
 		It("is disabled when maxConcurrent is 0", func() {
-			t := NewTranscodingThrottle(0, 10, time.Second)
+			t := newTranscodingThrottle(0, 10, time.Second)
 			for i := 0; i < 100; i++ {
 				Expect(t.Acquire(context.Background())).To(Succeed())
 			}
