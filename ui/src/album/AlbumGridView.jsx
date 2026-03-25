@@ -18,6 +18,7 @@ import {
   PlayButton,
   ArtistLinkField,
   OverflowTooltip,
+  useImageUrl,
 } from '../common'
 import { COVER_ART_SIZE, DraggableTypes } from '../consts'
 import clsx from 'clsx'
@@ -104,9 +105,6 @@ const useCoverStyles = makeStyles({
     height: (props) => props.height,
     transition: 'opacity 0.3s ease-in-out',
   },
-  coverLoading: {
-    opacity: 0.5,
-  },
 })
 
 const getColsForWidth = (width) => {
@@ -125,8 +123,6 @@ const Cover = withContentRect('bounds')(({
   // Force height to be the same as the width determined by the GridList
   // noinspection JSSuspiciousNameCombination
   const classes = useCoverStyles({ height: contentRect.bounds.width })
-  const [imageLoading, setImageLoading] = React.useState(true)
-  const [imageError, setImageError] = React.useState(false)
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -136,33 +132,15 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
-  // Reset image state when record changes
-  React.useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const handleImageLoad = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
+  const url = subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)
+  const { imgUrl } = useImageUrl(url)
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
-        <img
-          key={record.id} // Force re-render when record changes
-          src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)}
-          alt={record.name}
-          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-        />
+        {imgUrl && (
+          <img src={imgUrl} alt={record.name} className={classes.cover} />
+        )}
       </div>
     </div>
   )
