@@ -666,7 +666,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablem3uexternalalbumart", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
-	viper.SetDefault("maxconcurrenttranscodes", 4)
+	viper.SetDefault("maxconcurrenttranscodes", max(4, runtime.NumCPU()))
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
