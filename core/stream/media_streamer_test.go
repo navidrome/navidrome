@@ -73,4 +73,41 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Seekable()).To(BeTrue())
 		})
 	})
+
+	Context("NewStream with throttle", func() {
+		var mf *model.MediaFile
+		BeforeEach(func() {
+			var err error
+			mf, err = ds.MediaFile(ctx).Get("123")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns ErrTranscodingBusy when throttle rejects", func() {
+			throttle := stream.NewTranscodingThrottle(1, 1, 50*time.Millisecond)
+			Expect(throttle.Acquire(context.Background())).To(Succeed())
+
+			testCache := stream.NewTranscodingCache()
+			Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
+			throttledStreamer := stream.NewMediaStreamer(ds, ffmpeg, testCache, throttle)
+
+			_, err := throttledStreamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 64})
+			Expect(err).To(MatchError(stream.ErrTranscodingBusy))
+			throttle.Release()
+		})
+
+		It("does not throttle raw/direct-play requests", func() {
+			throttle := stream.NewTranscodingThrottle(1, 1, 50*time.Millisecond)
+			Expect(throttle.Acquire(context.Background())).To(Succeed())
+
+			testCache := stream.NewTranscodingCache()
+			Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
+			throttledStreamer := stream.NewMediaStreamer(ds, ffmpeg, testCache, throttle)
+
+			s, err := throttledStreamer.NewStream(ctx, mf, stream.Request{Format: "raw"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(s).ToNot(BeNil())
+			_ = s.Close()
+			throttle.Release()
+		})
+	})
 })
