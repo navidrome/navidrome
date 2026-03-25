@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -46,6 +47,12 @@ func (t *TranscodingThrottle) Acquire(ctx context.Context) error {
 		return nil
 	}
 
+	// Fast path: try to acquire without touching the backlog counter
+	if t.sem.TryAcquire(1) {
+		return nil
+	}
+
+	// Slow path: semaphore is full, enter backlog queue
 	// Increment-then-check-then-rollback to avoid TOCTOU race
 	current := t.backlog.Add(1)
 	if current > t.maxBacklog {
@@ -54,20 +61,15 @@ func (t *TranscodingThrottle) Acquire(ctx context.Context) error {
 		return ErrTranscodingBusy
 	}
 
-	if !t.sem.TryAcquire(1) {
-		log.Info(ctx, "Transcoding request queued, waiting for slot", "backlog", current)
-		ctx, cancel := context.WithTimeout(ctx, t.timeout)
-		defer cancel()
-		err := t.sem.Acquire(ctx, 1)
-		t.backlog.Add(-1)
-		if err != nil {
-			log.Warn(ctx, "Transcoding request rejected, timeout waiting for slot")
-			return ErrTranscodingBusy
-		}
-		return nil
-	}
-
+	log.Info(ctx, "Transcoding request queued, waiting for slot", "backlog", current)
+	ctx, cancel := context.WithTimeout(ctx, t.timeout)
+	defer cancel()
+	err := t.sem.Acquire(ctx, 1)
 	t.backlog.Add(-1)
+	if err != nil {
+		log.Warn(ctx, "Transcoding request rejected, timeout waiting for slot")
+		return ErrTranscodingBusy
+	}
 	return nil
 }
 
@@ -92,11 +94,13 @@ func (r *releaseOnClose) Close() error {
 	return err
 }
 
-// GetTranscodingThrottle creates a TranscodingThrottle from the current configuration.
+// GetTranscodingThrottle returns a singleton TranscodingThrottle created from the current configuration.
 func GetTranscodingThrottle() *TranscodingThrottle {
-	return NewTranscodingThrottle(
-		conf.Server.MaxConcurrentTranscodes,
-		conf.Server.DevTranscodeThrottleBacklogLimit,
-		conf.Server.DevTranscodeThrottleBacklogTimeout,
-	)
+	return singleton.GetInstance(func() *TranscodingThrottle {
+		return NewTranscodingThrottle(
+			conf.Server.MaxConcurrentTranscodes,
+			conf.Server.DevTranscodeThrottleBacklogLimit,
+			conf.Server.DevTranscodeThrottleBacklogTimeout,
+		)
+	})
 }
