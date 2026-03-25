@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -322,6 +324,47 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(fakeStreamer.captured.Channels).To(Equal(2))
 			Expect(fakeStreamer.captured.Offset).To(Equal(10))
 		})
+
+		It("returns 503 when transcoding throttle is full", func() {
+			busyStreamer := &busyMediaStreamer{}
+			router = New(ds, nil, busyStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
+			mockTD.resolvedReq = stream.Request{Format: "mp3", BitRate: 128}
+
+			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
+			resp, err := router.GetTranscodeStream(w, r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp).To(BeNil())
+			Expect(w.Code).To(Equal(http.StatusServiceUnavailable))
+		})
+	})
+
+	Describe("Stream - throttle", func() {
+		It("returns error when transcoding throttle is full", func() {
+			busyStreamer := &busyMediaStreamer{}
+			router = New(ds, nil, busyStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
+
+			r := newGetRequest("id=song-1")
+			_, err := router.Stream(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("too many concurrent transcodes"))
+		})
+	})
+
+	Describe("Download - throttle", func() {
+		It("returns error when transcoding throttle is full", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableDownloads = true
+			busyStreamer := &busyMediaStreamer{}
+			router = New(ds, nil, busyStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
+
+			r := newGetRequest("id=song-1")
+			_, err := router.Download(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("too many concurrent transcodes"))
+		})
 	})
 
 	Describe("bpsToKbps", func() {
@@ -421,4 +464,11 @@ type fakeMediaStreamer struct {
 func (f *fakeMediaStreamer) NewStream(_ context.Context, _ *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	f.captured = &req
 	return nil, errStreamCaptured
+}
+
+// busyMediaStreamer always returns ErrTranscodingBusy from NewStream
+type busyMediaStreamer struct{}
+
+func (b *busyMediaStreamer) NewStream(_ context.Context, _ *model.MediaFile, _ stream.Request) (*stream.Stream, error) {
+	return nil, stream.ErrTranscodingBusy
 }
