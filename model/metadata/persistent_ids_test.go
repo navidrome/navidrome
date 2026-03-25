@@ -65,7 +65,7 @@ var _ = Describe("getPID", func() {
 	Context("calculated attributes", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.PID.Album = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+			conf.Server.PID.Album = "musicbrainz_albumid|albumartistid,album,albumversion,releasedate"
 		})
 		When("field is title", func() {
 			It("should return the pid", func() {
@@ -88,13 +88,13 @@ var _ = Describe("getPID", func() {
 			It("should return the pid", func() {
 				spec := "albumid|title"
 				md.tags = map[model.TagName][]string{
-					"title":       {"title"},
-					"album":       {"album name"},
-					"version":     {"version"},
-					"releasedate": {"2021-01-01"},
+					"title":        {"title"},
+					"album":        {"album name"},
+					"albumversion": {"deluxe edition"},
+					"releasedate":  {"2021-01-01"},
 				}
 				mf.AlbumArtist = "Album Artist"
-				Expect(getPID(mf, md, spec, false)).To(Equal("(((album artist)\\album name\\version\\2021-01-01))"))
+				Expect(getPID(mf, md, spec, false)).To(Equal("(((album artist)\\album name\\deluxe edition\\2021-01-01))"))
 			})
 		})
 		When("field is albumartistid", func() {
