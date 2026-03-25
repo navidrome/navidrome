@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -31,7 +32,7 @@ var _ = Describe("MediaStreamer", func() {
 		})
 		testCache := stream.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
+		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache, stream.NewTranscodingThrottle(0, 100, time.Minute))
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(conf.Server.CacheFolder)

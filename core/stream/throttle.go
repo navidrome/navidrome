@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"golang.org/x/sync/semaphore"
 )
@@ -89,4 +90,13 @@ func (r *releaseOnClose) Close() error {
 	err := r.ReadCloser.Close()
 	r.once.Do(r.release)
 	return err
+}
+
+// GetTranscodingThrottle creates a TranscodingThrottle from the current configuration.
+func GetTranscodingThrottle() *TranscodingThrottle {
+	return NewTranscodingThrottle(
+		conf.Server.MaxConcurrentTranscodes,
+		conf.Server.DevTranscodeThrottleBacklogLimit,
+		conf.Server.DevTranscodeThrottleBacklogTimeout,
+	)
 }

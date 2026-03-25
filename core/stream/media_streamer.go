@@ -27,14 +27,15 @@ type MediaStreamer interface {
 
 type TranscodingCache cache.FileCache
 
-func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache) MediaStreamer {
-	return &mediaStreamer{ds: ds, transcoder: t, cache: cache}
+func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache, throttle *TranscodingThrottle) MediaStreamer {
+	return &mediaStreamer{ds: ds, transcoder: t, cache: cache, throttle: throttle}
 }
 
 type mediaStreamer struct {
 	ds         model.DataStore
 	transcoder ffmpeg.FFmpeg
 	cache      cache.FileCache
+	throttle   *TranscodingThrottle
 }
 
 type streamJob struct {
