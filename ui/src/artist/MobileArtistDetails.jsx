@@ -4,8 +4,14 @@ import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
 import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import {
+  LoveButton,
+  RatingField,
+  ImageUploadOverlay,
+  useImageLoadingState,
+} from '../common'
 import Lightbox from 'react-image-lightbox'
+import { COVER_ART_SIZE } from '../consts'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
 
@@ -67,6 +73,7 @@ const useStyles = makeStyles(
       minWidth: '7rem',
       display: 'flex',
       borderRadius: '5em',
+      position: 'relative',
     },
     loveButton: {
       top: theme.spacing(-0.2),
@@ -83,40 +90,19 @@ const useStyles = makeStyles(
 )
 
 const MobileArtistDetails = ({ artistInfo, biography, record }) => {
-  const img = subsonic.getCoverArtUrl(record)
+  const img = subsonic.getCoverArtUrl(record, 800)
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const [imageLoading, setImageLoading] = React.useState(false)
-  const [imageError, setImageError] = React.useState(false)
-
-  // Reset image state when artist changes
-  React.useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const handleImageLoad = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
-
-  const handleOpenLightbox = React.useCallback(() => {
-    if (!imageError) {
-      setLightboxOpen(true)
-    }
-  }, [imageError])
-
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    [],
-  )
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useImageLoadingState(record.id)
 
   return (
     <>
@@ -127,7 +113,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
               <CardMedia
                 key={record.id}
                 component="img"
-                src={subsonic.getCoverArtUrl(record, 300)}
+                src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE)}
                 className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
                 onClick={handleOpenLightbox}
                 onLoad={handleImageLoad}
@@ -138,6 +124,11 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
                 }}
               />
             )}
+            <ImageUploadOverlay
+              entityType="artist"
+              entityId={record.id}
+              hasUploadedImage={!!record.uploadedImage}
+            />
           </Card>
           <div className={classes.details}>
             <Typography

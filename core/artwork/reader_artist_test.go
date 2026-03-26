@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -410,6 +412,257 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(string(data)).To(Equal("single album artist image"))
 				reader.Close()
+			})
+		})
+	})
+
+	Describe("fromArtistUploadedImage", func() {
+		var (
+			tempDir string
+			reader  *artistReader
+		)
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tempDir = GinkgoT().TempDir()
+			conf.Server.DataFolder = tempDir
+
+			// Create the artwork/artist directory
+			Expect(os.MkdirAll(filepath.Join(tempDir, "artwork", "artist"), 0755)).To(Succeed())
+
+			reader = &artistReader{}
+		})
+
+		When("artist has an uploaded image", func() {
+			It("returns the uploaded image", func() {
+				imgPath := filepath.Join(tempDir, "artwork", "artist", "ar-1_test.jpg")
+				Expect(os.WriteFile(imgPath, []byte("uploaded artist image"), 0600)).To(Succeed())
+
+				reader.artist = model.Artist{ID: "ar-1", UploadedImage: "ar-1_test.jpg"}
+				sf := reader.fromArtistUploadedImage()
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("uploaded artist image"))
+				r.Close()
+			})
+		})
+
+		When("artist has no uploaded image", func() {
+			It("returns nil reader (falls through)", func() {
+				reader.artist = model.Artist{ID: "ar-1"}
+				sf := reader.fromArtistUploadedImage()
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+		})
+	})
+
+	Describe("fromArtistImageFolder", func() {
+		var (
+			ctx     context.Context
+			tempDir string
+			ar      *artistReader
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			DeferCleanup(configtest.SetupConfig())
+			tempDir = GinkgoT().TempDir()
+			ar = &artistReader{}
+		})
+
+		When("ArtistImageFolder is not configured", func() {
+			It("returns nil (skips)", func() {
+				conf.Server.ArtistImageFolder = ""
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+		})
+
+		When("image exists matching MBID", func() {
+			It("finds the image by MBID", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				mbid := "f27ec8db-af05-4f36-916e-3d57f91ecf5e"
+				imgPath := filepath.Join(tempDir, mbid+".jpg")
+				Expect(os.WriteFile(imgPath, []byte("mbid image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("mbid image"))
+				r.Close()
+			})
+		})
+
+		When("MBID match is case-insensitive", func() {
+			It("finds the image regardless of case", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				mbid := "F27EC8DB-AF05-4F36-916E-3D57F91ECF5E"
+				imgPath := filepath.Join(tempDir, "f27ec8db-af05-4f36-916e-3d57f91ecf5e.png")
+				Expect(os.WriteFile(imgPath, []byte("mbid case image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				r.Close()
+			})
+		})
+
+		When("no MBID file exists but artist name file does", func() {
+			It("falls back to artist name match", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				imgPath := filepath.Join(tempDir, "Test Artist.jpg")
+				Expect(os.WriteFile(imgPath, []byte("name image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: "nonexistent-mbid"}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("name image"))
+				r.Close()
+			})
+		})
+
+		When("artist name match is case-insensitive", func() {
+			It("matches regardless of case", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				imgPath := filepath.Join(tempDir, "test artist.jpg")
+				Expect(os.WriteFile(imgPath, []byte("case insensitive"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				r.Close()
+			})
+		})
+
+		When("both MBID and name files exist", func() {
+			It("prefers MBID over name match", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				mbid := "f27ec8db-af05-4f36-916e-3d57f91ecf5e"
+				mbidPath := filepath.Join(tempDir, mbid+".jpg")
+				namePath := filepath.Join(tempDir, "Test Artist.jpg")
+				Expect(os.WriteFile(mbidPath, []byte("mbid image"), 0600)).To(Succeed())
+				Expect(os.WriteFile(namePath, []byte("name image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist", MbzArtistID: mbid}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(mbidPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("mbid image"))
+				r.Close()
+			})
+		})
+
+		When("no matching image found", func() {
+			It("returns an error", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				// Create an unrelated file
+				Expect(os.WriteFile(filepath.Join(tempDir, "other.jpg"), []byte("other"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist"}
+				sf := ar.fromArtistImageFolder(ctx)
+				r, _, err := sf()
+				Expect(err).To(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(err.Error()).To(ContainSubstring("no image found"))
+			})
+		})
+
+		When("cached imgFolderImgPath is set", func() {
+			It("uses cached path instead of scanning", func() {
+				conf.Server.ArtistImageFolder = tempDir
+				imgPath := filepath.Join(tempDir, "cached.jpg")
+				Expect(os.WriteFile(imgPath, []byte("cached image"), 0600)).To(Succeed())
+
+				ar.artist = model.Artist{Name: "Test Artist"}
+				ar.imgFolderImgPath = imgPath
+				sf := ar.fromArtistImageFolder(ctx)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("cached image"))
+				r.Close()
+			})
+		})
+	})
+
+	Describe("findImageInArtistFolder", func() {
+		var tempDir string
+
+		BeforeEach(func() {
+			tempDir = GinkgoT().TempDir()
+		})
+
+		When("matching file exists by MBID", func() {
+			It("returns the file path", func() {
+				mbid := "f27ec8db-af05-4f36-916e-3d57f91ecf5e"
+				imgPath := filepath.Join(tempDir, mbid+".jpg")
+				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
+
+				path := findImageInArtistFolder(tempDir, mbid, "Test")
+				Expect(path).To(Equal(imgPath))
+			})
+		})
+
+		When("matching file exists by name", func() {
+			It("returns the file path", func() {
+				imgPath := filepath.Join(tempDir, "Test Artist.png")
+				Expect(os.WriteFile(imgPath, []byte("image"), 0600)).To(Succeed())
+
+				path := findImageInArtistFolder(tempDir, "", "Test Artist")
+				Expect(path).To(Equal(imgPath))
+			})
+		})
+
+		When("no matching file exists", func() {
+			It("returns empty string", func() {
+				path := findImageInArtistFolder(tempDir, "", "Unknown Artist")
+				Expect(path).To(BeEmpty())
+			})
+		})
+
+		When("folder does not exist", func() {
+			It("returns empty string", func() {
+				path := findImageInArtistFolder("/nonexistent/path", "", "Test")
+				Expect(path).To(BeEmpty())
 			})
 		})
 	})

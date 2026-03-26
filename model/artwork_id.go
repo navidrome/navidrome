@@ -23,6 +23,7 @@ var (
 	KindAlbumArtwork     = Kind{"al", "album"}
 	KindPlaylistArtwork  = Kind{"pl", "playlist"}
 	KindDiscArtwork      = Kind{"dc", "disc"}
+	KindRadioArtwork     = Kind{"ra", "radio"}
 )
 
 var artworkKindMap = map[string]Kind{
@@ -31,6 +32,7 @@ var artworkKindMap = map[string]Kind{
 	KindAlbumArtwork.prefix:     KindAlbumArtwork,
 	KindPlaylistArtwork.prefix:  KindPlaylistArtwork,
 	KindDiscArtwork.prefix:      KindDiscArtwork,
+	KindRadioArtwork.prefix:     KindRadioArtwork,
 }
 
 type ArtworkID struct {
@@ -137,5 +139,13 @@ func artworkIDFromArtist(ar Artist) ArtworkID {
 	return ArtworkID{
 		Kind: KindArtistArtwork,
 		ID:   ar.ID,
+	}
+}
+
+func artworkIDFromRadio(r Radio) ArtworkID {
+	return ArtworkID{
+		Kind:       KindRadioArtwork,
+		ID:         r.ID,
+		LastUpdate: r.UpdatedAt,
 	}
 }

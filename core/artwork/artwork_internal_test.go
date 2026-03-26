@@ -28,7 +28,7 @@ var _ = Describe("Artwork", func() {
 	var ffmpeg *tests.MockFFmpeg
 	var folderRepo *fakeFolderRepo
 	ctx := log.NewContext(context.TODO())
-	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers model.Album
+	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers, alSingleDisc model.Album
 	var arMultipleCovers model.Artist
 	var mfWithEmbed, mfAnotherWithEmbed, mfWithoutEmbed, mfCorruptedCover model.MediaFile
 
@@ -44,8 +44,9 @@ var _ = Describe("Artwork", func() {
 		}
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
-		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}}
+		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "", 2: ""}}
 		alExternalNotFound = model.Album{ID: "555", Name: "External not found", FolderIDs: []string{"f2"}}
+		alSingleDisc = model.Album{ID: "888", Name: "Single disc", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}
 		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
 		alMultipleCovers = model.Album{
 			ID:            "666",
@@ -193,6 +194,7 @@ var _ = Describe("Artwork", func() {
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyEmbed,
 					alOnlyExternal,
+					alSingleDisc,
 				})
 				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 					mfWithEmbed,
@@ -235,6 +237,28 @@ var _ = Describe("Artwork", func() {
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("al-444_0"))
+			})
+			It("falls back to disc cover art when media file has a disc number on a multi-disc album", func() {
+				mfWithDisc := model.MediaFile{ID: "46", Path: "tests/fixtures/test.ogg", AlbumID: "444", DiscNumber: 2}
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfWithDisc)).To(Succeed())
+
+				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithDisc.ID))
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := aw.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				// Should fall back to disc art, which itself falls back to album art
+				Expect(path).To(Equal("dc-444:2_0"))
+			})
+			It("falls back to album cover art for single-disc albums even with a disc number", func() {
+				mfOnSingleDisc := model.MediaFile{ID: "47", Path: "tests/fixtures/test.ogg", AlbumID: "888", DiscNumber: 1}
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfOnSingleDisc)).To(Succeed())
+
+				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfOnSingleDisc.ID))
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := aw.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				// Single-disc album should skip disc art and go straight to album art
+				Expect(path).To(Equal("al-888_0"))
 			})
 		})
 	})

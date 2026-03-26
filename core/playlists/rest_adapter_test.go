@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -36,7 +37,7 @@ var _ = Describe("REST Adapter", func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ps = playlists.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 		})
 
 		Describe("Save", func() {

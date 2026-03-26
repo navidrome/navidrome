@@ -219,15 +219,9 @@
         "makePrivate": "Make Private",
         "searchOrCreate": "Search playlists or type to create new...",
         "pressEnterToCreate": "Press Enter to create new playlist",
-        "removeFromSelection": "Remove from selection",
-        "uploadCover": "Upload Cover",
-        "removeCover": "Remove Cover"
+        "removeFromSelection": "Remove from selection"
       },
       "message": {
-        "coverUploaded": "Cover art updated",
-        "coverRemoved": "Cover art removed",
-        "coverUploadError": "Error uploading cover art",
-        "coverRemoveError": "Error removing cover art",
         "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
         "noPlaylistsFound": "No playlists found",
@@ -563,6 +557,12 @@
     }
   },
   "message": {
+    "uploadCover": "Upload Cover",
+    "removeCover": "Remove Cover",
+    "coverUploaded": "Cover art updated",
+    "coverRemoved": "Cover art removed",
+    "coverUploadError": "Error uploading cover art",
+    "coverRemoveError": "Error removing cover art",
     "note": "NOTE",
     "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",

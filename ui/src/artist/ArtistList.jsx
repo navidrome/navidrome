@@ -22,6 +22,7 @@ import { useDrag } from 'react-dnd'
 import clsx from 'clsx'
 import {
   ArtistContextMenu,
+  CoverArtAvatar,
   List,
   QuickFilter,
   useGetHandleArtistClick,
@@ -43,6 +44,10 @@ const useStyles = makeStyles({
     verticalAlign: 'text-top',
   },
   row: {
+    '& td': {
+      paddingTop: '4px !important',
+      paddingBottom: '4px !important',
+    },
     '&:hover': {
       '& $contextMenu': {
         visibility: 'visible',
@@ -170,6 +175,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     />
   ) : (
     <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+      <CoverArtAvatar source="id" />
       <TextField source="name" />
       <FunctionField
         source="albumCount"

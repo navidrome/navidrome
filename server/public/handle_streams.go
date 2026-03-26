@@ -2,7 +2,6 @@ package public
 
 import (
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -54,34 +53,9 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	if stream.Seekable() {
-		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-	} else {
-		// If the stream doesn't provide a size (i.e. is not seekable), we can't support ranges/content-length
-		w.Header().Set("Accept-Ranges", "none")
-		w.Header().Set("Content-Type", stream.ContentType())
-
-		estimateContentLength := p.BoolOr("estimateContentLength", false)
-
-		// if Client requests the estimated content-length, send it
-		if estimateContentLength {
-			length := strconv.Itoa(stream.EstimatedContentLength())
-			log.Trace(ctx, "Estimated content-length", "contentLength", length)
-			w.Header().Set("Content-Length", length)
-		}
-
-		if r.Method == http.MethodHead {
-			go func() { _, _ = io.Copy(io.Discard, stream) }()
-		} else {
-			c, err := io.Copy(w, stream)
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				if err != nil {
-					log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
-				} else {
-					log.Trace(ctx, "Success sending shared transcode file", "id", info.id, "size", c)
-				}
-			}
-		}
+	n, err := stream.Serve(ctx, w, r)
+	if err != nil || n == 0 {
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }
 

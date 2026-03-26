@@ -604,6 +604,46 @@ var _ = Describe("ffmpeg", func() {
 			})
 		})
 
+		Context("stderr capture", func() {
+			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("stderr capture tests use /bin/sh, skipping on Windows")
+				}
+			})
+
+			It("should include stderr in error when process fails", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Directly call start() with a bash command that writes to stderr and fails
+				args := []string{"/bin/sh", "-c", "echo 'codec not found: libopus' >&2; exit 1"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				_, err = stream.Read(buf)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("codec not found: libopus"))
+			})
+
+			It("should not include stderr in error when process succeeds", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Command that writes to stderr but exits successfully
+				args := []string{"/bin/sh", "-c", "echo 'warning: something' >&2; printf 'output'"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				n, err := stream.Read(buf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(buf[:n])).To(Equal("output"))
+			})
+		})
+
 		Context("with mock process behavior", func() {
 			var longRunningCmd string
 			BeforeEach(func() {

@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -601,6 +602,36 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				// Restore original UpdatedAt
 				mf.UpdatedAt = originalUpdatedAt
 				Expect(ds.MediaFile(ctx).Put(mf)).To(Succeed())
+			})
+
+			It("returns 500 when stream creation fails", func() {
+				// Get a valid decision token
+				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				token := resp.TranscodeDecision.TranscodeParams
+				Expect(token).ToNot(BeEmpty())
+
+				// Simulate streamer failure (e.g., ffmpeg missing codec)
+				streamerSpy.SimulateError = errors.New("ffmpeg exited with non-zero status code: 1: Unknown encoder 'libopus'")
+				defer func() { streamerSpy.SimulateError = nil }()
+
+				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			})
+
+			It("returns 500 when transcoded stream is empty", func() {
+				// Get a valid decision token
+				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				token := resp.TranscodeDecision.TranscodeParams
+				Expect(token).ToNot(BeEmpty())
+
+				// Simulate ffmpeg producing 0 bytes
+				streamerSpy.SimulateEmptyStream = true
+				defer func() { streamerSpy.SimulateEmptyStream = false }()
+
+				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			})
 		})
 

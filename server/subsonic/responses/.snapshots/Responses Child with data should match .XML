@@ -25,7 +25,7 @@
         <artist id="4" name="composer2"></artist>
       </contributors>
     </child>
-    <child id="" isDir="false">
+    <child id="" isDir="false" title="">
       <replayGain trackGain="0" albumGain="0" trackPeak="0" albumPeak="0" baseGain="0" fallbackGain="0"></replayGain>
     </child>
   </directory>
