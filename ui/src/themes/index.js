@@ -9,6 +9,7 @@ import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
+import CatppuccinLatteTheme from './catppuccinLatte'
 import DraculaTheme from './dracula'
 import NuclearTheme from './nuclear'
 import NutballTheme from './nutball'
@@ -24,6 +25,7 @@ export default {
   // New themes should be added here, in alphabetic order
   AmusicTheme,
   CatppuccinMacchiatoTheme,
+  CatppuccinLatteTheme,
   DraculaTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
