@@ -4,18 +4,6 @@ import { useEffect, useState, useRef } from 'react'
 // React Admin refreshes (which remount list items) don't re-fetch images.
 const cache = new Map()
 const MAX_CACHE_SIZE = 300
-const activeControllers = new Set()
-
-/**
- * Aborts all in-flight image fetches. Call this before navigation/pagination
- * so that pending image requests don't block the browser connection pool.
- */
-export const abortAllInFlight = () => {
-  for (const controller of activeControllers) {
-    controller.abort()
-  }
-  activeControllers.clear()
-}
 
 // Evicts oldest unused entries (Map iterates in insertion order).
 const evictIfNeeded = () => {
@@ -65,7 +53,6 @@ export const useImageUrl = (url) => {
     }
 
     const controller = new AbortController()
-    activeControllers.add(controller)
     setImgUrl(null)
     setLoading(true)
     setError(false)
@@ -96,10 +83,8 @@ export const useImageUrl = (url) => {
           setImgUrl(objectUrl)
         }
         setLoading(false)
-        activeControllers.delete(controller)
       })
       .catch((err) => {
-        activeControllers.delete(controller)
         if (err.name === 'AbortError') {
           return // Expected on unmount or URL change
         }
@@ -112,7 +97,6 @@ export const useImageUrl = (url) => {
     return () => {
       abortedRef.current = true
       controller.abort()
-      activeControllers.delete(controller)
       const entry = cache.get(url)
       if (entry) {
         entry.refCount--
