@@ -105,6 +105,9 @@ const useCoverStyles = makeStyles({
     height: (props) => props.height,
     transition: 'opacity 0.3s ease-in-out',
   },
+  coverLoading: {
+    opacity: 0,
+  },
 })
 
 const getColsForWidth = (width) => {
@@ -133,14 +136,16 @@ const Cover = withContentRect('bounds')(({
   )
 
   const url = subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)
-  const { imgUrl } = useImageUrl(url)
+  const { imgUrl, loading: imageLoading } = useImageUrl(url)
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
-        {imgUrl && (
-          <img src={imgUrl} alt={record.name} className={classes.cover} />
-        )}
+        <img
+          src={imgUrl || undefined}
+          alt={record.name}
+          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+        />
       </div>
     </div>
   )

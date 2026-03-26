@@ -73,6 +73,7 @@ export const useImageUrl = (url) => {
     setError(false)
 
     const doFetch = () => {
+      queued = false
       activeFetches++
       fetch(url, { signal: controller.signal })
         .then((res) => {
