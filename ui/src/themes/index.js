@@ -11,6 +11,7 @@ import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import DraculaTheme from './dracula'
 import NuclearTheme from './nuclear'
+import NutballTheme from './nutball'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
@@ -37,6 +38,7 @@ export default {
   NautilineTheme,
   NordTheme,
   NuclearTheme,
+  NutballTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
 }
