@@ -246,10 +246,15 @@ func (im IsMissing) ToSql() (sql string, args []any, err error) {
 		return "", nil, nil
 	}
 
-	if missing {
-		return fm.field + " IS NULL", nil, nil
+	// Regular field: check for NULL and zero/empty value
+	zeroVal := "''"
+	if fm.numeric {
+		zeroVal = "0"
 	}
-	return fm.field + " IS NOT NULL", nil, nil
+	if missing {
+		return fmt.Sprintf("(%s IS NULL OR %s = %s)", fm.field, fm.field, zeroVal), nil, nil
+	}
+	return fmt.Sprintf("(%s IS NOT NULL AND %s <> %s)", fm.field, fm.field, zeroVal), nil, nil
 }
 
 func (im IsMissing) MarshalJSON() ([]byte, error) {
