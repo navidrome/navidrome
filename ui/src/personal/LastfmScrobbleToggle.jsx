@@ -40,7 +40,7 @@ const Progress = (props) => {
       setLinked(false)
       notify('message.lastfmLinkFailure', 'warning')
     }
-  }, [apiKey, authUrl])
+  }, [apiKey, authUrl, notify, setCheckingLink, setLinked])
 
   const endChecking = (success) => {
     linkCheckDelay = null
