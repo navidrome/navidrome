@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 )
 
 type (
@@ -201,6 +203,70 @@ func (sw EndsWith) ToSql() (sql string, args []any, err error) {
 
 func (sw EndsWith) MarshalJSON() ([]byte, error) {
 	return marshalExpression("endsWith", sw)
+}
+
+type IsMissing map[string]any
+
+func (im IsMissing) ToSql() (sql string, args []any, err error) {
+	var fieldName string
+	var value any
+	for f, v := range im {
+		fieldName, value = f, v
+		break
+	}
+
+	missing := isTruthy(value)
+
+	lower := strings.ToLower(fieldName)
+	fm, ok := fieldMap[lower]
+	if !ok {
+		log.Error("Invalid field in criteria", "field", fieldName)
+		return "", nil, nil
+	}
+
+	if fm.isTag {
+		tagName := fm.field
+		cond := fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value')", tagName)
+		if missing {
+			cond = "not " + cond
+		}
+		return cond, nil, nil
+	}
+
+	if fm.isRole {
+		cond := fmt.Sprintf(`exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')`, lower)
+		if missing {
+			cond = "not " + cond
+		}
+		return cond, nil, nil
+	}
+
+	if fm.field == "" {
+		log.Error("Invalid field in criteria", "field", fieldName)
+		return "", nil, nil
+	}
+
+	if missing {
+		return fm.field + " IS NULL", nil, nil
+	}
+	return fm.field + " IS NOT NULL", nil, nil
+}
+
+func (im IsMissing) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isMissing", im)
+}
+
+func isTruthy(v any) bool {
+	switch val := v.(type) {
+	case bool:
+		return val
+	case float64:
+		return val != 0
+	case string:
+		return val != "" && val != "false" && val != "0"
+	default:
+		return v != nil
+	}
 }
 
 type InTheRange map[string]any

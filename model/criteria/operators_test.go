@@ -74,6 +74,26 @@ var _ = Describe("Operators", func() {
 		Entry("artistLastPlayed inTheLast", InTheLast{"artistLastPlayed": 30}, "artist_annotation.play_date > ?", StartOfPeriod(30, time.Now())),
 		Entry("artistLastPlayed notInTheLast", NotInTheLast{"artistLastPlayed": 30}, "(artist_annotation.play_date < ? OR artist_annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
 
+		// ReplayGain first-class fields
+		Entry("rgAlbumGain is", Is{"rgAlbumGain": 0}, "media_file.rg_album_gain = ?", 0),
+		Entry("rgAlbumGain gt", Gt{"rgAlbumGain": -6.0}, "media_file.rg_album_gain > ?", -6.0),
+
+		// IsMissing — regular fields
+		Entry("isMissing [regular field, true]", IsMissing{"rgAlbumGain": true}, "media_file.rg_album_gain IS NULL"),
+		Entry("isMissing [regular field, false]", IsMissing{"rgAlbumGain": false}, "media_file.rg_album_gain IS NOT NULL"),
+
+		// IsMissing — tag fields
+		Entry("isMissing [tag, true]", IsMissing{"genre": true},
+			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+		Entry("isMissing [tag, false]", IsMissing{"genre": false},
+			"exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+
+		// IsMissing — role fields
+		Entry("isMissing [role, true]", IsMissing{"artist": true},
+			"not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+		Entry("isMissing [role, false]", IsMissing{"artist": false},
+			"exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+
 		// Tag tests
 		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
@@ -190,6 +210,7 @@ var _ = Describe("Operators", func() {
 		},
 		Entry("tag expression", Is{"genre": "Rock"}),
 		Entry("role expression", Contains{"artist": "Beatles"}),
+		Entry("isMissing expression", IsMissing{"genre": true}),
 		Entry("nested criteria", Criteria{Expression: All{Is{"genre": "Rock"}, Contains{"artist": "Beatles"}}}),
 	)
 
@@ -223,5 +244,7 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30.0}, `{"notInTheLast":{"lastPlayed":30}}`),
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, `{"inPlaylist":{"id":"deadbeef-dead-beef"}}`),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, `{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`),
+		Entry("isMissing [true]", IsMissing{"rgAlbumGain": true}, `{"isMissing":{"rgAlbumGain":true}}`),
+		Entry("isMissing [false]", IsMissing{"rgAlbumGain": false}, `{"isMissing":{"rgAlbumGain":false}}`),
 	)
 })
