@@ -234,7 +234,7 @@ func (im IsMissing) ToSql() (sql string, args []any, err error) {
 	}
 
 	if fm.isRole {
-		cond := fmt.Sprintf(`exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')`, lower)
+		cond := fmt.Sprintf(`exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')`, fm.field)
 		if missing {
 			cond = "not " + cond
 		}
@@ -268,7 +268,8 @@ func isTruthy(v any) bool {
 	case float64:
 		return val != 0
 	case string:
-		return val != "" && val != "false" && val != "0"
+		lval := strings.ToLower(val)
+		return lval != "" && lval != "false" && lval != "0"
 	default:
 		return v != nil
 	}
