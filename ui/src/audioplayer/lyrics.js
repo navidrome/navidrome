@@ -84,7 +84,9 @@ const normalizeToken = (token) => {
 
 const buildAgentLookup = (structuredLyric) => {
   const lookup = new Map()
-  const agents = Array.isArray(structuredLyric?.agents) ? structuredLyric.agents : []
+  const agents = Array.isArray(structuredLyric?.agents)
+    ? structuredLyric.agents
+    : []
   for (const agent of agents) {
     const id = typeof agent?.id === 'string' ? agent.id : ''
     if (!id || lookup.has(id)) {
@@ -112,8 +114,7 @@ const normalizeCueLine = (cueLine, fallbackIndex, agentLookup) => {
     : fallbackIndex
   const agentId = typeof cueLine?.agentId === 'string' ? cueLine.agentId : ''
   const agent = agentId ? agentLookup.get(agentId) || null : null
-  const fallbackRole =
-    typeof cueLine?.role === 'string' ? cueLine.role : ''
+  const fallbackRole = typeof cueLine?.role === 'string' ? cueLine.role : ''
   const tokens = sortTokensByStart(
     Array.isArray(cueLine?.cue)
       ? cueLine.cue.map(normalizeToken).filter(Boolean)

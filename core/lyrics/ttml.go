@@ -814,9 +814,9 @@ func (p *ttmlParser) updateTimingParams(attrs []xml.Attr) {
 		}
 	}
 
-	p.params.frameRate = max(frameRate, defaultTTMLFrameRate)
-	p.params.subFrameRate = max(subFrameRate, defaultTTMLSubFrameRate)
-	p.params.tickRate = max(tickRate, defaultTTMLTickRate)
+	p.params.frameRate = positiveOrDefault(frameRate, defaultTTMLFrameRate)
+	p.params.subFrameRate = positiveOrDefault(subFrameRate, defaultTTMLSubFrameRate)
+	p.params.tickRate = positiveOrDefault(tickRate, defaultTTMLTickRate)
 }
 
 func parseTTMLDurationExpression(expr string, params ttmlTimingParams) (int64, bool) {
@@ -1102,7 +1102,7 @@ func hydrateLineTimingFromTokens(line model.Line) model.Line {
 	return model.NormalizeLineTiming(line)
 }
 
-func max(v float64, fallback float64) float64 {
+func positiveOrDefault(v float64, fallback float64) float64 {
 	if v <= 0 {
 		return fallback
 	}

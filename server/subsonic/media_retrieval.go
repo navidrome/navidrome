@@ -99,6 +99,8 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
 	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
+	// Keep the search exhaustive so an older duplicate can still supply the
+	// matching sidecar lyrics when the newest candidate only has embedded data.
 	opts.Max = 0
 	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
 
