@@ -40,6 +40,10 @@ import {
   selectLyricLayers,
   structuredLyricToLrc,
 } from './lyrics'
+import {
+  resolveLyricsOverlayState,
+  togglePronunciationPreference,
+} from './lyricsOverlayState'
 import KaraokeLyricsOverlay from './KaraokeLyricsOverlay'
 
 const emptyLyricLayers = {
@@ -143,11 +147,12 @@ const Player = () => {
   const lyricCacheRef = useRef(new Map())
   const lyricRequestIdRef = useRef(0)
   const playerRef = useRef(null)
-  const [karaokeVisible, setKaraokeVisible] = useState(false)
+  const [karaokeVisiblePreference, setKaraokeVisiblePreference] =
+    useState(false)
   const [selectedLyricLayers, setSelectedLyricLayers] =
     useState(emptyLyricLayers)
-  const [showTranslation, setShowTranslation] = useState(false)
-  const [showPronunciation, setShowPronunciation] = useState(false)
+  const [translationPreference, setTranslationPreference] = useState(false)
+  const [pronunciationPreference, setPronunciationPreference] = useState(null)
   const currentTrackId = playerState.current?.trackId
   const currentTrackIsRadio = playerState.current?.isRadio
   const selectedStructuredLyric = selectedLyricLayers.main
@@ -158,6 +163,15 @@ const Player = () => {
   const hasPronunciationLyric = hasStructuredLyricContent(
     selectedLyricLayers.pronunciation,
   )
+  const { karaokeVisible, showTranslation, showPronunciation } =
+    resolveLyricsOverlayState({
+      karaokeVisiblePreference,
+      translationPreference,
+      pronunciationPreference,
+      hasKaraokeLyric,
+      hasTranslationLyric,
+      hasPronunciationLyric,
+    })
 
   const applyLyricToRuntimePlayer = useCallback((trackId, lyric) => {
     if (!trackId) {
@@ -255,9 +269,6 @@ const Player = () => {
   useEffect(() => {
     if (!currentTrackId || currentTrackIsRadio) {
       setSelectedLyricLayers(emptyLyricLayers)
-      setShowTranslation(false)
-      setShowPronunciation(false)
-      setKaraokeVisible(false)
       return
     }
 
@@ -273,8 +284,6 @@ const Player = () => {
       }
     }
     setSelectedLyricLayers(layers)
-    setShowTranslation(false)
-    setShowPronunciation(hasStructuredLyricContent(layers.pronunciation))
   }, [currentTrackId, currentTrackIsRadio])
 
   useEffect(() => {
@@ -297,10 +306,6 @@ const Player = () => {
             : normalizeLyricLayers({ main: cached?.structuredLyric })
 
       setSelectedLyricLayers(cachedLayers)
-      setShowTranslation(false)
-      setShowPronunciation(
-        hasStructuredLyricContent(cachedLayers.pronunciation),
-      )
       if (cachedLyric) {
         dispatch(updateQueueLyric(currentTrackId, cachedLyric))
         applyLyricToRuntimePlayer(currentTrackId, cachedLyric)
@@ -327,8 +332,6 @@ const Player = () => {
           layers,
         })
         setSelectedLyricLayers(layers)
-        setShowTranslation(false)
-        setShowPronunciation(hasStructuredLyricContent(layers.pronunciation))
 
         if (lyric !== '') {
           dispatch(updateQueueLyric(currentTrackId, lyric))
@@ -340,18 +343,10 @@ const Player = () => {
           return
         }
         setSelectedLyricLayers(emptyLyricLayers)
-        setShowTranslation(false)
-        setShowPronunciation(false)
         // Do not cache network/request failures as empty lyrics, so we can retry.
         lyricCacheRef.current.delete(currentTrackId)
       })
   }, [dispatch, currentTrackId, currentTrackIsRadio, applyLyricToRuntimePlayer])
-
-  useEffect(() => {
-    if (!hasKaraokeLyric && karaokeVisible) {
-      setKaraokeVisible(false)
-    }
-  }, [hasKaraokeLyric, karaokeVisible])
 
   const defaultOptions = useMemo(
     () => ({
@@ -404,7 +399,9 @@ const Player = () => {
         <PlayerToolbar
           id={current.trackId}
           isRadio={current.isRadio}
-          onToggleLyrics={() => setKaraokeVisible((visible) => !visible)}
+          onToggleLyrics={() =>
+            setKaraokeVisiblePreference((visible) => !visible)
+          }
           lyricsActive={karaokeVisible}
           lyricsDisabled={!hasKaraokeLyric}
         />
@@ -616,17 +613,17 @@ const Player = () => {
         translationEnabled={hasTranslationLyric}
         pronunciationEnabled={hasPronunciationLyric}
         onToggleTranslation={() =>
-          setShowTranslation((previous) =>
+          setTranslationPreference((previous) =>
             hasTranslationLyric ? !previous : false,
           )
         }
         onTogglePronunciation={() =>
-          setShowPronunciation((previous) =>
-            hasPronunciationLyric ? !previous : false,
+          setPronunciationPreference((previous) =>
+            togglePronunciationPreference(previous, hasPronunciationLyric),
           )
         }
         audioInstance={audioInstance}
-        onClose={() => setKaraokeVisible(false)}
+        onClose={() => setKaraokeVisiblePreference(false)}
       />
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>

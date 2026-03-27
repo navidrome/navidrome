@@ -12,6 +12,9 @@ const padTime = (value) => {
 }
 
 const toTime = (value) => {
+  if (value == null || value === '') {
+    return null
+  }
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : null
 }
@@ -177,64 +180,6 @@ const lineTimeWindow = (lines, index) => {
   const start = toTime(line.start)
   const end = toTime(line.end) ?? toTime(lines[index + 1]?.start)
   return { start, end }
-}
-
-const buildSyntheticWordTokens = (line, token) => {
-  const text = typeof line?.value === 'string' ? line.value : ''
-  if (!text.trim()) {
-    return null
-  }
-
-  const chunks = text.match(/\S+\s*/g) || []
-  if (chunks.length < 2) {
-    return null
-  }
-
-  const normalizedLine = text.replace(/\s+/g, ' ').trim().toLowerCase()
-  const normalizedTokenValue = (token?.value || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-  if (!normalizedTokenValue || !normalizedLine) {
-    return null
-  }
-
-  const compressedLine = normalizedLine.replace(/\s+/g, '')
-  const compressedToken = normalizedTokenValue.replace(/\s+/g, '')
-  const tokenLooksLikeWholeLine =
-    compressedToken === compressedLine ||
-    compressedToken.length >= Math.floor(compressedLine.length * 0.8)
-  if (!tokenLooksLikeWholeLine) {
-    return null
-  }
-
-  const tokenStart = toTime(token?.start)
-  const tokenEnd = toTime(token?.end)
-  const lineStart = toTime(line?.start)
-  const lineEnd = toTime(line?.end)
-
-  const baseStart = tokenStart ?? lineStart
-  const baseEnd = tokenEnd ?? lineEnd
-  if (
-    baseStart == null ||
-    baseEnd == null ||
-    !Number.isFinite(baseStart) ||
-    !Number.isFinite(baseEnd) ||
-    baseEnd <= baseStart
-  ) {
-    return null
-  }
-
-  const duration = baseEnd - baseStart
-  return chunks.map((chunk, idx) => ({
-    start: baseStart + (duration * idx) / chunks.length,
-    end: baseStart + (duration * (idx + 1)) / chunks.length,
-    value: chunk,
-    role: typeof token?.role === 'string' ? token.role : '',
-    agentId: typeof token?.agentId === 'string' ? token.agentId : '',
-    agentName: typeof token?.agentName === 'string' ? token.agentName : '',
-    agentRole: typeof token?.agentRole === 'string' ? token.agentRole : '',
-  }))
 }
 
 export const hasCueTiming = (structuredLyric) =>
@@ -449,19 +394,6 @@ export const buildKaraokeLines = (structuredLyric) => {
       }
       return a.index - b.index
     })
-    .map((line) => {
-      const nextLine = { ...line }
-      if (nextLine.tokens.length === 1) {
-        const syntheticTokens = buildSyntheticWordTokens(
-          nextLine,
-          nextLine.tokens[0],
-        )
-        if (syntheticTokens) {
-          nextLine.tokens = syntheticTokens
-        }
-      }
-      return nextLine
-    })
 
   for (let i = 0; i < normalized.length; i += 1) {
     if (normalized[i].end == null) {
@@ -628,6 +560,17 @@ export const getActiveKaraokeState = (lines, currentTimeMs) => {
   return { lineIndex, tokenIndex }
 }
 
+export const hasUsableKaraokeTiming = (lines) =>
+  Array.isArray(lines) &&
+  lines.some(
+    (line) =>
+      toTime(line?.start) != null ||
+      (Array.isArray(line?.tokens) &&
+        line.tokens.some(
+          (token) => toTime(token?.start) != null || toTime(token?.end) != null,
+        )),
+  )
+
 export const findLayerLineIndexForMain = (mainLines, layerLines, mainIndex) => {
   if (
     !Array.isArray(mainLines) ||
@@ -692,3 +635,8 @@ export const resolveLayerLineForMain = (mainLines, layerLines, mainIndex) => {
     line: index >= 0 ? layerLines[index] : null,
   }
 }
+
+export const buildHighlightedMainLine = (line) => line
+
+export const buildHighlightedAuxLine = (_referenceLine, auxiliaryLine) =>
+  auxiliaryLine ?? null

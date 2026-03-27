@@ -3,8 +3,10 @@ import IconButton from '@material-ui/core/IconButton'
 import Popover from '@material-ui/core/Popover'
 import Slider from '@material-ui/core/Slider'
 import { makeStyles } from '@material-ui/core/styles'
+import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
 import CloseIcon from '@material-ui/icons/Close'
+import RestoreIcon from '@material-ui/icons/Restore'
 import TuneIcon from '@material-ui/icons/Tune'
 import clsx from 'clsx'
 import React, {
@@ -16,8 +18,11 @@ import React, {
   useState,
 } from 'react'
 import {
+  buildHighlightedAuxLine,
+  buildHighlightedMainLine,
   buildKaraokeLines,
   getActiveKaraokeState,
+  hasUsableKaraokeTiming,
   hasStructuredLyricContent,
   resolveKaraokeTokenWindow,
   resolveLayerLineForMain,
@@ -36,6 +41,12 @@ const KARAOKE_MAX_HEIGHT_RATIO = 0.72
 const KARAOKE_MAX_HEIGHT_PX = 760
 const KARAOKE_CENTER_SPACER_RATIO = 0.5
 const KARAOKE_CENTER_SPACER_MIN_PX = 132
+const KARAOKE_DEFAULT_LINE_HEIGHT = 1.3
+const KARAOKE_MIN_LINE_HEIGHT = 1
+const KARAOKE_MAX_LINE_HEIGHT = 2.2
+const KARAOKE_LINE_HEIGHT_STEP = 0.02
+const KARAOKE_GROUP_SPACING_BASE_PX = 14
+const KARAOKE_AUX_LINE_HEIGHT = 1.2
 
 const TOKEN_DONE_ALPHA = 1
 const TOKEN_FUTURE_ALPHA = 0.34
@@ -55,33 +66,65 @@ const COLOR_PRESETS = [
 ]
 
 const DEFAULT_LYRICS_SETTINGS = {
-  tr: { fontSize: 14, colorKey: 'blue' },
-  main: { fontSize: 24, colorKey: 'white' },
-  pr: { fontSize: 14, colorKey: 'green' },
+  lineHeight: KARAOKE_DEFAULT_LINE_HEIGHT,
+  overlayHeight: KARAOKE_DEFAULT_HEIGHT_PX,
+  tr: { fontSize: 18, colorKey: 'blue' },
+  main: { fontSize: 30, colorKey: 'white' },
+  pr: { fontSize: 18, colorKey: 'green' },
 }
 
 const SETTINGS_STORAGE_KEY = 'karaoke-lyrics-settings'
+
+const createDefaultLyricsSettings = () => ({
+  lineHeight: KARAOKE_DEFAULT_LINE_HEIGHT,
+  overlayHeight: KARAOKE_DEFAULT_HEIGHT_PX,
+  tr: { ...DEFAULT_LYRICS_SETTINGS.tr },
+  main: { ...DEFAULT_LYRICS_SETTINGS.main },
+  pr: { ...DEFAULT_LYRICS_SETTINGS.pr },
+})
+
+const clampLineHeight = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return KARAOKE_DEFAULT_LINE_HEIGHT
+  }
+  return clamp(numeric, KARAOKE_MIN_LINE_HEIGHT, KARAOKE_MAX_LINE_HEIGHT)
+}
+
+const clampOverlayHeightPreference = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return KARAOKE_DEFAULT_HEIGHT_PX
+  }
+  return clamp(numeric, KARAOKE_MIN_HEIGHT_PX, KARAOKE_MAX_HEIGHT_PX)
+}
+
+const normalizeLyricsSettings = (settings) => ({
+  lineHeight: clampLineHeight(settings?.lineHeight),
+  overlayHeight: clampOverlayHeightPreference(settings?.overlayHeight),
+  tr: { ...DEFAULT_LYRICS_SETTINGS.tr, ...settings?.tr },
+  main: { ...DEFAULT_LYRICS_SETTINGS.main, ...settings?.main },
+  pr: { ...DEFAULT_LYRICS_SETTINGS.pr, ...settings?.pr },
+})
 
 const loadLyricsSettings = () => {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw)
-      return {
-        tr: { ...DEFAULT_LYRICS_SETTINGS.tr, ...parsed.tr },
-        main: { ...DEFAULT_LYRICS_SETTINGS.main, ...parsed.main },
-        pr: { ...DEFAULT_LYRICS_SETTINGS.pr, ...parsed.pr },
-      }
+      return normalizeLyricsSettings(JSON.parse(raw))
     }
   } catch {
     /* ignore */
   }
-  return { ...DEFAULT_LYRICS_SETTINGS }
+  return normalizeLyricsSettings()
 }
 
 const saveLyricsSettings = (settings) => {
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify(normalizeLyricsSettings(settings)),
+    )
   } catch {
     /* ignore */
   }
@@ -97,7 +140,7 @@ const useStyles = makeStyles((theme) => ({
     bottom: 100,
     transform: 'translateX(-50%)',
     zIndex: 1400,
-    width: 'min(900px, calc(100vw - 32px))',
+    width: 'min(1000px, calc(100vw - 32px))',
     minHeight: KARAOKE_MIN_HEIGHT_PX,
     background: 'rgba(6, 8, 12, 0.9)',
     borderRadius: 12,
@@ -149,12 +192,38 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(1),
     minWidth: 0,
   },
-  language: {
-    fontSize: 11,
-    letterSpacing: '0.08em',
-    opacity: 0.72,
-    textTransform: 'uppercase',
+  languageBadges: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
+    flexWrap: 'wrap',
+    minWidth: 0,
+  },
+  languageBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.35),
+    padding: theme.spacing(0.2, 0.7),
+    borderRadius: 999,
+    border: '1px solid rgba(148, 163, 184, 0.28)',
+    background: 'rgba(15, 23, 42, 0.42)',
+    color: 'rgba(226, 232, 240, 0.8)',
+    fontSize: 10,
+    letterSpacing: '0.04em',
     whiteSpace: 'nowrap',
+  },
+  languageBadgeActive: {
+    borderColor: 'rgba(148, 163, 184, 0.46)',
+    background: 'rgba(30, 41, 59, 0.56)',
+    color: 'rgba(248, 250, 252, 0.94)',
+  },
+  languageBadgeLabel: {
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    opacity: 0.78,
+  },
+  languageBadgeValue: {
+    opacity: 0.9,
   },
   layerControls: {
     display: 'flex',
@@ -186,21 +255,31 @@ const useStyles = makeStyles((theme) => ({
   closeButton: {
     color: 'rgba(255, 255, 255, 0.72)',
   },
+  lineGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: theme.spacing(0.35),
+  },
   inlineTr: {
-    margin: '0 0 2px 0',
+    margin: 0,
     textAlign: 'center',
     fontWeight: 400,
-    lineHeight: 1.2,
+    lineHeight: KARAOKE_AUX_LINE_HEIGHT,
     letterSpacing: '0.01em',
     transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
   },
   inlinePr: {
-    margin: '2px 0 0 0',
+    margin: 0,
     textAlign: 'center',
     fontWeight: 400,
-    lineHeight: 1.2,
+    lineHeight: KARAOKE_AUX_LINE_HEIGHT,
     letterSpacing: '0.01em',
     transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size ${KARAOKE_ANIMATION_MS}ms ease-in-out`,
+    padding: theme.spacing(0.15, 0.9),
+    borderRadius: 999,
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
   },
   body: {
     padding: theme.spacing(0.5, 2, 1.4, 2),
@@ -252,14 +331,28 @@ const useStyles = makeStyles((theme) => ({
     border: '1px solid rgba(255, 255, 255, 0.12)',
     borderRadius: 10,
     padding: theme.spacing(1.5, 2),
-    width: 260,
+    width: 278,
     backdropFilter: 'blur(12px)',
+  },
+  settingsHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(1.25),
   },
   settingsSection: {
     marginBottom: theme.spacing(1.2),
     '&:last-child': {
       marginBottom: 0,
     },
+  },
+  settingsTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'rgba(255, 255, 255, 0.78)',
   },
   settingsLabel: {
     fontSize: 10,
@@ -291,6 +384,21 @@ const useStyles = makeStyles((theme) => ({
     minWidth: 22,
     textAlign: 'right',
   },
+  settingsControlLabel: {
+    fontSize: 10,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: 'rgba(255, 255, 255, 0.45)',
+    minWidth: 72,
+    whiteSpace: 'nowrap',
+  },
+  resetButton: {
+    color: 'rgba(255, 255, 255, 0.58)',
+    padding: 4,
+    '&:hover': {
+      color: 'rgba(255, 255, 255, 0.9)',
+    },
+  },
   colorDots: {
     display: 'flex',
     gap: 5,
@@ -314,6 +422,9 @@ const useStyles = makeStyles((theme) => ({
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
 const lerp = (from, to, t) => from + (to - from) * t
+const formatLineHeight = (value) => clampLineHeight(value).toFixed(2)
+const getLineGapPx = (lineHeight) =>
+  `${Math.round(clampLineHeight(lineHeight) * KARAOKE_GROUP_SPACING_BASE_PX)}px`
 
 const normalizeForComparison = (text) =>
   (text || '').replace(/[\s\p{P}]/gu, '').toLowerCase()
@@ -325,6 +436,34 @@ const shouldShowAuxLine = (mainLine, auxLine) => {
     normalizeForComparison(mainLine.value)
   )
 }
+
+const buildLanguageBadges = ({
+  mainLyric,
+  translationLyric,
+  pronunciationLyric,
+  showTranslation,
+  showPronunciation,
+}) =>
+  [
+    {
+      key: 'main',
+      label: 'Main',
+      lang: mainLyric?.lang,
+      active: true,
+    },
+    {
+      key: 'pr',
+      label: 'PR',
+      lang: pronunciationLyric?.lang,
+      active: showPronunciation,
+    },
+    {
+      key: 'tr',
+      label: 'TR',
+      lang: translationLyric?.lang,
+      active: showTranslation,
+    },
+  ].filter((badge) => badge.lang)
 
 const SettingsSection = ({ label, layer, settings, onChange, classes }) => {
   const s = settings[layer]
@@ -363,7 +502,37 @@ const SettingsSection = ({ label, layer, settings, onChange, classes }) => {
   )
 }
 
-const LyricsSettingsPopover = ({ settings, onChange }) => {
+const LineHeightSetting = ({ settings, onChange, classes }) => (
+  <div className={classes.settingsSection}>
+    <div className={classes.settingsLabel}>Spacing</div>
+    <div className={classes.settingsRow}>
+      <div className={classes.settingsControlLabel}>Line height</div>
+      <Slider
+        className={classes.settingsSlider}
+        min={KARAOKE_MIN_LINE_HEIGHT}
+        max={KARAOKE_MAX_LINE_HEIGHT}
+        step={KARAOKE_LINE_HEIGHT_STEP}
+        value={settings.lineHeight}
+        aria-label="Line height"
+        data-testid="lyrics-line-height-slider"
+        onChange={(_, val) =>
+          onChange({
+            ...settings,
+            lineHeight: clampLineHeight(Array.isArray(val) ? val[0] : val),
+          })
+        }
+      />
+      <span
+        className={classes.settingsSliderValue}
+        data-testid="lyrics-line-height-value"
+      >
+        {formatLineHeight(settings.lineHeight)}
+      </span>
+    </div>
+  </div>
+)
+
+const LyricsSettingsPopover = ({ settings, onChange, onReset }) => {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = useState(null)
 
@@ -376,14 +545,19 @@ const LyricsSettingsPopover = ({ settings, onChange }) => {
 
   return (
     <>
-      <IconButton
-        className={classes.settingsButton}
-        size="small"
-        onClick={handleToggle}
-        aria-label="Lyrics settings"
-      >
-        <TuneIcon style={{ fontSize: 18 }} />
-      </IconButton>
+      <Tooltip title="Appearance">
+        <span>
+          <IconButton
+            className={classes.settingsButton}
+            size="small"
+            onClick={handleToggle}
+            aria-label="Lyrics settings"
+            data-testid="lyrics-settings-button"
+          >
+            <TuneIcon style={{ fontSize: 18 }} />
+          </IconButton>
+        </span>
+      </Tooltip>
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -393,6 +567,27 @@ const LyricsSettingsPopover = ({ settings, onChange }) => {
         PaperProps={{ className: classes.settingsPanel }}
         style={{ zIndex: 1500 }}
       >
+        <div className={classes.settingsHeader}>
+          <Typography className={classes.settingsTitle}>Appearance</Typography>
+          <Tooltip title="Reset appearance">
+            <span>
+              <IconButton
+                className={classes.resetButton}
+                size="small"
+                onClick={onReset}
+                aria-label="Reset appearance"
+                data-testid="lyrics-reset-appearance"
+              >
+                <RestoreIcon style={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </div>
+        <LineHeightSetting
+          settings={settings}
+          onChange={onChange}
+          classes={classes}
+        />
         <SettingsSection
           label="Translation"
           layer="tr"
@@ -401,7 +596,7 @@ const LyricsSettingsPopover = ({ settings, onChange }) => {
           classes={classes}
         />
         <SettingsSection
-          label="Default"
+          label="Main"
           layer="main"
           settings={settings}
           onChange={onChange}
@@ -595,7 +790,8 @@ const areLineStylesEqual = (prevStyle, nextStyle) => {
     a.opacity === b.opacity &&
     a.color === b.color &&
     a.fontSize === b.fontSize &&
-    a.fontWeight === b.fontWeight
+    a.fontWeight === b.fontWeight &&
+    a.lineHeight === b.lineHeight
   )
 }
 
@@ -778,7 +974,6 @@ const KaraokeLyricsOverlay = ({
 }) => {
   const classes = useStyles()
   const [playbackMs, setPlaybackMs] = useState(0)
-  const [overlayHeight, setOverlayHeight] = useState(KARAOKE_DEFAULT_HEIGHT_PX)
   const [maxHeightPx, setMaxHeightPx] = useState(getMaxHeightPx())
   const [bodyViewportHeight, setBodyViewportHeight] = useState(0)
   const [isCompact, setIsCompact] = useState(
@@ -787,8 +982,15 @@ const KaraokeLyricsOverlay = ({
   const [lyricsSettings, setLyricsSettings] = useState(loadLyricsSettings)
 
   const handleSettingsChange = useCallback((next) => {
-    setLyricsSettings(next)
-    saveLyricsSettings(next)
+    const normalized = normalizeLyricsSettings(next)
+    setLyricsSettings(normalized)
+    saveLyricsSettings(normalized)
+  }, [])
+
+  const handleResetAppearance = useCallback(() => {
+    const defaults = createDefaultLyricsSettings()
+    setLyricsSettings(defaults)
+    saveLyricsSettings(defaults)
   }, [])
 
   const bodyRef = useRef(null)
@@ -803,15 +1005,17 @@ const KaraokeLyricsOverlay = ({
     () => buildKaraokeLines(pronunciationLyric),
     [pronunciationLyric],
   )
+  const overlayHeight = clamp(
+    lyricsSettings.overlayHeight,
+    KARAOKE_MIN_HEIGHT_PX,
+    maxHeightPx,
+  )
 
   useEffect(() => {
     const onResize = () => {
       const nextMaxHeight = getMaxHeightPx()
       setIsCompact(window.innerWidth <= 810)
       setMaxHeightPx(nextMaxHeight)
-      setOverlayHeight((previous) =>
-        clamp(previous, KARAOKE_MIN_HEIGHT_PX, nextMaxHeight),
-      )
     }
 
     onResize()
@@ -853,9 +1057,14 @@ const KaraokeLyricsOverlay = ({
 
       const onMove = (moveEvent) => {
         const delta = startY - moveEvent.clientY
-        setOverlayHeight(
-          clamp(startHeight + delta, KARAOKE_MIN_HEIGHT_PX, maxHeightPx),
-        )
+        handleSettingsChange({
+          ...lyricsSettings,
+          overlayHeight: clamp(
+            startHeight + delta,
+            KARAOKE_MIN_HEIGHT_PX,
+            maxHeightPx,
+          ),
+        })
       }
 
       const onUp = () => {
@@ -866,7 +1075,13 @@ const KaraokeLyricsOverlay = ({
       window.addEventListener('mousemove', onMove)
       window.addEventListener('mouseup', onUp)
     },
-    [isCompact, maxHeightPx, overlayHeight],
+    [
+      handleSettingsChange,
+      isCompact,
+      lyricsSettings,
+      maxHeightPx,
+      overlayHeight,
+    ],
   )
 
   useEffect(() => {
@@ -967,13 +1182,29 @@ const KaraokeLyricsOverlay = ({
   }, [audioInstance, visible])
 
   const renderPlaybackMs = playbackMs + KARAOKE_RENDER_LEAD_MS
-
-  const { lineIndex } = useMemo(
-    () => getActiveKaraokeState(mainLines, renderPlaybackMs),
-    [mainLines, renderPlaybackMs],
+  const hasTimedMainLines = useMemo(
+    () => hasUsableKaraokeTiming(mainLines),
+    [mainLines],
   )
 
-  const activeIndex = lineIndex >= 0 ? lineIndex : 0
+  const { lineIndex } = useMemo(
+    () =>
+      hasTimedMainLines
+        ? getActiveKaraokeState(mainLines, renderPlaybackMs)
+        : { lineIndex: -1, tokenIndex: -1 },
+    [hasTimedMainLines, mainLines, renderPlaybackMs],
+  )
+
+  const activeIndex = hasTimedMainLines && lineIndex >= 0 ? lineIndex : -1
+  const lineHeight = lyricsSettings.lineHeight
+  const lineGap = getLineGapPx(lineHeight)
+  const languageBadges = buildLanguageBadges({
+    mainLyric,
+    translationLyric,
+    pronunciationLyric,
+    showTranslation,
+    showPronunciation,
+  })
 
   const trByMainIndex = useMemo(() => {
     if (!showTranslation || translationLines.length === 0) return {}
@@ -1008,12 +1239,14 @@ const KaraokeLyricsOverlay = ({
           ? 260
           : Math.max(220, overlayHeight - 170)
   const centerSpacerPx = Math.max(
-    KARAOKE_CENTER_SPACER_MIN_PX,
-    Math.floor(estimatedViewportHeight * KARAOKE_CENTER_SPACER_RATIO),
+    hasTimedMainLines ? KARAOKE_CENTER_SPACER_MIN_PX : 0,
+    hasTimedMainLines
+      ? Math.floor(estimatedViewportHeight * KARAOKE_CENTER_SPACER_RATIO)
+      : 0,
   )
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || !hasTimedMainLines) {
       return
     }
 
@@ -1050,6 +1283,7 @@ const KaraokeLyricsOverlay = ({
     return () => window.cancelAnimationFrame(rafId)
   }, [
     centerSpacerPx,
+    hasTimedMainLines,
     hasPronunciationLine,
     hasTranslationLine,
     lineIndex,
@@ -1066,10 +1300,19 @@ const KaraokeLyricsOverlay = ({
   }
 
   const getMainLineStyle = (idx) => {
+    const [r, g, b] = parseColorRGB(getColorValue(lyricsSettings.main.colorKey))
+    if (!hasTimedMainLines) {
+      return {
+        opacity: 1,
+        color: `rgba(${r}, ${g}, ${b}, 0.98)`,
+        fontSize: lyricsSettings.main.fontSize,
+        lineHeight,
+      }
+    }
+
     const delta = idx - activeIndex
     const isActive = delta === 0
     let opacity = isActive ? 1 : delta < 0 ? 0.6 : 0.72
-    const [r, g, b] = parseColorRGB(getColorValue(lyricsSettings.main.colorKey))
     const color = isActive
       ? `rgba(${r}, ${g}, ${b}, 0.98)`
       : delta < 0
@@ -1093,6 +1336,48 @@ const KaraokeLyricsOverlay = ({
       opacity,
       color,
       fontSize,
+      lineHeight,
+    }
+  }
+
+  const getAuxLineStyle = (idx, layerKey) => {
+    const [r, g, b] = parseColorRGB(
+      getColorValue(lyricsSettings[layerKey].colorKey),
+    )
+    if (!hasTimedMainLines) {
+      return {
+        opacity: 0.94,
+        fontSize: lyricsSettings[layerKey].fontSize,
+        color: `rgba(${r}, ${g}, ${b}, 0.94)`,
+        lineHeight: KARAOKE_AUX_LINE_HEIGHT,
+      }
+    }
+
+    const delta = idx - activeIndex
+    const isActive = delta === 0
+
+    let opacity = isActive ? 0.94 : delta < 0 ? 0.5 : 0.62
+    const color = isActive
+      ? `rgba(${r}, ${g}, ${b}, 0.94)`
+      : delta < 0
+        ? `rgba(${r}, ${g}, ${b}, 0.42)`
+        : `rgba(${r}, ${g}, ${b}, 0.56)`
+
+    if (delta > 1) {
+      const level = clamp(delta, 1, 6)
+      opacity = Math.max(0.28, 0.64 - level * 0.08)
+    }
+
+    if (delta < -1) {
+      const level = clamp(Math.abs(delta), 1, 6)
+      opacity = Math.max(0.22, 0.5 - level * 0.08)
+    }
+
+    return {
+      opacity,
+      fontSize: lyricsSettings[layerKey].fontSize,
+      color,
+      lineHeight: KARAOKE_AUX_LINE_HEIGHT,
     }
   }
 
@@ -1109,36 +1394,61 @@ const KaraokeLyricsOverlay = ({
       data-testid="karaoke-lyrics-overlay"
       style={overlayStyle}
     >
-      <div className={classes.resizeHandle} onMouseDown={onResizeStart} />
+      <div
+        className={classes.resizeHandle}
+        onMouseDown={onResizeStart}
+        data-testid="lyrics-resize-handle"
+      />
 
       <div className={classes.header}>
         <div className={classes.headerLeft}>
-          <Typography className={classes.language}>
-            {mainLyric?.lang || 'xxx'}
-          </Typography>
+          <div className={classes.languageBadges}>
+            {languageBadges.map((badge) => (
+              <div
+                key={badge.key}
+                className={clsx(classes.languageBadge, {
+                  [classes.languageBadgeActive]: badge.active,
+                })}
+                data-testid={`lyrics-language-badge-${badge.key}`}
+              >
+                <span className={classes.languageBadgeLabel}>
+                  {badge.label}
+                </span>
+                <span className={classes.languageBadgeValue}>{badge.lang}</span>
+              </div>
+            ))}
+          </div>
           <div className={classes.layerControls}>
-            <Button
-              size="small"
-              onClick={onToggleTranslation}
-              disabled={!translationEnabled}
-              className={clsx(classes.layerToggle, {
-                [classes.layerToggleActive]: showTranslation,
-              })}
-              data-testid="lyrics-toggle-translation"
-            >
-              TR
-            </Button>
-            <Button
-              size="small"
-              onClick={onTogglePronunciation}
-              disabled={!pronunciationEnabled}
-              className={clsx(classes.layerToggle, {
-                [classes.layerToggleActive]: showPronunciation,
-              })}
-              data-testid="lyrics-toggle-pronunciation"
-            >
-              PR
-            </Button>
+            <Tooltip title="Toggle translations">
+              <span>
+                <Button
+                  size="small"
+                  onClick={onToggleTranslation}
+                  disabled={!translationEnabled}
+                  className={clsx(classes.layerToggle, {
+                    [classes.layerToggleActive]: showTranslation,
+                  })}
+                  data-testid="lyrics-toggle-translation"
+                >
+                  TR
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Toggle pronunciations">
+              <span>
+                <Button
+                  size="small"
+                  onClick={onTogglePronunciation}
+                  disabled={!pronunciationEnabled}
+                  className={clsx(classes.layerToggle, {
+                    [classes.layerToggleActive]: showPronunciation,
+                  })}
+                  data-testid="lyrics-toggle-pronunciation"
+                >
+                  PR
+                </Button>
+              </span>
+            </Tooltip>
           </div>
         </div>
 
@@ -1146,6 +1456,7 @@ const KaraokeLyricsOverlay = ({
           <LyricsSettingsPopover
             settings={lyricsSettings}
             onChange={handleSettingsChange}
+            onReset={handleResetAppearance}
           />
           <IconButton
             className={classes.closeButton}
@@ -1159,30 +1470,40 @@ const KaraokeLyricsOverlay = ({
       </div>
 
       <div className={classes.body} ref={bodyRef}>
-        <div className={classes.lines}>
+        <div className={classes.lines} style={{ gap: lineGap }}>
           <div aria-hidden style={{ height: centerSpacerPx }} />
           {mainLines.map((line, idx) => {
             const trLine = trByMainIndex[idx]
             const prLine = prByMainIndex[idx]
+            const mainNextLineStart = mainLines[idx + 1]?.start ?? null
+            const highlightedMainLine = buildHighlightedMainLine(
+              line,
+              mainNextLineStart,
+            )
+            const highlightedTrLine = buildHighlightedAuxLine(
+              line,
+              trLine,
+              mainNextLineStart,
+            )
+            const highlightedPrLine = buildHighlightedAuxLine(
+              line,
+              prLine,
+              mainNextLineStart,
+            )
             const showTr = shouldShowAuxLine(line, trLine)
             const showPr = shouldShowAuxLine(line, prLine)
             const lineStyle = getMainLineStyle(idx)
-            const auxOpacity =
-              lineStyle.opacity != null ? lineStyle.opacity * 0.85 : 1
-            const trStyle = {
-              opacity: auxOpacity,
-              fontSize: lyricsSettings.tr.fontSize,
-              color: getColorValue(lyricsSettings.tr.colorKey),
-            }
-            const prStyle = {
-              opacity: auxOpacity,
-              fontSize: lyricsSettings.pr.fontSize,
-              color: getColorValue(lyricsSettings.pr.colorKey),
-            }
+            const trStyle = getAuxLineStyle(idx, 'tr')
+            const prStyle = getAuxLineStyle(idx, 'pr')
             return (
               <div
                 key={`line-${line.index}-${line.start ?? idx}`}
-                ref={idx === activeIndex ? activeLineRef : null}
+                ref={
+                  idx === activeIndex && hasTimedMainLines
+                    ? activeLineRef
+                    : null
+                }
+                className={classes.lineGroup}
                 style={{ cursor: line.start != null ? 'pointer' : undefined }}
                 onClick={() => {
                   if (audioInstance && line.start != null) {
@@ -1190,33 +1511,35 @@ const KaraokeLyricsOverlay = ({
                   }
                 }}
               >
-                {showTr && (
-                  <KaraokeLineRow
-                    line={trLine}
-                    nextLineStart={null}
-                    renderPlaybackMs={renderPlaybackMs}
-                    className={classes.inlineTr}
-                    style={trStyle}
-                    tokenClassName={classes.token}
-                    highlightTokens={false}
-                  />
-                )}
                 <KaraokeLineRow
-                  line={line}
-                  nextLineStart={mainLines[idx + 1]?.start ?? null}
+                  line={highlightedMainLine}
+                  nextLineStart={mainNextLineStart}
                   renderPlaybackMs={renderPlaybackMs}
                   className={classes.line}
                   style={lineStyle}
                   tokenClassName={classes.token}
+                  highlightTokens={hasTimedMainLines}
                 />
                 {showPr && (
                   <KaraokeLineRow
-                    line={prLine}
+                    line={highlightedPrLine}
                     nextLineStart={null}
                     renderPlaybackMs={renderPlaybackMs}
                     className={classes.inlinePr}
                     style={prStyle}
                     tokenClassName={classes.token}
+                    highlightTokens={hasTimedMainLines}
+                  />
+                )}
+                {showTr && (
+                  <KaraokeLineRow
+                    line={highlightedTrLine}
+                    nextLineStart={null}
+                    renderPlaybackMs={renderPlaybackMs}
+                    className={classes.inlineTr}
+                    style={trStyle}
+                    tokenClassName={classes.token}
+                    highlightTokens={hasTimedMainLines}
                   />
                 )}
               </div>
