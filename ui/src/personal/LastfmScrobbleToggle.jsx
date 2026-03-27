@@ -12,17 +12,11 @@ import { useInterval } from '../common'
 import { baseUrl, openInNewTab } from '../utils'
 import { httpClient } from '../dataProvider'
 
-const defaultAuthUrl = 'https://www.last.fm/api/auth/'
-
 const buildAuthUrl = (authUrl, apiKey, callbackUrl) => {
-  try {
-    const url = new URL(authUrl)
-    url.searchParams.set('api_key', apiKey)
-    url.searchParams.set('cb', callbackUrl)
-    return url.toString()
-  } catch {
-    return `${defaultAuthUrl}?api_key=${apiKey}&cb=${callbackUrl}`
-  }
+  const url = new URL(authUrl)
+  url.searchParams.set('api_key', apiKey)
+  url.searchParams.set('cb', callbackUrl)
+  return url.toString()
 }
 
 const Progress = (props) => {
@@ -37,9 +31,15 @@ const Progress = (props) => {
       `/api/lastfm/link/callback?uid=${localStorage.getItem('userId')}`,
     )
     const callbackUrl = `${window.location.origin}${callbackEndpoint}`
-    openedTab.current = openInNewTab(
-      buildAuthUrl(authUrl || defaultAuthUrl, apiKey, callbackUrl),
-    )
+    try {
+      openedTab.current = openInNewTab(
+        buildAuthUrl(authUrl, apiKey, callbackUrl),
+      )
+    } catch {
+      setCheckingLink(false)
+      setLinked(false)
+      notify('message.lastfmLinkFailure', 'warning')
+    }
   }, [apiKey, authUrl])
 
   const endChecking = (success) => {
@@ -89,16 +89,14 @@ export const LastfmScrobbleToggle = (props) => {
   const [linked, setLinked] = useState(null)
   const [checkingLink, setCheckingLink] = useState(false)
   const [apiKey, setApiKey] = useState(false)
-  const [authUrl, setAuthUrl] = useState(defaultAuthUrl)
+  const [authUrl, setAuthUrl] = useState(null)
 
   useEffect(() => {
     httpClient('/api/lastfm/link')
       .then((response) => {
         setLinked(response.json.status === true)
         setApiKey(response.json.apiKey)
-        if (response.json.authUrl) {
-          setAuthUrl(response.json.authUrl)
-        }
+        setAuthUrl(response.json.authUrl || null)
       })
       .catch(() => {
         setLinked(false)
@@ -107,6 +105,10 @@ export const LastfmScrobbleToggle = (props) => {
 
   const toggleScrobble = () => {
     if (!linked) {
+      if (!authUrl) {
+        notify('message.lastfmLinkFailure', 'warning')
+        return
+      }
       setCheckingLink(true)
     } else {
       httpClient('/api/lastfm/link', { method: 'DELETE' })
@@ -126,7 +128,7 @@ export const LastfmScrobbleToggle = (props) => {
             id={'lastfm'}
             color="primary"
             checked={linked || checkingLink}
-            disabled={!apiKey || linked === null || checkingLink}
+            disabled={!apiKey || !authUrl || linked === null || checkingLink}
             onChange={toggleScrobble}
           />
         }
