@@ -1,8 +1,11 @@
 import {
+  buildHighlightedAuxLine,
+  buildHighlightedMainLine,
   buildKaraokeLines,
   findLayerLineIndexForMain,
   getActiveKaraokeState,
   getPreferredLyricLanguage,
+  hasUsableKaraokeTiming,
   hasStructuredLyricContent,
   pickStructuredLyric,
   resolveKaraokeTokenWindow,
@@ -201,6 +204,110 @@ describe('lyrics helpers', () => {
     )
   })
 
+  it('keeps translation lines line-level when they do not have real cue timing', () => {
+    const mainLine = {
+      index: 0,
+      start: 1000,
+      end: 2200,
+      value: '불을 질러라',
+      tokens: [
+        { start: 1000, end: 1300, value: '불을 ' },
+        { start: 1300, end: 1650, value: '질' },
+        { start: 1650, end: 2200, value: '러라' },
+      ],
+    }
+    const translationLine = {
+      index: 0,
+      start: 1000,
+      end: 2200,
+      value: 'Set it on fire',
+      tokens: [],
+    }
+
+    const highlighted = buildHighlightedAuxLine(mainLine, translationLine, 2600)
+
+    expect(highlighted).toBe(translationLine)
+    expect(highlighted.tokens).toEqual([])
+  })
+
+  it('keeps pronunciation lines line-level when they do not have real cue timing', () => {
+    const mainLine = {
+      index: 0,
+      start: 1000,
+      end: 2200,
+      value: 'You もっと強く 素早く 吹き飛ばせ',
+      tokens: [],
+    }
+    const pronunciationLine = {
+      index: 0,
+      start: 1000,
+      end: 2200,
+      value: 'You motto tsuyoku subayaku fukitobase',
+      tokens: [],
+    }
+
+    const highlighted = buildHighlightedAuxLine(
+      mainLine,
+      pronunciationLine,
+      2600,
+    )
+
+    expect(highlighted).toBe(pronunciationLine)
+    expect(highlighted.tokens).toEqual([])
+  })
+
+  it('keeps main lines line-level when they do not have real cue timing', () => {
+    const line = {
+      index: 0,
+      start: 1000,
+      end: 2200,
+      value: 'Youもっと強く 素早く 吹き飛ばせ',
+      tokens: [],
+    }
+
+    const highlighted = buildHighlightedMainLine(line, 2600)
+
+    expect(highlighted).toBe(line)
+    expect(highlighted.tokens).toEqual([])
+  })
+
+  it('keeps auxiliary lines line-level when end time is missing and they lack cues', () => {
+    const mainLine = {
+      index: 0,
+      start: 1000,
+      end: null,
+      value: 'Hello there',
+      tokens: [],
+    }
+    const translationLine = {
+      index: 0,
+      start: 1000,
+      end: null,
+      value: 'Bonjour toi',
+      tokens: [],
+    }
+
+    const highlighted = buildHighlightedAuxLine(mainLine, translationLine, 2400)
+
+    expect(highlighted).toBe(translationLine)
+    expect(highlighted.tokens).toEqual([])
+  })
+
+  it('keeps main lines line-level when end time is missing and they lack cues', () => {
+    const line = {
+      index: 0,
+      start: 1000,
+      end: null,
+      value: 'One more time',
+      tokens: [],
+    }
+
+    const highlighted = buildHighlightedMainLine(line, 2400)
+
+    expect(highlighted).toBe(line)
+    expect(highlighted.tokens).toEqual([])
+  })
+
   it('returns no layer match when the nearest line is too far in time', () => {
     const mainLines = [
       { index: 0, start: 1000, end: 1800, value: 'Line A', tokens: [] },
@@ -353,7 +460,7 @@ describe('lyrics helpers', () => {
     ])
   })
 
-  it('splits a single full-line token into synthetic word tokens', () => {
+  it('keeps a single full-line token unchanged instead of expanding it synthetically', () => {
     const lines = buildKaraokeLines({
       lang: 'ko-Latn',
       synced: true,
@@ -371,17 +478,13 @@ describe('lyrics helpers', () => {
     })
 
     expect(lines).toHaveLength(1)
-    expect(lines[0].tokens).toHaveLength(2)
-    expect(lines[0].tokens[0].value).toBe('Da-la-lun, ')
-    expect(lines[0].tokens[1].value).toBe('dun')
+    expect(lines[0].tokens).toHaveLength(1)
+    expect(lines[0].tokens[0].value).toBe('Da-la-lun, dun')
 
     const firstWindow = resolveKaraokeTokenWindow(lines[0], 0)
-    const secondWindow = resolveKaraokeTokenWindow(lines[0], 1)
 
     expect(firstWindow.start).toBeCloseTo(1000)
-    expect(firstWindow.end).toBeCloseTo(1500)
-    expect(secondWindow.start).toBeCloseTo(1500)
-    expect(secondWindow.end).toBeCloseTo(2000)
+    expect(firstWindow.end).toBeCloseTo(2000)
   })
 
   it('detects active line and token for karaoke timing', () => {
@@ -507,6 +610,21 @@ describe('lyrics helpers', () => {
       hasStructuredLyricContent({
         cueLine: [{ cue: [{ start: 100, value: 'a' }] }],
       }),
+    ).toBe(true)
+  })
+
+  it('detects when built karaoke lines have no usable timing', () => {
+    expect(
+      hasUsableKaraokeTiming([
+        { index: 0, value: 'First line', tokens: [] },
+        { index: 1, value: 'Second line', tokens: [] },
+      ]),
+    ).toBe(false)
+
+    expect(
+      hasUsableKaraokeTiming([
+        { index: 0, start: 1000, value: 'Timed line', tokens: [] },
+      ]),
     ).toBe(true)
   })
 })

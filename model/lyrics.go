@@ -417,18 +417,6 @@ func normalizeCueLine(line Line, fallbackEnd *int64) Line {
 		return line
 	}
 
-	hasAnyEnd := false
-	for i := range line.Cue {
-		if line.Cue[i].End != nil {
-			hasAnyEnd = true
-			break
-		}
-	}
-	if !hasAnyEnd {
-		line.Cue = clearCueEnds(line.Cue)
-		return NormalizeLineTiming(line)
-	}
-
 	for i := range line.Cue {
 		if line.Cue[i].End != nil {
 			continue

@@ -52,15 +52,17 @@ var _ = Describe("sources", func() {
 			Line: []model.Line{
 				{
 					Start: gg.P(int64(1000)),
-					End:   gg.P(int64(1500)),
+					End:   gg.P(int64(3000)),
 					Value: "Lead words",
 					Cue: []model.Cue{
 						{
 							Start: gg.P(int64(1000)),
+							End:   gg.P(int64(1500)),
 							Value: "Lead ",
 						},
 						{
 							Start: gg.P(int64(1500)),
+							End:   gg.P(int64(3000)),
 							Value: "words",
 						},
 					},

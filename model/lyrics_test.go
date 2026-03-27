@@ -127,20 +127,24 @@ var _ = Describe("ToLyrics", func() {
 
 		line0 := lyrics.Line[0]
 		Expect(line0.Start).To(Equal(&t1000))
+		Expect(line0.End).To(Equal(&t3000))
 		Expect(line0.Value).To(Equal("Some lyrics here"))
 		Expect(line0.Cue).To(Equal([]Cue{
-			{Start: &t1000, Value: "Some "},
-			{Start: &t1500, Value: "lyrics "},
-			{Start: &t2000, Value: "here"},
+			{Start: &t1000, End: &t1500, Value: "Some "},
+			{Start: &t1500, End: &t2000, Value: "lyrics "},
+			{Start: &t2000, End: &t3000, Value: "here"},
 		}))
 
 		line1 := lyrics.Line[1]
 		Expect(line1.Start).To(Equal(&t3000))
+		Expect(line1.End).To(Equal(&t3500))
 		Expect(line1.Value).To(Equal("More words"))
 		Expect(line1.Cue).To(Equal([]Cue{
 			{Start: &t3000, Value: "More "},
 			{Start: &t3500, Value: "words"},
 		}))
+
+		Expect(line1.Cue[1].End).To(BeNil())
 	})
 
 	It("should ignore Enhanced LRC markers and return plain lines when no markers present", func() {
@@ -159,12 +163,14 @@ var _ = Describe("ToLyrics", func() {
 		Expect(lyrics.Line).To(HaveLen(3))
 
 		t1000, t1500, t5000, t5500 := int64(1000), int64(1500), int64(5000), int64(5500)
+		t3000 := int64(3000)
 
 		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
-			{Start: &t1000, Value: "Some "},
-			{Start: &t1500, Value: "lyrics"},
+			{Start: &t1000, End: &t1500, Value: "Some "},
+			{Start: &t1500, End: &t3000, Value: "lyrics"},
 		}))
 		Expect(lyrics.Line[0].Value).To(Equal("Some lyrics"))
+		Expect(lyrics.Line[0].End).To(Equal(&t3000))
 
 		Expect(lyrics.Line[1].Cue).To(BeNil())
 		Expect(lyrics.Line[1].Value).To(Equal("Plain line"))
