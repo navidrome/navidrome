@@ -78,7 +78,7 @@ type configOptions struct {
 	EnableFavourites                bool
 	EnableStarRating                bool
 	EnableUserEditing               bool
-	EnableCoverArtUpload            bool
+	EnableArtworkUpload             bool
 	EnableSharing                   bool
 	ShareURL                        string
 	DefaultShareExpiration          time.Duration
@@ -689,7 +689,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
-	viper.SetDefault("enablecoverartupload", true)
+	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
