@@ -38,7 +38,7 @@
         "missing": "Saknade",
         "libraryName": "Bibliotek",
         "composer": "Kompositör",
-        "disc": ""
+        "disc": "Disc %{discNumber}"
       },
       "actions": {
         "addToQueue": "Lägg till i kön",
@@ -355,7 +355,7 @@
         "selectedUsers": "Valda användare",
         "allLibraries": "Tillåt alla bibliotek",
         "selectedLibraries": "Valda bibliotek",
-        "allowWriteAccess": ""
+        "allowWriteAccess": "Tillåt skrivrättigheter"
       },
       "sections": {
         "status": "Status",
@@ -401,7 +401,7 @@
         "requiredHosts": "Krävda värdar",
         "configValidationError": "Validering av konfigurationen misslyckades:",
         "schemaRenderError": "Kunde inte rendera konfigurationsformuläret. Tilläggets schema kan vara ogiltigt.",
-        "allowWriteAccessHelp": ""
+        "allowWriteAccessHelp": "När detta är aktiverat kan tillägget ändra filer i bibliotekets kataloger. Som standard har tillägget endast läsrättigheter."
       },
       "placeholders": {
         "configKey": "nyckel",
@@ -591,7 +591,13 @@
     "remove_all_missing_content": "Är du säker på att du vill ta bort alla saknade filer från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg.",
     "noSimilarSongsFound": "Hittade inga liknande låtar",
     "noTopSongsFound": "Hittade inga topplåtar",
-    "startingInstantMix": "Laddar direktmix..."
+    "startingInstantMix": "Laddar direktmix...",
+    "uploadCover": "Ladda upp omslagsbild",
+    "removeCover": "Ta bort omslagsbild",
+    "coverUploaded": "Omslagsbild uppdaterad",
+    "coverRemoved": "Omslagsbild borttagen",
+    "coverUploadError": "Fel vid uppladdning av omslagsbild",
+    "coverRemoveError": "Fel vid borttagning av omslagsbild"
   },
   "menu": {
     "library": "Bibliotek",
