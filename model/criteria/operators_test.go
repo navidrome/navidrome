@@ -78,14 +78,6 @@ var _ = Describe("Operators", func() {
 		Entry("rgAlbumGain is", Is{"rgAlbumGain": 0}, "media_file.rg_album_gain = ?", 0),
 		Entry("rgAlbumGain gt", Gt{"rgAlbumGain": -6.0}, "media_file.rg_album_gain > ?", -6.0),
 
-		// IsMissing — regular fields (numeric)
-		Entry("isMissing [numeric field, true]", IsMissing{"rgAlbumGain": true}, "(media_file.rg_album_gain IS NULL OR media_file.rg_album_gain = 0)"),
-		Entry("isMissing [numeric field, false]", IsMissing{"rgAlbumGain": false}, "(media_file.rg_album_gain IS NOT NULL AND media_file.rg_album_gain <> 0)"),
-
-		// IsMissing — regular fields (string)
-		Entry("isMissing [string field, true]", IsMissing{"title": true}, "(media_file.title IS NULL OR media_file.title = '')"),
-		Entry("isMissing [string field, false]", IsMissing{"title": false}, "(media_file.title IS NOT NULL AND media_file.title <> '')"),
-
 		// IsMissing — tag fields
 		Entry("isMissing [tag, true]", IsMissing{"genre": true},
 			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
@@ -248,7 +240,7 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30.0}, `{"notInTheLast":{"lastPlayed":30}}`),
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, `{"inPlaylist":{"id":"deadbeef-dead-beef"}}`),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, `{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`),
-		Entry("isMissing [true]", IsMissing{"rgAlbumGain": true}, `{"isMissing":{"rgAlbumGain":true}}`),
-		Entry("isMissing [false]", IsMissing{"rgAlbumGain": false}, `{"isMissing":{"rgAlbumGain":false}}`),
+		Entry("isMissing [true]", IsMissing{"genre": true}, `{"isMissing":{"genre":true}}`),
+		Entry("isMissing [false]", IsMissing{"genre": false}, `{"isMissing":{"genre":false}}`),
 	)
 })

@@ -241,20 +241,8 @@ func (im IsMissing) ToSql() (sql string, args []any, err error) {
 		return cond, nil, nil
 	}
 
-	if fm.field == "" {
-		log.Error("Invalid field in criteria", "field", fieldName)
-		return "", nil, nil
-	}
-
-	// Regular field: check for NULL and zero/empty value
-	zeroVal := "''"
-	if fm.numeric {
-		zeroVal = "0"
-	}
-	if missing {
-		return fmt.Sprintf("(%s IS NULL OR %s = %s)", fm.field, fm.field, zeroVal), nil, nil
-	}
-	return fmt.Sprintf("(%s IS NOT NULL AND %s <> %s)", fm.field, fm.field, zeroVal), nil, nil
+	log.Error("isMissing operator is only supported for tag and role fields", "field", fieldName)
+	return "", nil, nil
 }
 
 func (im IsMissing) MarshalJSON() ([]byte, error) {
