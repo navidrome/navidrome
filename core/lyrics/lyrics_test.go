@@ -44,6 +44,67 @@ var _ = Describe("sources", func() {
 		},
 	}
 
+	elrcLyrics := model.LyricList{
+		model.Lyrics{
+			DisplayArtist: "ELRC Artist",
+			DisplayTitle:  "ELRC Song",
+			Lang:          "eng",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(1000)),
+					End:   gg.P(int64(3000)),
+					Value: "Lead words",
+					Cue: []model.Cue{
+						{
+							Start: gg.P(int64(1000)),
+							End:   gg.P(int64(1500)),
+							Value: "Lead ",
+						},
+						{
+							Start: gg.P(int64(1500)),
+							End:   gg.P(int64(3000)),
+							Value: "words",
+						},
+					},
+				},
+				{
+					Start: gg.P(int64(3000)),
+					Value: "Fallback line",
+				},
+			},
+			Synced: true,
+		},
+	}
+
+	ttmlLyrics := model.LyricList{
+		model.Lyrics{
+			Kind: "main",
+			Lang: "eng",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					Value: "We're no strangers to love",
+				},
+				{
+					Start: gg.P(int64(22800)),
+					Value: "You know the rules and so do I",
+				},
+			},
+			Synced: true,
+		},
+		model.Lyrics{
+			Kind: "main",
+			Lang: "por",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					Value: "Nao somos estranhos ao amor",
+				},
+			},
+			Synced: true,
+		},
+	}
+
 	unsyncedLyrics := model.LyricList{
 		model.Lyrics{
 			Lang: "xxx",
@@ -56,6 +117,25 @@ var _ = Describe("sources", func() {
 				},
 			},
 			Synced: false,
+		},
+	}
+
+	srtLyrics := model.LyricList{
+		model.Lyrics{
+			Lang: "xxx",
+			Line: []model.Line{
+				{
+					Start: gg.P(int64(18800)),
+					End:   gg.P(int64(22800)),
+					Value: "We're from subtitles",
+				},
+				{
+					Start: gg.P(int64(22801)),
+					End:   gg.P(int64(26000)),
+					Value: "Another subtitle line",
+				},
+			},
+			Synced: true,
 		},
 	}
 
@@ -80,7 +160,10 @@ var _ = Describe("sources", func() {
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
 		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics),
-		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics))
+		Entry("elrc > lrc > embedded", ".elrc,.lrc,embedded", elrcLyrics),
+		Entry("srt > txt > embedded", ".srt,.txt,embedded", srtLyrics),
+		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
+		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics))
 
 	Context("Errors", func() {
 		var RegularUserContext = XContext

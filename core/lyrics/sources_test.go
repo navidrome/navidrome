@@ -88,6 +88,75 @@ var _ = Describe("sources", func() {
 			}))
 		})
 
+		It("should return Enhanced LRC lyrics with word-level cues from a file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test-enhanced.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].DisplayArtist).To(Equal("Test Artist"))
+			Expect(lyrics[0].DisplayTitle).To(Equal("Enhanced Test"))
+			Expect(lyrics[0].Lang).To(Equal("eng"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(3))
+
+			// Line 1: has inline markers → Cue array populated
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(1000))))
+			Expect(lyrics[0].Line[0].End).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("Some lyrics here"))
+			Expect(lyrics[0].Line[0].Cue).To(HaveLen(3))
+			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
+			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Some "))
+			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(gg.P(int64(1500))))
+			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
+			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("lyrics "))
+			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(gg.P(int64(2000))))
+			Expect(*lyrics[0].Line[0].Cue[2].Start).To(Equal(int64(2000)))
+			Expect(lyrics[0].Line[0].Cue[2].Value).To(Equal("here"))
+			Expect(lyrics[0].Line[0].Cue[2].End).To(Equal(gg.P(int64(3000))))
+
+			// Line 2: has inline markers
+			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[1].End).To(Equal(gg.P(int64(5000))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("More words"))
+			Expect(lyrics[0].Line[1].Cue).To(HaveLen(2))
+			Expect(lyrics[0].Line[1].Cue[0].End).To(Equal(gg.P(int64(3500))))
+			Expect(lyrics[0].Line[1].Cue[1].End).To(Equal(gg.P(int64(5000))))
+
+			// Line 3: plain line, no cues
+			Expect(lyrics[0].Line[2].Start).To(Equal(gg.P(int64(5000))))
+			Expect(lyrics[0].Line[2].Value).To(Equal("Plain line without inline markers"))
+			Expect(lyrics[0].Line[2].Cue).To(BeNil())
+		})
+
+		It("should return Enhanced LRC lyrics from an ELRC file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".elrc")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].DisplayArtist).To(Equal("ELRC Artist"))
+			Expect(lyrics[0].DisplayTitle).To(Equal("ELRC Song"))
+			Expect(lyrics[0].Lang).To(Equal("eng"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(2))
+
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(1000))))
+			Expect(lyrics[0].Line[0].End).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("Lead words"))
+			Expect(lyrics[0].Line[0].Cue).To(HaveLen(2))
+			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
+			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Lead "))
+			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(gg.P(int64(1500))))
+			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
+			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("words"))
+			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(gg.P(int64(3000))))
+
+			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("Fallback line"))
+			Expect(lyrics[0].Line[1].Cue).To(BeNil())
+		})
+
 		It("should return unsynchronized lyrics from a file", func() {
 			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
 			lyrics, err := fromExternalFile(ctx, &mf, ".txt")
@@ -105,6 +174,66 @@ var _ = Describe("sources", func() {
 						},
 					},
 					Synced: false,
+				},
+			}))
+		})
+
+		It("should return synchronized lyrics from an SRT file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".srt")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				model.Lyrics{
+					Lang: "xxx",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							End:   gg.P(int64(22800)),
+							Value: "We're from subtitles",
+						},
+						{
+							Start: gg.P(int64(22801)),
+							End:   gg.P(int64(26000)),
+							Value: "Another subtitle line",
+						},
+					},
+					Synced: true,
+				},
+			}))
+		})
+
+		It("should return synchronized multilingual lyrics from a TTML file", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				{
+					Kind: "main",
+					Lang: "eng",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "We're no strangers to love",
+						},
+						{
+							Start: gg.P(int64(22800)),
+							Value: "You know the rules and so do I",
+						},
+					},
+					Synced: true,
+				},
+				{
+					Kind: "main",
+					Lang: "por",
+					Line: []model.Line{
+						{
+							Start: gg.P(int64(18800)),
+							Value: "Nao somos estranhos ao amor",
+						},
+					},
+					Synced: true,
 				},
 			}))
 		})
@@ -141,6 +270,34 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[0].Value).To(Equal("We're no strangers to love"))
 			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
+		})
+
+		It("should handle TTML files with UTF-8 BOM marker", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(1))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(0))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("BOM test line"))
+		})
+
+		It("should handle UTF-16 LE encoded TTML files", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-utf16-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(2))
+			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(18800))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("UTF16 line one"))
+			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
 		})
 	})
 })

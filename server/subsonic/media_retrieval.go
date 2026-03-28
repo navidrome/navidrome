@@ -98,7 +98,11 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsByArtistTitleWithLyricsFirst(artist, title))
+	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
+	// Keep the search exhaustive so an older duplicate can still supply the
+	// matching sidecar lyrics when the newest candidate only has embedded data.
+	opts.Max = 0
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
 
 	if err != nil {
 		return nil, err
@@ -108,24 +112,25 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[0])
-	if err != nil {
-		return nil, err
+	for i := range mediaFiles {
+		structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[i])
+		if err != nil {
+			return nil, err
+		}
+		if len(structuredLyrics) == 0 {
+			continue
+		}
+
+		lyricsResponse.Artist = artist
+		lyricsResponse.Title = title
+
+		var lyricsText strings.Builder
+		for _, line := range structuredLyrics[0].Line {
+			lyricsText.WriteString(line.Value + "\n")
+		}
+		lyricsResponse.Value = lyricsText.String()
+		break
 	}
-
-	if len(structuredLyrics) == 0 {
-		return response, nil
-	}
-
-	lyricsResponse.Artist = artist
-	lyricsResponse.Title = title
-
-	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
-		lyricsText.WriteString(line.Value + "\n")
-	}
-
-	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
 }
@@ -146,8 +151,10 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
+	enhanced, _ := req.Params(r).Bool("enhanced")
+
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
 
 	return response, nil
 }
