@@ -258,6 +258,13 @@ type searchOptions struct {
 	FullString bool
 }
 
+// fatalFunc is called for fatal config errors. Defaults to printing + os.Exit(1).
+// Overridden in tests to allow testing fatal paths.
+var fatalFunc = func(msg string) {
+	_, _ = fmt.Fprintln(os.Stderr, "FATAL:", msg)
+	os.Exit(1)
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -275,6 +282,7 @@ func LoadFromFile(confFile string) {
 
 func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
+	remapEnvVarKeysFromConfig()
 
 	// Map deprecated options to their new names for backwards compatibility
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
@@ -463,6 +471,35 @@ func logRemovedOptions(options ...string) {
 		if os.Getenv(envVar) != "" {
 			logWarning(envVar)
 		}
+	}
+}
+
+// remapEnvVarKeysFromConfig detects ND_-prefixed keys in the config file (users mistakenly
+// using environment variable names) and remaps them to canonical Viper keys with a warning.
+func remapEnvVarKeysFromConfig() {
+	for _, key := range viper.AllKeys() {
+		if !strings.HasPrefix(key, "nd_") || !viper.InConfig(key) {
+			continue
+		}
+		stripped := strings.TrimPrefix(key, "nd_")
+		canonicalKey := strings.ReplaceAll(stripped, "_", ".")
+		displayNDKey := "ND_" + strings.ToUpper(stripped)
+		displayCanonical := toPascalCase(canonicalKey)
+
+		if viper.InConfig(canonicalKey) {
+			fatalFunc(fmt.Sprintf(
+				"Config file contains both '%s' and '%s'. Remove the ND_-prefixed version. "+
+					"The 'ND_' prefix is only needed for environment variables, not config file keys.",
+				displayNDKey, displayCanonical,
+			))
+			return
+		}
+
+		viper.Set(canonicalKey, viper.Get(key))
+		_, _ = fmt.Fprintf(os.Stderr, "WARNING: Config key '%s' uses environment variable naming. Use '%s' instead. "+
+			"The 'ND_' prefix is only needed for environment variables.\n",
+			displayNDKey, displayCanonical,
+		)
 	}
 }
 
