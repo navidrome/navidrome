@@ -32,7 +32,7 @@ var _ = Describe("Controller", func() {
 			DeferCleanup(configtest.SetupConfig())
 			ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 			ds.MockedProperty = &tests.MockedPropertyRepo{}
-			ctrl = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(), playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+			ctrl = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(), playlists.NewPlaylists(ds, core.NewImageUploadService()), playlists.NoopSmartPlaylistEvaluator(), metrics.NewNoopInstance())
 		})
 
 		It("includes last scan error", func() {
