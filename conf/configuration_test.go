@@ -2,6 +2,7 @@ package conf_test
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,6 +25,11 @@ var _ = Describe("Configuration", func() {
 		viper.SetDefault("datafolder", GinkgoT().TempDir())
 		viper.SetDefault("loglevel", "error")
 		conf.ResetConf()
+
+		// Panic instead of exiting on fatal errors to allow testing error conditions
+		DeferCleanup(conf.SetLogFatal(func(args ...any) {
+			panic(fmt.Sprint(args...))
+		}))
 	})
 
 	Describe("ParseLanguages", func() {
@@ -139,11 +145,6 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("exits with fatal error when both ND_ and canonical key exist", func() {
-			cleanup := conf.SetFatalFunc(func(msg string) {
-				panic(msg)
-			})
-			defer cleanup()
-
 			filename := filepath.Join("testdata", "cfg_nd_conflict.toml")
 			conf.InitConfig(filename, false)
 
@@ -162,6 +163,60 @@ var _ = Describe("Configuration", func() {
 			// Verify normal config loading still works
 			Expect(conf.Server.MusicFolder).To(Equal("/toml/music"))
 		})
+	})
+
+	Describe("logFatal", func() {
+		var invalidPath string
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+
+			// Create a file so that any path under it is invalid on all OSes
+			f, err := os.CreateTemp(GinkgoT().TempDir(), "blocker")
+			Expect(err).ToNot(HaveOccurred())
+			f.Close()
+			invalidPath = filepath.Join(f.Name(), "subdir")
+		})
+
+		It("is called when LoadFromFile gets an invalid config file", func() {
+			Expect(func() {
+				conf.LoadFromFile(filepath.Join(invalidPath, "file.toml"))
+			}).To(PanicWith(ContainSubstring("Error reading config file")))
+		})
+
+		It("is called when DataFolder is not writable", func() {
+			viper.SetDefault("datafolder", invalidPath)
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error creating data path")))
+		})
+
+		It("is called when CacheFolder is not writable", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("cachefolder", invalidPath)
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error creating cache path")))
+		})
+
+		It("is called when LogFile path is not writable", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error opening log file")))
+		})
+
+		It("is called when BaseURL is invalid", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("baseurl", "://invalid")
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Invalid BaseURL")))
+		})
+
 	})
 
 	DescribeTable("should load configuration from",

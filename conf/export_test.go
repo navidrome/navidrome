@@ -14,8 +14,8 @@ var NormalizeSearchBackend = normalizeSearchBackend
 
 var ToPascalCase = toPascalCase
 
-func SetFatalFunc(f func(string)) func() {
-	old := fatalFunc
-	fatalFunc = f
-	return func() { fatalFunc = old }
+func SetLogFatal(f func(...any)) func() {
+	old := logFatal
+	logFatal = f
+	return func() { logFatal = old }
 }
