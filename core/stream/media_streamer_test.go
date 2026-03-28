@@ -31,6 +31,7 @@ var _ = Describe("MediaStreamer", func() {
 		})
 		testCache := stream.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
+		conf.Server.MaxConcurrentTranscodes = 0 // Disable throttling for general tests
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
@@ -70,6 +71,22 @@ var _ = Describe("MediaStreamer", func() {
 			s, err = streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 32})
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
+		})
+	})
+
+	Context("NewStream with throttle", func() {
+		var mf *model.MediaFile
+		BeforeEach(func() {
+			var err error
+			mf, err = ds.MediaFile(ctx).Get("123")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("does not throttle raw/direct-play requests even when throttle is saturated", func() {
+			s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "raw"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(s).ToNot(BeNil())
+			_ = s.Close()
 		})
 	})
 })

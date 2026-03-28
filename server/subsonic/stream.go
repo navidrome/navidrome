@@ -1,12 +1,14 @@
 package subsonic
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -31,22 +33,25 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	}
 
 	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
-	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
+	s, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
+		if errors.Is(err, stream.ErrTranscodingBusy) {
+			return nil, newError(responses.ErrorGeneric, "too many concurrent transcodes, try again later")
+		}
 		return nil, err
 	}
 
 	// Make sure the stream will be closed at the end, to avoid leakage
 	defer func() {
-		if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+		if err := s.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
+			log.Error("Error closing stream", "id", id, "file", s.Name(), err)
 		}
 	}()
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
+	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(s.Duration()), 'G', -1, 32))
 
-	_, err = stream.Serve(ctx, w, r)
+	_, err = s.Serve(ctx, w, r)
 	return nil, err
 }
 
@@ -100,22 +105,25 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	switch v := entity.(type) {
 	case *model.MediaFile:
 		streamReq := api.transcodeDecision.ResolveRequest(ctx, v, format, maxBitRate, 0)
-		stream, err := api.streamer.NewStream(ctx, v, streamReq)
+		s, err := api.streamer.NewStream(ctx, v, streamReq)
 		if err != nil {
+			if errors.Is(err, stream.ErrTranscodingBusy) {
+				return nil, newError(responses.ErrorGeneric, "too many concurrent transcodes, try again later")
+			}
 			return nil, err
 		}
 
 		// Make sure the stream will be closed at the end, to avoid leakage
 		defer func() {
-			if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-				log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+			if err := s.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
+				log.Error("Error closing stream", "id", id, "file", s.Name(), err)
 			}
 		}()
 
-		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
+		disposition := fmt.Sprintf("attachment; filename=\"%s\"", s.Name())
 		w.Header().Set("Content-Disposition", disposition)
 
-		_, err = stream.Serve(ctx, w, r)
+		_, err = s.Serve(ctx, w, r)
 		return nil, err
 	case *model.Album:
 		setHeaders(v.Name)
