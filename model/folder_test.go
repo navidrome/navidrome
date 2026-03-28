@@ -11,6 +11,32 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Folder.CoverArtID", func() {
+	It("returns empty ArtworkID when folder has no images", func() {
+		f := model.Folder{ID: "folder-1"}
+		Expect(f.CoverArtID()).To(Equal(model.ArtworkID{}))
+		Expect(f.CoverArtID().String()).To(BeEmpty())
+	})
+
+	It("returns a folder ArtworkID when folder has images", func() {
+		now := time.Now().Truncate(time.Second)
+		f := model.Folder{ID: "folder-1", ImageFiles: []string{"cover.jpg"}, ImagesUpdatedAt: now}
+		artID := f.CoverArtID()
+		Expect(artID.Kind).To(Equal(model.KindFolderArtwork))
+		Expect(artID.ID).To(Equal("folder-1"))
+		Expect(artID.LastUpdate.Unix()).To(Equal(now.Unix()))
+	})
+
+	It("produces a parseable ArtworkID string", func() {
+		now := time.Now()
+		f := model.Folder{ID: "folder-1", ImageFiles: []string{"cover.jpg"}, ImagesUpdatedAt: now}
+		parsed, err := model.ParseArtworkID(f.CoverArtID().String())
+		Expect(err).ToNot(HaveOccurred())
+		Expect(parsed.Kind).To(Equal(model.KindFolderArtwork))
+		Expect(parsed.ID).To(Equal("folder-1"))
+	})
+})
+
 var _ = Describe("Folder", func() {
 	var (
 		lib model.Library

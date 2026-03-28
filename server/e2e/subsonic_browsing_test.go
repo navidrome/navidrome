@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,7 +27,7 @@ var _ = Describe("Browsing Endpoints", func() {
 	})
 
 	Describe("getIndexes", func() {
-		It("returns artist indexes", func() {
+		It("returns folder indexes by default", func() {
 			resp := doReq("getIndexes")
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
@@ -34,16 +35,31 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(resp.Indexes.Index).ToNot(BeEmpty())
 		})
 
-		It("includes all artists across indexes", func() {
+		It("includes top-level folders grouped by first letter", func() {
 			resp := doReq("getIndexes")
 
-			var allArtistNames []string
+			var allNames []string
 			for _, idx := range resp.Indexes.Index {
 				for _, a := range idx.Artists {
-					allArtistNames = append(allArtistNames, a.Name)
+					allNames = append(allNames, a.Name)
 				}
 			}
-			Expect(allArtistNames).To(ContainElements("The Beatles", "Led Zeppelin", "Miles Davis", "Various"))
+			Expect(allNames).To(ContainElements("Jazz", "Pop", "Rock", "CJK"))
+		})
+
+		It("falls back to artist index when FolderBrowsing is disabled", func() {
+			conf.Server.Subsonic.FolderBrowsing = false
+			DeferCleanup(func() { conf.Server.Subsonic.FolderBrowsing = true })
+
+			resp := doReq("getIndexes")
+
+			var allNames []string
+			for _, idx := range resp.Indexes.Index {
+				for _, a := range idx.Artists {
+					allNames = append(allNames, a.Name)
+				}
+			}
+			Expect(allNames).To(ContainElements("The Beatles", "Led Zeppelin", "Miles Davis", "Various"))
 		})
 	})
 
