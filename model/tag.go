@@ -192,6 +192,7 @@ const (
 	TagISRC           TagName = "isrc"
 	TagBPM            TagName = "bpm"
 	TagExplicitStatus TagName = "explicitstatus"
+	TagMetadataTag    TagName = "tags"
 
 	// Dates and years
 
