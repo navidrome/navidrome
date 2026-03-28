@@ -108,6 +108,62 @@ var _ = Describe("Configuration", func() {
 		Entry("falls back to 'fts' for empty string", "", "fts"),
 	)
 
+	DescribeTable("ToPascalCase",
+		func(input, expected string) {
+			Expect(conf.ToPascalCase(input)).To(Equal(expected))
+		},
+		Entry("simple key", "address", "Address"),
+		Entry("dotted key", "scanner.schedule", "Scanner.Schedule"),
+		Entry("already capitalized", "Address", "Address"),
+		Entry("multi-segment", "lastfm.enabled", "Lastfm.Enabled"),
+		Entry("empty string", "", ""),
+	)
+
+	Describe("remapEnvVarKeysFromConfig", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("remaps ND_-prefixed keys to canonical keys", func() {
+			filename := filepath.Join("testdata", "cfg_nd_keys.toml")
+			conf.InitConfig(filename, false)
+			conf.Load(true)
+
+			Expect(conf.Server.Address).To(Equal("127.0.0.1"))
+			Expect(conf.Server.Port).To(Equal(4531))
+			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+		})
+
+		It("exits with fatal error when both ND_ and canonical key exist", func() {
+			cleanup := conf.SetFatalFunc(func(msg string) {
+				panic(msg)
+			})
+			defer cleanup()
+
+			filename := filepath.Join("testdata", "cfg_nd_conflict.toml")
+			conf.InitConfig(filename, false)
+
+			Expect(func() { conf.Load(true) }).To(PanicWith(And(
+				ContainSubstring("ND_ADDRESS"),
+				ContainSubstring("Address"),
+				ContainSubstring("only needed for environment variables"),
+			)))
+		})
+
+		It("does nothing when no ND_ keys are present", func() {
+			filename := filepath.Join("testdata", "cfg.toml")
+			conf.InitConfig(filename, false)
+			conf.Load(true)
+
+			// Verify normal config loading still works
+			Expect(conf.Server.MusicFolder).To(Equal("/toml/music"))
+		})
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)
