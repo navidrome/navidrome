@@ -617,6 +617,21 @@ func normalizeSearchBackend(value string) string {
 	}
 }
 
+// toPascalCase converts a dotted lowercase config key to PascalCase for display.
+// Example: "scanner.schedule" → "Scanner.Schedule"
+func toPascalCase(key string) string {
+	if key == "" {
+		return ""
+	}
+	parts := strings.Split(key, ".")
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[:1]) + part[1:]
+		}
+	}
+	return strings.Join(parts, ".")
+}
+
 // AddHook is used to register initialization code that should run as soon as the config is loaded
 func AddHook(hook func()) {
 	hooks = append(hooks, hook)

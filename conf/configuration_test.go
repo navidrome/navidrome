@@ -108,6 +108,17 @@ var _ = Describe("Configuration", func() {
 		Entry("falls back to 'fts' for empty string", "", "fts"),
 	)
 
+	DescribeTable("ToPascalCase",
+		func(input, expected string) {
+			Expect(conf.ToPascalCase(input)).To(Equal(expected))
+		},
+		Entry("simple key", "address", "Address"),
+		Entry("dotted key", "scanner.schedule", "Scanner.Schedule"),
+		Entry("already capitalized", "Address", "Address"),
+		Entry("multi-segment", "lastfm.enabled", "Lastfm.Enabled"),
+		Entry("empty string", "", ""),
+	)
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

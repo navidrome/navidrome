@@ -11,3 +11,5 @@ var ParseLanguages = parseLanguages
 var ValidateURL = validateURL
 
 var NormalizeSearchBackend = normalizeSearchBackend
+
+var ToPascalCase = toPascalCase
