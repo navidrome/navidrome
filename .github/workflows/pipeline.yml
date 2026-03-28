@@ -188,6 +188,7 @@ jobs:
         id: check
         run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
 
+
   build:
     name: Build
     needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
@@ -208,6 +209,12 @@ jobs:
         run: |
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
+      
+      - name: Get Lowercase Name
+        id: lowercase_name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
 
       - uses: actions/checkout@v6
 
@@ -256,7 +263,7 @@ jobs:
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
-            type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=ghcr.io/${{ env.REPO_LOWER }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
@@ -282,8 +289,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
-    env:
-      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v6
 
@@ -327,6 +332,14 @@ jobs:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
+      
+      - name: Get Lowercase Name
+        id: lowercase_name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
+          REGISTRY_IMAGE="ghcr.io/$REPO_LOWER"
+          echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_ENV
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -362,8 +375,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
+          for artifact in $(gh api repos/${{ env.REPO_LOWER }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
+            gh api --method DELETE repos/${{ env.REPO_LOWER }}/actions/artifacts/$artifact
           done
 
   msi:
