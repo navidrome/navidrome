@@ -397,7 +397,7 @@
         "allLibrariesHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott könyvtárhoz.",
         "noLibraries": "Nincs kiválasztott könyvtár",
         "librariesRequired": "Ez a kiegészítő hozzáférést kér könyvtárinformációkhoz. Válaszd ki, melyik könyvtárakat érheti el, vagy az 'Összes könyvtár engedélyezése' opciót.",
-        "allowWriteAccessHelp": "Amikor ez engedélyezve van, a kiegészítő tudni fogja módosítani a könyvtár mappáit. Alapbeállításon a kiegészítőknek csak olvasási joguk van.",
+"allowWriteAccessHelp": "Amikor ez engedélyezve van, a kiegészítő módosíthatja a könyvtár mappáit. Alapbeállításon a kiegészítőknek csak olvasási joguk van.",
         "requiredHosts": "Szükséges hostok"
       },
       "placeholders": {
