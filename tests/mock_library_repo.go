@@ -267,7 +267,6 @@ func (m *MockLibraryRepo) GetUserLibraries(ctx context.Context, userID string) (
 	if userID == "non-existent" {
 		return nil, model.ErrNotFound
 	}
-	// If per-user tracking is set, return only the assigned libraries
 	if m.UserLibraries != nil {
 		ids, ok := m.UserLibraries[userID]
 		if !ok {
@@ -284,15 +283,7 @@ func (m *MockLibraryRepo) GetUserLibraries(ctx context.Context, userID string) (
 		})
 		return libraries, nil
 	}
-	// Fallback: return all libraries
-	var libraries model.Libraries
-	for _, lib := range m.Data {
-		libraries = append(libraries, lib)
-	}
-	slices.SortFunc(libraries, func(a, b model.Library) int {
-		return a.ID - b.ID
-	})
-	return libraries, nil
+	return m.GetAll()
 }
 
 func (m *MockLibraryRepo) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
@@ -305,13 +296,11 @@ func (m *MockLibraryRepo) SetUserLibraries(ctx context.Context, userID string, l
 	if userID == "admin-1" {
 		return fmt.Errorf("%w: cannot manually assign libraries to admin users", model.ErrValidation)
 	}
-	// Validate all library IDs exist
 	for _, id := range libraryIDs {
 		if _, exists := m.Data[id]; !exists {
 			return fmt.Errorf("%w: library ID %d does not exist", model.ErrValidation, id)
 		}
 	}
-	// Store per-user assignments
 	if m.UserLibraries == nil {
 		m.UserLibraries = make(map[string][]int)
 	}

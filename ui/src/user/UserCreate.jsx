@@ -51,17 +51,9 @@ const UserCreate = (props) => {
     [mutate, notify, redirect],
   )
 
-  // Custom validation function
-  const validateUserForm = (values) => {
-    const errors = {}
-    // Library selection is optional for non-admin users since they will be auto-assigned to default libraries
-    // No validation required for library selection
-    return errors
-  }
-
   return (
     <Create title={<Title subTitle={title} />} {...props}>
-      <SimpleForm save={save} validate={validateUserForm} variant={'outlined'}>
+      <SimpleForm save={save} variant={'outlined'}>
         <TextInput
           spellCheck={false}
           source="userName"
