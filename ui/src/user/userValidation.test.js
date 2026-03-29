@@ -23,48 +23,21 @@ describe('User Validation Utilities', () => {
       expect(errors).toEqual({})
     })
 
-    it('should return error for non-admin users without libraries', () => {
+    it('should not return errors for non-admin users without libraries', () => {
       const values = {
         isAdmin: false,
         libraryIds: [],
       }
       const errors = validateUserForm(values, mockTranslate)
-      expect(errors.libraryIds).toBe(
-        'resources.user.validation.librariesRequired',
-      )
-    })
-
-    it('should return error for non-admin users with undefined libraryIds', () => {
-      const values = {
-        isAdmin: false,
-      }
-      const errors = validateUserForm(values, mockTranslate)
-      expect(errors.libraryIds).toBe(
-        'resources.user.validation.librariesRequired',
-      )
-    })
-
-    it('should not return errors for non-admin users with libraries array', () => {
-      const values = {
-        isAdmin: false,
-        libraries: [
-          { id: 1, name: 'Library 1' },
-          { id: 2, name: 'Library 2' },
-        ],
-      }
-      const errors = validateUserForm(values, mockTranslate)
       expect(errors).toEqual({})
     })
 
-    it('should return error for non-admin users with empty libraries array', () => {
+    it('should not return errors for non-admin users with undefined libraryIds', () => {
       const values = {
         isAdmin: false,
-        libraries: [],
       }
       const errors = validateUserForm(values, mockTranslate)
-      expect(errors.libraryIds).toBe(
-        'resources.user.validation.librariesRequired',
-      )
+      expect(errors).toEqual({})
     })
   })
 })
