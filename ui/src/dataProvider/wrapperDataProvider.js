@@ -114,7 +114,7 @@ const createUser = async (params) => {
   const userId = userResponse.data.id
 
   // Then set library associations for non-admin users
-  if (!userData.isAdmin) {
+  if (!userData.isAdmin && libraryIds !== undefined) {
     await handleUserLibraryAssociation(userId, libraryIds)
   }
 
