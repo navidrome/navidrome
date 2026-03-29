@@ -38,7 +38,7 @@
         "missing": "Faltante",
         "libraryName": "Biblioteca",
         "composer": "Compositor",
-        "disc": ""
+        "disc": "Disco %{discNumber}"
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -355,7 +355,7 @@
         "selectedUsers": "Usuarios seleccionados",
         "allLibraries": "Permitir todas las bibliotecas",
         "selectedLibraries": "Bibliotecas seleccionadas",
-        "allowWriteAccess": ""
+        "allowWriteAccess": "Permitir acceso de escritura"
       },
       "sections": {
         "status": "Estado",
@@ -401,7 +401,7 @@
         "requiredHosts": "Hosts requeridos",
         "configValidationError": "La validación de la configuración falló:",
         "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido.",
-        "allowWriteAccessHelp": ""
+        "allowWriteAccessHelp": "Cuando está activado, el plugin puede modificar archivos en los directorios de la biblioteca. Por defecto, los plugins tienen acceso de solo lectura."
       },
       "placeholders": {
         "configKey": "clave",
@@ -591,7 +591,13 @@
     "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
     "noSimilarSongsFound": "No se encontraron canciones similares",
     "noTopSongsFound": "No se encontraron canciones destacadas",
-    "startingInstantMix": "Cargando la mezcla instantánea..."
+    "startingInstantMix": "Cargando la mezcla instantánea...",
+    "uploadCover": "Subir portada",
+    "removeCover": "Eliminar portada",
+    "coverUploaded": "Portada actualizada",
+    "coverRemoved": "Portada eliminada",
+    "coverUploadError": "Error al subir la portada",
+    "coverRemoveError": "Error al eliminar la portada"
   },
   "menu": {
     "library": "Biblioteca",
