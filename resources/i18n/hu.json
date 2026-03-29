@@ -352,7 +352,7 @@
         "selectedUsers": "Kiválasztott felhasználók engedélyezése",
         "allLibraries": "Összes könyvtár engedélyezése",
         "selectedLibraries": "Kiválasztott könyvtárak engedélyezése",
-        "allowWriteAccess": "Módosíthatóság engedélyezése"
+"allowWriteAccess": "Írási hozzáférés engedélyezése"
       },
       "sections": {
         "status": "Státusz",
