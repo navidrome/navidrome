@@ -1,14 +1,17 @@
 package external_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/url"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -264,6 +267,68 @@ var _ = Describe("Provider - ArtistImage", func() {
 		Expect(imgURL).To(Equal(expectedURL))
 		mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 		mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
+	})
+
+	It("returns cached URL and does not call agent when info is not expired", func() {
+		// Arrange: artist has a cached image URL with recent ExternalInfoUpdatedAt
+		recentTime := time.Now().Add(-1 * time.Minute)
+		cachedArtist := &model.Artist{
+			ID:                    "artist-cached",
+			Name:                  "Cached Artist",
+			LargeImageUrl:         "http://example.com/cached-large.jpg",
+			ExternalInfoUpdatedAt: &recentTime,
+		}
+		mockArtistRepo.On("Get", "artist-cached").Return(cachedArtist, nil).Maybe()
+		expectedURL, _ := url.Parse("http://example.com/cached-large.jpg")
+
+		// Capture log output
+		var logBuf bytes.Buffer
+		log.SetOutput(&logBuf)
+		defer log.SetOutput(GinkgoWriter)
+		log.SetLevel(log.LevelDebug)
+
+		// Act
+		imgURL, err := provider.ArtistImage(ctx, "artist-cached")
+
+		// Assert
+		Expect(err).ToNot(HaveOccurred())
+		Expect(imgURL).To(Equal(expectedURL))
+		mockImageAgent.AssertNotCalled(GinkgoT(), "GetArtistImages", mock.Anything, "artist-cached", mock.Anything, mock.Anything)
+
+		// Assert: background refresh was NOT enqueued
+		Expect(logBuf.String()).ToNot(ContainSubstring("Artist image info expired, enqueuing background refresh"))
+
+	})
+
+	It("returns stale URL and enqueues refresh when info is expired", func() {
+		// Arrange
+		conf.Server.DevArtistInfoTimeToLive = 1 * time.Nanosecond
+		expiredTime := time.Now().Add(-1 * time.Hour)
+		staleArtist := &model.Artist{
+			ID:                    "artist-expired",
+			Name:                  "Expired Artist",
+			LargeImageUrl:         "http://example.com/expired-large.jpg",
+			ExternalInfoUpdatedAt: &expiredTime,
+		}
+		mockArtistRepo.On("Get", "artist-expired").Return(staleArtist, nil).Maybe()
+		expectedURL, _ := url.Parse("http://example.com/expired-large.jpg")
+
+		// Capture log output
+		var logBuf bytes.Buffer
+		log.SetOutput(&logBuf)
+		defer log.SetOutput(GinkgoWriter)
+		log.SetLevel(log.LevelDebug)
+
+		// Act
+		imgURL, err := provider.ArtistImage(ctx, "artist-expired")
+
+		// Assert: returns stale URL immediately, no agent call
+		Expect(err).ToNot(HaveOccurred())
+		Expect(imgURL).To(Equal(expectedURL))
+		mockImageAgent.AssertNotCalled(GinkgoT(), "GetArtistImages", mock.Anything, "artist-expired", mock.Anything, mock.Anything)
+
+		// Assert: background refresh was enqueued
+		Expect(logBuf.String()).To(ContainSubstring("Artist image info expired, enqueuing background refresh"))
 	})
 
 	Context("Unicode handling in artist names", func() {
