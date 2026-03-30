@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -264,6 +265,27 @@ var _ = Describe("Provider - ArtistImage", func() {
 		Expect(imgURL).To(Equal(expectedURL))
 		mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 		mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
+	})
+
+	It("returns cached URL and does not call agent when info is not expired", func() {
+		// Arrange: artist has a cached image URL with recent ExternalInfoUpdatedAt
+		recentTime := time.Now().Add(-1 * time.Minute)
+		cachedArtist := &model.Artist{
+			ID:                    "artist-cached",
+			Name:                  "Cached Artist",
+			LargeImageUrl:         "http://example.com/cached-large.jpg",
+			ExternalInfoUpdatedAt: &recentTime,
+		}
+		mockArtistRepo.On("Get", "artist-cached").Return(cachedArtist, nil).Maybe()
+		expectedURL, _ := url.Parse("http://example.com/cached-large.jpg")
+
+		// Act
+		imgURL, err := provider.ArtistImage(ctx, "artist-cached")
+
+		// Assert
+		Expect(err).ToNot(HaveOccurred())
+		Expect(imgURL).To(Equal(expectedURL))
+		mockImageAgent.AssertNotCalled(GinkgoT(), "GetArtistImages", mock.Anything, "artist-cached", mock.Anything, mock.Anything)
 	})
 
 	Context("Unicode handling in artist names", func() {
