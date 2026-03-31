@@ -24,8 +24,8 @@ const maxImageSize = 10 << 20 // 10MB
 
 func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 	user, _ := request.UserFrom(r.Context())
-	if !conf.Server.EnableCoverArtUpload && !user.IsAdmin {
-		http.Error(w, "cover art upload is disabled", http.StatusForbidden)
+	if !conf.Server.EnableArtworkUpload && !user.IsAdmin {
+		http.Error(w, "artwork upload is disabled", http.StatusForbidden)
 		return false
 	}
 	return true

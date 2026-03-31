@@ -178,7 +178,9 @@ func buildFTS5Query(userInput string) string {
 		tokens[i] = t + "*"
 	}
 
-	result = strings.Join(tokens, " ")
+	// Use explicit AND between tokens — FTS5's implicit AND (space-separated)
+	// doesn't work correctly with parenthesized OR groups from processPunctuatedWords.
+	result = strings.Join(tokens, " AND ")
 
 	for i, phrase := range phrases {
 		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)

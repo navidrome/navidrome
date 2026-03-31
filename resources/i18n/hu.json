@@ -22,6 +22,7 @@
         "bitRate": "Bitráta",
         "bitDepth": "Bitmélység",
         "sampleRate": "Mintavételezési frekvencia",
+        "disc": "Lemez %{discNumber}",
         "discSubtitle": "Lemezfelirat",
         "starred": "Kedvenc",
         "comment": "Megjegyzés",
@@ -350,7 +351,8 @@
         "allUsers": "Összes felhasználó engedélyezése",
         "selectedUsers": "Kiválasztott felhasználók engedélyezése",
         "allLibraries": "Összes könyvtár engedélyezése",
-        "selectedLibraries": "Kiválasztott könyvtárak engedélyezése"
+        "selectedLibraries": "Kiválasztott könyvtárak engedélyezése",
+"allowWriteAccess": "Írási hozzáférés engedélyezése"
       },
       "sections": {
         "status": "Státusz",
@@ -395,6 +397,7 @@
         "allLibrariesHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott könyvtárhoz.",
         "noLibraries": "Nincs kiválasztott könyvtár",
         "librariesRequired": "Ez a kiegészítő hozzáférést kér könyvtárinformációkhoz. Válaszd ki, melyik könyvtárakat érheti el, vagy az 'Összes könyvtár engedélyezése' opciót.",
+"allowWriteAccessHelp": "Amikor ez engedélyezve van, a kiegészítő módosíthatja a könyvtár mappáit. Alapbeállításon a kiegészítőknek csak olvasási joguk van.",
         "requiredHosts": "Szükséges hostok"
       },
       "placeholders": {
@@ -549,6 +552,12 @@
     }
   },
   "message": {
+    "uploadCover": "Borítókép feltöltése",
+    "removeCover": "Borítókép törlése",
+    "coverUploaded": "Borítókép feltöltve",
+    "coverRemoved": "Borítókép eltávolítva",
+    "coverUploadError": "Borítókép feltöltése sikertelen",
+    "coverRemoveError": "Borítókép törlése sikertelen",
     "note": "MEGJEGYZÉS",
     "transcodingDisabled": "Az átkódolási konfiguráció módosítása a webes felületen keresztül biztonsági okokból nem lehetséges. Ha módosítani szeretnéd az átkódolási beállításokat, indítsd újra a kiszolgálót a %{config} konfigurációs opcióval.",
     "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd ezt le, és csak az átkódolási beállítások konfigurálásának idejére kapcsold be.",
