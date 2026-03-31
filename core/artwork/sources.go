@@ -130,8 +130,23 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 		if err != nil {
 			return nil, "", err
 		}
-		return r, path, nil
+		// Validate that the stream actually contains image data by reading the first byte.
+		// ffmpeg.ExtractImage returns a pipe reader that may fail asynchronously if the
+		// file has no video/image stream (e.g., an MP3 without embedded art).
+		buf := make([]byte, 1)
+		n, err := r.Read(buf)
+		if n == 0 || err != nil {
+			r.Close()
+			return nil, "", fmt.Errorf("ffmpeg produced no image data for %s: %w", path, err)
+		}
+		return readCloser{Reader: io.MultiReader(bytes.NewReader(buf[:n]), r), Closer: r}, path, nil
 	}
+}
+
+// readCloser combines a Reader and a Closer into an io.ReadCloser.
+type readCloser struct {
+	io.Reader
+	io.Closer
 }
 
 func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {

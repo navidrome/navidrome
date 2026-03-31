@@ -14,8 +14,12 @@ import {
   UrlField,
   useTranslate,
 } from 'react-admin'
-import { List } from '../common'
-import { ToggleFieldsMenu, useSelectedFields } from '../common'
+import {
+  List,
+  useImageUrl,
+  ToggleFieldsMenu,
+  useSelectedFields,
+} from '../common'
 import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
@@ -78,10 +82,12 @@ const RadioListActions = ({
 const avatarStyle = { width: 40, height: 40 }
 
 const CoverArtField = ({ record }) => {
-  if (!record) return null
-  const src = record.uploadedImage
+  const directUrl = record?.uploadedImage
     ? subsonic.getCoverArtUrl(record, 40, true)
-    : RADIO_PLACEHOLDER_IMAGE
+    : null
+  const { imgUrl } = useImageUrl(directUrl)
+  if (!record) return null
+  const src = imgUrl || RADIO_PLACEHOLDER_IMAGE
   return (
     <Avatar src={src} variant="rounded" style={avatarStyle} alt={record.name} />
   )

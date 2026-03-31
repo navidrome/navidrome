@@ -49,7 +49,7 @@ export const ImageUploadOverlay = ({
   const fileInputRef = useRef(null)
 
   const canEdit =
-    config.enableCoverArtUpload || localStorage.getItem('role') === 'admin'
+    config.enableArtworkUpload || localStorage.getItem('role') === 'admin'
 
   const handleUploadClick = useCallback((e) => {
     e.stopPropagation()

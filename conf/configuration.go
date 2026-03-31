@@ -78,7 +78,7 @@ type configOptions struct {
 	EnableFavourites                bool
 	EnableStarRating                bool
 	EnableUserEditing               bool
-	EnableCoverArtUpload            bool
+	EnableArtworkUpload             bool
 	EnableSharing                   bool
 	ShareURL                        string
 	DefaultShareExpiration          time.Duration
@@ -259,6 +259,13 @@ type searchOptions struct {
 	FullString bool
 }
 
+// logFatal prints a fatal error message to stderr and exits.
+// Overridden in tests to allow testing fatal paths.
+var logFatal = func(args ...any) {
+	_, _ = fmt.Fprintln(os.Stderr, append([]any{"FATAL:"}, args...)...)
+	os.Exit(1)
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -268,14 +275,14 @@ func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
-		os.Exit(1)
+		logFatal("Error reading config file:", err)
 	}
 	Load(true)
 }
 
 func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
+	remapEnvVarKeysFromConfig()
 
 	// Map deprecated options to their new names for backwards compatibility
 	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
@@ -285,14 +292,12 @@ func Load(noConfigDump bool) {
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
-		os.Exit(1)
+		logFatal("Error parsing config:", err)
 	}
 
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", err)
-		os.Exit(1)
+		logFatal("Error creating data path:", err)
 	}
 
 	if Server.CacheFolder == "" {
@@ -300,14 +305,12 @@ func Load(noConfigDump bool) {
 	}
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
-		os.Exit(1)
+		logFatal("Error creating cache path:", err)
 	}
 
 	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating artwork path:", err)
-		os.Exit(1)
+		logFatal("Error creating artwork path:", err)
 	}
 
 	if Server.Plugins.Enabled {
@@ -316,8 +319,7 @@ func Load(noConfigDump bool) {
 		}
 		err = os.MkdirAll(Server.Plugins.Folder, 0700)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
-			os.Exit(1)
+			logFatal("Error creating plugins path:", err)
 		}
 	}
 
@@ -329,8 +331,7 @@ func Load(noConfigDump bool) {
 	if Server.Backup.Path != "" {
 		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", err)
-			os.Exit(1)
+			logFatal("Error creating backup path:", err)
 		}
 	}
 
@@ -338,8 +339,7 @@ func Load(noConfigDump bool) {
 	if Server.LogFile != "" {
 		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Error opening log file %s: %s\n", Server.LogFile, err.Error())
-			os.Exit(1)
+			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
 		}
 		log.SetOutput(out)
 	} else if os.Getenv("ND_SYSTEMD_PRIORITY_LOGGING") != "" && os.Getenv("JOURNAL_STREAM") != "" {
@@ -371,8 +371,7 @@ func Load(noConfigDump bool) {
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Invalid BaseURL:", err)
-			os.Exit(1)
+			logFatal("Invalid BaseURL:", err)
 		}
 		Server.BasePath = u.Path
 		u.Path = ""
@@ -467,6 +466,35 @@ func logRemovedOptions(options ...string) {
 	}
 }
 
+// remapEnvVarKeysFromConfig detects ND_-prefixed keys in the config file (users mistakenly
+// using environment variable names) and remaps them to canonical Viper keys with a warning.
+func remapEnvVarKeysFromConfig() {
+	for _, key := range viper.AllKeys() {
+		if !strings.HasPrefix(key, "nd_") || !viper.InConfig(key) {
+			continue
+		}
+		stripped := strings.TrimPrefix(key, "nd_")
+		canonicalKey := strings.ReplaceAll(stripped, "_", ".")
+		displayNDKey := "ND_" + strings.ToUpper(stripped)
+		displayCanonical := toPascalCase(canonicalKey)
+
+		if viper.InConfig(canonicalKey) {
+			logFatal(fmt.Sprintf(
+				"Config file contains both '%s' and '%s'. Remove the ND_-prefixed version. "+
+					"The 'ND_' prefix is only needed for environment variables, not config file keys.",
+				displayNDKey, displayCanonical,
+			))
+			return
+		}
+
+		viper.Set(canonicalKey, viper.Get(key))
+		_, _ = fmt.Fprintf(os.Stderr, "WARNING: Config key '%s' uses environment variable naming. Use '%s' instead. "+
+			"The 'ND_' prefix is only needed for environment variables.\n",
+			displayNDKey, displayCanonical,
+		)
+	}
+}
+
 // mapDeprecatedOption is used to provide backwards compatibility for deprecated options. It should be called after
 // the config has been read by viper, but before unmarshalling it into the Config struct.
 func mapDeprecatedOption(legacyName, newName string) {
@@ -484,18 +512,15 @@ func parseIniFileConfiguration() {
 		var iniConfig map[string]any
 		err := viper.Unmarshal(&iniConfig)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
-			os.Exit(1)
+			logFatal("Error parsing config:", err)
 		}
 		cfg, ok := iniConfig["default"].(map[string]any)
 		if !ok {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config: missing [default] section:", iniConfig)
-			os.Exit(1)
+			logFatal("Error parsing config: missing [default] section:", iniConfig)
 		}
 		err = viper.MergeConfigMap(cfg)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
-			os.Exit(1)
+			logFatal("Error parsing config:", err)
 		}
 	}
 }
@@ -618,6 +643,21 @@ func normalizeSearchBackend(value string) string {
 	}
 }
 
+// toPascalCase converts a dotted lowercase config key to PascalCase for display.
+// Example: "scanner.schedule" → "Scanner.Schedule"
+func toPascalCase(key string) string {
+	if key == "" {
+		return ""
+	}
+	parts := strings.Split(key, ".")
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[:1]) + part[1:]
+		}
+	}
+	return strings.Join(parts, ".")
+}
+
 // AddHook is used to register initialization code that should run as soon as the config is loaded
 func AddHook(hook func()) {
 	hooks = append(hooks, hook)
@@ -690,7 +730,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
-	viper.SetDefault("enablecoverartupload", true)
+	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
@@ -822,8 +862,7 @@ func InitConfig(cfgFile string, loadEnvVars bool) {
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Navidrome could not open config file: ", err)
-		os.Exit(1)
+		logFatal("Navidrome could not open config file:", err)
 	}
 }
 

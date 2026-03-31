@@ -61,7 +61,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"losslessFormats":           strings.ToUpper(strings.Join(mime.LosslessFormats, ",")),
 			"devActivityPanel":          conf.Server.DevActivityPanel,
 			"enableUserEditing":         conf.Server.EnableUserEditing,
-			"enableCoverArtUpload":      conf.Server.EnableCoverArtUpload,
+			"enableArtworkUpload":       conf.Server.EnableArtworkUpload,
 			"enableSharing":             conf.Server.EnableSharing,
 			"shareURL":                  conf.Server.ShareURL,
 			"defaultDownloadableShare":  conf.Server.DefaultDownloadableShare,
