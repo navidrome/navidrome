@@ -98,21 +98,19 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 		return nil, 0, fmt.Errorf("reading image data: %w", err)
 	}
 
-	// Preserve animation for animated images (skip for square thumbnails)
-	if !a.square {
-		if isAnimatedGIF(data) {
-			if a.a.ffmpeg.IsAvailable() {
-				// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
-				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
-				if err == nil {
-					return r, 0, nil
-				}
-				log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
+	// Preserve animation for animated images
+	if isAnimatedGIF(data) {
+		if a.a.ffmpeg.IsAvailable() {
+			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
+			r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+			if err == nil {
+				return r, 0, nil
 			}
-		} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
-			// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
-			return bytes.NewReader(data), 0, nil
+			log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
 		}
+	} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
+		// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
+		return bytes.NewReader(data), 0, nil
 	}
 
 	return resizeStaticImage(data, a.size, a.square)
