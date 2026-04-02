@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
+
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -99,10 +103,18 @@ func (api *Router) getArtistIndexID3(r *http.Request, libIds []int, ifModifiedSi
 
 func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
+	if err != nil {
+		return nil, err
+	}
 	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
 
-	res, err := api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
+	var res *responses.Indexes
+	if conf.Server.Subsonic.FolderBrowsing {
+		res, err = api.getFolderIndex(r.Context(), musicFolderIds, ifModifiedSince)
+	} else {
+		res, err = api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +122,91 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.Indexes = res
 	return response, nil
+}
+
+func (api *Router) getFolderIndex(ctx context.Context, musicFolderIds []int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	if err != nil {
+		log.Error(ctx, "Error retrieving last scan start time", err)
+		return nil, err
+	}
+	lastScan := time.Now()
+	if lastScanStr != "" {
+		if t, parseErr := time.Parse(time.RFC3339, lastScanStr); parseErr == nil {
+			lastScan = t
+		}
+	}
+
+	res := &responses.Indexes{
+		IgnoredArticles: conf.Server.IgnoredArticles,
+		LastModified:    lastScan.UnixMilli(),
+	}
+
+	if !lastScan.After(ifModifiedSince) {
+		return res, nil
+	}
+
+	// Fetch all libraries from the database; user.Libraries in context may be
+	// empty for admin users (not in user_library table), so we can't rely on it.
+	allLibraries, err := api.ds.Library(ctx).GetAll()
+	if err != nil {
+		log.Error(ctx, "Error retrieving libraries for folder index", err)
+		return nil, err
+	}
+	libIdSet := make(map[int]bool, len(musicFolderIds))
+	for _, id := range musicFolderIds {
+		libIdSet[id] = true
+	}
+	var libraries []model.Library
+	for _, lib := range allLibraries {
+		if len(libIdSet) == 0 || libIdSet[lib.ID] {
+			libraries = append(libraries, lib)
+		}
+	}
+
+	// Collect top-level folders (direct children of each library's root)
+	var allFolders []model.Folder
+	for _, lib := range libraries {
+		rootID := model.FolderID(lib, ".")
+		folders, err := api.ds.Folder(ctx).GetAll(filter.FoldersByParent(rootID))
+		if err != nil {
+			return nil, err
+		}
+		allFolders = append(allFolders, folders...)
+	}
+
+	// Sort by name (case-insensitive)
+	sort.Slice(allFolders, func(i, j int) bool {
+		return strings.ToLower(allFolders[i].Name) < strings.ToLower(allFolders[j].Name)
+	})
+
+	// Group by first letter; non-alpha goes under "#"
+	indexMap := make(map[string]*responses.Index)
+	var indexOrder []string
+	for _, f := range allFolders {
+		letter := "#"
+		if runes := []rune(norm.NFKD.String(f.Name)); len(runes) > 0 {
+			up := strings.ToUpper(string(runes[0]))
+			if up >= "A" && up <= "Z" {
+				letter = up
+			}
+		}
+		if _, exists := indexMap[letter]; !exists {
+			indexMap[letter] = &responses.Index{Name: letter}
+			indexOrder = append(indexOrder, letter)
+		}
+		indexMap[letter].Artists = append(indexMap[letter].Artists, responses.Artist{
+			Id:       f.ID,
+			Name:     f.Name,
+			CoverArt: f.CoverArtID().String(),
+		})
+	}
+
+	res.Index = make([]responses.Index, len(indexOrder))
+	for i, letter := range indexOrder {
+		res.Index[i] = *indexMap[letter]
+	}
+	return res, nil
 }
 
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
@@ -143,6 +240,8 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	var dir *responses.Directory
 
 	switch v := entity.(type) {
+	case *model.Folder:
+		dir, err = api.buildFolderDirectory(ctx, v)
 	case *model.Artist:
 		dir, err = api.buildArtistDirectory(ctx, v)
 	case *model.Album:
@@ -290,6 +389,15 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 	includeNotPresent := p.BoolOr("includeNotPresent", false)
 
 	artist, err := api.provider.UpdateArtistInfo(ctx, id, count, includeNotPresent)
+	if errors.Is(err, model.ErrNotFound) {
+		// The ID may be a folder ID (e.g. from a folder-browsing client like DSub
+		// that calls getArtistInfo on any directory ID). Return empty info rather
+		// than an error so the client degrades gracefully.
+		if _, folderErr := api.ds.Folder(ctx).Get(id); folderErr == nil {
+			empty := model.Artists{}
+			return &responses.ArtistInfoBase{}, &empty, nil
+		}
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -398,6 +506,31 @@ func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 		Song: slice.MapWithArg(songs, ctx, childFromMediaFile),
 	}
 	return response, nil
+}
+
+func (api *Router) buildFolderDirectory(ctx context.Context, folder *model.Folder) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = folder.ID
+	dir.Name = folder.Name
+	dir.Parent = folder.ParentID
+	dir.CoverArt = folder.CoverArtID().String()
+
+	childFolders, err := api.ds.Folder(ctx).GetAll(filter.FoldersByParent(folder.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByFolder(folder.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	dir.Child = make([]responses.Child, 0, len(childFolders)+len(mfs))
+	for _, f := range childFolders {
+		dir.Child = append(dir.Child, childFromFolder(ctx, f))
+	}
+	dir.Child = append(dir.Child, slice.MapWithArg(mfs, ctx, childFromMediaFile)...)
+	return dir, nil
 }
 
 func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artist) (*responses.Directory, error) {
