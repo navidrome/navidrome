@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -36,18 +37,38 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 
-	lyrics, err := model.ToLyrics("xxx", string(contents))
-	if err != nil {
-		log.Error(ctx, "error parsing lyric external file", "path", externalLyric, err)
-		return nil, err
-	} else if lyrics == nil {
+	var list model.LyricList
+	switch {
+	case strings.EqualFold(suffix, ".ttml"):
+		list, err = parseTTML(contents)
+		if err != nil {
+			log.Error(ctx, "error parsing ttml external file", "path", externalLyric, err)
+			return nil, err
+		}
+	case strings.EqualFold(suffix, ".srt"):
+		list, err = parseSRT(contents)
+		if err != nil {
+			log.Error(ctx, "error parsing srt external file", "path", externalLyric, err)
+			return nil, err
+		}
+	default:
+		lyrics, err := model.ToLyrics("xxx", string(contents))
+		if err != nil {
+			log.Error(ctx, "error parsing lyric external file", "path", externalLyric, err)
+			return nil, err
+		}
+		if lyrics != nil {
+			list = model.LyricList{*lyrics}
+		}
+	}
+
+	if len(list) == 0 {
 		log.Trace(ctx, "empty lyrics from external file", "path", externalLyric)
 		return nil, nil
 	}
 
 	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
-
-	return model.LyricList{*lyrics}, nil
+	return list, nil
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.
