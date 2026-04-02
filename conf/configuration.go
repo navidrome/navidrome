@@ -70,6 +70,7 @@ type configOptions struct {
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
 	CoverArtQuality                 int
+	EnableWebPEncoding              bool
 	ArtistArtPriority               string
 	ArtistImageFolder               string
 	DiscArtPriority                 string
@@ -141,7 +142,6 @@ type configOptions struct {
 	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
-	DevJpegCoverArt                   bool
 }
 
 type scannerOptions struct {
@@ -716,6 +716,7 @@ func setViperDefaults() {
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartquality", 75)
+	viper.SetDefault("enablewebpencoding", true)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("artistimagefolder", "")
 	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
@@ -826,7 +827,6 @@ func setViperDefaults() {
 	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
-	viper.SetDefault("devjpegcoverart", false)
 }
 
 func init() {

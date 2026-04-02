@@ -117,7 +117,7 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 }
 
 func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
-	original, _, err := image.Decode(bytes.NewReader(data))
+	original, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -157,14 +157,12 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	if conf.Server.DevJpegCoverArt {
-		if square {
-			err = png.Encode(buf, dst)
-		} else {
-			err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
-		}
-	} else {
+	if conf.Server.EnableWebPEncoding {
 		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	} else if format == "png" || square {
+		err = png.Encode(buf, dst)
+	} else {
+		err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
 	}
 	if err != nil {
 		bufPool.Put(buf)

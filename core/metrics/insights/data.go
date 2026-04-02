@@ -65,6 +65,7 @@ type Data struct {
 		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
 		EnableArtworkUpload     bool   `json:"enableArtworkUpload,omitempty"`
 		CoverArtQuality         int    `json:"coverArtQuality,omitempty"`
+		EnableWebPEncoding      bool   `json:"enableWebPEncoding,omitempty"`
 		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`
 		EnableNowPlaying        bool   `json:"enableNowPlaying,omitempty"`
 		SessionTimeout          uint64 `json:"sessionTimeout,omitempty"`
