@@ -19,6 +19,16 @@ import (
 	xdraw "golang.org/x/image/draw"
 )
 
+func init() {
+	conf.AddHook(func() {
+		if err := webp.Dynamic(); err != nil {
+			log.Debug("Using WASM WebP encoder/decoder", "reason", err)
+		} else {
+			log.Debug("Using native libwebp for WebP encoding/decoding")
+		}
+	})
+}
+
 var bufPool = sync.Pool{
 	New: func() any {
 		return new(bytes.Buffer)
