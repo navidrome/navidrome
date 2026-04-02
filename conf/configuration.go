@@ -180,6 +180,8 @@ type lastfmOptions struct {
 	Enabled                 bool
 	ApiKey                  string //nolint:gosec
 	Secret                  string //nolint:gosec
+	BaseURL                 string
+	AuthURL                 string
 	Language                string
 	ScrobbleFirstArtistOnly bool
 
@@ -774,6 +776,8 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.baseurl", consts.DefaultLastFMBaseURL)
+	viper.SetDefault("lastfm.authurl", consts.DefaultLastFMAuthURL)
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)

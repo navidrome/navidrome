@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,7 +23,7 @@ var _ = Describe("client", func() {
 
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
-		client = newClient("API_KEY", "SECRET", httpClient)
+		client = newClient("API_KEY", "SECRET", "", httpClient)
 	})
 
 	Describe("albumGetInfo", func() {
@@ -33,7 +34,7 @@ var _ = Describe("client", func() {
 			album, err := client.albumGetInfo(context.Background(), "Believe", "U2", "mbid-1234", "pt")
 			Expect(err).To(BeNil())
 			Expect(album.Name).To(Equal("Believe"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(consts.DefaultLastFMBaseURL + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
 		})
 	})
 
@@ -45,7 +46,7 @@ var _ = Describe("client", func() {
 			artist, err := client.artistGetInfo(context.Background(), "U2", "pt")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(consts.DefaultLastFMBaseURL + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
 
 		It("fails if Last.fm returns an http status != 200", func() {
@@ -105,7 +106,7 @@ var _ = Describe("client", func() {
 			similar, err := client.artistGetSimilar(context.Background(), "U2", 2)
 			Expect(err).To(BeNil())
 			Expect(len(similar.Artists)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(consts.DefaultLastFMBaseURL + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
 	})
 
@@ -117,7 +118,7 @@ var _ = Describe("client", func() {
 			top, err := client.artistGetTopTracks(context.Background(), "U2", 2)
 			Expect(err).To(BeNil())
 			Expect(len(top.Track)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(consts.DefaultLastFMBaseURL + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 	})
 
@@ -132,7 +133,7 @@ var _ = Describe("client", func() {
 			Expect(similar.Track[0].Name).To(Equal("Dreaming of Me"))
 			Expect(similar.Track[0].Artist.Name).To(Equal("Depeche Mode"))
 			Expect(similar.Track[0].Match).To(Equal(1.0))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=Depeche+Mode&format=json&limit=5&method=track.getSimilar&track=Just+Can%27t+Get+Enough"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(consts.DefaultLastFMBaseURL + "?api_key=API_KEY&artist=Depeche+Mode&format=json&limit=5&method=track.getSimilar&track=Just+Can%27t+Get+Enough"))
 		})
 
 		It("returns empty list when no similar tracks found", func() {
