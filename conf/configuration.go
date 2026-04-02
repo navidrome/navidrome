@@ -423,7 +423,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 
 	// Removed options
-	logRemovedOptions("Spotify.ID", "Spotify.Secret", "DevJpegCoverArt")
+	logRemovedOptions("Spotify.ID", "Spotify.Secret")
 
 	// Call init hooks
 	for _, hook := range hooks {

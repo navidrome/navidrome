@@ -22,8 +22,8 @@ type CacheWarmer interface {
 }
 
 // NewCacheWarmer creates a new CacheWarmer instance. The CacheWarmer will pre-cache Artwork images in the background
-// to speed up the response time when the image is requested by the UI. The cache is pre-populated with the size
-// defined by the UICoverArtSize config option (the original-size image is also cached as a side effect of resizing).
+// to speed up the response time when the image is requested by the UI. The cache is pre-populated with the original
+// image size, as well as the size defined by the UICoverArtSize config option.
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
@@ -37,11 +37,10 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	}
 
 	a := &cacheWarmer{
-		artwork:      artwork,
-		cache:        cache,
-		buffer:       make(map[model.ArtworkID]struct{}),
-		wakeSignal:   make(chan struct{}, 1),
-		coverArtSize: conf.Server.UICoverArtSize,
+		artwork:    artwork,
+		cache:      cache,
+		buffer:     make(map[model.ArtworkID]struct{}),
+		wakeSignal: make(chan struct{}, 1),
 	}
 
 	// Create a context with a fake admin user, to be able to pre-cache Playlist CoverArts
@@ -51,12 +50,11 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 }
 
 type cacheWarmer struct {
-	artwork      Artwork
-	buffer       map[model.ArtworkID]struct{}
-	mutex        sync.Mutex
-	cache        cache.FileCache
-	wakeSignal   chan struct{}
-	coverArtSize int
+	artwork    Artwork
+	buffer     map[model.ArtworkID]struct{}
+	mutex      sync.Mutex
+	cache      cache.FileCache
+	wakeSignal chan struct{}
 }
 
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
@@ -143,7 +141,7 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	size := a.coverArtSize
+	size := conf.Server.UICoverArtSize
 	r, _, err := a.artwork.Get(ctx, id, size, true)
 	if err != nil {
 		return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)

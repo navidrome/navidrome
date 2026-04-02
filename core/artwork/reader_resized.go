@@ -65,9 +65,6 @@ func (a *resizedArtworkReader) Key() string {
 	if a.square {
 		return baseKey + ".square"
 	}
-	if conf.Server.EnableWebPEncoding {
-		return fmt.Sprintf("%s.%d.webp", baseKey, conf.Server.CoverArtQuality)
-	}
 	return fmt.Sprintf("%s.%d", baseKey, conf.Server.CoverArtQuality)
 }
 
@@ -113,7 +110,7 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 
 	// Preserve animation for animated images
 	if isAnimatedGIF(data) {
-		if conf.Server.EnableWebPEncoding && a.a.ffmpeg.IsAvailable() {
+		if a.a.ffmpeg.IsAvailable() {
 			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
 			r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
 			if err == nil {
