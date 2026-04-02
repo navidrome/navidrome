@@ -37,10 +37,11 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	}
 
 	a := &cacheWarmer{
-		artwork:    artwork,
-		cache:      cache,
-		buffer:     make(map[model.ArtworkID]struct{}),
-		wakeSignal: make(chan struct{}, 1),
+		artwork:      artwork,
+		cache:        cache,
+		buffer:       make(map[model.ArtworkID]struct{}),
+		wakeSignal:   make(chan struct{}, 1),
+		coverArtSize: conf.Server.UICoverArtSize,
 	}
 
 	// Create a context with a fake admin user, to be able to pre-cache Playlist CoverArts
@@ -50,11 +51,12 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 }
 
 type cacheWarmer struct {
-	artwork    Artwork
-	buffer     map[model.ArtworkID]struct{}
-	mutex      sync.Mutex
-	cache      cache.FileCache
-	wakeSignal chan struct{}
+	artwork      Artwork
+	buffer       map[model.ArtworkID]struct{}
+	mutex        sync.Mutex
+	cache        cache.FileCache
+	wakeSignal   chan struct{}
+	coverArtSize int
 }
 
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
@@ -141,7 +143,7 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	size := conf.Server.UICoverArtSize
+	size := a.coverArtSize
 	r, _, err := a.artwork.Get(ctx, id, size, true)
 	if err != nil {
 		return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
