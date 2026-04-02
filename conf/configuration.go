@@ -88,6 +88,7 @@ type configOptions struct {
 	DefaultLanguage                 string
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
+	UICoverArtSize                  int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -729,6 +730,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
+	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)

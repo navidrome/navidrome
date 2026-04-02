@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -24,7 +23,7 @@ type CacheWarmer interface {
 
 // NewCacheWarmer creates a new CacheWarmer instance. The CacheWarmer will pre-cache Artwork images in the background
 // to speed up the response time when the image is requested by the UI. The cache is pre-populated with the original
-// image size, as well as the size defined in the UICoverArtSize constant.
+// image size, as well as the size defined by the UICoverArtSize config option.
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
@@ -142,16 +141,14 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	for _, size := range consts.CacheWarmerImageSizes {
-		r, _, err := a.artwork.Get(ctx, id, size, true)
-		if err != nil {
-			return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
-		}
-		_, err = io.Copy(io.Discard, r)
-		r.Close()
-		return err
+	size := conf.Server.UICoverArtSize
+	r, _, err := a.artwork.Get(ctx, id, size, true)
+	if err != nil {
+		return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
 	}
-	return nil
+	_, err = io.Copy(io.Discard, r)
+	r.Close()
+	return err
 }
 
 func NoopCacheWarmer() CacheWarmer {

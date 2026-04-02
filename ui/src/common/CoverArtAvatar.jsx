@@ -2,7 +2,7 @@ import { useRecordContext } from 'react-admin'
 import { Avatar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
-import { COVER_ART_SIZE } from '../consts'
+import config from '../config'
 import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
 
@@ -28,7 +28,7 @@ export const CoverArtAvatar = ({
   const record = recordProp || recordContext
   const square = variant !== 'circular'
   const url = record
-    ? subsonic.getCoverArtUrl(record, COVER_ART_SIZE, square)
+    ? subsonic.getCoverArtUrl(record, config.uiCoverArtSize, square)
     : null
   const { imgUrl } = useImageUrl(url)
   if (!record) return null
