@@ -425,6 +425,13 @@ func Load(noConfigDump bool) {
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
 
+	// Validate other options
+	if Server.UICoverArtSize < 200 || Server.UICoverArtSize > 1200 {
+		newValue := max(200, min(1200, Server.UICoverArtSize))
+		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
+		Server.UICoverArtSize = newValue
+	}
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
