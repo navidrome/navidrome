@@ -126,7 +126,7 @@ func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 	}
 	err = s.sessionKeys.Put(ctx, uid, sessionKey)
 	if err != nil {
-		log.Error("Could not save LastFM session key", "userId", uid, "requestId", middleware.GetReqID(ctx), err)
+		log.Error(ctx, "Could not save LastFM session key", "userId", uid, "requestId", middleware.GetReqID(ctx), err)
 	}
 	return err
 }

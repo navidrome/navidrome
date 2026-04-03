@@ -207,7 +207,7 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 		req.URL.RawQuery = params.Encode()
 	}
 
-	log.Trace(ctx, fmt.Sprintf("Sending Last.fm %s request", req.Method), "url", req.URL)
+	log.Trace(ctx, fmt.Sprintf("Sending Last.fm %s request", req.Method), "url", redactURL(req.URL))
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return nil, err
@@ -249,4 +249,22 @@ func (c *client) sign(params url.Values) {
 	msg.WriteString(c.secret)
 	hash := md5.Sum([]byte(msg.String()))
 	params.Add("api_sig", hex.EncodeToString(hash[:]))
+}
+
+// redactURL returns a copy of u with sensitive Last.fm query parameters masked.
+var sensitiveParams = []string{"api_key", "api_sig", "token", "sk"}
+
+func redactURL(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+	copy := *u
+	q := copy.Query()
+	for _, param := range sensitiveParams {
+		if q.Has(param) {
+			q.Set(param, "***")
+		}
+	}
+	copy.RawQuery = q.Encode()
+	return copy.String()
 }
