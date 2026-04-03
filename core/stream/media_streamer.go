@@ -91,6 +91,11 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 		return s, nil
 	}
 
+	// Acquire throttle slot before accessing cache (which may spawn ffmpeg on miss)
+	if err := getTranscodingThrottle().Acquire(ctx); err != nil {
+		return nil, err
+	}
+
 	job := &streamJob{
 		ms:         ms,
 		mf:         mf,
@@ -104,12 +109,19 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
+		getTranscodingThrottle().Release()
 		log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
 		return nil, err
 	}
 	cached = r.Cached
-
-	s.ReadCloser = r
+	if cached {
+		// Cache hit — no ffmpeg process running, release the slot immediately
+		getTranscodingThrottle().Release()
+		s.ReadCloser = r
+	} else {
+		// Cache miss — slot released when stream is closed
+		s.ReadCloser = &releaseOnClose{ReadCloser: r, release: getTranscodingThrottle().Release}
+	}
 	s.Seeker = r.Seeker
 
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", filePath,
