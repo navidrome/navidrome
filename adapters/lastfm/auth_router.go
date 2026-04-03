@@ -120,7 +120,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 	sessionKey, err := s.client.getSession(ctx, token)
 	if err != nil {
-		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid, "token", token,
+		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid,
 			"requestId", middleware.GetReqID(ctx), err)
 		return err
 	}
