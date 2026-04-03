@@ -24,7 +24,7 @@ func (j JoinType) Has(other JoinType) bool { return j&other != 0 }
 var fieldMap = map[string]*mappedField{
 	"title":           {field: "media_file.title"},
 	"album":           {field: "media_file.album"},
-	"hascoverart":     {field: "media_file.has_cover_art"},
+	"hascoverart":     {field: "media_file.has_cover_art", boolean: true},
 	"tracknumber":     {field: "media_file.track_number"},
 	"discnumber":      {field: "media_file.disc_number"},
 	"year":            {field: "media_file.year"},
@@ -34,7 +34,7 @@ var fieldMap = map[string]*mappedField{
 	"releaseyear":     {field: "media_file.release_year"},
 	"releasedate":     {field: "media_file.release_date"},
 	"size":            {field: "media_file.size"},
-	"compilation":     {field: "media_file.compilation"},
+	"compilation":     {field: "media_file.compilation", boolean: true},
 	"explicitstatus":  {field: "media_file.explicit_status"},
 	"dateadded":       {field: "media_file.created_at"},
 	"datemodified":    {field: "media_file.updated_at"},
@@ -54,7 +54,7 @@ var fieldMap = map[string]*mappedField{
 	"bitdepth":        {field: "media_file.bit_depth"},
 	"bpm":             {field: "media_file.bpm"},
 	"channels":        {field: "media_file.channels"},
-	"loved":           {field: "COALESCE(annotation.starred, false)"},
+	"loved":           {field: "COALESCE(annotation.starred, false)", boolean: true},
 	"dateloved":       {field: "annotation.starred_at"},
 	"lastplayed":      {field: "annotation.play_date"},
 	"daterated":       {field: "annotation.rated_at"},
@@ -62,14 +62,14 @@ var fieldMap = map[string]*mappedField{
 	"rating":          {field: "COALESCE(annotation.rating, 0)"},
 	"averagerating":   {field: "media_file.average_rating", numeric: true},
 	"albumrating":     {field: "COALESCE(album_annotation.rating, 0)", joinType: JoinAlbumAnnotation},
-	"albumloved":      {field: "COALESCE(album_annotation.starred, false)", joinType: JoinAlbumAnnotation},
+	"albumloved":      {field: "COALESCE(album_annotation.starred, false)", boolean: true, joinType: JoinAlbumAnnotation},
 	"albumplaycount":  {field: "COALESCE(album_annotation.play_count, 0)", joinType: JoinAlbumAnnotation},
 	"albumlastplayed": {field: "album_annotation.play_date", joinType: JoinAlbumAnnotation},
 	"albumdateloved":  {field: "album_annotation.starred_at", joinType: JoinAlbumAnnotation},
 	"albumdaterated":  {field: "album_annotation.rated_at", joinType: JoinAlbumAnnotation},
 
 	"artistrating":     {field: "COALESCE(artist_annotation.rating, 0)", joinType: JoinArtistAnnotation},
-	"artistloved":      {field: "COALESCE(artist_annotation.starred, false)", joinType: JoinArtistAnnotation},
+	"artistloved":      {field: "COALESCE(artist_annotation.starred, false)", boolean: true, joinType: JoinArtistAnnotation},
 	"artistplaycount":  {field: "COALESCE(artist_annotation.play_count, 0)", joinType: JoinArtistAnnotation},
 	"artistlastplayed": {field: "artist_annotation.play_date", joinType: JoinArtistAnnotation},
 	"artistdateloved":  {field: "artist_annotation.starred_at", joinType: JoinArtistAnnotation},
@@ -98,6 +98,7 @@ type mappedField struct {
 	isTag    bool     // true if the field is a tag imported from the file metadata
 	alias    string   // name from `mappings.yml` that may differ from the name used in the smart playlist
 	numeric  bool     // true if the field/tag should be treated as numeric
+	boolean  bool     // true if the field stores a boolean value (0/1 in SQLite)
 	joinType JoinType // which additional JOINs this field requires
 }
 
@@ -105,6 +106,20 @@ func mapFields(expr map[string]any) map[string]any {
 	m := make(map[string]any)
 	for f, v := range expr {
 		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil && dbf.field != "" {
+			// Coerce string "true"/"false" to bool for boolean fields, so that
+			// the SQL comparison uses 0/1 instead of a string literal.
+			// This is needed because some clients (e.g. Feishin) send boolean
+			// values as strings in smart playlist JSON rules.
+			if dbf.boolean {
+				if s, ok := v.(string); ok {
+					switch strings.ToLower(s) {
+					case "true":
+						v = true
+					case "false":
+						v = false
+					}
+				}
+			}
 			m[dbf.field] = v
 		} else {
 			log.Error("Invalid field in criteria", "field", f)
