@@ -25,26 +25,6 @@ FROM scratch AS xx
 COPY --from=xx-build /out/ /usr/bin/
 
 ########################################################################################################################
-### Get TagLib
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS taglib-build
-ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.2.0-1
-ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
-
-# wget in busybox can't follow redirects
-RUN <<EOT
-    apk add --no-cache wget
-    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
-    FILE=taglib-${PLATFORM}.tar.gz
-
-    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE}
-    wget ${DOWNLOAD_URL}
-
-    mkdir /taglib
-    tar -xzf ${FILE} -C /taglib
-EOT
-
-########################################################################################################################
 ### Build Navidrome UI
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine AS ui
 WORKDIR /app
@@ -62,8 +42,43 @@ FROM scratch AS ui-bundle
 COPY --from=ui /build /build
 
 ########################################################################################################################
-### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-trixie AS base
+### Build Navidrome binary for Docker image (static musl, enables native libwebp via dlopen)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-alpine AS build-alpine
+COPY --from=xx / /
+
+ARG TARGETPLATFORM
+
+RUN apk add --no-cache clang lld git
+RUN xx-apk add --no-cache gcc musl-dev zlib-dev
+RUN xx-verify --setup
+
+WORKDIR /workspace
+
+RUN --mount=type=bind,source=. \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+ARG GIT_SHA
+ARG GIT_TAG
+
+RUN --mount=type=bind,source=. \
+    --mount=from=ui,source=/build,target=./ui/build,ro \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
+    xx-go --wrap
+    export CGO_ENABLED=1
+    go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
+        -linkmode=external \
+        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -o /out/navidrome .
+EOT
+
+########################################################################################################################
+### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
@@ -88,14 +103,11 @@ RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
+    --mount=type=cache,target=/go/pkg/mod <<EOT
 
     # Setup CGO cross-compilation environment
     xx-go --wrap
     export CGO_ENABLED=1
-    export CGO_CFLAGS_ALLOW="--define-prefix"
-    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
     cat $(go env GOENV)
 
     # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
@@ -127,11 +139,15 @@ FROM public.ecr.aws/docker/library/alpine:3.20 AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
-# Install ffmpeg and mpv
-RUN apk add -U --no-cache ffmpeg mpv sqlite
+# Install runtime dependencies
+# - libwebp + symlinks: enables native WebP encoding via purego/dlopen
+RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
+    ln -s /usr/lib/libwebp.so.7 /usr/lib/libwebp.so && \
+    ln -s /usr/lib/libwebpdemux.so.2 /usr/lib/libwebpdemux.so && \
+    ln -s /usr/lib/libwebpmux.so.3 /usr/lib/libwebpmux.so
 
-# Copy navidrome binary
-COPY --from=build /out/navidrome /app/
+# Copy navidrome binary (musl build for Docker, enables native libwebp)
+COPY --from=build-alpine /out/navidrome /app/
 
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
@@ -144,4 +160,3 @@ EXPOSE ${ND_PORT}
 WORKDIR /app
 
 ENTRYPOINT ["/app/navidrome"]
-
