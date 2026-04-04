@@ -1,6 +1,8 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
-GO_BUILD_TAGS=netgo,sqlite_fts5
+
+comma:=,
+GO_BUILD_TAGS=netgo,sqlite_fts5$(if $(EXTRA_BUILD_TAGS),$(comma)$(EXTRA_BUILD_TAGS))
 
 # Set global environment variables, required for most targets
 export CGO_CFLAGS_ALLOW=--define-prefix

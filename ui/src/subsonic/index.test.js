@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import { COVER_ART_SIZE } from '../consts'
+import config from '../config'
 import subsonic from './index'
 
 describe('getCoverArtUrl', () => {
@@ -31,7 +31,11 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
+    const url = subsonic.getCoverArtUrl(
+      playlistRecord,
+      config.uiCoverArtSize,
+      true,
+    )
 
     expect(url).toContain('pl-playlist-123')
     expect(url).toContain('size=600')
@@ -45,7 +49,11 @@ describe('getCoverArtUrl', () => {
       sync: true,
     }
 
-    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
+    const url = subsonic.getCoverArtUrl(
+      playlistRecord,
+      config.uiCoverArtSize,
+      true,
+    )
 
     expect(url).toContain('pl-playlist-123')
     expect(url).toContain('size=600')
@@ -60,7 +68,11 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(albumRecord, COVER_ART_SIZE, true)
+    const url = subsonic.getCoverArtUrl(
+      albumRecord,
+      config.uiCoverArtSize,
+      true,
+    )
 
     expect(url).toContain('al-album-123')
     expect(url).toContain('size=600')
@@ -74,7 +86,7 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(songRecord, COVER_ART_SIZE, true)
+    const url = subsonic.getCoverArtUrl(songRecord, config.uiCoverArtSize, true)
 
     expect(url).toContain('mf-song-123')
     expect(url).toContain('size=600')
@@ -87,7 +99,11 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(artistRecord, COVER_ART_SIZE, true)
+    const url = subsonic.getCoverArtUrl(
+      artistRecord,
+      config.uiCoverArtSize,
+      true,
+    )
 
     expect(url).toContain('ar-artist-123')
     expect(url).toContain('size=600')
