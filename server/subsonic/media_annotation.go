@@ -168,15 +168,26 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	position := p.IntOr("position", 0)
 	ctx := r.Context()
 
+	// Validate all IDs exist before processing (OpenSubsonic compliance)
+	exists, err := api.ds.MediaFile(ctx).Exists(ids...)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, newError(responses.ErrorDataNotFound, "Media file not found")
+	}
+
 	if submission {
 		err := api.scrobblerSubmit(ctx, ids, times)
 		if err != nil {
 			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
+			return nil, err
 		}
 	} else {
 		err := api.scrobblerNowPlaying(ctx, ids[0], position)
 		if err != nil {
 			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
+			return nil, err
 		}
 	}
 
