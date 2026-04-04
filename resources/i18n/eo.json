@@ -36,7 +36,9 @@
         "bitDepth": "Bitprofundo",
         "sampleRate": "Elprena rapido",
         "missing": "Mankaj",
-        "libraryName": "Biblioteko"
+        "libraryName": "Biblioteko",
+        "composer": "",
+        "disc": ""
       },
       "actions": {
         "addToQueue": "Ludi Poste",
@@ -46,7 +48,8 @@
         "download": "Elŝuti",
         "playNext": "Ludu Poste",
         "info": "Akiri Informon",
-        "showInPlaylist": "Montri en Ludlisto"
+        "showInPlaylist": "Montri en Ludlisto",
+        "instantMix": ""
       }
     },
     "album": {
@@ -328,6 +331,82 @@
         "scanInProgress": "Skano progresas...",
         "noLibrariesAssigned": "Neniuj bibliotekoj asignitaj por ĉi tiu uzanto"
       }
+    },
+    "plugin": {
+      "name": "",
+      "fields": {
+        "id": "",
+        "name": "",
+        "description": "",
+        "version": "Versio",
+        "author": "Aŭtoro",
+        "website": "Retejo",
+        "permissions": "Permesoj",
+        "enabled": "Ebligite",
+        "status": "",
+        "path": "Vojo",
+        "lastError": "Eraro",
+        "hasError": "Eraro",
+        "updatedAt": "Ĝisdatigite",
+        "createdAt": "",
+        "configKey": "Ŝlosilo",
+        "configValue": "",
+        "allUsers": "",
+        "selectedUsers": "",
+        "allLibraries": "",
+        "selectedLibraries": "",
+        "allowWriteAccess": ""
+      },
+      "sections": {
+        "status": "",
+        "info": "",
+        "configuration": "",
+        "manifest": "",
+        "usersPermission": "",
+        "libraryPermission": ""
+      },
+      "status": {
+        "enabled": "",
+        "disabled": ""
+      },
+      "actions": {
+        "enable": "",
+        "disable": "",
+        "disabledDueToError": "",
+        "disabledUsersRequired": "",
+        "disabledLibrariesRequired": "",
+        "addConfig": "",
+        "rescan": ""
+      },
+      "notifications": {
+        "enabled": "",
+        "disabled": "",
+        "updated": "",
+        "error": ""
+      },
+      "validation": {
+        "invalidJson": ""
+      },
+      "messages": {
+        "configHelp": "",
+        "clickPermissions": "",
+        "noConfig": "",
+        "allUsersHelp": "",
+        "noUsers": "",
+        "permissionReason": "",
+        "usersRequired": "",
+        "allLibrariesHelp": "",
+        "noLibraries": "",
+        "librariesRequired": "",
+        "requiredHosts": "",
+        "configValidationError": "",
+        "schemaRenderError": "",
+        "allowWriteAccessHelp": ""
+      },
+      "placeholders": {
+        "configKey": "",
+        "configValue": ""
+      }
     }
   },
   "ra": {
@@ -511,7 +590,14 @@
     "remove_all_missing_title": "Forigi ĉiujn mankajn dosierojn",
     "remove_all_missing_content": "Ĉu vi certas, ke vi volas forigi ĉiujn mankajn dosierojn de la datumbazo? Ĉi tio permanante forigos ĉiujn referencojn al ili, inkluzive iliajn ludnombrojn kaj taksojn.",
     "noSimilarSongsFound": "Neniuj similaj kantoj trovitaj",
-    "noTopSongsFound": "Neniuj plej luditaj kantoj trovitaj"
+    "noTopSongsFound": "Neniuj plej luditaj kantoj trovitaj",
+    "startingInstantMix": "",
+    "uploadCover": "",
+    "removeCover": "",
+    "coverUploaded": "",
+    "coverRemoved": "",
+    "coverUploadError": "",
+    "coverRemoveError": ""
   },
   "menu": {
     "library": "Biblioteko",
@@ -597,7 +683,8 @@
       "exportSuccess": "Agordoj eksportiĝis al la tondujo en TOML-a formato",
       "exportFailed": "Malsukcesis kopii agordojn",
       "devFlagsHeader": "Programadaj Flagoj (povas ŝanĝiĝi/foriĝi)",
-      "devFlagsComment": "Ĉi tiuj estas eksperimentaj agordoj kaj eble foriĝos en estontaj versioj"
+      "devFlagsComment": "Ĉi tiuj estas eksperimentaj agordoj kaj eble foriĝos en estontaj versioj",
+      "downloadToml": ""
     }
   },
   "activity": {
