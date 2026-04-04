@@ -85,7 +85,7 @@ const (
 )
 
 const (
-	DefaultUICoverArtSize = 600
+	DefaultUICoverArtSize = 300
 )
 
 // Prometheus options
