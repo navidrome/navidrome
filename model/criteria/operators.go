@@ -27,6 +27,10 @@ func (all All) ChildPlaylistIds() (ids []string) {
 	return extractPlaylistIds(all)
 }
 
+func (all All) ChildPlaylistPaths() (paths []string) {
+	return extractPlaylistPaths(all)
+}
+
 type (
 	Any squirrel.Or
 	Or  = Any
@@ -42,6 +46,10 @@ func (any Any) MarshalJSON() ([]byte, error) {
 
 func (any Any) ChildPlaylistIds() (ids []string) {
 	return extractPlaylistIds(any)
+}
+
+func (any Any) ChildPlaylistPaths() (paths []string) {
+	return extractPlaylistPaths(any)
 }
 
 type Is squirrel.Eq
@@ -300,10 +308,13 @@ func (ipl NotInPlaylist) MarshalJSON() ([]byte, error) {
 }
 
 func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
-	var playlistid string
-	var ok bool
-	if playlistid, ok = m["id"].(string); !ok {
-		return "", nil, errors.New("playlist id not given")
+	var condition squirrel.Sqlizer
+	if playlistId, ok := m["id"].(string); ok {
+		condition = squirrel.Eq{"pl.playlist_id": playlistId}
+	} else if playlistPath, ok := m["path"].(string); ok {
+		condition = squirrel.Eq{"playlist.path": playlistPath}
+	} else {
+		return "", nil, errors.New("playlist id or path not given")
 	}
 
 	// Subquery to fetch all media files that are contained in given playlist
@@ -312,8 +323,9 @@ func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
 		From("playlist_tracks pl").
 		LeftJoin("playlist on pl.playlist_id = playlist.id").
 		Where(squirrel.And{
-			squirrel.Eq{"pl.playlist_id": playlistid},
+			condition,
 			squirrel.Eq{"playlist.public": 1}})
+
 	subQText, subQArgs, err := subQuery.PlaceholderFormat(squirrel.Question).ToSql()
 
 	if err != nil {
@@ -321,33 +333,37 @@ func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
 	}
 	if negate {
 		return "media_file.id NOT IN (" + subQText + ")", subQArgs, nil
-	} else {
-		return "media_file.id IN (" + subQText + ")", subQArgs, nil
 	}
+
+	return "media_file.id IN (" + subQText + ")", subQArgs, nil
 }
 
-func extractPlaylistIds(inputRule any) (ids []string) {
-	var id string
-	var ok bool
-
+func extractPlaylistField(inputRule any, field string) (values []string) {
 	switch rule := inputRule.(type) {
 	case Any:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case All:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case InPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
+		if value, ok := rule[field].(string); ok {
+			values = append(values, value)
 		}
 	case NotInPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
+		if value, ok := rule[field].(string); ok {
+			values = append(values, value)
 		}
 	}
-
 	return
+}
+
+func extractPlaylistIds(inputRule any) (ids []string) {
+	return extractPlaylistField(inputRule, "id")
+}
+
+func extractPlaylistPaths(inputRule any) (paths []string) {
+	return extractPlaylistField(inputRule, "path")
 }

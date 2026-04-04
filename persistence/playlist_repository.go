@@ -240,6 +240,18 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		r.refreshSmartPlaylist(childPls)
 	}
 
+	pls.NormalizeChildPaths()
+	childPlaylistPaths := rules.ChildPlaylistPaths()
+	for _, path := range childPlaylistPaths {
+		log.Info(r.ctx, "Loading child playlist", "id", pls.ID, "childId", path, err)
+		childPls, err := r.FindByPath(path)
+		if err != nil {
+			log.Error(r.ctx, "Error loading child playlist", "id", pls.ID, "childId", path, err)
+			return false
+		}
+		r.refreshSmartPlaylist(childPls)
+	}
+
 	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on ("+
 		"annotation.item_id = media_file.id"+
