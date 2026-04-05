@@ -28,12 +28,4 @@ var _ = Describe("Aliases", func() {
 		})
 	})
 
-	Describe("matchesCodec", func() {
-		It("matches pcm to wav codec profile", func() {
-			// Source WAV files are normalized to codec="pcm" by normalizeProbeCodec,
-			// but browsers advertise audio/wav support as audioCodecs:["wav"].
-			Expect(matchesCodec("pcm", []string{"wav"})).To(BeTrue())
-			Expect(matchesCodec("wav", []string{"pcm"})).To(BeTrue())
-		})
-	})
 })

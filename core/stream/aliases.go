@@ -41,7 +41,6 @@ var codecAliasGroups = func() map[string]string {
 		{"wmapro", "wma9pro"},
 		{"shn", "shorten"},
 		{"mp4als", "als"},
-		{"pcm", "wav"},
 	}
 	m := make(map[string]string)
 	for _, g := range groups {
