@@ -75,7 +75,8 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
+	smartPlaylistEvaluator := playlists.NewSmartPlaylistEvaluator(dataStore)
+	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, smartPlaylistEvaluator, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
@@ -103,7 +104,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	imageUploadService := core.NewImageUploadService()
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
-	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
+	smartPlaylistEvaluator := playlists.NewSmartPlaylistEvaluator(dataStore)
+	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, smartPlaylistEvaluator, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(manager)
@@ -173,7 +175,8 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	imageUploadService := core.NewImageUploadService()
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
-	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
+	smartPlaylistEvaluator := playlists.NewSmartPlaylistEvaluator(dataStore)
+	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, smartPlaylistEvaluator, metricsMetrics)
 	return modelScanner
 }
 
@@ -191,7 +194,8 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	imageUploadService := core.NewImageUploadService()
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
-	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
+	smartPlaylistEvaluator := playlists.NewSmartPlaylistEvaluator(dataStore)
+	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, smartPlaylistEvaluator, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	return watcher
 }

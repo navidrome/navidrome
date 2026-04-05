@@ -54,7 +54,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		// Run incremental scan to import lib2 content (lib1 files unchanged → skipped)
 		s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds, core.NewImageUploadService()), playlists.NoopSmartPlaylistEvaluator(), metrics.NewNoopInstance())
 		_, err = s.ScanAll(ctx, false)
 		Expect(err).ToNot(HaveOccurred())
 
