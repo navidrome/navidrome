@@ -27,5 +27,4 @@ var _ = Describe("Aliases", func() {
 			Expect(IsAACCodec("")).To(BeFalse())
 		})
 	})
-
 })

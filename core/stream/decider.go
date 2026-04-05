@@ -195,14 +195,12 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 	return &result, nil
 }
 
-// isPCMInWAVMatch returns true when the source is PCM audio inside a WAV
-// container and the profile accepts "wav" as a codec. Browsers advertise their
-// native WAV support via the audio/wav MIME type (declared as audioCodecs:["wav"]
-// in client profiles), but Navidrome normalizes the source codec to "pcm" for
-// all PCM variants. Equating the two names unconditionally would let other
-// PCM-bearing containers (e.g. AIFF) match a "wav" codec profile, so we also
-// require the source container to be WAV.
-func isPCMInWAVMatch(src *Details, profile *DirectPlayProfile) bool {
+// matchesPCMWAVBridge bridges Navidrome's internal "pcm" codec name with the
+// "wav" codec name that browsers use to advertise audio/wav support. The match
+// is scoped to WAV-container sources so AIFF files (which also normalize to
+// codec "pcm" but use a different container) cannot false-match a codec-only
+// ["wav"] profile.
+func matchesPCMWAVBridge(src *Details, profile *DirectPlayProfile) bool {
 	return strings.EqualFold(src.Codec, "pcm") &&
 		strings.EqualFold(src.Container, "wav") &&
 		containsIgnoreCase(profile.AudioCodecs, "wav")
@@ -237,7 +235,7 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 	}
 
 	// Check codec
-	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) && !isPCMInWAVMatch(src, profile) {
+	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) && !matchesPCMWAVBridge(src, profile) {
 		return fmt.Sprintf("audio codec '%s' not supported by profile %s", src.Codec, describeProfile(profile))
 	}
 
