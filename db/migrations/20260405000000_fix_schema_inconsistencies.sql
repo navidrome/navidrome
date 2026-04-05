@@ -1,5 +1,7 @@
 -- +goose Up
 
+BEGIN;
+
 -- Fix 1: library_artist.artist_id has contradictory "not null default null".
 -- Recreate the table with the corrected column definition (remove "default null").
 CREATE TABLE library_artist_fixed (
@@ -43,32 +45,11 @@ DROP TABLE scrobble_buffer;
 ALTER TABLE scrobble_buffer_fixed RENAME TO scrobble_buffer;
 CREATE UNIQUE INDEX scrobble_buffer_id_ix ON scrobble_buffer (id);
 
--- Fix 3: goose_db_version.tstamp uses formula default.
--- Recreate with standard DEFAULT CURRENT_TIMESTAMP.
-CREATE TABLE goose_db_version_fixed (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    version_id INTEGER NOT NULL DEFAULT 0,
-    is_applied INTEGER NOT NULL DEFAULT 0,
-    tstamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-INSERT INTO goose_db_version_fixed (id, version_id, is_applied, tstamp)
-    SELECT id, version_id, is_applied, tstamp FROM goose_db_version;
-DROP TABLE goose_db_version;
-ALTER TABLE goose_db_version_fixed RENAME TO goose_db_version;
+COMMIT;
 
 -- +goose Down
 
--- Revert Fix 3: Restore goose_db_version with original formula default
-CREATE TABLE goose_db_version_original (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    version_id INTEGER NOT NULL DEFAULT 0,
-    is_applied INTEGER NOT NULL DEFAULT 0,
-    tstamp TIMESTAMP DEFAULT (datetime('now'))
-);
-INSERT INTO goose_db_version_original (id, version_id, is_applied, tstamp)
-    SELECT id, version_id, is_applied, tstamp FROM goose_db_version;
-DROP TABLE goose_db_version;
-ALTER TABLE goose_db_version_original RENAME TO goose_db_version;
+BEGIN;
 
 -- Revert Fix 2: Restore scrobble_buffer with duplicate user_id in constraint
 DROP INDEX IF EXISTS scrobble_buffer_id_ix;
@@ -110,3 +91,5 @@ INSERT INTO library_artist_original (library_id, artist_id, stats)
     SELECT library_id, artist_id, stats FROM library_artist;
 DROP TABLE library_artist;
 ALTER TABLE library_artist_original RENAME TO library_artist;
+
+COMMIT;
