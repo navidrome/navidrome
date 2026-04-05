@@ -195,6 +195,21 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 	return &result, nil
 }
 
+// describeProfile renders a compact human-readable description of a direct play
+// profile, e.g. "[ogg/opus]" or "[mp4/aac,alac]". Used to disambiguate rejection
+// reasons when multiple profiles share the same container or codec.
+func describeProfile(profile *DirectPlayProfile) string {
+	containers := strings.Join(profile.Containers, ",")
+	if containers == "" {
+		containers = "*"
+	}
+	codecs := strings.Join(profile.AudioCodecs, ",")
+	if codecs == "" {
+		return "[" + containers + "]"
+	}
+	return "[" + containers + "/" + codecs + "]"
+}
+
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
 func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
@@ -205,17 +220,17 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 
 	// Check container
 	if len(profile.Containers) > 0 && !matchesContainer(src.Container, profile.Containers) {
-		return "container not supported"
+		return fmt.Sprintf("container '%s' not supported by profile %s", src.Container, describeProfile(profile))
 	}
 
 	// Check codec
 	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) {
-		return "audio codec not supported"
+		return fmt.Sprintf("audio codec '%s' not supported by profile %s", src.Codec, describeProfile(profile))
 	}
 
 	// Check channels
 	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
-		return "audio channels not supported"
+		return fmt.Sprintf("audio channels %d not supported by profile %s (max %d)", src.Channels, describeProfile(profile), profile.MaxAudioChannels)
 	}
 
 	// Check codec-specific limitations

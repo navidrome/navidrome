@@ -76,7 +76,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("container not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(ContainSubstring("container")))
 			})
 
 			It("rejects direct play when codec doesn't match", func() {
@@ -89,7 +89,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("audio codec not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(ContainSubstring("audio codec")))
 			})
 
 			It("rejects direct play when channels exceed limit", func() {
@@ -102,7 +102,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("audio channels not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(ContainSubstring("audio channels")))
 			})
 
 			It("handles container aliases (aac -> m4a)", func() {
@@ -216,7 +216,7 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TargetFormat).To(Equal("mp3"))
 				Expect(decision.TargetBitrate).To(Equal(256)) // kbps
-				Expect(decision.TranscodeReasons).To(ContainElement("container not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(ContainSubstring("container")))
 			})
 
 			It("rejects lossy to lossless transcoding", func() {
@@ -901,9 +901,12 @@ var _ = Describe("Decider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
 				Expect(decision.TranscodeReasons).To(HaveLen(3))
-				Expect(decision.TranscodeReasons[0]).To(Equal("container not supported"))
-				Expect(decision.TranscodeReasons[1]).To(Equal("container not supported"))
-				Expect(decision.TranscodeReasons[2]).To(Equal("container not supported"))
+				Expect(decision.TranscodeReasons[0]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[0]).To(ContainSubstring("[flac]"))
+				Expect(decision.TranscodeReasons[1]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[1]).To(ContainSubstring("[mp3/mp3]"))
+				Expect(decision.TranscodeReasons[2]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[2]).To(ContainSubstring("[m4a,mp4/aac]"))
 			})
 		})
 
