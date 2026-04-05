@@ -70,6 +70,7 @@ type configOptions struct {
 	MPVCmdTemplate                  string
 	CoverArtPriority                string
 	CoverArtQuality                 int
+	EnableWebPEncoding              bool
 	ArtistArtPriority               string
 	ArtistImageFolder               string
 	DiscArtPriority                 string
@@ -87,6 +88,7 @@ type configOptions struct {
 	DefaultLanguage                 string
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
+	UICoverArtSize                  int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -141,7 +143,6 @@ type configOptions struct {
 	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
-	DevJpegCoverArt                   bool
 }
 
 type scannerOptions struct {
@@ -423,6 +424,13 @@ func Load(noConfigDump bool) {
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
+
+	// Validate other options
+	if Server.UICoverArtSize < 200 || Server.UICoverArtSize > 1200 {
+		newValue := max(200, min(1200, Server.UICoverArtSize))
+		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
+		Server.UICoverArtSize = newValue
+	}
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -712,10 +720,13 @@ func setViperDefaults() {
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
+	viper.SetDefault("mpvpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartquality", 75)
+	viper.SetDefault("enablewebpencoding", false)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("artistimagefolder", "")
 	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
 	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
@@ -726,6 +737,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
+	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -794,6 +806,7 @@ func setViperDefaults() {
 	viper.SetDefault("plugins.enabled", true)
 	viper.SetDefault("plugins.cachesize", "200MB")
 	viper.SetDefault("plugins.autoreload", false)
+	viper.SetDefault("plugins.loglevel", "")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -807,7 +820,7 @@ func setViperDefaults() {
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
-	viper.SetDefault("devartworkmaxrequests", max(4, runtime.NumCPU()))
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
@@ -823,7 +836,6 @@ func setViperDefaults() {
 	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
-	viper.SetDefault("devjpegcoverart", false)
 }
 
 func init() {
