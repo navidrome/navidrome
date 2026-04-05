@@ -48,7 +48,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 			ds:              ds,
 			scanner:         s,
 			triggerWait:     conf.Server.Scanner.WatcherWait,
-			watcherNotify:   make(chan scanNotification, 1),
+			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
 	})
@@ -272,12 +272,8 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 				continue
 			}
 
-			// Notify the main watcher of changes
-			select {
-			case w.watcherNotify <- scanNotification{Library: lib, FolderPath: folderPath}:
-			default:
-				// Channel is full, notification already pending
-			}
+			// Notify the main watcher of changes. This will trigger a scan after the debounce period.
+			w.watcherNotify <- scanNotification{Library: lib, FolderPath: folderPath}
 		}
 	}
 }

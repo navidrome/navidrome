@@ -17,8 +17,8 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 	if !s.watching.CompareAndSwap(false, true) {
 		return nil, errors.New("watcher already started")
 	}
-	input := make(chan notify.EventInfo, 1)
-	output := make(chan string, 1)
+	input := make(chan notify.EventInfo, 500)
+	output := make(chan string, 500)
 
 	started := make(chan struct{})
 	go func() {

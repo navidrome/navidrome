@@ -180,6 +180,29 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(resp.TranscodeDecision.SourceStream.AudioBitrate).To(Equal(int32(320_000)))
 		})
 
+		It("filters AAC from transcoding profiles", func() {
+			mockMFRepo.SetData(model.MediaFiles{
+				{ID: "song-1", Suffix: "opus", Codec: "opus", BitRate: 128, Channels: 2, SampleRate: 48000},
+			})
+			mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanDirectPlay: true}
+			mockTD.token = "token"
+
+			body := `{
+				"transcodingProfiles": [
+					{"container": "aac", "audioCodec": "aac", "protocol": "http"},
+					{"container": "mp3", "audioCodec": "mp3", "protocol": "http"},
+					{"container": "m4a", "audioCodec": "aac", "protocol": "http"}
+				]
+			}`
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+			_, err := router.GetTranscodeDecision(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockTD.capturedClient).ToNot(BeNil())
+			Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(1))
+			Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("mp3"))
+		})
+
 		It("includes transcode stream when transcoding", func() {
 			mockMFRepo.SetData(model.MediaFiles{
 				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24},
@@ -354,14 +377,16 @@ func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
 
 // mockTranscodeDecision is a test double for stream.TranscodeDecider
 type mockTranscodeDecision struct {
-	decision    *stream.TranscodeDecision
-	token       string
-	tokenErr    error
-	resolvedReq stream.Request
-	resolveErr  error
+	decision       *stream.TranscodeDecision
+	token          string
+	tokenErr       error
+	resolvedReq    stream.Request
+	resolveErr     error
+	capturedClient *stream.ClientInfo
 }
 
-func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, _ *stream.ClientInfo, _ stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
+func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, _ stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
+	m.capturedClient = ci
 	if m.decision != nil {
 		return m.decision, nil
 	}

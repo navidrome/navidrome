@@ -97,5 +97,7 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 	if entity.OwnerID != "" {
 		current.OwnerID = entity.OwnerID
 	}
+	// Apply smart playlist rules update
+	current.Rules = entity.Rules
 	return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
 }

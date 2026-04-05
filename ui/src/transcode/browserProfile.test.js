@@ -16,7 +16,7 @@ describe('detectBrowserProfile', () => {
 
   it('includes codecs that return "probably"', () => {
     mockCanPlayType.mockImplementation((mime) => {
-      if (mime === 'audio/mpeg') return 'probably'
+      if (mime === 'audio/mpeg; codecs="mp3"') return 'probably'
       if (mime === 'audio/ogg; codecs="opus"') return 'probably'
       return ''
     })
@@ -31,11 +31,15 @@ describe('detectBrowserProfile', () => {
     expect(codecs).toContain('opus')
   })
 
-  it('excludes codecs that return "maybe"', () => {
-    mockCanPlayType.mockReturnValue('maybe')
+  it('includes codecs that return "maybe"', () => {
+    mockCanPlayType.mockImplementation((mime) => {
+      if (mime === 'audio/flac') return 'maybe'
+      return ''
+    })
 
     const profile = detectBrowserProfile()
-    expect(profile.directPlayProfiles).toEqual([])
+    const codecs = profile.directPlayProfiles.flatMap((p) => p.audioCodecs)
+    expect(codecs).toContain('flac')
   })
 
   it('excludes codecs that return empty string', () => {
@@ -56,7 +60,7 @@ describe('detectBrowserProfile', () => {
 
   it('filters transcoding profiles by canPlayType', () => {
     mockCanPlayType.mockImplementation((mime) => {
-      if (mime === 'audio/mpeg') return 'probably'
+      if (mime === 'audio/mpeg; codecs="mp3"') return 'probably'
       if (mime === 'audio/ogg; codecs="opus"') return 'probably'
       return ''
     })
@@ -104,8 +108,72 @@ describe('detectBrowserProfile', () => {
     expect(profile.codecProfiles).toEqual([])
   })
 
+  it('matches codec when any mime variant returns "probably"', () => {
+    mockCanPlayType.mockImplementation((mime) => {
+      if (mime === 'audio/flac; codecs="flac"') return 'probably'
+      return ''
+    })
+
+    const profile = detectBrowserProfile()
+    const codecs = profile.directPlayProfiles.flatMap((p) => p.audioCodecs)
+    expect(codecs).toContain('flac')
+  })
+
   it('includes platform info', () => {
     const profile = detectBrowserProfile()
     expect(typeof profile.platform).toBe('string')
+  })
+
+  describe('Safari restrictions', () => {
+    beforeEach(() => {
+      // Safari reports canPlayType for Ogg as positive, but can't actually
+      // stream transcoded Ogg. Simulate Safari: supports everything.
+      mockCanPlayType.mockReturnValue('probably')
+    })
+
+    it('still includes ogg in direct play profiles on Safari', () => {
+      vi.stubGlobal('navigator', {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15',
+      })
+
+      const profile = detectBrowserProfile()
+      const containers = profile.directPlayProfiles.flatMap((p) => p.containers)
+      expect(containers).toContain('ogg')
+    })
+
+    it('limits Safari transcoding to mp3 only', () => {
+      vi.stubGlobal('navigator', {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15',
+      })
+
+      const profile = detectBrowserProfile()
+      const codecs = profile.transcodingProfiles.map((p) => p.audioCodec)
+      expect(codecs).toEqual(['mp3'])
+    })
+
+    it('does NOT restrict transcoding on Chrome', () => {
+      vi.stubGlobal('navigator', {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      })
+
+      const profile = detectBrowserProfile()
+      const codecs = profile.transcodingProfiles.map((p) => p.audioCodec)
+      expect(codecs).toContain('opus')
+      expect(codecs).toContain('flac')
+    })
+
+    it('applies same restrictions on iOS Safari', () => {
+      vi.stubGlobal('navigator', {
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+      })
+
+      const profile = detectBrowserProfile()
+      const codecs = profile.transcodingProfiles.map((p) => p.audioCodec)
+      expect(codecs).toEqual(['mp3'])
+    })
   })
 })

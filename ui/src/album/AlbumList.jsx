@@ -10,6 +10,7 @@ import {
   ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
+  useListContext,
   usePermissions,
   useRefresh,
   useTranslate,
@@ -174,6 +175,14 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
+const AlbumListPagination = ({ albumListType, ...rest }) => {
+  const { loading } = useListContext()
+  if (loading && albumListType === 'random') {
+    return null
+  }
+  return <Pagination {...rest} />
+}
+
 const randomStartingSeed = Math.random().toString()
 
 const AlbumList = (props) => {
@@ -234,7 +243,12 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
-        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
+        pagination={
+          <AlbumListPagination
+            rowsPerPageOptions={perPageOptions}
+            albumListType={albumListType}
+          />
+        }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (

@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -43,6 +44,7 @@ type AudioProbeResult struct {
 type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
@@ -76,6 +78,23 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 		args = buildTemplateArgs(opts)
 	}
 	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{cmdPath, "-i", "pipe:0"}
+	if maxSize > 0 {
+		vf := fmt.Sprintf("scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease", maxSize, maxSize)
+		args = append(args, "-vf", vf)
+	}
+	args = append(args, "-loop", "0", "-c:v", "libwebp_anim",
+		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
+
+	return e.start(ctx, args, reader)
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -223,9 +242,12 @@ func (e *ffmpeg) Version() string {
 	return parts[2]
 }
 
-func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
+func (e *ffmpeg) start(ctx context.Context, args []string, input ...io.Reader) (io.ReadCloser, error) {
 	log.Trace(ctx, "Executing ffmpeg command", "cmd", args)
 	j := &ffCmd{args: args}
+	if len(input) > 0 {
+		j.input = input[0]
+	}
 	j.PipeReader, j.out = io.Pipe()
 	err := j.start(ctx)
 	if err != nil {
@@ -237,18 +259,25 @@ func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error
 
 type ffCmd struct {
 	*io.PipeReader
-	out  *io.PipeWriter
-	args []string
-	cmd  *exec.Cmd
+	out    *io.PipeWriter
+	args   []string
+	cmd    *exec.Cmd
+	input  io.Reader // optional stdin source
+	stderr *bytes.Buffer
 }
 
 func (j *ffCmd) start(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
+	if j.input != nil {
+		cmd.Stdin = j.input
+	}
+	j.stderr = &bytes.Buffer{}
+	stderrWriter := &limitedWriter{buf: j.stderr, limit: 4096}
 	if log.IsGreaterOrEqualTo(log.LevelTrace) {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = io.MultiWriter(os.Stderr, stderrWriter)
 	} else {
-		cmd.Stderr = io.Discard
+		cmd.Stderr = stderrWriter
 	}
 	j.cmd = cmd
 
@@ -262,13 +291,37 @@ func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode()))
+			errMsg := fmt.Sprintf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode())
+			if stderrOutput := strings.TrimSpace(j.stderr.String()); stderrOutput != "" {
+				errMsg += ": " + stderrOutput
+			}
+			_ = j.out.CloseWithError(errors.New(errMsg))
 		} else {
 			_ = j.out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", j.args[0], err))
 		}
 		return
 	}
 	_ = j.out.Close()
+}
+
+// limitedWriter wraps a bytes.Buffer and stops writing once the limit is reached.
+// Writes that would exceed the limit are silently discarded to prevent unbounded memory usage.
+type limitedWriter struct {
+	buf   *bytes.Buffer
+	limit int
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	remaining := w.limit - w.buf.Len()
+	if remaining <= 0 {
+		return n, nil // Discard but report success to avoid breaking the writer
+	}
+	if len(p) > remaining {
+		p = p[:remaining]
+	}
+	w.buf.Write(p)
+	return n, nil // Always report full write to avoid ErrShortWrite from io.MultiWriter
 }
 
 // formatCodecMap maps target format to ffmpeg codec flag.
@@ -283,7 +336,7 @@ var formatCodecMap = map[string]string{
 var formatOutputMap = map[string]string{
 	"mp3":  "mp3",
 	"opus": "opus",
-	"aac":  "ipod",
+	"aac":  "adts",
 	"flac": "flac",
 }
 
@@ -337,11 +390,6 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 	if outputFmt, ok := formatOutputMap[opts.Format]; ok {
 		args = append(args, "-f", outputFmt)
-	}
-
-	// For AAC in MP4 container, enable fragmented MP4 for pipe-safe streaming
-	if opts.Format == "aac" {
-		args = append(args, "-movflags", "frag_keyframe+empty_moov")
 	}
 
 	args = append(args, "-")

@@ -28,8 +28,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 	})
 
 	DescribeTable("uploadPlaylistImage guard",
-		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableArtworkUpload = enableArtworkUpload
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
@@ -47,8 +47,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 	)
 
 	DescribeTable("deletePlaylistImage guard",
-		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableArtworkUpload = enableArtworkUpload
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
@@ -98,7 +98,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		err := userRepo.Put(&testUser)
 		Expect(err).ToNot(HaveOccurred())
 
-		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil)
+		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})

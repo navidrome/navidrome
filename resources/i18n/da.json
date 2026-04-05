@@ -37,7 +37,8 @@
         "sampleRate": "Samplingfrekvens",
         "missing": "Manglende",
         "libraryName": "Bibliotek",
-        "composer": "Komponist"
+        "composer": "Komponist",
+        "disc": "Disk %{discNumber}"
       },
       "actions": {
         "addToQueue": "Afspil senere",
@@ -353,7 +354,8 @@
         "allUsers": "Tillad alle brugere",
         "selectedUsers": "Valgte brugere",
         "allLibraries": "Tillad alle biblioteker",
-        "selectedLibraries": "Valgte biblioteker"
+        "selectedLibraries": "Valgte biblioteker",
+        "allowWriteAccess": "Tillad skriveadgang"
       },
       "sections": {
         "status": "Status",
@@ -398,7 +400,8 @@
         "librariesRequired": "Dette plugin kræver adgang til biblioteksoplysninger. Vælg hvilke biblioteker pluginet kan tilgå, eller aktivér 'Tillad alle biblioteker'.",
         "requiredHosts": "Påkrævede hosts",
         "configValidationError": "Konfigurationsvalidering mislykkedes:",
-        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt."
+        "schemaRenderError": "Kan ikke vise konfigurationsformularen. Pluginets skema er muligvis ugyldigt.",
+        "allowWriteAccessHelp": "Når aktiveret, kan denne plugin rette filer i biblioteksmapper. På forhånd har plugins kun læseadgang."
       },
       "placeholders": {
         "configKey": "nøgle",
@@ -588,7 +591,13 @@
     "remove_all_missing_content": "Er du sikker på, at du vil fjerne alle manglende filer fra databasen? Dét vil permanent fjerne alle referencer til dem, inklusive deres afspilningstællere og vurderinger.",
     "noSimilarSongsFound": "Ingen lignende sange fundet",
     "noTopSongsFound": "Ingen topsange fundet",
-    "startingInstantMix": "Indlæser Instant Mix..."
+    "startingInstantMix": "Indlæser Instant Mix...",
+    "uploadCover": "Upload omslag",
+    "removeCover": "Fjern omslag",
+    "coverUploaded": "Omslagsbillede opdateret",
+    "coverRemoved": "Omslagsbillede fjernet",
+    "coverUploadError": "Fejl ved upload af omslagsbillede",
+    "coverRemoveError": "Fejl ved fjernelse af omslagsbillede"
   },
   "menu": {
     "library": "Bibliotek",
@@ -675,7 +684,7 @@
       "exportFailed": "Kunne ikke kopiere konfigurationen",
       "devFlagsHeader": "Udviklingsflagget (med forbehold for ændring/fjernelse)",
       "devFlagsComment": "Disse er eksperimental-indstillinger og kan blive fjernet i fremtidige udgaver",
-      "downloadToml": ""
+      "downloadToml": "Download konfigurationen (TOML)"
     }
   },
   "activity": {

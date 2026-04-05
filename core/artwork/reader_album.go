@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/maruel/natural"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/natural"
 )
 
 type albumArtworkReader struct {
@@ -59,10 +59,11 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 }
 
 func (a *albumArtworkReader) Key() string {
-	var hash [16]byte
+	hashInput := conf.Server.CoverArtPriority
 	if conf.Server.EnableExternalServices {
-		hash = md5.Sum([]byte(conf.Server.Agents + conf.Server.CoverArtPriority))
+		hashInput = conf.Server.Agents + hashInput
 	}
+	hash := md5.Sum([]byte(hashInput))
 	return fmt.Sprintf(
 		"%s.%x.%t",
 		a.cacheKey.Key(),

@@ -37,7 +37,8 @@
         "sampleRate": "Taxa de mostra",
         "missing": "Falta",
         "libraryName": "Biblioteca",
-        "composer": "Composición"
+        "composer": "Composición",
+        "disc": "Disco %{discNumber}"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -353,7 +354,8 @@
         "allUsers": "Para todas as usuarias",
         "selectedUsers": "Usuarias seleccionadas",
         "allLibraries": "Permitir todas as bibliotecas",
-        "selectedLibraries": "Selecciona bibliotecas"
+        "selectedLibraries": "Selecciona bibliotecas",
+        "allowWriteAccess": "Conceder acceso de escritura"
       },
       "sections": {
         "status": "Estado",
@@ -398,7 +400,8 @@
         "librariesRequired": "O complemento precisa acceso á información sobre a biblioteca. Selecciona as bibliotecas ás que pode acceder, ou activa 'Todas as bibliotecas'.",
         "requiredHosts": "Servidores requeridos",
         "configValidationError": "Fallou a comprobación da configuración:",
-        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido."
+        "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido.",
+        "allowWriteAccessHelp": "A activalo, este complemento pode modificar ficheiros nos directorios da biblioteca. Por defecto os complementos teñen acceso de só-lectura."
       },
       "placeholders": {
         "configKey": "clave",
@@ -588,7 +591,13 @@
     "remove_all_missing_content": "Tes certeza de querer retirar da base de datos todos os ficheiros que faltan? Isto eliminará todas as referencias a eles, incluíndo o número de reproducións e valoracións.",
     "noSimilarSongsFound": "Sen cancións parecidas",
     "noTopSongsFound": "Sen cancións destacadas",
-    "startingInstantMix": "Cargando Mestura Súbita…"
+    "startingInstantMix": "Cargando Mestura Súbita…",
+    "uploadCover": "Subir capa",
+    "removeCover": "Retirar capa",
+    "coverUploaded": "Subiuse a capa",
+    "coverRemoved": "Retirouse a capa",
+    "coverUploadError": "Erro ao subir a capa",
+    "coverRemoveError": "Erro ao retirar a capa"
   },
   "menu": {
     "library": "Biblioteca",
@@ -674,7 +683,8 @@
       "exportSuccess": "Configuración exportada ao portapapeis no formato TOML",
       "exportFailed": "Fallou a copia da configuración",
       "devFlagsHeader": "Configuracións de Desenvolvemento (suxeitas a cambio/retirada)",
-      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións"
+      "devFlagsComment": "Son axustes experimentais e poden retirarse en futuras versións",
+      "downloadToml": "Descargar configuración (TOML)"
     }
   },
   "activity": {

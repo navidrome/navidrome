@@ -27,7 +27,7 @@ var _ = Describe("Watcher", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Scanner.WatcherWait = 50 * time.Millisecond // Short wait for tests
 
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		DeferCleanup(cancel)
 
 		lib = &model.Library{

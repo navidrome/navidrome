@@ -13,7 +13,14 @@ import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
-import { AlbumContextMenu, PlayButton, ArtistLinkField } from '../common'
+import {
+  AlbumContextMenu,
+  PlayButton,
+  ArtistLinkField,
+  OverflowTooltip,
+  useImageUrl,
+} from '../common'
+import config from '../config'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
@@ -28,13 +35,11 @@ const useStyles = makeStyles(
       transition: 'all 150ms ease-out',
       opacity: 0,
       textAlign: 'left',
-      marginBottom: '3px',
       background:
         'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
     },
     tileBarMobile: {
       textAlign: 'left',
-      marginBottom: '3px',
       background:
         'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
     },
@@ -89,6 +94,11 @@ const useStyles = makeStyles(
 )
 
 const useCoverStyles = makeStyles({
+  coverContainer: {
+    width: '100%',
+    aspectRatio: '1',
+    overflow: 'hidden',
+  },
   cover: {
     display: 'inline-block',
     width: '100%',
@@ -97,7 +107,7 @@ const useCoverStyles = makeStyles({
     transition: 'opacity 0.3s ease-in-out',
   },
   coverLoading: {
-    opacity: 0.5,
+    opacity: 0,
   },
 })
 
@@ -117,8 +127,6 @@ const Cover = withContentRect('bounds')(({
   // Force height to be the same as the width determined by the GridList
   // noinspection JSSuspiciousNameCombination
   const classes = useCoverStyles({ height: contentRect.bounds.width })
-  const [imageLoading, setImageLoading] = React.useState(true)
-  const [imageError, setImageError] = React.useState(false)
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -128,32 +136,16 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
-  // Reset image state when record changes
-  React.useEffect(() => {
-    setImageLoading(true)
-    setImageError(false)
-  }, [record.id])
-
-  const handleImageLoad = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(false)
-  }, [])
-
-  const handleImageError = React.useCallback(() => {
-    setImageLoading(false)
-    setImageError(true)
-  }, [])
+  const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
+  const { imgUrl, loading: imageLoading } = useImageUrl(url)
 
   return (
-    <div ref={measureRef}>
+    <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
         <img
-          key={record.id} // Force re-render when record changes
-          src={subsonic.getCoverArtUrl(record, 300, true)}
+          src={imgUrl || undefined}
           alt={record.name}
           className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
         />
       </div>
     </div>
@@ -198,7 +190,9 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         to={linkToRecord(basePath, record.id, 'show')}
       >
         <span>
-          <Typography className={classes.albumName}>{record.name}</Typography>
+          <OverflowTooltip title={record.name}>
+            <Typography className={classes.albumName}>{record.name}</Typography>
+          </OverflowTooltip>
           {record.tags && record.tags['albumversion'] && (
             <Typography className={classes.albumVersion}>
               {record.tags['albumversion']}

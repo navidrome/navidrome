@@ -86,7 +86,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(isDefaultCommand("opus", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
 		})
 		It("returns true for known default aac command", func() {
-			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f ipod -movflags frag_keyframe+empty_moov -")).To(BeTrue())
+			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
 			Expect(isDefaultCommand("flac", "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
@@ -174,7 +174,7 @@ var _ = Describe("ffmpeg", func() {
 			}))
 		})
 
-		It("builds aac args with fragmented MP4 container", func() {
+		It("builds aac args with ADTS output", func() {
 			args := buildDynamicArgs(TranscodeOptions{
 				Format:   "aac",
 				FilePath: "/music/file.flac",
@@ -186,8 +186,7 @@ var _ = Describe("ffmpeg", func() {
 				"-c:a", "aac",
 				"-b:a", "256k",
 				"-v", "0",
-				"-f", "ipod",
-				"-movflags", "frag_keyframe+empty_moov",
+				"-f", "adts",
 				"-",
 			}))
 		})
@@ -585,9 +584,12 @@ var _ = Describe("ffmpeg", func() {
 				// Cancel the context
 				cancel()
 
-				// Next read should fail due to cancelled context
-				_, err = stream.Read(buf)
-				Expect(err).To(HaveOccurred())
+				// Subsequent reads should eventually fail due to cancelled context.
+				// There may be buffered data in the pipe, so we drain until an error occurs.
+				Eventually(func() error {
+					_, err = stream.Read(buf)
+					return err
+				}).WithTimeout(5 * time.Second).WithPolling(10 * time.Millisecond).Should(HaveOccurred())
 			})
 
 			It("should handle immediate context cancellation", func() {
@@ -602,6 +604,46 @@ var _ = Describe("ffmpeg", func() {
 					BitRate:  128,
 				})
 				Expect(err).To(MatchError(context.Canceled))
+			})
+		})
+
+		Context("stderr capture", func() {
+			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("stderr capture tests use /bin/sh, skipping on Windows")
+				}
+			})
+
+			It("should include stderr in error when process fails", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Directly call start() with a bash command that writes to stderr and fails
+				args := []string{"/bin/sh", "-c", "echo 'codec not found: libopus' >&2; exit 1"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				_, err = stream.Read(buf)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("codec not found: libopus"))
+			})
+
+			It("should not include stderr in error when process succeeds", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Command that writes to stderr but exits successfully
+				args := []string{"/bin/sh", "-c", "echo 'warning: something' >&2; printf 'output'"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				n, err := stream.Read(buf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(buf[:n])).To(Equal("output"))
 			})
 		})
 

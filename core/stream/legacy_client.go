@@ -86,7 +86,16 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 		return req
 	}
 
-	// No compatible profile — fallback to raw
+	// No compatible profile for the requested format — retry with DefaultDownsamplingFormat
+	// TODO: validate DefaultDownsamplingFormat at startup to warn about unsupported values
+	fallbackFormat := conf.Server.DefaultDownsamplingFormat
+	if reqFormat != "" && fallbackFormat != "" && !strings.EqualFold(reqFormat, fallbackFormat) {
+		log.Warn(ctx, "Requested format not available, falling back to default downsampling format",
+			"requestedFormat", reqFormat, "fallbackFormat", fallbackFormat, "id", mf.ID)
+		return s.ResolveRequest(ctx, mf, fallbackFormat, reqBitRate, offset)
+	}
+
+	// Ultimate fallback — raw
 	req.Format = "raw"
 	return req
 }

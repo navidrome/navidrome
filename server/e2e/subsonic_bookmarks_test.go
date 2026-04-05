@@ -77,12 +77,28 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 			}
 		})
 
-		It("getPlayQueue returns empty when nothing saved", func() {
+		It("getPlayQueue returns minimum required fields when nothing specified", func() {
 			resp := doReq("getPlayQueue")
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
-			// When no play queue exists, PlayQueue should be nil (no entry returned)
-			Expect(resp.PlayQueue).To(BeNil())
+			Expect(resp.PlayQueue).ToNot(BeNil())
+			Expect(resp.PlayQueue.Entry).To(HaveLen(0))
+			Expect(resp.PlayQueue.Current).To(BeEmpty())
+			Expect(resp.PlayQueue.Position).To(Equal(int64(0)))
+			Expect(resp.PlayQueue.Username).To(Equal(adminUser.UserName))
+			Expect(resp.PlayQueue.ChangedBy).To(BeEmpty())
+		})
+
+		It("getPlayQueueByIndex returns minimum required fields when nothing specified", func() {
+			resp := doReq("getPlayQueueByIndex")
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.PlayQueueByIndex).ToNot(BeNil())
+			Expect(resp.PlayQueueByIndex.Entry).To(HaveLen(0))
+			Expect(resp.PlayQueueByIndex.CurrentIndex).To(BeNil())
+			Expect(resp.PlayQueueByIndex.Position).To(Equal(int64(0)))
+			Expect(resp.PlayQueueByIndex.Username).To(Equal(adminUser.UserName))
+			Expect(resp.PlayQueueByIndex.ChangedBy).To(BeEmpty())
 		})
 
 		It("savePlayQueue stores current play queue", func() {

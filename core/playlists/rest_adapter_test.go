@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -36,7 +37,7 @@ var _ = Describe("REST Adapter", func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ps = playlists.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 		})
 
 		Describe("Save", func() {
@@ -123,6 +124,22 @@ var _ = Describe("REST Adapter", func() {
 				pls := &model.Playlist{Name: "Updated", OwnerID: "other-user"}
 				err := repo.Update("pls-1", pls)
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
+			It("updates smart playlist rules", func() {
+				mockPlsRepo.Data["smart-1"] = &model.Playlist{
+					ID:      "smart-1",
+					Name:    "Smart Playlist",
+					OwnerID: "user-1",
+					Rules:   &criteria.Criteria{Expression: criteria.Contains{"title": "old"}},
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				newRules := &criteria.Criteria{Expression: criteria.Contains{"title": "new"}}
+				pls := &model.Playlist{Name: "Smart Playlist", Rules: newRules}
+				err := repo.Update("smart-1", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
 			})
 
 			It("returns rest.ErrNotFound when playlist doesn't exist", func() {

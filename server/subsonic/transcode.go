@@ -268,6 +268,16 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	}
 	clientInfo := clientInfoReq.toCoreClientInfo()
 
+	// TODO: Remove this filter once AAC transcoding works reliably
+	// with streaming clients (Sonos, etc).
+	// See https://github.com/navidrome/navidrome/discussions/4832#discussioncomment-16068231
+	clientInfo.TranscodingProfiles = slices.DeleteFunc(clientInfo.TranscodingProfiles, func(p stream.Profile) bool {
+		if p.AudioCodec != "" {
+			return stream.IsAACCodec(p.AudioCodec)
+		}
+		return stream.IsAACCodec(p.Container)
+	})
+
 	// Get media file
 	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
 	if err != nil {
@@ -385,7 +395,9 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	api.serveStream(ctx, w, r, stream, mediaID)
-
+	n, err := stream.Serve(ctx, w, r)
+	if err != nil || n == 0 {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 	return nil, nil
 }

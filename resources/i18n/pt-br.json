@@ -37,7 +37,8 @@
         "sampleRate": "Taxa de amostragem",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
-        "composer": "Compositor"
+        "composer": "Compositor",
+        "disc": "Disco %{discNumber}"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -218,15 +219,9 @@
         "saveQueue": "Salvar fila em nova Playlist",
         "searchOrCreate": "Buscar playlists ou criar nova...",
         "pressEnterToCreate": "Pressione Enter para criar nova playlist",
-        "removeFromSelection": "Remover da seleção",
-        "uploadCover": "Enviar Capa",
-        "removeCover": "Remover Capa"
+        "removeFromSelection": "Remover da seleção"
       },
       "message": {
-        "coverUploaded": "Capa atualizada",
-        "coverRemoved": "Capa removida",
-        "coverUploadError": "Erro ao enviar capa",
-        "coverRemoveError": "Erro ao remover capa",
         "duplicate_song": "Adicionar músicas duplicadas",
         "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
         "noPlaylistsFound": "Nenhuma playlist encontrada",
@@ -403,10 +398,10 @@
         "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
         "noLibraries": "Nenhuma biblioteca selecionada",
         "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
-        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
-        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido."
+        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura."
       },
       "placeholders": {
         "configKey": "chave",
@@ -596,7 +591,13 @@
     "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
     "noTopSongsFound": "Nenhuma música mais tocada encontrada",
-    "startingInstantMix": "Carregando Mix Instantâneo..."
+    "startingInstantMix": "Carregando Mix Instantâneo...",
+    "uploadCover": "Enviar Capa",
+    "removeCover": "Remover Capa",
+    "coverUploaded": "Capa atualizada",
+    "coverRemoved": "Capa removida",
+    "coverUploadError": "Erro ao enviar capa",
+    "coverRemoveError": "Erro ao remover capa"
   },
   "menu": {
     "library": "Biblioteca",

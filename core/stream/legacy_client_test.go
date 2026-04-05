@@ -1,9 +1,13 @@
 package stream
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -94,5 +98,143 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 		Expect(ci.TranscodingProfiles).To(BeEmpty())
 		Expect(ci.MaxAudioBitrate).To(BeZero())
+	})
+})
+
+var _ = Describe("ResolveRequest", func() {
+	var (
+		svc TranscodeDecider
+		ctx context.Context
+	)
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds := &tests.MockDataStore{
+			MockedProperty:    &tests.MockedPropertyRepo{},
+			MockedTranscoding: &tests.MockTranscodingRepo{},
+		}
+		ff := tests.NewMockFFmpeg("")
+		auth.Init(ds)
+		svc = NewTranscodeDecider(ds, ff)
+	})
+
+	It("returns raw when format is 'raw'", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "raw", 0, 0)
+
+		Expect(req.Format).To(Equal("raw"))
+	})
+
+	It("returns raw (direct play) when no format or bitrate specified", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "", 0, 0)
+
+		Expect(req.Format).To(Equal("raw"))
+	})
+
+	It("transcodes to requested format", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "opus", 0, 0)
+
+		Expect(req.Format).To(Equal("opus"))
+	})
+
+	It("transcodes to requested format with bitrate limit", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "mp3", 128, 0)
+
+		Expect(req.Format).To(Equal("mp3"))
+		Expect(req.BitRate).To(Equal(128))
+	})
+
+	It("returns raw when requested format matches source and no bitrate reduction", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "mp3", 320, 0)
+
+		Expect(req.Format).To(Equal("raw"))
+	})
+
+	It("downsamples when only bitrate is specified below source", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DefaultDownsamplingFormat = "opus"
+
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "", 128, 0)
+
+		Expect(req.Format).To(Equal("opus"))
+		Expect(req.BitRate).To(Equal(128))
+	})
+
+	It("passes offset through", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "opus", 128, 30)
+
+		Expect(req.Format).To(Equal("opus"))
+		Expect(req.Offset).To(Equal(30))
+	})
+
+	Context("fallback for unknown format", func() {
+		It("falls back to DefaultDownsamplingFormat", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DefaultDownsamplingFormat = "opus"
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "xyz", 0, 0)
+
+			Expect(req.Format).To(Equal("opus"))
+		})
+
+		It("falls back to raw when DefaultDownsamplingFormat is empty", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DefaultDownsamplingFormat = ""
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "xyz", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
+
+		It("falls back to raw when DefaultDownsamplingFormat is also invalid", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DefaultDownsamplingFormat = "xyz"
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "xyz", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
+
+		It("preserves bitrate when falling back to DefaultDownsamplingFormat", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DefaultDownsamplingFormat = "opus"
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "xyz", 128, 0)
+
+			Expect(req.Format).To(Equal("opus"))
+			Expect(req.BitRate).To(Equal(128))
+		})
 	})
 })

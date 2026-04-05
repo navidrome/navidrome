@@ -33,10 +33,11 @@ func (s *scheduler) Run(ctx context.Context) {
 }
 
 func (s *scheduler) Add(crontab string, cmd func()) (int, error) {
-	entryID, err := s.c.AddFunc(crontab, cmd)
+	schedule, err := ParseCrontab(crontab)
 	if err != nil {
 		return 0, err
 	}
+	entryID := s.c.Schedule(schedule, cron.FuncJob(cmd))
 	return int(entryID), nil
 }
 

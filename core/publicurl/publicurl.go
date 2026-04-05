@@ -45,6 +45,9 @@ func PublicURL(req *http.Request, u string, params url.Values) string {
 	}
 	buildUrl.Scheme = shareUrl.Scheme
 	buildUrl.Host = shareUrl.Host
+	if basePath := strings.TrimRight(shareUrl.Path, "/"); basePath != "" {
+		buildUrl.Path = path.Join(basePath, buildUrl.Path)
+	}
 	if len(params) > 0 {
 		buildUrl.RawQuery = params.Encode()
 	}

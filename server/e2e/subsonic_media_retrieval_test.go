@@ -89,11 +89,11 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
 
-		It("falls back to raw for unknown format", func() {
+		It("falls back to default downsampling format for unknown format", func() {
 			w := doRawReq("stream", "id", trackID, "format", "xyz")
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(streamerSpy.LastRequest.Format).To(Equal("raw"))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 		})
 
 		It("passes timeOffset through", func() {
