@@ -195,6 +195,17 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 	return &result, nil
 }
 
+// matchesPCMWAVBridge bridges Navidrome's internal "pcm" codec name with the
+// "wav" codec name that browsers use to advertise audio/wav support. The match
+// is scoped to WAV-container sources so AIFF files (which also normalize to
+// codec "pcm" but use a different container) cannot false-match a codec-only
+// ["wav"] profile.
+func matchesPCMWAVBridge(src *Details, profile *DirectPlayProfile) bool {
+	return strings.EqualFold(src.Codec, "pcm") &&
+		strings.EqualFold(src.Container, "wav") &&
+		containsIgnoreCase(profile.AudioCodecs, "wav")
+}
+
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
 func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
@@ -205,17 +216,17 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 
 	// Check container
 	if len(profile.Containers) > 0 && !matchesContainer(src.Container, profile.Containers) {
-		return "container not supported"
+		return fmt.Sprintf("container '%s' not supported by profile %s", src.Container, profile)
 	}
 
 	// Check codec
-	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) {
-		return "audio codec not supported"
+	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) && !matchesPCMWAVBridge(src, profile) {
+		return fmt.Sprintf("audio codec '%s' not supported by profile %s", src.Codec, profile)
 	}
 
 	// Check channels
 	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
-		return "audio channels not supported"
+		return fmt.Sprintf("audio channels %d not supported by profile %s (max %d)", src.Channels, profile, profile.MaxAudioChannels)
 	}
 
 	// Check codec-specific limitations

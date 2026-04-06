@@ -380,24 +380,24 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 		When("Square is false", func() {
-			It("returns WebP even if original image is a PNG", func() {
+			It("returns PNG if original image is a PNG", func() {
 				conf.Server.CoverArtPriority = "front.png"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(format).To(Equal("webp"))
+				Expect(format).To(Equal("png"))
 				Expect(img.Bounds().Size().X).To(Equal(15))
 				Expect(img.Bounds().Size().Y).To(Equal(15))
 			})
-			It("returns WebP if original image is not a PNG", func() {
+			It("returns JPEG if original image is not a PNG", func() {
 				conf.Server.CoverArtPriority = "cover.jpg"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
-				Expect(format).To(Equal("webp"))
+				Expect(format).To(Equal("jpeg"))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(img.Bounds().Size().X).To(Equal(200))
 				Expect(img.Bounds().Size().Y).To(Equal(200))
@@ -430,24 +430,51 @@ var _ = Describe("Artwork", func() {
 					Expect(img.Bounds().Size().X).To(Equal(size))
 					Expect(img.Bounds().Size().Y).To(Equal(size))
 				},
-				Entry("portrait png image", "png", "webp", false, 200),
-				Entry("landscape png image", "png", "webp", true, 200),
-				Entry("portrait jpg image", "jpg", "webp", false, 200),
-				Entry("landscape jpg image", "jpg", "webp", true, 200),
+				Entry("portrait png image", "png", "png", false, 200),
+				Entry("landscape png image", "png", "png", true, 200),
+				Entry("portrait jpg image", "jpg", "png", false, 200),
+				Entry("landscape jpg image", "jpg", "png", true, 200),
 			)
 		})
-		When("DevJpegCoverArt is true and square is false", func() {
+		When("EnableWebPEncoding is true and square is false", func() {
 			BeforeEach(func() {
-				conf.Server.DevJpegCoverArt = true
+				conf.Server.EnableWebPEncoding = true
 			})
-			It("returns JPEG even if original image is a PNG", func() {
+			It("returns WebP even if original image is a PNG", func() {
 				conf.Server.CoverArtPriority = "front.png"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				img, format, err := image.Decode(r)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(format).To(Equal("jpeg"))
+				Expect(format).To(Equal("webp"))
+				Expect(img.Bounds().Size().X).To(Equal(15))
+				Expect(img.Bounds().Size().Y).To(Equal(15))
+			})
+			It("returns WebP if original image is not a PNG", func() {
+				conf.Server.CoverArtPriority = "cover.jpg"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(format).To(Equal("webp"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
+		When("EnableWebPEncoding is false and square is false", func() {
+			BeforeEach(func() {
+				conf.Server.EnableWebPEncoding = false
+			})
+			It("returns PNG if original image is a PNG", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("png"))
 				Expect(img.Bounds().Size().X).To(Equal(15))
 				Expect(img.Bounds().Size().Y).To(Equal(15))
 			})
@@ -463,11 +490,11 @@ var _ = Describe("Artwork", func() {
 				Expect(img.Bounds().Size().Y).To(Equal(200))
 			})
 		})
-		When("DevJpegCoverArt is true and square is true", func() {
+		When("EnableWebPEncoding is false and square is true", func() {
 			var alCover model.Album
 
 			BeforeEach(func() {
-				conf.Server.DevJpegCoverArt = true
+				conf.Server.EnableWebPEncoding = false
 			})
 			It("returns PNG for square mode", func() {
 				dirName := createImage("png", false, 200)

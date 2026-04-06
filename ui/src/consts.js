@@ -26,8 +26,6 @@ DraggableTypes.ALL.push(
 
 export const RADIO_PLACEHOLDER_IMAGE = 'internet-radio-icon.svg'
 
-export const COVER_ART_SIZE = 600
-
 export const DEFAULT_SHARE_BITRATE = 128
 
 export const BITRATE_CHOICES = [

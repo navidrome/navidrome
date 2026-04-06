@@ -51,6 +51,7 @@ const useStyles = makeStyles({
     borderRadius: '4px',
     flexShrink: 0,
     cursor: 'pointer',
+    filter: 'none !important',
   },
   row: {
     cursor: 'pointer',
