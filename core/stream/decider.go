@@ -45,7 +45,7 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 	var probe *ffmpeg.AudioProbeResult
 	if !opts.SkipProbe {
 		if !s.ff.IsProbeAvailable() {
-			log.Warn(ctx, "ffprobe not available, using tag metadata for transcode decision", "mediaID", mf.ID)
+			log.Debug(ctx, "ffprobe not available, using tag metadata for transcode decision", "mediaID", mf.ID)
 		} else {
 			var err error
 			probe, err = s.ensureProbed(ctx, mf)
