@@ -383,6 +383,11 @@ type mockTranscodeDecision struct {
 	resolvedReq    stream.Request
 	resolveErr     error
 	capturedClient *stream.ClientInfo
+	probeAvailable bool
+}
+
+func (m *mockTranscodeDecision) IsProbeAvailable() bool {
+	return m.probeAvailable
 }
 
 func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, _ stream.TranscodeOptions) (*stream.TranscodeDecision, error) {

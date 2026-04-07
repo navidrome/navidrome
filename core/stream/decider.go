@@ -22,6 +22,7 @@ type TranscodeDecider interface {
 	CreateTranscodeParams(decision *TranscodeDecision) (string, error)
 	ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error)
 	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request
+	IsProbeAvailable() bool
 }
 
 func NewTranscodeDecider(ds model.DataStore, ff ffmpeg.FFmpeg) TranscodeDecider {
@@ -36,10 +37,20 @@ type deciderService struct {
 	ff ffmpeg.FFmpeg
 }
 
+func (s *deciderService) IsProbeAvailable() bool {
+	return s.ff.IsProbeAvailable()
+}
+
 func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, opts TranscodeOptions) (*TranscodeDecision, error) {
 	decision := &TranscodeDecision{
 		MediaID:         mf.ID,
 		SourceUpdatedAt: mf.UpdatedAt,
+	}
+
+	if !s.ff.IsProbeAvailable() {
+		decision.ErrorReason = "ffprobe not available: transcoding decisions require ffprobe"
+		log.Warn(ctx, "ffprobe not available, cannot make transcode decision", "mediaID", mf.ID)
+		return decision, nil
 	}
 
 	var probe *ffmpeg.AudioProbeResult

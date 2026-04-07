@@ -1164,6 +1164,26 @@ var _ = Describe("Decider", func() {
 				Expect(bitrate).To(Equal(fallbackBitrate))
 			})
 		})
+
+		Context("when ffprobe is not available", func() {
+			BeforeEach(func() {
+				ff.ProbeAvailable = false
+			})
+
+			It("returns error reason and no playback options", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"mp3"}, AudioCodecs: []string{"mp3"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeFalse())
+				Expect(decision.ErrorReason).To(ContainSubstring("ffprobe not available"))
+			})
+		})
 	})
 
 	Describe("ensureProbed", func() {
