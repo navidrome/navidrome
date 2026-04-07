@@ -47,14 +47,13 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 		SourceUpdatedAt: mf.UpdatedAt,
 	}
 
-	if !s.ff.IsProbeAvailable() {
-		decision.ErrorReason = "ffprobe not available: transcoding decisions require ffprobe"
-		log.Warn(ctx, "ffprobe not available, cannot make transcode decision", "mediaID", mf.ID)
-		return decision, nil
-	}
-
 	var probe *ffmpeg.AudioProbeResult
 	if !opts.SkipProbe {
+		if !s.ff.IsProbeAvailable() {
+			decision.ErrorReason = "ffprobe not available: transcoding decisions require ffprobe"
+			log.Warn(ctx, "ffprobe not available, cannot make transcode decision", "mediaID", mf.ID)
+			return decision, nil
+		}
 		var err error
 		probe, err = s.ensureProbed(ctx, mf)
 		if err != nil {
