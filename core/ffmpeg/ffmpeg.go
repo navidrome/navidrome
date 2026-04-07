@@ -226,17 +226,13 @@ func (e *ffmpeg) IsAvailable() bool {
 }
 
 func (e *ffmpeg) IsProbeAvailable() bool {
-	// Ensure ffmpeg has been resolved first
 	if _, err := ffmpegCmd(); err != nil {
 		return false
 	}
 	probeOnce.Do(func() {
 		probePath := ffprobePath(ffmpegPath)
 		if _, err := exec.LookPath(probePath); err == nil {
-			log.Info("Found ffprobe", "path", probePath)
 			probeAvail = true
-		} else {
-			log.Warn("ffprobe not found, transcoding decisions will be limited", "expectedPath", probePath)
 		}
 	})
 	return probeAvail
