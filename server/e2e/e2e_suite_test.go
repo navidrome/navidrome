@@ -337,6 +337,7 @@ func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (
 
 func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
 func (n noopFFmpeg) IsAvailable() bool        { return false }
+func (n noopFFmpeg) IsProbeAvailable() bool   { return true }
 func (n noopFFmpeg) Version() string          { return "noop" }
 
 // noopArchiver implements core.Archiver
