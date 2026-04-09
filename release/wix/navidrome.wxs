@@ -23,7 +23,7 @@
 		<Property Id='DiskPrompt' Value="Navidrome Install [1]" />
 		<Property Id="REBOOT" Value="ReallySuppress" />
 
-		<Property Id="INSTALLDIR" Value="[$(var.PlatformProgramFilesFolder)]\Navidrome">
+		<Property Id="INSTALLDIR" Value="[!$(var.PlatformProgramFilesFolder)]\Navidrome">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLDIR' Type='raw' />
 		</Property>
 		<Property Id="ND_PORT" Value="4533">
