@@ -39,7 +39,7 @@
 		<UIRef Id="Navidrome_UI_Flow"/>
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
-			<Directory Id='INSTALLDIR' Name='Navidrome'>
+			<Directory Id='TARGETDIR' Name='[INSTALLDIR]'>
 
 				<Component Id='LICENSEFile' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
 					<File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
