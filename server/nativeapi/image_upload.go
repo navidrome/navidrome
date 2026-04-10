@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -23,8 +24,8 @@ import (
 const defaultMaxImageSize = 10 << 20 // 10MB
 
 func maxImageUploadSize() int64 {
-	if conf.Server.MaxImageUploadSize > 0 {
-		return conf.Server.MaxImageUploadSize
+	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
+		return int64(size)
 	}
 	return defaultMaxImageSize
 }
@@ -44,9 +45,9 @@ func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext st
 		if !checkImageUploadPermission(w, r) {
 			return
 		}
-		maxImageSize := max(1, maxImageUploadSize())
+		maxImageSize := maxImageUploadSize()
 		r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
-		if err := r.ParseMultipartForm(maxImageSize / 2); err != nil {
+		if err := r.ParseMultipartForm(min(maxImageSize, 10<<20)); err != nil {
 			log.Error(ctx, "Error parsing multipart form", err)
 			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
 			return
