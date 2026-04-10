@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -33,11 +34,13 @@ func init() {
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
-	name           string
-	plugin         *plugin
-	allowedUserIDs []string            // User IDs this plugin can access (from DB configuration)
-	allUsers       bool                // If true, plugin can access all users
-	userIDMap      map[string]struct{} // Cached map for fast lookups
+	name             string
+	plugin           *plugin
+	allowedUserIDs   []string            // User IDs this plugin can access (from DB configuration)
+	allUsers         bool                // If true, plugin can access all users
+	userIDMap        map[string]struct{} // Cached map for fast lookups
+	allowedLibraries []int               // Library IDs this plugin can access (filesystem requires permission)
+	allLibraries     bool                // If true, plugin can access all libraries
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler.
@@ -80,7 +83,7 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 	username := getUsernameFromContext(ctx)
 	input := capabilities.NowPlayingRequest{
 		Username: username,
-		Track:    mediaFileToTrackInfo(track),
+		Track:    mediaFileToTrackInfo(track, s.hasFilesystemAccess(track.LibraryID)),
 		Position: int32(position),
 	}
 
@@ -93,7 +96,7 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
 		Username:  username,
-		Track:     mediaFileToTrackInfo(&sc.MediaFile),
+		Track:     mediaFileToTrackInfo(&sc.MediaFile, s.hasFilesystemAccess(sc.MediaFile.LibraryID)),
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
@@ -110,8 +113,8 @@ func getUsernameFromContext(ctx context.Context) string {
 }
 
 // mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo
-func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
-	return capabilities.TrackInfo{
+func mediaFileToTrackInfo(mf *model.MediaFile, includePath bool) capabilities.TrackInfo {
+	ti := capabilities.TrackInfo{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -127,6 +130,18 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 		MBZReleaseGroupID: mf.MbzReleaseGroupID,
 		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
+	if includePath {
+		ti.Path = mf.Path
+	}
+	return ti
+}
+
+// hasFilesystemAccess checks if the plugin has filesystem access for the given library ID.
+func (s *ScrobblerPlugin) hasFilesystemAccess(libID int) bool {
+	if s.allLibraries {
+		return true
+	}
+	return slices.Contains(s.allowedLibraries, libID)
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef

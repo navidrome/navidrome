@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"slices"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -23,15 +24,17 @@ func init() {
 
 // LyricsPlugin adapts a WASM plugin with the Lyrics capability.
 type LyricsPlugin struct {
-	name   string
-	plugin *plugin
+	name             string
+	plugin           *plugin
+	allowedLibraries []int // Library IDs this plugin can access (filesystem requires permission)
+	allLibraries     bool  // If true, plugin can access all libraries
 }
 
 // GetLyrics calls the plugin to fetch lyrics, then parses the raw text responses
 // using model.ToLyrics.
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	req := capabilities.GetLyricsRequest{
-		Track: mediaFileToTrackInfo(mf),
+		Track: mediaFileToTrackInfo(mf, l.hasFilesystemAccess(mf.LibraryID)),
 	}
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,
@@ -56,4 +59,12 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		}
 	}
 	return result, nil
+}
+
+// hasFilesystemAccess checks if the plugin has filesystem access for the given library ID.
+func (l *LyricsPlugin) hasFilesystemAccess(libID int) bool {
+	if l.allLibraries {
+		return true
+	}
+	return slices.Contains(l.allowedLibraries, libID)
 }
