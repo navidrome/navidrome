@@ -41,6 +41,7 @@ type ScrobblerPlugin struct {
 	userIDMap         map[string]struct{} // Cached map for fast lookups
 	allowedLibraryIDs []int               // Library IDs this plugin can access (from DB configuration)
 	allLibraries      bool                // If true, plugin can access all libraries
+	libraryFilesystem bool                // If true, plugin has filesystem access
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler.
@@ -138,6 +139,9 @@ func mediaFileToTrackInfo(mf *model.MediaFile, includePath bool) capabilities.Tr
 
 // hasFilesystemAccess checks if the plugin has filesystem access for the given library ID.
 func (s *ScrobblerPlugin) hasFilesystemAccess(libID int) bool {
+	if !s.libraryFilesystem {
+		return false
+	}
 	if s.allLibraries {
 		return true
 	}

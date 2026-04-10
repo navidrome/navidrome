@@ -282,6 +282,7 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 		userIDMap:         userIDMap,
 		allowedLibraryIDs: plugin.allowedLibraryIDs,
 		allLibraries:      plugin.allLibraries,
+		libraryFilesystem: hasFilesystemPermission(plugin),
 	}, true
 }
 
@@ -300,6 +301,7 @@ func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
 		plugin:            plugin,
 		allowedLibraryIDs: plugin.allowedLibraryIDs,
 		allLibraries:      plugin.allLibraries,
+		libraryFilesystem: hasFilesystemPermission(plugin),
 	}, true
 }
 
@@ -685,4 +687,12 @@ func hasValidLibrariesConfig(librariesJSON string, allLibraries bool) bool {
 		return false
 	}
 	return len(libraries) > 0
+}
+
+// hasFilesystemPermission checks if a plugin has filesystem permission.
+func hasFilesystemPermission(p *plugin) bool {
+	return p != nil &&
+		p.manifest.Permissions != nil &&
+		p.manifest.Permissions.Library != nil &&
+		p.manifest.Permissions.Library.Filesystem
 }

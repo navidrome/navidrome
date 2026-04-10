@@ -28,6 +28,7 @@ type LyricsPlugin struct {
 	plugin            *plugin
 	allowedLibraryIDs []int
 	allLibraries      bool
+	libraryFilesystem bool
 }
 
 // GetLyrics calls the plugin to fetch lyrics, then parses the raw text responses
@@ -63,6 +64,9 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 
 // hasFilesystemAccess checks if the plugin has filesystem access for the given library ID.
 func (l *LyricsPlugin) hasFilesystemAccess(libID int) bool {
+	if !l.libraryFilesystem {
+		return false
+	}
 	if l.allLibraries {
 		return true
 	}
