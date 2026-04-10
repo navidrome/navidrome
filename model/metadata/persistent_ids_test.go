@@ -12,15 +12,16 @@ import (
 
 var _ = Describe("getPID", func() {
 	var (
-		md     Metadata
-		mf     model.MediaFile
-		sum    hashFunc
-		getPID getPIDFunc
+		md  Metadata
+		mf  model.MediaFile
+		sum hashFunc
 	)
+	getPID := func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
+		return computePID(mf, md, spec, prependLibId, sum)
+	}
 
 	BeforeEach(func() {
 		sum = func(s ...string) string { return "(" + strings.Join(s, ",") + ")" }
-		getPID = createGetPID(sum)
 	})
 
 	Context("attributes are tags", func() {
