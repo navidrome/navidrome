@@ -20,7 +20,14 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-const maxImageSize = 10 << 20 // 10MB
+const defaultMaxImageSize = 10 << 20 // 10MB
+
+func maxImageUploadSize() int64 {
+	if conf.Server.MaxImageUploadSize > 0 {
+		return conf.Server.MaxImageUploadSize
+	}
+	return defaultMaxImageSize
+}
 
 func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 	user, _ := request.UserFrom(r.Context())
@@ -37,6 +44,7 @@ func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext st
 		if !checkImageUploadPermission(w, r) {
 			return
 		}
+		maxImageSize := max(1, maxImageUploadSize())
 		r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
 		if err := r.ParseMultipartForm(maxImageSize / 2); err != nil {
 			log.Error(ctx, "Error parsing multipart form", err)
