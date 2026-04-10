@@ -12,7 +12,7 @@ import (
 )
 
 func NewMockFFmpeg(data string) *MockFFmpeg {
-	return &MockFFmpeg{Reader: strings.NewReader(data)}
+	return &MockFFmpeg{Reader: strings.NewReader(data), ProbeAvailable: true}
 }
 
 type MockFFmpeg struct {
@@ -21,10 +21,15 @@ type MockFFmpeg struct {
 	closed           atomic.Bool
 	Error            error
 	ProbeAudioResult *ffmpeg.AudioProbeResult
+	ProbeAvailable   bool
 }
 
 func (ff *MockFFmpeg) IsAvailable() bool {
 	return true
+}
+
+func (ff *MockFFmpeg) IsProbeAvailable() bool {
+	return ff.ProbeAvailable
 }
 
 func (ff *MockFFmpeg) Transcode(_ context.Context, _ ffmpeg.TranscodeOptions) (io.ReadCloser, error) {

@@ -49,6 +49,7 @@ type FFmpeg interface {
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
+	IsProbeAvailable() bool
 	Version() string
 }
 
@@ -222,6 +223,19 @@ func (e *ffmpeg) CmdPath() (string, error) {
 func (e *ffmpeg) IsAvailable() bool {
 	_, err := ffmpegCmd()
 	return err == nil
+}
+
+func (e *ffmpeg) IsProbeAvailable() bool {
+	if _, err := ffmpegCmd(); err != nil {
+		return false
+	}
+	probeOnce.Do(func() {
+		probePath := ffprobePath(ffmpegPath)
+		if _, err := exec.LookPath(probePath); err == nil {
+			probeAvail = true
+		}
+	})
+	return probeAvail
 }
 
 // Version executes ffmpeg -version and extracts the version from the output.
@@ -533,4 +547,6 @@ var (
 	ffOnce     sync.Once
 	ffmpegPath string
 	ffmpegErr  error
+	probeOnce  sync.Once
+	probeAvail bool
 )

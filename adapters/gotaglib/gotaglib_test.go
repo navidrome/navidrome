@@ -127,6 +127,17 @@ var _ = Describe("Extractor", func() {
 				Expect(m.Tags).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
 				Expect(m.Tags).To(HaveKeyWithValue("genre", []string{"Rock"}))
 				Expect(m.Tags).To(HaveKeyWithValue("date", []string{"2014"}))
+				// Still as of TagLib v2.2.1, TagLib only maps values in ID3, MP4, and ASF tags
+				// to `originaldate`.
+				if strings.HasSuffix(file, ".mp3") || strings.HasSuffix(file, ".wav") || strings.HasSuffix(file, ".aiff") || strings.HasSuffix(file, ".m4a") || strings.HasSuffix(file, ".wma") {
+					Expect(m.Tags).To(HaveKeyWithValue("originaldate", []string{"1996-11-21"}))
+				}
+				// MP3Tag sets `ORIGYEAR` in several formats for which it has no built-in mapping
+				// for original release dates.
+				Expect(m.Tags).To(Or(
+					HaveKeyWithValue("origyear", []string{"1998-07-28"}),
+					HaveKeyWithValue("----:com.apple.itunes:origyear", []string{"1998-07-28"}),
+				))
 
 				Expect(m.Tags).To(HaveKeyWithValue("bpm", []string{"123"}))
 				Expect(m.Tags).To(Or(

@@ -1164,6 +1164,7 @@ var _ = Describe("Decider", func() {
 				Expect(bitrate).To(Equal(fallbackBitrate))
 			})
 		})
+
 	})
 
 	Describe("ensureProbed", func() {
