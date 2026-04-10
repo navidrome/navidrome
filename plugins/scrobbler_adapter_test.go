@@ -240,6 +240,61 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(names).ToNot(ContainElement("test-metadata-agent"))
 		})
 	})
+
+	Describe("hasFilesystemAccess", func() {
+		It("returns true when allLibraries is true", func() {
+			sp := &ScrobblerPlugin{allLibraries: true}
+			Expect(sp.hasFilesystemAccess(42)).To(BeTrue())
+		})
+
+		It("returns false when allowedLibraryIDs is nil and allLibraries is false", func() {
+			sp := &ScrobblerPlugin{allLibraries: false}
+			Expect(sp.hasFilesystemAccess(1)).To(BeFalse())
+		})
+
+		It("returns false when allowedLibraryIDs is empty and allLibraries is false", func() {
+			sp := &ScrobblerPlugin{allLibraries: false, allowedLibraryIDs: []int{}}
+			Expect(sp.hasFilesystemAccess(1)).To(BeFalse())
+		})
+
+		It("returns true when library ID is in allowedLibraryIDs", func() {
+			sp := &ScrobblerPlugin{
+				allLibraries:      false,
+				allowedLibraryIDs: []int{1, 2, 3},
+			}
+			Expect(sp.hasFilesystemAccess(2)).To(BeTrue())
+		})
+
+		It("returns false when library ID is not in allowedLibraryIDs", func() {
+			sp := &ScrobblerPlugin{
+				allLibraries:      false,
+				allowedLibraryIDs: []int{1, 2, 3},
+			}
+			Expect(sp.hasFilesystemAccess(99)).To(BeFalse())
+		})
+	})
+
+	Describe("mediaFileToTrackInfo", func() {
+		var track *model.MediaFile
+
+		BeforeEach(func() {
+			track = &model.MediaFile{
+				ID:    "track-1",
+				Title: "Test Song",
+				Path:  "/music/test.flac",
+			}
+		})
+
+		It("includes Path when includePath is true", func() {
+			ti := mediaFileToTrackInfo(track, true)
+			Expect(ti.Path).To(Equal("/music/test.flac"))
+		})
+
+		It("omits Path when includePath is false", func() {
+			ti := mediaFileToTrackInfo(track, false)
+			Expect(ti.Path).To(BeEmpty())
+		})
+	})
 })
 
 var _ = Describe("mapScrobblerError", func() {
