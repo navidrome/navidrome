@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -215,7 +216,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = &mf.BirthTime
+	child.Created = P(mf.BirthTime)
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -391,9 +392,12 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 		return nil
 	}
 	var discTitles []responses.DiscTitle
+	// Hoist UpdatedAt to a single stack-local so &updatedAt doesn't force the
+	// whole model.Album parameter onto the heap.
+	updatedAt := a.UpdatedAt
 	for num, title := range a.Discs {
 		artID := model.NewArtworkID(model.KindDiscArtwork,
-			model.DiscArtworkID(a.ID, num), &a.UpdatedAt)
+			model.DiscArtworkID(a.ID, num), &updatedAt)
 		discTitles = append(discTitles, responses.DiscTitle{
 			Disc:     int32(num),
 			Title:    title,
