@@ -275,13 +275,13 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 
 	// Create a new scrobbler adapter for this plugin with user authorization config
 	return &ScrobblerPlugin{
-		name:             plugin.name,
-		plugin:           plugin,
-		allowedUserIDs:   plugin.allowedUserIDs,
-		allUsers:         plugin.allUsers,
-		userIDMap:        userIDMap,
-		allowedLibraries: plugin.allowedLibraries,
-		allLibraries:     plugin.allLibraries,
+		name:              plugin.name,
+		plugin:            plugin,
+		allowedUserIDs:    plugin.allowedUserIDs,
+		allUsers:          plugin.allUsers,
+		userIDMap:         userIDMap,
+		allowedLibraryIDs: plugin.allowedLibraryIDs,
+		allLibraries:      plugin.allLibraries,
 	}, true
 }
 
@@ -296,10 +296,10 @@ func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
 	}
 
 	return &LyricsPlugin{
-		name:             plugin.name,
-		plugin:           plugin,
-		allowedLibraries: plugin.allowedLibraries,
-		allLibraries:     plugin.allLibraries,
+		name:              plugin.name,
+		plugin:            plugin,
+		allowedLibraryIDs: plugin.allowedLibraryIDs,
+		allLibraries:      plugin.allLibraries,
 	}, true
 }
 

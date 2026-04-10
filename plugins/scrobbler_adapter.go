@@ -34,13 +34,13 @@ func init() {
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
-	name             string
-	plugin           *plugin
-	allowedUserIDs   []string            // User IDs this plugin can access (from DB configuration)
-	allUsers         bool                // If true, plugin can access all users
-	userIDMap        map[string]struct{} // Cached map for fast lookups
-	allowedLibraries []int               // Library IDs this plugin can access (filesystem requires permission)
-	allLibraries     bool                // If true, plugin can access all libraries
+	name              string
+	plugin            *plugin
+	allowedUserIDs    []string            // User IDs this plugin can access (from DB configuration)
+	allUsers          bool                // If true, plugin can access all users
+	userIDMap         map[string]struct{} // Cached map for fast lookups
+	allowedLibraryIDs []int               // Library IDs this plugin can access (from DB configuration)
+	allLibraries      bool                // If true, plugin can access all libraries
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler.
@@ -141,7 +141,7 @@ func (s *ScrobblerPlugin) hasFilesystemAccess(libID int) bool {
 	if s.allLibraries {
 		return true
 	}
-	return slices.Contains(s.allowedLibraries, libID)
+	return slices.Contains(s.allowedLibraryIDs, libID)
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef

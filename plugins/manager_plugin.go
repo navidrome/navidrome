@@ -12,17 +12,17 @@ import (
 
 // plugin represents a loaded plugin
 type plugin struct {
-	name             string // Plugin name (from filename)
-	path             string // Path to the wasm file
-	manifest         *Manifest
-	compiled         *extism.CompiledPlugin
-	capabilities     []Capability // Auto-detected capabilities based on exported functions
-	closers          []io.Closer  // Cleanup functions to call on unload
-	metrics          PluginMetricsRecorder
-	allowedUserIDs   []string // User IDs this plugin can access (from DB configuration)
-	allUsers         bool     // If true, plugin can access all users
-	allowedLibraries []int    // Library IDs this plugin can access (from DB configuration)
-	allLibraries     bool     // If true, plugin can access all libraries
+	name              string // Plugin name (from filename)
+	path              string // Path to the wasm file
+	manifest          *Manifest
+	compiled          *extism.CompiledPlugin
+	capabilities      []Capability // Auto-detected capabilities based on exported functions
+	closers           []io.Closer  // Cleanup functions to call on unload
+	metrics           PluginMetricsRecorder
+	allowedUserIDs    []string // User IDs this plugin can access (from DB configuration)
+	allUsers          bool     // If true, plugin can access all users
+	allowedLibraryIDs []int    // Library IDs this plugin can access (from DB configuration)
+	allLibraries      bool     // If true, plugin can access all libraries
 }
 
 // instance creates a new plugin instance for the given context.

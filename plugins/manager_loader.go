@@ -375,17 +375,17 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	m.mu.Lock()
 	m.plugins[p.ID] = &plugin{
-		name:             p.ID,
-		path:             p.Path,
-		manifest:         pkg.Manifest,
-		compiled:         compiled,
-		capabilities:     capabilities,
-		closers:          closers,
-		metrics:          m.metrics,
-		allowedUserIDs:   allowedUsers,
-		allUsers:         p.AllUsers,
-		allowedLibraries: allowedLibraries,
-		allLibraries:     p.AllLibraries,
+		name:              p.ID,
+		path:              p.Path,
+		manifest:          pkg.Manifest,
+		compiled:          compiled,
+		capabilities:      capabilities,
+		closers:           closers,
+		metrics:           m.metrics,
+		allowedUserIDs:    allowedUsers,
+		allUsers:          p.AllUsers,
+		allowedLibraryIDs: allowedLibraries,
+		allLibraries:      p.AllLibraries,
 	}
 	m.mu.Unlock()
 

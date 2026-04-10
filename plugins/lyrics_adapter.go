@@ -24,10 +24,10 @@ func init() {
 
 // LyricsPlugin adapts a WASM plugin with the Lyrics capability.
 type LyricsPlugin struct {
-	name             string
-	plugin           *plugin
-	allowedLibraries []int // Library IDs this plugin can access (filesystem requires permission)
-	allLibraries     bool  // If true, plugin can access all libraries
+	name              string
+	plugin            *plugin
+	allowedLibraryIDs []int
+	allLibraries      bool
 }
 
 // GetLyrics calls the plugin to fetch lyrics, then parses the raw text responses
@@ -66,5 +66,5 @@ func (l *LyricsPlugin) hasFilesystemAccess(libID int) bool {
 	if l.allLibraries {
 		return true
 	}
-	return slices.Contains(l.allowedLibraries, libID)
+	return slices.Contains(l.allowedLibraryIDs, libID)
 }
