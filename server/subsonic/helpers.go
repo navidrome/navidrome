@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -318,16 +319,18 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
-// albumCreatedAt returns a non-zero timestamp for the album's `created` field,
-// which is required by the OpenSubsonic spec but may be zero on legacy DB rows.
-func albumCreatedAt(al model.Album) *time.Time {
+// albumCreatedAt returns a best-effort timestamp for the album's `created`
+// field, which is required by the OpenSubsonic spec but may be zero on legacy
+// DB rows. Falls back to UpdatedAt → ImportedAt; can still return zero if all
+// three are unset.
+func albumCreatedAt(al model.Album) time.Time {
 	if !al.CreatedAt.IsZero() {
-		return &al.CreatedAt
+		return al.CreatedAt
 	}
 	if !al.UpdatedAt.IsZero() {
-		return &al.UpdatedAt
+		return al.UpdatedAt
 	}
-	return &al.ImportedAt
+	return al.ImportedAt
 }
 
 func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
@@ -342,7 +345,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
 	child.CoverArt = al.CoverArtID().String()
-	child.Created = albumCreatedAt(al)
+	child.Created = P(albumCreatedAt(al))
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID
 	child.Duration = int32(al.Duration)
@@ -434,7 +437,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.PlayCount = album.PlayCount
 	dir.Year = int32(cmp.Or(album.MaxOriginalYear, album.MaxYear))
 	dir.Genre = album.Genre
-	dir.Created = albumCreatedAt(album)
+	dir.Created = P(albumCreatedAt(album))
 	if album.Starred {
 		dir.Starred = album.StarredAt
 	}
