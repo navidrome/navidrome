@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"slices"
 
 	extism "github.com/extism/go-sdk"
 	"github.com/tetratelabs/wazero"
@@ -23,6 +24,7 @@ type plugin struct {
 	allUsers          bool     // If true, plugin can access all users
 	allowedLibraryIDs []int    // Library IDs this plugin can access (from DB configuration)
 	allLibraries      bool     // If true, plugin can access all libraries
+	hasFilesystemPerm bool     // If true, plugin has filesystem access
 }
 
 // instance creates a new plugin instance for the given context.
@@ -48,4 +50,14 @@ func (p *plugin) Close() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (p *plugin) hasLibraryFilesystemAccess(libID int) bool {
+	if !p.hasFilesystemPerm {
+		return false
+	}
+	if p.allLibraries {
+		return true
+	}
+	return slices.Contains(p.allowedLibraryIDs, libID)
 }

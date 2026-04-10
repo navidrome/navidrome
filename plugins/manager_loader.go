@@ -386,6 +386,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allUsers:          p.AllUsers,
 		allowedLibraryIDs: allowedLibraries,
 		allLibraries:      p.AllLibraries,
+		hasFilesystemPerm: hasFilesystemPermission(pkg.Manifest),
 	}
 	m.mu.Unlock()
 
@@ -449,4 +450,11 @@ func buildAllowedPaths(ctx context.Context, libraries model.Libraries, allowedLi
 		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
 	}
 	return allowedPaths
+}
+
+// hasFilesystemPermission checks if a plugin has filesystem permission.
+func hasFilesystemPermission(m *Manifest) bool {
+	return m.Permissions != nil &&
+		m.Permissions.Library != nil &&
+		m.Permissions.Library.Filesystem
 }

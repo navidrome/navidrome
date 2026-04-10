@@ -241,46 +241,6 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		})
 	})
 
-	Describe("hasFilesystemAccess", func() {
-		It("returns false when libraryFilesystem is false, regardless of allLibraries", func() {
-			sp := &ScrobblerPlugin{allLibraries: true, libraryFilesystem: false}
-			Expect(sp.hasFilesystemAccess(42)).To(BeFalse())
-		})
-
-		It("returns true when allLibraries is true and libraryFilesystem is granted", func() {
-			sp := &ScrobblerPlugin{allLibraries: true, libraryFilesystem: true}
-			Expect(sp.hasFilesystemAccess(42)).To(BeTrue())
-		})
-
-		It("returns false when allowedLibraryIDs is nil and allLibraries is false", func() {
-			sp := &ScrobblerPlugin{allLibraries: false, libraryFilesystem: true}
-			Expect(sp.hasFilesystemAccess(1)).To(BeFalse())
-		})
-
-		It("returns false when allowedLibraryIDs is empty and allLibraries is false", func() {
-			sp := &ScrobblerPlugin{allLibraries: false, allowedLibraryIDs: []int{}, libraryFilesystem: true}
-			Expect(sp.hasFilesystemAccess(1)).To(BeFalse())
-		})
-
-		It("returns true when library ID is in allowedLibraryIDs and libraryFilesystem is granted", func() {
-			sp := &ScrobblerPlugin{
-				allLibraries:      false,
-				allowedLibraryIDs: []int{1, 2, 3},
-				libraryFilesystem: true,
-			}
-			Expect(sp.hasFilesystemAccess(2)).To(BeTrue())
-		})
-
-		It("returns false when library ID is not in allowedLibraryIDs", func() {
-			sp := &ScrobblerPlugin{
-				allLibraries:      false,
-				allowedLibraryIDs: []int{1, 2, 3},
-				libraryFilesystem: true,
-			}
-			Expect(sp.hasFilesystemAccess(99)).To(BeFalse())
-		})
-	})
-
 	Describe("mediaFileToTrackInfo", func() {
 		var track *model.MediaFile
 

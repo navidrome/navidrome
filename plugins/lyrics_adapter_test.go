@@ -96,44 +96,4 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(names).ToNot(ContainElement("test-metadata-agent"))
 		})
 	})
-
-	Describe("hasFilesystemAccess", func() {
-		It("returns true when allLibraries is true and filesystem access is granted", func() {
-			lp := &LyricsPlugin{allLibraries: true, libraryFilesystem: true}
-			Expect(lp.hasFilesystemAccess(42)).To(BeTrue())
-		})
-
-		It("returns false when filesystem access is not granted", func() {
-			lp := &LyricsPlugin{allLibraries: true, libraryFilesystem: false}
-			Expect(lp.hasFilesystemAccess(42)).To(BeFalse())
-		})
-
-		It("returns false when allowedLibraryIDs is nil and allLibraries is false", func() {
-			lp := &LyricsPlugin{allLibraries: false, libraryFilesystem: true}
-			Expect(lp.hasFilesystemAccess(1)).To(BeFalse())
-		})
-
-		It("returns false when allowedLibraryIDs is empty and allLibraries is false", func() {
-			lp := &LyricsPlugin{allLibraries: false, allowedLibraryIDs: []int{}, libraryFilesystem: true}
-			Expect(lp.hasFilesystemAccess(1)).To(BeFalse())
-		})
-
-		It("returns true when library ID is in allowedLibraryIDs and filesystem access is granted", func() {
-			lp := &LyricsPlugin{
-				allLibraries:      false,
-				allowedLibraryIDs: []int{1, 2, 3},
-				libraryFilesystem: true,
-			}
-			Expect(lp.hasFilesystemAccess(2)).To(BeTrue())
-		})
-
-		It("returns false when library ID is not in allowedLibraryIDs", func() {
-			lp := &LyricsPlugin{
-				allLibraries:      false,
-				allowedLibraryIDs: []int{1, 2, 3},
-				libraryFilesystem: true,
-			}
-			Expect(lp.hasFilesystemAccess(99)).To(BeFalse())
-		})
-	})
 })
