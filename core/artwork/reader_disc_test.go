@@ -121,6 +121,24 @@ var _ = Describe("Disc Artwork Reader", func() {
 			}
 		})
 
+		It("numbered filename still filters by disc even when unnumbered files exist", func() {
+			f1 := createFile("album/cover.png")
+			f2 := createFile("album/disc1.jpg")
+			f3 := createFile("album/disc2.jpg")
+			reader := &discArtworkReader{
+				discNumber:  2,
+				imgFiles:    []string{f1, f2, f3},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
+
+			sf := reader.fromExternalFile(ctx, "disc*.*")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f3))
+		})
+
 		It("matches file without number in multi-folder album by folder", func() {
 			f1 := createFile("album/cd1/disc.jpg")
 			f2 := createFile("album/cd2/disc.jpg")
