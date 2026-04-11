@@ -32,7 +32,7 @@
 		<Property Id="ND_DATAFOLDER" Value="C:\ProgramData\Navidrome">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_DATAFOLDER' Type='raw' />
 		</Property>
-		<Property Id="INSTALLATIONDIRECTORY" Value="UNSET">
+		<Property Id="INSTALLATIONDIRECTORY">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLATIONDIRECTORY' Type='raw' />
 		</Property>
 
