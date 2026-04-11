@@ -2,10 +2,12 @@
 <?if $(var.Platform) = x64 ?>
 	<?define ProductName = "Navidrome" ?>
 	<?define UpgradeCode = "2f154974-1443-41b6-b808-b8be530291b3" ?>
+	<?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
 	<?define Win64 = 'yes' ?>
 <?else ?>
 	<?define ProductName = "Navidrome (x86)" ?>
 	<?define UpgradeCode = "2f0572e4-7e8c-42e7-a186-77f70ec0911a" ?>
+	<?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
 	<?define Win64 = "no" ?>
 <?endif ?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
