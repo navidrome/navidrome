@@ -16,7 +16,7 @@
         
         <!-- Install directory -->
         <Control Id="NameLabel1" Type="Text" X="30" Y="60" Width="220" Height="15" TabSkip="no" Text="&amp;Installation Folder (executable and configuration file):" />
-        <Control Id="NameEdit1" Type="Edit" X="30" Y="75" Width="220" Height="18" Property="INSTALLDIR" Text="[INSTALLDIR]" />
+        <Control Id="NameEdit1" Type="Edit" X="30" Y="75" Width="220" Height="18" Property="INSTALLATIONDIRECTORY" Text="[INSTALLATIONDIRECTORY]" />
 
         <!-- NAVIDROME_PORT -->
         <Control Id="NameLabel2" Type="Text" X="30" Y="93" Width="100" Height="15" TabSkip="no" Text="&amp;Port:" />
