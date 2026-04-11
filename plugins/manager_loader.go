@@ -386,7 +386,6 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allUsers:          p.AllUsers,
 		allowedLibraryIDs: allowedLibraries,
 		allLibraries:      p.AllLibraries,
-		hasFilesystemPerm: pkg.Manifest.HasLibraryFilesystemPermission(),
 	}
 	m.mu.Unlock()
 
