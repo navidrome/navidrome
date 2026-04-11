@@ -49,6 +49,11 @@ type Playlists interface {
 	// REST adapters
 	NewRepository(ctx context.Context) rest.Repository
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
+
+	// Permission Management
+	GetPermissionsForPlaylist(ctx context.Context, playlistID string) (model.PlaylistPermissions, error)
+	AddPermission(ctx context.Context, playlistID string, userID string, permission model.Permission) error
+	RemovePermission(ctx context.Context, playlistID string, userID string) error
 }
 
 // ImageUploadService is a local interface satisfied by core.ImageUploadService.
