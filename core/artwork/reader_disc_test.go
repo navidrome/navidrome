@@ -85,17 +85,20 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(path).To(Equal(f1))
 		})
 
-		It("skips file without number in single-folder album", func() {
-			f1 := createFile("album/disc.jpg")
+		It("matches file without number in single-folder album (shared disc art)", func() {
+			f1 := createFile("album/cover.png")
 			reader := &discArtworkReader{
 				discNumber:  1,
 				imgFiles:    []string{f1},
 				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
 			}
 
-			sf := reader.fromExternalFile(ctx, "disc*.*")
-			r, _, _ := sf()
-			Expect(r).To(BeNil())
+			sf := reader.fromExternalFile(ctx, "cover.*")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
 		})
 
 		It("matches file without number in multi-folder album by folder", func() {
