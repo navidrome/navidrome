@@ -223,8 +223,9 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 //     the number equals the target disc number.
 //   - If no number is found and this is a multi-folder album, the file matches if
 //     it's in a folder containing tracks for this disc.
-//   - If no number is found and this is a single-folder album, the file is skipped
-//     (ambiguous).
+//   - If no number is found and this is a single-folder album, the file matches
+//     for every disc (shared disc art). DiscArtPriority ordering decides whether
+//     a more specific numbered pattern wins.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range d.imgFiles {
@@ -239,22 +240,22 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 			}
 
 			// Try to extract disc number from filename
-			num, hasNum := extractDiscNumber(pattern, name)
-			if hasNum {
-				// File has a disc number — must match target disc
+			if num, hasNum := extractDiscNumber(pattern, name); hasNum {
+				// Numbered filename: must match target disc.
 				if num != d.discNumber {
 					continue
 				}
 			} else if d.isMultiFolder {
-				// No number, multi-folder: match by folder association
+				// Unnumbered, multi-folder: match by folder association — the
+				// image lives alongside the tracks of a specific disc.
 				dir := filepath.Dir(file)
 				if !d.discFolders[dir] {
 					continue
 				}
-			} else {
-				// No number, single-folder: ambiguous, skip
-				continue
 			}
+			// Unnumbered, single-folder: shared across all discs of the album.
+			// Accept the match; DiscArtPriority order decides whether a more
+			// specific numbered pattern wins.
 
 			f, err := os.Open(file)
 			if err != nil {
