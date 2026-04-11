@@ -32,8 +32,8 @@
 		<Property Id="ND_DATAFOLDER" Value="C:\ProgramData\Navidrome">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_DATAFOLDER' Type='raw' />
 		</Property>
-		<Property Id="INSTALLDIR">
-			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLDIR' Type='raw' />
+		<Property Id="INSTALLATIONDIRECTORY">
+			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLATIONDIRECTORY' Type='raw' />
 		</Property>
 
 		<UIRef Id="Navidrome_UI_Flow"/>
@@ -51,12 +51,12 @@
 					</Component>
 
 					<Component Id="Configuration" Guid="9e17ed4b-ef13-44bf-a605-ed4132cff7f6" Win64="$(var.Win64)">
-						<IniFile Id="ConfigurationPort" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="Port" Section="default" Value="&apos;[ND_PORT]&apos;" />
-						<IniFile Id="ConfigurationMusicDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="MusicFolder" Section="default" Value="&apos;[ND_MUSICFOLDER]&apos;" />
-						<IniFile Id="ConfigurationDataDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="DataFolder" Section="default" Value="&apos;[ND_DATAFOLDER]&apos;" />
-						<IniFile Id="FFmpegPath" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="FFmpegPath" Section="default" Value="&apos;[INSTALLDIR]ffmpeg.exe&apos;" />
+						<IniFile Id="ConfigurationPort" Name="navidrome.ini" Action="createLine" Directory="INSTALLATIONDIRECTORY" Key="Port" Section="default" Value="&apos;[ND_PORT]&apos;" />
+						<IniFile Id="ConfigurationMusicDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLATIONDIRECTORY" Key="MusicFolder" Section="default" Value="&apos;[ND_MUSICFOLDER]&apos;" />
+						<IniFile Id="ConfigurationDataDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLATIONDIRECTORY" Key="DataFolder" Section="default" Value="&apos;[ND_DATAFOLDER]&apos;" />
+						<IniFile Id="FFmpegPath" Name="navidrome.ini" Action="createLine" Directory="INSTALLATIONDIRECTORY" Key="FFmpegPath" Section="default" Value="&apos;[INSTALLATIONDIRECTORY]ffmpeg.exe&apos;" />
 
-						<RegistryValue Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLDIR' Value='[INSTALLDIR]' Type='string' />
+						<RegistryValue Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLATIONDIRECTORY' Value='[INSTALLATIONDIRECTORY]' Type='string' />
 						<RegistryValue Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_PORT' Value='[ND_PORT]' Type='string' />
 						<RegistryValue Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_MUSICFOLDER' Value='[ND_MUSICFOLDER]' Type='string' />
 						<RegistryValue Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_DATAFOLDER' Value='[ND_DATAFOLDER]' Type='string' />
@@ -72,7 +72,7 @@
 							Start='auto'
 							Type='ownProcess'
 							Vital='yes'
-							Arguments='service execute --configfile &quot;[INSTALLDIR]navidrome.ini&quot; --logfile &quot;[ND_DATAFOLDER]\navidrome.log&quot;'
+							Arguments='service execute --configfile &quot;[INSTALLATIONDIRECTORY]navidrome.ini&quot; --logfile &quot;[ND_DATAFOLDER]\navidrome.log&quot;'
 						/>
 						<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
 					</Component>
@@ -97,6 +97,11 @@
 		<InstallUISequence>
 			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
 		</InstallUISequence>
+
+		<CustomAction Id="CopyInstallDirToInstallationDirectory" Property="INSTALLATIONDIRECTORY" Value="[INSTALLDIR]" Execute="firstSequence" />
+		<InstallExecuteSequence>
+			<Custom Action="CopyInstallDirToInstallationDirectory" After="MyCustomPropertiesDlg" >Not Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
+		</InstallExecuteSequence>
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='LICENSEFile' />
