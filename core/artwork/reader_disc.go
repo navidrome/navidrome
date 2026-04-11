@@ -215,18 +215,10 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 }
 
 // fromExternalFile returns a sourceFunc that matches image files against a glob
-// pattern with disc-number-aware filtering.
-//
-// Within a single pattern, a numbered filename whose number equals the target
-// disc always wins over an unnumbered candidate. An unnumbered candidate is
-// returned only as a fallback, and only when:
-//   - the album has multiple folders and the file lives in a folder containing
-//     tracks for this disc (the image belongs to a specific disc); or
-//   - the album has a single folder (the file is shared across every disc).
-//
-// The caller (fromDiscArtPriority) already lowercases the pattern, so this
-// function assumes pattern is lowercase and only lowercases each filename.
+// pattern. A numbered filename whose number equals the target disc wins over
+// any unnumbered candidate; callers must pass a lowercase pattern.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
+	hasWildcard := strings.ContainsRune(pattern, '*')
 	return func() (io.ReadCloser, string, error) {
 		var fallback string
 		for _, file := range d.imgFiles {
@@ -241,21 +233,20 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 
-			if num, hasNum := extractDiscNumber(pattern, name); hasNum {
-				// Numbered filename wins immediately when its number matches.
-				if num != d.discNumber {
-					continue
+			if hasWildcard {
+				if num, hasNum := extractDiscNumber(pattern, name); hasNum {
+					if num != d.discNumber {
+						continue
+					}
+					f, err := os.Open(file)
+					if err != nil {
+						log.Warn(ctx, "Could not open disc art file", "file", file, err)
+						continue
+					}
+					return f, file, nil
 				}
-				f, err := os.Open(file)
-				if err != nil {
-					log.Warn(ctx, "Could not open disc art file", "file", file, err)
-					continue
-				}
-				return f, file, nil
 			}
 
-			// Unnumbered: remember the first viable candidate as a fallback,
-			// but keep scanning for a numbered match that should take precedence.
 			if fallback != "" {
 				continue
 			}
@@ -263,6 +254,11 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 			fallback = file
+			// Literal patterns have no numbered variants to prefer, so
+			// stop as soon as we have a viable fallback.
+			if !hasWildcard {
+				break
+			}
 		}
 
 		if fallback != "" {
