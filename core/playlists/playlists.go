@@ -213,11 +213,18 @@ func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playli
 	if err != nil {
 		return nil, fmt.Errorf("failed getting playlist with ID %q: %w", id, err)
 	}
-	usr, _ := request.UserFrom(ctx)
-	if !usr.IsAdmin && pls.OwnerID != usr.ID {
-		return nil, model.ErrNotAuthorized
+	if hasOwnerPermission(ctx, pls) {
+		return pls, nil
 	}
-	return pls, nil
+	return nil, model.ErrNotAuthorized
+}
+
+func hasOwnerPermission(ctx context.Context, pls *model.Playlist) bool {
+	user, _ := request.UserFrom(ctx)
+	if user.IsAdmin || pls.OwnerID == user.ID {
+		return true
+	}
+	return false
 }
 
 // checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
