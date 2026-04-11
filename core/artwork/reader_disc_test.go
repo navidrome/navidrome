@@ -131,7 +131,6 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
 			}
 
-			// Numbered pattern: disc-number filter must still return disc 2.
 			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, path, err := sf()
 			Expect(err).ToNot(HaveOccurred())
@@ -139,9 +138,6 @@ var _ = Describe("Disc Artwork Reader", func() {
 			r.Close()
 			Expect(path).To(Equal(f3))
 
-			// Unnumbered pattern against the same reader: single-folder shared
-			// disc art branch must still return cover.png even though numbered
-			// files are present in imgFiles.
 			sf = reader.fromExternalFile(ctx, "cover.*")
 			r, path, err = sf()
 			Expect(err).ToNot(HaveOccurred())
@@ -159,7 +155,6 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
 			}
 
-			// Numbered pattern first → disc1.jpg wins.
 			ff := reader.fromDiscArtPriority(ctx, nil, "disc*.*, cover.*")
 			Expect(ff).To(HaveLen(2))
 			r, path, err := ff[0]()
@@ -167,7 +162,6 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(path).To(Equal(f2))
 			r.Close()
 
-			// Unnumbered pattern first → cover.png wins.
 			ff = reader.fromDiscArtPriority(ctx, nil, "cover.*, disc*.*")
 			Expect(ff).To(HaveLen(2))
 			r, path, err = ff[0]()

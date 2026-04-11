@@ -172,10 +172,9 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 // It finds the portion of the filename that the wildcard matched and parses leading
 // digits as the disc number. Returns (0, false) if the pattern doesn't match or
 // no leading digits are found in the wildcard portion.
+//
+// Both pattern and filename must already be lowercased by the caller.
 func extractDiscNumber(pattern, filename string) (int, bool) {
-	filename = strings.ToLower(filename)
-	pattern = strings.ToLower(pattern)
-
 	matched, err := filepath.Match(pattern, filename)
 	if err != nil || !matched {
 		return 0, false
@@ -227,10 +226,12 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 //     for every disc (shared disc art). DiscArtPriority ordering decides whether
 //     a more specific numbered pattern wins.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
+	pattern = strings.ToLower(pattern)
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range d.imgFiles {
 			_, name := filepath.Split(file)
-			match, err := filepath.Match(pattern, strings.ToLower(name))
+			name = strings.ToLower(name)
+			match, err := filepath.Match(pattern, name)
 			if err != nil {
 				log.Warn(ctx, "Error matching disc art file to pattern", "pattern", pattern, "file", file)
 				continue
@@ -239,7 +240,6 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 
-			// Try to extract disc number from filename
 			if num, hasNum := extractDiscNumber(pattern, name); hasNum {
 				// Numbered filename: must match target disc.
 				if num != d.discNumber {
@@ -253,9 +253,6 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 					continue
 				}
 			}
-			// Unnumbered, single-folder: shared across all discs of the album.
-			// Accept the match; DiscArtPriority order decides whether a more
-			// specific numbered pattern wins.
 
 			f, err := os.Open(file)
 			if err != nil {
