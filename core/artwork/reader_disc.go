@@ -217,17 +217,18 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 // fromExternalFile returns a sourceFunc that matches image files against a glob
 // pattern with disc-number-aware filtering.
 //
-// Matching rules:
-//   - If a disc number can be extracted from the filename, the file matches only if
-//     the number equals the target disc number.
-//   - If no number is found and this is a multi-folder album, the file matches if
-//     it's in a folder containing tracks for this disc.
-//   - If no number is found and this is a single-folder album, the file matches
-//     for every disc (shared disc art). DiscArtPriority ordering decides whether
-//     a more specific numbered pattern wins.
+// Within a single pattern, a numbered filename whose number equals the target
+// disc always wins over an unnumbered candidate. An unnumbered candidate is
+// returned only as a fallback, and only when:
+//   - the album has multiple folders and the file lives in a folder containing
+//     tracks for this disc (the image belongs to a specific disc); or
+//   - the album has a single folder (the file is shared across every disc).
+//
+// The caller (fromDiscArtPriority) already lowercases the pattern, so this
+// function assumes pattern is lowercase and only lowercases each filename.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
-	pattern = strings.ToLower(pattern)
 	return func() (io.ReadCloser, string, error) {
+		var fallback string
 		for _, file := range d.imgFiles {
 			_, name := filepath.Split(file)
 			name = strings.ToLower(name)
@@ -241,25 +242,36 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 			}
 
 			if num, hasNum := extractDiscNumber(pattern, name); hasNum {
-				// Numbered filename: must match target disc.
+				// Numbered filename wins immediately when its number matches.
 				if num != d.discNumber {
 					continue
 				}
-			} else if d.isMultiFolder {
-				// Unnumbered, multi-folder: match by folder association — the
-				// image lives alongside the tracks of a specific disc.
-				dir := filepath.Dir(file)
-				if !d.discFolders[dir] {
+				f, err := os.Open(file)
+				if err != nil {
+					log.Warn(ctx, "Could not open disc art file", "file", file, err)
 					continue
 				}
+				return f, file, nil
 			}
 
-			f, err := os.Open(file)
-			if err != nil {
-				log.Warn(ctx, "Could not open disc art file", "file", file, err)
+			// Unnumbered: remember the first viable candidate as a fallback,
+			// but keep scanning for a numbered match that should take precedence.
+			if fallback != "" {
 				continue
 			}
-			return f, file, nil
+			if d.isMultiFolder && !d.discFolders[filepath.Dir(file)] {
+				continue
+			}
+			fallback = file
+		}
+
+		if fallback != "" {
+			f, err := os.Open(fallback)
+			if err != nil {
+				log.Warn(ctx, "Could not open disc art file", "file", fallback, err)
+			} else {
+				return f, fallback, nil
+			}
 		}
 		return nil, "", fmt.Errorf("disc %d: pattern '%s' not matched by files", d.discNumber, pattern)
 	}

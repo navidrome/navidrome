@@ -170,6 +170,47 @@ var _ = Describe("Disc Artwork Reader", func() {
 			r.Close()
 		})
 
+		It("prefers disc-numbered match over shared unnumbered match within the same pattern", func() {
+			// Natural sort of basenames puts disc < disc1 < disc2, so
+			// disc.jpg appears first in imgFiles. The loop must not return
+			// disc.jpg for disc 2 when disc2.jpg also matches the pattern.
+			f1 := createFile("album/disc.jpg")
+			f2 := createFile("album/disc1.jpg")
+			f3 := createFile("album/disc2.jpg")
+			reader := &discArtworkReader{
+				discNumber:  2,
+				imgFiles:    []string{f1, f2, f3},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
+
+			sf := reader.fromExternalFile(ctx, "disc*.*")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f3))
+		})
+
+		It("falls back to shared unnumbered match when no numbered file matches the target disc", func() {
+			// Disc 3 has no disc3.jpg; disc.jpg should be used as the shared
+			// fallback so a disc without dedicated art still gets something.
+			f1 := createFile("album/disc.jpg")
+			f2 := createFile("album/disc1.jpg")
+			f3 := createFile("album/disc2.jpg")
+			reader := &discArtworkReader{
+				discNumber:  3,
+				imgFiles:    []string{f1, f2, f3},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
+
+			sf := reader.fromExternalFile(ctx, "disc*.*")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
+		})
+
 		It("matches file without number in multi-folder album by folder", func() {
 			f1 := createFile("album/cd1/disc.jpg")
 			f2 := createFile("album/cd2/disc.jpg")
