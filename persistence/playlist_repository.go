@@ -23,6 +23,7 @@ type playlistRepository struct {
 type dbPlaylist struct {
 	model.Playlist `structs:",flatten"`
 	Rules          sql.NullString `structs:"-"`
+	Permission     sql.NullString `structs:"-"`
 }
 
 func (p *dbPlaylist) PostScan() error {
@@ -166,6 +167,7 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 		return nil, model.ErrNotFound
 	}
 
+	setPermissionField(&pls[0], loggedUser(r.ctx))
 	return &pls[0].Playlist, nil
 }
 
@@ -176,11 +178,34 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	if err != nil {
 		return nil, err
 	}
+
+	user := loggedUser(r.ctx)
+
 	playlists := make(model.Playlists, len(res))
 	for i, p := range res {
+		setPermissionField(&p, user)
 		playlists[i] = p.Playlist
 	}
 	return playlists, err
+}
+
+func setPermissionField(dbPls *dbPlaylist, user *model.User) {
+	if dbPls.Playlist.OwnerID == user.ID {
+		dbPls.Playlist.Permission = "owner"
+		return
+	}
+	if user.IsAdmin {
+		dbPls.Playlist.Permission = "admin"
+		return
+	}
+	if dbPls.Permission.Valid {
+		dbPls.Playlist.Permission = dbPls.Permission.String
+		return
+	}
+	if dbPls.Public {
+		dbPls.Playlist.Permission = "viewer"
+		return
+	}
 }
 
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
@@ -411,5 +436,7 @@ func (r *playlistRepository) renumber(id string) error {
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
+
 var _ rest.Repository = (*playlistRepository)(nil)
+
 var _ rest.Persistable = (*playlistRepository)(nil)
