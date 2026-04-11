@@ -260,14 +260,32 @@ func (s *playlists) hasEditorPermission(ctx context.Context, playlistID string) 
 
 // checkTracksEditable verifies the user can modify tracks (user is admin / owner or editor + not smart playlist).
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
-	pls, err := s.checkOwner(ctx, playlistID)
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
 		return nil, err
 	}
+
 	if pls.IsSmartPlaylist() {
+		// It's a smart playlist, no need to continue with actual permission checks
 		return nil, model.ErrNotAuthorized
 	}
-	return pls, nil
+
+	// First check: is owner / admin?
+	if hasOwnerPermission(ctx, pls) {
+		// User is playlist owner or admin
+		return pls, nil
+	}
+
+	// Second check: has user edit permission on playlist?
+	hasEditorPerms, err := s.hasEditorPermission(ctx, playlistID)
+	if err != nil {
+		return nil, err
+	}
+	if hasEditorPerms {
+		return pls, nil
+	}
+
+	return nil, model.ErrNotAuthorized
 }
 
 // updateMetadata applies optional metadata changes to a playlist and persists it.
