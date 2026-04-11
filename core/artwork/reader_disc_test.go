@@ -139,6 +139,32 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(path).To(Equal(f3))
 		})
 
+		It("respects DiscArtPriority order when both numbered and unnumbered patterns match", func() {
+			f1 := createFile("album/cover.png")
+			f2 := createFile("album/disc1.jpg")
+			reader := &discArtworkReader{
+				discNumber:  1,
+				imgFiles:    []string{f1, f2},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
+
+			// Numbered pattern first → disc1.jpg wins.
+			ff := reader.fromDiscArtPriority(ctx, nil, "disc*.*, cover.*")
+			Expect(ff).To(HaveLen(2))
+			r, path, err := ff[0]()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(path).To(Equal(f2))
+			r.Close()
+
+			// Unnumbered pattern first → cover.png wins.
+			ff = reader.fromDiscArtPriority(ctx, nil, "cover.*, disc*.*")
+			Expect(ff).To(HaveLen(2))
+			r, path, err = ff[0]()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(path).To(Equal(f1))
+			r.Close()
+		})
+
 		It("matches file without number in multi-folder album by folder", func() {
 			f1 := createFile("album/cd1/disc.jpg")
 			f2 := createFile("album/cd2/disc.jpg")
