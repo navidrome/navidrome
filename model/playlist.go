@@ -131,6 +131,7 @@ type PlaylistRepository interface {
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)
+	Permissions(playlistId string) PlaylistPermissionRepository
 }
 
 type PlaylistTrack struct {
