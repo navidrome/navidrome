@@ -74,28 +74,38 @@ func smartPlaylistFilter(string, any) Sqlizer {
 	}
 }
 
-func (r *playlistRepository) userFilter() Sqlizer {
+func (r *playlistRepository) userFilter(sel SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
 	if user.IsAdmin {
-		return And{}
+		return sel
 	}
-	return Or{
-		Eq{"public": true},
-		Eq{"owner_id": user.ID},
-	}
+	return sel.
+		LeftJoin("playlist_permissions ON playlist.id = playlist_permissions.playlist_id").
+		Where(Or{
+			Eq{"playlist.owner_id": user.ID},
+			Eq{"playlist.public": true},
+			And{
+				Eq{"playlist_permissions.user_id": user.ID},
+				Or{
+					Eq{"permission": model.PermissionEditor},
+					Eq{"permission": model.PermissionViewer},
+				},
+			},
+		}).
+		Columns("playlist_permissions.permission as permission")
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
+	sq := r.userFilter(Select())
 	return r.count(sq, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+	return r.exists(Eq{"id": id})
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+	return r.delete(Eq{"id": id})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
@@ -130,7 +140,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
+	return r.findBy(Eq{"playlist.id": id})
 }
 
 func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
@@ -157,7 +167,7 @@ func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
-	sel := r.selectPlaylist().Where(sql)
+	sel := r.userFilter(r.selectPlaylist().Where(sql))
 	var pls dbPlaylist
 	if err := r.queryOne(sel, &pls); err != nil {
 		return nil, err
@@ -167,7 +177,8 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	sel := r.selectPlaylist(options...).Where(r.userFilter())
+	options = append(options, model.QueryOptions{Sort: "name"})
+	sel := r.userFilter(r.selectPlaylist(options...))
 	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
 	if err != nil {
@@ -204,9 +215,9 @@ func setPermissionField(dbPls *dbPlaylist, user *model.User) {
 }
 
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
-	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
+	sel := r.userFilter(r.selectPlaylist(model.QueryOptions{Sort: "name"})).
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
-		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
+		Where(Eq{"playlist_tracks.media_file_id": mediaFileId})
 	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
 	if err != nil {
