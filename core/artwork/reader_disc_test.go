@@ -101,6 +101,26 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(path).To(Equal(f1))
 		})
 
+		It("returns shared disc art for every disc number in single-folder album", func() {
+			f1 := createFile("album/shellac.png")
+			makeReader := func(discNum int) *discArtworkReader {
+				return &discArtworkReader{
+					discNumber:  discNum,
+					imgFiles:    []string{f1},
+					discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+				}
+			}
+
+			for _, disc := range []int{1, 2, 5} {
+				sf := makeReader(disc).fromExternalFile(ctx, "shellac.png")
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred(), "disc %d", disc)
+				Expect(r).ToNot(BeNil())
+				r.Close()
+				Expect(path).To(Equal(f1), "disc %d", disc)
+			}
+		})
+
 		It("matches file without number in multi-folder album by folder", func() {
 			f1 := createFile("album/cd1/disc.jpg")
 			f2 := createFile("album/cd2/disc.jpg")
