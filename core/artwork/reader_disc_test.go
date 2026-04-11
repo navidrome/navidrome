@@ -121,7 +121,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			}
 		})
 
-		It("numbered filename still filters by disc even when unnumbered files exist", func() {
+		It("numbered and unnumbered patterns both resolve against the same reader", func() {
 			f1 := createFile("album/cover.png")
 			f2 := createFile("album/disc1.jpg")
 			f3 := createFile("album/disc2.jpg")
@@ -131,12 +131,23 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
 			}
 
+			// Numbered pattern: disc-number filter must still return disc 2.
 			sf := reader.fromExternalFile(ctx, "disc*.*")
 			r, path, err := sf()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(r).ToNot(BeNil())
 			r.Close()
 			Expect(path).To(Equal(f3))
+
+			// Unnumbered pattern against the same reader: single-folder shared
+			// disc art branch must still return cover.png even though numbered
+			// files are present in imgFiles.
+			sf = reader.fromExternalFile(ctx, "cover.*")
+			r, path, err = sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f1))
 		})
 
 		It("respects DiscArtPriority order when both numbered and unnumbered patterns match", func() {
