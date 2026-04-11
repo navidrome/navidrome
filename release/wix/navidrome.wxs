@@ -23,9 +23,6 @@
 		<Property Id='DiskPrompt' Value="Navidrome Install [1]" />
 		<Property Id="REBOOT" Value="ReallySuppress" />
 
-		<Property Id="INSTALLATIONDIRECTORY" Value="[ProgramFiles6432Folder]\Navidrome">
-			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLATIONDIRECTORY' Type='raw' />
-		</Property>
 		<Property Id="ND_PORT" Value="4533">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_PORT' Type='raw' />
 		</Property>
@@ -34,6 +31,10 @@
 		</Property>
 		<Property Id="ND_DATAFOLDER" Value="C:\ProgramData\Navidrome">
 			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='ND_DATAFOLDER' Type='raw' />
+		</Property>
+
+		<Property Id="INSTALLATIONDIRECTORY" Value="[ProgramFiles6432Folder]\Navidrome">
+			<RegistrySearch Root='HKLM' Key='SOFTWARE\Deluan\$(var.ProductName)\Installer' Name='INSTALLATIONDIRECTORY' Type='raw' />
 		</Property>
 
 		<UIRef Id="Navidrome_UI_Flow"/>
@@ -87,12 +88,11 @@
 				</Directory>
 			</Directory>
 
-		</Directory>
-
-		<Directory Id="ND_DATAFOLDER" name="[ND_DATAFOLDER]">
-			<Component Id='PackageFile' Guid='9eec0697-803c-4629-858f-20dc376c960b' Win64="$(var.Win64)">
-				<File Id='package' Name='.package' DiskId='1' Source='.package' KeyPath='no' />
-			</Component>
+			<Directory Id="ND_DATAFOLDER" name="[ND_DATAFOLDER]">
+				<Component Id='PackageFile' Guid='9eec0697-803c-4629-858f-20dc376c960b' Win64="$(var.Win64)">
+					<File Id='package' Name='.package' DiskId='1' Source='.package' KeyPath='no' />
+				</Component>
+			</Directory>
 		</Directory>
 
 		<InstallUISequence>
