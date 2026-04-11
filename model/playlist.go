@@ -26,6 +26,9 @@ type Playlist struct {
 	ExternalImageURL string         `structs:"external_image_url" json:"externalImageUrl,omitempty"`
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
+	// Permission holds the permission the calling uses has on the playlist.
+	// Can be: `owner`, `editor`, `viewer`, `admin`
+	Permission string `structs:"-" json:"permission"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
