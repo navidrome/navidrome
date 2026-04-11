@@ -162,3 +162,25 @@ type PlaylistTrackRepository interface {
 	DeleteAll() error
 	Reorder(pos int, newPos int) error
 }
+
+type PlaylistPermission struct {
+	PlaylistID string     `json:"playlistId"`
+	UserID     string     `json:"userId"`
+	Permission Permission `json:"permission"`
+}
+
+type Permission string
+
+const (
+	PermissionEditor Permission = "editor"
+	PermissionViewer Permission = "viewer"
+)
+
+type PlaylistPermissions []PlaylistPermission
+
+type PlaylistPermissionRepository interface {
+	GetAll() (PlaylistPermissions, error)
+	IsUserAllowed(userID string, permissions []Permission) (bool, error)
+	Put(userID string, permission Permission) error
+	Delete(userID string) error
+}
