@@ -301,7 +301,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Configure filesystem access for library permission
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Library != nil && pkg.Manifest.Permissions.Library.Filesystem {
+	if pkg.Manifest.HasLibraryFilesystemPermission() {
 		adminCtx := adminContext(ctx)
 		libraries, err := m.ds.Library(adminCtx).GetAll()
 		if err != nil {
@@ -375,17 +375,16 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	m.mu.Lock()
 	m.plugins[p.ID] = &plugin{
-		name:              p.ID,
-		path:              p.Path,
-		manifest:          pkg.Manifest,
-		compiled:          compiled,
-		capabilities:      capabilities,
-		closers:           closers,
-		metrics:           m.metrics,
-		allowedUserIDs:    allowedUsers,
-		allUsers:          p.AllUsers,
-		allowedLibraryIDs: allowedLibraries,
-		allLibraries:      p.AllLibraries,
+		name:           p.ID,
+		path:           p.Path,
+		manifest:       pkg.Manifest,
+		compiled:       compiled,
+		capabilities:   capabilities,
+		closers:        closers,
+		metrics:        m.metrics,
+		allowedUserIDs: allowedUsers,
+		allUsers:       p.AllUsers,
+		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
 	}
 	m.mu.Unlock()
 
