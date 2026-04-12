@@ -770,6 +770,73 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
+		Context("Codec channel limits", func() {
+			It("clamps 6-channel FLAC to 2 channels when transcoding to MP3", func() {
+				// Regression test for #5336: ffmpeg's mp3 encoder rejects >2 channels.
+				// The decider must clamp to the codec's hard limit even when no
+				// transcoding profile MaxAudioChannels is configured.
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TranscodeStream.Channels).To(Equal(2))
+				Expect(decision.TargetChannels).To(Equal(2))
+			})
+
+			It("honors a stricter profile MaxAudioChannels over the codec clamp", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 1},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.Channels).To(Equal(1))
+				Expect(decision.TargetChannels).To(Equal(1))
+			})
+
+			It("applies the codec clamp when the profile limit is looser", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 4},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.Channels).To(Equal(2))
+				Expect(decision.TargetChannels).To(Equal(2))
+			})
+
+			It("passes channels through unchanged for codecs with no hard limit", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "m4a", AudioCodec: "aac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("aac"))
+				Expect(decision.TranscodeStream.Channels).To(Equal(6))
+				Expect(decision.TargetChannels).To(Equal(6))
+			})
+		})
+
 		Context("Probe-based lossless detection", func() {
 			It("uses probe codec name for lossless detection", func() {
 				// WavPack files: ffprobe reports codec as "wavpack", suffix is ".wv"
