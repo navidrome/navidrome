@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/dustin/go-humanize"
 	"github.com/go-viper/encoding/ini"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
@@ -80,6 +81,7 @@ type configOptions struct {
 	EnableStarRating                bool
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
+	MaxImageUploadSize              string
 	EnableSharing                   bool
 	ShareURL                        string
 	DefaultShareExpiration          time.Duration
@@ -271,6 +273,8 @@ var (
 	hooks  []func()
 )
 
+const defaultMaxImageUploadSize = "10MB"
+
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
@@ -360,6 +364,7 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
+		validateMaxImageUploadSize,
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
@@ -584,6 +589,14 @@ func validatePurgeMissingOption() error {
 	return nil
 }
 
+func validateMaxImageUploadSize() error {
+	if _, err := humanize.ParseBytes(Server.MaxImageUploadSize); err != nil {
+		log.Error("Invalid MaxImageUploadSize. Use values like '10MB', '1GB', or raw bytes like '10485760'", "value", Server.MaxImageUploadSize, err)
+		return err
+	}
+	return nil
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -742,6 +755,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("enableartworkupload", true)
+	viper.SetDefault("maximageuploadsize", defaultMaxImageUploadSize)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
