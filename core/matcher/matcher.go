@@ -59,6 +59,42 @@ func New(ds model.DataStore) *Matcher {
 //     - Level 0: Title only
 //  4. Album similarity (Jaro-Winkler, as final tiebreaker)
 //
+// # Examples
+//
+// Example 1 - MBID Priority:
+//
+//	Agent returns: {Name: "Paranoid Android", MBID: "abc-123", Artist: "Radiohead"}
+//	Library has: [
+//	  {ID: "t1", Title: "Paranoid Android", MbzRecordingID: "abc-123"},
+//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
+//	]
+//	Result: t1 (MBID match takes priority over title+artist)
+//
+// Example 2 - ISRC Priority:
+//
+//	Agent returns: {Name: "Paranoid Android", ISRC: "GBAYE0000351", Artist: "Radiohead"}
+//	Library has: [
+//	  {ID: "t1", Title: "Paranoid Android", Tags: {isrc: ["GBAYE0000351"]}},
+//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
+//	]
+//	Result: t1 (ISRC match takes priority over title+artist)
+//
+// Example 3 - Specificity Ranking:
+//
+//	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
+//	Library has: [
+//	  {ID: "t1", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101"},           // Level 1
+//	  {ID: "t2", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},      // Level 3
+//	]
+//	Result: t2 (Level 3 beats Level 1 due to album match)
+//
+// Example 4 - Fuzzy Title Matching:
+//
+//	Agent returns: {Name: "Bohemian Rhapsody", Artist: "Queen"}
+//	Library has: {ID: "t1", Title: "Bohemian Rhapsody - Remastered", Artist: "Queen"}
+//	With threshold=85%: Match succeeds (similarity ~0.87)
+//	With threshold=100%: No match (not exact)
+//
 // # Parameters
 //
 //   - ctx: Context for database operations
@@ -185,6 +221,7 @@ func (m *Matcher) loadTracksByISRC(ctx context.Context, songs []agents.Song, pri
 	}
 	res, err := m.ds.MediaFile(ctx).GetAllByTags(model.TagISRC, isrcs, model.QueryOptions{
 		Filters: squirrel.Eq{"missing": false},
+		Sort:    "starred desc, rating desc, year asc, compilation asc",
 	})
 	if err != nil {
 		return matches, err
@@ -232,15 +269,17 @@ func (s matchScore) betterThan(other matchScore) bool {
 }
 
 // sanitizedTrack holds pre-sanitized fields for a media file, avoiding redundant sanitization
-// when the same track is scored against multiple queries in the inner loop.
+// when the same track is scored against multiple queries in the inner loop. The `mf` field
+// is a pointer to avoid copying the large MediaFile struct into each entry of the per-artist
+// sanitized slice.
 type sanitizedTrack struct {
-	mf     model.MediaFile
+	mf     *model.MediaFile
 	title  string
 	artist string
 	album  string
 }
 
-func newSanitizedTrack(mf model.MediaFile) sanitizedTrack {
+func newSanitizedTrack(mf *model.MediaFile) sanitizedTrack {
 	return sanitizedTrack{
 		mf:     mf,
 		title:  str.SanitizeFieldForSorting(mf.Title),
@@ -306,8 +345,8 @@ func (m *Matcher) loadTracksByTitleAndArtist(ctx context.Context, songs []agents
 		}
 
 		sanitized := make([]sanitizedTrack, len(tracks))
-		for i, mf := range tracks {
-			sanitized[i] = newSanitizedTrack(mf)
+		for i := range tracks {
+			sanitized[i] = newSanitizedTrack(&tracks[i])
 		}
 
 		for _, q := range artistQueries {
@@ -360,7 +399,7 @@ func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, t
 
 		if score.betterThan(bestScore) {
 			bestScore = score
-			bestMatch = t.mf
+			bestMatch = *t.mf
 			found = true
 		}
 	}

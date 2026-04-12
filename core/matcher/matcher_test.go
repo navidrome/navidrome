@@ -26,27 +26,51 @@ var _ = Describe("Matcher", func() {
 		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		mediaFileRepo = newMockMediaFileRepo()
+		DeferCleanup(func() {
+			mediaFileRepo.AssertExpectations(GinkgoT())
+		})
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mediaFileRepo,
 		}
 		m = matcher.New(ds)
 	})
 
-	setupTitleOnlyExpectations := func(artistTracks model.MediaFiles) {
-		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
-			Return(artistTracks, nil).Maybe()
+	// Per-phase expectation helpers. Each `expect*Phase` registers a .Once() expectation
+	// that will fail the suite via AssertExpectations if the phase is NOT called. Tests
+	// use these to deterministically verify which matching phases fire. Phases that may
+	// or may not fire should use the `allow*Phase` variants instead, which register
+	// .Maybe() fallbacks.
+	expectIDPhase := func(matches model.MediaFiles) {
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("media_file.id"))).
+			Return(matches, nil).Once()
+	}
+	expectMBIDPhase := func(matches model.MediaFiles) {
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
+			Return(matches, nil).Once()
+	}
+	expectISRCPhase := func(matches model.MediaFiles) {
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
+			Return(matches, nil).Once()
 	}
 
-	setupAllPhaseExpectations := func(idMatches, mbidMatches, isrcMatches, artistTracks model.MediaFiles) {
+	// allowOtherPhases installs .Maybe() catch-alls so phases that short-circuit (return
+	// early without hitting the DB) don't cause test failures for unexpected calls. Call
+	// this after expect*Phase for the phases the test actually wants to verify.
+	allowOtherPhases := func() {
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("media_file.id"))).
-			Return(idMatches, nil).Once()
-
+			Return(model.MediaFiles{}, nil).Maybe()
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
-			Return(mbidMatches, nil).Once()
-
+			Return(model.MediaFiles{}, nil).Maybe()
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
-			Return(isrcMatches, nil).Once()
+			Return(model.MediaFiles{}, nil).Maybe()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+			Return(model.MediaFiles{}, nil).Maybe()
+	}
 
+	// setupTitleOnlyExpectations is a convenience for fuzzy-match tests that only exercise
+	// the title+artist phase. The title phase uses .Maybe() because it may short-circuit
+	// when no songs have an artist.
+	setupTitleOnlyExpectations := func(artistTracks model.MediaFiles) {
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
 			Return(artistTracks, nil).Maybe()
 	}
@@ -61,9 +85,8 @@ var _ = Describe("Matcher", func() {
 				idMatch := model.MediaFile{
 					ID: "track-1", Title: "Some Song", Artist: "Some Artist",
 				}
-				setupAllPhaseExpectations(
-					model.MediaFiles{idMatch}, model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{},
-				)
+				expectIDPhase(model.MediaFiles{idMatch})
+				allowOtherPhases()
 				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -81,9 +104,8 @@ var _ = Describe("Matcher", func() {
 					ID: "track-mbid", Title: "Paranoid Android", Artist: "Radiohead",
 					MbzRecordingID: "abc-123",
 				}
-				setupAllPhaseExpectations(
-					model.MediaFiles{}, model.MediaFiles{mbidMatch}, model.MediaFiles{}, model.MediaFiles{},
-				)
+				expectMBIDPhase(model.MediaFiles{mbidMatch})
+				allowOtherPhases()
 				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -101,9 +123,8 @@ var _ = Describe("Matcher", func() {
 					ID: "track-isrc", Title: "Paranoid Android", Artist: "Radiohead",
 					Tags: model.Tags{model.TagISRC: []string{"GBAYE0000351"}},
 				}
-				setupAllPhaseExpectations(
-					model.MediaFiles{}, model.MediaFiles{}, model.MediaFiles{isrcMatch}, model.MediaFiles{},
-				)
+				expectISRCPhase(model.MediaFiles{isrcMatch})
+				allowOtherPhases()
 				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -195,19 +216,17 @@ var _ = Describe("Matcher", func() {
 		Context("priority ordering", func() {
 			It("prefers ID match over MBID match", func() {
 				conf.Server.SimilarSongsMatchThreshold = 100
+				// Song has both ID and MBID set. The matcher should resolve via ID
+				// and short-circuit the MBID phase entirely, so no MBID fetch should
+				// occur even though an mbz_recording_id exists in the input.
 				songs := []agents.Song{
 					{ID: "track-id", Name: "Song", MBID: "mbid-1", Artist: "Artist"},
 				}
 				idMatch := model.MediaFile{
 					ID: "track-id", Title: "Song", Artist: "Artist",
 				}
-				mbidMatch := model.MediaFile{
-					ID: "track-mbid", Title: "Song", Artist: "Artist",
-					MbzRecordingID: "mbid-1",
-				}
-				setupAllPhaseExpectations(
-					model.MediaFiles{idMatch}, model.MediaFiles{mbidMatch}, model.MediaFiles{}, model.MediaFiles{},
-				)
+				expectIDPhase(model.MediaFiles{idMatch})
+				allowOtherPhases()
 				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
