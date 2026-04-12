@@ -93,14 +93,10 @@ const callDeleteMany = (resource, params) => {
 
 // Helper function to handle user-library associations
 const handleUserLibraryAssociation = async (userId, libraryIds) => {
-  if (!libraryIds || libraryIds.length === 0) {
-    return // Admin users or users without library assignments
-  }
-
   try {
     await httpClient(`${REST_URL}/user/${userId}/library`, {
       method: 'PUT',
-      body: JSON.stringify({ libraryIds }),
+      body: JSON.stringify({ libraryIds: libraryIds || [] }),
     })
   } catch (error) {
     console.error('Error setting user libraries:', error) //eslint-disable-line no-console
@@ -118,7 +114,7 @@ const createUser = async (params) => {
   const userId = userResponse.data.id
 
   // Then set library associations for non-admin users
-  if (!userData.isAdmin && libraryIds && libraryIds.length > 0) {
+  if (!userData.isAdmin && libraryIds !== undefined) {
     await handleUserLibraryAssociation(userId, libraryIds)
   }
 
