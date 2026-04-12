@@ -102,6 +102,11 @@ components:
                 mbzReleaseTrackId:
                     type: string
                     description: MBZReleaseTrackID is the MusicBrainz release track ID.
+                path:
+                    type: string
+                    description: |-
+                        Path is the full path to the track file, relative to the library root.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
             required:
                 - id
                 - title

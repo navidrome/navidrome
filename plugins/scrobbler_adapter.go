@@ -80,7 +80,7 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 	username := getUsernameFromContext(ctx)
 	input := capabilities.NowPlayingRequest{
 		Username: username,
-		Track:    mediaFileToTrackInfo(track),
+		Track:    mediaFileToTrackInfo(s.plugin, track),
 		Position: int32(position),
 	}
 
@@ -93,7 +93,7 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
 		Username:  username,
-		Track:     mediaFileToTrackInfo(&sc.MediaFile),
+		Track:     mediaFileToTrackInfo(s.plugin, &sc.MediaFile),
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
@@ -109,9 +109,11 @@ func getUsernameFromContext(ctx context.Context) string {
 	return ""
 }
 
-// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo
-func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
-	return capabilities.TrackInfo{
+// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo.
+// Path is populated only when the plugin is allowed filesystem access to the
+// track's library.
+func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo {
+	ti := capabilities.TrackInfo{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -127,6 +129,10 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 		MBZReleaseGroupID: mf.MbzReleaseGroupID,
 		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
+	if p.hasLibraryFilesystemAccess(mf.LibraryID) {
+		ti.Path = mf.Path
+	}
+	return ti
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef
