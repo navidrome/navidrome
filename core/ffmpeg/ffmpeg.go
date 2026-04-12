@@ -387,18 +387,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	if opts.BitRate > 0 {
 		args = append(args, "-b:a", strconv.Itoa(opts.BitRate)+"k")
 	}
-	if opts.SampleRate > 0 {
-		args = append(args, "-ar", strconv.Itoa(opts.SampleRate))
-	}
-	if opts.Channels > 0 {
-		args = append(args, "-ac", strconv.Itoa(opts.Channels))
-	}
-	// Only pass -sample_fmt for lossless output formats where bit depth matters.
-	// Lossy codecs (mp3, aac, opus) handle sample format conversion internally,
-	// and passing interleaved formats like "s16" causes silent failures.
-	if opts.BitDepth >= 16 && isLosslessOutputFormat(opts.Format) {
-		args = append(args, "-sample_fmt", bitDepthToSampleFmt(opts.BitDepth))
-	}
+	args = injectDynamicAudioFlags(args, opts)
 
 	args = append(args, "-v", "0")
 
@@ -417,8 +406,14 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 // ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
+	return injectDynamicAudioFlags(args, opts)
+}
 
-	// Dynamically inject -ar, -ac, and -sample_fmt before the output target
+// injectDynamicAudioFlags appends -ar, -ac, and -sample_fmt flags based on opts.
+// Only passes -sample_fmt for lossless output formats where bit depth matters:
+// lossy codecs (mp3, aac, opus) handle sample format conversion internally, and
+// passing interleaved formats like "s16" causes silent failures.
+func injectDynamicAudioFlags(args []string, opts TranscodeOptions) []string {
 	if opts.SampleRate > 0 {
 		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
 	}
