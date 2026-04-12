@@ -172,6 +172,10 @@ func buildTestFS() storagetest.FakeFS {
 			"title": "TC MKA Opus", "track": 6, "suffix": "mka", "codec": "opus",
 			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(220),
 		}),
+		"Test/Transcode Formats/07 - TC FLAC Multichannel.flac": file(tcBase, _t{
+			"title": "TC FLAC Multichannel", "track": 7, "suffix": "flac",
+			"bitrate": 4500, "samplerate": 48000, "bitdepth": 24, "channels": 6, "duration": int64(180),
+		}),
 
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
