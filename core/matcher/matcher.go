@@ -1,4 +1,4 @@
-package external
+package matcher
 
 import (
 	"context"
@@ -13,7 +13,17 @@ import (
 	"github.com/xrash/smetrics"
 )
 
-// matchSongsToLibrary matches agent song results to local library tracks using a multi-phase
+// Matcher matches agent song results to local library tracks.
+type Matcher struct {
+	ds model.DataStore
+}
+
+// New creates a new Matcher with the given DataStore.
+func New(ds model.DataStore) *Matcher {
+	return &Matcher{ds: ds}
+}
+
+// MatchSongsToLibrary matches agent song results to local library tracks using a multi-phase
 // matching algorithm that prioritizes accuracy over recall.
 //
 // # Algorithm Overview
@@ -95,36 +105,34 @@ import (
 //
 // Returns up to 'count' MediaFiles from the library that best match the input songs,
 // preserving the original order from the agent. Songs that cannot be matched are skipped.
-func (e *provider) matchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
-	idMatches, err := e.loadTracksByID(ctx, songs)
+func (m *Matcher) MatchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
+	idMatches, err := m.loadTracksByID(ctx, songs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
 	}
-	mbidMatches, err := e.loadTracksByMBID(ctx, songs, idMatches)
+	mbidMatches, err := m.loadTracksByMBID(ctx, songs, idMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
-	isrcMatches, err := e.loadTracksByISRC(ctx, songs, idMatches, mbidMatches)
+	isrcMatches, err := m.loadTracksByISRC(ctx, songs, idMatches, mbidMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
 	}
-	titleMatches, err := e.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches, isrcMatches)
+	titleMatches, err := m.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches, isrcMatches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
 	}
 
-	return e.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
+	return m.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
 }
 
 // songMatchedIn checks if a song has already been matched in any of the provided match maps.
-// It checks the song's ID, MBID, and ISRC fields against the corresponding map keys.
 func songMatchedIn(s agents.Song, priorMatches ...map[string]model.MediaFile) bool {
 	_, found := lookupByIdentifiers(s, priorMatches...)
 	return found
 }
 
 // lookupByIdentifiers searches for a song's identifiers (ID, MBID, ISRC) in the provided maps.
-// Returns the first matching MediaFile found and true, or an empty MediaFile and false if no match.
 func lookupByIdentifiers(s agents.Song, maps ...map[string]model.MediaFile) (model.MediaFile, bool) {
 	keys := []string{s.ID, s.MBID, s.ISRC}
 	for _, m := range maps {
@@ -140,10 +148,7 @@ func lookupByIdentifiers(s agents.Song, maps ...map[string]model.MediaFile) (mod
 }
 
 // loadTracksByID fetches MediaFiles from the library using direct ID matching.
-// It extracts all non-empty ID fields from the input songs and performs a single
-// batch query to the database. Returns a map keyed by MediaFile ID for O(1) lookup.
-// Only non-missing files are returned.
-func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+func (m *Matcher) loadTracksByID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
 	var ids []string
 	for _, s := range songs {
 		if s.ID != "" {
@@ -154,7 +159,7 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 	if len(ids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	res, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"media_file.id": ids},
 			squirrel.Eq{"missing": false},
@@ -172,10 +177,7 @@ func (e *provider) loadTracksByID(ctx context.Context, songs []agents.Song) (map
 }
 
 // loadTracksByMBID fetches MediaFiles from the library using MusicBrainz Recording IDs.
-// It extracts all non-empty MBID fields from the input songs and performs a single
-// batch query against the mbz_recording_id column. Returns a map keyed by MBID for
-// O(1) lookup. Only non-missing files are returned.
-func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+func (m *Matcher) loadTracksByMBID(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	var mbids []string
 	for _, s := range songs {
 		if s.MBID != "" && !songMatchedIn(s, priorMatches...) {
@@ -186,7 +188,7 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song, pr
 	if len(mbids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	res, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"mbz_recording_id": mbids},
 			squirrel.Eq{"missing": false},
@@ -205,11 +207,8 @@ func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song, pr
 	return matches, nil
 }
 
-// loadTracksByISRC fetches MediaFiles from the library using ISRC (International Standard
-// Recording Code) matching. It extracts all non-empty ISRC fields from the input songs and
-// queries the tags JSON column for matching ISRC values. Returns a map keyed by ISRC for
-// O(1) lookup. Only non-missing files are returned.
-func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+// loadTracksByISRC fetches MediaFiles from the library using ISRC matching.
+func (m *Matcher) loadTracksByISRC(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
 	var isrcs []string
 	for _, s := range songs {
 		if s.ISRC != "" && !songMatchedIn(s, priorMatches...) {
@@ -220,8 +219,9 @@ func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song, pr
 	if len(isrcs) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.MediaFile(ctx).GetAllByTags(model.TagISRC, isrcs, model.QueryOptions{
+	res, err := m.ds.MediaFile(ctx).GetAllByTags(model.TagISRC, isrcs, model.QueryOptions{
 		Filters: squirrel.Eq{"missing": false},
+		Sort:    "starred desc, rating desc, year asc, compilation asc",
 	})
 	if err != nil {
 		return matches, err
@@ -237,27 +237,24 @@ func (e *provider) loadTracksByISRC(ctx context.Context, songs []agents.Song, pr
 }
 
 // songQuery represents a normalized query for matching a song to library tracks.
-// All string fields are sanitized (lowercased, diacritics removed) for comparison.
-// This struct is used internally by loadTracksByTitleAndArtist to group queries by artist.
 type songQuery struct {
-	title      string // Sanitized song title
-	artist     string // Sanitized artist name (without articles like "The")
-	artistMBID string // MusicBrainz Artist ID (optional, for higher specificity matching)
-	album      string // Sanitized album name (optional, for specificity scoring)
-	albumMBID  string // MusicBrainz Album ID (optional, for highest specificity matching)
-	durationMs uint32 // Duration in milliseconds (0 means unknown, skip duration filtering)
+	title      string
+	artist     string
+	artistMBID string
+	album      string
+	albumMBID  string
+	durationMs uint32
 }
 
-// matchScore combines title/album similarity with metadata specificity for ranking matches
+// matchScore combines title/album similarity with metadata specificity for ranking matches.
 type matchScore struct {
-	titleSimilarity   float64 // 0.0-1.0 (Jaro-Winkler)
-	durationProximity float64 // 0.0-1.0 (closer duration = higher, 1.0 if unknown)
-	albumSimilarity   float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
-	specificityLevel  int     // 0-5 (higher = more specific metadata match)
+	titleSimilarity   float64
+	durationProximity float64
+	albumSimilarity   float64
+	specificityLevel  int
 }
 
 // betterThan returns true if this score beats another.
-// Comparison order: title similarity > duration proximity > specificity level > album similarity
 func (s matchScore) betterThan(other matchScore) bool {
 	if s.titleSimilarity != other.titleSimilarity {
 		return s.titleSimilarity > other.titleSimilarity
@@ -271,58 +268,62 @@ func (s matchScore) betterThan(other matchScore) bool {
 	return s.albumSimilarity > other.albumSimilarity
 }
 
-// computeSpecificityLevel determines how well query metadata matches a track (0-5).
-// Higher values indicate more specific matches (MBIDs > names > title only).
-// Uses fuzzy matching for album names with the same threshold as title matching.
-func computeSpecificityLevel(q songQuery, mf model.MediaFile, albumThreshold float64) int {
-	title := str.SanitizeFieldForSorting(mf.Title)
-	artist := str.SanitizeFieldForSortingNoArticle(mf.Artist)
-	album := str.SanitizeFieldForSorting(mf.Album)
+// sanitizedTrack holds pre-sanitized fields for a media file, avoiding redundant sanitization
+// when the same track is scored against multiple queries in the inner loop. The `mf` field
+// is a pointer to avoid copying the large MediaFile struct into each entry of the per-artist
+// sanitized slice.
+type sanitizedTrack struct {
+	mf     *model.MediaFile
+	title  string
+	artist string
+	album  string
+}
 
-	// Level 5: Title + Artist MBID + Album MBID (most specific)
+func newSanitizedTrack(mf *model.MediaFile) sanitizedTrack {
+	return sanitizedTrack{
+		mf:     mf,
+		title:  str.SanitizeFieldForSorting(mf.Title),
+		artist: str.SanitizeFieldForSortingNoArticle(mf.Artist),
+		album:  str.SanitizeFieldForSorting(mf.Album),
+	}
+}
+
+// computeSpecificityLevel determines how well query metadata matches a track (0-5).
+// The track's title, artist, and album fields must be pre-sanitized.
+func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	if q.artistMBID != "" && q.albumMBID != "" &&
-		mf.MbzArtistID == q.artistMBID && mf.MbzAlbumID == q.albumMBID {
+		t.mf.MbzArtistID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
 		return 5
 	}
-	// Level 4: Title + Artist MBID + Album name (fuzzy)
 	if q.artistMBID != "" && q.album != "" &&
-		mf.MbzArtistID == q.artistMBID && similarityRatio(album, q.album) >= albumThreshold {
+		t.mf.MbzArtistID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 4
 	}
-	// Level 3: Title + Artist name + Album name (fuzzy)
 	if q.artist != "" && q.album != "" &&
-		artist == q.artist && similarityRatio(album, q.album) >= albumThreshold {
+		t.artist == q.artist && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 3
 	}
-	// Level 2: Title + Artist MBID
-	if q.artistMBID != "" && mf.MbzArtistID == q.artistMBID {
+	if q.artistMBID != "" && t.mf.MbzArtistID == q.artistMBID {
 		return 2
 	}
-	// Level 1: Title + Artist name
-	if q.artist != "" && artist == q.artist {
+	if q.artist != "" && t.artist == q.artist {
 		return 1
 	}
-	// Level 0: Title only match (but for fuzzy, title matched via similarity)
-	// Check if at least the title matches exactly
-	if title == q.title {
+	if t.title == q.title {
 		return 0
 	}
-	return -1 // No exact title match, but could still be a fuzzy match
+	return -1
 }
 
 // loadTracksByTitleAndArtist loads tracks matching by title with optional artist/album filtering.
-// Uses a unified scoring approach that combines title similarity (Jaro-Winkler) with
-// metadata specificity (MBIDs, album names) for both exact and fuzzy matches.
-// Returns a map keyed by "title|artist" for compatibility with selectBestMatchingSongs.
-func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
-	queries := e.buildTitleQueries(songs, priorMatches...)
+func (m *Matcher) loadTracksByTitleAndArtist(ctx context.Context, songs []agents.Song, priorMatches ...map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	queries := m.buildTitleQueries(songs, priorMatches...)
 	if len(queries) == 0 {
 		return map[string]model.MediaFile{}, nil
 	}
 
 	threshold := float64(conf.Server.SimilarSongsMatchThreshold) / 100.0
 
-	// Group queries by artist for efficient DB access
 	byArtist := map[string][]songQuery{}
 	for _, q := range queries {
 		if q.artist != "" {
@@ -332,8 +333,7 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 
 	matches := map[string]model.MediaFile{}
 	for artist, artistQueries := range byArtist {
-		// Single DB query per artist - get all their tracks
-		tracks, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		tracks, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
 				squirrel.Eq{"order_artist_name": artist},
 				squirrel.Eq{"missing": false},
@@ -344,9 +344,13 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 			continue
 		}
 
-		// Find best match for each query using unified scoring
+		sanitized := make([]sanitizedTrack, len(tracks))
+		for i := range tracks {
+			sanitized[i] = newSanitizedTrack(&tracks[i])
+		}
+
 		for _, q := range artistQueries {
-			if mf, found := e.findBestMatch(q, tracks, threshold); found {
+			if mf, found := m.findBestMatch(q, sanitized, threshold); found {
 				key := q.title + "|" + q.artist
 				if _, exists := matches[key]; !exists {
 					matches[key] = mf
@@ -357,13 +361,11 @@ func (e *provider) loadTracksByTitleAndArtist(ctx context.Context, songs []agent
 	return matches, nil
 }
 
-// durationProximity returns a score from 0.0 to 1.0 indicating how close
-// the track's duration is to the target. A perfect match returns 1.0, and the
-// score decreases as the difference grows (using 1 / (1 + diff)). Returns 1.0
-// if durationMs is 0 (unknown), so duration does not influence scoring.
+// durationProximity returns a score from 0.0 to 1.0 indicating how close the track's duration
+// is to the target. Returns 1.0 if durationMs is 0 (unknown).
 func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 {
-	if durationMs <= 0 {
-		return 1.0 // Unknown duration — don't penalise
+	if durationMs == 0 {
+		return 1.0
 	}
 	durationSec := float64(durationMs) / 1000.0
 	diff := math.Abs(durationSec - float64(mediaFileDurationSec))
@@ -371,41 +373,33 @@ func durationProximity(durationMs uint32, mediaFileDurationSec float32) float64 
 }
 
 // findBestMatch finds the best matching track using combined title/album similarity and specificity scoring.
-// A track must meet the threshold for title similarity, then the best match is chosen by:
-// 1. Highest title similarity
-// 2. Duration proximity (closer duration = higher score, 1.0 if unknown)
-// 3. Highest specificity level
-// 4. Highest album similarity (as final tiebreaker)
-func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold float64) (model.MediaFile, bool) {
+func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, threshold float64) (model.MediaFile, bool) {
 	var bestMatch model.MediaFile
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
 
-	for _, mf := range tracks {
-		trackTitle := str.SanitizeFieldForSorting(mf.Title)
-		titleSim := similarityRatio(q.title, trackTitle)
+	for _, t := range sanitizedTracks {
+		titleSim := similarityRatio(q.title, t.title)
 
 		if titleSim < threshold {
 			continue
 		}
 
-		// Compute album similarity for tiebreaking (0.0 if no album in query)
 		var albumSim float64
 		if q.album != "" {
-			trackAlbum := str.SanitizeFieldForSorting(mf.Album)
-			albumSim = similarityRatio(q.album, trackAlbum)
+			albumSim = similarityRatio(q.album, t.album)
 		}
 
 		score := matchScore{
 			titleSimilarity:   titleSim,
-			durationProximity: durationProximity(q.durationMs, mf.Duration),
+			durationProximity: durationProximity(q.durationMs, t.mf.Duration),
 			albumSimilarity:   albumSim,
-			specificityLevel:  computeSpecificityLevel(q, mf, threshold),
+			specificityLevel:  computeSpecificityLevel(q, t, threshold),
 		}
 
 		if score.betterThan(bestScore) {
 			bestScore = score
-			bestMatch = mf
+			bestMatch = *t.mf
 			found = true
 		}
 	}
@@ -413,9 +407,7 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 }
 
 // buildTitleQueries converts agent songs into normalized songQuery structs for title+artist matching.
-// It skips songs that have already been matched in prior phases (by ID, MBID, or ISRC) and sanitizes
-// all string fields for consistent comparison (lowercase, diacritics removed, articles stripped from artist names).
-func (e *provider) buildTitleQueries(songs []agents.Song, priorMatches ...map[string]model.MediaFile) []songQuery {
+func (m *Matcher) buildTitleQueries(songs []agents.Song, priorMatches ...map[string]model.MediaFile) []songQuery {
 	var queries []songQuery
 	for _, s := range songs {
 		if songMatchedIn(s, priorMatches...) {
@@ -434,18 +426,9 @@ func (e *provider) buildTitleQueries(songs []agents.Song, priorMatches ...map[st
 }
 
 // selectBestMatchingSongs assembles the final result by mapping input songs to their best matching
-// library tracks. It iterates through the input songs in order and selects the first available match
-// using priority order: ID > MBID > ISRC > title+artist.
-//
-// The function also handles deduplication: when multiple different input songs would match the same
-// library track (e.g., "Song (Live)" and "Song (Remastered)" both matching "Song (Live)" in the library),
-// only the first match is kept. However, if the same input song appears multiple times (intentional
-// repetition), duplicates are preserved in the output.
-//
-// Returns up to 'count' MediaFiles, preserving the input order. Songs that cannot be matched are skipped.
-func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
+// library tracks using priority order: ID > MBID > ISRC > title+artist.
+func (m *Matcher) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile, count int) model.MediaFiles {
 	mfs := make(model.MediaFiles, 0, len(songs))
-	// Track MediaFile.ID -> input song that added it, for deduplication
 	addedBy := make(map[string]agents.Song, len(songs))
 
 	for _, t := range songs {
@@ -458,11 +441,9 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 			continue
 		}
 
-		// Check for duplicate library track
 		if prevSong, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
-			// Only add duplicate if input songs are identical
 			if t != prevSong {
-				continue // Different input songs → skip mismatch-induced duplicate
+				continue
 			}
 		} else {
 			addedBy[mf.ID] = t
@@ -473,14 +454,11 @@ func (e *provider) selectBestMatchingSongs(songs []agents.Song, byID, byMBID, by
 	return mfs
 }
 
-// findMatchingTrack looks up a song in the match maps using priority order: ID > MBID > ISRC > title+artist.
-// Returns the matched MediaFile and true if found, or an empty MediaFile and false if no match exists.
+// findMatchingTrack looks up a song in the match maps using priority order.
 func findMatchingTrack(t agents.Song, byID, byMBID, byISRC, byTitleArtist map[string]model.MediaFile) (model.MediaFile, bool) {
-	// Try identifier-based matches first (ID, MBID, ISRC)
 	if mf, found := lookupByIdentifiers(t, byID, byMBID, byISRC); found {
 		return mf, true
 	}
-	// Fall back to title+artist fuzzy match
 	key := str.SanitizeFieldForSorting(t.Name) + "|" + str.SanitizeFieldForSortingNoArticle(t.Artist)
 	if mf, ok := byTitleArtist[key]; ok {
 		return mf, true
@@ -489,9 +467,6 @@ func findMatchingTrack(t agents.Song, byID, byMBID, byISRC, byTitleArtist map[st
 }
 
 // similarityRatio calculates the similarity between two strings using Jaro-Winkler algorithm.
-// Returns a value between 0.0 (completely different) and 1.0 (identical).
-// Jaro-Winkler is well-suited for matching song titles because it gives higher scores
-// when strings share a common prefix (e.g., "Song Title" vs "Song Title - Remastered").
 func similarityRatio(a, b string) float64 {
 	if a == b {
 		return 1.0
@@ -499,6 +474,5 @@ func similarityRatio(a, b string) float64 {
 	if len(a) == 0 || len(b) == 0 {
 		return 0.0
 	}
-	// JaroWinkler params: boostThreshold=0.7, prefixSize=4
 	return smetrics.JaroWinkler(a, b, 0.7, 4)
 }
