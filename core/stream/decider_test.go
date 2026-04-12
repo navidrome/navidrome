@@ -773,8 +773,8 @@ var _ = Describe("Decider", func() {
 		Context("Codec channel limits", func() {
 			It("clamps 6-channel FLAC to 2 channels when transcoding to MP3", func() {
 				// Regression test for #5336: ffmpeg's mp3 encoder rejects >2 channels.
-				// The decider must clamp to the codec's hard limit even when no explicit
-				// LimitationAudioChannels profile rule is configured.
+				// The decider must clamp to the codec's hard limit even when no
+				// transcoding profile MaxAudioChannels is configured.
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
 				ci := &ClientInfo{
 					MaxTranscodingAudioBitrate: 320,
