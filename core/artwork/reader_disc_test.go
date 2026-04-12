@@ -42,8 +42,8 @@ var _ = Describe("Disc Artwork Reader", func() {
 			// Case insensitive (filename already lowered by caller)
 			Entry("Disc1.jpg lowered", "disc*.*", "disc1.jpg", 1, true),
 
-			// Pattern doesn't match
-			Entry("cover.jpg doesn't match disc*.*", "disc*.*", "cover.jpg", 0, false),
+			// HasPrefix guard: filename doesn't share the pattern's literal prefix
+			Entry("cover.jpg with disc*.* (no prefix match)", "disc*.*", "cover.jpg", 0, false),
 
 			// Pattern with no wildcard before dot
 			Entry("front1.jpg with front*.*", "front*.*", "front1.jpg", 1, true),
@@ -206,6 +206,25 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Entry("disc 2 picks disc2.jpg over the shared disc.jpg", 2, 2),
 			Entry("disc 3 falls back to disc.jpg when no numbered match exists", 3, 0),
 		)
+
+		It("tries the next fallback candidate when the first one cannot be opened", func() {
+			f1 := createFile("album/cover.jpg")
+			f2 := createFile("album/cover.png")
+			// Remove f1 so os.Open will fail on it; f2 should still win.
+			Expect(os.Remove(f1)).To(Succeed())
+			reader := &discArtworkReader{
+				discNumber:  1,
+				imgFiles:    []string{f1, f2},
+				discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+			}
+
+			sf := reader.fromExternalFile(ctx, "cover.*")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f2))
+		})
 
 		DescribeTable("filters by disc number for non-'*' wildcard patterns",
 			func(pattern string, discNumber, expectedIdx int) {

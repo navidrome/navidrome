@@ -168,7 +168,11 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
-// globMetaChars lists every metacharacter understood by filepath.Match.
+// globMetaChars holds the substitution metacharacters understood by
+// filepath.Match. The '\' escape character is intentionally excluded:
+// disc art patterns come from user config and never include escaped
+// metachars in practice, and treating '\' as a metachar would misalign
+// the literal-prefix extraction in extractDiscNumber.
 const globMetaChars = "*?["
 
 // extractDiscNumber parses the disc number from a filename matched by a
@@ -208,7 +212,7 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
 	isLiteral := !strings.ContainsAny(pattern, globMetaChars)
 	return func() (io.ReadCloser, string, error) {
-		var fallback string
+		var fallbacks []string
 		for _, file := range d.imgFiles {
 			_, name := filepath.Split(file)
 			name = strings.ToLower(name)
@@ -235,13 +239,10 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				}
 			}
 
-			if fallback != "" {
-				continue
-			}
 			if d.isMultiFolder && !d.discFolders[filepath.Dir(file)] {
 				continue
 			}
-			fallback = file
+			fallbacks = append(fallbacks, file)
 			// A literal filename can only match one file, so stop as soon
 			// as we have a viable fallback.
 			if isLiteral {
@@ -249,13 +250,13 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 			}
 		}
 
-		if fallback != "" {
-			f, err := os.Open(fallback)
+		for _, file := range fallbacks {
+			f, err := os.Open(file)
 			if err != nil {
-				log.Warn(ctx, "Could not open disc art file", "file", fallback, err)
-			} else {
-				return f, fallback, nil
+				log.Warn(ctx, "Could not open disc art file", "file", file, err)
+				continue
 			}
+			return f, file, nil
 		}
 		return nil, "", fmt.Errorf("disc %d: pattern '%s' not matched by files", d.discNumber, pattern)
 	}
