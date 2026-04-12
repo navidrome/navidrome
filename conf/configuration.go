@@ -366,7 +366,7 @@ func Load(noConfigDump bool) {
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
-		os.Exit(1)
+		logFatal(err)
 	}
 
 	Server.Search.Backend = normalizeSearchBackend(Server.Search.Backend)
@@ -552,8 +552,7 @@ func validatePlaylistsPath() error {
 	for path := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
 		_, err := doublestar.Match(path, "")
 		if err != nil {
-			log.Error("Invalid PlaylistsPath", "path", path, err)
-			return err
+			return fmt.Errorf("invalid PlaylistsPath %q: %w", path, err)
 		}
 	}
 	return nil
@@ -580,7 +579,6 @@ func validatePurgeMissingOption() error {
 	valid := slices.Contains(allowedValues, Server.Scanner.PurgeMissing)
 	if !valid {
 		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
-		log.Error(err.Error())
 		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
 		return err
 	}
@@ -589,9 +587,7 @@ func validatePurgeMissingOption() error {
 
 func validateMaxImageUploadSize() error {
 	if _, err := humanize.ParseBytes(Server.MaxImageUploadSize); err != nil {
-		err = fmt.Errorf("invalid MaxImageUploadSize %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", Server.MaxImageUploadSize, err)
-		log.Error(err.Error())
-		return err
+		return fmt.Errorf("invalid MaxImageUploadSize %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", Server.MaxImageUploadSize, err)
 	}
 	return nil
 }
@@ -619,9 +615,9 @@ func validateBackupSchedule() error {
 func validateSchedule(schedule, field string) (string, error) {
 	_, err := scheduler.ParseCrontab(schedule)
 	if err != nil {
-		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", schedule, err)
+		return schedule, fmt.Errorf("invalid %s %q (see https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format): %w", field, schedule, err)
 	}
-	return schedule, err
+	return schedule, nil
 }
 
 // validateURL checks if the provided URL is valid and has either http or https scheme.
@@ -633,19 +629,13 @@ func validateURL(optionName, optionURL string) func() error {
 		}
 		u, err := url.Parse(optionURL)
 		if err != nil {
-			log.Error(fmt.Sprintf("Invalid %s: it could not be parsed", optionName), "url", optionURL, "err", err)
-			return err
+			return fmt.Errorf("invalid %s %q: %w", optionName, optionURL, err)
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
-			err := fmt.Errorf("invalid scheme for %s: '%s'. Only 'http' and 'https' are allowed", optionName, u.Scheme)
-			log.Error(err.Error())
-			return err
+			return fmt.Errorf("invalid scheme for %s: '%s'. Only 'http' and 'https' are allowed", optionName, u.Scheme)
 		}
-		// Require an absolute URL with a non-empty host and no opaque component.
 		if u.Host == "" || u.Opaque != "" {
-			err := fmt.Errorf("invalid %s: '%s'. A full http(s) URL with a non-empty host is required", optionName, optionURL)
-			log.Error(err.Error())
-			return err
+			return fmt.Errorf("invalid %s: '%s'. A full http(s) URL with a non-empty host is required", optionName, optionURL)
 		}
 		return nil
 	}
