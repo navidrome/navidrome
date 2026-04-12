@@ -108,4 +108,11 @@ func (m *MockPlaylistRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
+func (m *MockPlaylistRepo) Evaluate(_ string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	return nil
+}
+
 var _ model.PlaylistRepository = (*MockPlaylistRepo)(nil)
