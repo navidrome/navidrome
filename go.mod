@@ -36,7 +36,7 @@ require (
 	github.com/kardianos/service v1.2.4
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v3 v3.0.13
-	github.com/mattn/go-sqlite3 v1.14.38
+	github.com/mattn/go-sqlite3 v1.14.41
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.28.1
