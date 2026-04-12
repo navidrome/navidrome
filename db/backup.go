@@ -81,11 +81,11 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 			// Caution: -1 means that sqlite will hold a read lock until the operation finishes
 			// This will lock out other writes that could happen at the same time
 			done, err := backupOp.Step(-1)
-			if !done {
-				return fmt.Errorf("backup not done with step -1")
-			}
 			if err != nil {
 				return fmt.Errorf("error during backup step: %w", err)
+			}
+			if !done {
+				return fmt.Errorf("backup not done with step -1")
 			}
 
 			err = backupOp.Finish()
