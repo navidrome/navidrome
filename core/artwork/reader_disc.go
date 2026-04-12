@@ -168,45 +168,35 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
-// extractDiscNumber extracts a disc number from a filename based on a glob pattern.
-// It finds the portion of the filename that the wildcard matched and parses leading
-// digits as the disc number. Returns (0, false) if the pattern doesn't match or
-// no leading digits are found in the wildcard portion.
+// extractDiscNumber parses the disc number from a filename matched by a
+// filepath.Match-style glob pattern. It takes the literal prefix of the
+// pattern (everything before the first '*', '?', or '[' metacharacter),
+// strips it from the filename, and reads the leading digits that follow.
 //
-// Both pattern and filename must already be lowercased by the caller.
+// Both pattern and filename must already be lowercased by the caller, which
+// is also expected to have verified that filepath.Match(pattern, filename)
+// is true before calling this function.
 func extractDiscNumber(pattern, filename string) (int, bool) {
-	matched, err := filepath.Match(pattern, filename)
-	if err != nil || !matched {
+	metaIdx := strings.IndexAny(pattern, "*?[")
+	if metaIdx < 0 {
 		return 0, false
 	}
-
-	// Find the prefix before the first '*' in the pattern
-	starIdx := strings.IndexByte(pattern, '*')
-	if starIdx < 0 {
-		return 0, false
-	}
-	prefix := pattern[:starIdx]
-
-	// Strip the prefix from the filename to get the wildcard-matched portion
+	prefix := pattern[:metaIdx]
 	if !strings.HasPrefix(filename, prefix) {
 		return 0, false
 	}
-	remainder := filename[len(prefix):]
 
-	// Extract leading ASCII digits from the remainder
 	var digits []byte
-	for _, r := range remainder {
-		if r >= '0' && r <= '9' {
-			digits = append(digits, byte(r))
-		} else {
+	for i := len(prefix); i < len(filename); i++ {
+		c := filename[i]
+		if c < '0' || c > '9' {
 			break
 		}
+		digits = append(digits, c)
 	}
-
 	if len(digits) == 0 {
 		return 0, false
 	}
-
 	num, err := strconv.Atoi(string(digits))
 	if err != nil {
 		return 0, false
@@ -218,7 +208,7 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 // pattern. A numbered filename whose number equals the target disc wins over
 // any unnumbered candidate; callers must pass a lowercase pattern.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
-	hasWildcard := strings.ContainsRune(pattern, '*')
+	isLiteral := !strings.ContainsAny(pattern, "*?[")
 	return func() (io.ReadCloser, string, error) {
 		var fallback string
 		for _, file := range d.imgFiles {
@@ -233,7 +223,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 
-			if hasWildcard {
+			if !isLiteral {
 				if num, hasNum := extractDiscNumber(pattern, name); hasNum {
 					if num != d.discNumber {
 						continue
@@ -254,9 +244,9 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 			fallback = file
-			// Literal patterns have no numbered variants to prefer, so
-			// stop as soon as we have a viable fallback.
-			if !hasWildcard {
+			// A literal filename can only match one file, so stop as soon
+			// as we have a viable fallback.
+			if isLiteral {
 				break
 			}
 		}

@@ -47,6 +47,19 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 			// Pattern with no wildcard before dot
 			Entry("front1.jpg with front*.*", "front*.*", "front1.jpg", 1, true),
+
+			// '?' single-char wildcard
+			Entry("disc?.jpg with disc1.jpg", "disc?.jpg", "disc1.jpg", 1, true),
+			Entry("disc?.jpg with disc2.jpg", "disc?.jpg", "disc2.jpg", 2, true),
+			Entry("cd??.jpg with cd07.jpg", "cd??.jpg", "cd07.jpg", 7, true),
+
+			// '[...]' character class wildcard
+			Entry("cd[12].jpg with cd1.jpg", "cd[12].jpg", "cd1.jpg", 1, true),
+			Entry("cd[12].jpg with cd2.jpg", "cd[12].jpg", "cd2.jpg", 2, true),
+			Entry("disc[0-9].jpg with disc5.jpg", "disc[0-9].jpg", "disc5.jpg", 5, true),
+
+			// Literal pattern (no wildcard) returns false
+			Entry("shellac.png literal", "shellac.png", "shellac.png", 0, false),
 		)
 	})
 
@@ -192,6 +205,31 @@ var _ = Describe("Disc Artwork Reader", func() {
 			},
 			Entry("disc 2 picks disc2.jpg over the shared disc.jpg", 2, 2),
 			Entry("disc 3 falls back to disc.jpg when no numbered match exists", 3, 0),
+		)
+
+		DescribeTable("filters by disc number for non-'*' wildcard patterns",
+			func(pattern string, discNumber, expectedIdx int) {
+				files := []string{
+					createFile("album/disc1.jpg"),
+					createFile("album/disc2.jpg"),
+				}
+				reader := &discArtworkReader{
+					discNumber:  discNumber,
+					imgFiles:    files,
+					discFolders: map[string]bool{filepath.Join(tmpDir, "album"): true},
+				}
+
+				sf := reader.fromExternalFile(ctx, pattern)
+				r, path, err := sf()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				r.Close()
+				Expect(path).To(Equal(files[expectedIdx]))
+			},
+			Entry("'?' wildcard, disc 1", "disc?.jpg", 1, 0),
+			Entry("'?' wildcard, disc 2", "disc?.jpg", 2, 1),
+			Entry("character class, disc 1", "disc[0-9].jpg", 1, 0),
+			Entry("character class, disc 2", "disc[0-9].jpg", 2, 1),
 		)
 
 		It("matches file without number in multi-folder album by folder", func() {
