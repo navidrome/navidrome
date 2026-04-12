@@ -273,8 +273,6 @@ var (
 	hooks  []func()
 )
 
-const defaultMaxImageUploadSize = "10MB"
-
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
@@ -591,7 +589,8 @@ func validatePurgeMissingOption() error {
 
 func validateMaxImageUploadSize() error {
 	if _, err := humanize.ParseBytes(Server.MaxImageUploadSize); err != nil {
-		log.Error("Invalid MaxImageUploadSize. Use values like '10MB', '1GB', or raw bytes like '10485760'", "value", Server.MaxImageUploadSize, err)
+		err = fmt.Errorf("invalid MaxImageUploadSize %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", Server.MaxImageUploadSize, err)
+		log.Error(err.Error())
 		return err
 	}
 	return nil
@@ -755,7 +754,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("enableartworkupload", true)
-	viper.SetDefault("maximageuploadsize", defaultMaxImageUploadSize)
+	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
