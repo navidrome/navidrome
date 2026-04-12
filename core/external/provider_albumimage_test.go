@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -43,7 +44,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 		mockAlbumAgent = newMockAlbumInfoAgent()
 
 		agentsCombined := &mockAgents{albumInfoAgent: mockAlbumAgent}
-		provider = NewProvider(ds, agentsCombined)
+		provider = NewProvider(ds, agentsCombined, matcher.New(ds))
 
 		// Default mocks
 		// Mocks for GetEntityByID sequence (initial failed lookups)
