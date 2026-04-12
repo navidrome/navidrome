@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AutocompleteArrayInput,
   Filter,
@@ -37,6 +37,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { TagEditorSongDialog } from '../tageditor'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -133,6 +134,7 @@ const SongFilter = (props) => {
 const SongList = (props) => {
   const classes = useStyles()
   const dispatch = useDispatch()
+  const [editingSongId, setEditingSongId] = useState(null)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('song')
@@ -228,6 +230,7 @@ const SongList = (props) => {
             <SongTitleField source="title" showTrackNumbers={false} />
             {columns}
             <SongContextMenu
+              onEditTags={(record) => setEditingSongId(record.mediaFileId || record.id)}
               source={'starred_at'}
               sortByOrder={'DESC'}
               sortable={config.enableFavourites}
@@ -245,6 +248,11 @@ const SongList = (props) => {
         )}
       </List>
       <ExpandInfoDialog content={<SongInfo />} />
+      <TagEditorSongDialog
+        open={Boolean(editingSongId)}
+        songId={editingSongId}
+        onClose={() => setEditingSongId(null)}
+      />
     </>
   )
 }

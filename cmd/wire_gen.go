@@ -80,7 +80,7 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
 	maintenance := core.NewMaintenance(dataStore)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService)
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, modelScanner, manager, imageUploadService)
 	return router
 }
 
