@@ -210,6 +210,60 @@ var _ = Describe("PlaylistRepository", func() {
 				})
 			})
 
+			When("referenced playlist is private but owned by the same user", func() {
+				It("should include tracks from the private playlist", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+					childRules := &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.Contains{"title": "Day"},
+						},
+					}
+					nestedPls := model.Playlist{Name: "Private Nested", OwnerID: "userid", Public: false, Rules: childRules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+
+					parentPls := model.Playlist{Name: "Parent Using Private", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+
+					pls, err := repo.GetWithTracks(parentPls.ID, true, false)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(pls.Tracks).To(HaveLen(1))
+					Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
+				})
+
+				It("should exclude tracks from the private playlist when using NotInPlaylist", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+					childRules := &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.Contains{"title": "Day"},
+						},
+					}
+					nestedPls := model.Playlist{Name: "Private Nested Excluded", OwnerID: "userid", Public: false, Rules: childRules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+
+					parentPls := model.Playlist{Name: "Parent Excluding Private", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.Contains{"title": "Day"},
+							criteria.NotInPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+
+					pls, err := repo.GetWithTracks(parentPls.ID, true, false)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(pls.Tracks).To(HaveLen(0))
+				})
+			})
+
 			When("refresh delay has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
