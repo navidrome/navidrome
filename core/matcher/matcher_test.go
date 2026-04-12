@@ -33,68 +33,22 @@ var _ = Describe("Matcher", func() {
 	})
 
 	setupTitleOnlyExpectations := func(artistTracks model.MediaFiles) {
-		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			and, ok := opt.Filters.(squirrel.And)
-			if !ok || len(and) < 2 {
-				return false
-			}
-			eq, hasEq := and[0].(squirrel.Eq)
-			if !hasEq {
-				return false
-			}
-			_, hasArtist := eq["order_artist_name"]
-			return hasArtist
-		})).Return(artistTracks, nil).Maybe()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+			Return(artistTracks, nil).Maybe()
 	}
 
 	setupAllPhaseExpectations := func(idMatches, mbidMatches, isrcMatches, artistTracks model.MediaFiles) {
-		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			and, ok := opt.Filters.(squirrel.And)
-			if !ok || len(and) < 2 {
-				return false
-			}
-			eq, hasEq := and[0].(squirrel.Eq)
-			if !hasEq {
-				return false
-			}
-			_, hasID := eq["media_file.id"]
-			return hasID
-		})).Return(idMatches, nil).Once()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("media_file.id"))).
+			Return(idMatches, nil).Once()
 
-		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			and, ok := opt.Filters.(squirrel.And)
-			if !ok || len(and) < 2 {
-				return false
-			}
-			eq, hasEq := and[0].(squirrel.Eq)
-			if !hasEq {
-				return false
-			}
-			_, hasMBID := eq["mbz_recording_id"]
-			return hasMBID
-		})).Return(mbidMatches, nil).Once()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
+			Return(mbidMatches, nil).Once()
 
-		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			eq, ok := opt.Filters.(squirrel.Eq)
-			if !ok {
-				return false
-			}
-			_, hasMissing := eq["missing"]
-			return hasMissing
-		})).Return(isrcMatches, nil).Once()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
+			Return(isrcMatches, nil).Once()
 
-		mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			and, ok := opt.Filters.(squirrel.And)
-			if !ok || len(and) < 2 {
-				return false
-			}
-			eq, hasEq := and[0].(squirrel.Eq)
-			if !hasEq {
-				return false
-			}
-			_, hasArtist := eq["order_artist_name"]
-			return hasArtist
-		})).Return(artistTracks, nil).Maybe()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+			Return(artistTracks, nil).Maybe()
 	}
 
 	Describe("MatchSongsToLibrary", func() {
@@ -800,5 +754,35 @@ func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ..
 func (m *mockMediaFileRepo) SetError(hasError bool) {
 	if hasError {
 		m.On("GetAll", mock.Anything).Return(nil, errors.New("mock repo error"))
+	}
+}
+
+// matchFieldInAnd returns a matcher that checks whether QueryOptions.Filters is a
+// squirrel.And whose first element is a squirrel.Eq containing the given field name.
+func matchFieldInAnd(fieldName string) func(opt model.QueryOptions) bool {
+	return func(opt model.QueryOptions) bool {
+		and, ok := opt.Filters.(squirrel.And)
+		if !ok || len(and) < 2 {
+			return false
+		}
+		eq, hasEq := and[0].(squirrel.Eq)
+		if !hasEq {
+			return false
+		}
+		_, hasField := eq[fieldName]
+		return hasField
+	}
+}
+
+// matchFieldInEq returns a matcher that checks whether QueryOptions.Filters is a
+// squirrel.Eq containing the given field name.
+func matchFieldInEq(fieldName string) func(opt model.QueryOptions) bool {
+	return func(opt model.QueryOptions) bool {
+		eq, ok := opt.Filters.(squirrel.Eq)
+		if !ok {
+			return false
+		}
+		_, hasField := eq[fieldName]
+		return hasField
 	}
 }
