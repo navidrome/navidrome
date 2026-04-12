@@ -119,6 +119,20 @@ var _ = Describe("MediaFiles", func() {
 						Expect(a.MinYear).To(Equal(1999))
 					})
 				})
+				Context("CreatedAt aggregation", func() {
+					It("ignores zero BirthTime values when computing the oldest", func() {
+						mfs = MediaFiles{
+							{BirthTime: t("2022-12-19 08:30")},
+							{BirthTime: time.Time{}},
+							{BirthTime: t("2022-12-18 10:00")},
+						}
+						Expect(mfs.ToAlbum().CreatedAt).To(Equal(t("2022-12-18 10:00")))
+					})
+					It("returns zero when all BirthTime values are zero", func() {
+						mfs = MediaFiles{{BirthTime: time.Time{}}, {BirthTime: time.Time{}}}
+						Expect(mfs.ToAlbum().CreatedAt).To(BeZero())
+					})
+				})
 			})
 			When("we have multiple songs with same dates", func() {
 				BeforeEach(func() {
