@@ -78,6 +78,11 @@ var fieldMap = map[string]*mappedField{
 	"artistdateloved":  {field: "artist_annotation.starred_at", joinType: JoinArtistAnnotation},
 	"artistdaterated":  {field: "artist_annotation.rated_at", joinType: JoinArtistAnnotation},
 
+	"rgalbumgain": {field: "media_file.rg_album_gain", numeric: true},
+	"rgalbumpeak": {field: "media_file.rg_album_peak", numeric: true},
+	"rgtrackgain": {field: "media_file.rg_track_gain", numeric: true},
+	"rgtrackpeak": {field: "media_file.rg_track_peak", numeric: true},
+
 	"mbz_album_id":         {field: "media_file.mbz_album_id"},
 	"mbz_album_artist_id":  {field: "media_file.mbz_album_artist_id"},
 	"mbz_artist_id":        {field: "media_file.mbz_artist_id"},
