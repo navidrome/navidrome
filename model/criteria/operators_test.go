@@ -46,8 +46,10 @@ var _ = Describe("Operators", func() {
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 
 		// InPlaylist and NotInPlaylist are special cases
-		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
+		Entry("inPlaylist [id]", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+		Entry("inPlaylist [path]", InPlaylist{"path": "lacuslacus.nsp"}, "media_file.id IN "+
+			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (playlist.path = ? AND playlist.public = ?))", "lacuslacus.nsp", 1),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 
