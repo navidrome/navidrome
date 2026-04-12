@@ -168,16 +168,17 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
+// globMetaChars lists every metacharacter understood by filepath.Match.
+const globMetaChars = "*?["
+
 // extractDiscNumber parses the disc number from a filename matched by a
-// filepath.Match-style glob pattern. It takes the literal prefix of the
-// pattern (everything before the first '*', '?', or '[' metacharacter),
-// strips it from the filename, and reads the leading digits that follow.
+// filepath.Match-style glob pattern.
 //
 // Both pattern and filename must already be lowercased by the caller, which
 // is also expected to have verified that filepath.Match(pattern, filename)
 // is true before calling this function.
 func extractDiscNumber(pattern, filename string) (int, bool) {
-	metaIdx := strings.IndexAny(pattern, "*?[")
+	metaIdx := strings.IndexAny(pattern, globMetaChars)
 	if metaIdx < 0 {
 		return 0, false
 	}
@@ -186,18 +187,15 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 		return 0, false
 	}
 
-	var digits []byte
-	for i := len(prefix); i < len(filename); i++ {
-		c := filename[i]
-		if c < '0' || c > '9' {
-			break
-		}
-		digits = append(digits, c)
+	start := len(prefix)
+	end := start
+	for end < len(filename) && filename[end] >= '0' && filename[end] <= '9' {
+		end++
 	}
-	if len(digits) == 0 {
+	if end == start {
 		return 0, false
 	}
-	num, err := strconv.Atoi(string(digits))
+	num, err := strconv.Atoi(filename[start:end])
 	if err != nil {
 		return 0, false
 	}
@@ -208,7 +206,7 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 // pattern. A numbered filename whose number equals the target disc wins over
 // any unnumbered candidate; callers must pass a lowercase pattern.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
-	isLiteral := !strings.ContainsAny(pattern, "*?[")
+	isLiteral := !strings.ContainsAny(pattern, globMetaChars)
 	return func() (io.ReadCloser, string, error) {
 		var fallback string
 		for _, file := range d.imgFiles {

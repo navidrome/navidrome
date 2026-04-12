@@ -226,10 +226,10 @@ var _ = Describe("Disc Artwork Reader", func() {
 				r.Close()
 				Expect(path).To(Equal(files[expectedIdx]))
 			},
-			Entry("'?' wildcard, disc 1", "disc?.jpg", 1, 0),
-			Entry("'?' wildcard, disc 2", "disc?.jpg", 2, 1),
-			Entry("character class, disc 1", "disc[0-9].jpg", 1, 0),
-			Entry("character class, disc 2", "disc[0-9].jpg", 2, 1),
+			Entry("disc?.jpg, target disc 1 → disc1.jpg", "disc?.jpg", 1, 0),
+			Entry("disc?.jpg, target disc 2 → disc2.jpg", "disc?.jpg", 2, 1),
+			Entry("disc[0-9].jpg, target disc 1 → disc1.jpg", "disc[0-9].jpg", 1, 0),
+			Entry("disc[0-9].jpg, target disc 2 → disc2.jpg", "disc[0-9].jpg", 2, 1),
 		)
 
 		It("matches file without number in multi-folder album by folder", func() {
