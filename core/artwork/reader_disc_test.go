@@ -226,6 +226,33 @@ var _ = Describe("Disc Artwork Reader", func() {
 			Expect(path).To(Equal(f2))
 		})
 
+		It("keeps scanning literal-pattern matches so fallback retry still works", func() {
+			// Guards against an 'early break on first literal match' optimization.
+			// Multiple imgFiles entries can share a basename (symlinks, case-variant
+			// duplicates on case-sensitive filesystems). If the loop breaks after
+			// recording just the first, the fallback retry cannot recover when
+			// that first file is unreadable.
+			f1 := createFile("album/stale/cover.png")
+			f2 := createFile("album/cover.png")
+			Expect(os.Remove(f1)).To(Succeed())
+			reader := &discArtworkReader{
+				discNumber: 1,
+				imgFiles:   []string{f1, f2},
+				discFolders: map[string]bool{
+					filepath.Join(tmpDir, "album"):       true,
+					filepath.Join(tmpDir, "album/stale"): true,
+				},
+				isMultiFolder: true,
+			}
+
+			sf := reader.fromExternalFile(ctx, "cover.png")
+			r, path, err := sf()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(r).ToNot(BeNil())
+			r.Close()
+			Expect(path).To(Equal(f2))
+		})
+
 		DescribeTable("filters by disc number for non-'*' wildcard patterns",
 			func(pattern string, discNumber, expectedIdx int) {
 				files := []string{

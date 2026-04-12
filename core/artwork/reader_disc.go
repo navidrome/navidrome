@@ -243,11 +243,6 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 			fallbacks = append(fallbacks, file)
-			// A literal filename can only match one file, so stop as soon
-			// as we have a viable fallback.
-			if isLiteral {
-				break
-			}
 		}
 
 		for _, file := range fallbacks {
