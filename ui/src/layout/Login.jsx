@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
@@ -13,8 +13,6 @@ import {
   createMuiTheme,
   useLogin,
   useNotify,
-  useRefresh,
-  useSetLocale,
   useTranslate,
   useVersion,
 } from 'react-admin'
@@ -24,7 +22,6 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
-import { retrieveTranslation } from '../i18n'
 import { INSIGHTS_DOC_URL } from '../consts.js'
 
 const useStyles = makeStyles(
@@ -402,26 +399,7 @@ Login.propTypes = {
 // the right theme
 const LoginWithTheme = (props) => {
   const theme = useCurrentTheme()
-  const setLocale = useSetLocale()
-  const refresh = useRefresh()
   const version = useVersion()
-
-  useEffect(() => {
-    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
-      retrieveTranslation(config.defaultLanguage)
-        .then(() => {
-          setLocale(config.defaultLanguage).then(() => {
-            localStorage.setItem('locale', config.defaultLanguage)
-          })
-          refresh(true)
-        })
-        .catch((e) => {
-          throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e,
-          )
-        })
-    }
-  }, [refresh, setLocale])
 
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
