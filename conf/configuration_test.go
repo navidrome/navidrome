@@ -219,6 +219,37 @@ var _ = Describe("Configuration", func() {
 
 	})
 
+	Describe("ValidateMaxImageUploadSize", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		DescribeTable("accepts valid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+			},
+			Entry("megabytes", "10MB"),
+			Entry("gigabytes", "1GB"),
+			Entry("raw bytes", "10485760"),
+			Entry("mebibytes", "10MiB"),
+			Entry("lower case", "50mb"),
+		)
+
+		DescribeTable("rejects invalid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+			},
+			Entry("garbage string", "not-a-size"),
+			Entry("negative-looking", "-10MB"),
+		)
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

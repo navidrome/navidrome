@@ -12,6 +12,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -41,6 +42,7 @@ type Provider interface {
 type provider struct {
 	ds          model.DataStore
 	ag          Agents
+	matcher     *matcher.Matcher
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -85,8 +87,8 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents) Provider {
-	e := &provider{ds: ds, ag: agents}
+func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher) Provider {
+	e := &provider{ds: ds, ag: agents, matcher: m}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
@@ -300,7 +302,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 
 	if err == nil && len(songs) > 0 {
-		return e.matchSongsToLibrary(ctx, songs, count)
+		return e.matcher.MatchSongsToLibrary(ctx, songs, count)
 	}
 
 	// Fallback to existing similar artists + top songs algorithm
@@ -479,7 +481,7 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		}
 	}
 
-	mfs, err := e.matchSongsToLibrary(ctx, songs, count)
+	mfs, err := e.matcher.MatchSongsToLibrary(ctx, songs, count)
 	if err != nil {
 		return nil, err
 	}

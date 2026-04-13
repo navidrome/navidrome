@@ -35,6 +35,8 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
         "composer": "Compositor",

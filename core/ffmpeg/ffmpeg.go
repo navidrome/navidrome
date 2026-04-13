@@ -49,6 +49,7 @@ type FFmpeg interface {
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
+	IsProbeAvailable() bool
 	Version() string
 }
 
@@ -224,6 +225,19 @@ func (e *ffmpeg) IsAvailable() bool {
 	return err == nil
 }
 
+func (e *ffmpeg) IsProbeAvailable() bool {
+	if _, err := ffmpegCmd(); err != nil {
+		return false
+	}
+	probeOnce.Do(func() {
+		probePath := ffprobePath(ffmpegPath)
+		if _, err := exec.LookPath(probePath); err == nil {
+			probeAvail = true
+		}
+	})
+	return probeAvail
+}
+
 // Version executes ffmpeg -version and extracts the version from the output.
 // Sample output: ffmpeg version 6.0 Copyright (c) 2000-2023 the FFmpeg developers
 func (e *ffmpeg) Version() string {
@@ -373,18 +387,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	if opts.BitRate > 0 {
 		args = append(args, "-b:a", strconv.Itoa(opts.BitRate)+"k")
 	}
-	if opts.SampleRate > 0 {
-		args = append(args, "-ar", strconv.Itoa(opts.SampleRate))
-	}
-	if opts.Channels > 0 {
-		args = append(args, "-ac", strconv.Itoa(opts.Channels))
-	}
-	// Only pass -sample_fmt for lossless output formats where bit depth matters.
-	// Lossy codecs (mp3, aac, opus) handle sample format conversion internally,
-	// and passing interleaved formats like "s16" causes silent failures.
-	if opts.BitDepth >= 16 && isLosslessOutputFormat(opts.Format) {
-		args = append(args, "-sample_fmt", bitDepthToSampleFmt(opts.BitDepth))
-	}
+	args = injectDynamicAudioFlags(args, opts)
 
 	args = append(args, "-v", "0")
 
@@ -398,12 +401,19 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
-// Note: these flags are injected unconditionally when non-zero, even if the template
-// already includes them. FFmpeg uses the last occurrence of duplicate flags.
+// Values in opts have already been clamped to codec limits upstream (see
+// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
+	return injectDynamicAudioFlags(args, opts)
+}
 
-	// Dynamically inject -ar, -ac, and -sample_fmt before the output target
+// injectDynamicAudioFlags appends -ar, -ac, and -sample_fmt flags based on opts.
+// Only passes -sample_fmt for lossless output formats where bit depth matters:
+// lossy codecs (mp3, aac, opus) handle sample format conversion internally, and
+// passing interleaved formats like "s16" causes silent failures.
+func injectDynamicAudioFlags(args []string, opts TranscodeOptions) []string {
 	if opts.SampleRate > 0 {
 		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
 	}
@@ -533,4 +543,6 @@ var (
 	ffOnce     sync.Once
 	ffmpegPath string
 	ffmpegErr  error
+	probeOnce  sync.Once
+	probeAvail bool
 )
