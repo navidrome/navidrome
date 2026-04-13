@@ -1,11 +1,12 @@
 import { vi } from 'vitest'
-import { COVER_ART_SIZE } from '../consts'
 import { httpClient } from '../dataProvider'
 import subsonic from './index'
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(() => Promise.resolve({})),
 }))
+
+const COVER_ART_SIZE = 600
 
 describe('getCoverArtUrl', () => {
   beforeEach(() => {

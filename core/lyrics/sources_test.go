@@ -108,12 +108,18 @@ var _ = Describe("sources", func() {
 			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
 			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Some "))
 			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(gg.P(int64(1500))))
+			Expect(lyrics[0].Line[0].Cue[0].ByteStart).To(Equal(0))
+			Expect(lyrics[0].Line[0].Cue[0].ByteEnd).To(Equal(4))
 			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
 			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("lyrics "))
 			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(gg.P(int64(2000))))
+			Expect(lyrics[0].Line[0].Cue[1].ByteStart).To(Equal(5))
+			Expect(lyrics[0].Line[0].Cue[1].ByteEnd).To(Equal(11))
 			Expect(*lyrics[0].Line[0].Cue[2].Start).To(Equal(int64(2000)))
 			Expect(lyrics[0].Line[0].Cue[2].Value).To(Equal("here"))
 			Expect(lyrics[0].Line[0].Cue[2].End).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[0].Cue[2].ByteStart).To(Equal(12))
+			Expect(lyrics[0].Line[0].Cue[2].ByteEnd).To(Equal(15))
 
 			// Line 2: has inline markers
 			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(3000))))
@@ -122,6 +128,10 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[1].Cue).To(HaveLen(2))
 			Expect(lyrics[0].Line[1].Cue[0].End).To(Equal(gg.P(int64(3500))))
 			Expect(lyrics[0].Line[1].Cue[1].End).To(Equal(gg.P(int64(5000))))
+			Expect(lyrics[0].Line[1].Cue[0].ByteStart).To(Equal(0))
+			Expect(lyrics[0].Line[1].Cue[0].ByteEnd).To(Equal(4))
+			Expect(lyrics[0].Line[1].Cue[1].ByteStart).To(Equal(5))
+			Expect(lyrics[0].Line[1].Cue[1].ByteEnd).To(Equal(9))
 
 			// Line 3: plain line, no cues
 			Expect(lyrics[0].Line[2].Start).To(Equal(gg.P(int64(5000))))
@@ -148,9 +158,13 @@ var _ = Describe("sources", func() {
 			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
 			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Lead "))
 			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(gg.P(int64(1500))))
+			Expect(lyrics[0].Line[0].Cue[0].ByteStart).To(Equal(0))
+			Expect(lyrics[0].Line[0].Cue[0].ByteEnd).To(Equal(4))
 			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
 			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("words"))
 			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(gg.P(int64(3000))))
+			Expect(lyrics[0].Line[0].Cue[1].ByteStart).To(Equal(5))
+			Expect(lyrics[0].Line[0].Cue[1].ByteEnd).To(Equal(9))
 
 			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(3000))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("Fallback line"))

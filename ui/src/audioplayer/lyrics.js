@@ -19,6 +19,17 @@ const toTime = (value) => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+const toByteOffset = (value) => {
+  if (value == null || value === '') {
+    return null
+  }
+  const numeric = Number(value)
+  if (!Number.isInteger(numeric) || numeric < 0) {
+    return null
+  }
+  return numeric
+}
+
 const compareNullableTime = (a, b) => {
   if (a == null && b == null) {
     return 0
@@ -78,10 +89,79 @@ const normalizeToken = (token) => {
   if (!value.trim()) {
     return null
   }
+  const byteStart = toByteOffset(token.byteStart)
+  const byteEnd = toByteOffset(token.byteEnd)
   return {
     start: toTime(token.start),
     end: toTime(token.end),
     value,
+    ...(byteStart != null ? { byteStart } : {}),
+    ...(byteEnd != null ? { byteEnd } : {}),
+  }
+}
+
+const utf8BytesForCodePoint = (codePoint) => {
+  if (codePoint <= 0x7f) {
+    return 1
+  }
+  if (codePoint <= 0x7ff) {
+    return 2
+  }
+  if (codePoint <= 0xffff) {
+    return 3
+  }
+  return 4
+}
+
+export const utf8ByteOffsetToCodeUnitIndex = (text, targetByteOffset) => {
+  if (typeof text !== 'string' || text.length === 0) {
+    return 0
+  }
+
+  const target = toByteOffset(targetByteOffset)
+  if (target == null || target <= 0) {
+    return 0
+  }
+
+  let byteOffset = 0
+  let index = 0
+  while (index < text.length) {
+    if (byteOffset >= target) {
+      return index
+    }
+    const codePoint = text.codePointAt(index)
+    byteOffset += utf8BytesForCodePoint(codePoint)
+    index += codePoint > 0xffff ? 2 : 1
+  }
+
+  return text.length
+}
+
+export const utf8ByteRangeToCodeUnitRange = (text, byteStart, byteEnd) => {
+  if (typeof text !== 'string') {
+    return null
+  }
+
+  const start = toByteOffset(byteStart)
+  const end = toByteOffset(byteEnd)
+  if (start == null || end == null || end < start) {
+    return null
+  }
+
+  const startIndex = utf8ByteOffsetToCodeUnitIndex(text, start)
+  const endIndex = utf8ByteOffsetToCodeUnitIndex(text, end + 1)
+  if (
+    startIndex >= endIndex ||
+    startIndex > text.length ||
+    endIndex > text.length
+  ) {
+    return null
+  }
+
+  return {
+    start: startIndex,
+    end: endIndex,
+    text: text.slice(startIndex, endIndex),
   }
 }
 

@@ -141,9 +141,9 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.End).To(Equal(gg.P(int64(3000))))
 			Expect(line.Cue).To(HaveLen(3))
 
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(1000)), End: gg.P(int64(1400)), Value: "He", AgentID: "main"}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(1400)), End: gg.P(int64(1800)), Value: "llo", AgentID: "main"}))
-			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2500)), Value: "echo", AgentID: "__nd_bg__|main"}))
+			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(1000)), End: gg.P(int64(1400)), Value: "He", ByteStart: 0, ByteEnd: 1, AgentID: "main"}))
+			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(1400)), End: gg.P(int64(1800)), Value: "llo", ByteStart: 2, ByteEnd: 4, AgentID: "main"}))
+			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2500)), Value: "echo", ByteStart: 6, ByteEnd: 9, AgentID: "__nd_bg__|main"}))
 		})
 
 		It("should parse named TTML agents into main, voice, and group roles", func() {
@@ -241,8 +241,8 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Value).To(Equal("go\ngo"))
 			Expect(line.End).To(Equal(gg.P(int64(45570))))
 			Expect(line.Cue).To(HaveLen(2))
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(43444)), End: gg.P(int64(43716)), Value: "go"}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(43716)), End: gg.P(int64(43887)), Value: "go"}))
+			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(43444)), End: gg.P(int64(43716)), Value: "go", ByteStart: 0, ByteEnd: 1}))
+			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(43716)), End: gg.P(int64(43887)), Value: "go", ByteStart: 3, ByteEnd: 4}))
 		})
 	})
 
@@ -325,8 +325,8 @@ var _ = Describe("parseTTML", func() {
 			Expect(pronunciation.Line[0].Value).To(Equal("konni"))
 			Expect(pronunciation.Line[0].End).To(Equal(gg.P(int64(2600))))
 			Expect(pronunciation.Line[0].Cue).To(HaveLen(2))
-			Expect(pronunciation.Line[0].Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2300)), Value: "ko"}))
-			Expect(pronunciation.Line[0].Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(2300)), End: gg.P(int64(2600)), Value: "nni"}))
+			Expect(pronunciation.Line[0].Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(2000)), End: gg.P(int64(2300)), Value: "ko", ByteStart: 0, ByteEnd: 1}))
+			Expect(pronunciation.Line[0].Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(2300)), End: gg.P(int64(2600)), Value: "nni", ByteStart: 2, ByteEnd: 4}))
 		})
 	})
 
@@ -369,9 +369,9 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Start).To(Equal(gg.P(int64(2747))))
 			Expect(line.Value).To(Equal("I woke up"))
 			Expect(line.Cue).To(HaveLen(3))
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(2747)), End: gg.P(int64(3018)), Value: "I"}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(3018)), End: gg.P(int64(3179)), Value: "woke"}))
-			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(3179)), End: gg.P(int64(3582)), Value: "up"}))
+			Expect(line.Cue[0]).To(Equal(model.Cue{Start: gg.P(int64(2747)), End: gg.P(int64(3018)), Value: "I", ByteStart: 0, ByteEnd: 0}))
+			Expect(line.Cue[1]).To(Equal(model.Cue{Start: gg.P(int64(3018)), End: gg.P(int64(3179)), Value: "woke", ByteStart: 2, ByteEnd: 5}))
+			Expect(line.Cue[2]).To(Equal(model.Cue{Start: gg.P(int64(3179)), End: gg.P(int64(3582)), Value: "up", ByteStart: 7, ByteEnd: 8}))
 		})
 	})
 })

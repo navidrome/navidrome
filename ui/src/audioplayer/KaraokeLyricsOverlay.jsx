@@ -26,6 +26,7 @@ import {
   hasStructuredLyricContent,
   resolveKaraokeTokenWindow,
   resolveLayerLineForMain,
+  utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
 const KARAOKE_RENDER_LEAD_MS = 24
@@ -635,6 +636,72 @@ const buildSegmentsFromLine = (line) => {
   }
 
   const text = line.value || ''
+  const exactSegments = (() => {
+    if (!text) {
+      return null
+    }
+
+    const rangedTokens = line.tokens
+      .map((token, tokenIndex) => ({
+        token,
+        tokenIndex,
+        range: utf8ByteRangeToCodeUnitRange(
+          text,
+          token?.byteStart,
+          token?.byteEnd,
+        ),
+      }))
+      .filter((entry) => entry.range != null)
+
+    if (
+      rangedTokens.length !== line.tokens.length ||
+      rangedTokens.length === 0
+    ) {
+      return null
+    }
+
+    rangedTokens.sort(
+      (a, b) =>
+        a.range.start - b.range.start ||
+        a.range.end - b.range.end ||
+        a.tokenIndex - b.tokenIndex,
+    )
+
+    const segments = []
+    let cursor = 0
+    for (const entry of rangedTokens) {
+      if (entry.range.start < cursor) {
+        return null
+      }
+      if (entry.range.start > cursor) {
+        segments.push({
+          text: text.slice(cursor, entry.range.start),
+          token: null,
+          tokenIndex: -1,
+        })
+      }
+      segments.push({
+        text: entry.range.text,
+        token: entry.token,
+        tokenIndex: entry.tokenIndex,
+      })
+      cursor = entry.range.end
+    }
+
+    if (cursor < text.length) {
+      segments.push({
+        text: text.slice(cursor),
+        token: null,
+        tokenIndex: -1,
+      })
+    }
+
+    return segments
+  })()
+  if (exactSegments) {
+    return exactSegments
+  }
+
   const matchedSegments = []
   const fallbackSegments = []
   let cursor = 0

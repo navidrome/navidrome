@@ -13,6 +13,8 @@ import {
   selectLyricLayers,
   structuredLyricsToLrc,
   structuredLyricToLrc,
+  utf8ByteOffsetToCodeUnitIndex,
+  utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
 describe('lyrics helpers', () => {
@@ -410,6 +412,60 @@ describe('lyrics helpers', () => {
         ],
       },
     ])
+  })
+
+  it('preserves cue byte offsets on karaoke tokens', () => {
+    const lines = buildKaraokeLines({
+      lang: 'eng',
+      synced: true,
+      line: [{ start: 0, end: 2400, value: 'Oh love love me tonight' }],
+      cueLine: [
+        {
+          index: 0,
+          start: 0,
+          end: 2400,
+          value: 'Oh love love me tonight',
+          cue: [
+            { start: 0, end: 300, value: 'Oh', byteStart: 0, byteEnd: 1 },
+            { start: 900, end: 1300, value: 'love', byteStart: 8, byteEnd: 11 },
+            { start: 1300, end: 1600, value: 'me', byteStart: 13, byteEnd: 14 },
+            {
+              start: 1600,
+              end: 2400,
+              value: 'tonight',
+              byteStart: 16,
+              byteEnd: 22,
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(
+      lines[0].tokens.map((token) => [
+        token.value,
+        token.byteStart,
+        token.byteEnd,
+      ]),
+    ).toEqual([
+      ['Oh', 0, 1],
+      ['love', 8, 11],
+      ['me', 13, 14],
+      ['tonight', 16, 22],
+    ])
+  })
+
+  it('maps UTF-8 byte offsets to string ranges for multibyte lyrics', () => {
+    const text = '눈을 뜬 순간'
+
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 0)).toBe(0)
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 3)).toBe(1)
+    expect(utf8ByteOffsetToCodeUnitIndex(text, 7)).toBe(3)
+    expect(utf8ByteRangeToCodeUnitRange(text, 11, 16)).toEqual({
+      start: 5,
+      end: 7,
+      text: '순간',
+    })
   })
 
   it('falls back to legacy cueLine role values when agents are absent', () => {

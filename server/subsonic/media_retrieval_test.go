@@ -277,6 +277,8 @@ var _ = Describe("MediaRetrievalController", func() {
 						expectedCue := expectedCueLine.Cue[k]
 						Expect(realCue.Value).To(Equal(expectedCue.Value))
 						Expect(realCue.Start).To(Equal(expectedCue.Start))
+						Expect(realCue.ByteStart).To(Equal(expectedCue.ByteStart))
+						Expect(realCue.ByteEnd).To(Equal(expectedCue.ByteEnd))
 						if expectedCue.End == nil {
 							Expect(realCue.End).To(BeNil())
 						} else {
@@ -514,14 +516,18 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "konni",
 								Cue: []responses.LyricCue{
 									{
-										Start: tokenStartA,
-										End:   &tokenEndA,
-										Value: "ko",
+										Start:     tokenStartA,
+										End:       &tokenEndA,
+										ByteStart: 0,
+										ByteEnd:   1,
+										Value:     "ko",
 									},
 									{
-										Start: tokenStartB,
-										End:   &tokenEndB,
-										Value: "nni",
+										Start:     tokenStartB,
+										End:       &tokenEndB,
+										ByteStart: 2,
+										ByteEnd:   4,
+										Value:     "nni",
 									},
 								},
 							},
@@ -552,16 +558,20 @@ var _ = Describe("MediaRetrievalController", func() {
 							Value: "Hello echo",
 							Cue: []model.Cue{
 								{
-									Start:   &tokenStartA,
-									End:     &tokenEndA,
-									Value:   "Hello",
-									AgentID: "lead",
+									Start:     &tokenStartA,
+									End:       &tokenEndA,
+									Value:     "Hello",
+									ByteStart: 0,
+									ByteEnd:   4,
+									AgentID:   "lead",
 								},
 								{
-									Start:   &tokenStartB,
-									End:     &tokenEndB,
-									Value:   "echo",
-									AgentID: "__nd_bg__|lead",
+									Start:     &tokenStartB,
+									End:       &tokenEndB,
+									Value:     "echo",
+									ByteStart: 6,
+									ByteEnd:   9,
+									AgentID:   "__nd_bg__|lead",
 								},
 							},
 						},
@@ -608,9 +618,11 @@ var _ = Describe("MediaRetrievalController", func() {
 								AgentID: "lead",
 								Cue: []responses.LyricCue{
 									{
-										Start: tokenStartA,
-										End:   &tokenEndA,
-										Value: "Hello",
+										Start:     tokenStartA,
+										End:       &tokenEndA,
+										ByteStart: 0,
+										ByteEnd:   4,
+										Value:     "Hello",
 									},
 								},
 							},
@@ -622,10 +634,122 @@ var _ = Describe("MediaRetrievalController", func() {
 								AgentID: "__nd_bg__|lead",
 								Cue: []responses.LyricCue{
 									{
-										Start: tokenStartB,
-										End:   &tokenEndB,
-										Value: "echo",
+										Start:     tokenStartB,
+										End:       &tokenEndB,
+										ByteStart: 6,
+										ByteEnd:   9,
+										Value:     "echo",
 									},
+								},
+							},
+						},
+					},
+				},
+			})
+		})
+
+		It("should return required cue byte offsets for ambiguous and multibyte cue lines", func() {
+			r := newGetRequest("id=1&enhanced=true")
+
+			asciiLineStart := int64(0)
+			asciiLineEnd := int64(2400)
+			asciiCueStartA := int64(0)
+			asciiCueEndA := int64(300)
+			asciiCueStartB := int64(900)
+			asciiCueEndB := int64(1300)
+			asciiCueStartC := int64(1300)
+			asciiCueEndC := int64(1600)
+			asciiCueStartD := int64(1600)
+
+			utfLineStart := int64(2747)
+			utfLineEnd := int64(6214)
+			utfCueStartA := int64(2747)
+			utfCueEndA := int64(3018)
+			utfCueStartB := int64(3018)
+			utfCueEndB := int64(3179)
+			utfCueStartC := int64(3582)
+			utfCueEndC := int64(4100)
+			utfCueStartD := int64(4500)
+			utfCueEndD := int64(6214)
+
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{
+					Lang:   "eng",
+					Synced: true,
+					Line: []model.Line{
+						{
+							Start: &asciiLineStart,
+							End:   &asciiLineEnd,
+							Value: "Oh love love me tonight",
+							Cue: []model.Cue{
+								{Start: &asciiCueStartA, End: &asciiCueEndA, Value: "Oh", ByteStart: 0, ByteEnd: 1},
+								{Start: &asciiCueStartB, End: &asciiCueEndB, Value: "love", ByteStart: 8, ByteEnd: 11},
+								{Start: &asciiCueStartC, End: &asciiCueEndC, Value: "me", ByteStart: 13, ByteEnd: 14},
+								{Start: &asciiCueStartD, Value: "tonight", ByteStart: 16, ByteEnd: 22},
+							},
+						},
+						{
+							Start: &utfLineStart,
+							End:   &utfLineEnd,
+							Value: "눈을 뜬 순간",
+							Cue: []model.Cue{
+								{Start: &utfCueStartA, End: &utfCueEndA, Value: "눈", ByteStart: 0, ByteEnd: 2},
+								{Start: &utfCueStartB, End: &utfCueEndB, Value: "을", ByteStart: 3, ByteEnd: 5},
+								{Start: &utfCueStartC, End: &utfCueEndC, Value: "뜬", ByteStart: 7, ByteEnd: 9},
+								{Start: &utfCueStartD, End: &utfCueEndD, Value: "순간", ByteStart: 11, ByteEnd: 16},
+							},
+						},
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJSON),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{Start: &asciiLineStart, Value: "Oh love love me tonight"},
+							{Start: &utfLineStart, Value: "눈을 뜬 순간"},
+						},
+						CueLine: []responses.CueLine{
+							{
+								Index: 0,
+								Start: &asciiLineStart,
+								End:   &asciiLineEnd,
+								Value: "Oh love love me tonight",
+								Cue: []responses.LyricCue{
+									{Start: asciiCueStartA, End: &asciiCueEndA, Value: "Oh", ByteStart: 0, ByteEnd: 1},
+									{Start: asciiCueStartB, End: &asciiCueEndB, Value: "love", ByteStart: 8, ByteEnd: 11},
+									{Start: asciiCueStartC, End: &asciiCueEndC, Value: "me", ByteStart: 13, ByteEnd: 14},
+									{Start: asciiCueStartD, End: &asciiLineEnd, Value: "tonight", ByteStart: 16, ByteEnd: 22},
+								},
+							},
+							{
+								Index: 1,
+								Start: &utfLineStart,
+								End:   &utfLineEnd,
+								Value: "눈을 뜬 순간",
+								Cue: []responses.LyricCue{
+									{Start: utfCueStartA, End: &utfCueEndA, Value: "눈", ByteStart: 0, ByteEnd: 2},
+									{Start: utfCueStartB, End: &utfCueEndB, Value: "을", ByteStart: 3, ByteEnd: 5},
+									{Start: utfCueStartC, End: &utfCueEndC, Value: "뜬", ByteStart: 7, ByteEnd: 9},
+									{Start: utfCueStartD, End: &utfCueEndD, Value: "순간", ByteStart: 11, ByteEnd: 16},
 								},
 							},
 						},

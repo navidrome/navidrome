@@ -619,8 +619,10 @@ func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {
 		}
 
 		cue := responses.LyricCue{
-			Start: *cues[i].Start,
-			Value: cues[i].Value,
+			Start:     *cues[i].Start,
+			Value:     cues[i].Value,
+			ByteStart: cues[i].ByteStart,
+			ByteEnd:   cues[i].ByteEnd,
 		}
 		if hasAnyEnd {
 			end := cues[i].End

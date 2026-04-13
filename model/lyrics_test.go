@@ -130,9 +130,9 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line0.End).To(Equal(&t3000))
 		Expect(line0.Value).To(Equal("Some lyrics here"))
 		Expect(line0.Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
-			{Start: &t1500, End: &t2000, Value: "lyrics "},
-			{Start: &t2000, End: &t3000, Value: "here"},
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t2000, Value: "lyrics ", ByteStart: 5, ByteEnd: 11},
+			{Start: &t2000, End: &t3000, Value: "here", ByteStart: 12, ByteEnd: 15},
 		}))
 
 		line1 := lyrics.Line[1]
@@ -140,8 +140,8 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line1.End).To(Equal(&t3500))
 		Expect(line1.Value).To(Equal("More words"))
 		Expect(line1.Cue).To(Equal([]Cue{
-			{Start: &t3000, Value: "More "},
-			{Start: &t3500, Value: "words"},
+			{Start: &t3000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t3500, Value: "words", ByteStart: 5, ByteEnd: 9},
 		}))
 
 		Expect(line1.Cue[1].End).To(BeNil())
@@ -166,8 +166,8 @@ var _ = Describe("ToLyrics", func() {
 		t3000 := int64(3000)
 
 		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
-			{Start: &t1000, End: &t1500, Value: "Some "},
-			{Start: &t1500, End: &t3000, Value: "lyrics"},
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t3000, Value: "lyrics", ByteStart: 5, ByteEnd: 10},
 		}))
 		Expect(lyrics.Line[0].Value).To(Equal("Some lyrics"))
 		Expect(lyrics.Line[0].End).To(Equal(&t3000))
@@ -176,9 +176,25 @@ var _ = Describe("ToLyrics", func() {
 		Expect(lyrics.Line[1].Value).To(Equal("Plain line"))
 
 		Expect(lyrics.Line[2].Cue).To(Equal([]Cue{
-			{Start: &t5000, Value: "More "},
-			{Start: &t5500, Value: "words"},
+			{Start: &t5000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t5500, Value: "words", ByteStart: 5, ByteEnd: 9},
 		}))
 		Expect(lyrics.Line[2].Value).To(Equal("More words"))
+	})
+
+	It("should preserve byte offsets for Enhanced LRC cues", func() {
+		lyrics, err := ToLyrics("xxx", "[00:00.00]<00:00.00>Oh <00:00.90>love<00:01.30> me <00:01.60>tonight")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(1))
+
+		t0, t900, t1300, t1600 := int64(0), int64(900), int64(1300), int64(1600)
+		line := lyrics.Line[0]
+		Expect(line.Value).To(Equal("Oh love me tonight"))
+		Expect(line.Cue).To(Equal([]Cue{
+			{Start: &t0, Value: "Oh ", ByteStart: 0, ByteEnd: 2},
+			{Start: &t900, Value: "love", ByteStart: 3, ByteEnd: 6},
+			{Start: &t1300, Value: " me ", ByteStart: 7, ByteEnd: 10},
+			{Start: &t1600, Value: "tonight", ByteStart: 11, ByteEnd: 17},
+		}))
 	})
 })

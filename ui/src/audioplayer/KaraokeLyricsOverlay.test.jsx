@@ -177,6 +177,74 @@ describe('<KaraokeLyricsOverlay /> behavior', () => {
     expect(translationLine.querySelectorAll('span')).toHaveLength(1)
   })
 
+  it('uses cue byte offsets to segment repeated words in the karaoke line', () => {
+    renderOverlay({
+      mainLyric: {
+        kind: 'main',
+        lang: 'en',
+        synced: true,
+        line: [{ start: 0, end: 2400, value: 'Oh love love me tonight' }],
+        cueLine: [
+          {
+            index: 0,
+            start: 0,
+            end: 2400,
+            value: 'Oh love love me tonight',
+            cue: [
+              { start: 0, end: 300, value: 'Oh', byteStart: 0, byteEnd: 1 },
+              {
+                start: 900,
+                end: 1300,
+                value: 'love',
+                byteStart: 8,
+                byteEnd: 11,
+              },
+              {
+                start: 1300,
+                end: 1600,
+                value: 'me',
+                byteStart: 13,
+                byteEnd: 14,
+              },
+              {
+                start: 1600,
+                end: 2400,
+                value: 'tonight',
+                byteStart: 16,
+                byteEnd: 22,
+              },
+            ],
+          },
+        ],
+      },
+      translationLyric: null,
+      pronunciationLyric: null,
+      showTranslation: false,
+      showPronunciation: false,
+      translationEnabled: false,
+      pronunciationEnabled: false,
+      audioInstance: {
+        ...audioInstance,
+        currentTime: 1.0,
+      },
+    })
+
+    const mainLine = screen.getByText('Oh').parentElement
+    const segments = Array.from(mainLine.querySelectorAll('span')).map(
+      (span) => span.textContent,
+    )
+
+    expect(segments).toEqual([
+      'Oh',
+      ' love ',
+      'love',
+      ' ',
+      'me',
+      ' ',
+      'tonight',
+    ])
+  })
+
   it('highlights line-timed pronunciation and translation rows with the active main line', () => {
     renderOverlay({
       mainLyric: {

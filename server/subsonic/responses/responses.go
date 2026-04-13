@@ -538,9 +538,11 @@ type Line struct {
 }
 
 type LyricCue struct {
-	Start int64  `xml:"start,attr"           json:"start"`
-	End   *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
-	Value string `xml:",chardata"            json:"value"`
+	Start     int64  `xml:"start,attr"           json:"start"`
+	End       *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
+	ByteStart int    `xml:"byteStart,attr"       json:"byteStart"`
+	ByteEnd   int    `xml:"byteEnd,attr"         json:"byteEnd"`
+	Value     string `xml:",chardata"            json:"value"`
 }
 
 type Agent struct {
@@ -553,7 +555,7 @@ type CueLine struct {
 	Index   int32      `xml:"index,attr"                    json:"index"`
 	Start   *int64     `xml:"start,attr,omitempty"          json:"start,omitempty"`
 	End     *int64     `xml:"end,attr,omitempty"            json:"end,omitempty"`
-	Value   string     `xml:"value,attr,omitempty"          json:"value,omitempty"`
+	Value   string     `xml:"value,attr"                    json:"value"`
 	AgentID string     `xml:"agentId,attr,omitempty"        json:"agentId,omitempty"`
 	Cue     []LyricCue `xml:"cue,omitempty"                 json:"cue,omitempty"`
 }

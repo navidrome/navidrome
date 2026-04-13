@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -76,6 +77,11 @@ type ttmlDefinedAgent struct {
 	ID   string
 	Type string
 	Name string
+}
+
+type ttmlPiece struct {
+	raw string
+	cue *model.Cue
 }
 
 type ttmlParser struct {
@@ -294,7 +300,7 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 	forKey, hasFor := attrValue(start.Attr, "for")
 	forKey = strings.TrimSpace(forKey)
 
-	value, tokens, err := p.parseInlineElement(start, parent)
+	pieces, err := p.parseInlineElement(start, parent)
 	if err != nil {
 		return ttmlMetadataEntry{}, false, err
 	}
@@ -307,7 +313,8 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 		return ttmlMetadataEntry{}, false, nil
 	}
 
-	line := model.Line{Value: sanitizeTTMLText(value)}
+	value, tokens := buildTTMLLineFromPieces(pieces)
+	line := model.Line{Value: value}
 	if ctx.hasBegin {
 		startMs := ctx.begin
 		line.Start = &startMs
@@ -329,8 +336,7 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 }
 
 func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.Cue, error) {
-	var text strings.Builder
-	var tokens []model.Cue
+	var pieces []ttmlPiece
 
 	for {
 		token, err := p.decoder.Token()
@@ -340,26 +346,26 @@ func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []model.C
 
 		switch t := token.(type) {
 		case xml.StartElement:
-			value, inlineTokens, err := p.parseInlineElement(t, parent)
+			inlinePieces, err := p.parseInlineElement(t, parent)
 			if err != nil {
 				return "", nil, err
 			}
-			text.WriteString(value)
-			tokens = append(tokens, inlineTokens...)
+			pieces = append(pieces, inlinePieces...)
 		case xml.EndElement:
 			if strings.EqualFold(t.Name.Local, "p") {
-				return sanitizeTTMLText(text.String()), tokens, nil
+				value, tokens := buildTTMLLineFromPieces(pieces)
+				return value, tokens, nil
 			}
 		case xml.CharData:
-			text.WriteString(string(t))
+			pieces = append(pieces, ttmlPiece{raw: string(t)})
 		}
 	}
 }
 
-func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimingContext) (string, []model.Cue, error) {
+func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimingContext) ([]ttmlPiece, error) {
 	local := strings.ToLower(start.Name.Local)
 	if local == "br" {
-		return "\n", nil, nil
+		return []ttmlPiece{{raw: "\n"}}, nil
 	}
 
 	ctx := p.childContext(start.Attr, parent)
@@ -368,51 +374,201 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 	_, hasDur := attrValue(start.Attr, "dur")
 	hasOwnTiming := hasBegin || hasEnd || hasDur
 
-	var text strings.Builder
-	var tokens []model.Cue
+	var pieces []ttmlPiece
 
 	for {
 		token, err := p.decoder.Token()
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 
 		switch t := token.(type) {
 		case xml.StartElement:
-			value, inlineTokens, err := p.parseInlineElement(t, ctx)
+			inlinePieces, err := p.parseInlineElement(t, ctx)
 			if err != nil {
-				return "", nil, err
+				return nil, err
 			}
-			text.WriteString(value)
-			tokens = append(tokens, inlineTokens...)
+			pieces = append(pieces, inlinePieces...)
 		case xml.EndElement:
 			if !strings.EqualFold(t.Name.Local, start.Name.Local) {
 				continue
 			}
 
-			value := text.String()
-			tokenText := sanitizeTTMLText(value)
-			if local == "span" && hasOwnTiming && !ctx.invalid && tokenText != "" && len(tokens) == 0 {
-				parsedToken := model.Cue{
-					Value:   tokenText,
-					AgentID: p.resolveCueAgentID(ctx),
+			if local == "span" && hasOwnTiming && !ctx.invalid && !ttmlPiecesContainCue(pieces) {
+				rawValue := concatTTMLPieceRaw(pieces)
+				tokenText := sanitizeTTMLText(rawValue)
+				if tokenText != "" {
+					parsedToken := model.Cue{
+						AgentID: p.resolveCueAgentID(ctx),
+					}
+					if ctx.hasBegin {
+						startMs := ctx.begin
+						parsedToken.Start = &startMs
+					}
+					if ctx.hasEnd {
+						endMs := ctx.end
+						parsedToken.End = &endMs
+					}
+
+					return []ttmlPiece{{
+						raw: rawValue,
+						cue: &parsedToken,
+					}}, nil
 				}
-				if ctx.hasBegin {
-					startMs := ctx.begin
-					parsedToken.Start = &startMs
-				}
-				if ctx.hasEnd {
-					endMs := ctx.end
-					parsedToken.End = &endMs
-				}
-				tokens = append(tokens, parsedToken)
 			}
 
-			return value, tokens, nil
+			return pieces, nil
 		case xml.CharData:
-			text.WriteString(string(t))
+			pieces = append(pieces, ttmlPiece{raw: string(t)})
 		}
 	}
+}
+
+func buildTTMLLineFromPieces(pieces []ttmlPiece) (string, []model.Cue) {
+	finalized := finalizeTTMLLines(splitTTMLPiecesByNewline(pieces))
+	for len(finalized) > 0 && finalized[0].text == "" && len(finalized[0].cues) == 0 {
+		finalized = finalized[1:]
+	}
+	for len(finalized) > 0 {
+		last := finalized[len(finalized)-1]
+		if last.text != "" || len(last.cues) > 0 {
+			break
+		}
+		finalized = finalized[:len(finalized)-1]
+	}
+
+	var value strings.Builder
+	cues := make([]model.Cue, 0, 8)
+	byteOffset := 0
+	for i, line := range finalized {
+		if i > 0 {
+			value.WriteByte('\n')
+			byteOffset++
+		}
+		value.WriteString(line.text)
+		for _, cue := range line.cues {
+			cue.ByteStart += byteOffset
+			cue.ByteEnd += byteOffset
+			cues = append(cues, cue)
+		}
+		byteOffset += len(line.text)
+	}
+
+	return value.String(), cues
+}
+
+type ttmlFinalLine struct {
+	text string
+	cues []model.Cue
+}
+
+func finalizeTTMLLines(lines [][]ttmlPiece) []ttmlFinalLine {
+	finalized := make([]ttmlFinalLine, 0, len(lines))
+	for _, line := range lines {
+		text, cues := finalizeTTMLLogicalLine(line)
+		finalized = append(finalized, ttmlFinalLine{text: text, cues: cues})
+	}
+	return finalized
+}
+
+func splitTTMLPiecesByNewline(pieces []ttmlPiece) [][]ttmlPiece {
+	lines := [][]ttmlPiece{{}}
+	for _, piece := range pieces {
+		raw := normalizeTTMLPieceRaw(piece.raw)
+		if raw == "" {
+			continue
+		}
+
+		start := 0
+		for i := 0; i < len(raw); i++ {
+			if raw[i] != '\n' {
+				continue
+			}
+			if start < i {
+				lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
+					raw: raw[start:i],
+					cue: cloneTTMLCue(piece.cue),
+				})
+			}
+			lines = append(lines, []ttmlPiece{})
+			start = i + 1
+		}
+		if start < len(raw) {
+			lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
+				raw: raw[start:],
+				cue: cloneTTMLCue(piece.cue),
+			})
+		}
+	}
+	return lines
+}
+
+func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []model.Cue) {
+	rawLine := concatTTMLPieceRaw(line)
+	if rawLine == "" {
+		return "", nil
+	}
+
+	leftTrimBytes := len(rawLine) - len(strings.TrimLeftFunc(rawLine, unicode.IsSpace))
+	rightTrimBytes := len(rawLine) - len(strings.TrimRightFunc(rawLine, unicode.IsSpace))
+	trimmedEnd := len(rawLine) - rightTrimBytes
+	if trimmedEnd < leftTrimBytes {
+		trimmedEnd = leftTrimBytes
+	}
+
+	trimmed := strings.TrimSpace(rawLine)
+	cues := make([]model.Cue, 0, len(line))
+	cursor := 0
+	for _, piece := range line {
+		pieceEnd := cursor + len(piece.raw)
+		if piece.cue != nil {
+			byteStart := max(cursor, leftTrimBytes)
+			byteEnd := min(pieceEnd, trimmedEnd)
+			if byteStart < byteEnd {
+				cue := *piece.cue
+				cue.Value = rawLine[byteStart:byteEnd]
+				cue.ByteStart = byteStart - leftTrimBytes
+				cue.ByteEnd = byteEnd - leftTrimBytes - 1
+				cues = append(cues, cue)
+			}
+		}
+		cursor = pieceEnd
+	}
+
+	return trimmed, cues
+}
+
+func normalizeTTMLPieceRaw(raw string) string {
+	raw = str.SanitizeText(raw)
+	raw = strings.ReplaceAll(raw, "\r\n", "\n")
+	raw = strings.ReplaceAll(raw, "\r", "\n")
+	return raw
+}
+
+func concatTTMLPieceRaw(pieces []ttmlPiece) string {
+	var raw strings.Builder
+	for _, piece := range pieces {
+		raw.WriteString(normalizeTTMLPieceRaw(piece.raw))
+	}
+	return raw.String()
+}
+
+func ttmlPiecesContainCue(pieces []ttmlPiece) bool {
+	for _, piece := range pieces {
+		if piece.cue != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func cloneTTMLCue(cue *model.Cue) *model.Cue {
+	if cue == nil {
+		return nil
+	}
+
+	cloned := *cue
+	return &cloned
 }
 
 func (p *ttmlParser) toLyricList() model.LyricList {
