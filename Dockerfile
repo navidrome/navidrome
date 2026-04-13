@@ -43,12 +43,14 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-alpine AS build-alpine
+# Pin the Go builder to the same Alpine release as the final runtime image so the
+# musl version used at build and run time match, avoiding any ABI skew.
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-alpine3.20 AS build-alpine
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
 
-RUN apk add --no-cache clang lld git
+RUN apk add --no-cache clang lld file git
 RUN xx-apk add --no-cache gcc musl-dev zlib-dev
 RUN xx-verify --setup
 
@@ -69,11 +71,15 @@ RUN --mount=type=bind,source=. \
     set -e
     xx-go --wrap
     export CGO_ENABLED=1
+    # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
     go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
-        -linkmode=external \
+        -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome .
+    # Fail the build if the binary is accidentally statically linked: dlopen (and
+    # therefore native libwebp detection) only works with a dynamic interpreter.
+    file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
 EOT
 
 ########################################################################################################################
