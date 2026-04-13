@@ -261,24 +261,24 @@ type AlbumID3 struct {
 
 type OpenSubsonicAlbumID3 struct {
 	// OpenSubsonic extensions
-	Played              *time.Time          `xml:"played,attr,omitempty"         json:"played,omitempty"`
-	UserRating          int32               `xml:"userRating,attr,omitempty"     json:"userRating"`
-	AverageRating       float64             `xml:"averageRating,attr,omitempty"  json:"averageRating,omitempty"`
-	Genres              Array[ItemGenre]    `xml:"genres,omitempty"              json:"genres"`
-	MusicBrainzId       string              `xml:"musicBrainzId,attr,omitempty"  json:"musicBrainzId"`
-	IsCompilation       bool                `xml:"isCompilation,attr,omitempty"  json:"isCompilation"`
-	SortName            string              `xml:"sortName,attr,omitempty"       json:"sortName"`
-	DiscTitles          Array[DiscTitle]    `xml:"discTitles,omitempty"          json:"discTitles"`
-	OriginalReleaseDate ItemDate            `xml:"originalReleaseDate,omitempty" json:"originalReleaseDate"`
-	ReleaseDate         ItemDate            `xml:"releaseDate,omitempty"         json:"releaseDate"`
-	ReleaseTypes        Array[string]       `xml:"releaseTypes,omitempty"        json:"releaseTypes"`
-	RecordLabels        Array[RecordLabel]  `xml:"recordLabels,omitempty"        json:"recordLabels"`
-	Moods               Array[string]       `xml:"moods,omitempty"               json:"moods"`
-	Artists             Array[ArtistID3Ref] `xml:"artists,omitempty"             json:"artists"`
-	DisplayArtist       string              `xml:"displayArtist,attr,omitempty"  json:"displayArtist"`
-	ExplicitStatus      string              `xml:"explicitStatus,attr,omitempty" json:"explicitStatus"`
-	Version             string              `xml:"version,attr,omitempty"        json:"version"`
-	MusicBrainzReleaseGroupID string `xml:"musicBrainzReleaseGroupId,attr,omitempty" json:"musicBrainzReleaseGroupId,omitempty"`
+	Played                     *time.Time                 `xml:"played,attr,omitempty"                      json:"played,omitempty"`
+	UserRating                 int32                      `xml:"userRating,attr,omitempty"                  json:"userRating"`
+	AverageRating              float64                    `xml:"averageRating,attr,omitempty"               json:"averageRating,omitempty"`
+	Genres                     Array[ItemGenre]           `xml:"genres,omitempty"                           json:"genres"`
+	MusicBrainzId              string                     `xml:"musicBrainzId,attr,omitempty"               json:"musicBrainzId"`
+	MusicBrainzReleaseGroupID  string                     `xml:"musicBrainzReleaseGroupId,attr,omitempty"   json:"musicBrainzReleaseGroupId,omitempty"`
+	IsCompilation              bool                       `xml:"isCompilation,attr,omitempty"               json:"isCompilation"`
+	SortName                   string                     `xml:"sortName,attr,omitempty"                    json:"sortName"`
+	DiscTitles                 Array[DiscTitle]           `xml:"discTitles,omitempty"                       json:"discTitles"`
+	OriginalReleaseDate        ItemDate                   `xml:"originalReleaseDate,omitempty"              json:"originalReleaseDate"`
+	ReleaseDate                ItemDate                   `xml:"releaseDate,omitempty"                      json:"releaseDate"`
+	ReleaseTypes               Array[string]              `xml:"releaseTypes,omitempty"                     json:"releaseTypes"`
+	RecordLabels               Array[RecordLabel]         `xml:"recordLabels,omitempty"                     json:"recordLabels"`
+	Moods                      Array[string]              `xml:"moods,omitempty"                            json:"moods"`
+	Artists                    Array[ArtistID3Ref]        `xml:"artists,omitempty"                          json:"artists"`
+	DisplayArtist              string                     `xml:"displayArtist,attr,omitempty"               json:"displayArtist"`
+	ExplicitStatus             string                     `xml:"explicitStatus,attr,omitempty"              json:"explicitStatus"`
+	Version                    string                     `xml:"version,attr,omitempty"                     json:"version"`
 }
 
 type ArtistWithAlbumsID3 struct {
