@@ -40,7 +40,7 @@ fi
 
 # Download static compiled ffmpeg for Windows
 FFMPEG_FILE="ffmpeg-n${FFMPEG_VERSION}-latest-${WIN_ARCH}-gpl-${FFMPEG_VERSION}"
-wget --quiet --output-document="${DOWNLOAD_FOLDER}/ffmpeg.zip" \
+[[ ! -e "${DOWNLOAD_FOLDER}/ffmpeg.zip" ]] && wget --quiet --output-document="${DOWNLOAD_FOLDER}/ffmpeg.zip" \
   "https://github.com/${FFMPEG_REPOSITORY}/releases/download/latest/${FFMPEG_FILE}.zip"
 rm -rf "${DOWNLOAD_FOLDER}/extracted_ffmpeg"
 unzip -d "${DOWNLOAD_FOLDER}/extracted_ffmpeg" "${DOWNLOAD_FOLDER}/ffmpeg.zip" "*/ffmpeg.exe" "*/ffprobe.exe"
