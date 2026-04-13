@@ -278,6 +278,7 @@ type OpenSubsonicAlbumID3 struct {
 	DisplayArtist       string              `xml:"displayArtist,attr,omitempty"  json:"displayArtist"`
 	ExplicitStatus      string              `xml:"explicitStatus,attr,omitempty" json:"explicitStatus"`
 	Version             string              `xml:"version,attr,omitempty"        json:"version"`
+	MusicBrainzReleaseGroupID string `xml:"musicBrainzReleaseGroupId,attr,omitempty" json:"musicBrainzReleaseGroupId,omitempty"`
 }
 
 type ArtistWithAlbumsID3 struct {
