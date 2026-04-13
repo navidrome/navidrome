@@ -43,9 +43,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
-# Pin the Go builder to the same Alpine release as the final runtime image so the
-# musl version used at build and run time match, avoiding any ABI skew.
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-alpine3.20 AS build-alpine
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-alpine AS build-alpine
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
