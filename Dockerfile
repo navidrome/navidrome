@@ -42,7 +42,46 @@ FROM scratch AS ui-bundle
 COPY --from=ui /build /build
 
 ########################################################################################################################
-### Build Navidrome binary
+### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-alpine AS build-alpine
+COPY --from=xx / /
+
+ARG TARGETPLATFORM
+
+RUN apk add --no-cache clang lld file git
+RUN xx-apk add --no-cache gcc musl-dev zlib-dev
+RUN xx-verify --setup
+
+WORKDIR /workspace
+
+RUN --mount=type=bind,source=. \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+ARG GIT_SHA
+ARG GIT_TAG
+
+RUN --mount=type=bind,source=. \
+    --mount=from=ui,source=/build,target=./ui/build,ro \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
+    xx-go --wrap
+    export CGO_ENABLED=1
+    # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
+    go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
+        -linkmode=external -extldflags '-latomic' \
+        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -o /out/navidrome .
+    # Fail the build if the binary is accidentally statically linked: dlopen (and
+    # therefore native libwebp detection) only works with a dynamic interpreter.
+    file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
+EOT
+
+########################################################################################################################
+### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.25-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
@@ -104,17 +143,23 @@ FROM public.ecr.aws/docker/library/alpine:3.20 AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
-# Install ffmpeg and mpv
-RUN apk add -U --no-cache ffmpeg mpv sqlite
+# Install runtime dependencies
+# - libwebp + symlinks: enables native WebP encoding via purego/dlopen
+RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
+    for lib in libwebp libwebpdemux libwebpmux; do \
+        target=$(ls /usr/lib/$lib.so.* 2>/dev/null | head -1) && \
+        [ -n "$target" ] && ln -sf "$target" /usr/lib/$lib.so; \
+    done
 
-# Copy navidrome binary
-COPY --from=build /out/navidrome /app/
+# Copy navidrome binary (musl build for Docker, enables native libwebp)
+COPY --from=build-alpine /out/navidrome /app/
 
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
 ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
+ENV ND_ENABLEWEBPENCODING=true
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}
