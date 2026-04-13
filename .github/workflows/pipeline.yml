@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.2.0-1"
-  CGO_CFLAGS_ALLOW: "--define-prefix"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
@@ -66,11 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
-        with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -106,18 +99,11 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
-        with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
-
       - name: Download dependencies
         run: go mod download
 
       - name: Test
-        run: |
-          pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
 
       - name: Test ndpgen
         run: |
@@ -232,7 +218,6 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v7
@@ -253,7 +238,6 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
