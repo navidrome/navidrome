@@ -40,7 +40,6 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
-	_ "github.com/navidrome/navidrome/adapters/taglib"
 )
 
 // Injectors from wire_injectors.go:

@@ -25,26 +25,6 @@ FROM scratch AS xx
 COPY --from=xx-build /out/ /usr/bin/
 
 ########################################################################################################################
-### Get TagLib
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS taglib-build
-ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.2.0-1
-ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
-
-# wget in busybox can't follow redirects
-RUN <<EOT
-    apk add --no-cache wget
-    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
-    FILE=taglib-${PLATFORM}.tar.gz
-
-    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE}
-    wget ${DOWNLOAD_URL}
-
-    mkdir /taglib
-    tar -xzf ${FILE} -C /taglib
-EOT
-
-########################################################################################################################
 ### Build Navidrome UI
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine AS ui
 WORKDIR /app
@@ -88,14 +68,11 @@ RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
+    --mount=type=cache,target=/go/pkg/mod <<EOT
 
     # Setup CGO cross-compilation environment
     xx-go --wrap
     export CGO_ENABLED=1
-    export CGO_CFLAGS_ALLOW="--define-prefix"
-    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
     cat $(go env GOENV)
 
     # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
