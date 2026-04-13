@@ -98,7 +98,7 @@
 			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
 		</InstallUISequence>
 
-		<CustomAction Id="CopyInstallDirToInstallationDirectory" Property="INSTALLATIONDIRECTORY" Value="[INSTALLDIR]" Execute="firstSequence" />
+		<CustomAction Id="CopyInstallDirToInstallationDirectory" Property="INSTALLATIONDIRECTORY" Value="[INSTALLDIR]" />
 		<InstallExecuteSequence>
 			<Custom Action="CopyInstallDirToInstallationDirectory" After="MyCustomPropertiesDlg" >Not Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
 		</InstallExecuteSequence>
