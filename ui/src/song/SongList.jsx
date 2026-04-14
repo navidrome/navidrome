@@ -125,6 +125,13 @@ const SongFilter = (props) => {
           defaultValue={true}
         />
       )}
+      {config.enableFavourites && (
+        <QuickFilter
+          source="notStarred"
+          label={<FavoriteBorderIcon fontSize={'small'} />}
+          defaultValue={true}
+        />
+      )}
       {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )

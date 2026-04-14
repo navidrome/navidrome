@@ -17,6 +17,7 @@ import {
   useVersion,
 } from 'react-admin'
 import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { withWidth } from '@material-ui/core'
 import {
   List,
@@ -155,6 +156,13 @@ const AlbumFilter = (props) => {
         <QuickFilter
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
+          defaultValue={true}
+        />
+      )}
+      {config.enableFavourites && (
+        <QuickFilter
+          source="notStarred"
+          label={<FavoriteBorderIcon fontSize={'small'} />}
           defaultValue={true}
         />
       )}
