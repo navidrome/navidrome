@@ -66,14 +66,14 @@ const useStyle = makeStyles(
         },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover.nd-mobile-lyrics-active':
         {
-          width: 'calc(100% - 40px)',
+          width: '100%',
           maxWidth: 'none',
           height: 'clamp(280px, 42vh, 460px)',
           aspectRatio: 'auto',
-          borderRadius: 24,
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 18px 40px rgba(0, 0, 0, 0.32)',
-          background: 'rgba(6, 8, 12, 0.82)',
+          borderRadius: 12,
+          border: 'none',
+          boxShadow: 'none',
+          background: 'transparent',
           cursor: 'default',
         },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover':

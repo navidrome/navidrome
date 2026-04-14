@@ -2,7 +2,7 @@ const normalizeLanguageTag = (language) =>
   (language || '').toLowerCase().replace('_', '-')
 
 // Roughly one 60fps frame; keeps line/token switching stable near tight boundaries.
-const KARAOKE_SWITCH_EPSILON_MS = 18
+const KARAOKE_SWITCH_EPSILON_MS = 50
 const LYRIC_KIND_MAIN = 'main'
 const LYRIC_KIND_TRANSLATION = 'translation'
 const LYRIC_KIND_PRONUNCIATION = 'pronunciation'
