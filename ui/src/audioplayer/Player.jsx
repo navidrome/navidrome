@@ -45,6 +45,7 @@ import {
   togglePronunciationPreference,
 } from './lyricsOverlayState'
 import KaraokeLyricsOverlay from './KaraokeLyricsOverlay'
+import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
 
 const emptyLyricLayers = {
   main: null,
@@ -172,6 +173,7 @@ const Player = () => {
       hasTranslationLyric,
       hasPronunciationLyric,
     })
+  const useInlineMobileLyrics = karaokeVisible && !isDesktop
 
   const applyLyricToRuntimePlayer = useCallback((trackId, lyric) => {
     if (!trackId) {
@@ -535,10 +537,13 @@ const Player = () => {
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
+    if (!isDesktop && karaokeVisible) {
+      return
+    }
     if (mode === 'full' && audioInfo?.song?.albumId) {
       window.location.href = `#/album/${audioInfo.song.albumId}/show`
     }
-  }, [])
+  }, [isDesktop, karaokeVisible])
 
   const onAudioError = useCallback(
     (error, currentPlayId, audioLists, audioInfo) => {
@@ -603,28 +608,55 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
-      <KaraokeLyricsOverlay
-        visible={karaokeVisible}
-        mainLyric={selectedLyricLayers.main}
-        translationLyric={selectedLyricLayers.translation}
-        pronunciationLyric={selectedLyricLayers.pronunciation}
-        showTranslation={showTranslation}
-        showPronunciation={showPronunciation}
-        translationEnabled={hasTranslationLyric}
-        pronunciationEnabled={hasPronunciationLyric}
-        onToggleTranslation={() =>
-          setTranslationPreference((previous) =>
-            hasTranslationLyric ? !previous : false,
-          )
-        }
-        onTogglePronunciation={() =>
-          setPronunciationPreference((previous) =>
-            togglePronunciationPreference(previous, hasPronunciationLyric),
-          )
-        }
-        audioInstance={audioInstance}
-        onClose={() => setKaraokeVisiblePreference(false)}
-      />
+      {isDesktop && (
+        <KaraokeLyricsOverlay
+          visible={karaokeVisible}
+          mainLyric={selectedLyricLayers.main}
+          translationLyric={selectedLyricLayers.translation}
+          pronunciationLyric={selectedLyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          translationEnabled={hasTranslationLyric}
+          pronunciationEnabled={hasPronunciationLyric}
+          onToggleTranslation={() =>
+            setTranslationPreference((previous) =>
+              hasTranslationLyric ? !previous : false,
+            )
+          }
+          onTogglePronunciation={() =>
+            setPronunciationPreference((previous) =>
+              togglePronunciationPreference(previous, hasPronunciationLyric),
+            )
+          }
+          audioInstance={audioInstance}
+          onClose={() => setKaraokeVisiblePreference(false)}
+        />
+      )}
+      <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
+        <KaraokeLyricsOverlay
+          visible={useInlineMobileLyrics}
+          inline={true}
+          mainLyric={selectedLyricLayers.main}
+          translationLyric={selectedLyricLayers.translation}
+          pronunciationLyric={selectedLyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          translationEnabled={hasTranslationLyric}
+          pronunciationEnabled={hasPronunciationLyric}
+          onToggleTranslation={() =>
+            setTranslationPreference((previous) =>
+              hasTranslationLyric ? !previous : false,
+            )
+          }
+          onTogglePronunciation={() =>
+            setPronunciationPreference((previous) =>
+              togglePronunciationPreference(previous, hasPronunciationLyric),
+            )
+          }
+          audioInstance={audioInstance}
+          onClose={() => setKaraokeVisiblePreference(false)}
+        />
+      </MobileKaraokeLyricsPortal>
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

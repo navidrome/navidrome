@@ -48,6 +48,7 @@ const KARAOKE_MAX_LINE_HEIGHT = 2.2
 const KARAOKE_LINE_HEIGHT_STEP = 0.02
 const KARAOKE_GROUP_SPACING_BASE_PX = 14
 const KARAOKE_AUX_LINE_HEIGHT = 1.2
+const KARAOKE_MAIN_INACTIVE_FONT_FACTOR = 0.8
 
 const TOKEN_DONE_ALPHA = 1
 const TOKEN_FUTURE_ALPHA = 0.34
@@ -160,6 +161,21 @@ const useStyles = makeStyles((theme) => ({
       maxHeight: '65vh',
     },
   },
+  overlayInline: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+    maxHeight: '100%',
+    transform: 'none',
+    borderRadius: 'inherit',
+    border: 'none',
+    boxShadow: 'none',
+    background: 'rgba(6, 8, 12, 0.92)',
+    backdropFilter: 'blur(12px)',
+    zIndex: 1,
+  },
   resizeHandle: {
     height: 14,
     cursor: 'ns-resize',
@@ -186,6 +202,10 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     gap: theme.spacing(1),
     padding: theme.spacing(0.3, 1.3, 0.4, 1.3),
+  },
+  headerInline: {
+    padding: theme.spacing(0.25, 0.65, 0.35, 0.65),
+    gap: theme.spacing(0.65),
   },
   headerLeft: {
     display: 'flex',
@@ -264,6 +284,8 @@ const useStyles = makeStyles((theme) => ({
   },
   inlineTr: {
     margin: 0,
+    display: 'inline-block',
+    maxWidth: '100%',
     textAlign: 'center',
     fontWeight: 400,
     lineHeight: KARAOKE_AUX_LINE_HEIGHT,
@@ -272,6 +294,14 @@ const useStyles = makeStyles((theme) => ({
   },
   inlinePr: {
     margin: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    alignSelf: 'center',
+    width: 'fit-content',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     textAlign: 'center',
     fontWeight: 400,
     lineHeight: KARAOKE_AUX_LINE_HEIGHT,
@@ -300,6 +330,9 @@ const useStyles = makeStyles((theme) => ({
       padding: theme.spacing(0.35, 1.2, 1.2, 1.2),
     },
   },
+  bodyInline: {
+    padding: theme.spacing(0.25, 0.8, 0.85, 0.8),
+  },
   lines: {
     display: 'flex',
     flexDirection: 'column',
@@ -308,12 +341,14 @@ const useStyles = makeStyles((theme) => ({
   },
   line: {
     margin: 0,
+    display: 'inline-block',
+    maxWidth: '100%',
     fontWeight: 600,
     lineHeight: 1.24,
     letterSpacing: '0.01em',
     textAlign: 'center',
     color: 'rgba(255, 255, 255, 0.62)',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out`,
+    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ease-in-out, color ${KARAOKE_ANIMATION_MS}ms ease-in-out, font-size 280ms ease-in-out, max-width 280ms ease-in-out`,
   },
   token: {
     display: 'inline-block',
@@ -858,7 +893,8 @@ const areLineStylesEqual = (prevStyle, nextStyle) => {
     a.color === b.color &&
     a.fontSize === b.fontSize &&
     a.fontWeight === b.fontWeight &&
-    a.lineHeight === b.lineHeight
+    a.lineHeight === b.lineHeight &&
+    a.maxWidth === b.maxWidth
   )
 }
 
@@ -1038,6 +1074,7 @@ const KaraokeLyricsOverlay = ({
   onTogglePronunciation,
   audioInstance,
   onClose,
+  inline = false,
 }) => {
   const classes = useStyles()
   const [playbackMs, setPlaybackMs] = useState(0)
@@ -1397,13 +1434,18 @@ const KaraokeLyricsOverlay = ({
     }
 
     const baseFontSize = lyricsSettings.main.fontSize
-    const fontSize = isActive ? baseFontSize : Math.round(baseFontSize * 0.8)
+    const fontSize = isActive
+      ? baseFontSize
+      : Math.round(baseFontSize * KARAOKE_MAIN_INACTIVE_FONT_FACTOR)
 
     return {
       opacity,
       color,
       fontSize,
       lineHeight,
+      maxWidth: isActive
+        ? '100%'
+        : `${Math.round(KARAOKE_MAIN_INACTIVE_FONT_FACTOR * 100)}%`,
     }
   }
 
@@ -1448,7 +1490,9 @@ const KaraokeLyricsOverlay = ({
     }
   }
 
-  const overlayStyle = isCompact
+  const overlayStyle = inline
+    ? undefined
+    : isCompact
     ? undefined
     : {
         height: overlayHeight,
@@ -1457,17 +1501,27 @@ const KaraokeLyricsOverlay = ({
 
   return (
     <div
-      className={classes.overlay}
+      className={clsx(classes.overlay, {
+        [classes.overlayInline]: inline,
+      })}
       data-testid="karaoke-lyrics-overlay"
+      data-inline={inline ? 'true' : 'false'}
       style={overlayStyle}
+      onClick={inline ? (event) => event.stopPropagation() : undefined}
     >
-      <div
-        className={classes.resizeHandle}
-        onMouseDown={onResizeStart}
-        data-testid="lyrics-resize-handle"
-      />
+      {!inline && (
+        <div
+          className={classes.resizeHandle}
+          onMouseDown={onResizeStart}
+          data-testid="lyrics-resize-handle"
+        />
+      )}
 
-      <div className={classes.header}>
+      <div
+        className={clsx(classes.header, {
+          [classes.headerInline]: inline,
+        })}
+      >
         <div className={classes.headerLeft}>
           <div className={classes.languageBadges}>
             {languageBadges.map((badge) => (
@@ -1536,7 +1590,12 @@ const KaraokeLyricsOverlay = ({
         </div>
       </div>
 
-      <div className={classes.body} ref={bodyRef}>
+      <div
+        className={clsx(classes.body, {
+          [classes.bodyInline]: inline,
+        })}
+        ref={bodyRef}
+      >
         <div className={classes.lines} style={{ gap: lineGap }}>
           <div aria-hidden style={{ height: centerSpacerPx }} />
           {mainLines.map((line, idx) => {

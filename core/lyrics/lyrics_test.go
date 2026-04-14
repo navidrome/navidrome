@@ -169,6 +169,29 @@ var _ = Describe("sources", func() {
 		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
 		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics))
 
+	It("resolves source priority across duplicate media files", func() {
+		conf.Server.LyricsPriority = ".ttml,embedded"
+		embeddedJSON, err := json.Marshal(embeddedLyrics)
+		Expect(err).To(BeNil())
+
+		svc := lyrics.NewLyrics(nil)
+		batchSvc, ok := svc.(lyrics.BatchLyrics)
+		Expect(ok).To(BeTrue())
+
+		list, err := batchSvc.GetLyricsForMediaFiles(ctx, []model.MediaFile{
+			{
+				Lyrics: string(embeddedJSON),
+				Path:   "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+			},
+			{
+				Lyrics: "[]",
+				Path:   "tests/fixtures/test.mp3",
+			},
+		})
+		Expect(err).To(BeNil())
+		Expect(list).To(Equal(ttmlLyrics))
+	})
+
 	Context("Errors", func() {
 		var RegularUserContext = XContext
 		var isRegularUser = os.Getuid() != 0

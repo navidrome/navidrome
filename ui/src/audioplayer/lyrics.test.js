@@ -455,6 +455,43 @@ describe('lyrics helpers', () => {
     ])
   })
 
+  it('preserves whitespace-only cues for exact byte-range rendering', () => {
+    const lines = buildKaraokeLines({
+      lang: 'kor',
+      synced: true,
+      line: [{ start: 0, end: 900, value: '눈을 뜬 순간' }],
+      cueLine: [
+        {
+          index: 0,
+          start: 0,
+          end: 900,
+          value: '눈을 뜬 순간',
+          cue: [
+            { start: 0, end: 150, value: '눈을', byteStart: 0, byteEnd: 5 },
+            { start: 150, end: 250, value: ' ', byteStart: 6, byteEnd: 6 },
+            { start: 250, end: 450, value: '뜬', byteStart: 7, byteEnd: 9 },
+            { start: 450, end: 550, value: ' ', byteStart: 10, byteEnd: 10 },
+            { start: 550, end: 900, value: '순간', byteStart: 11, byteEnd: 16 },
+          ],
+        },
+      ],
+    })
+
+    expect(
+      lines[0].tokens.map((token) => [
+        token.value,
+        token.byteStart,
+        token.byteEnd,
+      ]),
+    ).toEqual([
+      ['눈을', 0, 5],
+      [' ', 6, 6],
+      ['뜬', 7, 9],
+      [' ', 10, 10],
+      ['순간', 11, 16],
+    ])
+  })
+
   it('maps UTF-8 byte offsets to string ranges for multibyte lyrics', () => {
     const text = '눈을 뜬 순간'
 

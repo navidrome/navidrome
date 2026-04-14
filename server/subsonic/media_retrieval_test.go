@@ -187,18 +187,22 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
 		})
 
-		It("should continue searching candidates for sidecar lyrics", func() {
+		It("should prefer higher-priority sidecar lyrics across duplicate candidates", func() {
 			conf.Server.LyricsPriority = ".ttml,embedded"
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
 			baseTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+			embedded, err := model.ToLyrics("eng", "Newest duplicate embedded lyrics")
+			Expect(err).ToNot(HaveOccurred())
+			embeddedJSON, err := json.Marshal(model.LyricList{*embedded})
+			Expect(err).ToNot(HaveOccurred())
 			mockRepo.SetData(model.MediaFiles{
 				{
 					ID:        "1",
 					Path:      "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
 					Artist:    "Rick Astley",
 					Title:     "Never Gonna Give You Up",
-					Lyrics:    "[]",
-					UpdatedAt: baseTime.Add(2 * time.Hour), // Newer, but no TTML sidecar
+					Lyrics:    string(embeddedJSON),
+					UpdatedAt: baseTime.Add(2 * time.Hour), // Newer duplicate with embedded lyrics only
 				},
 				{
 					ID:        "2",
@@ -215,6 +219,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
 			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
 			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
+			Expect(mockRepo.Options.Max).To(Equal(maxLegacyLyricsCandidates))
 		})
 	})
 

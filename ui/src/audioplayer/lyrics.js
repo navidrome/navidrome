@@ -86,7 +86,7 @@ const normalizeToken = (token) => {
     return null
   }
   const value = typeof token.value === 'string' ? token.value : ''
-  if (!value.trim()) {
+  if (value.length === 0) {
     return null
   }
   const byteStart = toByteOffset(token.byteStart)

@@ -71,6 +71,16 @@ describe('<KaraokeLyricsOverlay /> behavior', () => {
     expect(await screen.findByText('Appearance')).toBeInTheDocument()
   })
 
+  it('renders inline mode without the desktop resize handle', () => {
+    renderOverlay({ inline: true })
+
+    expect(screen.getByTestId('karaoke-lyrics-overlay')).toHaveAttribute(
+      'data-inline',
+      'true',
+    )
+    expect(screen.queryByTestId('lyrics-resize-handle')).not.toBeInTheDocument()
+  })
+
   it('renders the appearance popup with Main label and default line height for older settings', async () => {
     localStorage.setItem(
       'karaoke-lyrics-settings',
@@ -245,6 +255,49 @@ describe('<KaraokeLyricsOverlay /> behavior', () => {
     ])
   })
 
+  it('uses cue byte offsets to preserve explicit space cues in multibyte karaoke lines', () => {
+    renderOverlay({
+      mainLyric: {
+        kind: 'main',
+        lang: 'ko',
+        synced: true,
+        line: [{ start: 0, end: 900, value: '눈을 뜬 순간' }],
+        cueLine: [
+          {
+            index: 0,
+            start: 0,
+            end: 900,
+            value: '눈을 뜬 순간',
+            cue: [
+              { start: 0, end: 150, value: '눈을', byteStart: 0, byteEnd: 5 },
+              { start: 150, end: 250, value: ' ', byteStart: 6, byteEnd: 6 },
+              { start: 250, end: 450, value: '뜬', byteStart: 7, byteEnd: 9 },
+              { start: 450, end: 550, value: ' ', byteStart: 10, byteEnd: 10 },
+              { start: 550, end: 900, value: '순간', byteStart: 11, byteEnd: 16 },
+            ],
+          },
+        ],
+      },
+      translationLyric: null,
+      pronunciationLyric: null,
+      showTranslation: false,
+      showPronunciation: false,
+      translationEnabled: false,
+      pronunciationEnabled: false,
+      audioInstance: {
+        ...audioInstance,
+        currentTime: 0.3,
+      },
+    })
+
+    const mainLine = screen.getByText('눈을').parentElement
+    const segments = Array.from(mainLine.querySelectorAll('span')).map(
+      (span) => span.textContent,
+    )
+
+    expect(segments).toEqual(['눈을', ' ', '뜬', ' ', '순간'])
+  })
+
   it('highlights line-timed pronunciation and translation rows with the active main line', () => {
     renderOverlay({
       mainLyric: {
@@ -293,6 +346,55 @@ describe('<KaraokeLyricsOverlay /> behavior', () => {
     expect(parseFloat(activeTranslation.style.opacity)).toBeGreaterThan(
       parseFloat(inactiveTranslation.style.opacity),
     )
+  })
+
+  it('pre-wraps inactive main lines so the active line keeps the same wrap shape', () => {
+    renderOverlay({
+      mainLyric: {
+        kind: 'main',
+        lang: 'en',
+        synced: true,
+        line: [
+          { start: 1000, end: 1800, value: 'First line that is getting focus' },
+          { start: 2500, end: 3300, value: 'Second line waiting below' },
+        ],
+      },
+      translationLyric: null,
+      pronunciationLyric: null,
+      showTranslation: false,
+      showPronunciation: false,
+      translationEnabled: false,
+      pronunciationEnabled: false,
+      audioInstance: {
+        ...audioInstance,
+        currentTime: 1.2,
+      },
+    })
+
+    const activeLine = screen.getByText('First line that is getting focus')
+      .parentElement
+    const inactiveLine = screen.getByText('Second line waiting below')
+      .parentElement
+
+    expect(parseFloat(activeLine.style.fontSize)).toBeGreaterThan(
+      parseFloat(inactiveLine.style.fontSize),
+    )
+    expect(activeLine.style.maxWidth).toBe('100%')
+    expect(inactiveLine.style.maxWidth).toBe('80%')
+  })
+
+  it('centers pronunciation text inside the pill container', () => {
+    renderOverlay({
+      showTranslation: false,
+      showPronunciation: true,
+    })
+
+    const pronunciationLine = screen.getByText('konnichiwa').parentElement
+    const styles = window.getComputedStyle(pronunciationLine)
+
+    expect(styles.display).toBe('inline-flex')
+    expect(styles.justifyContent).toBe('center')
+    expect(styles.alignItems).toBe('center')
   })
 
   it('renders untimed text lyrics in manual reading mode without a pinned active line', () => {

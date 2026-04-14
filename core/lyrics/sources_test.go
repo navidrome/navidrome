@@ -299,7 +299,7 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[0].Value).To(Equal("BOM test line"))
 		})
 
-		It("should handle UTF-16 LE encoded TTML files", func() {
+		It("should handle UTF-16 BE encoded TTML files", func() {
 			mf := model.MediaFile{Path: "tests/fixtures/bom-utf16-test.mp3"}
 			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
 

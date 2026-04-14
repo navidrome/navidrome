@@ -62,11 +62,29 @@ const useStyle = makeStyles(
           // Fix cover display when image is not square
           aspectRatio: '1/1',
           display: 'flex',
+          position: 'relative',
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover.nd-mobile-lyrics-active':
+        {
+          width: 'calc(100% - 40px)',
+          maxWidth: 'none',
+          height: 'clamp(280px, 42vh, 460px)',
+          aspectRatio: 'auto',
+          borderRadius: 24,
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 18px 40px rgba(0, 0, 0, 0.32)',
+          background: 'rgba(6, 8, 12, 0.82)',
+          cursor: 'default',
         },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover':
         {
           animationDuration: (props) => !props.enableCoverAnimation && '0s',
           objectFit: 'contain', // Fix cover display when image is not square
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover.nd-mobile-lyrics-active img.cover':
+        {
+          opacity: 0,
+          pointerEvents: 'none',
         },
       // Hide old singer display
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer':

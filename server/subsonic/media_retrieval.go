@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -18,6 +19,8 @@ import (
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
 )
+
+const maxLegacyLyricsCandidates = 10
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	if !conf.Server.EnableGravatar {
@@ -99,9 +102,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
 	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
-	// Keep the search exhaustive so an older duplicate can still supply the
-	// matching sidecar lyrics when the newest candidate only has embedded data.
-	opts.Max = 0
+	// Search a bounded duplicate window so source-priority fallback can still
+	// reach older matches without turning legacy getLyrics into an unbounded scan.
+	opts.Max = maxLegacyLyricsCandidates
 	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
 
 	if err != nil {
@@ -112,25 +115,36 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	for i := range mediaFiles {
-		structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[i])
+	var structuredLyrics model.LyricList
+	if batchLyrics, ok := api.lyrics.(lyricssvc.BatchLyrics); ok {
+		structuredLyrics, err = batchLyrics.GetLyricsForMediaFiles(r.Context(), mediaFiles)
 		if err != nil {
 			return nil, err
 		}
-		if len(structuredLyrics) == 0 {
-			continue
+	} else {
+		for i := range mediaFiles {
+			structuredLyrics, err = api.lyrics.GetLyrics(r.Context(), &mediaFiles[i])
+			if err != nil {
+				return nil, err
+			}
+			if len(structuredLyrics) > 0 {
+				break
+			}
 		}
-
-		lyricsResponse.Artist = artist
-		lyricsResponse.Title = title
-
-		var lyricsText strings.Builder
-		for _, line := range structuredLyrics[0].Line {
-			lyricsText.WriteString(line.Value + "\n")
-		}
-		lyricsResponse.Value = lyricsText.String()
-		break
 	}
+
+	if len(structuredLyrics) == 0 {
+		return response, nil
+	}
+
+	lyricsResponse.Artist = artist
+	lyricsResponse.Title = title
+
+	var lyricsText strings.Builder
+	for _, line := range structuredLyrics[0].Line {
+		lyricsText.WriteString(line.Value + "\n")
+	}
+	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
 }
