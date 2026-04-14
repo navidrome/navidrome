@@ -653,6 +653,57 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 		})
 
+		It("should keep enhanced line-level lyrics when no cue data is available", func() {
+			r := newGetRequest("id=1&enhanced=true")
+
+			lineStart := int64(1000)
+			lineEnd := int64(3000)
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{
+					Kind:   "main",
+					Lang:   "eng",
+					Synced: true,
+					Line: []model.Line{
+						{
+							Start: &lineStart,
+							End:   &lineEnd,
+							Value: "Line without word timing",
+						},
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJSON),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Kind:          "main",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &lineStart,
+								Value: "Line without word timing",
+							},
+						},
+					},
+				},
+			})
+		})
+
 		It("should return required cue byte offsets for ambiguous and multibyte cue lines", func() {
 			r := newGetRequest("id=1&enhanced=true")
 

@@ -215,6 +215,36 @@ var _ = Describe("parseTTML", func() {
 			Expect(list[0].Line[1].Cue).To(HaveLen(1))
 			Expect(list[0].Line[1].Cue[0].AgentID).To(Equal("lead__bg"))
 		})
+
+		It("should fill missing cue agent ids with the resolved main agent", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <head>
+    <metadata>
+      <ttm:agent xml:id="guest" type="person"><ttm:name>Guest Vocal</ttm:name></ttm:agent>
+    </metadata>
+  </head>
+  <body xml:lang="eng">
+    <div>
+      <p begin="1s" end="3s">
+        <span begin="1s" end="1.4s">Lead</span>
+        <span begin="2s" end="2.4s" ttm:agent="guest">Guest</span>
+      </p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML(content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Agents).To(Equal([]model.Agent{
+				{ID: "guest", Role: "main", Name: "Guest Vocal"},
+			}))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Cue).To(HaveLen(2))
+			Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("guest"))
+			Expect(list[0].Line[0].Cue[1].AgentID).To(Equal("guest"))
+		})
 	})
 
 	Describe("Ambiguous decimal timing", func() {

@@ -664,7 +664,6 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 }
 
 func (p *ttmlParser) finalizeLyrics(lyrics model.Lyrics) model.Lyrics {
-	lyrics.Line = model.NormalizeCueLines(lyrics.Line)
 	lyrics.Line, lyrics.Agents = p.resolveAgents(lyrics.Line)
 	return model.NormalizeLyrics(lyrics)
 }
@@ -674,14 +673,13 @@ func (p *ttmlParser) resolveAgents(lines []model.Line) ([]model.Line, []model.Ag
 		return lines, nil
 	}
 
-	normalized := model.NormalizeCueLines(lines)
 	usedOrder := make([]string, 0, 4)
 	usedSet := make(map[string]struct{}, 4)
 	sawEmptyCue := false
 
-	for i := range normalized {
-		for j := range normalized[i].Cue {
-			agentID := strings.TrimSpace(normalized[i].Cue[j].AgentID)
+	for i := range lines {
+		for j := range lines[i].Cue {
+			agentID := strings.TrimSpace(lines[i].Cue[j].AgentID)
 			if agentID == "" {
 				sawEmptyCue = true
 				continue
@@ -694,7 +692,7 @@ func (p *ttmlParser) resolveAgents(lines []model.Line) ([]model.Line, []model.Ag
 	}
 
 	if len(usedOrder) == 0 {
-		return normalized, nil
+		return lines, nil
 	}
 
 	mainID := ""
@@ -725,10 +723,10 @@ func (p *ttmlParser) resolveAgents(lines []model.Line) ([]model.Line, []model.Ag
 		usedOrder = append([]string{mainID}, usedOrder...)
 	}
 
-	for i := range normalized {
-		for j := range normalized[i].Cue {
-			if strings.TrimSpace(normalized[i].Cue[j].AgentID) == "" {
-				normalized[i].Cue[j].AgentID = mainID
+	for i := range lines {
+		for j := range lines[i].Cue {
+			if strings.TrimSpace(lines[i].Cue[j].AgentID) == "" {
+				lines[i].Cue[j].AgentID = mainID
 			}
 		}
 	}
@@ -747,7 +745,7 @@ func (p *ttmlParser) resolveAgents(lines []model.Line) ([]model.Line, []model.Ag
 		agents = append(agents, agent)
 	}
 
-	return normalized, agents
+	return lines, agents
 }
 
 func (p *ttmlParser) resolveCueAgentID(ctx ttmlTimingContext) string {

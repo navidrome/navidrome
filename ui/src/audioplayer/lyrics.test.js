@@ -2,6 +2,7 @@ import {
   buildHighlightedAuxLine,
   buildHighlightedMainLine,
   buildKaraokeLines,
+  buildKaraokeLinesFromCueLines,
   findLayerLineIndexForMain,
   getActiveKaraokeState,
   getPreferredLyricLanguage,
@@ -380,6 +381,68 @@ describe('lyrics helpers', () => {
         },
       ],
     })
+
+    expect(lines).toEqual([
+      {
+        agentId: 'lead',
+        agentName: 'Lead Vocal',
+        agentRole: 'main',
+        index: 0,
+        start: 1000,
+        end: 3000,
+        value: 'Hello world',
+        tokens: [
+          {
+            start: 1000,
+            end: 1500,
+            value: 'Hello',
+            role: '',
+            agentId: 'lead',
+            agentName: 'Lead Vocal',
+            agentRole: 'main',
+          },
+          {
+            start: 2000,
+            end: 2500,
+            value: 'world',
+            role: 'bg',
+            agentId: 'backing',
+            agentName: '',
+            agentRole: 'bg',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('builds grouped karaoke lines directly from cue lines', () => {
+    const agentLookup = new Map([
+      ['lead', { id: 'lead', role: 'main', name: 'Lead Vocal' }],
+      ['backing', { id: 'backing', role: 'bg', name: '' }],
+    ])
+
+    const lines = buildKaraokeLinesFromCueLines(
+      [
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'lead',
+          cue: [{ start: 1000, end: 1500, value: 'Hello' }],
+        },
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: 'Hello world',
+          agentId: 'backing',
+          cue: [{ start: 2000, end: 2500, value: 'world' }],
+        },
+      ],
+      [{ start: 1000, end: 3000, value: 'Hello world' }],
+      agentLookup,
+    )
 
     expect(lines).toEqual([
       {

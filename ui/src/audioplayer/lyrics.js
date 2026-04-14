@@ -1,6 +1,7 @@
 const normalizeLanguageTag = (language) =>
   (language || '').toLowerCase().replace('_', '-')
 
+// Roughly one 60fps frame; keeps line/token switching stable near tight boundaries.
 const KARAOKE_SWITCH_EPSILON_MS = 18
 const LYRIC_KIND_MAIN = 'main'
 const LYRIC_KIND_TRANSLATION = 'translation'
@@ -379,6 +380,68 @@ export const structuredLyricsToLrc = (structuredLyrics, preferredLanguage) => {
   return structuredLyricToLrc(selected)
 }
 
+const buildBaseKaraokeLines = (baseLines) =>
+  baseLines.map((line, index) => ({
+    index,
+    start: toTime(line.start),
+    end: toTime(line.end),
+    value: typeof line.value === 'string' ? line.value : '',
+    tokens: [],
+  }))
+
+export const buildKaraokeLinesFromCueLines = (
+  rawCueLines,
+  baseLines,
+  agentLookup,
+) => {
+  const normalizedCueLines = rawCueLines.map((cueLine, fallbackIndex) => {
+    const normalized = normalizeCueLine(cueLine, fallbackIndex, agentLookup)
+    return {
+      ...normalized,
+      tokens: normalized.tokens.map((token) => ({
+        ...token,
+        role: normalized.role,
+        agentId: normalized.agentId,
+        agentName: normalized.agentName,
+        agentRole: normalized.agentRole,
+      })),
+    }
+  })
+
+  const byIndex = new Map()
+  for (const cueLine of normalizedCueLines) {
+    if (!byIndex.has(cueLine.index)) {
+      byIndex.set(cueLine.index, [])
+    }
+    byIndex.get(cueLine.index).push(cueLine)
+  }
+
+  return Array.from(byIndex.entries()).map(([index, group]) => {
+    const first = group[0]
+    const baseLine = baseLines[index] || {}
+    const tokens = sortTokensByStart(group.flatMap((cueLine) => cueLine.tokens))
+    const fallbackStart =
+      tokens.find((token) => token.start != null)?.start ?? null
+    const fallbackEnd =
+      [...tokens].reverse().find((token) => token.end != null)?.end ?? null
+    const value =
+      first.value ||
+      (typeof baseLine.value === 'string' ? baseLine.value : '') ||
+      tokens.map((token) => token.value).join('')
+
+    return {
+      index,
+      start: first.start ?? toTime(baseLine.start) ?? fallbackStart,
+      end: first.end ?? toTime(baseLine.end) ?? fallbackEnd,
+      value,
+      agentId: first.agentId,
+      agentName: first.agentName,
+      agentRole: first.agentRole,
+      tokens,
+    }
+  })
+}
+
 export const buildKaraokeLines = (structuredLyric) => {
   if (!structuredLyric) {
     return []
@@ -394,68 +457,8 @@ export const buildKaraokeLines = (structuredLyric) => {
 
   const lines =
     rawCueLines.length > 0
-      ? (() => {
-          const normalizedCueLines = rawCueLines.map(
-            (cueLine, fallbackIndex) => {
-              const normalized = normalizeCueLine(
-                cueLine,
-                fallbackIndex,
-                agentLookup,
-              )
-              return {
-                ...normalized,
-                tokens: normalized.tokens.map((token) => ({
-                  ...token,
-                  role: normalized.role,
-                  agentId: normalized.agentId,
-                  agentName: normalized.agentName,
-                  agentRole: normalized.agentRole,
-                })),
-              }
-            },
-          )
-
-          const byIndex = new Map()
-          for (const cl of normalizedCueLines) {
-            if (!byIndex.has(cl.index)) {
-              byIndex.set(cl.index, [])
-            }
-            byIndex.get(cl.index).push(cl)
-          }
-
-          return Array.from(byIndex.entries()).map(([index, group]) => {
-            const first = group[0]
-            const baseLine = baseLines[index] || {}
-            const tokens = sortTokensByStart(group.flatMap((cl) => cl.tokens))
-            const fallbackStart =
-              tokens.find((token) => token.start != null)?.start ?? null
-            const fallbackEnd =
-              [...tokens].reverse().find((token) => token.end != null)?.end ??
-              null
-            const value =
-              first.value ||
-              (typeof baseLine.value === 'string' ? baseLine.value : '') ||
-              tokens.map((token) => token.value).join('')
-
-            return {
-              index,
-              start: first.start ?? toTime(baseLine.start) ?? fallbackStart,
-              end: first.end ?? toTime(baseLine.end) ?? fallbackEnd,
-              value,
-              agentId: first.agentId,
-              agentName: first.agentName,
-              agentRole: first.agentRole,
-              tokens,
-            }
-          })
-        })()
-      : baseLines.map((line, index) => ({
-          index,
-          start: toTime(line.start),
-          end: toTime(line.end),
-          value: typeof line.value === 'string' ? line.value : '',
-          tokens: [],
-        }))
+      ? buildKaraokeLinesFromCueLines(rawCueLines, baseLines, agentLookup)
+      : buildBaseKaraokeLines(baseLines)
 
   const normalized = lines
     .filter((line) => line.value || line.tokens.length > 0)
