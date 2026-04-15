@@ -62,10 +62,6 @@ const mapResource = (resource, params) => {
       if (!isAdmin()) {
         params.filter.missing = false
       }
-      if (params.filter.notStarred === true) {
-        params.filter.starred = false
-      }
-      delete params.filter.notStarred
       params = applyLibraryFilter(resource, params)
 
       return [`playlist/${plsId}/tracks`, params]
@@ -78,10 +74,6 @@ const mapResource = (resource, params) => {
       if (!isAdmin()) {
         params.filter.missing = false
       }
-      if (params.filter.notStarred === true) {
-        params.filter.starred = false
-      }
-      delete params.filter.notStarred
       params = applyLibraryFilter(resource, params)
 
       return [resource, params]

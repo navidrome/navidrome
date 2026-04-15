@@ -17,11 +17,9 @@ import {
   useVersion,
 } from 'react-admin'
 import FavoriteIcon from '@material-ui/icons/Favorite'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { withWidth } from '@material-ui/core'
 import {
   List,
-  QuickFilter,
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
@@ -153,17 +151,9 @@ const AlbumFilter = (props) => {
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
-        />
-      )}
-      {config.enableFavourites && (
-        <QuickFilter
-          source="notStarred"
-          label={<FavoriteBorderIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
       {isAdmin && <NullableBooleanInput source="missing" />}
