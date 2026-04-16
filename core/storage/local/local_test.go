@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
 	. "github.com/onsi/ginkgo/v2"
@@ -135,16 +136,31 @@ var _ = Describe("LocalStorage", func() {
 			})
 		})
 
-		Context("with invalid extractor", func() {
-			It("should handle extractor validation correctly", func() {
-				// Note: The actual implementation uses log.Fatal which exits the process,
-				// so we test the normal path where extractors exist
+		Context("when the configured extractor is not registered", func() {
+			var defaultExtractor *mockTestExtractor
+
+			BeforeEach(func() {
+				defaultExtractor = &mockTestExtractor{results: make(map[string]metadata.Info)}
+				RegisterExtractor(consts.DefaultScannerExtractor, func(fs.FS, string) Extractor {
+					return defaultExtractor
+				})
+				DeferCleanup(func() {
+					lock.Lock()
+					delete(extractors, consts.DefaultScannerExtractor)
+					lock.Unlock()
+				})
+			})
+
+			It("falls back to the default extractor instead of crashing", func() {
+				conf.Server.Scanner.Extractor = "nonexistent-extractor"
 
 				u, err := url.Parse("file://" + tempDir)
 				Expect(err).ToNot(HaveOccurred())
 
 				storage := newLocalStorage(*u)
-				Expect(storage).ToNot(BeNil())
+				ls, ok := storage.(*localStorage)
+				Expect(ok).To(BeTrue())
+				Expect(ls.extractor).To(BeIdenticalTo(defaultExtractor))
 			})
 		})
 	})
