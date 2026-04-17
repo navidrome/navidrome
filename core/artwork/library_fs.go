@@ -3,6 +3,7 @@ package artwork
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 )
@@ -19,4 +20,15 @@ func libraryFS(ctx context.Context, ds model.DataStore, libID int) (storage.Musi
 		return nil, err
 	}
 	return s.FS()
+}
+
+// libraryFSAndRoot resolves both the MusicFS and the absolute library root path.
+// Readers that need to translate between libFS-relative paths and absolute
+// display paths typically need both.
+func libraryFSAndRoot(ctx context.Context, ds model.DataStore, libID int) (storage.MusicFS, string, error) {
+	fs, err := libraryFS(ctx, ds, libID)
+	if err != nil {
+		return nil, "", err
+	}
+	return fs, core.AbsolutePath(ctx, ds, libID, ""), nil
 }

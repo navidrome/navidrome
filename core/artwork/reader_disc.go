@@ -61,11 +61,10 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 	}
 
 	// Resolve libFS and libRoot for path normalization
-	libFS, err := libraryFS(ctx, a.ds, al.LibraryID)
+	libFS, libRoot, err := libraryFSAndRoot(ctx, a.ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
-	libRoot := core.AbsolutePath(ctx, a.ds, al.LibraryID, "")
 
 	// Build disc folder set and find first track
 	var firstTrackPath string
