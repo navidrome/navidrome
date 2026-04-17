@@ -31,6 +31,10 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("an album has a single folder with cover.jpg at the album root", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── cover.jpg            ← matched by cover.*
 		It("returns the album-root cover", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -48,6 +52,15 @@ var _ = Describe("Album artwork resolution", func() {
 	// compareImageFiles' lexicographic full-path tiebreaker ranks disc-subfolder
 	// files first. Flip from PIt to It once it prefers shorter/parent paths.
 	When("a multi-disc album has a cover.jpg at the album root and per-disc covers", func() {
+		// Artist/
+		// └── Album/
+		//     ├── CD1/
+		//     │   ├── 01 - Track.mp3
+		//     │   └── cover.jpg        ← currently wins (bug)
+		//     ├── CD2/
+		//     │   ├── 01 - Track.mp3
+		//     │   └── cover.jpg
+		//     └── cover.jpg            ← should win (album-root fallback)
 		PIt("uses the album-root cover (currently picks a disc subfolder image — bug)", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -71,6 +84,15 @@ var _ = Describe("Album artwork resolution", func() {
 	// "Artist/Album/CD1/folder.jpg" ahead of "Artist/Album/folder.jpg".
 	// Flip from PIt to It once compareImageFiles prefers shorter/parent paths.
 	When("a multi-disc album has folder.jpg at the album root AND in each disc subfolder", func() {
+		// Artist/
+		// └── Album/
+		//     ├── CD1/
+		//     │   ├── 01 - Track.mp3
+		//     │   └── folder.jpg       ← currently wins (bug)
+		//     ├── CD2/
+		//     │   ├── 01 - Track.mp3
+		//     │   └── folder.jpg
+		//     └── folder.jpg           ← should win (album-root fallback)
 		PIt("uses the album-root folder.jpg (currently picks a disc subfolder image — bug)", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -92,6 +114,11 @@ var _ = Describe("Album artwork resolution", func() {
 	// album-root cover is never considered. Flip from PIt to It once the guard
 	// accepts single-folder albums whose parent isn't already in the folder set.
 	When("an album lives entirely under a single disc subfolder with cover.jpg at the parent", func() {
+		// Artist/
+		// └── Album/
+		//     ├── disc1/
+		//     │   └── 01 - Track.mp3
+		//     └── cover.jpg            ← should win (parent-folder fallback, currently ignored — bug)
 		PIt("uses the parent-folder cover (currently ignored — bug)", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -106,6 +133,10 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("CoverArtPriority puts embedded first and the album has both embedded and external art", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3      ← has embedded picture (wins via "embedded")
+		//     └── cover.jpg
 		It("returns the embedded image", func() {
 			Skip("FakeFS does not produce taglib-readable MP3 bytes — embedded-art scenarios remain to be tested with real MP3 fixtures")
 			conf.Server.CoverArtPriority = "embedded, cover.*, folder.*, front.*, external"
@@ -123,6 +154,9 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("CoverArtPriority lists external first but no external file is present", func() {
+		// Artist/
+		// └── Album/
+		//     └── 01 - Track.mp3      ← has embedded picture (falls through to "embedded")
 		It("falls through to embedded artwork", func() {
 			Skip("FakeFS does not produce taglib-readable MP3 bytes — embedded-art scenarios remain to be tested with real MP3 fixtures")
 			conf.Server.CoverArtPriority = "external, embedded"
@@ -138,6 +172,10 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("the only cover file uses uppercase extension and a different case in its name", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── Cover.JPG            ← matched case-insensitively by cover.*
 		It("matches case-insensitively against cover.*", func() {
 			conf.Server.CoverArtPriority = "cover.*, folder.*"
 			setLayout(fstest.MapFS{
@@ -152,6 +190,11 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("two cover files have basenames that tie under the natural-sort tiebreaker", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     ├── cover.jpg            ← wins (no numeric suffix)
+		//     └── cover.1.jpg
 		It("prefers the file without a numeric suffix", func() {
 			conf.Server.CoverArtPriority = "cover.*"
 			setLayout(fstest.MapFS{
@@ -167,6 +210,9 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("the album has no cover and CoverArtPriority lists only file patterns", func() {
+		// Artist/
+		// └── Album/
+		//     └── 01 - Track.mp3       (no image files — returns ErrUnavailable)
 		It("returns ErrUnavailable", func() {
 			conf.Server.CoverArtPriority = "cover.*, folder.*"
 			setLayout(fstest.MapFS{
@@ -184,6 +230,10 @@ var _ = Describe("Album artwork resolution", func() {
 	// https://www.navidrome.org/docs/usage/library/artwork/#albums
 	// Default CoverArtPriority is "cover.*, folder.*, front.*, embedded, external".
 	When("only folder.jpg is present (cover.* and front.* missing)", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── folder.jpg           ← matched by folder.*
 		It("falls through to folder.jpg", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -198,6 +248,10 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("only front.jpg is present (cover.* and folder.* missing)", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── front.jpg            ← matched by front.*
 		It("falls through to front.jpg", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -212,6 +266,12 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("cover.*, folder.*, and front.* all exist in the same folder", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     ├── cover.jpg            ← wins (cover.* is first in priority)
+		//     ├── folder.jpg
+		//     └── front.jpg
 		It("prefers cover.* (first in CoverArtPriority)", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -228,6 +288,11 @@ var _ = Describe("Album artwork resolution", func() {
 	})
 
 	When("only folder.* and front.* exist (priority order check)", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     ├── folder.jpg           ← wins (folder.* comes before front.*)
+		//     └── front.jpg
 		It("prefers folder.* over front.*", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
