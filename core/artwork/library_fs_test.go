@@ -23,7 +23,7 @@ var _ = Describe("libraryFS", Ordered, func() {
 		ds = &tests.MockDataStore{MockedLibrary: &tests.MockLibraryRepo{}}
 	})
 
-	It("returns an FS for a library backed by file:// storage", func() {
+	It("returns an FS for a library backed by registered storage", func() {
 		Expect(ds.Library(ctx).Put(&model.Library{ID: 1, Path: "fake:///music"})).To(Succeed())
 
 		fs, err := libraryFS(ctx, ds, 1)
