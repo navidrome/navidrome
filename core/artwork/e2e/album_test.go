@@ -20,7 +20,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const defaultCoverPriority = "cover.*, folder.*, front.*, embedded, external"
+const (
+	defaultCoverPriority = "cover.*, folder.*, front.*, embedded, external"
+	defaultDiscPriority  = "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded"
+)
 
 var _ = Describe("Album artwork resolution", func() {
 	BeforeEach(func() {
@@ -174,6 +177,68 @@ var _ = Describe("Album artwork resolution", func() {
 			al := firstAlbum()
 			_, err := readArtworkOrErr(model.NewArtworkID(model.KindAlbumArtwork, al.ID, &al.UpdatedAt))
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	// Doc scenarios from:
+	// https://www.navidrome.org/docs/usage/library/artwork/#albums
+	// Default CoverArtPriority is "cover.*, folder.*, front.*, embedded, external".
+	When("only folder.jpg is present (cover.* and front.* missing)", func() {
+		It("falls through to folder.jpg", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/folder.jpg":     imageFile("folder"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("folder")))
+		})
+	})
+
+	When("only front.jpg is present (cover.* and folder.* missing)", func() {
+		It("falls through to front.jpg", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/front.jpg":      imageFile("front"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("front")))
+		})
+	})
+
+	When("cover.*, folder.*, and front.* all exist in the same folder", func() {
+		It("prefers cover.* (first in CoverArtPriority)", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/cover.jpg":      imageFile("cover"),
+				"Artist/Album/folder.jpg":     imageFile("folder"),
+				"Artist/Album/front.jpg":      imageFile("front"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+		})
+	})
+
+	When("only folder.* and front.* exist (priority order check)", func() {
+		It("prefers folder.* over front.*", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/folder.jpg":     imageFile("folder"),
+				"Artist/Album/front.jpg":      imageFile("front"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("folder")))
 		})
 	})
 })
