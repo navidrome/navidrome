@@ -266,13 +266,21 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
 		})
 
-		It("exits when enabled and running as root", func() {
+		It("exits when enabled and running as root without having created a data folder", func() {
+			// Create a path that doesn't exist yet
+			tempBase := GinkgoT().TempDir()
+			nonExistentDataFolder := filepath.Join(tempBase, "nonexistent", "data")
 			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 0))
 			viper.Set("enforcenonrootuser", true)
+			viper.Set("datafolder", nonExistentDataFolder)
 
+			// Attempt to load config as root user - should fail before creating directories
 			Expect(func() {
 				conf.Load(true)
 			}).To(PanicWith(ContainSubstring("EnforceNonRootUser is enabled but Navidrome is running as root")))
+
+			// Verify that the data folder was NOT created
+			Expect(nonExistentDataFolder).ToNot(BeAnExistingFile())
 		})
 
 		It("is a no-op on non-unix platforms", func() {
