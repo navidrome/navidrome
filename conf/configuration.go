@@ -27,6 +27,7 @@ type configOptions struct {
 	Address                         string
 	Port                            int
 	UnixSocketPerm                  string
+	EnforceNonRootUser              bool
 	MusicFolder                     string
 	DataFolder                      string
 	CacheFolder                     string
@@ -268,6 +269,12 @@ var logFatal = func(args ...any) {
 	os.Exit(1)
 }
 
+var getEUID = os.Geteuid
+
+var currentGOOS = func() string {
+	return runtime.GOOS
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -295,6 +302,11 @@ func Load(noConfigDump bool) {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
 		logFatal("Error parsing config:", err)
+	}
+
+	// Validate non-root user early, before any filesystem operations
+	if err := validateEnforceNonRootUser(); err != nil {
+		logFatal(err)
 	}
 
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
@@ -592,6 +604,18 @@ func validateMaxImageUploadSize() error {
 	return nil
 }
 
+func validateEnforceNonRootUser() error {
+	if !Server.EnforceNonRootUser || currentGOOS() == "windows" {
+		return nil
+	}
+
+	if getEUID() == 0 {
+		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+	}
+
+	return nil
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -691,6 +715,7 @@ func setViperDefaults() {
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
+	viper.SetDefault("enforcenonrootuser", false)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
