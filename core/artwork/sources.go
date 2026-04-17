@@ -93,15 +93,21 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 		if err != nil {
 			return nil, "", err
 		}
-		defer f.Close()
 		rs, ok := f.(io.ReadSeeker)
 		if !ok {
+			f.Close()
 			return nil, "", fmt.Errorf("FS file %s is not seekable; cannot read tags", relPath)
 		}
-		tf, err := taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
+		tf, err := taglib.OpenStream(rs,
+			taglib.WithReadStyle(taglib.ReadStyleFast),
+			taglib.WithFilename(relPath),
+		)
 		if err != nil {
+			f.Close()
 			return nil, "", err
 		}
+		// Close in LIFO order: tf first (it holds rs internally), then f.
+		defer f.Close()
 		defer tf.Close()
 
 		images := tf.Properties().Images
@@ -234,8 +240,5 @@ func fromExternalFileAbs(ctx context.Context, files []string, pattern string) so
 //
 // TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
 func fromTagAbs(ctx context.Context, path string) sourceFunc {
-	if path == "" {
-		return fromTag(ctx, nil, "")
-	}
 	return fromTag(ctx, osDirectFS{}, path)
 }
