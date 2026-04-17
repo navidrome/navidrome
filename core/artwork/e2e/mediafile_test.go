@@ -27,6 +27,15 @@ var _ = Describe("MediaFile artwork fallback", func() {
 	})
 
 	When("a multi-disc album track has no embedded art", func() {
+		// Artist/
+		// └── Album/
+		//     ├── CD1/
+		//     │   ├── 01 - Track.mp3
+		//     │   └── disc1.jpg
+		//     ├── CD2/
+		//     │   ├── 01 - Track.mp3   ← track requested
+		//     │   └── disc2.jpg        ← wins (disc-level before album-level)
+		//     └── cover.jpg
 		It("falls back to the disc-level artwork (not the album cover)", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			conf.Server.DiscArtPriority = defaultDiscPriority
@@ -45,6 +54,10 @@ var _ = Describe("MediaFile artwork fallback", func() {
 	})
 
 	When("a single-disc album track has no embedded art", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3       ← track requested
+		//     └── cover.jpg            ← wins (album-level fallback, no disc subfolder)
 		It("falls back to the album cover", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			conf.Server.DiscArtPriority = defaultDiscPriority
@@ -60,6 +73,13 @@ var _ = Describe("MediaFile artwork fallback", func() {
 	})
 
 	When("a multi-disc album track has no embedded art and the disc has no disc-level image", func() {
+		// Artist/
+		// └── Album/
+		//     ├── CD1/
+		//     │   └── 01 - Track.mp3
+		//     ├── CD2/
+		//     │   └── 01 - Track.mp3   ← track requested
+		//     └── cover.jpg            ← wins (no disc image → album-level fallback)
 		It("falls through from disc to album cover", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			conf.Server.DiscArtPriority = defaultDiscPriority

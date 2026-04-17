@@ -19,6 +19,10 @@ var _ = Describe("Artist artwork resolution", func() {
 	})
 
 	When("the artist folder contains an artist.jpg", func() {
+		// Artist/
+		// ├── artist.jpg               ← matched by artist.*
+		// └── Album/
+		//     └── 01 - Track.mp3
 		It("returns the artist.* image from the artist folder", func() {
 			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
 			setLayout(fstest.MapFS{
@@ -34,6 +38,10 @@ var _ = Describe("Artist artwork resolution", func() {
 	})
 
 	When("artist.* only exists inside an album folder", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── artist.jpg           ← matched by album/artist.*
 		It("falls through to album/artist.* and returns that image", func() {
 			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
 			setLayout(fstest.MapFS{
@@ -49,6 +57,11 @@ var _ = Describe("Artist artwork resolution", func() {
 	})
 
 	When("both the artist folder and an album folder have an artist.* image", func() {
+		// Artist/
+		// ├── artist.jpg               ← wins (artist.* before album/artist.*)
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── artist.jpg
 		It("prefers the artist-folder image (artist.* comes before album/artist.*)", func() {
 			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
 			setLayout(fstest.MapFS{
