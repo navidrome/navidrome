@@ -137,6 +137,13 @@ func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path str
 	return 0
 }
 
+// fromFFmpegTag is intentionally absolute-path-based. ffmpeg is a subprocess
+// and cannot read from arbitrary fs.FS implementations; piping via stdin is a
+// non-trivial refactor with stream/seek implications.
+//
+// TODO(artwork-musicfs): when the storage backing the library is not local
+// (e.g. a future S3 backend, or FakeFS in tests), short-circuit this source
+// func to return (nil, "", nil) so callers fall through cleanly.
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
