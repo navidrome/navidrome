@@ -91,7 +91,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
 		case len(a.imgFiles) > 0:
-			ff = append(ff, fromExternalFile(ctx, a.imgFiles, pattern))
+			ff = append(ff, fromExternalFileAbs(ctx, a.imgFiles, pattern))
 		}
 	}
 	return ff
