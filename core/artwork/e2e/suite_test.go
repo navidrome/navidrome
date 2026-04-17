@@ -45,8 +45,9 @@ var (
 func setupHarness() {
 	DeferCleanup(configtest.SetupConfig())
 
-	dbPath := filepath.Join(GinkgoT().TempDir(), "artwork-e2e.db")
-	conf.Server.DbPath = dbPath + "?_journal_mode=WAL"
+	tempDir := GinkgoT().TempDir()
+	conf.Server.DbPath = filepath.Join(tempDir, "artwork-e2e.db") + "?_journal_mode=WAL"
+	conf.Server.DataFolder = tempDir
 	conf.Server.MusicFolder = fakeLibPath
 	conf.Server.DevExternalScanner = false
 	conf.Server.ImageCacheSize = "0" // disabled cache → reader runs on every call
