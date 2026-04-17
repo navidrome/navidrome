@@ -12,6 +12,8 @@ import (
 	"io"
 	"maps"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/consts"
@@ -75,6 +77,16 @@ func placeholderBytes() []byte {
 	data, err := io.ReadAll(r)
 	Expect(err).ToNot(HaveOccurred())
 	return data
+}
+
+// writeUploadedImage drops `filename` into <DataFolder>/artwork/<entity>/ with
+// the given bytes, matching the on-disk layout expected by
+// model.UploadedImagePath.
+func writeUploadedImage(entity, filename string, data []byte) {
+	GinkgoHelper()
+	dir := filepath.Dir(model.UploadedImagePath(entity, filename))
+	Expect(os.MkdirAll(dir, 0755)).To(Succeed())
+	Expect(os.WriteFile(filepath.Join(dir, filename), data, 0600)).To(Succeed())
 }
 
 func newNoopFFmpeg() *tests.MockFFmpeg {

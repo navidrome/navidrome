@@ -2,7 +2,6 @@ package ffmpeg
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -732,7 +731,7 @@ var _ = Describe("ffmpeg", func() {
 		// Point ffmpegCmd at a stand-in binary that produces empty `-encoders`
 		// output so hasAnimatedWebPEncoder returns false. /usr/bin/true is
 		// portable across POSIX systems.
-		It("returns errAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
+		It("returns ErrAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
 			truePath, err := exec.LookPath("true")
 			if err != nil {
 				Skip("true(1) not available")
@@ -749,7 +748,7 @@ var _ = Describe("ffmpeg", func() {
 
 			ff := &ffmpeg{}
 			_, err = ff.ConvertAnimatedImage(GinkgoT().Context(), strings.NewReader("x"), 100, 75)
-			Expect(err).To(MatchError(errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")))
+			Expect(err).To(MatchError(ErrAnimatedWebPUnsupported))
 		})
 	})
 })

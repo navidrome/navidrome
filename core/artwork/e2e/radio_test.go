@@ -1,10 +1,6 @@
 package artworke2e_test
 
 import (
-	"os"
-	"path/filepath"
-
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -22,9 +18,7 @@ var _ = Describe("Radio artwork resolution", func() {
 		//     └── radio/
 		//         └── rd-1_logo.jpg   ← matched by UploadedImagePath()
 		It("returns the uploaded image bytes", func() {
-			radioDir := filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, consts.EntityRadio)
-			Expect(os.MkdirAll(radioDir, 0755)).To(Succeed())
-			Expect(os.WriteFile(filepath.Join(radioDir, "rd-1_logo.jpg"), imageBytes("radio-logo"), 0600)).To(Succeed())
+			writeUploadedImage(consts.EntityRadio, "rd-1_logo.jpg", imageBytes("radio-logo"))
 
 			rd := model.Radio{ID: "rd-1", Name: "Test Radio", StreamUrl: "https://example.com/stream", UploadedImage: "rd-1_logo.jpg"}
 			Expect(ds.Radio(ctx).Put(&rd)).To(Succeed())

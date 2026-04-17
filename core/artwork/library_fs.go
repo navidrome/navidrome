@@ -22,9 +22,12 @@ func libraryFS(ctx context.Context, ds model.DataStore, libID int) (storage.Musi
 	return s.FS()
 }
 
-// libraryFSAndRoot resolves both the MusicFS and the absolute library root path.
-// Readers that need to translate between libFS-relative paths and absolute
-// display paths typically need both.
+// libraryFSAndRoot resolves the MusicFS and the library's root path for
+// readers that need both. The returned root is the same value core.AbsolutePath
+// produces for this library — readers use it to compose absolute paths for
+// ffmpeg and to derive libFS-relative paths from absolute mediafile paths
+// (both sources share the same derivation, so any path-cleaning applied
+// here is applied symmetrically elsewhere).
 func libraryFSAndRoot(ctx context.Context, ds model.DataStore, libID int) (storage.MusicFS, string, error) {
 	fs, err := libraryFS(ctx, ds, libID)
 	if err != nil {
