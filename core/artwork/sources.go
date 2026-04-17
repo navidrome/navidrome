@@ -203,30 +203,19 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 	return resp.Body, imageUrl.String(), nil
 }
 
-// fromExternalFileAbs is a temporary shim: existing callers still pass file
-// paths (absolute or relative). It preserves the original os.Open behaviour so
-// the build stays green between tasks.
+// osDirectFS is a thin fs.FS that opens any path directly via os.Open. Unlike
+// os.DirFS it performs no rooting/sanitisation — it exists only so the temporary
+// fromExternalFileAbs shim can keep accepting absolute paths.
 //
-// TODO(artwork-musicfs): delete after Task 5 / Task 8.
+// TODO(artwork-musicfs): delete in Task 9 along with fromExternalFileAbs.
+type osDirectFS struct{}
+
+func (osDirectFS) Open(name string) (fs.File, error) { return os.Open(name) }
+
+// fromExternalFileAbs is a temporary shim that lets existing absolute-path
+// callers compile until they migrate to the FS-based fromExternalFile.
+//
+// TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
 func fromExternalFileAbs(ctx context.Context, files []string, pattern string) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		for _, file := range files {
-			_, name := filepath.Split(file)
-			match, err := filepath.Match(pattern, strings.ToLower(name))
-			if err != nil {
-				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
-				continue
-			}
-			if !match {
-				continue
-			}
-			f, err := os.Open(file)
-			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", file, err)
-				continue
-			}
-			return f, file, nil
-		}
-		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
-	}
+	return fromExternalFile(ctx, osDirectFS{}, files, pattern)
 }
