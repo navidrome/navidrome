@@ -293,4 +293,62 @@ var _ = Describe("Album artwork resolution", func() {
 			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("folder")))
 		})
 	})
+
+	When("three cover files tie by basename and differ only by numeric suffix", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     ├── cover.jpg            ← wins (no numeric suffix)
+		//     ├── cover.1.jpg
+		//     └── cover.2.jpg
+		It("selects the unsuffixed file first regardless of numeric-suffix order", func() {
+			conf.Server.CoverArtPriority = "cover.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/cover.2.jpg":    imageFile("second"),
+				"Artist/Album/cover.jpg":      imageFile("primary"),
+				"Artist/Album/cover.1.jpg":    imageFile("first"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("primary")))
+		})
+	})
+
+	When("CoverArtPriority contains an unknown pattern before a matching one", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── cover.jpg            ← wins (unknown "bogus.*" is skipped)
+		It("skips the unknown pattern and falls through to the matching one", func() {
+			conf.Server.CoverArtPriority = "bogus.*, cover.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/cover.jpg":      imageFile("cover"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+		})
+	})
+
+	When("embedded is first in CoverArtPriority but the track has no embedded art", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3       (no embedded picture)
+		//     └── cover.jpg            ← wins (embedded skipped, falls through)
+		It("falls through to the next priority entry", func() {
+			conf.Server.CoverArtPriority = "embedded, cover.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
+				"Artist/Album/cover.jpg":      imageFile("cover"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+		})
+	})
 })
