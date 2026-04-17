@@ -250,6 +250,41 @@ var _ = Describe("Configuration", func() {
 		)
 	})
 
+	Describe("EnforceNonRootUser", func() {
+		It("defaults to false", func() {
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeFalse())
+		})
+
+		It("allows startup for non-root users when enabled", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 1000))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+
+		It("exits when enabled and running as root", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 0))
+			viper.Set("enforcenonrootuser", true)
+
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("EnforceNonRootUser is enabled but Navidrome is running as root")))
+		})
+
+		It("is a no-op on non-unix platforms", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("windows", 0))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)
