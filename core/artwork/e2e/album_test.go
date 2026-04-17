@@ -1,14 +1,3 @@
-// Note on embedded-art scenarios:
-// FakeFS produces JSON-encoded tag data, not real taglib-readable MP3 bytes.
-// When the artwork code calls fromTag() → taglib.OpenStream(jsonBytes), it cannot
-// extract any embedded image. The two embedded-art tests below are therefore
-// skipped with an explanatory message. They were passing in the old real-tempdir
-// suite because real MP3 fixture bytes were written to disk and taglib could read
-// them. Switching those specific cases back to real-tempdir would undermine the
-// consolidation goal of Task 10; Skip is the chosen approach until FakeFS gains
-// taglib-readable MP3 simulation or a dedicated embedded-art fixture mechanism is
-// added.
-
 package artworke2e_test
 
 import (
@@ -138,18 +127,17 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3      ← has embedded picture (wins via "embedded")
 		//     └── cover.jpg
 		It("returns the embedded image", func() {
-			Skip("FakeFS does not produce taglib-readable MP3 bytes — embedded-art scenarios remain to be tested with real MP3 fixtures")
 			conf.Server.CoverArtPriority = "embedded, cover.*, folder.*, front.*, external"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
 				"Artist/Album/cover.jpg":      imageFile("external"),
 			})
 			scan()
+			// Swap in real MP3 bytes so libFS.Open returns a taglib-readable stream.
+			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
 
 			al := firstAlbum()
-			data := readArtwork(al.CoverArtID())
-			Expect(data).ToNot(Equal(imageBytes("external")))
-			Expect(data).ToNot(BeEmpty())
+			Expect(readArtwork(al.CoverArtID())).To(Equal(embeddedArtBytes))
 		})
 	})
 
@@ -158,16 +146,15 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3      ← has embedded picture (falls through to "embedded")
 		It("falls through to embedded artwork", func() {
-			Skip("FakeFS does not produce taglib-readable MP3 bytes — embedded-art scenarios remain to be tested with real MP3 fixtures")
 			conf.Server.CoverArtPriority = "external, embedded"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
 			})
 			scan()
+			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
 
 			al := firstAlbum()
-			data := readArtwork(al.CoverArtID())
-			Expect(data).ToNot(BeEmpty())
+			Expect(readArtwork(al.CoverArtID())).To(Equal(embeddedArtBytes))
 		})
 	})
 
