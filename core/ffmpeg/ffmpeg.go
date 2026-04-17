@@ -86,6 +86,9 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
+	if !hasAnimatedWebPEncoder(ctx) {
+		return nil, errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
+	}
 
 	args := []string{cmdPath, "-i", "pipe:0"}
 	if maxSize > 0 {
@@ -96,6 +99,44 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
 
 	return e.start(ctx, args, reader)
+}
+
+// hasAnimatedWebPEncoder reports whether the configured ffmpeg binary supports
+// the libwebp_anim encoder. The probe runs once and the result is cached.
+// Returns false (and logs once) when ffmpeg is missing the encoder, which
+// lets callers short-circuit and fall back to static resizing instead of
+// launching a subprocess that will fail asynchronously.
+func hasAnimatedWebPEncoder(ctx context.Context) bool {
+	animWebPOnce.Do(func() {
+		cmdPath, err := ffmpegCmd()
+		if err != nil {
+			return
+		}
+		out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+		if err != nil {
+			log.Warn(ctx, "Could not probe ffmpeg encoders; animated covers disabled", err)
+			return
+		}
+		animWebPAvail = parseEncodersOutput(out, "libwebp_anim")
+		if !animWebPAvail {
+			log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+				"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+		}
+	})
+	return animWebPAvail
+}
+
+// parseEncodersOutput scans the stdout of `ffmpeg -encoders` for a whole-word
+// match of encoder name. The output has rows like " V....D libwebp_anim  ..."
+// where the name is the 2nd whitespace-separated field.
+func parseEncodersOutput(out []byte, name string) bool {
+	for line := range strings.SplitSeq(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -540,9 +581,11 @@ func ffmpegCmd() (string, error) {
 
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
-	ffOnce     sync.Once
-	ffmpegPath string
-	ffmpegErr  error
-	probeOnce  sync.Once
-	probeAvail bool
+	ffOnce        sync.Once
+	ffmpegPath    string
+	ffmpegErr     error
+	probeOnce     sync.Once
+	probeAvail    bool
+	animWebPOnce  sync.Once
+	animWebPAvail bool
 )
