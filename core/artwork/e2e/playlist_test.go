@@ -33,9 +33,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 		//     └── playlist/
 		//         └── pl-1_upload.jpg   ← matched by UploadedImagePath() (highest priority)
 		It("returns the uploaded image bytes", func() {
-			plDir := filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, consts.EntityPlaylist)
-			Expect(os.MkdirAll(plDir, 0755)).To(Succeed())
-			Expect(os.WriteFile(filepath.Join(plDir, "pl-1_upload.jpg"), imageBytes("playlist-upload"), 0600)).To(Succeed())
+			writeUploadedImage(consts.EntityPlaylist, "pl-1_upload.jpg", imageBytes("playlist-upload"))
 
 			pl := putPlaylist(model.Playlist{ID: "pl-1", Name: "Test", UploadedImage: "pl-1_upload.jpg"})
 

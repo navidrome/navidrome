@@ -57,6 +57,11 @@ func New() FFmpeg {
 	return &ffmpeg{}
 }
 
+// ErrAnimatedWebPUnsupported is returned by ConvertAnimatedImage when the
+// ffmpeg binary lacks the libwebp_anim encoder. Callers can use errors.Is to
+// detect this specific case and fall back to static resize.
+var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
+
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd            = "ffmpeg %s -f ffmetadata"
@@ -87,7 +92,7 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		return nil, err
 	}
 	if !hasAnimatedWebPEncoder(ctx) {
-		return nil, errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
+		return nil, ErrAnimatedWebPUnsupported
 	}
 
 	args := []string{cmdPath, "-i", "pipe:0"}

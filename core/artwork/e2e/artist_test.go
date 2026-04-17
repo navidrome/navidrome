@@ -99,10 +99,8 @@ var _ = Describe("Artist artwork resolution", func() {
 			scan()
 			ar := soleArtist()
 
-			artDir := filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, consts.EntityArtist)
-			Expect(os.MkdirAll(artDir, 0755)).To(Succeed())
 			uploaded := ar.ID + "_upload.jpg"
-			Expect(os.WriteFile(filepath.Join(artDir, uploaded), imageBytes("artist-uploaded"), 0600)).To(Succeed())
+			writeUploadedImage(consts.EntityArtist, uploaded, imageBytes("artist-uploaded"))
 			ar.UploadedImage = uploaded
 			Expect(ds.Artist(ctx).Put(&ar)).To(Succeed())
 

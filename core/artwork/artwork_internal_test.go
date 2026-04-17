@@ -39,7 +39,7 @@ var _ = Describe("Artwork", func() {
 		folderRepo = &fakeFolderRepo{}
 		libRepo := &tests.MockLibraryRepo{}
 		repoRoot, _ := os.Getwd()
-		libRepo.SetData(model.Libraries{{ID: 0, Path: "testfile://" + filepath.ToSlash(repoRoot)}})
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + filepath.ToSlash(repoRoot)}})
 		ds = &tests.MockDataStore{
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
@@ -204,7 +204,7 @@ var _ = Describe("Artwork", func() {
 				repoRoot, err := os.Getwd()
 				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
-					LibraryPath: "testfile://" + filepath.ToSlash(repoRoot),
+					LibraryPath: testFileSchemePrefix + filepath.ToSlash(repoRoot),
 					Path:        "tests/fixtures/artist/an-album",
 					ImageFiles:  []string{"artist.png"},
 				}}
@@ -474,7 +474,7 @@ var _ = Describe("Artwork", func() {
 					}
 					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
 					rootLibRepo := &tests.MockLibraryRepo{}
-					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: "testfile:///"}})
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + "/"}})
 					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
@@ -565,7 +565,7 @@ var _ = Describe("Artwork", func() {
 				}
 				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
 				rootLibRepo := &tests.MockLibraryRepo{}
-				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: "testfile:///"}})
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + "/"}})
 				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
 

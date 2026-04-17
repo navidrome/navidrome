@@ -27,10 +27,18 @@ type osDirFS struct{ fs.FS }
 
 func (o osDirFS) ReadTags(...string) (map[string]metadata.Info, error) { return nil, nil }
 
+// testFileScheme is the URL scheme registered to expose a tempdir as a
+// storage.MusicFS for artwork integration tests. Keep the const in sync with
+// callers that build library paths like `testFileSchemePrefix + absRoot`.
+const (
+	testFileScheme       = "testfile"
+	testFileSchemePrefix = testFileScheme + "://"
+)
+
 func init() {
-	// Register a "testfile" storage scheme that creates an os.DirFS-backed MusicFS.
-	// Used by artwork integration tests that need real files but not the taglib extractor.
-	storage.Register("testfile", func(u url.URL) storage.Storage {
+	// Register the testfile storage scheme (os.DirFS-backed MusicFS). Used by
+	// integration tests that need real files but not the taglib extractor.
+	storage.Register(testFileScheme, func(u url.URL) storage.Storage {
 		return &osDirStorage{root: u.Path}
 	})
 }
