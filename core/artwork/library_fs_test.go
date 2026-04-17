@@ -10,14 +10,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("libraryFS", func() {
+var _ = Describe("libraryFS", Ordered, func() {
 	var ctx context.Context
 	var ds *tests.MockDataStore
+
+	BeforeAll(func() {
+		storagetest.Register("fake", &storagetest.FakeFS{})
+	})
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{MockedLibrary: &tests.MockLibraryRepo{}}
-		storagetest.Register("fake", &storagetest.FakeFS{})
 	})
 
 	It("returns an FS for a library backed by file:// storage", func() {
@@ -30,6 +33,12 @@ var _ = Describe("libraryFS", func() {
 
 	It("returns an error when the library does not exist", func() {
 		_, err := libraryFS(ctx, ds, 999)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error when the library path uses an unregistered scheme", func() {
+		Expect(ds.Library(ctx).Put(&model.Library{ID: 2, Path: "unsupported:///music"})).To(Succeed())
+		_, err := libraryFS(ctx, ds, 2)
 		Expect(err).To(HaveOccurred())
 	})
 })
