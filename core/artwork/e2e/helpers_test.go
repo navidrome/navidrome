@@ -9,12 +9,18 @@ import (
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+func newNoopFFmpeg() *tests.MockFFmpeg {
+	ff := tests.NewMockFFmpeg("")
+	ff.Error = errors.New("noop")
+	return ff
+}
 
 // trackFile builds a FakeFS MP3 entry with optional tag overrides.
 func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
@@ -32,7 +38,7 @@ func imageFile(label string) *fstest.MapFile {
 }
 
 // imageBytes returns the bytes that imageFile(label) writes.
-func imageBytes(label string) []byte { return []byte("image:" + label) }
+func imageBytes(label string) []byte { return imageFile(label).Data }
 
 // setLayout populates fakeFS with the given map. Call after setupHarness.
 // All paths must be forward-slash and relative (no leading "/").
@@ -60,27 +66,6 @@ func readArtworkOrErr(artID model.ArtworkID) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
-// noopFFmpeg satisfies ffmpeg.FFmpeg and always returns an error.
-type noopFFmpeg struct{}
-
-func (n *noopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCloser, error) {
-	return nil, errors.New("noop")
-}
-func (n *noopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
-	return nil, errors.New("noop")
-}
-func (n *noopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
-func (n *noopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
-	return nil, errors.New("noop")
-}
-func (n *noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io.ReadCloser, error) {
-	return nil, errors.New("noop")
-}
-func (n *noopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (n *noopFFmpeg) IsAvailable() bool        { return false }
-func (n *noopFFmpeg) IsProbeAvailable() bool   { return false }
-func (n *noopFFmpeg) Version() string          { return "noop" }
-
 // noopProvider implements external.Provider with not-found returns so the
 // "external" priority entry never produces a result.
 type noopProvider struct{}
@@ -104,7 +89,4 @@ func (n *noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
 
-var (
-	_ ffmpeg.FFmpeg     = (*noopFFmpeg)(nil)
-	_ external.Provider = (*noopProvider)(nil)
-)
+var _ external.Provider = (*noopProvider)(nil)
