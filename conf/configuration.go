@@ -304,6 +304,11 @@ func Load(noConfigDump bool) {
 		logFatal("Error parsing config:", err)
 	}
 
+	// Validate non-root user early, before any filesystem operations
+	if err := validateEnforceNonRootUser(); err != nil {
+		logFatal(err)
+	}
+
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
 		logFatal("Error creating data path:", err)
@@ -370,7 +375,6 @@ func Load(noConfigDump bool) {
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
 		validateMaxImageUploadSize,
-		validateEnforceNonRootUser,
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
