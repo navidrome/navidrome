@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,7 +54,7 @@ func (f sourceFunc) String() string {
 	return name
 }
 
-func fromExternalFile(ctx context.Context, files []string, pattern string) sourceFunc {
+func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range files {
 			_, name := filepath.Split(file)
@@ -65,12 +66,12 @@ func fromExternalFile(ctx context.Context, files []string, pattern string) sourc
 			if !match {
 				continue
 			}
-			f, err := os.Open(file)
+			f, err := libFS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open cover art file", "file", file, err)
 				continue
 			}
-			return f, file, err
+			return f, file, nil
 		}
 		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
@@ -200,4 +201,32 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 		return nil, "", fmt.Errorf("error retrieving artwork from %s: %s", imageUrl, resp.Status)
 	}
 	return resp.Body, imageUrl.String(), nil
+}
+
+// fromExternalFileAbs is a temporary shim: existing callers still pass file
+// paths (absolute or relative). It preserves the original os.Open behaviour so
+// the build stays green between tasks.
+//
+// TODO(artwork-musicfs): delete after Task 5 / Task 8.
+func fromExternalFileAbs(ctx context.Context, files []string, pattern string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		for _, file := range files {
+			_, name := filepath.Split(file)
+			match, err := filepath.Match(pattern, strings.ToLower(name))
+			if err != nil {
+				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
+				continue
+			}
+			if !match {
+				continue
+			}
+			f, err := os.Open(file)
+			if err != nil {
+				log.Warn(ctx, "Could not open cover art file", "file", file, err)
+				continue
+			}
+			return f, file, nil
+		}
+		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
+	}
 }

@@ -124,7 +124,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case pattern == "image-folder":
 			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
-			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			ff = append(ff, fromExternalFileAbs(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
 			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
 		}
