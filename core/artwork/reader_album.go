@@ -151,8 +151,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 		if f.ImagesUpdatedAt.After(updatedAt) {
 			updatedAt = f.ImagesUpdatedAt
 		}
-		rel := filepath.ToSlash(filepath.Join(f.Path, f.Name))
-		rel = strings.TrimPrefix(rel, "/")
+		rel := strings.TrimPrefix(path.Join(f.Path, f.Name), "/")
 		for _, img := range f.ImageFiles {
 			imgFiles = append(imgFiles, path.Join(rel, img))
 		}
@@ -195,8 +194,8 @@ func compareImageFiles(a, b string) int {
 	b = strings.ToLower(b)
 
 	// Extract base filenames without extensions
-	baseA := strings.TrimSuffix(filepath.Base(a), filepath.Ext(a))
-	baseB := strings.TrimSuffix(filepath.Base(b), filepath.Ext(b))
+	baseA := strings.TrimSuffix(path.Base(a), path.Ext(a))
+	baseB := strings.TrimSuffix(path.Base(b), path.Ext(b))
 
 	// Compare base names first, then full paths if equal
 	return cmp.Or(
