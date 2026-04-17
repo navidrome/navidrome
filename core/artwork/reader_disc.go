@@ -78,8 +78,11 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 	}
 
 	// Compute absolute and relative paths for the first track
-	firstTrackAbs := core.AbsolutePath(ctx, a.ds, al.LibraryID, firstTrackPath)
-	firstTrackRel := strings.TrimPrefix(filepath.ToSlash(strings.TrimPrefix(firstTrackAbs, libRoot)), "/")
+	var firstTrackAbs, firstTrackRel string
+	if firstTrackPath != "" {
+		firstTrackAbs = core.AbsolutePath(ctx, a.ds, al.LibraryID, firstTrackPath)
+		firstTrackRel = strings.TrimPrefix(filepath.ToSlash(strings.TrimPrefix(firstTrackAbs, libRoot)), "/")
+	}
 
 	// Resolve folder IDs to library-relative paths
 	discFoldersRel := make(map[string]bool)
@@ -95,8 +98,7 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 			return nil, err
 		}
 		for _, f := range folders {
-			absPath := f.AbsolutePath()
-			rel := strings.TrimPrefix(filepath.ToSlash(strings.TrimPrefix(absPath, libRoot)), "/")
+			rel := strings.TrimPrefix(path.Join(f.Path, f.Name), "/")
 			discFoldersRel[rel] = true
 		}
 	}
