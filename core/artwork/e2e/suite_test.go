@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
-	_ "github.com/navidrome/navidrome/core/storage/local"
+	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -32,46 +32,44 @@ func TestArtworkE2E(t *testing.T) {
 	RunSpecs(t, "Artwork E2E Suite")
 }
 
+const fakeLibScheme = "artworkfake"
+const fakeLibPath = fakeLibScheme + ":///music"
+
 var (
-	ctx      context.Context
-	ds       *tests.MockDataStore
-	aw       artwork.Artwork
-	musicDir string
+	ctx    context.Context
+	ds     *tests.MockDataStore
+	aw     artwork.Artwork
+	fakeFS *storagetest.FakeFS
 )
 
-// setupHarness builds a fresh tempdir-backed library and wires up the artwork
-// service. Layout files must be written under musicDir, then scan() must be
-// called before any artwork lookups. Each test gets its own tempdir + DB.
 func setupHarness() {
 	DeferCleanup(configtest.SetupConfig())
 
-	musicDir = GinkgoT().TempDir()
 	dbPath := filepath.Join(GinkgoT().TempDir(), "artwork-e2e.db")
-
 	conf.Server.DbPath = dbPath + "?_journal_mode=WAL"
-	conf.Server.MusicFolder = musicDir
+	conf.Server.MusicFolder = fakeLibPath
 	conf.Server.DevExternalScanner = false
 	conf.Server.ImageCacheSize = "0" // disabled cache → reader runs on every call
 	conf.Server.EnableExternalServices = false
 
 	db.Db().SetMaxOpenConns(1)
-
 	ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	db.Init(ctx)
-	DeferCleanup(func() {
-		Expect(tests.ClearDB()).To(Succeed())
-	})
+	DeferCleanup(func() { Expect(tests.ClearDB()).To(Succeed()) })
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
 	Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
-	lib := model.Library{ID: 1, Name: "Music", Path: musicDir}
+	lib := model.Library{ID: 1, Name: "Music", Path: fakeLibPath}
 	Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
 	Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
 
-	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), newNoopFFmpeg(), &noopProvider{})
+	fakeFS = &storagetest.FakeFS{}
+	storagetest.Register(fakeLibScheme, fakeFS)
+
+	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), &noopFFmpeg{}, &noopProvider{})
 }
 
 func scan() {
