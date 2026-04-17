@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net/url"
 	"testing/fstest"
 
@@ -19,9 +20,7 @@ import (
 func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
 	tags := storagetest.Track(num, title)
 	for _, e := range extra {
-		for k, v := range e {
-			tags[k] = v
-		}
+		maps.Copy(tags, e)
 	}
 	return storagetest.MP3(tags)
 }
