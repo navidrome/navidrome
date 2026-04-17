@@ -111,6 +111,25 @@ var _ = Describe("Artist artwork resolution", func() {
 		})
 	})
 
+	When("ArtistArtPriority uses album/<arbitrary pattern> (not just album/artist.*)", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── artist.jpg            ← matched by album/artist.*
+		It("resolves the pattern against the artist's album image files", func() {
+			conf.Server.ArtistArtPriority = "album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/Album/artist.jpg":     imageFile("album-artist"),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("album-artist")))
+		})
+	})
+
 	When("ArtistArtPriority starts with image-folder and ArtistImageFolder has a name-matching image", func() {
 		// <ArtistImageFolder>/
 		// └── Artist.jpg               ← matched by artist name (image-folder source)

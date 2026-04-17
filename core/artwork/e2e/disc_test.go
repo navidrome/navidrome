@@ -254,4 +254,23 @@ var _ = Describe("Disc artwork resolution", func() {
 			Expect(readArtwork(discID)).To(Equal(imageBytes("bonus-tracks")))
 		})
 	})
+
+	When("discsubtitle is set but no image filename matches the subtitle", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3       (discsubtitle="Bonus Tracks")
+		//     └── cover.jpg            ← wins (discsubtitle has no match, falls through)
+		It("falls through to the next priority entry", func() {
+			conf.Server.DiscArtPriority = "discsubtitle, cover.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1", "discsubtitle": "Bonus Tracks"}),
+				"Artist/Album/cover.jpg":      imageFile("cover"),
+			})
+			scan()
+
+			al := firstAlbum()
+			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
+			Expect(readArtwork(discID)).To(Equal(imageBytes("cover")))
+		})
+	})
 })

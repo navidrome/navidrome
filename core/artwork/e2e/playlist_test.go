@@ -3,6 +3,7 @@ package artworke2e_test
 import (
 	"os"
 	"path/filepath"
+	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -106,6 +107,45 @@ var _ = Describe("Playlist artwork resolution", func() {
 			pl := putPlaylist(model.Playlist{ID: "pl-6", Name: "Empty"})
 
 			Expect(readArtwork(pl.CoverArtID())).To(Equal(placeholderBytes()))
+		})
+	})
+
+	When("a playlist has no uploaded/sidecar/external image but has tracks with album covers", func() {
+		// Library:
+		// Artist/
+		// ├── AlbumA/
+		// │   ├── 01 - Track.mp3
+		// │   └── cover.png          (real PNG — wins as tile 1 source)
+		// └── AlbumB/
+		//     ├── 01 - Track.mp3
+		//     └── cover.png          (real PNG — wins as tile 2 source)
+		// Playlist "pl-7" references tracks from both albums, so the reader
+		// generates a 2x2 tiled cover from 2 distinct album art tiles (the
+		// tiled generator mirrors when it has fewer than 4 unique tiles).
+		It("generates a tiled cover from album art", func() {
+			conf.Server.CoverArtPriority = "cover.*"
+			setLayout(fstest.MapFS{
+				"Artist/AlbumA/01 - Track.mp3": trackFile(1, "TA", map[string]any{"album": "AlbumA"}),
+				"Artist/AlbumA/cover.png":      realPNG("albumA"),
+				"Artist/AlbumB/01 - Track.mp3": trackFile(1, "TB", map[string]any{"album": "AlbumB"}),
+				"Artist/AlbumB/cover.png":      realPNG("albumB"),
+			})
+			scan()
+
+			// Pull the scanned mediafile IDs so we can attach them to the playlist.
+			mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(2))
+
+			pl := model.Playlist{ID: "pl-7", Name: "Mix", OwnerID: "admin-1"}
+			pl.AddMediaFilesByID([]string{mfs[0].ID, mfs[1].ID})
+			Expect(ds.Playlist(ctx).Put(&pl)).To(Succeed())
+
+			data := readArtwork(pl.CoverArtID())
+			// The tiled cover is a PNG-encoded 600x600 image (tileSize const).
+			// Exact bytes vary (random album order), so assert format + non-trivial size.
+			Expect(data[:8]).To(Equal([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}))
+			Expect(len(data)).To(BeNumerically(">", 1000))
 		})
 	})
 })

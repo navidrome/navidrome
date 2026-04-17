@@ -5,6 +5,10 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"hash/fnv"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"maps"
 	"net/url"
@@ -92,6 +96,25 @@ func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
 // per-label so tests can assert which file won.
 func imageFile(label string) *fstest.MapFile {
 	return &fstest.MapFile{Data: []byte("image:" + label)}
+}
+
+// realPNG builds a minimal 2x2 PNG with a color derived from label. Needed by
+// tests that feed the bytes into image.Decode (e.g. playlist tiled covers).
+func realPNG(label string) *fstest.MapFile {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	// Derive a deterministic color per label.
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(label))
+	sum := h.Sum32()
+	c := color.RGBA{R: byte(sum), G: byte(sum >> 8), B: byte(sum >> 16), A: 255}
+	for y := range 2 {
+		for x := range 2 {
+			img.Set(x, y, c)
+		}
+	}
+	var buf bytes.Buffer
+	Expect(png.Encode(&buf, img)).To(Succeed())
+	return &fstest.MapFile{Data: buf.Bytes()}
 }
 
 // imageBytes returns the bytes that imageFile(label) writes.
