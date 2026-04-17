@@ -254,10 +254,11 @@ type matchScore struct {
 	durationProximity float64 // 0.0-1.0 (closer duration = higher, 1.0 if unknown)
 	albumSimilarity   float64 // 0.0-1.0 (Jaro-Winkler), used as tiebreaker
 	specificityLevel  int     // 0-5 (higher = more specific metadata match)
+	starred           bool    // prefer starred tracks as tiebreaker
 }
 
 // betterThan returns true if this score beats another.
-// Comparison order: title similarity > duration proximity > specificity level > album similarity
+// Comparison order: title similarity > duration proximity > specificity level > starred > album similarity
 func (s matchScore) betterThan(other matchScore) bool {
 	if s.titleSimilarity != other.titleSimilarity {
 		return s.titleSimilarity > other.titleSimilarity
@@ -267,6 +268,9 @@ func (s matchScore) betterThan(other matchScore) bool {
 	}
 	if s.specificityLevel != other.specificityLevel {
 		return s.specificityLevel > other.specificityLevel
+	}
+	if s.starred != other.starred {
+		return s.starred
 	}
 	return s.albumSimilarity > other.albumSimilarity
 }
@@ -401,6 +405,7 @@ func (e *provider) findBestMatch(q songQuery, tracks model.MediaFiles, threshold
 			durationProximity: durationProximity(q.durationMs, mf.Duration),
 			albumSimilarity:   albumSim,
 			specificityLevel:  computeSpecificityLevel(q, mf, threshold),
+			starred:           mf.Starred,
 		}
 
 		if score.betterThan(bestScore) {

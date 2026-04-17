@@ -456,6 +456,56 @@ var _ = Describe("Provider - Song Matching", func() {
 				Expect(songs[0].ID).To(Equal("exact"))
 			})
 		})
+
+		Context("with starred tiebreaking", func() {
+			It("prefers starred track when scores are otherwise equal", func() {
+				conf.Server.SimilarSongsMatchThreshold = 85
+
+				returnedSongs := []agents.Song{
+					{Name: "Paranoid Android", Artist: "Radiohead"},
+				}
+				starredTrack := model.MediaFile{
+					ID: "starred", Title: "Paranoid Android", Artist: "Radiohead", Album: "OK Computer",
+					Annotations: model.Annotations{Starred: true},
+				}
+				unstarredTrack := model.MediaFile{
+					ID: "unstarred", Title: "Paranoid Android", Artist: "Radiohead", Album: "OK Computer",
+				}
+
+				// unstarred is listed first but starred should win
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{unstarredTrack, starredTrack})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("starred"))
+			})
+
+			It("still picks higher title similarity track even if it is not starred", func() {
+				conf.Server.SimilarSongsMatchThreshold = 85
+
+				returnedSongs := []agents.Song{
+					{Name: "Paranoid Android", Artist: "Radiohead"},
+				}
+				exactUnstarred := model.MediaFile{
+					ID: "exact", Title: "Paranoid Android", Artist: "Radiohead",
+				}
+				fuzzyStarred := model.MediaFile{
+					ID: "fuzzy-starred", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
+					Annotations: model.Annotations{Starred: true},
+				}
+
+				setupSimilarSongsExpectations(returnedSongs, model.MediaFiles{fuzzyStarred, exactUnstarred})
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				// Title similarity wins over starred
+				Expect(songs[0].ID).To(Equal("exact"))
+			})
+		})
 	})
 
 	Describe("Duration matching", func() {
