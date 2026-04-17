@@ -37,9 +37,13 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		folderRepo = &fakeFolderRepo{}
+		libRepo := &tests.MockLibraryRepo{}
+		repoRoot, _ := os.Getwd()
+		libRepo.SetData(model.Libraries{{ID: 0, Path: "testfile://" + filepath.ToSlash(repoRoot)}})
 		ds = &tests.MockDataStore{
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
+			MockedLibrary:     libRepo,
 		}
 		// Paths use forward slashes because the scanner stores fs.FS-relative paths in the DB.
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
@@ -461,6 +465,9 @@ var _ = Describe("Artwork", func() {
 						FolderIDs: []string{"tmp"},
 					}
 					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
+					rootLibRepo := &tests.MockLibraryRepo{}
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: "testfile:///"}})
+					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
 					})
@@ -549,6 +556,9 @@ var _ = Describe("Artwork", func() {
 					FolderIDs: []string{"tmp"},
 				}
 				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
+				rootLibRepo := &tests.MockLibraryRepo{}
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: "testfile:///"}})
+				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
 
 				conf.Server.CoverArtPriority = "cover.png"
