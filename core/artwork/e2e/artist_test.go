@@ -1,10 +1,13 @@
 package artworke2e_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing/fstest"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -74,6 +77,61 @@ var _ = Describe("Artist artwork resolution", func() {
 			ar := soleArtist()
 			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
 			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-folder")))
+		})
+	})
+
+	When("an artist has an uploaded image and a matching artist.* file", func() {
+		// <DataFolder>/
+		// └── artwork/
+		//     └── artist/
+		//         └── <id>_upload.jpg  ← wins (uploaded image beats the priority chain)
+		// Library:
+		// Artist/
+		// ├── artist.jpg               (ignored — uploaded image comes first)
+		// └── Album/
+		//     └── 01 - Track.mp3
+		It("prefers the uploaded image over any priority-chain match", func() {
+			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/artist.jpg":           imageFile("artist-folder"),
+			})
+			scan()
+			ar := soleArtist()
+
+			artDir := filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, consts.EntityArtist)
+			Expect(os.MkdirAll(artDir, 0755)).To(Succeed())
+			uploaded := ar.ID + "_upload.jpg"
+			Expect(os.WriteFile(filepath.Join(artDir, uploaded), imageBytes("artist-uploaded"), 0600)).To(Succeed())
+			ar.UploadedImage = uploaded
+			Expect(ds.Artist(ctx).Put(&ar)).To(Succeed())
+
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-uploaded")))
+		})
+	})
+
+	When("ArtistArtPriority starts with image-folder and ArtistImageFolder has a name-matching image", func() {
+		// <ArtistImageFolder>/
+		// └── Artist.jpg               ← matched by artist name (image-folder source)
+		// Library:
+		// Artist/
+		// └── Album/
+		//     └── 01 - Track.mp3       (no artist.* present in library)
+		It("returns the image from the configured artist image folder", func() {
+			imgFolder := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(imgFolder, "Artist.jpg"), imageBytes("image-folder"), 0600)).To(Succeed())
+			conf.Server.ArtistImageFolder = imgFolder
+			conf.Server.ArtistArtPriority = "image-folder, artist.*, album/artist.*"
+
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("image-folder")))
 		})
 	})
 })
