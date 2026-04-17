@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -35,6 +36,7 @@ type artistReader struct {
 	artistFolder     string
 	imgFiles         []string
 	imgFolderImgPath string // cached path from ArtistImageFolder lookup
+	libFS            storage.MusicFS
 }
 
 func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
@@ -60,12 +62,20 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
+	var libFS storage.MusicFS
+	if len(als) > 0 {
+		libFS, err = libraryFS(ctx, artwork.ds, als[0].LibraryID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	a := &artistReader{
 		a:            artwork,
 		provider:     provider,
 		artist:       *ar,
 		artistFolder: artistFolder,
 		imgFiles:     imgFiles,
+		libFS:        libFS,
 	}
 	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
 	// change _after_ retrieving from external sources, making the key invalid
@@ -124,7 +134,9 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case pattern == "image-folder":
 			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
-			ff = append(ff, fromExternalFileAbs(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			if a.libFS != nil {
+				ff = append(ff, fromExternalFile(ctx, a.libFS, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			}
 		default:
 			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
 		}
