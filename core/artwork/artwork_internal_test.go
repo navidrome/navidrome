@@ -199,9 +199,12 @@ var _ = Describe("Artwork", func() {
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				repoRoot, err := os.Getwd()
+				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
-					Path:       "tests/fixtures/artist/an-album",
-					ImageFiles: []string{"artist.png"},
+					LibraryPath: "testfile://" + filepath.ToSlash(repoRoot),
+					Path:        "tests/fixtures/artist/an-album",
+					ImageFiles:  []string{"artist.png"},
 				}}
 				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
 					arMultipleCovers,
@@ -220,7 +223,7 @@ var _ = Describe("Artwork", func() {
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(filepath.FromSlash(expected)))
+					Expect(path).To(HaveSuffix(expected))
 				},
 				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
 				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),

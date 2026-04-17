@@ -15,7 +15,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/storage"
@@ -44,7 +43,7 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if err != nil {
 		return nil, err
 	}
-	libFS, err := libraryFS(ctx, artwork.ds, al.LibraryID)
+	libFS, rootFolder, err := libraryFSAndRoot(ctx, artwork.ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +53,7 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		album:      *al,
 		updatedAt:  imagesUpdateAt,
 		imgFiles:   imgFiles,
-		rootFolder: core.AbsolutePath(ctx, artwork.ds, al.LibraryID, ""),
+		rootFolder: rootFolder,
 		libFS:      libFS,
 	}
 	a.cacheKey.artID = artID
