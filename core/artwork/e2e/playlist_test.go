@@ -91,15 +91,12 @@ var _ = Describe("Playlist artwork resolution", func() {
 
 	When("a playlist has an http(s) ExternalImageURL and EnableM3UExternalAlbumArt is false", func() {
 		// (no local files — http source is gated off, reader falls through to placeholder)
-		It("skips the URL and falls through (reaches the placeholder since no tracks)", func() {
+		It("skips the URL and falls through to the bundled placeholder", func() {
 			conf.Server.EnableM3UExternalAlbumArt = false
 
 			pl := putPlaylist(model.Playlist{ID: "pl-5", Name: "HttpGated", ExternalImageURL: "https://example.com/cover.jpg"})
 
-			// No uploaded/sidecar/local image, no tracks → tiled cover fails → placeholder wins.
-			// We assert non-empty rather than exact bytes so the test is robust to placeholder changes.
-			data := readArtwork(pl.CoverArtID())
-			Expect(data).ToNot(BeEmpty())
+			Expect(readArtwork(pl.CoverArtID())).To(Equal(placeholderBytes()))
 		})
 	})
 
@@ -108,8 +105,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 		It("returns the album placeholder", func() {
 			pl := putPlaylist(model.Playlist{ID: "pl-6", Name: "Empty"})
 
-			data := readArtwork(pl.CoverArtID())
-			Expect(data).ToNot(BeEmpty())
+			Expect(readArtwork(pl.CoverArtID())).To(Equal(placeholderBytes()))
 		})
 	})
 })
