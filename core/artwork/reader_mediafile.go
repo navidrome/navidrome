@@ -62,7 +62,7 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
 		path := a.mediafile.AbsolutePath()
 		ff = []sourceFunc{
-			fromTag(ctx, path),
+			fromTagAbs(ctx, path),
 			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}

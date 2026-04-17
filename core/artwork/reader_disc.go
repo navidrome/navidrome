@@ -133,7 +133,7 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			ff = append(ff, fromTag(ctx, d.firstTrackPath), fromFFmpegTag(ctx, ffmpeg, d.firstTrackPath))
+			ff = append(ff, fromTagAbs(ctx, d.firstTrackPath), fromFFmpegTag(ctx, ffmpeg, d.firstTrackPath))
 		case pattern == "external":
 			// Not supported for disc art, silently ignore
 		case pattern == "discsubtitle":

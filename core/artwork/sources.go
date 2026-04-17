@@ -84,28 +84,37 @@ var picTypeRegexes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i).*cover.*`),
 }
 
-func fromTag(ctx context.Context, path string) sourceFunc {
+func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		if path == "" {
+		if relPath == "" {
 			return nil, "", nil
 		}
-		f, err := taglib.OpenReadOnly(path, taglib.WithReadStyle(taglib.ReadStyleFast))
+		f, err := libFS.Open(relPath)
 		if err != nil {
 			return nil, "", err
 		}
 		defer f.Close()
+		rs, ok := f.(io.ReadSeeker)
+		if !ok {
+			return nil, "", fmt.Errorf("FS file %s is not seekable; cannot read tags", relPath)
+		}
+		tf, err := taglib.OpenStream(rs, taglib.WithReadStyle(taglib.ReadStyleFast))
+		if err != nil {
+			return nil, "", err
+		}
+		defer tf.Close()
 
-		images := f.Properties().Images
+		images := tf.Properties().Images
 		if len(images) == 0 {
-			return nil, "", fmt.Errorf("no embedded image found in %s", path)
+			return nil, "", fmt.Errorf("no embedded image found in %s", relPath)
 		}
 
-		imageIndex := findBestImageIndex(ctx, images, path)
-		data, err := f.Image(imageIndex)
+		imageIndex := findBestImageIndex(ctx, images, relPath)
+		data, err := tf.Image(imageIndex)
 		if err != nil || len(data) == 0 {
-			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
+			return nil, "", fmt.Errorf("could not load embedded image from %s", relPath)
 		}
-		return io.NopCloser(bytes.NewReader(data)), path, nil
+		return io.NopCloser(bytes.NewReader(data)), relPath, nil
 	}
 }
 
@@ -218,4 +227,15 @@ func (osDirectFS) Open(name string) (fs.File, error) { return os.Open(name) }
 // TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
 func fromExternalFileAbs(ctx context.Context, files []string, pattern string) sourceFunc {
 	return fromExternalFile(ctx, osDirectFS{}, files, pattern)
+}
+
+// fromTagAbs is a temporary shim that lets existing absolute-path callers
+// compile until they migrate to the FS-based fromTag.
+//
+// TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
+func fromTagAbs(ctx context.Context, path string) sourceFunc {
+	if path == "" {
+		return fromTag(ctx, nil, "")
+	}
+	return fromTag(ctx, osDirectFS{}, path)
 }

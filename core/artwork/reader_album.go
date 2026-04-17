@@ -87,7 +87,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		switch {
 		case pattern == "embedded":
 			embedArtPath := filepath.Join(a.rootFolder, a.album.EmbedArtPath)
-			ff = append(ff, fromTag(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
+			ff = append(ff, fromTagAbs(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
 		case len(a.imgFiles) > 0:
