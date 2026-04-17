@@ -7,9 +7,9 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/gen2brain/webp"
 
@@ -145,6 +145,43 @@ var _ = Describe("Artwork", func() {
 				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/artist/an-album/front.png"),
 				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/artist/an-album/test.mp3"),
 			)
+		})
+		Context("LastUpdated returns the correct timestamp", func() {
+			It("returns album UpdatedAt when imagesUpdatedAt is older", func() {
+				// Set up album with recent UpdatedAt but folder with older ImagesUpdatedAt
+				now := time.Now().Truncate(time.Second)
+				albumOld := model.Album{ID: "old-album", Name: "Old Album", UpdatedAt: now, FolderIDs: []string{"folder1"}}
+				folderRepo.result = []model.Folder{{
+					Path:            "tests/fixtures/artist/an-album",
+					ImagesUpdatedAt: now.Add(-1 * time.Hour), // older than album.UpdatedAt
+					ImageFiles:      []string{"cover.jpg"},
+				}}
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{albumOld})
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
+
+				ar, err := newAlbumArtworkReader(ctx, aw, albumOld.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ar.LastUpdated()).To(Equal(now)) // should return album.UpdatedAt (now)
+			})
+			It("returns imagesUpdatedAt when it is newer than album UpdatedAt", func() {
+				// Set up album with old UpdatedAt but folder with recent ImagesUpdatedAt
+				// This simulates the case where cover art was updated but no media files changed
+				now := time.Now().Truncate(time.Second)
+				albumOld := model.Album{ID: "old-album2", Name: "Old Album 2", UpdatedAt: now.Add(-24 * time.Hour), FolderIDs: []string{"folder1"}}
+				newerImagesUpdatedAt := now.Add(-1 * time.Hour) // cover art was updated 1 hour ago
+				folderRepo.result = []model.Folder{{
+					Path:            "tests/fixtures/artist/an-album",
+					ImagesUpdatedAt: newerImagesUpdatedAt,
+					ImageFiles:      []string{"cover.jpg"},
+				}}
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{albumOld})
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
+
+				ar, err := newAlbumArtworkReader(ctx, aw, albumOld.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				// Should return imagesUpdatedAt (newer), not album.UpdatedAt (older)
+				Expect(ar.LastUpdated()).To(Equal(newerImagesUpdatedAt))
+			})
 		})
 	})
 	Describe("artistArtworkReader", func() {
