@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -223,29 +222,4 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 		return nil, "", fmt.Errorf("error retrieving artwork from %s: %s", imageUrl, resp.Status)
 	}
 	return resp.Body, imageUrl.String(), nil
-}
-
-// osDirectFS is a thin fs.FS that opens any path directly via os.Open. Unlike
-// os.DirFS it performs no rooting/sanitisation — it exists only so the temporary
-// fromExternalFileAbs shim can keep accepting absolute paths.
-//
-// TODO(artwork-musicfs): delete in Task 9 along with fromExternalFileAbs.
-type osDirectFS struct{}
-
-func (osDirectFS) Open(name string) (fs.File, error) { return os.Open(name) }
-
-// fromExternalFileAbs is a temporary shim that lets existing absolute-path
-// callers compile until they migrate to the FS-based fromExternalFile.
-//
-// TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
-func fromExternalFileAbs(ctx context.Context, files []string, pattern string) sourceFunc {
-	return fromExternalFile(ctx, osDirectFS{}, files, pattern)
-}
-
-// fromTagAbs is a temporary shim that lets existing absolute-path callers
-// compile until they migrate to the FS-based fromTag.
-//
-// TODO(artwork-musicfs): delete in Task 9, once all callers pass an fs.FS directly.
-func fromTagAbs(ctx context.Context, path string) sourceFunc {
-	return fromTag(ctx, osDirectFS{}, path)
 }
