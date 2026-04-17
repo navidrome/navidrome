@@ -69,7 +69,7 @@ func setupHarness() {
 	fakeFS = &storagetest.FakeFS{}
 	storagetest.Register(fakeLibScheme, fakeFS)
 
-	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), &noopFFmpeg{}, &noopProvider{})
+	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), newNoopFFmpeg(), &noopProvider{})
 }
 
 func scan() {
