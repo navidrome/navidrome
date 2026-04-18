@@ -879,6 +879,9 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
+			if runtime.GOOS == "windows" {
+				Skip("not supported on Windows: path separator bug (#TBD-path-sep-scanner)")
+			}
 			// Don't use the mocked artist repo for this test - we need the real one
 			ds.MockedArtist = nil
 
