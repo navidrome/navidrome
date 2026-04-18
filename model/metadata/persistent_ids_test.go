@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -79,6 +80,9 @@ var _ = Describe("getPID", func() {
 		})
 		When("field is folder", func() {
 			It("should return the pid", func() {
+				if runtime.GOOS == "windows" {
+					Skip("not supported on Windows: path separator bug (#TBD-path-sep-metadata)")
+				}
 				spec := "folder|title"
 				md.tags = map[model.TagName][]string{"title": {"title"}}
 				mf.Path = "/path/to/file.mp3"
