@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -91,7 +92,7 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
-	if !hasAnimatedWebPEncoder(ctx) {
+	if !hasAnimatedWebPEncoder() {
 		return nil, ErrAnimatedWebPUnsupported
 	}
 
@@ -111,8 +112,10 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 // Returns false (and logs once) when ffmpeg is missing the encoder, which
 // lets callers short-circuit and fall back to static resizing instead of
 // launching a subprocess that will fail asynchronously.
-func hasAnimatedWebPEncoder(ctx context.Context) bool {
+func hasAnimatedWebPEncoder() bool {
 	animWebPOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		cmdPath, err := ffmpegCmd()
 		if err != nil {
 			return
