@@ -180,11 +180,19 @@ jobs:
         shell: bash
         run: go mod download
 
-      - name: Compile all packages (smoke test)
+      - name: Test
         shell: bash
         env:
           CGO_ENABLED: "1"
-        run: go build -tags netgo,sqlite_fts5 ./...
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
+
+      - name: Test ndpgen
+        shell: pwsh
+        run: |
+          cd plugins\cmd\ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen.exe .
+          .\ndpgen.exe --help
 
   js:
     name: Test JS code
