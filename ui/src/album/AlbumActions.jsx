@@ -28,6 +28,7 @@ import {
 import { formatBytes } from '../utils'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
+import { TagEditorAlbumButton } from '../tageditor'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -138,6 +139,7 @@ const AlbumActions = ({
               <CloudDownloadOutlinedIcon />
             </AlbumButton>
           )}
+          <TagEditorAlbumButton albumId={record.id} />
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>
