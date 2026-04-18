@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -93,6 +94,9 @@ var _ = Describe("sources", func() {
 			var accessForbiddenFile string
 
 			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("not supported on Windows: uses Unix file permission bits")
+				}
 				accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
 
 				f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)
