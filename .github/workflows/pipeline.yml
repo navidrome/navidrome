@@ -123,7 +123,6 @@ jobs:
   go-windows:
     name: Test Go code (Windows)
     runs-on: windows-2022
-    continue-on-error: true   # remove after soak period (Task 7)
     env:
       FFMPEG_VERSION: "7.1"
       FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
@@ -258,7 +257,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
