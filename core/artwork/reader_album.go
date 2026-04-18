@@ -72,7 +72,7 @@ func (a *albumArtworkReader) Key() string {
 	)
 }
 func (a *albumArtworkReader) LastUpdated() time.Time {
-	return a.album.UpdatedAt
+	return a.lastUpdate
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
