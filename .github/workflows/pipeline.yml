@@ -171,14 +171,17 @@ jobs:
         shell: pwsh
         run: |
           go version
+          where.exe gcc
           gcc --version
           ffmpeg -version
           ffprobe -version
 
       - name: Download dependencies
+        shell: bash
         run: go mod download
 
       - name: Compile all packages (smoke test)
+        shell: bash
         env:
           CGO_ENABLED: "1"
         run: go build -tags netgo,sqlite_fts5 ./...
