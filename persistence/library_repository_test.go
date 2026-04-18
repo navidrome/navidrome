@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"context"
-	"runtime"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -53,9 +53,6 @@ var _ = Describe("LibraryRepository", func() {
 
 		Context("when ID is non-zero and record exists", func() {
 			It("updates the existing record", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: flaky on Windows (#TBD-flake-persistence)")
-				}
 				// First create a library
 				lib := &model.Library{
 					ID:   0,
@@ -67,6 +64,11 @@ var _ = Describe("LibraryRepository", func() {
 
 				originalID := lib.ID
 				originalCreatedAt := lib.CreatedAt
+
+				// Ensure the update's timestamp is strictly greater than the
+				// create's timestamp on platforms with coarse clock resolution
+				// (Windows' time.Now() is millisecond-granular).
+				time.Sleep(2 * time.Millisecond)
 
 				// Now update it
 				lib.Name = "Updated Library"

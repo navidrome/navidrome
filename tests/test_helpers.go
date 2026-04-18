@@ -20,10 +20,20 @@ func TempFileName(t testingT, prefix, suffix string) string {
 	return filepath.Join(t.TempDir(), prefix+id.NewRandom()+suffix)
 }
 
+// TempFile creates an empty file in t.TempDir() and returns the closed handle.
+// The handle is returned for backward compatibility, but is already closed so
+// callers don't need to. On Windows, leaving the handle open would hold a file
+// lock and block Ginkgo's TempDir cleanup.
 func TempFile(t testingT, prefix, suffix string) (*os.File, string, error) {
 	name := TempFileName(t, prefix, suffix)
 	f, err := os.Create(name)
-	return f, name, err
+	if err != nil {
+		return nil, name, err
+	}
+	if cerr := f.Close(); cerr != nil {
+		return f, name, cerr
+	}
+	return f, name, nil
 }
 
 // ClearDB deletes all tables and data from the database

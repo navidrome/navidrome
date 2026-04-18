@@ -2,7 +2,6 @@ package metadata_test
 
 import (
 	"os"
-	"runtime"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
@@ -24,9 +23,6 @@ var _ = Describe("Participants", func() {
 	)
 
 	BeforeEach(func() {
-		if runtime.GOOS == "windows" {
-			Skip("not supported on Windows: flaky on Windows (#TBD-flake-metadata-tempfile)")
-		}
 		_, filePath, _ := tests.TempFile(GinkgoT(), "test", ".mp3")
 		fileInfo, _ := os.Stat(filePath)
 		mbid1 = uuid.NewString()

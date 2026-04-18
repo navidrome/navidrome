@@ -3,7 +3,6 @@ package utils_test
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/navidrome/navidrome/utils"
@@ -190,12 +189,13 @@ var _ = Describe("FileExists", func() {
 
 	Context("when file is deleted after creation", func() {
 		It("returns false after file deletion", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: flaky on Windows (#TBD-flake-utils)")
-			}
 			filePath := tempFile.Name()
 			Expect(utils.FileExists(filePath)).To(BeTrue())
 
+			// Close the file before removing it. On Windows, an open handle
+			// holds a file lock and os.Remove fails; closing first makes the
+			// test cross-platform.
+			Expect(tempFile.Close()).To(Succeed())
 			err := os.Remove(filePath)
 			Expect(err).NotTo(HaveOccurred())
 			tempFile = nil // Prevent cleanup attempt
