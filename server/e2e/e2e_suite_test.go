@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -418,6 +419,14 @@ var (
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 	tmpDir := GinkgoT().TempDir()
+	// On Windows, SQLite holds file locks that prevent temp-dir cleanup.
+	// Register a DeferCleanup (runs in LIFO before the TempDir cleanup) to
+	// close the DB explicitly so the files can be deleted.
+	if runtime.GOOS == "windows" {
+		DeferCleanup(func() {
+			db.Close(GinkgoT().Context())
+		})
+	}
 	dbFilePath = filepath.Join(tmpDir, "test-e2e.db")
 	snapshotPath = filepath.Join(tmpDir, "test-e2e.db.snapshot")
 	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
