@@ -27,13 +27,14 @@ var (
 )
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
-	pls playlists.Playlists, m metrics.Metrics) model.Scanner {
+	pls playlists.Playlists, spe playlists.SmartPlaylistEvaluator, m metrics.Metrics) model.Scanner {
 	c := &controller{
 		rootCtx:            rootCtx,
 		ds:                 ds,
 		cw:                 cw,
 		broker:             broker,
 		pls:                pls,
+		spe:                spe,
 		metrics:            m,
 		devExternalScanner: conf.Server.DevExternalScanner,
 	}
@@ -47,7 +48,7 @@ func (s *controller) getScanner() scanner {
 	if s.devExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
+	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls, spe: s.spe}
 }
 
 // CallScan starts an in-process scan of specific library/folder pairs.
@@ -64,7 +65,7 @@ func CallScan(ctx context.Context, ds model.DataStore, pls playlists.Playlists, 
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
+		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls, spe: playlists.NoopSmartPlaylistEvaluator()}
 		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 	return progress, nil
@@ -99,6 +100,7 @@ type controller struct {
 	broker             events.Broker
 	metrics            metrics.Metrics
 	pls                playlists.Playlists
+	spe                playlists.SmartPlaylistEvaluator
 	limiter            *rate.Sometimes
 	devExternalScanner bool
 	count              atomic.Uint32

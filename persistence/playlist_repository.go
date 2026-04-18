@@ -310,6 +310,22 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	return true
 }
 
+func (r *playlistRepository) Evaluate(id string) error {
+	pls, err := r.Get(id)
+	if err != nil {
+		return err
+	}
+	if !pls.IsSmartPlaylist() {
+		return nil
+	}
+	// Reset EvaluatedAt so refreshSmartPlaylist won't skip due to delay check
+	pls.EvaluatedAt = nil
+	if !r.refreshSmartPlaylist(pls) {
+		return fmt.Errorf("failed to evaluate smart playlist %s", id)
+	}
+	return nil
+}
+
 func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins criteria.JoinType, userID string) SelectBuilder {
 	if joins.Has(criteria.JoinAlbumAnnotation) {
 		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
