@@ -24,6 +24,7 @@ import {
   List,
   Writable,
   isWritable,
+  isPluginPlaylist,
   useSelectedFields,
   useResourceRefresh,
 } from '../common'
@@ -115,7 +116,7 @@ const ToggleAutoImport = ({ resource, source }) => {
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!isWritable(record.ownerId)}
+      disabled={!isWritable(record.ownerId) || isPluginPlaylist(record)}
     />
   ) : null
 }

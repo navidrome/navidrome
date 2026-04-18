@@ -52,8 +52,9 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
-		"q":     playlistFilter,
-		"smart": smartPlaylistFilter,
+		"q":        playlistFilter,
+		"smart":    smartPlaylistFilter,
+		"readonly": readonlyPlaylistFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"owner_name": "owner_name",
@@ -72,6 +73,13 @@ func smartPlaylistFilter(string, any) Sqlizer {
 	return Or{
 		Eq{"rules": ""},
 		Eq{"rules": nil},
+	}
+}
+
+func readonlyPlaylistFilter(string, any) Sqlizer {
+	return And{
+		smartPlaylistFilter("", nil),
+		Or{Eq{"plugin_id": ""}, Eq{"plugin_id": nil}},
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -66,16 +67,18 @@ type Manager struct {
 	ds             model.DataStore
 	broker         events.Broker
 	metrics        PluginMetricsRecorder
+	matcher        *matcher.Matcher
 }
 
 // GetManager returns a singleton instance of the plugin manager.
 // The manager is not started automatically; call Start() to begin loading plugins.
-func GetManager(ds model.DataStore, broker events.Broker, m PluginMetricsRecorder) *Manager {
+func GetManager(ds model.DataStore, broker events.Broker, m PluginMetricsRecorder, mt *matcher.Matcher) *Manager {
 	return singleton.GetInstance(func() *Manager {
 		return &Manager{
 			ds:      ds,
 			broker:  broker,
 			metrics: m,
+			matcher: mt,
 			plugins: make(map[string]*plugin),
 		}
 	})

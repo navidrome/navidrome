@@ -373,8 +373,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
-	m.mu.Lock()
-	m.plugins[p.ID] = &plugin{
+	loadedPlugin := &plugin{
 		name:           p.ID,
 		path:           p.Path,
 		manifest:       pkg.Manifest,
@@ -386,10 +385,19 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allUsers:       p.AllUsers,
 		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
 	}
+	m.mu.Lock()
+	m.plugins[p.ID] = loadedPlugin
 	m.mu.Unlock()
 
 	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	callPluginInit(ctx, loadedPlugin)
+
+	// Start PlaylistProvider syncer if capability is detected
+	if hasCapability(loadedPlugin.capabilities, CapabilityPlaylistProvider) {
+		syncer := newPlaylistSyncer(m.ctx, p.ID, loadedPlugin, m.ds, m.matcher)
+		loadedPlugin.closers = append(loadedPlugin.closers, syncer)
+		go syncer.run()
+	}
 
 	return nil
 }
