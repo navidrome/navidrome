@@ -78,16 +78,9 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 		return fmt.Errorf("%w: cannot manually assign libraries to admin users", model.ErrValidation)
 	}
 
-	// Regular users must have at least one library
-	if len(libraryIDs) == 0 {
-		return fmt.Errorf("%w: at least one library must be assigned to non-admin users", model.ErrValidation)
-	}
-
 	// Validate all library IDs exist
-	if len(libraryIDs) > 0 {
-		if err := s.validateLibraryIDs(ctx, libraryIDs); err != nil {
-			return err
-		}
+	if err := s.validateLibraryIDs(ctx, libraryIDs); err != nil {
+		return err
 	}
 
 	// Set user libraries
