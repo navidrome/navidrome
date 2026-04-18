@@ -272,6 +272,9 @@ var _ = Describe("Scanner", Ordered, func() {
 		var beatlesMBID = uuid.NewString()
 
 		BeforeEach(func() {
+			if runtime.GOOS == "windows" {
+				Skip("not supported on Windows: path separator bug (#TBD-path-sep-scanner)")
+			}
 			By("Having two MP3 albums")
 			beatles := _t{
 				"artist":               "The Beatles",
@@ -338,9 +341,6 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("detects a file was moved to a different folder", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-scanner)")
-			}
 			By("Storing the original ID")
 			original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).ToNot(HaveOccurred())
@@ -400,9 +400,6 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("detects file format upgrades", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-scanner)")
-			}
 			By("Storing the original ID")
 			original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).ToNot(HaveOccurred())
