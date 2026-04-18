@@ -39,6 +39,12 @@ var _ = Describe("ScanFolders", Ordered, func() {
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
 		db.Db().SetMaxOpenConns(1)
+		// Close the DB before Ginkgo's TempDir cleanup runs (LIFO). Required on
+		// Windows where open SQLite handles hold file locks that block removal;
+		// harmless on other OSes.
+		DeferCleanup(func() {
+			db.Close(ctx)
+		})
 	})
 
 	BeforeEach(func() {
