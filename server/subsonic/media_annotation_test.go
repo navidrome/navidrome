@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -32,6 +33,9 @@ var _ = Describe("MediaAnnotationController", func() {
 
 	Describe("Scrobble", func() {
 		It("submit all scrobbles with only the id", func() {
+			if runtime.GOOS == "windows" {
+				Skip("not supported on Windows: flaky on Windows (#TBD-flake-time-resolution-subsonic)")
+			}
 			submissionTime := time.Now()
 			r := newGetRequest("id=12", "id=34")
 
