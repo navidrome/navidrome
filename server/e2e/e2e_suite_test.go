@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -419,14 +418,6 @@ var (
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 	tmpDir := GinkgoT().TempDir()
-	// On Windows, SQLite holds file locks that prevent temp-dir cleanup.
-	// Register a DeferCleanup (runs in LIFO before the TempDir cleanup) to
-	// close the DB explicitly so the files can be deleted.
-	if runtime.GOOS == "windows" {
-		DeferCleanup(func() {
-			db.Close(GinkgoT().Context())
-		})
-	}
 	dbFilePath = filepath.Join(tmpDir, "test-e2e.db")
 	snapshotPath = filepath.Join(tmpDir, "test-e2e.db.snapshot")
 	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
@@ -477,6 +468,13 @@ var _ = BeforeSuite(func() {
 	data, err := os.ReadFile(dbFilePath)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
+})
+
+// Close the database before the suite's TempDir cleanup runs. Required on
+// Windows where open SQLite handles hold file locks that block temp-dir
+// removal; harmless on other OSes.
+var _ = AfterSuite(func() {
+	db.Close(ctx)
 })
 
 // setupTestDB restores the database from the golden snapshot and creates the
