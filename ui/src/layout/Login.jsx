@@ -108,7 +108,7 @@ const renderInput = ({
   />
 )
 
-const FormLogin = ({ loading, handleSubmit, validate }) => {
+const FormLogin = ({ loading, handleSubmit, validate, onSwitchToRegister }) => {
   const translate = useTranslate()
   const classes = useStyles()
 
@@ -136,8 +136,6 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
               {config.welcomeMessage && (
                 <div
                   className={classes.welcome}
-                  // Use dangerouslySetInnerHTML to allow admins to configure
-                  // whatever content they want
                   dangerouslySetInnerHTML={{ __html: config.welcomeMessage }}
                 />
               )}
@@ -175,6 +173,121 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                   {translate('ra.auth.sign_in')}
                 </Button>
               </CardActions>
+              {config.enableRecommendations && (
+                <div className={classes.message}>
+                  Don&apos;t have an account?{' '}
+                  <Link
+                    component="button"
+                    variant="body2"
+                    onClick={onSwitchToRegister}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </Card>
+            <Notification />
+          </div>
+        </form>
+      )}
+    />
+  )
+}
+
+const FormRegister = ({ loading, handleSubmit, onSwitchToLogin }) => {
+  const classes = useStyles()
+
+  return (
+    <Form
+      onSubmit={handleSubmit}
+      validate={(values) => {
+        const errors = {}
+        if (!values.username || values.username.length < 3) {
+          errors.username = 'Username must be at least 3 characters'
+        }
+        if (!values.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+          errors.email = 'Valid email required'
+        }
+        if (!values.password || values.password.length < 6) {
+          errors.password = 'Password must be at least 6 characters'
+        }
+        if (values.password !== values.confirmPassword) {
+          errors.confirmPassword = 'Passwords do not match'
+        }
+        return errors
+      }}
+      render={({ handleSubmit }) => (
+        <form onSubmit={handleSubmit} noValidate>
+          <div className={classes.main}>
+            <Card className={classes.card}>
+              <div className={classes.avatar}>
+                <img src={Logo} className={classes.icon} alt={'logo'} />
+              </div>
+              <div className={classes.systemName}>Create Account</div>
+              <div className={classes.form}>
+                <div className={classes.input}>
+                  <Field
+                    autoFocus
+                    name="username"
+                    component={renderInput}
+                    label="Username"
+                    disabled={loading}
+                    spellCheck={false}
+                  />
+                </div>
+                <div className={classes.input}>
+                  <Field
+                    name="email"
+                    component={renderInput}
+                    label="Email"
+                    type="email"
+                    disabled={loading}
+                  />
+                </div>
+                <div className={classes.input}>
+                  <Field
+                    name="password"
+                    component={renderInput}
+                    label="Password"
+                    type="password"
+                    disabled={loading}
+                  />
+                </div>
+                <div className={classes.input}>
+                  <Field
+                    name="confirmPassword"
+                    component={renderInput}
+                    label="Confirm Password"
+                    type="password"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              <CardActions className={classes.actions}>
+                <Button
+                  variant="contained"
+                  type="submit"
+                  color="primary"
+                  disabled={loading}
+                  className={classes.button}
+                  fullWidth
+                >
+                  {loading && <CircularProgress size={25} thickness={2} />}
+                  Sign Up
+                </Button>
+              </CardActions>
+              <div className={classes.message}>
+                Already have an account?{' '}
+                <Link
+                  component="button"
+                  variant="body2"
+                  onClick={onSwitchToLogin}
+                  style={{ cursor: 'pointer' }}
+                >
+                  Sign In
+                </Link>
+              </div>
             </Card>
             <Notification />
           </div>
@@ -316,6 +429,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
 
 const Login = ({ location }) => {
   const [loading, setLoading] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
   const translate = useTranslate()
   const notify = useNotify()
   const login = useLogin()
@@ -338,6 +452,42 @@ const Login = ({ location }) => {
           )
         },
       )
+    },
+    [dispatch, login, notify, setLoading, location],
+  )
+
+  const handleRegister = useCallback(
+    async (values) => {
+      setLoading(true)
+      try {
+        const response = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: values.username,
+            email: values.email,
+            password: values.password,
+          }),
+        })
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Registration failed')
+        }
+        // Registration successful - auto-login
+        notify('Account created! Signing in...', 'info')
+        dispatch(clearQueue())
+        login(
+          { username: values.username, password: values.password },
+          location.state ? location.state.nextPathname : '/',
+        ).catch(() => {
+          setLoading(false)
+          setShowRegister(false)
+          notify('Account created. Please sign in.', 'info')
+        })
+      } catch (error) {
+        setLoading(false)
+        notify(error.message || 'Registration failed', 'warning')
+      }
     },
     [dispatch, login, notify, setLoading, location],
   )
@@ -383,11 +533,21 @@ const Login = ({ location }) => {
       />
     )
   }
+  if (showRegister) {
+    return (
+      <FormRegister
+        handleSubmit={handleRegister}
+        loading={loading}
+        onSwitchToLogin={() => setShowRegister(false)}
+      />
+    )
+  }
   return (
     <FormLogin
       handleSubmit={handleSubmit}
       validate={validateLogin}
       loading={loading}
+      onSwitchToRegister={() => setShowRegister(true)}
     />
   )
 }
