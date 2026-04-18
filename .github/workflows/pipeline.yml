@@ -120,6 +120,69 @@ jobs:
           go build -o ndpgen .
           ./ndpgen --help
 
+  go-windows:
+    name: Test Go code (Windows)
+    runs-on: windows-2022
+    continue-on-error: true   # remove after soak period (Task 6)
+    env:
+      FFMPEG_VERSION: "7.1"
+      FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+          update: false
+
+      - name: Add mingw64 to PATH
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Cache ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\ffmpeg
+          key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
+
+      - name: Download ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $asset = "ffmpeg-n${env:FFMPEG_VERSION}-latest-win64-gpl-${env:FFMPEG_VERSION}"
+          $url = "https://github.com/${env:FFMPEG_REPOSITORY}/releases/download/latest/$asset.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath C:\ffmpeg-extracted
+          New-Item -ItemType Directory -Force -Path C:\ffmpeg\bin | Out-Null
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffmpeg.exe"  C:\ffmpeg\bin
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffprobe.exe" C:\ffmpeg\bin
+
+      - name: Add ffmpeg to PATH
+        shell: bash
+        run: echo "C:/ffmpeg/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          go version
+          gcc --version
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Compile all packages (smoke test)
+        env:
+          CGO_ENABLED: "1"
+        run: go build -tags netgo,sqlite_fts5 ./...
+
   js:
     name: Test JS code
     runs-on: ubuntu-latest
