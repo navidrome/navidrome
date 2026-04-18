@@ -116,7 +116,7 @@ func (d *discArtworkReader) Key() string {
 }
 
 func (d *discArtworkReader) LastUpdated() time.Time {
-	return d.album.UpdatedAt
+	return d.lastUpdate
 }
 
 func (d *discArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {

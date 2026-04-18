@@ -166,6 +166,31 @@ var _ = Describe("Artwork", func() {
 			)
 		})
 	})
+	Describe("discArtworkReader", func() {
+		Context("LastUpdated", func() {
+			// Regression test for #5377: same bug as albumArtworkReader — disc covers
+			// must also revalidate when the image file changes, not only when media files do.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+					ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+						{ID: "mf1", AlbumID: "al1", DiscNumber: 1, Path: "tests/fixtures/test.mp3"},
+					})
+
+					artID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("al1", 1), nil)
+					dr, err := newDiscArtworkReader(ctx, aw, artID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(dr.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
+	})
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
