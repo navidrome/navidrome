@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -229,6 +230,9 @@ var _ = Describe("walk_dir_tree", func() {
 
 			Context("with symlinks enabled", func() {
 				BeforeEach(func() {
+					if runtime.GOOS == "windows" {
+						Skip("not supported on Windows: symlink semantics")
+					}
 					conf.Server.Scanner.FollowSymlinks = true
 				})
 
