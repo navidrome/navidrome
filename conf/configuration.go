@@ -116,6 +116,10 @@ type configOptions struct {
 	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
 
+	// ML Recommendations
+	EnableRecommendations    bool
+	RecommendationServiceURL string
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogLevels                      map[string]string `json:",omitempty"`
 	DevLogSourceLine                  bool
@@ -795,6 +799,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.artistalgorithm", consts.DefaultListenBrainzArtistAlgorithm)
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("enablescrobblehistory", true)
+	viper.SetDefault("enablerecommendations", true)
+	viper.SetDefault("recommendationserviceurl", "http://navidrome-serve.navidrome-platform.svc.cluster.local:8080")
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")

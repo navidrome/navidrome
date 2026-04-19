@@ -14,6 +14,7 @@ import album from './album'
 import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
+import recommendation from './recommendation'
 import share from './share'
 import library from './library'
 import plugin from './plugin'
@@ -107,6 +108,9 @@ const Admin = (props) => {
           name="radio"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
+        config.enableRecommendations && (
+          <Resource name="recommendation" {...recommendation.all} />
+        ),
         config.enableSharing && <Resource name="share" {...share} />,
         <Resource
           name="playlist"
