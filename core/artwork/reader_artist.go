@@ -162,6 +162,9 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return nil, "", fmt.Errorf(`artist folder '%s' is outside library '%s'`, artistFolder, libPath)
 		}
+		// fs.Glob / path.Join below expect forward-slash paths; filepath.Rel may
+		// return backslash separators on Windows.
+		rel = filepath.ToSlash(rel)
 		current := artistFolder
 		for range maxArtistFolderTraversalDepth {
 			reader, hit, err := findImageInFolder(ctx, libFS, rel, current, pattern)
@@ -171,7 +174,7 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 			if rel == "." {
 				break // reached library root; don't traverse above it
 			}
-			rel = filepath.Dir(rel)
+			rel = path.Dir(rel)
 			current = filepath.Dir(current)
 		}
 		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories (within library)`, pattern, artistFolder)
