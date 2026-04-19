@@ -467,9 +467,9 @@ var _ = Describe("Artwork", func() {
 						Name:      "Only external",
 						FolderIDs: []string{"tmp"},
 					}
-					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
+					folderRepo.result = []model.Folder{{ImageFiles: []string{coverFileName}}}
 					rootLibRepo := &tests.MockLibraryRepo{}
-					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + "/"}})
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + filepath.ToSlash(dirName)}})
 					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
@@ -558,9 +558,9 @@ var _ = Describe("Artwork", func() {
 					Name:      "Only external",
 					FolderIDs: []string{"tmp"},
 				}
-				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
+				folderRepo.result = []model.Folder{{ImageFiles: []string{"cover.png"}}}
 				rootLibRepo := &tests.MockLibraryRepo{}
-				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + "/"}})
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileSchemePrefix + filepath.ToSlash(dirName)}})
 				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
 
