@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -31,9 +30,7 @@ var _ = Describe("createUnixSocketFile", func() {
 
 	When("unixSocketPerm is valid", func() {
 		It("updates the permission of the unix socket file and returns nil", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: uses Unix file permission bits")
-			}
+			tests.SkipOnWindows("uses Unix file permission bits")
 			_, err := createUnixSocketFile(socketPath, "0777")
 			fileInfo, _ := os.Stat(socketPath)
 			actualPermission := fileInfo.Mode().Perm()
@@ -54,9 +51,7 @@ var _ = Describe("createUnixSocketFile", func() {
 
 	When("file already exists", func() {
 		It("recreates the file as a socket with the right permissions", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: uses Unix file permission bits")
-			}
+			tests.SkipOnWindows("uses Unix file permission bits")
 			_, err := os.Create(socketPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(os.Chmod(socketPath, os.FileMode(0777))).To(Succeed())
