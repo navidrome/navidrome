@@ -1,10 +1,23 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { playerReducer } from './playerReducer'
 import {
-  PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_SET_TRACK,
+  PLAYER_SYNC_QUEUE,
+  PLAYER_UPDATE_LYRIC,
 } from '../actions'
+
+vi.mock('uuid', () => ({
+  v4: () => 'test-uuid',
+}))
+
+vi.mock('../subsonic', () => ({
+  default: {
+    streamUrl: vi.fn((id) => `/rest/stream?id=${id}`),
+    getCoverArtUrl: vi.fn(() => '/rest/getCoverArt?id=test'),
+  },
+}))
 
 describe('playerReducer', () => {
   describe('pending track selection survives SYNC_QUEUE and premature CURRENT', () => {
@@ -54,8 +67,6 @@ describe('playerReducer', () => {
     })
 
     it('CURRENT for old track preserves pending playIndex', () => {
-      // After SYNC_QUEUE, queue has new UUIDs. The old track's UUID (zzz)
-      // is at index 2, but playIndex is 0. This is a premature callback.
       const stateAfterSync = {
         ...stateAfterPlayTracks,
         queue: [
@@ -71,7 +82,7 @@ describe('playerReducer', () => {
       const result = playerReducer(stateAfterSync, action)
       expect(result.playIndex).toBe(0)
       expect(result.clear).toBe(true)
-      expect(result.savedPlayIndex).toBe(2) // preserved from before
+      expect(result.savedPlayIndex).toBe(2)
     })
 
     it('CURRENT for correct track consumes pending playIndex', () => {
@@ -83,7 +94,6 @@ describe('playerReducer', () => {
           { trackId: 's3', uuid: 'zzz', name: 'Song 3' },
         ],
       }
-      // Player switched to Song 1 (uuid 'xxx', index 0 == playIndex)
       const action = {
         type: PLAYER_CURRENT,
         data: { uuid: 'xxx', name: 'Song 1', volume: 1 },
@@ -141,5 +151,81 @@ describe('playerReducer', () => {
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
     })
+  })
+
+  it('maps embedded synced lyrics to LRC text', () => {
+    const lyrics = JSON.stringify([
+      {
+        lang: 'eng',
+        synced: true,
+        line: [{ start: 1000, value: 'Line one' }],
+      },
+      {
+        lang: 'eng',
+        synced: false,
+        line: [{ value: 'Unsynced line' }],
+      },
+    ])
+
+    const state = playerReducer(undefined, {
+      type: PLAYER_SET_TRACK,
+      data: {
+        id: 'song-1',
+        title: 'Test Song',
+        artist: 'Test Artist',
+        album: 'Test Album',
+        duration: 60,
+        lyrics,
+      },
+    })
+
+    expect(state.queue).toHaveLength(1)
+    expect(state.queue[0].lyric).toBe('[00:01.00] Line one\n')
+  })
+
+  it('updates queue lyric by track id', () => {
+    const initial = playerReducer(undefined, {
+      type: PLAYER_SET_TRACK,
+      data: {
+        id: 'song-1',
+        title: 'Test Song',
+        artist: 'Test Artist',
+        album: 'Test Album',
+        duration: 60,
+      },
+    })
+
+    const updated = playerReducer(initial, {
+      type: PLAYER_UPDATE_LYRIC,
+      data: {
+        trackId: 'song-1',
+        lyric: '[00:01.00] Updated lyric\n',
+      },
+    })
+
+    expect(updated.queue[0].lyric).toBe('[00:01.00] Updated lyric\n')
+  })
+
+  it('returns same state when lyric update does not match any track', () => {
+    const initial = playerReducer(undefined, {
+      type: PLAYER_SET_TRACK,
+      data: {
+        id: 'song-1',
+        title: 'Test Song',
+        artist: 'Test Artist',
+        album: 'Test Album',
+        duration: 60,
+      },
+    })
+
+    const updated = playerReducer(initial, {
+      type: PLAYER_UPDATE_LYRIC,
+      data: {
+        trackId: 'missing-track',
+        lyric: '[00:01.00] Updated lyric\n',
+      },
+    })
+
+    expect(updated).toBe(initial)
   })
 })
