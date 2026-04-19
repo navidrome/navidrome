@@ -736,24 +736,11 @@ var _ = Describe("ffmpeg", func() {
 			if err != nil {
 				Skip("true(1) not available")
 			}
-			// Snapshot and restore every piece of ffmpegCmd()/hasAnimatedWebPEncoder()
-			// state: ffOnce gates ffmpegCmd resolution, conf.Server.FFmpegPath is what
-			// it reads. Without resetting both, ffmpegCmd can resolve the real ffmpeg
-			// (depending on test order) and bypass the stand-in.
-			origPath, origErr, origAvail := ffmpegPath, ffmpegErr, animWebPAvail
-			origProbed := animWebPProbed
-			origConfiguredPath := conf.Server.FFmpegPath
-			conf.Server.FFmpegPath = truePath
-			ffOnce = sync.Once{}
+			origPath, origErr := ffmpegPath, ffmpegErr
 			ffmpegPath = truePath
 			ffmpegErr = nil
-			animWebPProbed = false
-			animWebPAvail = false
 			defer func() {
-				conf.Server.FFmpegPath = origConfiguredPath
-				ffmpegPath, ffmpegErr, animWebPAvail = origPath, origErr, origAvail
-				animWebPProbed = origProbed
-				ffOnce = sync.Once{}
+				ffmpegPath, ffmpegErr = origPath, origErr
 			}()
 
 			ff := &ffmpeg{}

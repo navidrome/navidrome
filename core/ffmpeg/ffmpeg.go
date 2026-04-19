@@ -92,7 +92,7 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
-	if !hasAnimatedWebPEncoder() {
+	if !animWebP.has(cmdPath, "libwebp_anim") {
 		return nil, ErrAnimatedWebPUnsupported
 	}
 
@@ -105,38 +105,6 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
 
 	return e.start(ctx, args, reader)
-}
-
-// hasAnimatedWebPEncoder reports whether ffmpeg has the libwebp_anim encoder.
-// The probe uses a fresh background context (not a request context) so a
-// cancelled first request can't permanently disable animated covers, and
-// caches only successful probes — transient exec failures retry on the next
-// call. Callers short-circuit on false and fall back to static resizing
-// instead of launching a subprocess that will fail asynchronously.
-func hasAnimatedWebPEncoder() bool {
-	animWebPMu.Lock()
-	defer animWebPMu.Unlock()
-	if animWebPProbed {
-		return animWebPAvail
-	}
-	cmdPath, err := ffmpegCmd()
-	if err != nil {
-		return false
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
-	if err != nil {
-		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
-		return false
-	}
-	animWebPAvail = parseEncodersOutput(out, "libwebp_anim")
-	animWebPProbed = true
-	if !animWebPAvail {
-		log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
-			"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
-	}
-	return animWebPAvail
 }
 
 // parseEncodersOutput scans the stdout of `ffmpeg -encoders` for a whole-word
@@ -592,14 +560,55 @@ func ffmpegCmd() (string, error) {
 	return ffmpegPath, ffmpegErr
 }
 
+type encoderProbeState uint8
+
+const (
+	encoderProbeUnknown encoderProbeState = iota
+	encoderProbeAvailable
+	encoderProbeUnavailable
+)
+
+type encoderProbe struct {
+	mu    sync.Mutex
+	state encoderProbeState
+}
+
+func (p *encoderProbe) has(cmdPath, encoder string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	switch p.state {
+	case encoderProbeAvailable:
+		return true
+	case encoderProbeUnavailable:
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+	if err != nil {
+		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
+		return false
+	}
+
+	if parseEncodersOutput(out, encoder) {
+		p.state = encoderProbeAvailable
+		return true
+	}
+
+	p.state = encoderProbeUnavailable
+	log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+		"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+	return false
+}
+
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
-	ffOnce         sync.Once
-	ffmpegPath     string
-	ffmpegErr      error
-	probeOnce      sync.Once
-	probeAvail     bool
-	animWebPMu     sync.Mutex
-	animWebPProbed bool
-	animWebPAvail  bool
+	ffOnce     sync.Once
+	ffmpegPath string
+	ffmpegErr  error
+	probeOnce  sync.Once
+	probeAvail bool
+	animWebP   encoderProbe
 )
