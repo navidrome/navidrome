@@ -1,0 +1,146 @@
+name: Build and Deploy Navidrome Custom
+
+on:
+  push:
+    branches:
+      - navidrome-custom
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger build on Chameleon cluster
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CHAMELEON_HOST }}
+          username: cc
+          key: ${{ secrets.CHAMELEON_SSH_KEY }}
+          script: |
+            set -e
+            echo "=== Triggering Navidrome custom build ==="
+            
+            # Submit Argo workflow to build the image
+            WORKFLOW=$(kubectl create -f - <<'EOF' | awk '{print $1}'
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: ci-build-navidrome-
+              namespace: argo
+            spec:
+              entrypoint: build-flow
+              podMetadata:
+                annotations:
+                  seccomp.security.alpha.kubernetes.io/pod: unconfined
+                  container.apparmor.security.beta.kubernetes.io/main: unconfined
+              volumeClaimTemplates:
+              - metadata:
+                  name: workdir
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+              volumes:
+              - name: buildkitd
+                emptyDir: {}
+              templates:
+              - name: build-flow
+                steps:
+                  - - name: clone
+                      template: git-clone
+                  - - name: build
+                      template: buildkit
+                  - - name: deploy
+                      template: restart-deployment
+              - name: git-clone
+                retryStrategy:
+                  limit: "3"
+                  retryPolicy: "Always"
+                  backoff:
+                    duration: "10s"
+                    factor: "2"
+                container:
+                  image: alpine/git:v2.26.2
+                  workingDir: /mnt/workspace
+                  command: [git]
+                  args:
+                    - clone
+                    - --depth
+                    - "1"
+                    - --single-branch
+                    - --branch
+                    - navidrome-custom
+                    - https://github.com/yeshavyas27/navidrome_mlops.git
+                    - .
+                  volumeMounts:
+                  - name: workdir
+                    mountPath: /mnt/workspace
+              - name: buildkit
+                retryStrategy:
+                  limit: "2"
+                  retryPolicy: "Always"
+                  backoff:
+                    duration: "30s"
+                    factor: "2"
+                container:
+                  image: moby/buildkit:rootless
+                  env:
+                  - name: BUILDKITD_FLAGS
+                    value: --oci-worker-no-process-sandbox
+                  resources:
+                    requests:
+                      memory: "4Gi"
+                      cpu: "2"
+                    limits:
+                      memory: "6Gi"
+                      cpu: "4"
+                  command: [buildctl-daemonless.sh]
+                  args:
+                    - build
+                    - --frontend
+                    - dockerfile.v0
+                    - --local
+                    - context=/mnt/workspace
+                    - --local
+                    - dockerfile=/mnt/workspace
+                    - --output
+                    - type=image,name=registry.kube-system.svc.cluster.local:5000/navidrome-custom:latest,push=true,registry.insecure=true
+                    - --export-cache
+                    - type=registry,ref=registry.kube-system.svc.cluster.local:5000/navidrome-custom:buildcache,mode=max,registry.insecure=true
+                    - --import-cache
+                    - type=registry,ref=registry.kube-system.svc.cluster.local:5000/navidrome-custom:buildcache,registry.insecure=true
+                  securityContext:
+                    runAsUser: 1000
+                    runAsGroup: 1000
+                    seccompProfile:
+                      type: Unconfined
+                    appArmorProfile:
+                      type: Unconfined
+                  volumeMounts:
+                  - name: workdir
+                    mountPath: /mnt/workspace
+                  - name: buildkitd
+                    mountPath: /home/user/.local/share/buildkit
+              - name: restart-deployment
+                container:
+                  image: bitnami/kubectl:latest
+                  command: [kubectl]
+                  args:
+                    - rollout
+                    - restart
+                    - deployment/navidrome
+                    - -n
+                    - navidrome-platform
+            EOF
+            )
+            
+            echo "Workflow submitted: $WORKFLOW"
+            echo "=== Waiting for build to complete ==="
+            
+            # Wait for completion (timeout 20 min)
+            kubectl wait --for=condition=Completed "$WORKFLOW" -n argo --timeout=1200s 2>/dev/null || \
+            kubectl wait --for=jsonpath='{.status.phase}'=Succeeded "$WORKFLOW" -n argo --timeout=1200s 2>/dev/null || \
+            echo "Build may still be running, check: kubectl get $WORKFLOW -n argo"
+            
+            echo "=== Build complete ==="
+            kubectl get pods -n navidrome-platform -l app=navidrome
