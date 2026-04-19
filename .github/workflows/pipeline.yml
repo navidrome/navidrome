@@ -120,6 +120,79 @@ jobs:
           go build -o ndpgen .
           ./ndpgen --help
 
+  go-windows:
+    name: Test Go code (Windows)
+    runs-on: windows-2022
+    env:
+      FFMPEG_VERSION: "7.1"
+      FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+          update: false
+
+      - name: Add mingw64 to PATH
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Cache ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\ffmpeg
+          key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
+
+      - name: Download ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $asset = "ffmpeg-n${env:FFMPEG_VERSION}-latest-win64-gpl-${env:FFMPEG_VERSION}"
+          $url = "https://github.com/${env:FFMPEG_REPOSITORY}/releases/download/latest/$asset.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath C:\ffmpeg-extracted
+          New-Item -ItemType Directory -Force -Path C:\ffmpeg\bin | Out-Null
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffmpeg.exe"  C:\ffmpeg\bin
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffprobe.exe" C:\ffmpeg\bin
+
+      - name: Add ffmpeg to PATH
+        shell: bash
+        run: echo "C:/ffmpeg/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          go version
+          where.exe gcc
+          gcc --version
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Download dependencies
+        shell: bash
+        run: go mod download
+
+      - name: Test
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
+
+      - name: Test ndpgen
+        shell: pwsh
+        run: |
+          cd plugins\cmd\ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen.exe .
+          .\ndpgen.exe --help
+
   js:
     name: Test JS code
     runs-on: ubuntu-latest
@@ -184,7 +257,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]

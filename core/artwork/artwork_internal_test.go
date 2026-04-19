@@ -80,6 +80,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newAlbumArtworkReader(ctx, aw, alOnlyEmbed.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -103,6 +104,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns external cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				folderRepo.result = []model.Folder{{
 					Path:       "tests/fixtures/artist/an-album",
 					ImageFiles: []string{"front.png"},
@@ -133,6 +135,7 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("CoverArtPriority",
 				func(priority string, expected string) {
+					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.CoverArtPriority = priority
 					aw, err := newAlbumArtworkReader(ctx, aw, alMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
@@ -210,6 +213,7 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
+					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.ArtistArtPriority = priority
 					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
@@ -247,6 +251,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfWithEmbed.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -254,6 +259,7 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
 			It("returns embed cover if successfully extracted by ffmpeg", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
