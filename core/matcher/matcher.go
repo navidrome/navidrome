@@ -399,7 +399,7 @@ func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, t
 		score := matchScore{
 			titleSimilarity:   titleSim,
 			durationProximity: durationProximity(q.durationMs, t.mf.Duration),
-			preferredMatch:    conf.Server.Matcher.PreferStarred && isPreferredTrack(*t.mf),
+			preferredMatch:    conf.Server.Matcher.PreferStarred && isPreferredTrack(t.mf),
 			albumSimilarity:   albumSim,
 			specificityLevel:  computeSpecificityLevel(q, t, threshold),
 		}
@@ -413,7 +413,7 @@ func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, t
 	return bestMatch, found
 }
 
-func isPreferredTrack(mf model.MediaFile) bool {
+func isPreferredTrack(mf *model.MediaFile) bool {
 	return mf.Starred || mf.Rating >= 4
 }
 

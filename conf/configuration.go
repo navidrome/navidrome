@@ -430,6 +430,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
