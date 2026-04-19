@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 
 	"github.com/navidrome/navidrome/conf"
@@ -112,9 +111,7 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("reports an error if there is an error reading files", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: relies on Unix /etc filesystem")
-			}
+			tests.SkipOnWindows("relies on Unix /etc filesystem")
 			progress := make(chan *ProgressInfo)
 			state.progress = progress
 			folder := &model.Folder{Path: "/invalid/path"}
