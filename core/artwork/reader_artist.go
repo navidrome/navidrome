@@ -17,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -35,10 +34,9 @@ type artistReader struct {
 	provider         external.Provider
 	artist           model.Artist
 	artistFolder     string
-	libPath          string
 	imgFiles         []string
 	imgFolderImgPath string // cached path from ArtistImageFolder lookup
-	libFS            storage.MusicFS
+	lib              libraryView
 }
 
 func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
@@ -64,10 +62,9 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
-	var libFS storage.MusicFS
-	var libPath string
+	var lib libraryView
 	if len(als) > 0 {
-		libFS, libPath, err = libraryFSAndRoot(ctx, artwork.ds, als[0].LibraryID)
+		lib, err = loadLibraryView(ctx, artwork.ds, als[0].LibraryID)
 		if err != nil {
 			return nil, err
 		}
@@ -77,9 +74,8 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 		provider:     provider,
 		artist:       *ar,
 		artistFolder: artistFolder,
-		libPath:      libPath,
 		imgFiles:     imgFiles,
-		libFS:        libFS,
+		lib:          lib,
 	}
 	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
 	// change _after_ retrieving from external sources, making the key invalid
@@ -138,11 +134,11 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case pattern == "image-folder":
 			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
-			if a.libFS != nil {
-				ff = append(ff, fromExternalFile(ctx, a.libFS, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			if a.lib.FS != nil {
+				ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 			}
 		default:
-			ff = append(ff, fromArtistFolder(ctx, a.libFS, a.libPath, a.artistFolder, pattern))
+			ff = append(ff, fromArtistFolder(ctx, a.lib.FS, a.lib.absRoot, a.artistFolder, pattern))
 		}
 	}
 	return ff

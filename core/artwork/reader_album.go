@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -17,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/natural"
@@ -25,13 +23,12 @@ import (
 
 type albumArtworkReader struct {
 	cacheKey
-	a          *artwork
-	provider   external.Provider
-	album      model.Album
-	updatedAt  *time.Time
-	imgFiles   []string // library-relative, forward-slash, no leading slash
-	rootFolder string   // absolute path; needed only for fromFFmpegTag
-	libFS      storage.MusicFS
+	a         *artwork
+	provider  external.Provider
+	album     model.Album
+	updatedAt *time.Time
+	imgFiles  []string // library-relative, forward-slash, no leading slash
+	lib       libraryView
 }
 
 func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*albumArtworkReader, error) {
@@ -43,18 +40,17 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if err != nil {
 		return nil, err
 	}
-	libFS, rootFolder, err := libraryFSAndRoot(ctx, artwork.ds, al.LibraryID)
+	lib, err := loadLibraryView(ctx, artwork.ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
 	a := &albumArtworkReader{
-		a:          artwork,
-		provider:   provider,
-		album:      *al,
-		updatedAt:  imagesUpdateAt,
-		imgFiles:   imgFiles,
-		rootFolder: rootFolder,
-		libFS:      libFS,
+		a:         artwork,
+		provider:  provider,
+		album:     *al,
+		updatedAt: imagesUpdateAt,
+		imgFiles:  imgFiles,
+		lib:       lib,
 	}
 	a.cacheKey.artID = artID
 	if a.updatedAt != nil && a.updatedAt.After(al.UpdatedAt) {
@@ -94,18 +90,14 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		switch {
 		case pattern == "embedded":
 			embedRel := a.album.EmbedArtPath
-			var embedAbs string
-			if embedRel != "" {
-				embedAbs = filepath.Join(a.rootFolder, embedRel)
-			}
 			ff = append(ff,
-				fromTag(ctx, a.libFS, embedRel),
-				fromFFmpegTag(ctx, ffmpeg, embedAbs),
+				fromTag(ctx, a.lib.FS, embedRel),
+				fromFFmpegTag(ctx, ffmpeg, a.lib.Abs(embedRel)),
 			)
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
 		case len(a.imgFiles) > 0:
-			ff = append(ff, fromExternalFile(ctx, a.libFS, a.imgFiles, pattern))
+			ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, pattern))
 		}
 	}
 	return ff

@@ -94,7 +94,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     1,
 				imgFiles:       []string{f1, f2},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -111,7 +111,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     1,
 				imgFiles:       []string{f1},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "cover.*")
@@ -129,7 +129,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 					discNumber:     discNum,
 					imgFiles:       []string{f1},
 					discFoldersRel: map[string]bool{"album": true},
-					libFS:          osDirFS{os.DirFS(tmpDir)},
+					lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 				}
 			}
 
@@ -151,7 +151,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     2,
 				imgFiles:       []string{f1, f2, f3},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -176,7 +176,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     1,
 				imgFiles:       []string{f1, f2},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			ff := reader.fromDiscArtPriority(ctx, nil, "disc*.*, cover.*")
@@ -205,7 +205,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 					discNumber:     discNumber,
 					imgFiles:       files,
 					discFoldersRel: map[string]bool{"album": true},
-					libFS:          osDirFS{os.DirFS(tmpDir)},
+					lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 				}
 
 				sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -228,7 +228,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     1,
 				imgFiles:       []string{f1, f2},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "cover.*")
@@ -256,7 +256,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 					"album/stale": true,
 				},
 				isMultiFolder: true,
-				libFS:         osDirFS{os.DirFS(tmpDir)},
+				lib:           libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "cover.png")
@@ -277,7 +277,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 					discNumber:     discNumber,
 					imgFiles:       files,
 					discFoldersRel: map[string]bool{"album": true},
-					libFS:          osDirFS{os.DirFS(tmpDir)},
+					lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 				}
 
 				sf := reader.fromExternalFile(ctx, pattern)
@@ -301,7 +301,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				imgFiles:       []string{f1, f2},
 				discFoldersRel: map[string]bool{"album/cd1": true},
 				isMultiFolder:  true,
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -320,7 +320,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				imgFiles:       []string{f1},
 				discFoldersRel: map[string]bool{"album/cd1": true},
 				isMultiFolder:  true,
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -337,7 +337,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				discNumber:     1,
 				imgFiles:       []string{f1},
 				discFoldersRel: map[string]bool{"album": true},
-				libFS:          osDirFS{os.DirFS(tmpDir)},
+				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromExternalFile(ctx, "disc*.*")
@@ -369,7 +369,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			reader := &discArtworkReader{
 				discNumber: 1,
 				imgFiles:   []string{f1},
-				libFS:      osDirFS{os.DirFS(tmpDir)},
+				lib:        libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
@@ -385,7 +385,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			reader := &discArtworkReader{
 				discNumber: 2,
 				imgFiles:   []string{f1},
-				libFS:      osDirFS{os.DirFS(tmpDir)},
+				lib:        libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromDiscSubtitle(ctx, "Bonus Tracks")
@@ -401,7 +401,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			reader := &discArtworkReader{
 				discNumber: 1,
 				imgFiles:   []string{f1},
-				libFS:      osDirFS{os.DirFS(tmpDir)},
+				lib:        libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
@@ -415,7 +415,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			reader := &discArtworkReader{
 				discNumber: 1,
 				imgFiles:   []string{f1, f2},
-				libFS:      osDirFS{os.DirFS(tmpDir)},
+				lib:        libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
 			sf := reader.fromDiscSubtitle(ctx, "The Blue Disc")
@@ -445,9 +445,8 @@ var _ = Describe("Disc Artwork Reader", func() {
 						"music/album/cd2/disc.jpg",
 						"music/album/cd2/disc2.jpg",
 					},
-					firstTrackRelPath: "music/album/cd2/track1.flac",
-					firstTrackAbsPath: "/music/album/cd2/track1.flac",
-					libFS:             osDirFS{os.DirFS(tmpDir)},
+					firstTrackRel: "music/album/cd2/track1.flac",
+					lib:           libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 				}
 			})
 

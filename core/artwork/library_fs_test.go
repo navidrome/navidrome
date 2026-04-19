@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("libraryFS", Ordered, func() {
+var _ = Describe("loadLibraryView", Ordered, func() {
 	var ctx context.Context
 	var ds *tests.MockDataStore
 
@@ -23,22 +23,23 @@ var _ = Describe("libraryFS", Ordered, func() {
 		ds = &tests.MockDataStore{MockedLibrary: &tests.MockLibraryRepo{}}
 	})
 
-	It("returns an FS for a library backed by registered storage", func() {
+	It("returns a view for a library backed by registered storage", func() {
 		Expect(ds.Library(ctx).Put(&model.Library{ID: 1, Path: "fake:///music"})).To(Succeed())
 
-		fs, err := libraryFS(ctx, ds, 1)
+		lib, err := loadLibraryView(ctx, ds, 1)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(fs).ToNot(BeNil())
+		Expect(lib.FS).ToNot(BeNil())
+		Expect(lib.absRoot).To(Equal("fake:///music"))
 	})
 
 	It("returns an error when the library does not exist", func() {
-		_, err := libraryFS(ctx, ds, 999)
+		_, err := loadLibraryView(ctx, ds, 999)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("returns an error when the library path uses an unregistered scheme", func() {
 		Expect(ds.Library(ctx).Put(&model.Library{ID: 2, Path: "unsupported:///music"})).To(Succeed())
-		_, err := libraryFS(ctx, ds, 2)
+		_, err := loadLibraryView(ctx, ds, 2)
 		Expect(err).To(HaveOccurred())
 	})
 })

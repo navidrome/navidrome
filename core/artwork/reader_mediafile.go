@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -16,7 +15,7 @@ type mediafileArtworkReader struct {
 	a         *artwork
 	mediafile model.MediaFile
 	album     model.Album
-	libFS     storage.MusicFS
+	lib       libraryView
 }
 
 func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*mediafileArtworkReader, error) {
@@ -32,7 +31,7 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if err != nil {
 		return nil, err
 	}
-	libFS, err := libraryFS(ctx, artwork.ds, mf.LibraryID)
+	lib, err := loadLibraryView(ctx, artwork.ds, mf.LibraryID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +39,7 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 		a:         artwork,
 		mediafile: *mf,
 		album:     *al,
-		libFS:     libFS,
+		lib:       lib,
 	}
 	a.cacheKey.artID = artID
 	a.cacheKey.lastUpdate = mf.UpdatedAt
@@ -68,8 +67,8 @@ func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, str
 	var ff []sourceFunc
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
 		ff = []sourceFunc{
-			fromTag(ctx, a.libFS, a.mediafile.Path),
-			fromFFmpegTag(ctx, a.a.ffmpeg, a.mediafile.AbsolutePath()),
+			fromTag(ctx, a.lib.FS, a.mediafile.Path),
+			fromFFmpegTag(ctx, a.a.ffmpeg, a.lib.Abs(a.mediafile.Path)),
 		}
 	}
 	// For multi-disc albums, fall back to disc artwork first; for single-disc albums,

@@ -13,25 +13,22 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
 type discArtworkReader struct {
 	cacheKey
-	a                 *artwork
-	album             model.Album
-	discNumber        int
-	imgFiles          []string        // library-relative, forward-slash, no leading slash
-	discFoldersRel    map[string]bool // library-relative folder paths
-	isMultiFolder     bool
-	firstTrackRelPath string // library-relative; for fromTag
-	firstTrackAbsPath string // absolute; for fromFFmpegTag
-	libFS             storage.MusicFS
-	updatedAt         *time.Time
+	a              *artwork
+	album          model.Album
+	discNumber     int
+	imgFiles       []string        // library-relative, forward-slash, no leading slash
+	discFoldersRel map[string]bool // library-relative folder paths
+	isMultiFolder  bool
+	firstTrackRel  string // library-relative; for fromTag / ffmpeg via lib.Abs
+	lib            libraryView
+	updatedAt      *time.Time
 }
 
 func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID) (*discArtworkReader, error) {
@@ -60,27 +57,19 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		return nil, err
 	}
 
-	// Resolve libFS and libRoot for path normalization
-	libFS, libRoot, err := libraryFSAndRoot(ctx, a.ds, al.LibraryID)
+	lib, err := loadLibraryView(ctx, a.ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build disc folder set and find first track
-	var firstTrackPath string
+	// Build disc folder set and find first track. mf.Path is already library-relative.
+	var firstTrackRel string
 	allFolderIDs := make(map[string]bool)
 	for _, mf := range mfs {
 		allFolderIDs[mf.FolderID] = true
-		if firstTrackPath == "" {
-			firstTrackPath = mf.Path
+		if firstTrackRel == "" {
+			firstTrackRel = filepath.ToSlash(mf.Path)
 		}
-	}
-
-	// Compute absolute and relative paths for the first track
-	var firstTrackAbs, firstTrackRel string
-	if firstTrackPath != "" {
-		firstTrackAbs = core.AbsolutePath(ctx, a.ds, al.LibraryID, firstTrackPath)
-		firstTrackRel = strings.TrimPrefix(filepath.ToSlash(strings.TrimPrefix(firstTrackAbs, libRoot)), "/")
 	}
 
 	// Resolve folder IDs to library-relative paths
@@ -105,16 +94,15 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 	isMultiFolder := len(al.FolderIDs) > 1
 
 	r := &discArtworkReader{
-		a:                 a,
-		album:             *al,
-		discNumber:        discNumber,
-		imgFiles:          imgFiles,
-		discFoldersRel:    discFoldersRel,
-		isMultiFolder:     isMultiFolder,
-		firstTrackRelPath: firstTrackRel,
-		firstTrackAbsPath: firstTrackAbs,
-		libFS:             libFS,
-		updatedAt:         imagesUpdatedAt,
+		a:              a,
+		album:          *al,
+		discNumber:     discNumber,
+		imgFiles:       imgFiles,
+		discFoldersRel: discFoldersRel,
+		isMultiFolder:  isMultiFolder,
+		firstTrackRel:  firstTrackRel,
+		lib:            lib,
+		updatedAt:      imagesUpdatedAt,
 	}
 	r.cacheKey.artID = artID
 	if r.updatedAt != nil && r.updatedAt.After(al.UpdatedAt) {
@@ -153,8 +141,8 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 		switch {
 		case pattern == "embedded":
 			ff = append(ff,
-				fromTag(ctx, d.libFS, d.firstTrackRelPath),
-				fromFFmpegTag(ctx, ffmpeg, d.firstTrackAbsPath),
+				fromTag(ctx, d.lib.FS, d.firstTrackRel),
+				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
 			)
 		case pattern == "external":
 			// Not supported for disc art, silently ignore
@@ -179,7 +167,7 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 			if !strings.EqualFold(stem, subtitle) {
 				continue
 			}
-			f, err := d.libFS.Open(file)
+			f, err := d.lib.FS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open disc art file", "file", file, err)
 				continue
@@ -251,7 +239,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 					if num != d.discNumber {
 						continue
 					}
-					f, err := d.libFS.Open(file)
+					f, err := d.lib.FS.Open(file)
 					if err != nil {
 						log.Warn(ctx, "Could not open disc art file", "file", file, err)
 						continue
@@ -267,7 +255,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 		}
 
 		for _, file := range fallbacks {
-			f, err := d.libFS.Open(file)
+			f, err := d.lib.FS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open disc art file", "file", file, err)
 				continue
