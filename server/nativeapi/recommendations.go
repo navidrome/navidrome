@@ -96,10 +96,11 @@ func (api *Router) getRecommendations() http.HandlerFunc {
 
 		// Call serving container: POST /recommend-by-tracks
 		reqBody := serveRecommendRequest{
-			SessionID: "navidrome-ui-" + user.UserName,
-			UserID:    user.UserName,
-			TrackIDs:  trackIDs,
-			TopN:      20,
+			SessionID:       "navidrome-ui-" + user.UserName,
+			UserID:          user.UserName,
+			TrackIDs:        trackIDs,
+			ExcludeTrackIDs: []string{},
+			TopN:            20,
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 
