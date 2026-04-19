@@ -1,0 +1,12 @@
+pandas
+numpy
+mlflow
+torch
+torchvision
+tqdm
+optuna
+psutil
+gdown
+boto3
+redis
+requests
