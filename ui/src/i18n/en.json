@@ -241,6 +241,13 @@
       },
       "actions": {
         "playNow": "Play Now"
+      },
+      "radioBrowser": {
+        "hint": "Search the Radio Browser directory (radio-browser.info). Tap a result to fill the fields below.",
+        "placeholder": "Station name or keywords",
+        "search": "Search",
+        "noResults": "No stations found",
+        "error": "Radio Browser search failed"
       }
     },
     "share": {
