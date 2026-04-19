@@ -4,13 +4,24 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 )
+
+// SkipOnWindows marks the current spec (or surrounding BeforeEach) as skipped
+// when running on Windows. The reason is included in the Ginkgo output so the
+// backlog of Windows-skipped tests stays auditable.
+func SkipOnWindows(reason string) {
+	if runtime.GOOS == "windows" {
+		ginkgo.Skip("not supported on Windows: " + reason)
+	}
+}
 
 type testingT interface {
 	TempDir() string
