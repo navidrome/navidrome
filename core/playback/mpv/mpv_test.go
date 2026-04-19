@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -199,9 +200,7 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("executes MPV command and captures arguments correctly", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: mpv binary not available in CI (#TBD-mpv-windows)")
-			}
+			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -229,9 +228,7 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("handles file paths with spaces", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: mpv binary not available in CI (#TBD-mpv-windows)")
-			}
+			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -259,9 +256,7 @@ var _ = Describe("MPV", func() {
 			})
 
 			It("passes all snapcast arguments correctly", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: mpv binary not available in CI (#TBD-mpv-windows)")
-				}
+				tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 

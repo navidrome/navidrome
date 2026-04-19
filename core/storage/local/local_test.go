@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -45,9 +46,7 @@ var _ = Describe("LocalStorage", func() {
 
 	Describe("newLocalStorage", func() {
 		BeforeEach(func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-storage-local)")
-			}
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 		})
 
 		Context("with valid path", func() {
@@ -173,9 +172,7 @@ var _ = Describe("LocalStorage", func() {
 
 	Describe("localStorage.FS", func() {
 		BeforeEach(func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-storage-local)")
-			}
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 		})
 
 		Context("with existing directory", func() {
@@ -211,9 +208,7 @@ var _ = Describe("LocalStorage", func() {
 		var testFile string
 
 		BeforeEach(func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-storage-local)")
-			}
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// Create a test file
 			testFile = filepath.Join(tempDir, "test.mp3")
 			err := os.WriteFile(testFile, []byte("test data"), 0600)
@@ -395,9 +390,7 @@ var _ = Describe("LocalStorage", func() {
 
 	Describe("Storage registration", func() {
 		It("should register localStorage for file scheme", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-storage-local)")
-			}
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// This tests the init() function indirectly
 			storage, err := storage.For("file://" + tempDir)
 			Expect(err).ToNot(HaveOccurred())

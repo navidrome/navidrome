@@ -6,13 +6,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -62,9 +62,7 @@ var _ = Describe("artistArtworkReader", func() {
 
 		When("artist has only one album", func() {
 			It("returns the parent folder", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: artwork path handling (#TBD-path-sep-artwork)")
-				}
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				paths = []string{
 					filepath.FromSlash("/music/artist/album1"),
 				}
@@ -90,9 +88,7 @@ var _ = Describe("artistArtworkReader", func() {
 
 		When("the album paths contain same prefix", func() {
 			It("returns the common prefix", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: artwork path handling (#TBD-path-sep-artwork)")
-				}
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				paths = []string{
 					filepath.FromSlash("/music/artist/album1"),
 					filepath.FromSlash("/music/artist/album2"),

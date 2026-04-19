@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -184,9 +183,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("rejects #EXTALBUMARTURL with absolute path outside library boundaries", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: relies on Unix /etc filesystem")
-				}
+				tests.SkipOnWindows("relies on Unix /etc filesystem")
 				tmpDir := GinkgoT().TempDir()
 
 				m3u := "#EXTALBUMARTURL:/etc/passwd\ntest.mp3\n"
@@ -324,9 +321,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
 			})
 			It("returns an error if the playlist is not well-formed", func() {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: line-ending differences affect JSON error offset")
-				}
+				tests.SkipOnWindows("line-ending differences affect JSON error offset")
 				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
 				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
@@ -354,9 +349,7 @@ var _ = Describe("Playlists - Import", func() {
 
 		DescribeTable("Playlist filename Unicode normalization (regression fix-playlist-filename-normalization)",
 			func(storedForm, filesystemForm string) {
-				if runtime.GOOS == "windows" {
-					Skip("not supported on Windows: /tmp hardcoded in test")
-				}
+				tests.SkipOnWindows("/tmp hardcoded in test")
 				// Use Polish characters that decompose: ó (U+00F3) -> o + combining acute (U+006F + U+0301)
 				plsNameNFC := "Piosenki_Polskie_zółć" // NFC form (composed)
 				plsNameNFD := norm.NFD.String(plsNameNFC)
@@ -831,9 +824,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
-			if runtime.GOOS == "windows" {
-				Skip("not supported on Windows: path separator bug (#TBD-path-sep-playlists)")
-			}
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 			conf.Server.PlaylistsPath = "other/**:playlists/**"
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
