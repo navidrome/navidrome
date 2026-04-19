@@ -78,7 +78,7 @@ var _ = Describe("Matcher", func() {
 	Describe("MatchSongsToLibrary", func() {
 		Context("matching by direct ID", func() {
 			It("matches songs with an ID field to MediaFiles by ID", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
 					{ID: "track-1", Name: "Some Song", Artist: "Some Artist"},
 				}
@@ -96,7 +96,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("matching by MBID", func() {
 			It("matches songs with MBID to tracks with matching mbz_recording_id", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
 					{Name: "Paranoid Android", MBID: "abc-123", Artist: "Radiohead"},
 				}
@@ -115,7 +115,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("matching by ISRC", func() {
 			It("matches songs with ISRC to tracks with matching ISRC tag", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
 					{Name: "Paranoid Android", ISRC: "GBAYE0000351", Artist: "Radiohead"},
 				}
@@ -134,7 +134,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("fuzzy title+artist matching", func() {
 			It("matches songs by title and artist name", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
 					{Name: "Enjoy the Silence", Artist: "Depeche Mode"},
 				}
@@ -149,7 +149,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches songs with fuzzy title similarity", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artist: "Queen"},
 				}
@@ -164,7 +164,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("does not match completely different titles", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
 					{Name: "Yesterday", Artist: "The Beatles"},
 				}
@@ -180,7 +180,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("deduplication", func() {
 			It("removes duplicates when different input songs match the same library track", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody (Live)", Artist: "Queen"},
 					{Name: "Bohemian Rhapsody (Original Mix)", Artist: "Queen"},
@@ -196,7 +196,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("preserves duplicates when identical input songs match the same library track", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
 					{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
@@ -215,7 +215,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("priority ordering", func() {
 			It("prefers ID match over MBID match", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				// Song has both ID and MBID set. The matcher should resolve via ID
 				// and short-circuit the MBID phase entirely, so no MBID fetch should
 				// occur even though an mbz_recording_id exists in the input.
@@ -236,7 +236,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("count limit", func() {
 			It("returns at most 'count' results", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
 					{Name: "Song A", Artist: "Artist"},
 					{Name: "Song B", Artist: "Artist"},
@@ -265,7 +265,7 @@ var _ = Describe("Matcher", func() {
 
 	Describe("specificity level matching", func() {
 		BeforeEach(func() {
-			conf.Server.SimilarSongsMatchThreshold = 100
+			conf.Server.Matcher.FuzzyThreshold = 100
 		})
 
 		It("matches by title + artist MBID + album MBID (highest priority)", func() {
@@ -396,7 +396,7 @@ var _ = Describe("Matcher", func() {
 	Describe("fuzzy matching thresholds", func() {
 		Context("with default threshold (85%)", func() {
 			It("matches songs with remastered suffix", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 
 				songs := []agents.Song{
 					{Name: "Paranoid Android", Artist: "Radiohead"},
@@ -415,7 +415,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches songs with live suffix", func() {
-				conf.Server.SimilarSongsMatchThreshold = 85
+				conf.Server.Matcher.FuzzyThreshold = 85
 
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artist: "Queen"},
@@ -436,7 +436,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("with threshold set to 100 (exact match only)", func() {
 			It("only matches exact titles", func() {
-				conf.Server.SimilarSongsMatchThreshold = 100
+				conf.Server.Matcher.FuzzyThreshold = 100
 
 				songs := []agents.Song{
 					{Name: "Paranoid Android", Artist: "Radiohead"},
@@ -456,7 +456,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("with lower threshold (75%)", func() {
 			It("matches more aggressively", func() {
-				conf.Server.SimilarSongsMatchThreshold = 75
+				conf.Server.Matcher.FuzzyThreshold = 75
 
 				songs := []agents.Song{
 					{Name: "Song", Artist: "Artist"},
@@ -478,7 +478,8 @@ var _ = Describe("Matcher", func() {
 
 	Describe("fuzzy album matching", func() {
 		BeforeEach(func() {
-			conf.Server.SimilarSongsMatchThreshold = 85
+			conf.Server.Matcher.FuzzyThreshold = 85
+			conf.Server.Matcher.PreferStarred = false
 		})
 
 		It("matches album with (Remaster) suffix", func() {
@@ -540,11 +541,53 @@ var _ = Describe("Matcher", func() {
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].ID).To(Equal("exact"))
 		})
+
+		It("prefers starred songs over better album match when enabled", func() {
+			conf.Server.Matcher.PreferStarred = true
+			songs := []agents.Song{
+				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+			}
+			albumMatch := model.MediaFile{
+				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+			}
+			starredTrack := model.MediaFile{
+				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Starred: true},
+			}
+
+			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, starredTrack})
+
+			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].ID).To(Equal("starred"))
+		})
+
+		It("prefers 4-star songs over better album match when enabled", func() {
+			conf.Server.Matcher.PreferStarred = true
+			songs := []agents.Song{
+				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+			}
+			albumMatch := model.MediaFile{
+				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+			}
+			ratedTrack := model.MediaFile{
+				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Rating: 4},
+			}
+
+			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, ratedTrack})
+
+			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].ID).To(Equal("rated"))
+		})
 	})
 
 	Describe("duration matching", func() {
 		BeforeEach(func() {
-			conf.Server.SimilarSongsMatchThreshold = 100
+			conf.Server.Matcher.FuzzyThreshold = 100
 		})
 
 		It("prefers tracks with matching duration", func() {
@@ -678,7 +721,7 @@ var _ = Describe("Matcher", func() {
 
 	Describe("deduplication edge cases", func() {
 		BeforeEach(func() {
-			conf.Server.SimilarSongsMatchThreshold = 85
+			conf.Server.Matcher.FuzzyThreshold = 85
 		})
 
 		It("handles mixed scenario with both identical and different input songs", func() {
