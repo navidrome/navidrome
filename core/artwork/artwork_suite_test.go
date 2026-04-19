@@ -4,6 +4,9 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/navidrome/navidrome/core/storage"
@@ -28,18 +31,33 @@ type osDirFS struct{ fs.FS }
 func (o osDirFS) ReadTags(...string) (map[string]metadata.Info, error) { return nil, nil }
 
 // testFileScheme is the URL scheme registered to expose a tempdir as a
-// storage.MusicFS for artwork integration tests. Keep the const in sync with
-// callers that build library paths like `testFileSchemePrefix + absRoot`.
-const (
-	testFileScheme       = "testfile"
-	testFileSchemePrefix = testFileScheme + "://"
-)
+// storage.MusicFS for artwork integration tests.
+const testFileScheme = "testfile"
+
+// testFileLibPath builds a `testfile://` library URL for the given absolute
+// filesystem path. On Windows, the native path (e.g. `C:\foo`) has no leading
+// slash after ToSlash, which makes url.Parse treat the drive letter as a
+// host. We prepend a `/` so parsing yields `u.Path == /C:/foo`, and the
+// registered constructor below strips that leading slash back off.
+func testFileLibPath(absPath string) string {
+	p := filepath.ToSlash(absPath)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return testFileScheme + "://" + p
+}
 
 func init() {
 	// Register the testfile storage scheme (os.DirFS-backed MusicFS). Used by
 	// integration tests that need real files but not the taglib extractor.
 	storage.Register(testFileScheme, func(u url.URL) storage.Storage {
-		return &osDirStorage{root: u.Path}
+		root := u.Path
+		// Undo the leading slash added by testFileLibPath on Windows so that
+		// os.Stat / os.DirFS receive a native path like `C:\foo`.
+		if runtime.GOOS == "windows" && len(root) >= 3 && root[0] == '/' && root[2] == ':' {
+			root = root[1:]
+		}
+		return &osDirStorage{root: filepath.FromSlash(root)}
 	})
 }
 
