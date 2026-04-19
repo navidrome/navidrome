@@ -42,11 +42,27 @@ var (
 	fakeFS *storagetest.FakeFS
 )
 
+// The DB file lives in a suite-level tempdir: the go-sqlite3 singleton keeps
+// the file open for the whole suite, and Ginkgo's per-spec TempDir cleanup
+// can't unlink a file with a live handle on Windows. A suite-level tempdir
+// combined with an AfterSuite close avoids the lock conflict.
+var suiteDBTempDir string
+
+var _ = BeforeSuite(func() {
+	suiteDBTempDir = GinkgoT().TempDir()
+})
+
+var _ = AfterSuite(func() {
+	db.Close(GinkgoT().Context())
+})
+
 func setupHarness() {
 	DeferCleanup(configtest.SetupConfig())
 
 	tempDir := GinkgoT().TempDir()
-	conf.Server.DbPath = filepath.Join(tempDir, "artwork-e2e.db") + "?_journal_mode=WAL"
+	// Reuse the suite-level DB path so the singleton connection keeps working
+	// across specs (see suiteDBTempDir comment).
+	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-e2e.db") + "?_journal_mode=WAL"
 	conf.Server.DataFolder = tempDir
 	conf.Server.MusicFolder = fakeLibPath
 	conf.Server.DevExternalScanner = false
