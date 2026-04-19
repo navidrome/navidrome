@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -57,6 +58,11 @@ func New() FFmpeg {
 	return &ffmpeg{}
 }
 
+// ErrAnimatedWebPUnsupported is returned by ConvertAnimatedImage when the
+// ffmpeg binary lacks the libwebp_anim encoder. Callers can use errors.Is to
+// detect this specific case and fall back to static resize.
+var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
+
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd            = "ffmpeg %s -f ffmetadata"
@@ -86,6 +92,9 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
+	if !hasAnimatedWebPEncoder() {
+		return nil, ErrAnimatedWebPUnsupported
+	}
 
 	args := []string{cmdPath, "-i", "pipe:0"}
 	if maxSize > 0 {
@@ -96,6 +105,51 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
 
 	return e.start(ctx, args, reader)
+}
+
+// hasAnimatedWebPEncoder reports whether ffmpeg has the libwebp_anim encoder.
+// The probe uses a fresh background context (not a request context) so a
+// cancelled first request can't permanently disable animated covers, and
+// caches only successful probes — transient exec failures retry on the next
+// call. Callers short-circuit on false and fall back to static resizing
+// instead of launching a subprocess that will fail asynchronously.
+func hasAnimatedWebPEncoder() bool {
+	animWebPMu.Lock()
+	defer animWebPMu.Unlock()
+	if animWebPProbed {
+		return animWebPAvail
+	}
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+	if err != nil {
+		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
+		return false
+	}
+	animWebPAvail = parseEncodersOutput(out, "libwebp_anim")
+	animWebPProbed = true
+	if !animWebPAvail {
+		log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+			"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+	}
+	return animWebPAvail
+}
+
+// parseEncodersOutput scans the stdout of `ffmpeg -encoders` for a whole-word
+// match of encoder name. The output has rows like " V....D libwebp_anim  ..."
+// where the name is the 2nd whitespace-separated field.
+func parseEncodersOutput(out []byte, name string) bool {
+	for line := range strings.SplitSeq(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -540,9 +594,12 @@ func ffmpegCmd() (string, error) {
 
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
-	ffOnce     sync.Once
-	ffmpegPath string
-	ffmpegErr  error
-	probeOnce  sync.Once
-	probeAvail bool
+	ffOnce         sync.Once
+	ffmpegPath     string
+	ffmpegErr      error
+	probeOnce      sync.Once
+	probeAvail     bool
+	animWebPMu     sync.Mutex
+	animWebPProbed bool
+	animWebPAvail  bool
 )

@@ -3,8 +3,10 @@ package ffmpeg
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	sync "sync"
 	"testing"
 	"time"
@@ -691,6 +693,72 @@ var _ = Describe("ffmpeg", func() {
 				_, err = stream.Read(buf)
 				Expect(err).To(HaveOccurred())
 			})
+		})
+	})
+
+	Describe("parseEncodersOutput", func() {
+		const sample = `Encoders:
+ V..... = Video
+ ------
+ V....D apng                 APNG (Animated Portable Network Graphics) image
+ V....D libwebp_anim         libwebp WebP image (codec webp)
+ V....D libwebp              libwebp WebP image (codec webp)
+ A....D aac                  AAC (Advanced Audio Coding)
+`
+		It("returns true when the encoder is present", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_anim")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "libwebp")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "aac")).To(BeTrue())
+		})
+		It("returns false when the encoder is absent", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_missing")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(sample), "")).To(BeFalse())
+		})
+		It("does not match partial names", func() {
+			// libwebp is a prefix of libwebp_anim; the parser must treat names as whole-word.
+			stripped := `Encoders:
+ V....D libwebp              libwebp WebP image (codec webp)
+`
+			Expect(parseEncodersOutput([]byte(stripped), "libwebp_anim")).To(BeFalse())
+		})
+		It("handles empty output", func() {
+			Expect(parseEncodersOutput(nil, "libwebp_anim")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(""), "libwebp_anim")).To(BeFalse())
+		})
+	})
+
+	Describe("ConvertAnimatedImage", func() {
+		// Point ffmpegCmd at a stand-in binary that produces empty `-encoders`
+		// output so hasAnimatedWebPEncoder returns false. /usr/bin/true is
+		// portable across POSIX systems.
+		It("returns ErrAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
+			truePath, err := exec.LookPath("true")
+			if err != nil {
+				Skip("true(1) not available")
+			}
+			// Snapshot and restore every piece of ffmpegCmd()/hasAnimatedWebPEncoder()
+			// state: ffOnce gates ffmpegCmd resolution, conf.Server.FFmpegPath is what
+			// it reads. Without resetting both, ffmpegCmd can resolve the real ffmpeg
+			// (depending on test order) and bypass the stand-in.
+			origPath, origErr, origAvail := ffmpegPath, ffmpegErr, animWebPAvail
+			origProbed := animWebPProbed
+			origConfiguredPath := conf.Server.FFmpegPath
+			conf.Server.FFmpegPath = truePath
+			ffOnce = sync.Once{}
+			ffmpegPath = truePath
+			ffmpegErr = nil
+			animWebPProbed = false
+			animWebPAvail = false
+			defer func() {
+				conf.Server.FFmpegPath = origConfiguredPath
+				ffmpegPath, ffmpegErr, animWebPAvail = origPath, origErr, origAvail
+				animWebPProbed = origProbed
+				ffOnce = sync.Once{}
+			}()
+
+			ff := &ffmpeg{}
+			_, err = ff.ConvertAnimatedImage(GinkgoT().Context(), strings.NewReader("x"), 100, 75)
+			Expect(err).To(MatchError(ErrAnimatedWebPUnsupported))
 		})
 	})
 })
