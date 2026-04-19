@@ -3,9 +3,9 @@ package gotaglib
 import (
 	"io/fs"
 	"os"
-	"runtime"
 	"strings"
 
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -214,9 +214,7 @@ var _ = Describe("Extractor", func() {
 			// Only run permission tests if we are not root
 			RegularUserContext("when run without root privileges", func() {
 				BeforeEach(func() {
-					if runtime.GOOS == "windows" {
-						Skip("not supported on Windows: uses Unix file permission bits")
-					}
+					tests.SkipOnWindows("uses Unix file permission bits")
 					// Use root fs for absolute paths in temp directory
 					e = &extractor{fs: os.DirFS("/")}
 					accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
