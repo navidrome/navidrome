@@ -107,30 +107,35 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	return e.start(ctx, args, reader)
 }
 
-// hasAnimatedWebPEncoder reports whether the configured ffmpeg binary supports
-// the libwebp_anim encoder. The probe runs once and the result is cached.
-// Returns false (and logs once) when ffmpeg is missing the encoder, which
-// lets callers short-circuit and fall back to static resizing instead of
-// launching a subprocess that will fail asynchronously.
+// hasAnimatedWebPEncoder reports whether ffmpeg has the libwebp_anim encoder.
+// The probe uses a fresh background context (not a request context) so a
+// cancelled first request can't permanently disable animated covers, and
+// caches only successful probes — transient exec failures retry on the next
+// call. Callers short-circuit on false and fall back to static resizing
+// instead of launching a subprocess that will fail asynchronously.
 func hasAnimatedWebPEncoder() bool {
-	animWebPOnce.Do(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		cmdPath, err := ffmpegCmd()
-		if err != nil {
-			return
-		}
-		out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
-		if err != nil {
-			log.Warn(ctx, "Could not probe ffmpeg encoders; animated covers disabled", err)
-			return
-		}
-		animWebPAvail = parseEncodersOutput(out, "libwebp_anim")
-		if !animWebPAvail {
-			log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
-				"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
-		}
-	})
+	animWebPMu.Lock()
+	defer animWebPMu.Unlock()
+	if animWebPProbed {
+		return animWebPAvail
+	}
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+	if err != nil {
+		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
+		return false
+	}
+	animWebPAvail = parseEncodersOutput(out, "libwebp_anim")
+	animWebPProbed = true
+	if !animWebPAvail {
+		log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+			"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+	}
 	return animWebPAvail
 }
 
@@ -589,11 +594,12 @@ func ffmpegCmd() (string, error) {
 
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
-	ffOnce        sync.Once
-	ffmpegPath    string
-	ffmpegErr     error
-	probeOnce     sync.Once
-	probeAvail    bool
-	animWebPOnce  sync.Once
-	animWebPAvail bool
+	ffOnce         sync.Once
+	ffmpegPath     string
+	ffmpegErr      error
+	probeOnce      sync.Once
+	probeAvail     bool
+	animWebPMu     sync.Mutex
+	animWebPProbed bool
+	animWebPAvail  bool
 )
