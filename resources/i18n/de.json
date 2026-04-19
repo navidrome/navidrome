@@ -18,7 +18,7 @@
         "size": "Dateigröße",
         "updatedAt": "Hochgeladen am",
         "bitRate": "Bitrate",
-        "discSubtitle": "CD Untertitel",
+        "discSubtitle": "Disc Untertitel",
         "starred": "Favorit",
         "comment": "Kommentar",
         "rating": "Bewertung",
@@ -38,7 +38,7 @@
         "missing": "Fehlend",
         "libraryName": "Bibliothek",
         "composer": "Komponist",
-        "disc": ""
+        "disc": "Disc %{discNumber}"
       },
       "actions": {
         "addToQueue": "Später abspielen",

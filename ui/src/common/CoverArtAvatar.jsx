@@ -2,13 +2,17 @@ import { useRecordContext } from 'react-admin'
 import { Avatar } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
-import { COVER_ART_SIZE } from '../consts'
+import config from '../config'
 import subsonic from '../subsonic'
+import { useImageUrl } from './useImageUrl'
 
 const useStyles = makeStyles({
   avatar: {
     width: '55px',
     height: '55px',
+  },
+  avatarEmpty: {
+    backgroundColor: 'transparent',
   },
   square: {
     borderRadius: '4px',
@@ -22,15 +26,26 @@ export const CoverArtAvatar = ({
   const classes = useStyles()
   const recordContext = useRecordContext()
   const record = recordProp || recordContext
-  if (!record) return null
   const square = variant !== 'circular'
+  const url = record
+    ? subsonic.getCoverArtUrl(record, config.uiCoverArtSize, square)
+    : null
+  const { imgUrl } = useImageUrl(url)
+  if (!record) return null
   return (
     <Avatar
-      src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE, square)}
+      src={imgUrl || undefined}
       variant={variant}
-      className={clsx(classes.avatar, square && classes.square)}
+      className={clsx(
+        classes.avatar,
+        square && classes.square,
+        !imgUrl && classes.avatarEmpty,
+      )}
       alt={record.name}
-    />
+    >
+      {/* Empty child prevents default person icon while loading */}
+      {!imgUrl && <span />}
+    </Avatar>
   )
 }
 

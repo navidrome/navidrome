@@ -1,4 +1,4 @@
-package external
+package matcher
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -16,25 +16,21 @@ var _ = Describe("similarityRatio", func() {
 	})
 
 	It("returns high similarity for remastered suffix", func() {
-		// Jaro-Winkler gives ~0.92 for this case
 		ratio := similarityRatio("paranoid android", "paranoid android remastered")
 		Expect(ratio).To(BeNumerically(">=", 0.85))
 	})
 
 	It("returns high similarity for suffix additions like (Live)", func() {
-		// Jaro-Winkler gives ~0.96 for this case
 		ratio := similarityRatio("bohemian rhapsody", "bohemian rhapsody live")
 		Expect(ratio).To(BeNumerically(">=", 0.90))
 	})
 
 	It("returns high similarity for 'yesterday' variants (common prefix)", func() {
-		// Jaro-Winkler gives ~0.90 because of common prefix
 		ratio := similarityRatio("yesterday", "yesterday once more")
 		Expect(ratio).To(BeNumerically(">=", 0.85))
 	})
 
 	It("returns low similarity for same suffix", func() {
-		// Jaro-Winkler gives ~0.70 for this case
 		ratio := similarityRatio("postman (live)", "taxman (live)")
 		Expect(ratio).To(BeNumerically("<", 0.85))
 	})

@@ -11,6 +11,7 @@ import (
 
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -28,7 +29,13 @@ type localStorage struct {
 func newLocalStorage(u url.URL) storage.Storage {
 	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		log.Fatal("Extractor not found", "path", conf.Server.Scanner.Extractor)
+		if conf.Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+			log.Warn("Extractor not found, using default", "extractor", conf.Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		}
+		newExtractor = extractors[consts.DefaultScannerExtractor]
+		if newExtractor == nil {
+			log.Fatal("Default extractor not registered", "extractor", consts.DefaultScannerExtractor)
+		}
 	}
 	isWindowsPath := filepath.VolumeName(u.Host) != ""
 	if u.Scheme == storage.LocalSchemaID && isWindowsPath {

@@ -584,9 +584,12 @@ var _ = Describe("ffmpeg", func() {
 				// Cancel the context
 				cancel()
 
-				// Next read should fail due to cancelled context
-				_, err = stream.Read(buf)
-				Expect(err).To(HaveOccurred())
+				// Subsequent reads should eventually fail due to cancelled context.
+				// There may be buffered data in the pipe, so we drain until an error occurs.
+				Eventually(func() error {
+					_, err = stream.Read(buf)
+					return err
+				}).WithTimeout(5 * time.Second).WithPolling(10 * time.Millisecond).Should(HaveOccurred())
 			})
 
 			It("should handle immediate context cancellation", func() {

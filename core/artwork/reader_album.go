@@ -61,7 +61,7 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 func (a *albumArtworkReader) Key() string {
 	hashInput := conf.Server.CoverArtPriority
 	if conf.Server.EnableExternalServices {
-		hashInput += conf.Server.Agents
+		hashInput = conf.Server.Agents + hashInput
 	}
 	hash := md5.Sum([]byte(hashInput))
 	return fmt.Sprintf(
@@ -72,7 +72,7 @@ func (a *albumArtworkReader) Key() string {
 	)
 }
 func (a *albumArtworkReader) LastUpdated() time.Time {
-	return a.album.UpdatedAt
+	return a.lastUpdate
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {

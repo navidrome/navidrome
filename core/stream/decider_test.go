@@ -76,7 +76,10 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("container not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(And(
+					ContainSubstring("container 'flac' not supported"),
+					ContainSubstring("[mp3]"),
+				)))
 			})
 
 			It("rejects direct play when codec doesn't match", func() {
@@ -89,7 +92,10 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("audio codec not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(And(
+					ContainSubstring("audio codec 'alac' not supported"),
+					ContainSubstring("[m4a/aac]"),
+				)))
 			})
 
 			It("rejects direct play when channels exceed limit", func() {
@@ -102,7 +108,44 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
-				Expect(decision.TranscodeReasons).To(ContainElement("audio channels not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(And(
+					ContainSubstring("audio channels 6 not supported"),
+					ContainSubstring("[flac]"),
+					ContainSubstring("(max 2)"),
+				)))
+			})
+
+			It("accepts WAV source against a wav codec profile (pcm->wav bridge)", func() {
+				// ffprobe normalizes PCM variants (pcm_s16le etc) to codec "pcm", but
+				// browsers advertise WAV support as audioCodecs:["wav"] via audio/wav MIME.
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "wav", Codec: "pcm", BitRate: 1411, Channels: 2})
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"wav"}, AudioCodecs: []string{"wav"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
+			It("does not accept AIFF (pcm in non-wav container) against a wav codec profile", func() {
+				// AIFF files also normalize to codec="pcm" but use container="aiff".
+				// Without the container guard they would falsely match a codec-only
+				// ["wav"] profile and be direct-played as if they were WAV.
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "aiff", Codec: "pcm", BitRate: 1411, Channels: 2})
+				ci := &ClientInfo{
+					DirectPlayProfiles: []DirectPlayProfile{
+						{AudioCodecs: []string{"wav"}, Protocols: []string{ProtocolHTTP}},
+					},
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.TranscodeReasons).To(ContainElement(ContainSubstring("audio codec 'pcm'")))
 			})
 
 			It("handles container aliases (aac -> m4a)", func() {
@@ -216,7 +259,10 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TargetFormat).To(Equal("mp3"))
 				Expect(decision.TargetBitrate).To(Equal(256)) // kbps
-				Expect(decision.TranscodeReasons).To(ContainElement("container not supported"))
+				Expect(decision.TranscodeReasons).To(ContainElement(And(
+					ContainSubstring("container 'flac' not supported"),
+					ContainSubstring("[mp3]"),
+				)))
 			})
 
 			It("rejects lossy to lossless transcoding", func() {
@@ -724,6 +770,73 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
+		Context("Codec channel limits", func() {
+			It("clamps 6-channel FLAC to 2 channels when transcoding to MP3", func() {
+				// Regression test for #5336: ffmpeg's mp3 encoder rejects >2 channels.
+				// The decider must clamp to the codec's hard limit even when no
+				// transcoding profile MaxAudioChannels is configured.
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+				Expect(decision.TranscodeStream.Channels).To(Equal(2))
+				Expect(decision.TargetChannels).To(Equal(2))
+			})
+
+			It("honors a stricter profile MaxAudioChannels over the codec clamp", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 1},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.Channels).To(Equal(1))
+				Expect(decision.TargetChannels).To(Equal(1))
+			})
+
+			It("applies the codec clamp when the profile limit is looser", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP, MaxAudioChannels: 4},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.Channels).To(Equal(2))
+				Expect(decision.TargetChannels).To(Equal(2))
+			})
+
+			It("passes channels through unchanged for codecs with no hard limit", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 6, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "m4a", AudioCodec: "aac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("aac"))
+				Expect(decision.TranscodeStream.Channels).To(Equal(6))
+				Expect(decision.TargetChannels).To(Equal(6))
+			})
+		})
+
 		Context("Probe-based lossless detection", func() {
 			It("uses probe codec name for lossless detection", func() {
 				// WavPack files: ffprobe reports codec as "wavpack", suffix is ".wv"
@@ -901,9 +1014,12 @@ var _ = Describe("Decider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
 				Expect(decision.TranscodeReasons).To(HaveLen(3))
-				Expect(decision.TranscodeReasons[0]).To(Equal("container not supported"))
-				Expect(decision.TranscodeReasons[1]).To(Equal("container not supported"))
-				Expect(decision.TranscodeReasons[2]).To(Equal("container not supported"))
+				Expect(decision.TranscodeReasons[0]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[0]).To(ContainSubstring("[flac]"))
+				Expect(decision.TranscodeReasons[1]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[1]).To(ContainSubstring("[mp3/mp3]"))
+				Expect(decision.TranscodeReasons[2]).To(ContainSubstring("container 'ogg' not supported"))
+				Expect(decision.TranscodeReasons[2]).To(ContainSubstring("[m4a,mp4/aac]"))
 			})
 		})
 
@@ -1115,6 +1231,7 @@ var _ = Describe("Decider", func() {
 				Expect(bitrate).To(Equal(fallbackBitrate))
 			})
 		})
+
 	})
 
 	Describe("ensureProbed", func() {

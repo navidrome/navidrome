@@ -1,9 +1,10 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
-GO_BUILD_TAGS=netgo,sqlite_fts5
+
+comma:=,
+GO_BUILD_TAGS=netgo,sqlite_fts5$(if $(EXTRA_BUILD_TAGS),$(comma)$(EXTRA_BUILD_TAGS))
 
 # Set global environment variables, required for most targets
-export CGO_CFLAGS_ALLOW=--define-prefix
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
@@ -19,8 +20,6 @@ IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "lin
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
-# Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.2.1-1
 GOLANGCI_LINT_VERSION ?= v2.11.1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -177,7 +176,6 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--output "./binaries" --target binary .
 .PHONY: docker-build
 
@@ -189,7 +187,6 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 		--platform $(IMAGE_PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
 
