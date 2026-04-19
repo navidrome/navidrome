@@ -228,6 +228,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Re-populate playlist based on Smart Playlist criteria
 	rules := *pls.Rules
+	rules.SetOwnerID(usr.ID)
 
 	// If the playlist depends on other playlists, recursively refresh them first
 	childPlaylistIds := rules.ChildPlaylistIds()

@@ -286,7 +286,7 @@ func (ipl InPlaylist) ToSql() (sql string, args []any, err error) {
 }
 
 func (ipl InPlaylist) MarshalJSON() ([]byte, error) {
-	return marshalExpression("inPlaylist", ipl)
+	return marshalPlaylistExpression("inPlaylist", ipl)
 }
 
 type NotInPlaylist map[string]any
@@ -296,7 +296,7 @@ func (ipl NotInPlaylist) ToSql() (sql string, args []any, err error) {
 }
 
 func (ipl NotInPlaylist) MarshalJSON() ([]byte, error) {
-	return marshalExpression("notInPlaylist", ipl)
+	return marshalPlaylistExpression("notInPlaylist", ipl)
 }
 
 func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
@@ -306,14 +306,19 @@ func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
 		return "", nil, errors.New("playlist id not given")
 	}
 
-	// Subquery to fetch all media files that are contained in given playlist
-	// Only evaluate playlist if it is public
+	// Subquery to fetch all media files that are contained in given playlist.
+	// Allow the playlist if it is public OR owned by the same user.
+	ownerID, _ := m[ownerIDKey].(string)
 	subQuery := squirrel.Select("media_file_id").
 		From("playlist_tracks pl").
 		LeftJoin("playlist on pl.playlist_id = playlist.id").
 		Where(squirrel.And{
 			squirrel.Eq{"pl.playlist_id": playlistid},
-			squirrel.Eq{"playlist.public": 1}})
+			squirrel.Or{
+				squirrel.Eq{"playlist.public": 1},
+				squirrel.Eq{"playlist.owner_id": ownerID},
+			},
+		})
 	subQText, subQArgs, err := subQuery.PlaceholderFormat(squirrel.Question).ToSql()
 
 	if err != nil {
@@ -323,6 +328,43 @@ func inList(m map[string]any, negate bool) (sql string, args []any, err error) {
 		return "media_file.id NOT IN (" + subQText + ")", subQArgs, nil
 	} else {
 		return "media_file.id IN (" + subQText + ")", subQArgs, nil
+	}
+}
+
+const ownerIDKey = "ownerID"
+
+// marshalPlaylistExpression marshals an InPlaylist/NotInPlaylist expression,
+// filtering out the transient ownerID key that should never be persisted.
+func marshalPlaylistExpression(name string, m map[string]any) ([]byte, error) {
+	if _, has := m[ownerIDKey]; !has {
+		return marshalExpression(name, m)
+	}
+	filtered := make(map[string]any, 1)
+	for k, v := range m {
+		if k != ownerIDKey {
+			filtered[k] = v
+		}
+	}
+	return marshalExpression(name, filtered)
+}
+
+// injectOwnerID walks the expression tree and sets the ownerID key on all
+// InPlaylist and NotInPlaylist nodes, allowing inList() to relax the
+// public-only constraint when the referenced playlist belongs to the same owner.
+func injectOwnerID(inputRule any, ownerID string) {
+	switch rule := inputRule.(type) {
+	case Any:
+		for _, r := range rule {
+			injectOwnerID(r, ownerID)
+		}
+	case All:
+		for _, r := range rule {
+			injectOwnerID(r, ownerID)
+		}
+	case InPlaylist:
+		rule[ownerIDKey] = ownerID
+	case NotInPlaylist:
+		rule[ownerIDKey] = ownerID
 	}
 }
 

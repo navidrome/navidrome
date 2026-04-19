@@ -45,11 +45,15 @@ var _ = Describe("Operators", func() {
 		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 
-		// InPlaylist and NotInPlaylist are special cases
+		// InPlaylist and NotInPlaylist: always allow public or same-owner playlists
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
-			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND (playlist.public = ? OR playlist.owner_id = ?)))", "deadbeef-dead-beef", 1, ""),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
-			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND (playlist.public = ? OR playlist.owner_id = ?)))", "deadbeef-dead-beef", 1, ""),
+		Entry("inPlaylist with ownerID", InPlaylist{"id": "deadbeef-dead-beef", "ownerID": "user123"}, "media_file.id IN "+
+			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND (playlist.public = ? OR playlist.owner_id = ?)))", "deadbeef-dead-beef", 1, "user123"),
+		Entry("notInPlaylist with ownerID", NotInPlaylist{"id": "deadbeef-dead-beef", "ownerID": "user123"}, "media_file.id NOT IN "+
+			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND (playlist.public = ? OR playlist.owner_id = ?)))", "deadbeef-dead-beef", 1, "user123"),
 
 		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", StartOfPeriod(30, time.Now())),
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
@@ -224,4 +228,19 @@ var _ = Describe("Operators", func() {
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, `{"inPlaylist":{"id":"deadbeef-dead-beef"}}`),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, `{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`),
 	)
+
+	Describe("JSON Marshaling excludes ownerID", func() {
+		It("excludes ownerID from InPlaylist JSON", func() {
+			op := InPlaylist{"id": "deadbeef-dead-beef", "ownerID": "user123"}
+			j, err := json.Marshal(op)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).To(gomega.Equal(`{"inPlaylist":{"id":"deadbeef-dead-beef"}}`))
+		})
+		It("excludes ownerID from NotInPlaylist JSON", func() {
+			op := NotInPlaylist{"id": "deadbeef-dead-beef", "ownerID": "user123"}
+			j, err := json.Marshal(op)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).To(gomega.Equal(`{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`))
+		})
+	})
 })

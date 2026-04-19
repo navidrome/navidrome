@@ -471,4 +471,42 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(ids).To(gomega.BeEmpty())
 		})
 	})
+
+	Context("SetOwnerID", func() {
+		It("injects ownerID into InPlaylist and NotInPlaylist nodes", func() {
+			c := Criteria{
+				Expression: All{
+					InPlaylist{"id": "pl1"},
+					NotInPlaylist{"id": "pl2"},
+					Any{
+						InPlaylist{"id": "pl3"},
+					},
+				},
+			}
+			c.SetOwnerID("user-abc")
+
+			all := c.Expression.(All)
+			gomega.Expect(all[0].(InPlaylist)["ownerID"]).To(gomega.Equal("user-abc"))
+			gomega.Expect(all[1].(NotInPlaylist)["ownerID"]).To(gomega.Equal("user-abc"))
+			nested := all[2].(Any)
+			gomega.Expect(nested[0].(InPlaylist)["ownerID"]).To(gomega.Equal("user-abc"))
+		})
+
+		It("does not affect other expression types", func() {
+			c := Criteria{
+				Expression: All{
+					Is{"title": "test"},
+					InPlaylist{"id": "pl1"},
+				},
+			}
+			c.SetOwnerID("user-abc")
+			gomega.Expect(c.Expression.(All)[0].(Is)).To(gomega.HaveLen(1))
+			gomega.Expect(c.Expression.(All)[1].(InPlaylist)["ownerID"]).To(gomega.Equal("user-abc"))
+		})
+
+		It("handles nil expression", func() {
+			c := Criteria{}
+			c.SetOwnerID("user-abc") // should not panic
+		})
+	})
 })

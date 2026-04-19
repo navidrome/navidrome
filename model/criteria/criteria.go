@@ -152,6 +152,14 @@ func (c Criteria) RequiredJoins() JoinType {
 	return result
 }
 
+// SetOwnerID injects the owner's user ID into all InPlaylist/NotInPlaylist
+// expressions, allowing them to reference the owner's private playlists.
+func (c *Criteria) SetOwnerID(ownerID string) {
+	if c.Expression != nil {
+		injectOwnerID(c.Expression, ownerID)
+	}
+}
+
 func (c Criteria) ChildPlaylistIds() []string {
 	if c.Expression == nil {
 		return nil
