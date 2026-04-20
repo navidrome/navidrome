@@ -9,7 +9,7 @@ import (
 )
 
 func (s *playlists) GetPermissionsForPlaylist(ctx context.Context, playlistID string) (model.PlaylistPermissions, error) {
-	if _, err := s.checkWritable(ctx, playlistID); err != nil {
+	if _, err := s.checkOwner(ctx, playlistID); err != nil {
 		return nil, err
 	}
 
@@ -26,7 +26,7 @@ var userPermissions = []model.Permission{model.PermissionEditor, model.Permissio
 // AddPermission grants the user the provided permission on the playlist.
 // If the user is already granted a permission on the playlist, consecutive calls override the current permission.
 func (s *playlists) AddPermission(ctx context.Context, playlistID string, userID string, permission model.Permission) error {
-	playlist, err := s.checkWritable(ctx, playlistID)
+	playlist, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (s *playlists) AddPermission(ctx context.Context, playlistID string, userID
 
 // RemovePermission removes the granted permission of the user from the playlist.
 func (s *playlists) RemovePermission(ctx context.Context, playlistID string, userID string) error {
-	_, err := s.checkWritable(ctx, playlistID)
+	_, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}

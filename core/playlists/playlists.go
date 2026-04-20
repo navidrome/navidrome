@@ -141,7 +141,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 }
 
 func (s *playlists) Delete(ctx context.Context, id string) error {
-	pls, err := s.checkWritable(ctx, id)
+	pls, err := s.checkOwner(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -156,6 +156,8 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 	return s.ds.Playlist(ctx).Delete(id)
 }
 
+// Update updates the playlist metadata & tracks
+// Currently only used for the subsonic API implementation.
 func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
@@ -165,7 +167,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	if hasTrackChanges {
 		pls, err = s.checkTracksEditable(ctx, playlistID)
 	} else {
-		pls, err = s.checkWritable(ctx, playlistID)
+		pls, err = s.checkOwner(ctx, playlistID)
 	}
 	if err != nil {
 		return err
@@ -200,18 +202,18 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		if name == nil && comment == nil && public == nil {
 			return nil
 		}
-		// Reuse the playlist from checkWritable (no tracks loaded, so Put only refreshes counters)
+		// Reuse the playlist from checkEditor (no tracks loaded, so Put only refreshes counters)
 		return s.updateMetadata(ctx, tx, pls, name, comment, public)
 	})
 }
 
 // --- Permission helpers ---
 
-// checkWritable fetches the playlist and verifies the current user can modify it.
-func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playlist, error) {
-	pls, err := s.ds.Playlist(ctx).Get(id)
+// checkOwner fetches the playlist and verifies the current user is the owner or an admin.
+func (s *playlists) checkOwner(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting playlist with ID %q: %w", id, err)
+		return nil, fmt.Errorf("failed getting playlist with ID %q: %w", playlistID, err)
 	}
 	if hasOwnerPermission(ctx, pls) {
 		return pls, nil
@@ -227,9 +229,9 @@ func hasOwnerPermission(ctx context.Context, pls *model.Playlist) bool {
 	return false
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+// checkTracksEditable verifies the user can modify tracks (user is admin / owner or editor + not smart playlist).
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
-	pls, err := s.checkWritable(ctx, playlistID)
+	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +308,7 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 // --- Cover art operations ---
 
 func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.Reader, ext string) error {
-	pls, err := s.checkWritable(ctx, playlistID)
+	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}
@@ -322,7 +324,7 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
-	pls, err := s.checkWritable(ctx, playlistID)
+	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}

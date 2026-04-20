@@ -12,6 +12,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
